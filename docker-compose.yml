@@ -1,0 +1,45 @@
+# A complete Parikshaa for local use and small deployments.
+#
+# Postgres holds the ledger; one Node process serves the API and both client
+# bundles, so there is no second origin to configure.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: parikshaa
+      POSTGRES_USER: parikshaa_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - parikshaa-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parikshaa_owner -d parikshaa"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build: .
+    command: ["npm", "run", "migrate", "-w", "@parikshaa/store"]
+    environment:
+      DATABASE_URL: postgres://parikshaa_owner:${POSTGRES_PASSWORD}@db:5432/parikshaa
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgres://parikshaa_owner:${POSTGRES_PASSWORD}@db:5432/parikshaa
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
+      ATTEMPT_TOKEN_SECRET: ${ATTEMPT_TOKEN_SECRET:?set ATTEMPT_TOKEN_SECRET (32+ characters)}
+      STAFF_TOKEN: ${STAFF_TOKEN:?set STAFF_TOKEN}
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  parikshaa-data:

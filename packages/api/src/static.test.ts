@@ -1,0 +1,106 @@
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import type Anthropic from "@anthropic-ai/sdk";
+import { PGlite } from "@electric-sql/pglite";
+import type { FastifyInstance } from "fastify";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
+import { AttemptTokens } from "./auth.js";
+import { buildServer } from "./server.js";
+import { ExamService } from "./service.js";
+
+/**
+ * Serving both client bundles from the API process.
+ *
+ * Hermetic: the roots are stand-in directories rather than the real builds, so
+ * this tests the wiring and the fallback rules rather than whichever bundle
+ * happens to be on disk.
+ */
+
+let db: PGlite;
+let app: FastifyInstance;
+
+beforeEach(async () => {
+  db = new PGlite();
+  const sql = pgliteExecutor(db);
+  await migrate(sql);
+
+  const root = await mkdtemp(join(tmpdir(), "parikshaa-clients-"));
+  const web = join(root, "web");
+  const consoleRoot = join(root, "console");
+  await mkdir(web);
+  await mkdir(consoleRoot);
+  await writeFile(join(web, "index.html"), "<!doctype html><title>candidate</title>");
+  await writeFile(join(consoleRoot, "index.html"), "<!doctype html><title>console</title>");
+  await mkdir(join(web, "assets"));
+  await writeFile(join(web, "assets", "app.js"), "export const x = 1;\n");
+
+  app = buildServer({
+    service: new ExamService({ store: new LedgerStore(sql), client: {} as unknown as Anthropic }),
+    tokens: new AttemptTokens("x".repeat(40)),
+    staffToken: "staff",
+    clients: { web, console: consoleRoot },
+  });
+  await app.ready();
+});
+
+afterEach(async () => {
+  await app.close();
+  await db.close();
+});
+
+const html = { accept: "text/html" };
+
+describe("serving the clients", () => {
+  it("serves the candidate app at the root", async () => {
+    const res = await app.inject({ method: "GET", url: "/", headers: html });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toContain("candidate");
+  });
+
+  it("serves the console under /console", async () => {
+    const res = await app.inject({ method: "GET", url: "/console/", headers: html });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toContain("console");
+  });
+
+  it("serves static assets", async () => {
+    const res = await app.inject({ method: "GET", url: "/assets/app.js" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.payload).toContain("export const x");
+  });
+
+  it("returns each app's shell for a deep link into it", async () => {
+    // Both clients hold their own view state, so a reload on any path must get
+    // the shell back rather than a 404.
+    const candidate = await app.inject({ method: "GET", url: "/some/deep/path", headers: html });
+    expect(candidate.payload).toContain("candidate");
+
+    const staff = await app.inject({ method: "GET", url: "/console/exams/exam-1", headers: html });
+    expect(staff.payload).toContain("console");
+  });
+
+  it("still answers API routes rather than the shell", async () => {
+    const health = await app.inject({ method: "GET", url: "/health" });
+    expect(health.json()).toEqual({ ok: true });
+
+    // An unauthenticated API call must fail as an API call, not silently
+    // return HTML that a client would try to parse as JSON.
+    const unauthorized = await app.inject({ method: "GET", url: "/attempts/me" });
+    expect(unauthorized.statusCode).toBe(401);
+    expect(unauthorized.json().error).toBe("attempt_token_required");
+  });
+
+  it("returns JSON, not the shell, for an unknown non-HTML request", async () => {
+    const res = await app.inject({ method: "GET", url: "/nope", headers: { accept: "application/json" } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: "not_found" });
+
+    const posted = await app.inject({ method: "POST", url: "/nope", headers: html });
+    expect(posted.statusCode).toBe(404);
+  });
+});

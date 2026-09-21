@@ -2,12 +2,20 @@
   "name": "parikshaa",
   "private": true,
   "version": "0.0.0",
-  "description": "Parikshaa (परीक्षा) — assessment platform with a tamper-evident exam ledger and an AI micro-viva engine.",
-  "workspaces": ["packages/*"],
+  "description": "Parikshaa (\u092a\u0930\u0940\u0915\u094d\u0937\u093e) \u2014 assessment platform with a tamper-evident exam ledger and an AI micro-viva engine.",
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
+    "build": "tsc -b packages/api",
+    "typecheck": "tsc -b packages/api --force && tsc -p tsconfig.tests.json && npm run typecheck -w @parikshaa/web && npm run typecheck -w @parikshaa/console",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "check": "npm run typecheck && npm test",
+    "start": "node packages/api/dist/main.js",
+    "build:clients": "npm run build -w @parikshaa/web && npm run build -w @parikshaa/console",
+    "migrate": "npm run migrate -w @parikshaa/store"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

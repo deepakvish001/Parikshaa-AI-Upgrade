@@ -21,17 +21,25 @@ the stack is TypeScript end to end, and it is not a preference.
 | Language / runtime | TypeScript, Node 22 | See above. Also keeps domain types shared between API and client. |
 | HTTP | Fastify + Zod (`fastify-type-provider-zod`) | Schemas generate the OpenAPI spec. Institutions integrate against this; they need a spec, not a client library. |
 | Database | PostgreSQL 16+ | The ledger's integrity properties are enforceable in the schema (below). |
-| Migrations / queries | Drizzle | Migrations are plain SQL we can read in review. For an audit-critical schema, an opaque migration engine is a liability. |
+| Migrations / queries | Plain SQL over a thin executor | Drizzle was the original choice; building it showed the ORM had nothing to add. The schema's value is in constraints, triggers and row-level security, which are reviewed as SQL either way, and a two-method executor interface lets the same store run against a pool in production and an in-process Postgres in tests. |
 | Background jobs | pg-boss | Postgres-backed, so no Redis to run. Move to BullMQ only if throughput demands it. |
 | Realtime | SSE | One-way is all probe delivery needs. Survives proxies; simpler than WebSockets. |
 | LLM | Anthropic SDK, `claude-opus-5` | Two paths, different settings — see below. |
 | Auth (staff) | OIDC against the institution's IdP | Identity is out of scope (SPEC §2). Don't build accounts. |
 | Auth (candidate) | Short-lived exam-scoped JWT (`jose`) | A token that grants one attempt and expires. No candidate user records. |
-| Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. |
+| Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. No analytics, no third-party scripts, no runtime font fetches — the page cannot observe the candidate any more than it says it does. |
 | Observability | pino + OpenTelemetry + Sentry | pino is Fastify-native. |
-| Deploy | Docker, stateless API, PgBouncer | Exam load is bursty — 500 candidates start at 10:00 sharp. Autoscale the API tier; pool connections. |
+| Deploy | One Docker image, stateless API, PgBouncer | The API serves both client bundles, so there is no second origin, no CORS configuration and no cross-origin token handling to get wrong. Exam load is bursty — 500 candidates start at 10:00 sharp — so autoscale the API tier and pool connections. Migrations run as their own task, never on boot: several instances starting at once would race. |
 
 ## Load-bearing details
+
+### 0. These are tested against a real Postgres, not a mock
+
+`@parikshaa/store` runs its suite against PGlite — Postgres compiled to WASM, in
+process. That matters because everything in §1 *is* the product: a mocked
+database would only assert that the SQL we wrote is the SQL we wrote. The
+append-only trigger, the composite primary key, the row-level security policy
+and jsonb drift detection each have a test that exercises the real engine.
 
 ### 1. Ledger integrity is enforced in the database, not only in app code
 
@@ -55,7 +63,11 @@ event    jsonb  -- for querying and reporting
 preimage text   -- the exact canonicalize() output that was hashed
 ```
 
-Verification reads `preimage`. `jsonb` is for queries only.
+Verification reads `preimage`. `jsonb` is for queries only, and `LedgerStore.load`
+rebuilds each entry by parsing the preimage rather than the jsonb column.
+`verifyStored` compares the two and reports `jsonb_drift` when they diverge —
+nothing has been tampered with at that point, but any code recomputing a hash
+from jsonb would claim it had.
 
 ### 3. Reply latency is measured server-side, always
 
@@ -87,6 +99,14 @@ probe that can be answered from the question alone is worthless — so the cheap
 models are a deliberate cost decision to take later, with measurement, not a
 default.
 
+### 4a. SSE is read with `fetch`, not `EventSource`
+
+`EventSource` cannot send an `Authorization` header, and the alternative — the
+attempt token in a query string — would leak it into proxy logs and browser
+history. The client reads the event stream from `fetch`'s response body and
+reassembles frames itself, which is about thirty lines and keeps the token in a
+header where it belongs.
+
 ### 5. Pseudonymize before the model call
 
 A probe needs the question, the rubric and the answer text. It never needs the
@@ -98,6 +118,17 @@ India's DPDP Act 2023. If Indian institutions are the market, the database
 belongs in an India region (`ap-south-1`). Whether an India inference region is
 available for the model calls is **unverified** — check before relying on it.
 Pseudonymization holds either way.
+
+### 6. `@parikshaa/core` has two entry points
+
+`.` carries everything, including the ledger, which hashes with `node:crypto`.
+`./browser` carries the vocabulary, the candidate projection, exam validation
+and deterministic scoring — all pure, and what the two clients import.
+
+The split is a boundary, not a packaging workaround: a client has no business
+holding the hashing code because it has no business producing ledger entries.
+Only the server appends. (A candidate verifying their own receipt in the browser
+is a real feature, and would need WebCrypto's async digest. It is not this one.)
 
 ## Deliberately not in the stack yet
 

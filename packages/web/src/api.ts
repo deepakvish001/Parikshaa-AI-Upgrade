@@ -1,0 +1,148 @@
+import type { CandidateLedger, CandidateState } from "@parikshaa/api";
+
+export type { CandidateLedger, CandidateState };
+
+export interface ProbeHandlers {
+  /** A fragment of the probe as it is written. */
+  readonly onToken?: (token: string) => void;
+  readonly onProbe: (probe: { id: string; prompt: string }) => void;
+  /** No answer currently qualifies for a probe. This is the normal case. */
+  readonly onNone?: () => void;
+  readonly onError?: (message: string) => void;
+}
+
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+  ) {
+    super(`${code} (${status})`);
+    this.name = "ApiError";
+  }
+}
+
+export class ParikshaaClient {
+  readonly #baseUrl: string;
+  readonly #token: string;
+
+  constructor(token: string, baseUrl = "/api") {
+    this.#token = token;
+    this.#baseUrl = baseUrl.replace(/\/$/, "");
+  }
+
+  get #headers(): Record<string, string> {
+    return { authorization: `Bearer ${this.#token}`, "content-type": "application/json" };
+  }
+
+  async #request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const response = await fetch(`${this.#baseUrl}${path}`, { ...init, headers: this.#headers });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new ApiError(response.status, body.error ?? "request_failed");
+    }
+    return (await response.json()) as T;
+  }
+
+  state(): Promise<CandidateState> {
+    return this.#request<CandidateState>("/attempts/me");
+  }
+
+  ledger(): Promise<CandidateLedger> {
+    return this.#request<CandidateLedger>("/attempts/me/ledger");
+  }
+
+  async saveAnswer(questionId: string, answer: string): Promise<void> {
+    await this.#request("/attempts/me/answers", {
+      method: "POST",
+      body: JSON.stringify({ questionId, answer }),
+    });
+  }
+
+  async submit(): Promise<void> {
+    await this.#request("/attempts/me/submit", { method: "POST" });
+  }
+
+  /**
+   * Reply to a probe.
+   *
+   * The body carries the reply and nothing else. How long the candidate took is
+   * measured on the server, between the probe's recorded `askedAt` and the
+   * arrival of this request — there is deliberately no timing for this client to
+   * report, correctly or otherwise.
+   */
+  async replyToProbe(probeId: string, reply: string): Promise<void> {
+    await this.#request(`/attempts/me/probes/${encodeURIComponent(probeId)}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ reply }),
+    });
+  }
+
+  /**
+   * Ask whether a probe is due, and stream it if one is.
+   *
+   * Read with `fetch` rather than `EventSource`, which cannot send an
+   * Authorization header — putting the attempt token in the query string
+   * instead would leak it into proxy logs and browser history.
+   */
+  async streamProbe(handlers: ProbeHandlers, signal?: AbortSignal): Promise<void> {
+    const response = await fetch(`${this.#baseUrl}/attempts/me/probe`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+      ...(signal === undefined ? {} : { signal }),
+    });
+
+    if (!response.ok || response.body === null) {
+      handlers.onError?.(`probe request failed (${response.status})`);
+      return;
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        this.#dispatch(buffer.slice(0, boundary), handlers);
+        buffer = buffer.slice(boundary + 2);
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+    if (buffer.trim() !== "") this.#dispatch(buffer, handlers);
+  }
+
+  #dispatch(frame: string, handlers: ProbeHandlers): void {
+    let event = "message";
+    let data = "";
+    for (const line of frame.split("\n")) {
+      if (line.startsWith("event:")) event = line.slice("event:".length).trim();
+      else if (line.startsWith("data:")) data += line.slice("data:".length).trim();
+    }
+    if (data === "") return;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(data);
+    } catch {
+      return;
+    }
+
+    switch (event) {
+      case "token":
+        handlers.onToken?.((parsed as { token: string }).token);
+        break;
+      case "probe":
+        handlers.onProbe(parsed as { id: string; prompt: string });
+        break;
+      case "none":
+        handlers.onNone?.();
+        break;
+      case "error":
+        handlers.onError?.((parsed as { message: string }).message);
+        break;
+    }
+  }
+}

@@ -1,0 +1,83 @@
+import { mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { PGlite } from "@electric-sql/pglite";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { migrate } from "./migrate.js";
+import { pgliteExecutor, type SqlExecutor } from "./sql.js";
+
+let db: PGlite;
+let sql: SqlExecutor;
+let dir: string;
+
+beforeEach(async () => {
+  db = new PGlite();
+  sql = pgliteExecutor(db);
+  dir = await mkdtemp(join(tmpdir(), "parikshaa-migrations-"));
+});
+
+afterEach(async () => {
+  await db.close();
+});
+
+const write = (name: string, body: string) => writeFile(join(dir, name), body, "utf8");
+
+describe("migrate", () => {
+  it("applies migrations in filename order", async () => {
+    await write("0002_second.sql", "ALTER TABLE widgets ADD COLUMN label text;");
+    await write("0001_first.sql", "CREATE TABLE widgets (id int primary key);");
+
+    const result = await migrate(sql, dir);
+
+    expect(result.applied).toEqual(["0001_first.sql", "0002_second.sql"]);
+    const columns = await sql.query<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns WHERE table_name = 'widgets' ORDER BY column_name`,
+    );
+    expect(columns.map((c) => c.column_name)).toEqual(["id", "label"]);
+  });
+
+  it("is idempotent across runs", async () => {
+    await write("0001_first.sql", "CREATE TABLE widgets (id int primary key);");
+
+    expect((await migrate(sql, dir)).applied).toEqual(["0001_first.sql"]);
+    const second = await migrate(sql, dir);
+
+    expect(second.applied).toEqual([]);
+    expect(second.skipped).toEqual(["0001_first.sql"]);
+  });
+
+  it("applies a later migration added after the first run", async () => {
+    await write("0001_first.sql", "CREATE TABLE widgets (id int primary key);");
+    await migrate(sql, dir);
+
+    await write("0002_second.sql", "CREATE TABLE gadgets (id int primary key);");
+    expect((await migrate(sql, dir)).applied).toEqual(["0002_second.sql"]);
+  });
+
+  it("records nothing when a migration fails", async () => {
+    await write("0001_broken.sql", "CREATE TABLE widgets (id int primary key); SELECT nonexistent();");
+
+    await expect(migrate(sql, dir)).rejects.toThrow();
+
+    // The whole file runs in one transaction, so a failure halfway leaves
+    // neither the partial schema nor a row claiming it was applied.
+    const recorded = await sql.query(`SELECT name FROM schema_migrations`);
+    expect(recorded).toEqual([]);
+    const tables = await sql.query(
+      `SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'widgets'`,
+    );
+    expect(tables).toEqual([]);
+  });
+
+  it("applies this repository's own migrations", async () => {
+    const { applied } = await migrate(sql);
+
+    expect(applied).toEqual(["0001_init.sql", "0002_roles.sql"]);
+    const tables = await sql.query<{ tablename: string }>(
+      `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
+    );
+    expect(tables.map((t) => t.tablename)).toEqual(
+      expect.arrayContaining(["attempts", "exam_ledger", "exams", "schema_migrations"]),
+    );
+  });
+});

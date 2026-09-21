@@ -55,14 +55,29 @@ export function canonicalize(value: unknown): string {
   return `{${entries.join(",")}}`;
 }
 
-/** The hash an entry must carry, given its contents. */
-export function entryHash(input: Omit<LedgerEntry, "hash">): string {
-  const preimage = canonicalize({
+/**
+ * The exact bytes an entry's hash covers.
+ *
+ * Exported because storage must persist this string verbatim alongside the
+ * hash: re-deriving it from a database round-trip is how a untouched row starts
+ * looking tampered with. One definition, used by both the hash and the store.
+ */
+export function entryPreimage(input: Omit<LedgerEntry, "hash">): string {
+  return canonicalize({
     seq: input.seq,
     timestamp: input.timestamp,
     event: input.event,
     prevHash: input.prevHash,
   });
+}
+
+/** The hash an entry must carry, given its contents. */
+export function entryHash(input: Omit<LedgerEntry, "hash">): string {
+  return hashPreimage(entryPreimage(input));
+}
+
+/** Hash a preimage that was persisted earlier, without rebuilding it. */
+export function hashPreimage(preimage: string): string {
   return createHash("sha256").update(preimage, "utf8").digest("hex");
 }
 

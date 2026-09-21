@@ -1,0 +1,92 @@
+/*
+ * The console is a working tool: denser than the candidate interface, same
+ * calm palette. The one place its styling carries meaning is the review screen,
+ * where a grade and a provenance verdict must never look like the same kind of
+ * object (SPEC §6.1).
+ */
+:root {
+  --bg: #fbfaf8;
+  --surface: #ffffff;
+  --border: #e3e0da;
+  --text: #1c1a17;
+  --muted: #6b655c;
+  --accent: #3a5a78;
+  --accent-soft: #eef3f7;
+  --warn-soft: #faf4e8;
+  --warn-line: #c9a227;
+  --radius: 10px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #17181a; --surface: #1f2124; --border: #33363b; --text: #e9e7e3;
+    --muted: #9a958d; --accent: #8fb4d4; --accent-soft: #232a31;
+    --warn-soft: #2a2620; --warn-line: #c9a227;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #17181a; --surface: #1f2124; --border: #33363b; --text: #e9e7e3;
+  --muted: #9a958d; --accent: #8fb4d4; --accent-soft: #232a31;
+  --warn-soft: #2a2620; --warn-line: #c9a227;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, sans-serif; }
+
+.page { max-width: 56rem; margin: 0 auto; padding: 1.5rem 1rem 6rem; }
+.bar { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.bar h1 { font-size: 1.25rem; margin: 0; }
+.bar .spacer { flex: 1; }
+.crumb { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font: inherit; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: .85rem; }
+
+label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .2rem; }
+input, select, textarea {
+  width: 100%; padding: .45rem .6rem; font: inherit; color: inherit;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+}
+textarea { min-height: 4rem; resize: vertical; }
+.field { margin-bottom: .75rem; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .75rem; }
+
+button {
+  font: inherit; padding: .4rem .85rem; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--accent); background: var(--accent); color: var(--surface);
+}
+button.secondary { background: transparent; color: var(--accent); }
+button.quiet { background: transparent; color: var(--muted); border-color: var(--border); }
+button:disabled { opacity: .5; cursor: default; }
+.row { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin-top: .75rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 500; }
+td.mono, .mono { font-family: var(--mono); font-size: .8rem; }
+
+.pill { display: inline-block; padding: .1rem .5rem; border-radius: 999px; font-size: .75rem; border: 1px solid var(--border); color: var(--muted); }
+
+.notice { color: var(--muted); font-size: .88rem; }
+.error { color: #b4432f; font-size: .88rem; }
+@media (prefers-color-scheme: dark) { .error { color: #e3907f; } }
+.problems { margin: .5rem 0 0; padding-left: 1.1rem; }
+.problems li { font-size: .85rem; color: #b4432f; }
+@media (prefers-color-scheme: dark) { .problems li { color: #e3907f; } }
+
+/* Review. The grade is a settled number; the evidence beside it is not, and the
+   two are deliberately given different visual weight and a stated boundary. */
+.grade { font-size: 2rem; font-weight: 600; margin: 0; }
+.evidence { border-left: 3px solid var(--warn-line); background: var(--warn-soft); }
+.evidence h2 { font-size: .95rem; margin: 0 0 .2rem; }
+.viva { border-top: 1px solid var(--border); padding-top: .85rem; margin-top: .85rem; }
+.viva:first-of-type { border-top: none; padding-top: 0; margin-top: .6rem; }
+.viva dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: .6rem; }
+.viva dd { margin: .1rem 0 0; }
+.verdict { font-weight: 600; }
+.verdict[data-v="inconclusive"], .verdict[data-v="shallow"] { font-weight: 500; color: var(--muted); }
+
+.gate { max-width: 24rem; margin: 6rem auto; padding: 0 1rem; }
+
+@media (max-width: 34rem) { .page { padding: 1rem 1rem 5rem; } }
