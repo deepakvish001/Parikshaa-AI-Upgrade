@@ -209,18 +209,93 @@ describe("attempt lifecycle", () => {
     expect(graded.json().total).toBe(4);
   });
 
-  it("gives the candidate their own ledger with a head hash", async () => {
+  it("releases only the head hash while the attempt is open", async () => {
     await answer(Q_MCQ, "1");
 
     const res = await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() });
     const body = res.json();
 
-    expect(body.entries.map((e: { type: string }) => e.type)).toEqual([
+    // Enough to pin the record now and verify it later, with nothing in it that
+    // would tell the candidate how they scored.
+    expect(body.sealed).toBe(false);
+    expect(body.entries).toBeNull();
+    expect(body.length).toBe(2);
+    expect(body.head).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("releases the whole chain once the attempt is closed, and the head is unchanged", async () => {
+    await answer(Q_MCQ, "1");
+    const duringExam = (
+      await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() })
+    ).json();
+
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    const after = (
+      await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() })
+    ).json();
+
+    expect(after.sealed).toBe(true);
+    expect(after.entries.map((e: { type: string }) => e.type)).toEqual([
       "attempt_started",
       "answer_submitted",
+      "attempt_submitted",
     ]);
-    expect(body.head).toMatch(/^[0-9a-f]{64}$/);
-    expect(body.head).toBe(body.entries.at(-1).hash);
+    // The head the candidate pinned mid-exam is the head of a prefix of what
+    // they are now shown — that is what makes pinning it worth anything.
+    expect(after.entries[duringExam.length - 1].hash).toBe(duringExam.head);
+  });
+
+  it("never shows a probe rationale or a verdict while the attempt is open", async () => {
+    await answer(Q_MCQ, "1");
+    const probeRes = await app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });
+    const probeId = JSON.parse(
+      probeRes.payload.split("event: probe\ndata: ")[1]?.split("\n")[0] ?? "{}",
+    ).id as string;
+    await app.inject({
+      method: "POST",
+      url: `/attempts/me/probes/${probeId}/reply`,
+      headers: asCandidate(),
+      payload: { reply: "Because it is stable." },
+    });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/assess/${probeId}`, headers: asStaff() });
+
+    const ledger = await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() });
+    const state = await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() });
+
+    // The rationale records the score that triggered the probe; the verdict is
+    // provenance evidence for a human. Neither belongs in front of a candidate
+    // who is still sitting the paper.
+    for (const body of [ledger.payload, state.payload]) {
+      expect(body).not.toContain("viva trigger ratio");
+      expect(body).not.toContain("rationale");
+      expect(body).not.toContain("consistent");
+    }
+  });
+
+  describe("GET /attempts/me", () => {
+    it("sends the exam with no answer key in it", async () => {
+      const res = await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() });
+
+      expect(res.json().exam.title).toBe("Algorithms");
+      expect(res.json().exam.questions).toHaveLength(2);
+      for (const leak of ["correctIndex", "expectedPoints", "rubric", "vivaTriggerRatio", "the measure decreases"]) {
+        expect(res.payload).not.toContain(leak);
+      }
+    });
+
+    it("reports the candidate's own answers and any open probe", async () => {
+      await answer(Q_MCQ, "1");
+      await app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });
+
+      const body = (await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() })).json();
+
+      expect(body.state).toBe("in_progress");
+      expect(body.answers).toEqual([
+        expect.objectContaining({ questionId: Q_MCQ, answer: "1" }),
+      ]);
+      expect(body.openProbe.prompt).toBe("Which quantity decreases each round?");
+      expect(Object.keys(body.openProbe)).toEqual(["id", "prompt"]);
+    });
   });
 
   it("leaves a chain that still verifies after a full lifecycle", async () => {

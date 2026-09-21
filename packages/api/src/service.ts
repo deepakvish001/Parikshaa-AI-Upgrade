@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import {
+  candidateView,
   foldAttempt,
   scoreDeterministic,
   selectProbeTargets,
@@ -7,6 +8,7 @@ import {
   needsRubricGrading,
   type AttemptId,
   type AttemptProjection,
+  type CandidateExam,
   type CandidateId,
   type Exam,
   type ExamId,
@@ -72,6 +74,58 @@ export class ExamService {
   }
 
   // --- reading ------------------------------------------------------------
+
+  /**
+   * Everything the candidate's own client may see while the attempt is open.
+   *
+   * The exam arrives as a {@link candidateView}, which has nowhere for an answer
+   * key to live. An open probe is reported by prompt alone: its `rationale`
+   * records the score that triggered it, and SPEC §4 forbids telling a candidate
+   * mid-exam whether an answer was right.
+   */
+  async candidateState(id: AttemptId): Promise<CandidateState> {
+    const projection = await this.projection(id);
+    const exam = await this.#examFor(await this.#store.load(id));
+    const open = projection.vivas.find((v) => v.exchange === null);
+
+    return {
+      attemptId: id,
+      exam: candidateView(exam),
+      state: projection.attempt.state,
+      startedAt: projection.attempt.startedAt,
+      answers: projection.attempt.responses.map((r) => ({
+        questionId: r.questionId,
+        answer: r.answer,
+        submittedAt: r.submittedAt,
+      })),
+      openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
+      answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
+    };
+  }
+
+  /**
+   * The candidate's view of their own ledger (SPEC §6.2).
+   *
+   * While the attempt is open, only the head hash is released. That is enough
+   * for the guarantee that matters — the candidate pins the head now and
+   * verifies the whole chain once the attempt closes — without disclosing the
+   * probe rationales and viva verdicts the chain also contains, which would
+   * reveal scores mid-exam and turn the assessment into a feedback loop for
+   * defeating it.
+   */
+  async candidateLedger(id: AttemptId): Promise<CandidateLedger> {
+    const entries = await this.#store.load(id);
+    if (entries.length === 0) throw new AttemptError("not_found", `No ledger for attempt ${id}`);
+
+    const projection = await this.projection(id);
+    const sealed = projection.attempt.state !== "in_progress";
+    const head = entries.at(-1)?.hash ?? null;
+
+    if (!sealed) {
+      return { head, length: entries.length, sealed: false, entries: null };
+    }
+    return { head, length: entries.length, sealed: true, entries };
+  }
 
   async createExam(exam: Exam): Promise<void> {
     await this.#store.createExam(exam);
@@ -311,4 +365,23 @@ export class ExamService {
     await this.#store.append(id, { type: "attempt_graded", attemptId: id, total });
     return total;
   }
+}
+
+export interface CandidateState {
+  readonly attemptId: AttemptId;
+  readonly exam: CandidateExam;
+  readonly state: AttemptProjection["attempt"]["state"];
+  readonly startedAt: Timestamp;
+  readonly answers: readonly { questionId: QuestionId; answer: string; submittedAt: Timestamp }[];
+  /** A probe awaiting a reply, by prompt alone. */
+  readonly openProbe: { readonly id: VivaId; readonly prompt: string } | null;
+  readonly answeredProbeCount: number;
+}
+
+export interface CandidateLedger {
+  readonly head: string | null;
+  readonly length: number;
+  /** False while the attempt is open, when only the head hash is released. */
+  readonly sealed: boolean;
+  readonly entries: readonly LedgerEntry[] | null;
 }

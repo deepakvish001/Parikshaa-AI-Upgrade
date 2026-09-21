@@ -30,6 +30,7 @@ packages/core/    domain model, integrity ledger, attempt fold, deterministic sc
 packages/viva/    micro-viva engine: probe generation, verdict assessment, rubric grading
 packages/store/   PostgreSQL persistence and the schema's integrity constraints
 packages/api/     HTTP API: attempts, micro-viva delivery, ledger access
+packages/web/     candidate interface: sitting an exam, answering a probe, taking a receipt
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
 ```
@@ -38,17 +39,23 @@ docs/STACK.md     tech stack
 
 ```
 POST /exams/:examId/attempts     institution starts an attempt, gets a scoped token
+GET  /attempts/me                the exam, stripped of its answer key
 POST /attempts/me/answers        candidate answers
 GET  /attempts/me/probe          SSE: a probe is generated from their answer and streamed
 POST /attempts/me/probes/:id/reply   the reply; latency is measured server-side
 POST /attempts/me/submit
+GET  /attempts/me/ledger         head hash during the attempt, full chain once closed
+POST /attempts/:id/assess/:probeId   institution records a verdict
 POST /attempts/:id/grade         institution grades
 GET  /attempts/:id/review        verdicts reported beside the grade, never folded into it
-GET  /attempts/me/ledger         the candidate's own record, with its head hash
 ```
 
 Candidate routes address the attempt as `me`, taken from the bearer token rather
 than the path — there is no attempt id for a candidate to change.
+
+The candidate sees a follow-up question, not an accusation: no warning colour, no
+countdown, and no mention of integrity or verification anywhere in the interface.
+See SPEC §8 for why that is a correctness requirement and not a courtesy.
 
 ## Development
 
@@ -56,9 +63,10 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 66 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 90 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
-npm run build
+npm run build     # engine
+npm run dev -w @parikshaa/web   # candidate interface, proxying /api to localhost:3000
 npm run check     # typecheck + test
 ```
 
@@ -77,10 +85,10 @@ npm run build && npm start
 
 ## Status
 
-The engine is complete and tested end to end: an attempt can be started,
-answered, probed, replied to, assessed, graded and audited, and the resulting
-chain verifies.
+Complete and tested end to end: a candidate can sit an exam, answer a micro-viva
+and leave with a verifiable receipt; the institution can assess, grade and
+review; and the resulting chain verifies.
 
-Not built: a candidate interface, exam authoring, identity and enrolment
-integration (SPEC §2 puts these out of scope for now), and deployment. See
-`docs/SPEC.md` §7 for component status.
+Not built: exam authoring, identity and enrolment integration (SPEC §2 puts that
+out of scope for now), and deployment. See `docs/SPEC.md` §7 for component
+status.

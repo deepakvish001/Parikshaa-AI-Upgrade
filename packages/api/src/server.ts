@@ -101,6 +101,22 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   });
 
   /**
+   * Assess a replied-to probe and record the verdict.
+   *
+   * Institution-side and deliberately separate from grading: a verdict is
+   * evidence about provenance, and nothing here feeds back into a score.
+   */
+  app.post("/attempts/:attemptId/assess/:probeId", async (request, reply) => {
+    if (!(await requireStaff(request, reply))) return;
+    const { attemptId: rawAttempt, probeId } = request.params as {
+      attemptId: string;
+      probeId: string;
+    };
+    const assessment = await service.assess(attemptId(rawAttempt), vivaId(probeId));
+    return reply.send(assessment);
+  });
+
+  /**
    * The provenance evidence, for a human to act on. Verdicts are reported
    * beside the grade, never folded into it (SPEC §6.1).
    */
@@ -126,6 +142,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   });
 
   // --- candidate routes ---------------------------------------------------
+
+  app.get("/attempts/me", async (request, reply) => {
+    const claims = await requireAttempt(request, reply);
+    if (claims === null) return;
+    return reply.send(await service.candidateState(claims.attemptId));
+  });
 
   app.post("/attempts/me/answers", async (request, reply) => {
     const claims = await requireAttempt(request, reply);
@@ -194,24 +216,31 @@ export function buildServer(options: ServerOptions): FastifyInstance {
    * The candidate's own ledger.
    *
    * SPEC §6.2: a record kept against someone that they cannot inspect is not
-   * evidence. The head hash is returned so they can keep it and later prove
-   * which record they were shown.
+   * evidence. While the attempt is open this returns the head hash only — the
+   * candidate pins it now and verifies the chain once the attempt closes, which
+   * keeps the tamper-evidence guarantee intact without disclosing the probe
+   * rationales and verdicts the entries carry.
    */
   app.get("/attempts/me/ledger", async (request, reply) => {
     const claims = await requireAttempt(request, reply);
     if (claims === null) return;
 
-    const entries = await service.ledger(claims.attemptId);
+    const ledger = await service.candidateLedger(claims.attemptId);
     return reply.send({
-      head: entries.at(-1)?.hash ?? null,
-      entries: entries.map((e) => ({
-        seq: e.seq,
-        timestamp: e.timestamp,
-        type: e.event.type,
-        event: e.event,
-        prevHash: e.prevHash,
-        hash: e.hash,
-      })),
+      head: ledger.head,
+      length: ledger.length,
+      sealed: ledger.sealed,
+      entries:
+        ledger.entries === null
+          ? null
+          : ledger.entries.map((e) => ({
+              seq: e.seq,
+              timestamp: e.timestamp,
+              type: e.event.type,
+              event: e.event,
+              prevHash: e.prevHash,
+              hash: e.hash,
+            })),
     });
   });
 

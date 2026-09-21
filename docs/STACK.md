@@ -27,7 +27,7 @@ the stack is TypeScript end to end, and it is not a preference.
 | LLM | Anthropic SDK, `claude-opus-5` | Two paths, different settings — see below. |
 | Auth (staff) | OIDC against the institution's IdP | Identity is out of scope (SPEC §2). Don't build accounts. |
 | Auth (candidate) | Short-lived exam-scoped JWT (`jose`) | A token that grants one attempt and expires. No candidate user records. |
-| Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. |
+| Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. No analytics, no third-party scripts, no runtime font fetches — the page cannot observe the candidate any more than it says it does. |
 | Observability | pino + OpenTelemetry + Sentry | pino is Fastify-native. |
 | Deploy | Docker, stateless API, PgBouncer | Exam load is bursty — 500 candidates start at 10:00 sharp. Autoscale the API tier; pool connections. |
 
@@ -98,6 +98,14 @@ Both paths use `claude-opus-5`. Probe quality is where this product lives — a
 probe that can be answered from the question alone is worthless — so the cheaper
 models are a deliberate cost decision to take later, with measurement, not a
 default.
+
+### 4a. SSE is read with `fetch`, not `EventSource`
+
+`EventSource` cannot send an `Authorization` header, and the alternative — the
+attempt token in a query string — would leak it into proxy logs and browser
+history. The client reads the event stream from `fetch`'s response body and
+reassembles frames itself, which is about thirty lines and keeps the token in a
+header where it belongs.
 
 ### 5. Pseudonymize before the model call
 

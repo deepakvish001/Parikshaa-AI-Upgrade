@@ -4,5 +4,8 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["packages/*/src/**/*.test.ts"]
+  "include": ["packages/*/src/**/*.test.ts"],
+  // The web package typechecks its own sources and tests together, with the
+  // JSX and bundler-resolution settings those need.
+  "exclude": ["packages/web/**"]
 }

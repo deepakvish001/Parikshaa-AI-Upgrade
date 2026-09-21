@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "build": "tsc -b packages/api",
-    "typecheck": "tsc -b packages/api --force && tsc -p tsconfig.tests.json",
+    "typecheck": "tsc -b packages/api --force && tsc -p tsconfig.tests.json && npm run typecheck -w @parikshaa/web",
     "test": "npm run test --workspaces --if-present",
     "check": "npm run typecheck && npm test",
     "start": "node packages/api/dist/main.js"
