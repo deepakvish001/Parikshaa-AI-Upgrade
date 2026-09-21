@@ -1,4 +1,4 @@
-import type { CandidateQuestion } from "@parikshaa/core";
+import type { CandidateQuestion } from "@parikshaa/core/browser";
 
 interface Props {
   readonly question: CandidateQuestion;

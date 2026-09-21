@@ -29,7 +29,7 @@ the stack is TypeScript end to end, and it is not a preference.
 | Auth (candidate) | Short-lived exam-scoped JWT (`jose`) | A token that grants one attempt and expires. No candidate user records. |
 | Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. No analytics, no third-party scripts, no runtime font fetches — the page cannot observe the candidate any more than it says it does. |
 | Observability | pino + OpenTelemetry + Sentry | pino is Fastify-native. |
-| Deploy | Docker, stateless API, PgBouncer | Exam load is bursty — 500 candidates start at 10:00 sharp. Autoscale the API tier; pool connections. |
+| Deploy | One Docker image, stateless API, PgBouncer | The API serves both client bundles, so there is no second origin, no CORS configuration and no cross-origin token handling to get wrong. Exam load is bursty — 500 candidates start at 10:00 sharp — so autoscale the API tier and pool connections. Migrations run as their own task, never on boot: several instances starting at once would race. |
 
 ## Load-bearing details
 
@@ -118,6 +118,17 @@ India's DPDP Act 2023. If Indian institutions are the market, the database
 belongs in an India region (`ap-south-1`). Whether an India inference region is
 available for the model calls is **unverified** — check before relying on it.
 Pseudonymization holds either way.
+
+### 6. `@parikshaa/core` has two entry points
+
+`.` carries everything, including the ledger, which hashes with `node:crypto`.
+`./browser` carries the vocabulary, the candidate projection, exam validation
+and deterministic scoring — all pure, and what the two clients import.
+
+The split is a boundary, not a packaging workaround: a client has no business
+holding the hashing code because it has no business producing ledger entries.
+Only the server appends. (A candidate verifying their own receipt in the browser
+is a real feature, and would need WebCrypto's async digest. It is not this one.)
 
 ## Deliberately not in the stack yet
 

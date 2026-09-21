@@ -7,5 +7,5 @@
   "include": ["packages/*/src/**/*.test.ts"],
   // The web package typechecks its own sources and tests together, with the
   // JSX and bundler-resolution settings those need.
-  "exclude": ["packages/web/**"]
+  "exclude": ["packages/web/**", "packages/console/**"]
 }

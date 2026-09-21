@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import postgres from "postgres";
 import { LedgerStore, postgresJsExecutor } from "@parikshaa/store";
@@ -25,10 +27,18 @@ async function main(): Promise<void> {
     client: new Anthropic(),
   });
 
+  // Built client bundles, when they are present beside the server. In
+  // development the Vite dev servers proxy to this process instead.
+  const web = process.env["WEB_ROOT"] ?? fileURLToPath(new URL("../../web/dist", import.meta.url));
+  const consoleRoot =
+    process.env["CONSOLE_ROOT"] ?? fileURLToPath(new URL("../../console/dist", import.meta.url));
+  const clients = existsSync(web) && existsSync(consoleRoot) ? { web, console: consoleRoot } : undefined;
+
   const app = buildServer({
     service,
     tokens: new AttemptTokens(required("ATTEMPT_TOKEN_SECRET")),
     staffToken: required("STAFF_TOKEN"),
+    ...(clients === undefined ? {} : { clients }),
   });
 
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);

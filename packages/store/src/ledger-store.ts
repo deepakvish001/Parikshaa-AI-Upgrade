@@ -51,6 +51,55 @@ export class LedgerStore {
     return rows[0]?.definition ?? null;
   }
 
+  /** Exams, newest first, for an authoring console. */
+  async listExams(): Promise<readonly ExamSummary[]> {
+    const rows = await this.#sql.query<{ id: string; title: string; question_count: number | string }>(
+      `SELECT e.id, e.title, jsonb_array_length(e.definition -> 'questions') AS question_count
+         FROM exams e ORDER BY e.created_at DESC`,
+    );
+    return rows.map((row) => ({
+      id: row.id as ExamId,
+      title: row.title,
+      questionCount: Number(row.question_count),
+    }));
+  }
+
+  /**
+   * Attempts at one exam, with state derived in SQL.
+   *
+   * Folding every attempt's ledger to render a list would be correct and far
+   * too slow; the closing events are enough to say where an attempt stands, and
+   * anything that needs more opens the attempt itself.
+   */
+  async listAttempts(examId: ExamId): Promise<readonly AttemptSummary[]> {
+    const rows = await this.#sql.query<{
+      id: string;
+      candidate_id: string;
+      entries: number | string;
+      submitted: boolean;
+      graded: boolean;
+      voided: boolean;
+    }>(
+      `SELECT a.id,
+              a.candidate_id,
+              (SELECT count(*) FROM exam_ledger l WHERE l.attempt_id = a.id) AS entries,
+              EXISTS (SELECT 1 FROM exam_ledger l WHERE l.attempt_id = a.id AND l.event_type = 'attempt_submitted') AS submitted,
+              EXISTS (SELECT 1 FROM exam_ledger l WHERE l.attempt_id = a.id AND l.event_type = 'attempt_graded') AS graded,
+              EXISTS (SELECT 1 FROM exam_ledger l WHERE l.attempt_id = a.id AND l.event_type = 'attempt_voided') AS voided
+         FROM attempts a
+        WHERE a.exam_id = $1
+        ORDER BY a.created_at DESC`,
+      [examId],
+    );
+
+    return rows.map((row) => ({
+      id: row.id as AttemptId,
+      candidateId: row.candidate_id as CandidateId,
+      entries: Number(row.entries),
+      state: row.voided ? "void" : row.graded ? "graded" : row.submitted ? "submitted" : "in_progress",
+    }));
+  }
+
   async createAttempt(id: AttemptId, examId: ExamId, candidateId: CandidateId): Promise<void> {
     await this.#sql.query(
       `INSERT INTO attempts (id, exam_id, candidate_id) VALUES ($1, $2, $3)`,
@@ -146,6 +195,19 @@ export class LedgerStore {
     }
     return { ok: true, length: rows.length };
   }
+}
+
+export interface ExamSummary {
+  readonly id: ExamId;
+  readonly title: string;
+  readonly questionCount: number;
+}
+
+export interface AttemptSummary {
+  readonly id: AttemptId;
+  readonly candidateId: CandidateId;
+  readonly entries: number;
+  readonly state: "in_progress" | "submitted" | "graded" | "void";
 }
 
 export type StoredIntegrityResult =

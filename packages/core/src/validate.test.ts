@@ -1,0 +1,109 @@
+import { describe, expect, it } from "vitest";
+import { examId, questionId, type Exam, type Question } from "./domain.js";
+import { validateExam } from "./validate.js";
+
+const mcq: Question = {
+  id: questionId("q1"),
+  kind: "mcq",
+  stem: "Which sort is stable?",
+  maxScore: 4,
+  rubric: [],
+  options: ["quicksort", "mergesort"],
+  correctIndex: 1,
+};
+
+const short: Question = {
+  id: questionId("q2"),
+  kind: "short",
+  stem: "Why does it terminate?",
+  maxScore: 10,
+  rubric: [{ id: "c1", description: "Identifies the measure", weight: 1 }],
+  expectedPoints: [],
+};
+
+const exam = (overrides: Partial<Exam> = {}): Exam => ({
+  id: examId("exam-1"),
+  title: "Algorithms",
+  questions: [mcq, short],
+  policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 0.5 },
+  ...overrides,
+});
+
+const problemsOf = (e: Exam) => {
+  const result = validateExam(e);
+  return result.ok ? [] : result.problems.map((p) => p.path);
+};
+
+describe("validateExam", () => {
+  it("accepts a well-formed exam", () => {
+    expect(validateExam(exam())).toEqual({ ok: true });
+  });
+
+  it("requires a title and at least one question", () => {
+    expect(problemsOf(exam({ title: "  " }))).toContain("title");
+    expect(problemsOf(exam({ questions: [] }))).toContain("questions");
+  });
+
+  it("rejects duplicate question ids", () => {
+    expect(problemsOf(exam({ questions: [mcq, mcq] }))).toContain("questions");
+  });
+
+  it("requires marks greater than zero", () => {
+    // A question worth nothing is never probed (shouldProbe guards on it) and
+    // contributes nothing to a total — almost always a mistake.
+    expect(problemsOf(exam({ questions: [{ ...mcq, maxScore: 0 }] }))).toContain("questions.0.maxScore");
+  });
+
+  it("keeps the viva trigger ratio a fraction", () => {
+    expect(problemsOf(exam({ policy: { durationMs: 1, allowRevision: true, vivaTriggerRatio: 1.5 } })))
+      .toContain("policy.vivaTriggerRatio");
+    expect(problemsOf(exam({ policy: { durationMs: 1, allowRevision: true, vivaTriggerRatio: -0.1 } })))
+      .toContain("policy.vivaTriggerRatio");
+    expect(problemsOf(exam({ policy: { durationMs: 0, allowRevision: true, vivaTriggerRatio: 0.5 } })))
+      .toContain("policy.durationMs");
+  });
+
+  it("checks that an mcq's correct answer is one of its options", () => {
+    expect(problemsOf(exam({ questions: [{ ...mcq, correctIndex: 5 }] }))).toContain("questions.0.correctIndex");
+    expect(problemsOf(exam({ questions: [{ ...mcq, correctIndex: -1 }] }))).toContain("questions.0.correctIndex");
+    expect(problemsOf(exam({ questions: [{ ...mcq, options: ["only one"], correctIndex: 0 }] })))
+      .toContain("questions.0.options");
+  });
+
+  it("checks numeric expectations and tolerance", () => {
+    const bad = { ...mcq, kind: "numeric", expected: Number.NaN, tolerance: -1 } as unknown as Question;
+    expect(problemsOf(exam({ questions: [bad] }))).toEqual(
+      expect.arrayContaining(["questions.0.expected", "questions.0.tolerance"]),
+    );
+  });
+
+  it("requires a rubric for anything graded by rubric", () => {
+    expect(problemsOf(exam({ questions: [{ ...short, rubric: [] }] }))).toContain("questions.0.rubric");
+
+    const code = { ...short, kind: "code", language: "python", rubric: [] } as unknown as Question;
+    expect(problemsOf(exam({ questions: [code] }))).toContain("questions.0.rubric");
+  });
+
+  it("rejects rubric criteria with bad weights or duplicate ids", () => {
+    const zeroWeight = { ...short, rubric: [{ id: "c1", description: "x", weight: 0 }] };
+    expect(problemsOf(exam({ questions: [zeroWeight] }))).toContain("questions.0.rubric");
+
+    const duplicate = {
+      ...short,
+      rubric: [
+        { id: "c1", description: "x", weight: 1 },
+        { id: "c1", description: "y", weight: 1 },
+      ],
+    };
+    expect(problemsOf(exam({ questions: [duplicate] }))).toContain("questions.0.rubric");
+  });
+
+  it("reports every problem at once rather than the first", () => {
+    const result = validateExam(exam({ title: "", questions: [{ ...mcq, maxScore: 0, correctIndex: 9 }] }));
+
+    // An author fixing one field at a time through three round trips is worse
+    // than being told everything that is wrong.
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.problems.length).toBeGreaterThanOrEqual(3);
+  });
+});

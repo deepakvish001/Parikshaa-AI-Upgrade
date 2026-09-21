@@ -9,6 +9,15 @@
  */
 export interface SqlExecutor {
   query<Row = Record<string, unknown>>(text: string, params?: readonly unknown[]): Promise<Row[]>;
+  /**
+   * Run a script that may contain several statements.
+   *
+   * Separate from {@link SqlExecutor.query} because a parameterized query goes
+   * through the extended protocol, which accepts exactly one statement — a
+   * migration file has many. This is the simple-protocol path, and it takes no
+   * parameters, so nothing reaches it that a caller could interpolate into.
+   */
+  exec(text: string): Promise<void>;
   transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T>;
 }
 
@@ -17,6 +26,7 @@ export interface SqlExecutor {
 
 interface PGliteQueryable {
   query<Row>(query: string, params?: unknown[]): Promise<{ rows: Row[] }>;
+  exec(query: string): Promise<unknown>;
 }
 
 interface PGliteRoot extends PGliteQueryable {
@@ -31,6 +41,9 @@ export function pgliteExecutor(db: PGliteRoot): SqlExecutor {
   return {
     async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
       return (await db.query<Row>(text, [...params])).rows;
+    },
+    async exec(text: string): Promise<void> {
+      await db.exec(text);
     },
     transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
       return db.transaction((tx) => fn(pgliteTransactionExecutor(tx)));
@@ -49,6 +62,9 @@ function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
   return {
     async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
       return (await tx.query<Row>(text, [...params])).rows;
+    },
+    async exec(text: string): Promise<void> {
+      await tx.exec(text);
     },
     async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
       const name = `parikshaa_sp_${++savepointCounter}`;
@@ -95,6 +111,11 @@ async function unsafeRows<Row>(
 export function postgresJsExecutor(sql: PostgresJsRoot): SqlExecutor {
   return {
     query: (text, params = []) => unsafeRows(sql, text, params),
+    async exec(text: string): Promise<void> {
+      // No parameters, so this runs on the simple protocol and may contain
+      // several statements.
+      await sql.unsafe(text);
+    },
     async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
       return (await sql.begin((tx) => fn(postgresJsTransactionExecutor(tx)))) as T;
     },
@@ -104,6 +125,9 @@ export function postgresJsExecutor(sql: PostgresJsRoot): SqlExecutor {
 function postgresJsTransactionExecutor(tx: PostgresJsTransaction): SqlExecutor {
   return {
     query: (text, params = []) => unsafeRows(tx, text, params),
+    async exec(text: string): Promise<void> {
+      await tx.unsafe(text);
+    },
     async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
       return (await tx.savepoint((inner) => fn(postgresJsTransactionExecutor(inner)))) as T;
     },

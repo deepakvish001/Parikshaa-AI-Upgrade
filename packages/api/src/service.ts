@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   candidateView,
   foldAttempt,
+  validateExam,
   scoreDeterministic,
   selectProbeTargets,
   totalScore,
@@ -22,6 +23,7 @@ import {
   type VivaId,
   type VivaProbe,
 } from "@parikshaa/core";
+import type { AttemptSummary, ExamSummary } from "@parikshaa/store";
 import { LedgerStore } from "@parikshaa/store";
 import { assessReply, generateProbe, gradeWithRubric } from "@parikshaa/viva";
 
@@ -127,8 +129,32 @@ export class ExamService {
     return { head, length: entries.length, sealed: true, entries };
   }
 
+  /**
+   * Store an exam, rejecting one that is misconfigured.
+   *
+   * An exam is written once and sat by a whole cohort, and most of these
+   * mistakes only surface at grading — by which time the sitting is over.
+   */
   async createExam(exam: Exam): Promise<void> {
+    const validation = validateExam(exam);
+    if (!validation.ok) {
+      throw new ExamInvalidError(validation.problems);
+    }
     await this.#store.createExam(exam);
+  }
+
+  listExams(): Promise<readonly ExamSummary[]> {
+    return this.#store.listExams();
+  }
+
+  async loadExam(id: ExamId): Promise<Exam> {
+    const exam = await this.#store.loadExam(id);
+    if (exam === null) throw new AttemptError("not_found", `No such exam: ${id}`);
+    return exam;
+  }
+
+  listAttempts(examId: ExamId): Promise<readonly AttemptSummary[]> {
+    return this.#store.listAttempts(examId);
   }
 
   async ledger(id: AttemptId): Promise<readonly LedgerEntry[]> {
@@ -364,6 +390,14 @@ export class ExamService {
     const total = totalScore(scores);
     await this.#store.append(id, { type: "attempt_graded", attemptId: id, total });
     return total;
+  }
+}
+
+/** Raised when an exam fails validation; carries every problem, not the first. */
+export class ExamInvalidError extends Error {
+  constructor(readonly problems: readonly { path: string; message: string }[]) {
+    super(`Exam is not valid (${problems.length} problem(s))`);
+    this.name = "ExamInvalidError";
   }
 }
 

@@ -31,6 +31,7 @@ packages/viva/    micro-viva engine: probe generation, verdict assessment, rubri
 packages/store/   PostgreSQL persistence and the schema's integrity constraints
 packages/api/     HTTP API: attempts, micro-viva delivery, ledger access
 packages/web/     candidate interface: sitting an exam, answering a probe, taking a receipt
+packages/console/ institution console: authoring exams, issuing access codes, reviewing evidence
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
 ```
@@ -63,32 +64,51 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 90 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 127 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
-npm run dev -w @parikshaa/web   # candidate interface, proxying /api to localhost:3000
+npm run build:clients
+
+npm run dev -w @parikshaa/web       # candidate interface  :5173
+npm run dev -w @parikshaa/console   # institution console  :5174
+# both proxy /api to the server on :3000
 npm run check     # typecheck + test
 ```
 
 ## Running it
 
-```bash
-psql "$DATABASE_URL" -f packages/store/migrations/0001_init.sql
-psql "$DATABASE_URL" -f packages/store/migrations/0002_roles.sql
+With Docker — one image serves the API and both clients:
 
+```bash
+export POSTGRES_PASSWORD=... ANTHROPIC_API_KEY=... \
+       ATTEMPT_TOKEN_SECRET=...   # at least 32 characters
+export STAFF_TOKEN=...
+docker compose up --build
+```
+
+The candidate interface is then at `/` and the console at `/console`.
+
+Without Docker:
+
+```bash
 export DATABASE_URL=...            # Postgres 16+
 export ANTHROPIC_API_KEY=...       # or an `ant auth login` profile
-export ATTEMPT_TOKEN_SECRET=...    # at least 32 characters
-export STAFF_TOKEN=...
-npm run build && npm start
+export ATTEMPT_TOKEN_SECRET=... STAFF_TOKEN=...
+
+npm run build && npm run build:clients
+npm run migrate
+npm start
 ```
+
+Migrations are a separate step and never run on boot: several instances
+starting at once would race, and a schema change should be deliberate.
 
 ## Status
 
-Complete and tested end to end: a candidate can sit an exam, answer a micro-viva
-and leave with a verifiable receipt; the institution can assess, grade and
-review; and the resulting chain verifies.
+Complete, tested end to end, and deployable: an institution can author an exam,
+issue access codes and review; a candidate can sit it, answer a micro-viva and
+leave with a verifiable receipt; and the resulting chain verifies.
 
-Not built: exam authoring, identity and enrolment integration (SPEC §2 puts that
-out of scope for now), and deployment. See `docs/SPEC.md` §7 for component
-status.
+Not built: identity and enrolment integration, which SPEC §2 keeps out of scope
+— an institution issues access codes from the console and already knows who its
+candidates are. See `docs/SPEC.md` §7 for component status.

@@ -1,8 +1,9 @@
+import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import { z } from "zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
-import { AttemptError, ExamService } from "./service.js";
+import { AttemptError, ExamInvalidError, ExamService } from "./service.js";
 
 export interface ServerOptions {
   readonly service: ExamService;
@@ -11,6 +12,14 @@ export interface ServerOptions {
   readonly staffToken: string;
   /** Lifetime of an issued attempt token. Defaults to three hours. */
   readonly attemptTtlSeconds?: number;
+  /**
+   * Directories holding the built client bundles.
+   *
+   * Serving them from the API keeps the deployment to one process: there is no
+   * second origin, so no CORS configuration and no cookie or token sharing
+   * across origins to get wrong.
+   */
+  readonly clients?: { readonly web: string; readonly console: string };
 }
 
 const startBody = z.object({ candidateId: z.string().min(1) });
@@ -65,6 +74,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       const status = error.code === "not_found" ? 404 : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
     }
+    if (error instanceof ExamInvalidError) {
+      return reply.code(422).send({ error: "invalid_exam", problems: error.problems });
+    }
     if (error instanceof z.ZodError) {
       return reply.code(400).send({ error: "invalid_body", issues: error.issues });
     }
@@ -78,6 +90,24 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const exam = request.body as Exam;
     await service.createExam(exam);
     return reply.code(201).send({ id: exam.id });
+  });
+
+  app.get("/exams", async (request, reply) => {
+    if (!(await requireStaff(request, reply))) return;
+    return reply.send({ exams: await service.listExams() });
+  });
+
+  /** The full exam, answer key included. Staff-only, unlike GET /attempts/me. */
+  app.get("/exams/:examId", async (request, reply) => {
+    if (!(await requireStaff(request, reply))) return;
+    const { examId: raw } = request.params as { examId: string };
+    return reply.send(await service.loadExam(examId(raw)));
+  });
+
+  app.get("/exams/:examId/attempts", async (request, reply) => {
+    if (!(await requireStaff(request, reply))) return;
+    const { examId: raw } = request.params as { examId: string };
+    return reply.send({ attempts: await service.listAttempts(examId(raw)) });
   });
 
   app.post("/exams/:examId/attempts", async (request, reply) => {
@@ -245,6 +275,23 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   });
 
   app.get("/health", async (_request, reply) => reply.send({ ok: true }));
+
+  if (options.clients !== undefined) {
+    const { web, console: consoleRoot } = options.clients;
+
+    void app.register(fastifyStatic, { root: consoleRoot, prefix: "/console/" });
+    void app.register(fastifyStatic, { root: web, prefix: "/", decorateReply: false });
+
+    // Both clients hold their own view state, so a deep link or a reload must
+    // return the shell rather than a 404. API routes are matched first, and
+    // anything under /console belongs to the console bundle.
+    app.setNotFoundHandler(async (request, reply) => {
+      if (request.method !== "GET" || request.headers.accept?.includes("text/html") !== true) {
+        return reply.code(404).send({ error: "not_found" });
+      }
+      return reply.sendFile("index.html", request.url.startsWith("/console") ? consoleRoot : web);
+    });
+  }
 
   return app;
 }

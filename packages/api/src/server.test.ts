@@ -313,6 +313,71 @@ describe("attempt lifecycle", () => {
   });
 });
 
+describe("exam authoring", () => {
+  it("rejects a misconfigured exam with every problem at once", async () => {
+    const broken = {
+      ...exam,
+      id: "exam-broken",
+      title: "",
+      questions: [{ ...exam.questions[0], maxScore: 0, correctIndex: 9 }],
+    };
+
+    const res = await app.inject({ method: "POST", url: "/exams", headers: asStaff(), payload: broken });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error).toBe("invalid_exam");
+    const paths = res.json().problems.map((p: { path: string }) => p.path);
+    expect(paths).toEqual(
+      expect.arrayContaining(["title", "questions.0.maxScore", "questions.0.correctIndex"]),
+    );
+  });
+
+  it("does not store an exam it rejected", async () => {
+    await app.inject({
+      method: "POST",
+      url: "/exams",
+      headers: asStaff(),
+      payload: { ...exam, id: "exam-broken", questions: [] },
+    });
+
+    const listed = await app.inject({ method: "GET", url: "/exams", headers: asStaff() });
+    expect(listed.json().exams.map((e: { id: string }) => e.id)).toEqual([E]);
+  });
+
+  it("lists exams with their question counts", async () => {
+    const res = await app.inject({ method: "GET", url: "/exams", headers: asStaff() });
+
+    expect(res.json().exams).toEqual([{ id: E, title: "Algorithms", questionCount: 2 }]);
+  });
+
+  it("serves the full exam, answer key included, to staff only", async () => {
+    const staff = await app.inject({ method: "GET", url: `/exams/${E}`, headers: asStaff() });
+    expect(staff.json().questions[0].correctIndex).toBe(1);
+
+    const candidate = await app.inject({ method: "GET", url: `/exams/${E}`, headers: asCandidate() });
+    expect(candidate.statusCode).toBe(401);
+  });
+
+  it("lists attempts at an exam with their state", async () => {
+    const before = await app.inject({ method: "GET", url: `/exams/${E}/attempts`, headers: asStaff() });
+    expect(before.json().attempts).toEqual([
+      expect.objectContaining({ id: attemptId, candidateId: "cand-1", state: "in_progress" }),
+    ]);
+
+    await answer(Q_MCQ, "1");
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
+
+    const after = await app.inject({ method: "GET", url: `/exams/${E}/attempts`, headers: asStaff() });
+    expect(after.json().attempts[0]).toMatchObject({ state: "graded" });
+  });
+
+  it("returns 404 for an exam that does not exist", async () => {
+    const res = await app.inject({ method: "GET", url: "/exams/nope", headers: asStaff() });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
 describe("access control", () => {
   it("refuses candidate routes without a valid attempt token", async () => {
     const none = await app.inject({ method: "GET", url: "/attempts/me/ledger" });

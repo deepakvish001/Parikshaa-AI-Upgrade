@@ -26,6 +26,7 @@ This repository holds the assessment engine, not a hosted product. In scope:
 - the micro-viva engine (§4)
 - scoring that keeps grade and provenance separate
 - the candidate interface for sitting an exam and answering a probe (§8)
+- the institution console for authoring exams and reviewing evidence (§9)
 
 Out of scope for now: authoring UI, identity and enrolment, payments, and any
 form of biometric or video surveillance. The last is a design choice, not a
@@ -131,6 +132,25 @@ a candidate which of their answers scored well.
 **The candidate leaves with something.** After submission they get their head
 hash and can download the full record. That is the artefact an appeal turns on.
 
+## 9. The review console
+
+The console's one design requirement follows from §6.1: **a grade and a
+provenance verdict must not look like the same kind of object.** The grade is a
+settled number. The evidence below it is material for a person to weigh, shown
+with the probe, the reply, the server-measured latency, the verdict and its
+reasoning.
+
+There is deliberately no control on that screen that turns a verdict into a
+mark. Adjusting a grade is a decision someone makes and owns; a button for it
+would launder a model's reading into a number and make the separation in §6.1
+decorative. Whatever a reviewer decides, they decide outside this screen, with
+the reasoning in front of them.
+
+Exams are validated before they are stored, and every problem is reported at
+once rather than one per round trip. An exam is written once and sat by a whole
+cohort; most misconfigurations only surface at grading, by which time the
+sitting is over.
+
 ## 7. Status
 
 | Component | State |
@@ -144,11 +164,13 @@ hash and can download the full record. That is the artefact an appeal turns on.
 | Persistence | implemented — `packages/store` |
 | HTTP API | implemented — `packages/api` |
 | Candidate interface | implemented — `packages/web` |
-| Exam authoring UI | not started |
+| Exam authoring and review console | implemented — `packages/console` |
+| Deployment | implemented — `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
 | Identity / enrolment | not started (out of scope, §2) |
 
-Complete end to end: a candidate can sit an exam, answer a probe and leave with
-a verifiable receipt, and the institution can grade and review. What remains is
-exam authoring, identity and enrolment integration, and deployment.
+Complete end to end and deployable: an institution can author an exam, issue
+access codes, and review; a candidate can sit it, answer a probe and leave with
+a verifiable receipt. What remains is identity and enrolment integration, which
+§2 keeps out of scope.
 
 The stack and the reasoning behind it are recorded in [`STACK.md`](STACK.md).
