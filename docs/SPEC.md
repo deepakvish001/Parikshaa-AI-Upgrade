@@ -40,7 +40,10 @@ created → in_progress → submitted → graded
 An attempt is never mutated in place. Every step appends an `ExamEvent` to the
 attempt's ledger, and the attempt's current state is a fold over that stream.
 This makes the record replayable: given the ledger, any grade Parikshaa reported
-can be recomputed and checked.
+can be recomputed and checked. The fold is `foldAttempt` in
+`packages/core/src/attempt.ts`, and it is strict — an answer recorded after
+submission or an event from another attempt is reported, not absorbed, because
+those are exactly what an audit is looking for.
 
 ## 4. The micro-viva engine
 
@@ -102,10 +105,13 @@ See `packages/core/src/ledger.ts`.
 |---|---|
 | Domain model | implemented — `packages/core/src/domain.ts` |
 | Integrity ledger | implemented — `packages/core/src/ledger.ts` |
-| Attempt fold / replay | not started |
+| Attempt fold / replay | implemented — `packages/core/src/attempt.ts` |
 | Probe generation | not started |
 | Verdict assessment | not started |
 | Scoring | not started |
 
-Next: the attempt fold, so an `Attempt` can be reconstructed from its ledger.
-Probe generation builds on it.
+Next: probe generation. It reads an `AttemptProjection` to find answers that
+cleared `vivaTriggerRatio` and have no probe yet, and writes `viva_probed` back
+to the ledger.
+
+The stack these will be built on is recorded in [`STACK.md`](STACK.md).

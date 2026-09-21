@@ -25,8 +25,9 @@ No webcam, no screen capture, no keystroke biometrics. See
 ## Layout
 
 ```
-packages/core/     domain model + integrity ledger  (@parikshaa/core)
+packages/core/     domain model, integrity ledger, attempt fold  (@parikshaa/core)
 docs/SPEC.md       specification
+docs/STACK.md      tech stack and the reasoning behind it
 ```
 
 ## Development
@@ -42,6 +43,6 @@ npm run build     # tsc -> packages/*/dist
 
 ## Status
 
-Early. The domain model and integrity ledger are implemented and tested; the
-micro-viva engine is specified but not yet built. `docs/SPEC.md` §7 tracks what
-exists.
+Early. The domain model, integrity ledger and attempt fold are implemented and
+tested; the micro-viva engine is specified but not yet built. `docs/SPEC.md` §7
+tracks what exists.
