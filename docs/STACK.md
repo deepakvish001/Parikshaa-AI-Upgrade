@@ -21,7 +21,7 @@ the stack is TypeScript end to end, and it is not a preference.
 | Language / runtime | TypeScript, Node 22 | See above. Also keeps domain types shared between API and client. |
 | HTTP | Fastify + Zod (`fastify-type-provider-zod`) | Schemas generate the OpenAPI spec. Institutions integrate against this; they need a spec, not a client library. |
 | Database | PostgreSQL 16+ | The ledger's integrity properties are enforceable in the schema (below). |
-| Migrations / queries | Drizzle | Migrations are plain SQL we can read in review. For an audit-critical schema, an opaque migration engine is a liability. |
+| Migrations / queries | Plain SQL over a thin executor | Drizzle was the original choice; building it showed the ORM had nothing to add. The schema's value is in constraints, triggers and row-level security, which are reviewed as SQL either way, and a two-method executor interface lets the same store run against a pool in production and an in-process Postgres in tests. |
 | Background jobs | pg-boss | Postgres-backed, so no Redis to run. Move to BullMQ only if throughput demands it. |
 | Realtime | SSE | One-way is all probe delivery needs. Survives proxies; simpler than WebSockets. |
 | LLM | Anthropic SDK, `claude-opus-5` | Two paths, different settings — see below. |
@@ -32,6 +32,14 @@ the stack is TypeScript end to end, and it is not a preference.
 | Deploy | Docker, stateless API, PgBouncer | Exam load is bursty — 500 candidates start at 10:00 sharp. Autoscale the API tier; pool connections. |
 
 ## Load-bearing details
+
+### 0. These are tested against a real Postgres, not a mock
+
+`@parikshaa/store` runs its suite against PGlite — Postgres compiled to WASM, in
+process. That matters because everything in §1 *is* the product: a mocked
+database would only assert that the SQL we wrote is the SQL we wrote. The
+append-only trigger, the composite primary key, the row-level security policy
+and jsonb drift detection each have a test that exercises the real engine.
 
 ### 1. Ledger integrity is enforced in the database, not only in app code
 
@@ -55,7 +63,11 @@ event    jsonb  -- for querying and reporting
 preimage text   -- the exact canonicalize() output that was hashed
 ```
 
-Verification reads `preimage`. `jsonb` is for queries only.
+Verification reads `preimage`. `jsonb` is for queries only, and `LedgerStore.load`
+rebuilds each entry by parsing the preimage rather than the jsonb column.
+`verifyStored` compares the two and reports `jsonb_drift` when they diverge —
+nothing has been tampered with at that point, but any code recomputing a hash
+from jsonb would claim it had.
 
 ### 3. Reply latency is measured server-side, always
 

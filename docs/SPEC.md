@@ -106,12 +106,16 @@ See `packages/core/src/ledger.ts`.
 | Domain model | implemented — `packages/core/src/domain.ts` |
 | Integrity ledger | implemented — `packages/core/src/ledger.ts` |
 | Attempt fold / replay | implemented — `packages/core/src/attempt.ts` |
-| Probe generation | not started |
-| Verdict assessment | not started |
-| Scoring | not started |
+| Probe generation | implemented — `packages/viva/src/engine.ts` |
+| Verdict assessment | implemented — `packages/viva/src/engine.ts` |
+| Scoring | implemented — `packages/core/src/scoring.ts` (deterministic) and `packages/viva` (rubric) |
+| Persistence | implemented — `packages/store` |
+| HTTP API | implemented — `packages/api` |
+| Candidate UI | not started (out of scope, §2) |
 
-Next: probe generation. It reads an `AttemptProjection` to find answers that
-cleared `vivaTriggerRatio` and have no probe yet, and writes `viva_probed` back
-to the ledger.
+The engine is complete end to end: an attempt can be started, answered, probed,
+replied to, assessed, graded and audited, and the resulting chain verifies. What
+remains is everything around it — a candidate interface, exam authoring, identity
+and enrolment integration, and deployment.
 
-The stack these will be built on is recorded in [`STACK.md`](STACK.md).
+The stack and the reasoning behind it are recorded in [`STACK.md`](STACK.md).
