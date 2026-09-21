@@ -1,0 +1,13 @@
+{
+  "name": "parikshaa",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Parikshaa (परीक्षा) — assessment platform with a tamper-evident exam ledger and an AI micro-viva engine.",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": { "node": ">=20" }
+}
