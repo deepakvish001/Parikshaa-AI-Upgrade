@@ -2,6 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   candidateView,
   foldAttempt,
+  paperOf,
+  resolvePaper,
   validateExam,
   scoreDeterministic,
   selectProbeTargets,
@@ -264,6 +266,23 @@ export class ExamService {
     await this.#audit(actor, "exam.saved", exam.id, { title: exam.title, questions: exam.questions.length });
   }
 
+  /**
+   * Copy an exam under a new id.
+   *
+   * The way to change an exam that has been sat: it is frozen, because its
+   * ledgers record answers to its questions as they were. The copy starts with
+   * no attempts and can be edited freely.
+   */
+  async cloneExam(actor: Actor, sourceId: ExamId, id: ExamId, title?: string): Promise<void> {
+    const scope = this.#require(actor, "exam:write");
+    const source = await this.#store.loadExam(scope, sourceId);
+    if (source === null) throw new AttemptError("not_found", `No such exam: ${sourceId}`);
+    if ((await this.#store.loadExam(scope, id)) !== null) {
+      throw new AttemptError("invalid_state", `An exam with id ${id} already exists`);
+    }
+    await this.createExam(actor, { ...source, id, title: title ?? `${source.title} (copy)` });
+  }
+
   listExams(actor: Actor): Promise<readonly ExamSummary[]> {
     return this.#store.listExams(this.#require(actor, "exam:read"));
   }
@@ -301,10 +320,13 @@ export class ExamService {
     if (first === undefined || first.event.type !== "attempt_started") {
       throw new AttemptError("invalid_state", "Ledger does not open with attempt_started");
     }
-    const exam = await this.#store.loadExam(scope, first.event.examId);
-    if (exam === null) {
+    const definition = await this.#store.loadExam(scope, first.event.examId);
+    if (definition === null) {
       throw new AttemptError("not_found", `No such exam: ${first.event.examId}`);
     }
+    // From here on "the exam" is this attempt's paper: the questions it was
+    // given, as recorded in its first entry, and nothing it did not draw.
+    const exam = paperOf(definition, first.event.questionIds);
 
     const result = foldAttempt(entries, { exam });
     if (!result.ok) {
@@ -419,7 +441,13 @@ export class ExamService {
 
     const id = this.#newId() as AttemptId;
     await this.#store.createAttempt(scope, id, examId, candidateId);
-    await this.#store.append(scope, id, { type: "attempt_started", attemptId: id, examId, candidateId });
+    await this.#store.append(scope, id, {
+      type: "attempt_started",
+      attemptId: id,
+      examId,
+      candidateId,
+      questionIds: resolvePaper(exam, id),
+    });
     await this.#audit(actor, "attempt.started", id, { examId, candidateId });
     return id;
   }

@@ -77,6 +77,7 @@
                   },
                   "questions": {
                     "readOnly": true,
+                    "description": "Given to every candidate.",
                     "type": "array",
                     "items": {
                       "oneOf": [
@@ -323,6 +324,284 @@
                             "language"
                           ]
                         }
+                      ]
+                    }
+                  },
+                  "sections": {
+                    "description": "Questions drawn per candidate, seeded by the attempt, so neighbours sit different papers. Each candidate's paper is recorded in their ledger.",
+                    "readOnly": true,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "pick": {
+                          "type": "number",
+                          "description": "How many of the pool each candidate draws."
+                        },
+                        "pool": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ]
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "mcq"
+                                    ]
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "correctIndex": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "options",
+                                  "correctIndex"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ]
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "short"
+                                    ]
+                                  },
+                                  "expectedPoints": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "expectedPoints"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ]
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "numeric"
+                                    ]
+                                  },
+                                  "expected": {
+                                    "type": "number"
+                                  },
+                                  "tolerance": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "expected",
+                                  "tolerance"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ]
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "code"
+                                    ]
+                                  },
+                                  "language": {
+                                    "type": "string"
+                                  },
+                                  "starter": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "language"
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "pick",
+                        "pool"
                       ]
                     }
                   }
@@ -783,6 +1062,280 @@
         }
       }
     },
+    "/exams/{examId}/clone": {
+      "post": {
+        "summary": "Copy an exam under a new id",
+        "tags": [
+          "Institution"
+        ],
+        "description": "The way to change an exam that has been sat. A sat exam is frozen, because its ledgers record answers to its questions as they were; the copy has no attempts and can be edited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The copy's id. Must not already exist."
+                  },
+                  "title": {
+                    "description": "Defaults to the original's title with \" (copy)\".",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_exam"
+                      ]
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exams/{examId}": {
       "get": {
         "summary": "Fetch an exam in full",
@@ -843,6 +1396,7 @@
                     },
                     "questions": {
                       "readOnly": true,
+                      "description": "Given to every candidate.",
                       "type": "array",
                       "items": {
                         "oneOf": [
@@ -1098,6 +1652,293 @@
                             "additionalProperties": false
                           }
                         ]
+                      }
+                    },
+                    "sections": {
+                      "description": "Questions drawn per candidate, seeded by the attempt, so neighbours sit different papers. Each candidate's paper is recorded in their ledger.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "pick": {
+                            "type": "number",
+                            "description": "How many of the pool each candidate draws."
+                          },
+                          "pool": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "maxScore": {
+                                      "type": "number"
+                                    },
+                                    "rubric": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "description": {
+                                            "type": "string"
+                                          },
+                                          "weight": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "description",
+                                          "weight"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "mcq"
+                                      ]
+                                    },
+                                    "options": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "correctIndex": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "stem",
+                                    "maxScore",
+                                    "rubric",
+                                    "kind",
+                                    "options",
+                                    "correctIndex"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "maxScore": {
+                                      "type": "number"
+                                    },
+                                    "rubric": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "description": {
+                                            "type": "string"
+                                          },
+                                          "weight": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "description",
+                                          "weight"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "short"
+                                      ]
+                                    },
+                                    "expectedPoints": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "stem",
+                                    "maxScore",
+                                    "rubric",
+                                    "kind",
+                                    "expectedPoints"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "maxScore": {
+                                      "type": "number"
+                                    },
+                                    "rubric": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "description": {
+                                            "type": "string"
+                                          },
+                                          "weight": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "description",
+                                          "weight"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "numeric"
+                                      ]
+                                    },
+                                    "expected": {
+                                      "type": "number"
+                                    },
+                                    "tolerance": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "stem",
+                                    "maxScore",
+                                    "rubric",
+                                    "kind",
+                                    "expected",
+                                    "tolerance"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "maxScore": {
+                                      "type": "number"
+                                    },
+                                    "rubric": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "description": {
+                                            "type": "string"
+                                          },
+                                          "weight": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "description",
+                                          "weight"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "code"
+                                      ]
+                                    },
+                                    "language": {
+                                      "type": "string"
+                                    },
+                                    "starter": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "stem",
+                                    "maxScore",
+                                    "rubric",
+                                    "kind",
+                                    "language"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "pick",
+                          "pool"
+                        ],
+                        "additionalProperties": false
                       }
                     }
                   },
@@ -4868,6 +5709,2246 @@
         }
       }
     },
+    "/bank": {
+      "get": {
+        "summary": "Browse the question bank",
+        "tags": [
+          "Question bank"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "topic",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "easy",
+                "medium",
+                "hard"
+              ]
+            },
+            "in": "query",
+            "name": "difficulty",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "tag",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Matched against the question's text."
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "questions": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "question": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "mcq"
+                                    ]
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "correctIndex": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "options",
+                                  "correctIndex"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "short"
+                                    ]
+                                  },
+                                  "expectedPoints": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "expectedPoints"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "numeric"
+                                    ]
+                                  },
+                                  "expected": {
+                                    "type": "number"
+                                  },
+                                  "tolerance": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "expected",
+                                  "tolerance"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "rubric": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "description": {
+                                          "type": "string"
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "description",
+                                        "weight"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "code"
+                                    ]
+                                  },
+                                  "language": {
+                                    "type": "string"
+                                  },
+                                  "starter": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "stem",
+                                  "maxScore",
+                                  "rubric",
+                                  "kind",
+                                  "language"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "topic": {
+                            "type": "string"
+                          },
+                          "difficulty": {
+                            "type": "string",
+                            "enum": [
+                              "easy",
+                              "medium",
+                              "hard"
+                            ]
+                          },
+                          "tags": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "question",
+                          "topic",
+                          "difficulty",
+                          "tags",
+                          "updatedAt",
+                          "archived"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "topics": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "questions",
+                    "topics"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "File a question",
+        "tags": [
+          "Question bank"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "mcq"
+                            ]
+                          },
+                          "options": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "correctIndex": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "options",
+                          "correctIndex"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "short"
+                            ]
+                          },
+                          "expectedPoints": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "expectedPoints"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "numeric"
+                            ]
+                          },
+                          "expected": {
+                            "type": "number"
+                          },
+                          "tolerance": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "expected",
+                          "tolerance"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "code"
+                            ]
+                          },
+                          "language": {
+                            "type": "string"
+                          },
+                          "starter": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "language"
+                        ]
+                      }
+                    ]
+                  },
+                  "topic": {
+                    "default": "",
+                    "type": "string"
+                  },
+                  "difficulty": {
+                    "default": "medium",
+                    "type": "string",
+                    "enum": [
+                      "easy",
+                      "medium",
+                      "hard"
+                    ]
+                  },
+                  "tags": {
+                    "default": [],
+                    "readOnly": true,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "question"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "question": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "mcq"
+                              ]
+                            },
+                            "options": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "correctIndex": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "options",
+                            "correctIndex"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "short"
+                              ]
+                            },
+                            "expectedPoints": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "expectedPoints"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "numeric"
+                              ]
+                            },
+                            "expected": {
+                              "type": "number"
+                            },
+                            "tolerance": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "expected",
+                            "tolerance"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "code"
+                              ]
+                            },
+                            "language": {
+                              "type": "string"
+                            },
+                            "starter": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "language"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "topic": {
+                      "type": "string"
+                    },
+                    "difficulty": {
+                      "type": "string",
+                      "enum": [
+                        "easy",
+                        "medium",
+                        "hard"
+                      ]
+                    },
+                    "tags": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "question",
+                    "topic",
+                    "difficulty",
+                    "tags",
+                    "updatedAt",
+                    "archived"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_exam"
+                      ]
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bank/{questionId}": {
+      "put": {
+        "summary": "Edit a question in the bank",
+        "tags": [
+          "Question bank"
+        ],
+        "description": "Changes no exam already built from it: exams hold their own copy.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "mcq"
+                            ]
+                          },
+                          "options": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "correctIndex": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "options",
+                          "correctIndex"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "short"
+                            ]
+                          },
+                          "expectedPoints": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "expectedPoints"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "numeric"
+                            ]
+                          },
+                          "expected": {
+                            "type": "number"
+                          },
+                          "tolerance": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "expected",
+                          "tolerance"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "stem": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "rubric": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "description": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "description",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "code"
+                            ]
+                          },
+                          "language": {
+                            "type": "string"
+                          },
+                          "starter": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "stem",
+                          "maxScore",
+                          "rubric",
+                          "kind",
+                          "language"
+                        ]
+                      }
+                    ]
+                  },
+                  "topic": {
+                    "default": "",
+                    "type": "string"
+                  },
+                  "difficulty": {
+                    "default": "medium",
+                    "type": "string",
+                    "enum": [
+                      "easy",
+                      "medium",
+                      "hard"
+                    ]
+                  },
+                  "tags": {
+                    "default": [],
+                    "readOnly": true,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "question"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "questionId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "question": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "mcq"
+                              ]
+                            },
+                            "options": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "correctIndex": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "options",
+                            "correctIndex"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "short"
+                              ]
+                            },
+                            "expectedPoints": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "expectedPoints"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "numeric"
+                              ]
+                            },
+                            "expected": {
+                              "type": "number"
+                            },
+                            "tolerance": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "expected",
+                            "tolerance"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "stem": {
+                              "type": "string"
+                            },
+                            "maxScore": {
+                              "type": "number"
+                            },
+                            "rubric": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "description": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "description",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "code"
+                              ]
+                            },
+                            "language": {
+                              "type": "string"
+                            },
+                            "starter": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "stem",
+                            "maxScore",
+                            "rubric",
+                            "kind",
+                            "language"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "topic": {
+                      "type": "string"
+                    },
+                    "difficulty": {
+                      "type": "string",
+                      "enum": [
+                        "easy",
+                        "medium",
+                        "hard"
+                      ]
+                    },
+                    "tags": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "archived": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "question",
+                    "topic",
+                    "difficulty",
+                    "tags",
+                    "updatedAt",
+                    "archived"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_exam"
+                      ]
+                    },
+                    "problems": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "path",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Archive a question",
+        "tags": [
+          "Question bank"
+        ],
+        "description": "Hidden from the bank, kept for the record.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "questionId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bank/import": {
+      "post": {
+        "summary": "Import questions from a CSV file",
+        "tags": [
+          "Question bank"
+        ],
+        "description": "One question per row under a header row. Columns, in any order: kind (mcq | numeric | short), question, options (mcq, separated by |), answer (mcq: letter, number or text; numeric: value; short: expected points separated by |), tolerance, marks, rubric, topic, difficulty (easy | medium | hard), tags. All or nothing: any problem imports nothing and every problem is reported with its row number. Save an Excel sheet as CSV to import it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "maxLength": 5000000,
+                    "description": "The file's contents. See the import format in the description."
+                  }
+                },
+                "required": [
+                  "csv"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imported": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "imported"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_import"
+                      ]
+                    },
+                    "problems": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "row": {
+                            "type": "number"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "row",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "summary": "Sign in with email and password",
@@ -8222,6 +11303,10 @@
     {
       "name": "Account",
       "description": "Signing in, staff accounts, API keys, spend and the audit log."
+    },
+    {
+      "name": "Question bank",
+      "description": "Reusable questions, filed by topic and difficulty, and imported from CSV."
     }
   ]
 }

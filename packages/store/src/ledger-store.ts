@@ -38,6 +38,23 @@ export const candidateScope = (orgId: OrgId, attemptId: AttemptId): Scope => ({
   attemptId,
 });
 
+/**
+ * Run `fn` in a transaction that carries the scope into the database, where
+ * row-level security reads it. Every tenant query in this package goes through
+ * here.
+ */
+export function withScope<T>(sql: SqlExecutor, scope: Scope, fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
+  return sql.transaction(async (tx) => {
+    await tx.query(
+      `SELECT set_config('parikshaa.org_id', $1, true),
+              set_config('parikshaa.actor', $2, true),
+              set_config('parikshaa.attempt_id', $3, true)`,
+      [scope.orgId, scope.actor, scope.actor === "candidate" ? scope.attemptId : ""],
+    );
+    return fn(tx);
+  });
+}
+
 /** Raised when an exam that has already been sat is changed in place. */
 export class ExamFrozen extends Error {
   constructor(readonly examId: string) {
@@ -83,15 +100,7 @@ export class LedgerStore {
 
   /** Run `fn` in a transaction that carries the scope into the database. */
   #scoped<T>(scope: Scope, fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-    return this.#sql.transaction(async (tx) => {
-      await tx.query(
-        `SELECT set_config('parikshaa.org_id', $1, true),
-                set_config('parikshaa.actor', $2, true),
-                set_config('parikshaa.attempt_id', $3, true)`,
-        [scope.orgId, scope.actor, scope.actor === "candidate" ? scope.attemptId : ""],
-      );
-      return fn(tx);
-    });
+    return withScope(this.#sql, scope, fn);
   }
 
   // --- exams ----------------------------------------------------------------
@@ -133,7 +142,12 @@ export class LedgerStore {
   async listExams(scope: Scope): Promise<readonly ExamSummary[]> {
     return this.#scoped(scope, async (tx) => {
       const rows = await tx.query<{ id: string; title: string; question_count: number | string }>(
-        `SELECT id, title, jsonb_array_length(definition -> 'questions') AS question_count
+        // Questions per paper: the fixed ones, plus what each section draws.
+        `SELECT id, title,
+                jsonb_array_length(definition -> 'questions')
+                  + coalesce((SELECT sum((s ->> 'pick')::int)
+                                FROM jsonb_array_elements(coalesce(definition -> 'sections', '[]'::jsonb)) s), 0)
+                  AS question_count
            FROM exams WHERE org_id = $1 ORDER BY created_at DESC`,
         [scope.orgId],
       );

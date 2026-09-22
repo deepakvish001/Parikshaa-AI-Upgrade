@@ -49,6 +49,14 @@ reason, recorded in the ledger. An expired attempt is closed by the next write
 that touches it, which refuses that write; reads never close one, so looking at
 an attempt cannot end it.
 
+**Each candidate's paper.** An exam's fixed questions go to everyone; each
+section contributes `pick` questions drawn from its pool, seeded by the attempt
+id (`resolvePaper` in `packages/core/src/paper.ts`). The paper is recorded in
+`attempt_started` and from then on *is* the exam for that attempt: the
+candidate is shown only those questions, answers to any other are refused, and
+scoring and probing see nothing else. An exam that has been sat is frozen; it
+is changed by cloning it.
+
 **Drafts are not answers.** What a candidate types is autosaved every few
 seconds to a separate, mutable draft store, outside the ledger. A chain of
 every keystroke pause would bury the record, and on an exam that forbids
@@ -246,6 +254,7 @@ sitting is over.
 | Audit log | implemented — append-only `audit_log`, `GET /audit` |
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
+| Question bank, sections, per-candidate papers | implemented — `packages/store/src/question-bank.ts`, `packages/core/src/paper.ts`; CSV import; exam cloning |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Candidate identity / enrolment | out of scope (§2) |
 

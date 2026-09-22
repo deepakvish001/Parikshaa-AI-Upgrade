@@ -5,7 +5,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { IdentityStore, LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, QuestionBank, migrate, pgliteExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -46,6 +46,7 @@ beforeEach(async () => {
     tokens: new AttemptTokens("x".repeat(40)),
     auth: new StaffAuth(new IdentityStore(sql)),
     identity: new IdentityStore(sql),
+    bank: new QuestionBank(sql),
     clients: { web, console: consoleRoot },
   });
   await app.ready();

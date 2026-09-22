@@ -1,4 +1,4 @@
-import type { Exam, ExamProblem } from "@parikshaa/core/browser";
+import type { Exam, ExamProblem, Question } from "@parikshaa/core/browser";
 
 export interface ExamSummary {
   readonly id: string;
@@ -102,12 +102,38 @@ export interface AuditEntry {
   readonly detail: Record<string, unknown>;
 }
 
+export type Difficulty = "easy" | "medium" | "hard";
+
+export interface BankEntry {
+  readonly id: string;
+  readonly question: Question;
+  readonly topic: string;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+  readonly updatedAt: string;
+  readonly archived: boolean;
+}
+
+export interface BankDraft {
+  readonly question: Omit<Question, "id">;
+  readonly topic: string;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+}
+
+export interface BankFilter {
+  readonly topic?: string;
+  readonly difficulty?: Difficulty;
+  readonly q?: string;
+}
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     readonly problems: readonly ExamProblem[] = [],
     readonly detail?: string,
+    readonly rows: readonly { readonly row: number; readonly message: string }[] = [],
   ) {
     super(detail ?? `${code} (${status})`);
     this.name = "ConsoleError";
@@ -158,9 +184,16 @@ export class ConsoleClient {
       const body = (await response.json().catch(() => ({}))) as {
         error?: string;
         message?: string;
-        problems?: ExamProblem[];
+        problems?: (ExamProblem | { row: number; message: string })[];
       };
-      throw new ConsoleError(response.status, body.error ?? "request_failed", body.problems ?? [], body.message);
+      const problems = body.problems ?? [];
+      throw new ConsoleError(
+        response.status,
+        body.error ?? "request_failed",
+        problems.filter((p): p is ExamProblem => "path" in p),
+        body.message,
+        problems.filter((p): p is { row: number; message: string } => "row" in p),
+      );
     }
     return (await response.json()) as T;
   }
@@ -219,6 +252,54 @@ export class ConsoleClient {
 
   async audit(): Promise<readonly AuditEntry[]> {
     return (await this.#request<{ entries: AuditEntry[] }>("/audit")).entries;
+  }
+
+  // --- the question bank -------------------------------------------------------
+
+  listBank(filter: BankFilter = {}): Promise<{ questions: readonly BankEntry[]; topics: readonly string[] }> {
+    const query = new URLSearchParams(
+      Object.entries(filter).filter((entry): entry is [string, string] => entry[1] !== undefined && entry[1] !== ""),
+    ).toString();
+    return this.#request(`/bank${query === "" ? "" : `?${query}`}`);
+  }
+
+  fileQuestion(draft: BankDraft): Promise<BankEntry> {
+    return this.#request("/bank", { method: "POST", body: JSON.stringify(draft) });
+  }
+
+  editQuestion(id: string, draft: BankDraft): Promise<BankEntry> {
+    return this.#request(`/bank/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async archiveQuestion(id: string): Promise<void> {
+    await this.#request(`/bank/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  /**
+   * Import a CSV file. A rejected file throws a {@link ConsoleError} whose
+   * problems name the rows, as `row 7`.
+   */
+  async importBank(csv: string): Promise<number> {
+    try {
+      return (await this.#request<{ imported: number }>("/bank/import", { method: "POST", body: JSON.stringify({ csv }) }))
+        .imported;
+    } catch (error) {
+      if (error instanceof ConsoleError && error.rows.length > 0) {
+        throw new ConsoleError(
+          error.status,
+          error.code,
+          error.rows.map((r) => ({ path: `row ${r.row}`, message: r.message })),
+        );
+      }
+      throw error;
+    }
+  }
+
+  async cloneExam(examId: string, id: string, title?: string): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/clone`, {
+      method: "POST",
+      body: JSON.stringify(title === undefined ? { id } : { id, title }),
+    });
   }
 
   // --- exams and attempts -----------------------------------------------------

@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import postgres from "postgres";
-import { IdentityStore, LedgerStore, postgresJsExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, QuestionBank, postgresJsExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -46,6 +46,7 @@ async function main(): Promise<void> {
     tokens: new AttemptTokens(required("ATTEMPT_TOKEN_SECRET")),
     auth: new StaffAuth(identity),
     identity,
+    bank: new QuestionBank(executor),
     trustProxy: process.env["TRUST_PROXY"] === "true",
     ...(clients === undefined ? {} : { clients }),
   });

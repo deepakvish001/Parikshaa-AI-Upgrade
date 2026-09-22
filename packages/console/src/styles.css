@@ -93,3 +93,9 @@ td.mono, .mono { font-family: var(--mono); font-size: .8rem; }
 .gate { max-width: 24rem; margin: 6rem auto; padding: 0 1rem; }
 
 @media (max-width: 34rem) { .page { padding: 1rem 1rem 5rem; } }
+
+/* Question bank. */
+.pool { margin: .4rem 0 0; padding-left: 1.1rem; font-size: .9rem; }
+.pool li { margin: .2rem 0; }
+.picker { border-style: dashed; }
+.option { display: block; padding: .25rem 0; font-size: .9rem; color: var(--text); }

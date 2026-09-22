@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { IdentityStore, LedgerStore, type SqlExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -30,6 +30,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     tokens: new AttemptTokens("x".repeat(40)),
     auth: new StaffAuth(identity),
     identity,
+    bank: new QuestionBank(unusable),
   });
 
   await app.ready();

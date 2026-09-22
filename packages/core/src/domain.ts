@@ -92,10 +92,27 @@ export interface ExamPolicy {
   readonly vivaTriggerRatio: number;
 }
 
+/**
+ * A pool of interchangeable questions, of which each candidate gets `pick`.
+ *
+ * The pool is part of the exam, copied in when the exam is written — from the
+ * question bank or by hand — and frozen with it once anyone has sat it. Editing
+ * a bank question later changes no exam already built from it.
+ */
+export interface ExamSection {
+  readonly id: string;
+  readonly title: string;
+  readonly pick: number;
+  readonly pool: readonly Question[];
+}
+
 export interface Exam {
   readonly id: ExamId;
   readonly title: string;
+  /** Questions every candidate gets. */
   readonly questions: readonly Question[];
+  /** Questions drawn per candidate, so no two neighbours sit the same paper. */
+  readonly sections?: readonly ExamSection[];
   readonly policy: ExamPolicy;
 }
 
@@ -162,7 +179,18 @@ export interface VivaAssessment {
  * chains together; each one is append-only and never edited after the fact.
  */
 export type ExamEvent =
-  | { readonly type: "attempt_started"; readonly attemptId: AttemptId; readonly examId: ExamId; readonly candidateId: CandidateId }
+  | {
+      readonly type: "attempt_started";
+      readonly attemptId: AttemptId;
+      readonly examId: ExamId;
+      readonly candidateId: CandidateId;
+      /**
+       * The candidate's paper: which questions they were given, in order.
+       * Hashed into the chain, so the receipt proves which paper was sat. Absent
+       * on ledgers from before exams could draw questions per candidate.
+       */
+      readonly questionIds?: readonly QuestionId[];
+    }
   | { readonly type: "answer_submitted"; readonly attemptId: AttemptId; readonly response: Response }
   | { readonly type: "attempt_submitted"; readonly attemptId: AttemptId }
   | { readonly type: "viva_probed"; readonly attemptId: AttemptId; readonly probe: VivaProbe }

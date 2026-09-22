@@ -137,6 +137,22 @@ sections, sittings and years.
   edited — otherwise the ledger records answers to a question that no longer
   exists.
 
+**Status — built, with two pieces deferred.** Each organisation has a question
+bank, filed by topic, difficulty and tags, searchable, and importable from CSV
+(what every spreadsheet exports), all or nothing with every bad row reported by
+its number. An exam can carry sections, each a pool of questions of which every
+candidate draws `pick`. The draw is seeded by the attempt, so it is
+reproducible by an auditor, and the resulting paper is recorded in the
+attempt's first ledger entry. Pools must carry equal marks so every paper is
+worth the same. Questions are *copied* from the bank into an exam, so editing
+the bank never changes an exam; a sat exam is frozen and is changed by cloning
+it.
+
+Deferred: **per-section timing** (a section with its own clock, locked once
+left) needs its own ledger event and a sequential candidate flow, and
+**Word import**, which needs a document parser and a convention for marking
+answers in prose. Neither blocks a campus hiring round.
+
 ## 4. Coding assessment
 
 This is the campus-hiring wedge, and the place where the micro-viva is at its

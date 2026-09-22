@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { IdentityStore, LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, QuestionBank, migrate, pgliteExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { specDocument } from "./openapi.js";
 import { buildServer } from "./server.js";
@@ -133,6 +133,7 @@ describe("GET /openapi.json", () => {
       tokens: new AttemptTokens("x".repeat(40)),
       auth: new StaffAuth(new IdentityStore(sql)),
       identity: new IdentityStore(sql),
+      bank: new QuestionBank(sql),
     });
     await app.ready();
   });

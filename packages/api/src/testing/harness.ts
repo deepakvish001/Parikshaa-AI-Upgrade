@@ -2,7 +2,15 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
-import { IdentityStore, LedgerStore, migrate, pgliteExecutor, type SqlExecutor, type StaffRole } from "@parikshaa/store";
+import {
+  IdentityStore,
+  LedgerStore,
+  QuestionBank,
+  migrate,
+  pgliteExecutor,
+  type SqlExecutor,
+  type StaffRole,
+} from "@parikshaa/store";
 import { AttemptTokens } from "../auth.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
@@ -73,6 +81,7 @@ export async function wire(
     tokens: new AttemptTokens(TOKEN_SECRET),
     auth: new StaffAuth(identity),
     identity,
+    bank: new QuestionBank(sql),
     ...options.server,
   });
   await app.ready();

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Exam } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
+import { BankPanel } from "./components/Bank.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -13,6 +14,7 @@ type View =
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
+  | { readonly name: "bank" }
   | { readonly name: "staff" }
   | { readonly name: "keys" }
   | { readonly name: "usage" }
@@ -174,7 +176,26 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     },
     // The server validates independently of the client; if it disagrees, show
     // exactly what it objected to rather than a generic failure.
-    onError: (error) => setProblems(error instanceof ConsoleError ? error.problems : []),
+    onError: (error) =>
+      setProblems(
+        error instanceof ConsoleError && error.code === "exam_frozen"
+          ? [{ path: "exam", message: "This exam has been sat, so it can no longer be changed. Make a copy from the exam list and edit that." }]
+          : error instanceof ConsoleError
+            ? error.problems
+            : [],
+      ),
+  });
+
+  const cloneExam = useMutation({
+    mutationFn: (examId: string) => {
+      const id = `${examId}-copy-${Date.now().toString(36)}`;
+      return client.cloneExam(examId, id).then(() => id);
+    },
+    onSuccess: async (id) => {
+      await queryClient.invalidateQueries({ queryKey: ["exams"] });
+      setProblems([]);
+      setView({ name: "editor", examId: id });
+    },
   });
 
   const startAttempt = useMutation({
@@ -213,6 +234,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
 
   const tabs: readonly { readonly view: View; readonly label: string; readonly permission: string }[] = [
+    { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key" },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage" },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage" },
     { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
@@ -279,6 +301,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           <ExamList
             exams={exams.data}
             canWrite={can("exam:write")}
+            onClone={(examId) => cloneExam.mutate(examId)}
             onOpen={(examId) => {
               setIssued(null);
               setView({ name: "attempts", examId });
@@ -299,6 +322,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           serverProblems={problems}
           onSave={(exam) => saveExam.mutate(exam)}
           onCancel={() => setView({ name: "exams" })}
+          {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
         />
       ) : null}
 
@@ -337,6 +361,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         />
       ) : null}
 
+      {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
       {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
       {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
       {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}

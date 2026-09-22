@@ -27,6 +27,20 @@ const review: AttemptReview = {
   ],
 };
 
+const bankQuestion = (id: string, stem: string) => ({
+  id,
+  kind: "mcq" as const,
+  stem,
+  maxScore: 2,
+  rubric: [],
+  options: ["a", "b"],
+  correctIndex: 0,
+});
+const bankEntries = [
+  { id: "b1", question: bankQuestion("b1", "Train speed problem"), topic: "quant", difficulty: "easy" as const, tags: [], updatedAt: "", archived: false },
+  { id: "b2", question: bankQuestion("b2", "Work and time problem"), topic: "quant", difficulty: "easy" as const, tags: [], updatedAt: "", archived: false },
+];
+
 const OWNER_PERMISSIONS = [
   "exam:read",
   "exam:read_key",
@@ -95,6 +109,12 @@ function stubClient(overrides: Record<string, unknown> = {}) {
       { id: "attempt-1", candidateId: "cand-1", entries: 7, state: "graded" as const, lastSeenAt: null },
     ]),
     extendTime: vi.fn(async () => ({ expiresAt: 1 })),
+    listBank: vi.fn(async () => ({ questions: bankEntries, topics: ["quant", "verbal"] })),
+    fileQuestion: vi.fn(async () => bankEntries[0]),
+    editQuestion: vi.fn(async () => bankEntries[0]),
+    archiveQuestion: vi.fn(async () => undefined),
+    importBank: vi.fn(async () => 2),
+    cloneExam: vi.fn(async () => undefined),
     startAttempt: vi.fn(async () => ({ attemptId: "attempt-2", token: "issued-token" })),
     review: vi.fn(async () => review),
     voidAttempt: vi.fn(async () => ({})),
@@ -483,5 +503,120 @@ describe("the room, for an invigilator", () => {
     await screen.findByText("cand-3");
 
     expect(screen.queryByRole("button", { name: "Extra time…" })).not.toBeInTheDocument();
+  });
+});
+
+describe("the question bank", () => {
+  const openBank = async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    const nav = await screen.findByRole("navigation", { name: "Account" });
+    await userEvent.click(await within(nav).findByRole("button", { name: "Question bank" }));
+    return client;
+  };
+
+  it("lists questions with their topic and difficulty", async () => {
+    await openBank();
+    const bank = await screen.findByRole("region", { name: "Question bank" });
+
+    expect(await within(bank).findByText("Train speed problem")).toBeInTheDocument();
+    expect(within(bank).getAllByText("quant")).not.toHaveLength(0);
+  });
+
+  it("imports a CSV file and lists every rejected row", async () => {
+    const client = await openBank();
+    (client.importBank as unknown as { mockRejectedValueOnce: (e: unknown) => void }).mockRejectedValueOnce(
+      new ConsoleError(422, "invalid_import", [{ path: "row 3", message: "The answer \"Z\" is not one of the options." }]),
+    );
+
+    const file = new File(["kind,question\nmcq,x"], "bank.csv", { type: "text/csv" });
+    await userEvent.upload(await screen.findByLabelText("CSV file"), file);
+
+    const problems = await screen.findByRole("list", { name: "Problems with this file" });
+    expect(problems).toHaveTextContent("row 3");
+    expect(client.importBank).toHaveBeenCalledWith("kind,question\nmcq,x");
+  });
+
+  it("files a new question with its topic and tags", async () => {
+    const client = await openBank();
+    await userEvent.click(await screen.findByRole("button", { name: "New question" }));
+
+    await userEvent.type(screen.getByLabelText("Question"), "Which is stable?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "quicksort");
+    await userEvent.type(screen.getByLabelText("Option 2"), "mergesort");
+    await userEvent.type(screen.getByLabelText("Topic"), "sorting");
+    await userEvent.type(screen.getByLabelText("Tags, comma separated"), "dsa, campus");
+    await userEvent.click(screen.getByRole("button", { name: "Save to bank" }));
+
+    await waitFor(() =>
+      expect(client.fileQuestion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          question: expect.objectContaining({ stem: "Which is stable?", options: ["quicksort", "mergesort"] }),
+          topic: "sorting",
+          tags: ["dsa", "campus"],
+        }),
+      ),
+    );
+  });
+});
+
+describe("exams drawn from the bank", () => {
+  it("builds a section that draws per candidate from questions picked in the bank", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Aptitude");
+    await userEvent.type(screen.getByLabelText("Question"), "Fixed question");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+
+    await userEvent.click(screen.getByRole("button", { name: "Add a section drawn per candidate" }));
+    const section = screen.getByRole("region", { name: "Section 1" });
+    await userEvent.type(within(section).getByLabelText("Section title"), "Quant");
+    await userEvent.click(within(section).getByRole("button", { name: "Add from bank" }));
+
+    const picker = await screen.findByRole("dialog", { name: "Add from the question bank" });
+    await userEvent.click(await within(picker).findByRole("button", { name: "Select all 2" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Add 2 questions" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ sections: unknown[] }][] } }).mock.calls[0]![0];
+    expect(saved.sections).toEqual([
+      { id: "s1", title: "Quant", pick: 1, pool: [bankEntries[0]!.question, bankEntries[1]!.question] },
+    ]);
+  });
+
+  it("copies an exam, which is how a sat exam is changed", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Copy" }));
+
+    await waitFor(() => expect(client.cloneExam).toHaveBeenCalledWith("exam-1", expect.stringMatching(/^exam-1-copy-/)));
+  });
+
+  it("says plainly that a sat exam cannot be edited", async () => {
+    const client = stubClient({
+      loadExam: vi.fn(async () => ({
+        id: "exam-1",
+        title: "Algorithms",
+        questions: [],
+        policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 0.5 },
+      })),
+      saveExam: vi.fn(async () => {
+        throw new ConsoleError(409, "exam_frozen");
+      }),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Add question" }));
+    await userEvent.type(screen.getAllByLabelText("Question").at(-1)!, "One more");
+    await userEvent.type(screen.getAllByLabelText("Option 1").at(-1)!, "a");
+    await userEvent.type(screen.getAllByLabelText("Option 2").at(-1)!, "b");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    expect(await screen.findByRole("list", { name: "Problems with this exam" })).toHaveTextContent(
+      /has been sat.*Make a copy/,
+    );
   });
 });

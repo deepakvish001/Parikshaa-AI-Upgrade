@@ -45,6 +45,30 @@ const questionBase = {
   rubric: z.array(rubricCriterion).readonly(),
 };
 
+const kinds = {
+  mcq: { kind: z.literal("mcq"), options: z.array(z.string()).readonly(), correctIndex: z.number() },
+  short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
+  numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number() },
+  code: { kind: z.literal("code"), language: z.string(), starter: z.string().optional() },
+};
+
+/** A question, answer key included. Staff-side only. */
+export const questionSchema = z.discriminatedUnion("kind", [
+  z.object({ ...questionBase, ...kinds.mcq }),
+  z.object({ ...questionBase, ...kinds.short }),
+  z.object({ ...questionBase, ...kinds.numeric }),
+  z.object({ ...questionBase, ...kinds.code }),
+]);
+
+/** The same, before the bank has given it an id. */
+const { id: _unused, ...questionBody } = questionBase;
+export const newQuestionSchema = z.discriminatedUnion("kind", [
+  z.object({ ...questionBody, ...kinds.mcq }),
+  z.object({ ...questionBody, ...kinds.short }),
+  z.object({ ...questionBody, ...kinds.numeric }),
+  z.object({ ...questionBody, ...kinds.code }),
+]);
+
 export const examSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
@@ -53,16 +77,72 @@ export const examSchema = z.object({
     allowRevision: z.boolean(),
     vivaTriggerRatio: z.number(),
   }),
-  questions: z
+  questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
+  sections: z
     .array(
-      z.discriminatedUnion("kind", [
-        z.object({ ...questionBase, kind: z.literal("mcq"), options: z.array(z.string()).readonly(), correctIndex: z.number() }),
-        z.object({ ...questionBase, kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() }),
-        z.object({ ...questionBase, kind: z.literal("numeric"), expected: z.number(), tolerance: z.number() }),
-        z.object({ ...questionBase, kind: z.literal("code"), language: z.string(), starter: z.string().optional() }),
-      ]),
+      z.object({
+        id: z.string().min(1),
+        title: z.string(),
+        pick: z.number().describe("How many of the pool each candidate draws."),
+        pool: z.array(questionSchema).readonly(),
+      }),
     )
-    .readonly(),
+    .readonly()
+    .optional()
+    .describe(
+      "Questions drawn per candidate, seeded by the attempt, so neighbours sit different papers. Each candidate's paper is recorded in their ledger.",
+    ),
+});
+
+export const cloneExamBody = z.object({
+  id: z.string().min(1).describe("The copy's id. Must not already exist."),
+  title: z.string().optional().describe('Defaults to the original\'s title with " (copy)".'),
+});
+
+// --- the question bank -------------------------------------------------------
+
+const difficulty = z.enum(["easy", "medium", "hard"]);
+
+export const bankEntry = z.object({
+  id: z.string(),
+  question: questionSchema,
+  topic: z.string(),
+  difficulty,
+  tags: z.array(z.string()).readonly(),
+  updatedAt: z.string(),
+  archived: z.boolean(),
+});
+
+export const bankQuery = z.object({
+  topic: z.string().optional(),
+  difficulty: difficulty.optional(),
+  tag: z.string().optional(),
+  q: z.string().optional().describe("Matched against the question's text."),
+});
+
+export const bankListResponse = z.object({
+  questions: z.array(bankEntry).readonly(),
+  topics: z.array(z.string()).readonly(),
+});
+
+export const bankDraftBody = z.object({
+  question: newQuestionSchema,
+  topic: z.string().default(""),
+  difficulty: difficulty.default("medium"),
+  tags: z.array(z.string()).readonly().default([]),
+});
+
+export const bankParams = z.object({ questionId: z.string().min(1) });
+
+export const bankImportBody = z.object({
+  csv: z.string().max(5_000_000).describe("The file's contents. See the import format in the description."),
+});
+
+export const bankImportResponse = z.object({ imported: z.number() });
+
+export const bankImportProblems = z.object({
+  error: z.literal("invalid_import"),
+  problems: z.array(z.object({ row: z.number(), message: z.string() })).readonly(),
 });
 
 export const examListResponse = z.object({

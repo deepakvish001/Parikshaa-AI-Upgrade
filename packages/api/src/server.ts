@@ -10,8 +10,9 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
-import { ExamFrozen, type IdentityStore } from "@parikshaa/store";
+import { ExamFrozen, type IdentityStore, type QuestionBank } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
+import { registerBankRoutes } from "./bank-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
@@ -24,6 +25,7 @@ export interface ServerOptions {
   readonly auth: StaffAuth;
   /** Staff accounts and API keys, for the account-management routes. */
   readonly identity: IdentityStore;
+  readonly bank: QuestionBank;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -102,6 +104,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Institution", description: "Authoring exams, issuing access codes, grading and review." },
         { name: "Candidate", description: "Sitting one attempt. Scoped entirely by the bearer token." },
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
+        { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
       ],
       components: {
         securitySchemes: {
@@ -262,6 +265,29 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const exam = request.body as unknown as Exam;
         await service.createExam(actor, exam);
         return reply.code(201).send({ id: exam.id });
+      },
+    );
+
+    routes.post(
+      "/exams/:examId/clone",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Copy an exam under a new id",
+          description:
+            "The way to change an exam that has been sat. A sat exam is frozen, because its ledgers record answers to its questions as they were; the copy has no attempts and can be edited.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          body: S.cloneExamBody,
+          response: { 201: S.examSchema.pick({ id: true }), 422: S.examProblems, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
+        const { id, title } = request.body;
+        await service.cloneExam(actor, examId(request.params.examId), examId(id), title);
+        return reply.code(201).send({ id });
       },
     );
 
@@ -690,6 +716,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       { schema: { tags: INSTITUTION, summary: "Liveness", response: { 200: S.okResponse } } },
       async (_request, reply) => reply.send({ ok: true }),
     );
+
+    registerBankRoutes(routes, { service, bank: options.bank, staff });
 
     registerAccountRoutes(routes, {
       service,

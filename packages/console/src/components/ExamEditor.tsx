@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { validateExam, type Exam, type ExamProblem, type Question, type QuestionKind, type RubricCriterion } from "@parikshaa/core/browser";
+import { validateExam, type Exam, type ExamProblem, type Question } from "@parikshaa/core/browser";
+import { BankPicker, type BankLoader } from "./Bank.tsx";
+import { QuestionFields, blankQuestion } from "./QuestionFields.tsx";
 
 interface Props {
   readonly initial?: Exam;
@@ -7,34 +9,14 @@ interface Props {
   readonly serverProblems: readonly ExamProblem[];
   readonly onSave: (exam: Exam) => void;
   readonly onCancel: () => void;
+  /** Present when the account may read the bank, to add questions from it. */
+  readonly loadBank?: BankLoader;
 }
 
-const blankQuestion = (id: string): Question => ({
-  id: id as Question["id"],
-  kind: "mcq",
-  stem: "",
-  maxScore: 1,
-  rubric: [],
-  options: ["", ""],
-  correctIndex: 0,
-});
+type Picking = { readonly into: "fixed" } | { readonly into: "section"; readonly index: number } | null;
 
-/** Swap a question's kind, replacing the fields that do not carry across. */
-function changeKind(question: Question, kind: QuestionKind): Question {
-  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, rubric: question.rubric };
-  switch (kind) {
-    case "mcq":
-      return { ...base, kind, options: ["", ""], correctIndex: 0 };
-    case "numeric":
-      return { ...base, kind, expected: 0, tolerance: 0 };
-    case "short":
-      return { ...base, kind, expectedPoints: [] };
-    case "code":
-      return { ...base, kind, language: "python" };
-  }
-}
-
-export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel }: Props) {
+export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, loadBank }: Props) {
+  const [picking, setPicking] = useState<Picking>(null);
   const [exam, setExam] = useState<Exam>(
     initial ?? {
       id: `exam-${Date.now()}` as Exam["id"],
@@ -53,8 +35,21 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel }
   const patchQuestion = (index: number, next: Question) =>
     setExam((e) => ({ ...e, questions: e.questions.map((q, i) => (i === index ? next : q)) }));
 
-  const patchRubric = (index: number, rubric: readonly RubricCriterion[]) =>
-    patchQuestion(index, { ...exam.questions[index]!, rubric } as Question);
+  const sections = exam.sections ?? [];
+  type Section = (typeof sections)[number];
+  const patchSection = (index: number, next: Section) =>
+    setExam((e) => ({ ...e, sections: (e.sections ?? []).map((s, i) => (i === index ? next : s)) }));
+  const onExam = new Set([...exam.questions, ...sections.flatMap((s) => s.pool)].map((q) => q.id as string));
+
+  const addFromBank = (questions: readonly Question[]) => {
+    if (picking?.into === "fixed") {
+      setExam((e) => ({ ...e, questions: [...e.questions, ...questions] }));
+    } else if (picking?.into === "section") {
+      const section = sections[picking.index]!;
+      patchSection(picking.index, { ...section, pool: [...section.pool, ...questions] });
+    }
+    setPicking(null);
+  };
 
   return (
     <form
@@ -140,7 +135,7 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel }
             <button
               type="button"
               className="quiet"
-              disabled={exam.questions.length === 1}
+              disabled={exam.questions.length === 1 && sections.length === 0}
               onClick={() =>
                 setExam((e) => ({ ...e, questions: e.questions.filter((_, i) => i !== index) }))
               }
@@ -149,166 +144,7 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel }
             </button>
           </div>
 
-          <div className="field">
-            <label htmlFor={`stem-${question.id}`}>Question</label>
-            <textarea
-              id={`stem-${question.id}`}
-              value={question.stem}
-              onChange={(e) => patchQuestion(index, { ...question, stem: e.target.value })}
-            />
-          </div>
-
-          <div className="grid">
-            <div className="field">
-              <label htmlFor={`kind-${question.id}`}>Type</label>
-              <select
-                id={`kind-${question.id}`}
-                value={question.kind}
-                onChange={(e) => patchQuestion(index, changeKind(question, e.target.value as QuestionKind))}
-              >
-                <option value="mcq">Multiple choice</option>
-                <option value="numeric">Numeric</option>
-                <option value="short">Short answer</option>
-                <option value="code">Code</option>
-              </select>
-            </div>
-
-            <div className="field">
-              <label htmlFor={`marks-${question.id}`}>Marks</label>
-              <input
-                id={`marks-${question.id}`}
-                type="number"
-                min={1}
-                value={question.maxScore}
-                onChange={(e) => patchQuestion(index, { ...question, maxScore: Number(e.target.value) })}
-              />
-            </div>
-          </div>
-
-          {question.kind === "mcq" ? (
-            <div className="field">
-              <label>Options — select the correct one</label>
-              {question.options.map((option, optionIndex) => (
-                <div className="row" key={optionIndex} style={{ marginTop: ".35rem" }}>
-                  <input
-                    type="radio"
-                    name={`correct-${question.id}`}
-                    aria-label={`Option ${optionIndex + 1} is correct`}
-                    checked={question.correctIndex === optionIndex}
-                    onChange={() => patchQuestion(index, { ...question, correctIndex: optionIndex })}
-                    style={{ width: "auto" }}
-                  />
-                  <input
-                    aria-label={`Option ${optionIndex + 1}`}
-                    value={option}
-                    onChange={(e) =>
-                      patchQuestion(index, {
-                        ...question,
-                        options: question.options.map((o, i) => (i === optionIndex ? e.target.value : o)),
-                      })
-                    }
-                  />
-                </div>
-              ))}
-              <div className="row">
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() => patchQuestion(index, { ...question, options: [...question.options, ""] })}
-                >
-                  Add option
-                </button>
-              </div>
-            </div>
-          ) : null}
-
-          {question.kind === "numeric" ? (
-            <div className="grid">
-              <div className="field">
-                <label htmlFor={`exp-${question.id}`}>Expected value</label>
-                <input
-                  id={`exp-${question.id}`}
-                  type="number"
-                  step="any"
-                  value={question.expected}
-                  onChange={(e) => patchQuestion(index, { ...question, expected: Number(e.target.value) })}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor={`tol-${question.id}`}>Tolerance (±)</label>
-                <input
-                  id={`tol-${question.id}`}
-                  type="number"
-                  step="any"
-                  min={0}
-                  value={question.tolerance}
-                  onChange={(e) => patchQuestion(index, { ...question, tolerance: Number(e.target.value) })}
-                />
-              </div>
-            </div>
-          ) : null}
-
-          {question.kind === "code" ? (
-            <div className="field">
-              <label htmlFor={`lang-${question.id}`}>Language</label>
-              <input
-                id={`lang-${question.id}`}
-                value={question.language}
-                onChange={(e) => patchQuestion(index, { ...question, language: e.target.value })}
-              />
-            </div>
-          ) : null}
-
-          {question.kind === "short" || question.kind === "code" ? (
-            <div className="field">
-              <label>Rubric — what a grader must justify against</label>
-              {question.rubric.map((criterion, criterionIndex) => (
-                <div className="row" key={criterion.id} style={{ marginTop: ".35rem" }}>
-                  <input
-                    aria-label={`Criterion ${criterionIndex + 1}`}
-                    value={criterion.description}
-                    onChange={(e) =>
-                      patchRubric(
-                        index,
-                        question.rubric.map((c, i) =>
-                          i === criterionIndex ? { ...c, description: e.target.value } : c,
-                        ),
-                      )
-                    }
-                  />
-                  <input
-                    aria-label={`Criterion ${criterionIndex + 1} weight`}
-                    type="number"
-                    min={1}
-                    style={{ width: "5rem" }}
-                    value={criterion.weight}
-                    onChange={(e) =>
-                      patchRubric(
-                        index,
-                        question.rubric.map((c, i) =>
-                          i === criterionIndex ? { ...c, weight: Number(e.target.value) } : c,
-                        ),
-                      )
-                    }
-                  />
-                </div>
-              ))}
-              <div className="row">
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={() =>
-                    patchRubric(index, [
-                      ...question.rubric,
-                      { id: `c${question.rubric.length + 1}`, description: "", weight: 1 },
-                    ])
-                  }
-                >
-                  Add criterion
-                </button>
-              </div>
-            </div>
-          ) : null}
+          <QuestionFields question={question} onChange={(next) => patchQuestion(index, next)} />
         </section>
       ))}
 
@@ -321,6 +157,100 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel }
           }
         >
           Add question
+        </button>
+        {loadBank === undefined ? null : (
+          <button type="button" className="secondary" onClick={() => setPicking({ into: "fixed" })}>
+            Add from bank
+          </button>
+        )}
+      </div>
+      {picking?.into === "fixed" && loadBank !== undefined ? (
+        <BankPicker load={loadBank} exclude={onExam} onPick={addFromBank} onClose={() => setPicking(null)} />
+      ) : null}
+
+      {/*
+       * Sections: each candidate draws `pick` questions from the pool, seeded
+       * by their attempt, so neighbours sit different papers. The pool is a
+       * copy; questions in it are edited in the bank and added again.
+       */}
+      {sections.map((section, index) => (
+        <section className="card" key={section.id} aria-label={`Section ${index + 1}`}>
+          <div className="bar">
+            <strong>Section {index + 1}</strong>
+            <span className="spacer" />
+            <button
+              type="button"
+              className="quiet"
+              onClick={() => setExam((e) => ({ ...e, sections: (e.sections ?? []).filter((_, i) => i !== index) }))}
+            >
+              Remove section
+            </button>
+          </div>
+          <div className="grid">
+            <div className="field">
+              <label htmlFor={`section-title-${section.id}`}>Section title</label>
+              <input
+                id={`section-title-${section.id}`}
+                value={section.title}
+                onChange={(e) => patchSection(index, { ...section, title: e.target.value })}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor={`section-pick-${section.id}`}>Questions per candidate</label>
+              <input
+                id={`section-pick-${section.id}`}
+                type="number"
+                min={1}
+                max={Math.max(1, section.pool.length)}
+                value={section.pick}
+                onChange={(e) => patchSection(index, { ...section, pick: Number(e.target.value) })}
+              />
+            </div>
+          </div>
+          <p className="notice">
+            Each candidate draws {section.pick} of these {section.pool.length}. Every question in the pool must carry the
+            same marks, so every paper is worth the same.
+          </p>
+          <ul className="pool">
+            {section.pool.map((question) => (
+              <li key={question.id}>
+                <span>{question.stem}</span> <span className="notice">· {question.maxScore} marks</span>{" "}
+                <button
+                  type="button"
+                  className="quiet"
+                  aria-label={`Remove "${question.stem}" from the pool`}
+                  onClick={() => patchSection(index, { ...section, pool: section.pool.filter((q) => q.id !== question.id) })}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+          {loadBank === undefined ? null : (
+            <div className="row">
+              <button type="button" className="secondary" onClick={() => setPicking({ into: "section", index })}>
+                Add from bank
+              </button>
+            </div>
+          )}
+          {picking?.into === "section" && picking.index === index && loadBank !== undefined ? (
+            <BankPicker load={loadBank} exclude={onExam} onPick={addFromBank} onClose={() => setPicking(null)} />
+          ) : null}
+        </section>
+      ))}
+
+      <div className="row">
+        <button
+          type="button"
+          className="secondary"
+          onClick={() =>
+            setExam((e) => ({
+              ...e,
+              sections: [...(e.sections ?? []), { id: `s${(e.sections ?? []).length + 1}`, title: "", pick: 1, pool: [] }],
+            }))
+          }
+        >
+          Add a section drawn per candidate
         </button>
       </div>
 
