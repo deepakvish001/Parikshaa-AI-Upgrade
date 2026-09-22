@@ -121,14 +121,18 @@ Pseudonymization holds either way.
 
 ### 6. `@parikshaa/core` has two entry points
 
-`.` carries everything, including the ledger, which hashes with `node:crypto`.
-`./browser` carries the vocabulary, the candidate projection, exam validation
-and deterministic scoring — all pure, and what the two clients import.
+`.` carries everything, including `ExamLedger`, which appends and hashes with
+`node:crypto`. `./browser` carries the vocabulary, the candidate projection,
+exam validation, deterministic scoring — and the chain itself, which is
+platform-independent.
 
 The split is a boundary, not a packaging workaround: a client has no business
-holding the hashing code because it has no business producing ledger entries.
-Only the server appends. (A candidate verifying their own receipt in the browser
-is a real feature, and would need WebCrypto's async digest. It is not this one.)
+*appending*, so it has no business holding the code that does. It does have
+business *checking*, so `chain.ts` walks the chain parameterized by a digest,
+and both the server's `node:crypto` and a browser's WebCrypto bind to the same
+walk. One implementation, two primitives, and a conformance test pinning them to
+identical output — because two chain implementations would eventually disagree,
+and the disagreement would look like tampering.
 
 ## Deliberately not in the stack yet
 

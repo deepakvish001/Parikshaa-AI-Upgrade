@@ -10,7 +10,8 @@ import {
   type ExamEvent,
   type VivaProbe,
 } from "./domain.js";
-import { ExamLedger, type LedgerEntry } from "./ledger.js";
+import type { LedgerEntry } from "./chain.js";
+import { ExamLedger } from "./ledger.js";
 
 const A = attemptId("attempt-1");
 const E = examId("exam-1");

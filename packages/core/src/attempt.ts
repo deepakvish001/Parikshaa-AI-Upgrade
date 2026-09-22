@@ -9,7 +9,7 @@ import type {
   VivaId,
   VivaProbe,
 } from "./domain.js";
-import type { LedgerEntry } from "./ledger.js";
+import type { LedgerEntry } from "./chain.js";
 
 /**
  * Reconstructing an attempt from its ledger.

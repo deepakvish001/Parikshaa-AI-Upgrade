@@ -7,13 +7,14 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b packages/api",
-    "typecheck": "tsc -b packages/api --force && tsc -p tsconfig.tests.json && npm run typecheck -w @parikshaa/web && npm run typecheck -w @parikshaa/console",
+    "build": "tsc -b packages/api packages/verify",
+    "typecheck": "tsc -b packages/api packages/verify --force && tsc -p tsconfig.tests.json && npm run typecheck -w @parikshaa/web && npm run typecheck -w @parikshaa/console",
     "test": "npm run test --workspaces --if-present",
     "check": "npm run typecheck && npm test",
     "start": "node packages/api/dist/main.js",
     "build:clients": "npm run build -w @parikshaa/web && npm run build -w @parikshaa/console",
-    "migrate": "npm run migrate -w @parikshaa/store"
+    "migrate": "npm run migrate -w @parikshaa/store",
+    "verify": "node packages/verify/dist/cli.js"
   },
   "engines": {
     "node": ">=20"

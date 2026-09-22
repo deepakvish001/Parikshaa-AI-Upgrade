@@ -39,6 +39,11 @@ created → in_progress → submitted → graded
                       ↘ void
 ```
 
+`in_progress` ends either when the candidate submits or when the exam's
+`durationMs` runs out. An expired attempt is closed by the next write that
+touches it, which refuses that write; reads never close one, so looking at an
+attempt cannot end it.
+
 An attempt is never mutated in place. Every step appends an `ExamEvent` to the
 attempt's ledger, and the attempt's current state is a fold over that stream.
 This makes the record replayable: given the ledger, any grade Parikshaa reported
@@ -85,7 +90,23 @@ time of the attempt, and any of them can later prove that the record they are
 shown is or is not the one that was written. Assessment disputes turn on exactly
 that, and on nothing a webcam recorded.
 
-See `packages/core/src/ledger.ts`.
+A record that cannot be checked is not evidence, so checking it must not
+require the institution's cooperation. `@parikshaa/verify` verifies a downloaded
+receipt with no server, no database and no network, and the candidate's own
+browser does the same with WebCrypto. Both walk one implementation of the chain,
+parameterized by the digest, because two copies would eventually disagree — and
+a disagreement would look exactly like the tampering this is meant to detect. A
+conformance test pins the two digests to identical output.
+
+**A receipt that verifies on its own proves less than it appears to.** Any
+internally consistent chain verifies, including one written from scratch. What
+makes substitution detectable is the head hash the candidate pinned *during* the
+attempt: a commitment made before anything could be reconsidered. Finding it at
+its own position proves the record now being shown grew from the one they saw
+then. The verifier takes it with `--head`.
+
+See `packages/core/src/chain.ts`, `packages/core/src/ledger.ts` and
+`packages/verify`.
 
 ## 6. Design commitments
 
@@ -165,6 +186,7 @@ sitting is over.
 | HTTP API | implemented — `packages/api` |
 | Candidate interface | implemented — `packages/web` |
 | Exam authoring and review console | implemented — `packages/console` |
+| Offline verification | implemented — `packages/verify` (CLI) and in-browser via WebCrypto |
 | Deployment | implemented — `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
 | Identity / enrolment | not started (out of scope, §2) |
 

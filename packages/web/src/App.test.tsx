@@ -24,6 +24,7 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
     exam,
     state: "in_progress" as string,
     startedAt: 1,
+    expiresAt: Date.now() + 45 * 60_000,
     answers: [] as { questionId: string; answer: string; submittedAt: number }[],
     openProbe: null as { id: string; prompt: string } | null,
     answeredProbeCount: 0,
@@ -69,7 +70,7 @@ describe("App", () => {
     expect(await screen.findByRole("heading", { name: "Algorithms" })).toBeInTheDocument();
     expect(screen.getByText(/1\. Which sort is stable\?/)).toBeInTheDocument();
     expect(screen.getByText(/2\. Why does it terminate\?/)).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 answered")).toBeInTheDocument();
+    expect(screen.getByText(/0 of 2 answered/)).toBeInTheDocument();
   });
 
   it("saves an answer and then asks whether a probe is due", async () => {
@@ -112,6 +113,7 @@ describe("App", () => {
       exam,
       state: "in_progress",
       startedAt: 1,
+      expiresAt: Date.now() + 45 * 60_000,
       answers: [],
       openProbe: { id: "p1", prompt: "What stops it going below zero?" },
       answeredProbeCount: 0,
@@ -136,6 +138,7 @@ describe("App", () => {
       exam,
       state: "in_progress",
       startedAt: 1,
+      expiresAt: Date.now() + 45 * 60_000,
       answers: [],
       openProbe: { id: "p9", prompt: "Reopened probe." },
       answeredProbeCount: 0,
@@ -146,6 +149,16 @@ describe("App", () => {
     expect(await screen.findByText("Reopened probe.")).toBeInTheDocument();
   });
 
+  it("shows the exam window, which is the candidate's to see", async () => {
+    const { client } = stubClient();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    // Exam time, not a probe timer — SPEC §8 forbids the latter and the probe
+    // panel shows none.
+    expect(screen.getByText(/4[45]m left/)).toBeInTheDocument();
+  });
+
   it("shows the receipt with its head hash once the attempt is submitted", async () => {
     const { client } = stubClient();
     client.state = vi.fn(async () => ({
@@ -153,6 +166,7 @@ describe("App", () => {
       exam,
       state: "submitted",
       startedAt: 1,
+      expiresAt: Date.now() + 45 * 60_000,
       answers: [{ questionId: "q-mcq", answer: "1", submittedAt: 1 }],
       openProbe: null,
       answeredProbeCount: 0,

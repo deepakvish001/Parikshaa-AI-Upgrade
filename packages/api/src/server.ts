@@ -71,7 +71,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.setErrorHandler(async (error, _request, reply) => {
     if (error instanceof AttemptError) {
-      const status = error.code === "not_found" ? 404 : 409;
+      // 410 for an expired attempt: the window is gone, not merely a bad
+      // request against the current state.
+      const status = error.code === "not_found" ? 404 : error.code === "expired" ? 410 : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
     }
     if (error instanceof ExamInvalidError) {

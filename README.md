@@ -32,6 +32,7 @@ packages/store/   PostgreSQL persistence and the schema's integrity constraints
 packages/api/     HTTP API: attempts, micro-viva delivery, ledger access
 packages/web/     candidate interface: sitting an exam, answering a probe, taking a receipt
 packages/console/ institution console: authoring exams, issuing access codes, reviewing evidence
+packages/verify/  offline receipt verification — no server, no database, no network
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
 ```
@@ -64,7 +65,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 127 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 160 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -102,6 +103,34 @@ npm start
 
 Migrations are a separate step and never run on boot: several instances
 starting at once would race, and a schema change should be deliberate.
+
+## Checking a record
+
+A record that can only be checked by the institution holding it is not evidence.
+After an attempt closes the candidate gets their head hash and the full chain,
+and can check it two ways — in the browser on the receipt screen, or offline:
+
+```bash
+npx parikshaa-verify receipt.json --head <hash you noted during the exam>
+```
+
+```
+VERIFIED — 8 entries, unbroken.
+head ab9685e35d379583d6ea506eec9f269a40a22addad055bcb0dc13ada41327b50
+The head you pinned appears in this record at its own position.
+
+What the record says:
+    0  2025-09-20T20:27:27.000Z  Attempt started
+    1  2025-09-20T20:28:14.000Z  Answered q1
+    2  2025-09-20T20:29:01.000Z  Follow-up asked about q1
+    3  2025-09-20T20:29:48.000Z  Replied to the follow-up after 23s
+    ...
+```
+
+`--head` is the check that matters. A receipt verifying on its own proves less
+than it looks like: any internally consistent chain verifies, including one
+written from scratch. The hash noted *during* the exam is a commitment made
+before anything could be reconsidered.
 
 ## Status
 

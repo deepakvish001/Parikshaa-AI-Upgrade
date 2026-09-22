@@ -9,6 +9,7 @@ export default defineConfig({
       "@parikshaa/core": src("core"),
       "@parikshaa/store": src("store"),
       "@parikshaa/viva": src("viva"),
+      "@parikshaa/verify": src("verify"),
     },
   },
   test: { include: ["src/**/*.test.ts"], environment: "node", testTimeout: 30_000 },

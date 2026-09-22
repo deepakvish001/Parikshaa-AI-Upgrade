@@ -10,7 +10,7 @@ import {
   verifyChain,
   type ExamEvent,
 } from "@parikshaa/core";
-import { LedgerStore } from "./ledger-store.js";
+import { AppendRefused, LedgerStore } from "./ledger-store.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
 
 /**
@@ -138,6 +138,59 @@ describe("LedgerStore", () => {
     const [entry] = await store.load(A);
     expect(entry?.event.type).toBe("answer_submitted");
     expect(verifyChain(await store.load(A))).toEqual({ ok: true });
+  });
+
+  describe("append guards", () => {
+    it("appends when the guard is satisfied", async () => {
+      await store.append(A, started);
+
+      await store.append(A, answered("42"), { guard: () => null });
+
+      expect((await store.load(A)).length).toBe(2);
+    });
+
+    it("refuses, and writes nothing, when the guard declines", async () => {
+      await store.append(A, started);
+
+      await expect(
+        store.append(A, answered("42"), { guard: () => "already done" }),
+      ).rejects.toBeInstanceOf(AppendRefused);
+
+      expect((await store.load(A)).length).toBe(1);
+    });
+
+    it("shows the guard the events already in the chain", async () => {
+      await store.append(A, started);
+      await store.append(A, answered("first"));
+
+      let seen: string[] = [];
+      await store.append(A, answered("second"), {
+        guard: (events) => {
+          seen = events.map((e) => e.type);
+          return null;
+        },
+      });
+
+      expect(seen).toEqual(["attempt_started", "answer_submitted"]);
+    });
+
+    it("decides against the chain as it is at append time, not as it was read", async () => {
+      await store.append(A, started);
+
+      // What the guard exists for: a decision taken before a slow call must be
+      // re-checked once the attempt's row lock is actually held.
+      const slow = (async () => {
+        await new Promise((r) => setTimeout(r, 30));
+        return store.append(A, answered("late"), {
+          guard: (events) =>
+            events.some((e) => e.type === "answer_submitted") ? "someone got there first" : null,
+        });
+      })();
+      await store.append(A, answered("early"));
+
+      await expect(slow).rejects.toThrow(/got there first/);
+      expect((await store.load(A)).length).toBe(2);
+    });
   });
 
   describe("verifyStored", () => {

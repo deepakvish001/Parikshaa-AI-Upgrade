@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
 import type { ExamEvent, Timestamp } from "./domain.js";
+import {
+  GENESIS_HASH,
+  checkChain,
+  entryPreimage,
+  type Digest,
+  type LedgerEntry,
+  type VerifyResult,
+} from "./chain.js";
 
 /**
  * Tamper-evident append-only ledger for exam events.
@@ -12,74 +20,14 @@ import type { ExamEvent, Timestamp } from "./domain.js";
  * was written. That is the property an assessment dispute actually turns on.
  */
 
-/** Hash a genesis entry points at: 32 zero bytes, hex-encoded. */
-export const GENESIS_HASH = "0".repeat(64);
-
-export interface LedgerEntry {
-  /** Zero-based position in the chain. */
-  readonly seq: number;
-  readonly timestamp: Timestamp;
-  readonly event: ExamEvent;
-  /** Hash of the entry at `seq - 1`, or {@link GENESIS_HASH} for the first. */
-  readonly prevHash: string;
-  readonly hash: string;
-}
-
-export type VerifyResult =
-  | { readonly ok: true }
-  | { readonly ok: false; readonly seq: number; readonly reason: VerifyFailure };
-
-export type VerifyFailure =
-  | "bad_sequence"
-  | "broken_link"
-  | "hash_mismatch";
-
-/**
- * Serialize a value with object keys in a stable order.
- *
- * Two structurally equal events must hash identically regardless of the key
- * order their JSON happened to arrive in, otherwise a round-trip through any
- * store that reorders keys would look like tampering.
- */
-export function canonicalize(value: unknown): string {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value) ?? "null";
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalize).join(",")}]`;
-  }
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, v]) => v !== undefined)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalize(v)}`);
-  return `{${entries.join(",")}}`;
-}
-
-/**
- * The exact bytes an entry's hash covers.
- *
- * Exported because storage must persist this string verbatim alongside the
- * hash: re-deriving it from a database round-trip is how a untouched row starts
- * looking tampered with. One definition, used by both the hash and the store.
- */
-export function entryPreimage(input: Omit<LedgerEntry, "hash">): string {
-  return canonicalize({
-    seq: input.seq,
-    timestamp: input.timestamp,
-    event: input.event,
-    prevHash: input.prevHash,
-  });
-}
-
 /** The hash an entry must carry, given its contents. */
 export function entryHash(input: Omit<LedgerEntry, "hash">): string {
   return hashPreimage(entryPreimage(input));
 }
 
 /** Hash a preimage that was persisted earlier, without rebuilding it. */
-export function hashPreimage(preimage: string): string {
-  return createHash("sha256").update(preimage, "utf8").digest("hex");
-}
+export const hashPreimage: Digest = (preimage) =>
+  createHash("sha256").update(preimage, "utf8").digest("hex");
 
 /** Injectable clock, so tests and replays are deterministic. */
 export type Clock = () => Timestamp;
@@ -136,24 +84,7 @@ export class ExamLedger {
   }
 }
 
-/**
- * Check that a sequence of entries forms an unbroken chain: sequence numbers
- * ascend from zero, each entry points at its predecessor, and each hash matches
- * the contents it claims to cover.
- */
+/** Verify a chain using the server's digest. See `checkChain` for the walk. */
 export function verifyChain(entries: readonly LedgerEntry[]): VerifyResult {
-  let prevHash = GENESIS_HASH;
-  for (const [index, entry] of entries.entries()) {
-    if (entry.seq !== index) {
-      return { ok: false, seq: index, reason: "bad_sequence" };
-    }
-    if (entry.prevHash !== prevHash) {
-      return { ok: false, seq: index, reason: "broken_link" };
-    }
-    if (entryHash(entry) !== entry.hash) {
-      return { ok: false, seq: index, reason: "hash_mismatch" };
-    }
-    prevHash = entry.hash;
-  }
-  return { ok: true };
+  return checkChain(entries, hashPreimage);
 }

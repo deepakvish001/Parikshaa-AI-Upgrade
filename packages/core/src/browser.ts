@@ -14,6 +14,7 @@
  * not this one.)
  */
 export * from "./domain.js";
+export * from "./chain.js";
 export * from "./candidate-view.js";
 export * from "./validate.js";
 export * from "./scoring.js";
