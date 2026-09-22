@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Exam } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError } from "./api.ts";
+import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -11,47 +12,134 @@ type View =
   | { readonly name: "exams" }
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
-  | { readonly name: "review"; readonly examId: string; readonly attemptId: string };
+  | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
+  | { readonly name: "staff" }
+  | { readonly name: "keys" }
+  | { readonly name: "usage" }
+  | { readonly name: "audit" }
+  | { readonly name: "account" };
+
+/**
+ * The session token, kept for this tab only.
+ *
+ * sessionStorage rather than localStorage: it ends with the tab, so a shared
+ * machine in an exam hall does not stay signed in. Storage can be unavailable
+ * (private windows, blocked site data), in which case a reload signs out.
+ */
+const SESSION_KEY = "parikshaa.console.session";
+const stored = {
+  get: (): string | null => {
+    try {
+      return sessionStorage.getItem(SESSION_KEY);
+    } catch {
+      return null;
+    }
+  },
+  set: (token: string | null): void => {
+    try {
+      if (token === null) sessionStorage.removeItem(SESSION_KEY);
+      else sessionStorage.setItem(SESSION_KEY, token);
+    } catch {
+      // Unavailable; the session lives in memory only.
+    }
+  },
+};
 
 export function App({ client: injected }: { client?: ConsoleClient } = {}) {
-  const [token, setToken] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const [token, setToken] = useState<string | null>(() => (injected === undefined ? stored.get() : null));
   const client = injected ?? (token === null ? null : new ConsoleClient(token));
 
-  if (client === null) return <StaffGate onToken={setToken} />;
-  return <Console client={client} />;
+  const signIn = (next: string) => {
+    stored.set(next);
+    setToken(next);
+  };
+  const signOut = () => {
+    stored.set(null);
+    setToken(null);
+    // Nothing the last account could see should flash up for the next one.
+    queryClient.clear();
+  };
+
+  if (client === null) return <SignIn onSignedIn={signIn} />;
+  return <Console client={client} onSignedOut={signOut} />;
 }
 
-function StaffGate({ onToken }: { onToken: (token: string) => void }) {
-  const [value, setValue] = useState("");
+function SignIn({ onSignedIn }: { onSignedIn: (token: string) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const signIn = useMutation({
+    mutationFn: () => ConsoleClient.signIn(email.trim(), password),
+    onSuccess: ({ token }) => onSignedIn(token),
+  });
+  const refused =
+    signIn.error instanceof ConsoleError
+      ? signIn.error.status === 429
+        ? "Too many attempts. Wait a few minutes and try again."
+        : "That email and password were not accepted."
+      : signIn.error === null
+        ? null
+        : "Could not reach the server.";
+
   return (
     <main className="gate">
       <h1>Parikshaa console</h1>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (value.trim() !== "") onToken(value.trim());
+          signIn.mutate();
         }}
       >
         <div className="field">
-          <label htmlFor="staff-token">Staff token</label>
+          <label htmlFor="email">Email</label>
           <input
-            id="staff-token"
-            type="password"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            id="email"
+            type="email"
+            autoComplete="username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
         </div>
-        <button type="submit" disabled={value.trim() === ""}>
-          Sign in
+        <div className="field">
+          <label htmlFor="password">Password</label>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        {refused === null ? null : (
+          <p className="error" role="alert">
+            {refused}
+          </p>
+        )}
+        <button type="submit" disabled={signIn.isPending || email.trim() === "" || password === ""}>
+          {signIn.isPending ? "Signing in…" : "Sign in"}
         </button>
       </form>
     </main>
   );
 }
 
-function Console({ client }: { client: ConsoleClient }) {
+function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
   const queryClient = useQueryClient();
   const [view, setView] = useState<View>({ name: "exams" });
+  const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
+  const can = (permission: string) => me.data?.permissions.includes(permission) ?? false;
+
+  // A session that has ended — expired, revoked, the account disabled — shows
+  // up as a 401 on whatever is asked next. Go back to signing in.
+  const lastError = me.error;
+  useEffect(() => {
+    if (lastError instanceof ConsoleError && lastError.status === 401) onSignedOut();
+  }, [lastError, onSignedOut]);
+
+  const signOut = useMutation({
+    mutationFn: () => client.signOut().catch(() => undefined),
+    onSettled: onSignedOut,
+  });
   const [issued, setIssued] = useState<{ candidateId: string; token: string } | null>(null);
   const [problems, setProblems] = useState<ConsoleError["problems"]>([]);
 
@@ -120,9 +208,42 @@ function Console({ client }: { client: ConsoleClient }) {
   });
 
   const examTitle = (id: string) => exams.data?.find((e) => e.id === id)?.title ?? id;
+  const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
+
+  const tabs: readonly { readonly view: View; readonly label: string; readonly permission: string }[] = [
+    { view: { name: "staff" }, label: "Staff", permission: "staff:manage" },
+    { view: { name: "keys" }, label: "API keys", permission: "apikey:manage" },
+    { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
+    { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
+  ];
 
   return (
     <main className="page">
+      <nav className="bar account" aria-label="Account">
+        <span className="notice">
+          {me.data === undefined ? "" : `${me.data.name} · ${me.data.role} · ${me.data.organisation.name}`}
+        </span>
+        <span className="spacer" />
+        <button type="button" className="crumb" onClick={() => setView({ name: "exams" })}>
+          Exams
+        </button>
+        {tabs
+          .filter((tab) => can(tab.permission))
+          .map((tab) => (
+            <button key={tab.label} type="button" className="crumb" onClick={() => setView(tab.view)}>
+              {tab.label}
+            </button>
+          ))}
+        {me.data?.kind === "user" ? (
+          <button type="button" className="crumb" onClick={() => setView({ name: "account" })}>
+            Password
+          </button>
+        ) : null}
+        <button type="button" className="quiet" onClick={() => signOut.mutate()}>
+          Sign out
+        </button>
+      </nav>
+
       <div className="bar">
         <h1>
           {view.name === "exams" ? (
@@ -151,10 +272,11 @@ function Console({ client }: { client: ConsoleClient }) {
         exams.isPending ? (
           <p className="notice">Loading…</p>
         ) : exams.error !== null ? (
-          <p className="error">Could not load exams. Check the staff token.</p>
+          <p className="error">Could not load exams.</p>
         ) : (
           <ExamList
             exams={exams.data}
+            canWrite={can("exam:write")}
             onOpen={(examId) => {
               setIssued(null);
               setView({ name: "attempts", examId });
@@ -183,6 +305,8 @@ function Console({ client }: { client: ConsoleClient }) {
           attempts={attempts.data}
           issued={issued}
           starting={startAttempt.isPending}
+          canStart={can("attempt:start")}
+          canReview={can("attempt:review")}
           onStart={(candidateId) => startAttempt.mutate({ examId: view.examId, candidateId })}
           onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
         />
@@ -198,8 +322,16 @@ function Console({ client }: { client: ConsoleClient }) {
           onGrade={() => grade.mutate(view.attemptId)}
           onAssess={(probeId) => assess.mutate({ attemptId: view.attemptId, probeId })}
           onVoid={(reason) => voidAttempt.mutate({ attemptId: view.attemptId, reason })}
+          can={{ grade: can("attempt:grade"), assess: can("attempt:assess"), void: can("attempt:void") }}
+          failure={actionFailure === undefined ? null : actionFailure.message}
         />
       ) : null}
+
+      {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
+      {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
+      {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
+      {view.name === "audit" ? <AuditPanel client={client} /> : null}
+      {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
     </main>
   );
 }

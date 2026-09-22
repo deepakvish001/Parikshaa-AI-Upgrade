@@ -18,22 +18,25 @@ services:
       timeout: 5s
       retries: 10
 
+  # Migrates as the schema owner, then lets the runtime role log in.
   migrate:
     build: .
     command: ["npm", "run", "migrate", "-w", "@parikshaa/store"]
     environment:
       DATABASE_URL: postgres://parikshaa_owner:${POSTGRES_PASSWORD}@db:5432/parikshaa
+      PARIKSHAA_APP_PASSWORD: ${PARIKSHAA_APP_PASSWORD:?set PARIKSHAA_APP_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
 
+  # Runs as parikshaa_app, not the owner: row-level security binds the runtime
+  # role, and the owner would bypass it.
   api:
     build: .
     environment:
-      DATABASE_URL: postgres://parikshaa_owner:${POSTGRES_PASSWORD}@db:5432/parikshaa
+      DATABASE_URL: postgres://parikshaa_app:${PARIKSHAA_APP_PASSWORD}@db:5432/parikshaa
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
       ATTEMPT_TOKEN_SECRET: ${ATTEMPT_TOKEN_SECRET:?set ATTEMPT_TOKEN_SECRET (32+ characters)}
-      STAFF_TOKEN: ${STAFF_TOKEN:?set STAFF_TOKEN}
       PORT: "3000"
     ports:
       - "3000:3000"

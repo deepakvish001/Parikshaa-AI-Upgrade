@@ -13,7 +13,13 @@ interface Props {
   readonly onGrade: () => void;
   readonly onAssess: (probeId: string) => void;
   readonly onVoid: (reason: string) => void;
+  /** What this account may do here. The server enforces it; this only hides what would be refused. */
+  readonly can?: { readonly grade: boolean; readonly assess: boolean; readonly void: boolean };
+  /** Why the last action failed, in the server's words. */
+  readonly failure?: string | null;
 }
+
+const EVERYTHING = { grade: true, assess: true, void: true } as const;
 
 const VERDICT_LABEL: Record<NonNullable<VivaReview["verdict"]>, string> = {
   consistent: "Consistent with having produced the answer",
@@ -43,8 +49,10 @@ export function AttemptReview({
   onGrade,
   onAssess,
   onVoid,
+  can = EVERYTHING,
+  failure = null,
 }: Props) {
-  const gradable = review.state === "submitted";
+  const gradable = review.state === "submitted" && can.grade;
   const [deciding, setDeciding] = useState(false);
   const [reason, setReason] = useState("");
 
@@ -61,6 +69,11 @@ export function AttemptReview({
             </button>
           ) : null}
         </div>
+        {failure === null ? null : (
+          <p className="error" role="alert">
+            {failure}
+          </p>
+        )}
       </section>
 
       <section className="card evidence" aria-label="Provenance evidence">
@@ -107,7 +120,7 @@ export function AttemptReview({
                 )}
               </dl>
 
-              {viva.verdict === null && viva.reply !== null ? (
+              {viva.verdict === null && viva.reply !== null && can.assess ? (
                 <div className="row">
                   <button
                     type="button"
@@ -126,10 +139,12 @@ export function AttemptReview({
 
       {review.state === "void" ? (
         <section className="card" aria-label="Set aside">
-          <h2 style={{ fontSize: ".95rem", margin: "0 0 .3rem" }}>This attempt was set aside</h2>
+          <h2 style={{ fontSize: ".95rem", margin: "0 0 .3rem" }}>
+            This attempt was set aside{review.voidedBy == null ? "" : ` by ${review.voidedBy.name}`}
+          </h2>
           <p className="notice">{review.voidReason}</p>
         </section>
-      ) : (
+      ) : !can.void ? null : (
         /*
          * The decision, and deliberately its own section — not in the grade card,
          * which would make it look like a grading action, and not in the evidence

@@ -2,9 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.tsx";
-import { ConsoleClient, ConsoleError, type AttemptReview, type ExamSummary } from "./api.ts";
+import { ConsoleClient, ConsoleError, type AttemptReview, type ExamSummary, type WhoAmI } from "./api.ts";
 
 const exams: ExamSummary[] = [{ id: "exam-1", title: "Algorithms", questionCount: 2 }];
 
@@ -27,8 +27,62 @@ const review: AttemptReview = {
   ],
 };
 
+const OWNER_PERMISSIONS = [
+  "exam:read",
+  "exam:read_key",
+  "exam:write",
+  "attempt:start",
+  "attempt:read",
+  "attempt:review",
+  "attempt:grade",
+  "attempt:assess",
+  "attempt:void",
+  "usage:read",
+  "audit:read",
+  "staff:manage",
+  "apikey:manage",
+  "org:manage",
+];
+
+const who = (role: WhoAmI["role"], permissions: string[]): WhoAmI => ({
+  kind: "user",
+  id: "u1",
+  name: "Asha",
+  email: "asha@acme.test",
+  role,
+  organisation: { id: "acme", name: "Acme" },
+  permissions,
+});
+
 function stubClient(overrides: Record<string, unknown> = {}) {
   return {
+    me: vi.fn(async () => who("owner", OWNER_PERMISSIONS)),
+    signOut: vi.fn(async () => undefined),
+    listStaff: vi.fn(async () => [
+      { id: "u1", email: "asha@acme.test", name: "Asha", role: "owner", disabled: false },
+    ]),
+    addStaff: vi.fn(async () => ({})),
+    usage: vi.fn(async () => ({
+      since: "2026-09-01T00:00:00.000Z",
+      totalCostMicroUsd: 22_500,
+      routes: [
+        {
+          route: "probe",
+          calls: 3,
+          inputTokens: 3000,
+          outputTokens: 300,
+          cacheReadTokens: 0,
+          cacheWrite5mTokens: 0,
+          cacheWrite1hTokens: 0,
+          costMicroUsd: 22_500,
+        },
+      ],
+      perAttempt: { attempts: 3, p50MicroUsd: 7500, p90MicroUsd: 7500, maxMicroUsd: 7500 },
+      inferenceGeos: [{ geo: "global", calls: 3 }],
+      monthStartedAt: "2026-09-01T00:00:00.000Z",
+      spentThisMonthMicroUsd: 22_500,
+      monthlyCapMicroUsd: 50_000_000,
+    })),
     listExams: vi.fn(async () => exams),
     loadExam: vi.fn(async () => ({
       id: "exam-1",
@@ -54,12 +108,43 @@ function renderApp(element: ReactElement) {
   return render(<QueryClientProvider client={queryClient}>{element}</QueryClientProvider>);
 }
 
-describe("console", () => {
-  it("asks for a staff token first", () => {
-    renderApp(<App />);
-    expect(screen.getByLabelText("Staff token")).toHaveAttribute("type", "password");
+describe("signing in", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    sessionStorage.clear();
   });
 
+  it("asks for an email and password first", () => {
+    renderApp(<App />);
+    expect(screen.getByLabelText("Email")).toHaveAttribute("type", "email");
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
+  });
+
+  it("signs in, and says only that the pair was not accepted when it is not", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ error: "invalid_credentials" }), { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    await userEvent.type(screen.getByLabelText("Password"), "wrong password");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("That email and password were not accepted.");
+    expect(fetch).toHaveBeenCalledWith("/api/auth/login", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("goes back to signing in when the session has ended", async () => {
+    sessionStorage.setItem("parikshaa.console.session", "pks_expired");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "staff_auth_required" }), { status: 401 })));
+
+    renderApp(<App />);
+
+    expect(await screen.findByLabelText("Email")).toBeInTheDocument();
+    expect(sessionStorage.getItem("parikshaa.console.session")).toBeNull();
+  });
+});
+
+describe("console", () => {
   it("lists exams", async () => {
     renderApp(<App client={stubClient()} />);
     expect(await screen.findByRole("button", { name: "Algorithms" })).toBeInTheDocument();
@@ -232,6 +317,7 @@ describe("attempt review", () => {
         ...review,
         state: "void",
         voidReason: "Could not establish that this work was the candidate's own.",
+        voidedBy: { userId: "u1", name: "Asha" },
       })),
     });
     renderApp(<App client={client} />);
@@ -240,6 +326,7 @@ describe("attempt review", () => {
 
     const aside = await screen.findByRole("region", { name: "Set aside" });
     expect(aside).toHaveTextContent(/Could not establish that this work was the candidate's own/);
+    expect(aside).toHaveTextContent("set aside by Asha");
     expect(screen.queryByRole("button", { name: "Set aside…" })).not.toBeInTheDocument();
   });
 
@@ -248,5 +335,90 @@ describe("attempt review", () => {
     const evidence = await screen.findByRole("region", { name: "Provenance evidence" });
 
     expect(evidence).toHaveTextContent(/Answer scored 8\/10/);
+  });
+});
+
+describe("what a role is shown", () => {
+  it("shows an invigilator no authoring, no evidence and no administration", async () => {
+    const client = stubClient({ me: vi.fn(async () => who("invigilator", ["exam:read", "attempt:start", "attempt:read"])) });
+    renderApp(<App client={client} />);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    expect(await screen.findByLabelText(/Start an attempt/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+
+    const nav = screen.getByRole("navigation", { name: "Account" });
+    for (const tab of ["Staff", "API keys", "Spend", "Audit log"]) {
+      expect(within(nav).queryByRole("button", { name: tab })).not.toBeInTheDocument();
+    }
+    await userEvent.click(within(nav).getByRole("button", { name: "Exams" }));
+    expect(screen.queryByRole("button", { name: "New exam" })).not.toBeInTheDocument();
+  });
+
+  it("offers a viewer the evidence but no decision", async () => {
+    const client = stubClient({
+      me: vi.fn(async () => who("viewer", ["exam:read", "attempt:read", "attempt:review"])),
+      review: vi.fn(async () => ({ ...review, state: "submitted" })),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Review" }));
+
+    expect(await screen.findByRole("region", { name: "Provenance evidence" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Decision" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Grade attempt" })).not.toBeInTheDocument();
+  });
+
+  it("shows the reason a grade was refused", async () => {
+    const client = stubClient({
+      review: vi.fn(async () => ({ ...review, state: "submitted" })),
+      grade: vi.fn(async () => {
+        throw new ConsoleError(402, "spend_cap_reached", [], "This organisation's monthly model spend cap has been reached");
+      }),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Review" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Grade attempt" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/spend cap has been reached/);
+  });
+});
+
+describe("administration", () => {
+  const open = async (tab: string) => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    const nav = await screen.findByRole("navigation", { name: "Account" });
+    await userEvent.click(await within(nav).findByRole("button", { name: tab }));
+    return client;
+  };
+
+  it("adds a member of staff", async () => {
+    const client = await open("Staff");
+
+    await userEvent.type(await screen.findByLabelText("Name"), "Neha");
+    await userEvent.type(screen.getByLabelText("Email"), "neha@acme.test");
+    await userEvent.selectOptions(screen.getByLabelText("Role"), "reviewer");
+    await userEvent.type(screen.getByLabelText("Initial password"), "an initial passphrase");
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(client.addStaff).toHaveBeenCalledWith({
+        name: "Neha",
+        email: "neha@acme.test",
+        role: "reviewer",
+        password: "an initial passphrase",
+      }),
+    );
+  });
+
+  it("shows model spend per attempt, which is what pricing is built on", async () => {
+    await open("Spend");
+
+    const spend = await screen.findByRole("region", { name: "Model spend" });
+    expect(spend).toHaveTextContent("$0.02");
+    expect(spend).toHaveTextContent("$0.0075");
+    expect(spend).toHaveTextContent(/Cap \$50\.00/);
   });
 });

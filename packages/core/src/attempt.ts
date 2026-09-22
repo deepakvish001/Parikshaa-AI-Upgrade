@@ -4,6 +4,7 @@ import type {
   Exam,
   QuestionId,
   Response,
+  StaffAttribution,
   VivaAssessment,
   VivaExchange,
   VivaId,
@@ -39,6 +40,8 @@ export interface AttemptProjection {
   /** Final total, once `attempt_graded` has been recorded. */
   readonly total: number | null;
   readonly voidReason: string | null;
+  /** Who set the attempt aside. Null for a void recorded before staff had accounts. */
+  readonly voidedBy: StaffAttribution | null;
 }
 
 export type FoldFailure =
@@ -94,6 +97,7 @@ export function foldAttempt(
   let state: AttemptState = "in_progress";
   let total: number | null = null;
   let voidReason: string | null = null;
+  let voidedBy: StaffAttribution | null = null;
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
   const scores = new Map<QuestionId, number>();
@@ -106,6 +110,7 @@ export function foldAttempt(
       scores,
       total,
       voidReason,
+      voidedBy,
     },
   });
 
@@ -180,6 +185,7 @@ export function foldAttempt(
       case "attempt_voided": {
         state = "void";
         voidReason = event.reason;
+        voidedBy = event.decidedBy ?? null;
         break;
       }
 

@@ -111,6 +111,10 @@ export const reviewResponse = z
     state: z.string(),
     total: z.number().nullable(),
     voidReason: z.string().nullable(),
+    voidedBy: z
+      .object({ userId: z.string(), name: z.string() })
+      .nullable()
+      .describe("The member of staff who set the attempt aside."),
     vivas: z.array(
       z.object({
         probeId: z.string(),
@@ -218,3 +222,137 @@ export const examParams = z.object({ examId: z.string().min(1) });
 export const attemptParams = z.object({ attemptId: z.string().min(1) });
 export const probeParams = z.object({ attemptId: z.string().min(1), probeId: z.string().min(1) });
 export const candidateProbeParams = z.object({ probeId: z.string().min(1) });
+
+// --- accounts and administration --------------------------------------------
+
+const staffRole = z.enum(["owner", "author", "invigilator", "reviewer", "viewer"]);
+const apiKeyRole = z.enum(["author", "invigilator", "reviewer", "viewer"]);
+
+export const staffUser = z.object({
+  id: z.string(),
+  email: z.string(),
+  name: z.string(),
+  role: staffRole,
+  disabled: z.boolean(),
+});
+
+export const loginBody = z.object({
+  email: z.string().min(3),
+  password: z.string().min(1),
+});
+
+export const loginResponse = z.object({
+  token: z.string().describe("A staff session token. Send as `Authorization: Bearer`; shown once."),
+  expiresAt: z.string(),
+  user: staffUser,
+});
+
+export const whoAmIResponse = z.object({
+  kind: z.enum(["user", "api_key"]),
+  id: z.string(),
+  name: z.string(),
+  email: z.string().nullable(),
+  role: staffRole,
+  organisation: z.object({ id: z.string(), name: z.string() }),
+  permissions: z.array(z.string()).readonly(),
+});
+
+export const changePasswordBody = z.object({
+  current: z.string().min(1),
+  next: z.string().min(1).describe("At least 12 characters. Every session, this one included, ends."),
+});
+
+export const staffListResponse = z.object({ users: z.array(staffUser).readonly() });
+
+export const createStaffBody = z.object({
+  email: z.string().email(),
+  name: z.string().min(1),
+  role: staffRole,
+  password: z.string().min(1).describe("An initial password for the person to change on first sign-in."),
+});
+
+export const staffParams = z.object({ userId: z.string().min(1) });
+
+export const updateStaffBody = z.object({ role: staffRole });
+
+export const apiKey = z.object({
+  id: z.string(),
+  name: z.string(),
+  role: apiKeyRole,
+  createdAt: z.string(),
+  lastUsedAt: z.string().nullable(),
+  revoked: z.boolean(),
+});
+
+export const apiKeyListResponse = z.object({ keys: z.array(apiKey).readonly() });
+
+export const createApiKeyBody = z.object({
+  name: z.string().min(1),
+  role: apiKeyRole.describe("An API key cannot be an owner, and cannot void an attempt whatever its role."),
+});
+
+export const createApiKeyResponse = z.object({
+  id: z.string(),
+  secret: z.string().describe("The key itself. Shown once and stored only as a digest."),
+});
+
+export const apiKeyParams = z.object({ keyId: z.string().min(1) });
+
+const routeUsage = z.object({
+  route: z.enum(["probe", "assess", "grade"]),
+  calls: z.number(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cacheReadTokens: z.number(),
+  cacheWrite5mTokens: z.number(),
+  cacheWrite1hTokens: z.number(),
+  costMicroUsd: z.number(),
+});
+
+export const usageQuery = z.object({
+  since: z.iso.datetime().optional().describe("Defaults to the start of this calendar month (UTC)."),
+});
+
+export const usageResponse = z
+  .object({
+    since: z.string(),
+    totalCostMicroUsd: z.number(),
+    routes: z.array(routeUsage).readonly(),
+    perAttempt: z.object({
+      attempts: z.number(),
+      p50MicroUsd: z.number().nullable(),
+      p90MicroUsd: z.number().nullable(),
+      maxMicroUsd: z.number().nullable(),
+    }),
+    inferenceGeos: z.array(z.object({ geo: z.string().nullable(), calls: z.number() })).readonly(),
+    monthStartedAt: z.string(),
+    spentThisMonthMicroUsd: z.number(),
+    monthlyCapMicroUsd: z.number().nullable(),
+  })
+  .describe("Model spend, in micro-dollars (1,000,000 = US$1). Per-attempt percentiles are what pricing is built on.");
+
+export const spendCapBody = z.object({
+  monthlyCapMicroUsd: z
+    .number()
+    .int()
+    .nonnegative()
+    .nullable()
+    .describe("A soft monthly ceiling on model spend, in micro-dollars. Null removes it."),
+});
+
+export const auditQuery = z.object({ limit: z.coerce.number().int().min(1).max(500).optional() });
+
+export const auditResponse = z.object({
+  entries: z
+    .array(
+      z.object({
+        at: z.string(),
+        actorKind: z.enum(["user", "api_key", "system"]),
+        actorId: z.string().nullable(),
+        action: z.string(),
+        target: z.string().nullable(),
+        detail: z.record(z.string(), z.unknown()),
+      }),
+    )
+    .readonly(),
+});

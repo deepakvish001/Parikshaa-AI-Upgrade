@@ -65,7 +65,7 @@ function describe(event: ExamEvent): string {
     case "attempt_graded":
       return `Graded: ${event.total}`;
     case "attempt_voided":
-      return `Voided — ${event.reason}`;
+      return `Voided${event.decidedBy === undefined ? "" : ` by ${event.decidedBy.name}`} — ${event.reason}`;
   }
 }
 

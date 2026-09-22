@@ -7,14 +7,24 @@ interface Props {
   readonly starting: boolean;
   readonly onStart: (candidateId: string) => void;
   readonly onReview: (attemptId: string) => void;
+  readonly canStart?: boolean;
+  readonly canReview?: boolean;
 }
 
-export function AttemptList({ attempts, issued, starting, onStart, onReview }: Props) {
+export function AttemptList({
+  attempts,
+  issued,
+  starting,
+  onStart,
+  onReview,
+  canStart = true,
+  canReview = true,
+}: Props) {
   const [candidateId, setCandidateId] = useState("");
 
   return (
     <>
-      <section className="card">
+      <section className="card" hidden={!canStart}>
         <div className="field">
           <label htmlFor="candidate">Start an attempt for a candidate</label>
           <div className="row" style={{ marginTop: 0 }}>
@@ -71,7 +81,12 @@ export function AttemptList({ attempts, issued, starting, onStart, onReview }: P
                   </td>
                   <td>{attempt.entries}</td>
                   <td>
-                    <button type="button" className="crumb" onClick={() => onReview(attempt.id)}>
+                    <button
+                      type="button"
+                      className="crumb"
+                      disabled={!canReview}
+                      onClick={() => onReview(attempt.id)}
+                    >
                       Review
                     </button>
                   </td>

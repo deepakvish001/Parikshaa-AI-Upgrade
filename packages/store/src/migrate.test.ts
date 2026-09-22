@@ -72,12 +72,23 @@ describe("migrate", () => {
   it("applies this repository's own migrations", async () => {
     const { applied } = await migrate(sql);
 
-    expect(applied).toEqual(["0001_init.sql", "0002_roles.sql"]);
+    expect(applied).toEqual(["0001_init.sql", "0002_roles.sql", "0003_tenancy.sql"]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
     );
     expect(tables.map((t) => t.tablename)).toEqual(
-      expect.arrayContaining(["attempts", "exam_ledger", "exams", "schema_migrations"]),
+      expect.arrayContaining([
+        "api_keys",
+        "attempts",
+        "audit_log",
+        "exam_ledger",
+        "exams",
+        "model_usage",
+        "organisations",
+        "schema_migrations",
+        "staff_sessions",
+        "staff_users",
+      ]),
     );
   });
 });

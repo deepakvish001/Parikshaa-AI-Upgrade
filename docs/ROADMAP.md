@@ -46,6 +46,19 @@ Then the levers, in the order they pay:
 **Exit criterion:** a measured cost per attempt, and a per-organisation spend
 cap that cannot be exceeded.
 
+**Status — instrumentation built, measurement not yet run.** Every model call
+now reports its tokens (input, output, cache read, cache write by TTL), speed
+and inference region, priced in integer micro-dollars and stored against its
+attempt. `GET /usage` reports spend by route, per-attempt p50/p90/max and
+inference region; the console shows it under *Spend*. A per-organisation
+monthly cap stops probes quietly and refuses grading with 402 once reached. It
+is a soft ceiling — calls already in flight complete — which is the honest
+version of "cannot be exceeded" without serialising every call.
+
+What remains is the 50-attempt run itself. It spends real API budget, so it is
+run deliberately by the account holder, not by CI; the levers above follow
+from what it shows.
+
 ## 1. Multi-tenancy and identity
 
 The system today holds **one** staff token for the whole deployment and has no
@@ -63,6 +76,20 @@ largest single piece of work on the list and everything else depends on it.
   record *who* set an attempt aside — SPEC §9 refuses to write that today
   precisely because a shared token makes any name an unverified claim.
 - A migration from the single-token deployment, since one exists.
+
+**Status — built:** organisations with `org_id` on every tenant table and
+row-level security behind every query; password accounts (argon2id), 12-hour
+sessions, a login throttle; the five roles, with an invigilator unable to see
+answer keys or evidence; revocable API keys that can never be owners or set an
+attempt aside; an append-only audit log; `decidedBy` on every void. Existing
+data migrates into a `default` organisation, and `npm run admin -w
+@parikshaa/api` creates an organisation's first owner. Candidate tokens now
+carry their organisation; tokens issued before this change stop working, which
+at a three-hour lifetime means at most one sitting in progress during the
+upgrade.
+
+**Still to do in §1:** OIDC, password reset (needs outbound email), and 2FA for
+owners.
 
 ## 2. Nothing a candidate does is ever lost
 

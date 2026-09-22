@@ -5,17 +5,21 @@ interface Props {
   readonly onOpen: (examId: string) => void;
   readonly onEdit: (examId: string) => void;
   readonly onNew: () => void;
+  /** Whether this account may author exams; the server refuses it either way. */
+  readonly canWrite?: boolean;
 }
 
-export function ExamList({ exams, onOpen, onEdit, onNew }: Props) {
+export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true }: Props) {
   return (
     <section className="card">
       <div className="bar">
         <strong>Exams</strong>
         <span className="spacer" />
-        <button type="button" onClick={onNew}>
-          New exam
-        </button>
+        {canWrite ? (
+          <button type="button" onClick={onNew}>
+            New exam
+          </button>
+        ) : null}
       </div>
 
       {exams.length === 0 ? (
@@ -39,9 +43,11 @@ export function ExamList({ exams, onOpen, onEdit, onNew }: Props) {
                 </td>
                 <td>{exam.questionCount}</td>
                 <td>
-                  <button type="button" className="quiet" onClick={() => onEdit(exam.id)}>
-                    Edit
-                  </button>
+                  {canWrite ? (
+                    <button type="button" className="quiet" onClick={() => onEdit(exam.id)}>
+                      Edit
+                    </button>
+                  ) : null}
                 </td>
               </tr>
             ))}
