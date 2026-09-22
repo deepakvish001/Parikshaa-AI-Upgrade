@@ -318,6 +318,122 @@ describe("attempt lifecycle", () => {
   });
 });
 
+describe("setting an attempt aside", () => {
+  const voidIt = (reason: string) =>
+    app.inject({
+      method: "POST",
+      url: `/attempts/${attemptId}/void`,
+      headers: asStaff(),
+      payload: { reason },
+    });
+
+  const review = () =>
+    app.inject({ method: "GET", url: `/attempts/${attemptId}/review`, headers: asStaff() });
+
+  it("records the reason and closes the attempt", async () => {
+    const res = await voidIt("Reviewed after the follow-up; attempt set aside.");
+
+    expect(res.statusCode).toBe(200);
+    expect((await review()).json()).toMatchObject({
+      state: "void",
+      voidReason: "Reviewed after the follow-up; attempt set aside.",
+    });
+  });
+
+  it("refuses a reason that says nothing", async () => {
+    // What lands here is written into a tamper-evident record, shown to the
+    // candidate, and argued against on appeal. "x" is not a decision.
+    for (const reason of ["", "   ", "x", "bad"]) {
+      const res = await voidIt(reason);
+      expect([422, 400]).toContain(res.statusCode);
+    }
+    expect((await review()).json().state).not.toBe("void");
+  });
+
+  it("can set aside an attempt that was already graded", async () => {
+    await answer(Q_MCQ, "1");
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
+
+    // The usual case: someone reads the evidence after grading and decides.
+    expect((await voidIt("Provenance could not be established on review.")).statusCode).toBe(200);
+
+    const body = (await review()).json();
+    expect(body.state).toBe("void");
+    // Voiding does not erase what was recorded before it.
+    expect(body.total).toBe(4);
+  });
+
+  it("refuses to void an attempt twice", async () => {
+    await voidIt("Set aside after review of the exchange.");
+
+    const again = await voidIt("Set aside again for some reason.");
+
+    expect(again.statusCode).toBe(409);
+  });
+
+  it("needs the staff token", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/attempts/${attemptId}/void`,
+      headers: asCandidate(),
+      payload: { reason: "Trying to void my own attempt." },
+    });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("tells the candidate why, rather than only that", async () => {
+    await voidIt("Could not establish that this work was your own.");
+
+    const state = (await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() })).json();
+
+    // SPEC §6.2: being set aside without being told why is the thing this
+    // design objects to.
+    expect(state.state).toBe("void");
+    expect(state.voidReason).toBe("Could not establish that this work was your own.");
+  });
+
+  it("is never reached by the system on its own", async () => {
+    await answer(Q_MCQ, "1");
+    const raised = await app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });
+    const probeId = JSON.parse(
+      raised.payload.split("event: probe\ndata: ")[1]?.split("\n")[0] ?? "{}",
+    ).id as string;
+    await app.inject({
+      method: "POST",
+      url: `/attempts/me/probes/${probeId}/reply`,
+      headers: asCandidate(),
+      payload: { reply: "no idea at all" },
+    });
+
+    // The worst verdict the assessor can return, at full confidence.
+    verdict = { verdict: "inconsistent" as never, confidence: 1, reasoning: "Contradicts their answer." };
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/assess/${probeId}`, headers: asStaff() });
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
+
+    // No verdict, however damning, sets an attempt aside. A person does that.
+    const body = (await review()).json();
+    expect(body.state).toBe("graded");
+    expect(body.voidReason).toBeNull();
+  });
+
+  it("leaves a chain that still verifies", async () => {
+    await answer(Q_MCQ, "1");
+    await voidIt("Set aside following review of the follow-up exchange.");
+
+    const parsed = parseReceipt(
+      JSON.parse((await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() })).payload),
+    );
+    if ("error" in parsed) throw new Error(parsed.error);
+    const report = verifyReceipt(parsed as Receipt);
+
+    expect(report.ok).toBe(true);
+    if (report.ok) expect(report.timeline.at(-1)?.what).toMatch(/^Voided — Set aside following/);
+  });
+});
+
 describe("the exam window", () => {
   const probe = () =>
     app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });

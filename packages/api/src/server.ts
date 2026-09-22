@@ -25,6 +25,7 @@ export interface ServerOptions {
 const startBody = z.object({ candidateId: z.string().min(1) });
 const answerBody = z.object({ questionId: z.string().min(1), answer: z.string() });
 const replyBody = z.object({ reply: z.string().min(1) });
+const voidBody = z.object({ reason: z.string().min(1) });
 
 /**
  * Attempt-scoped routes address the attempt as `me`.
@@ -73,7 +74,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (error instanceof AttemptError) {
       // 410 for an expired attempt: the window is gone, not merely a bad
       // request against the current state.
-      const status = error.code === "not_found" ? 404 : error.code === "expired" ? 410 : 409;
+      const status =
+        error.code === "not_found"
+          ? 404
+          : error.code === "expired"
+            ? 410
+            : error.code === "reason_required"
+              ? 422
+              : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
     }
     if (error instanceof ExamInvalidError) {
@@ -149,6 +157,22 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   });
 
   /**
+   * Set an attempt aside.
+   *
+   * Separate from grading and from assessment, because it is a different kind
+   * of act: a person's decision, recorded with their reason. Nothing in the
+   * system calls this on its own.
+   */
+  app.post("/attempts/:attemptId/void", async (request, reply) => {
+    if (!(await requireStaff(request, reply))) return;
+    const { attemptId: raw } = request.params as { attemptId: string };
+    const body = voidBody.parse(request.body);
+
+    await service.voidAttempt(attemptId(raw), body.reason);
+    return reply.send({ ok: true });
+  });
+
+  /**
    * The provenance evidence, for a human to act on. Verdicts are reported
    * beside the grade, never folded into it (SPEC §6.1).
    */
@@ -159,6 +183,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     return reply.send({
       state: projection.attempt.state,
       total: projection.total,
+      voidReason: projection.voidReason,
       vivas: projection.vivas.map((v) => ({
         probeId: v.probe.id,
         questionId: v.probe.questionId,

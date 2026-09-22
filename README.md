@@ -49,6 +49,7 @@ POST /attempts/me/submit
 GET  /attempts/me/ledger         head hash during the attempt, full chain once closed
 POST /attempts/:id/assess/:probeId   institution records a verdict
 POST /attempts/:id/grade         institution grades
+POST /attempts/:id/void          a person sets the attempt aside, with a recorded reason
 GET  /attempts/:id/review        verdicts reported beside the grade, never folded into it
 ```
 
@@ -59,13 +60,17 @@ The candidate sees a follow-up question, not an accusation: no warning colour, n
 countdown, and no mention of integrity or verification anywhere in the interface.
 See SPEC §8 for why that is a correctness requirement and not a courtesy.
 
+Nothing in the system sets an attempt aside on its own — no verdict, no
+confidence score, no combination of them. A person does that, in two steps, with
+a written reason that is recorded and shown to the candidate.
+
 ## Development
 
 Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 160 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 174 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients

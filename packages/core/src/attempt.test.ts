@@ -204,6 +204,33 @@ describe("foldAttempt", () => {
     expect(foldAttempt(afterGrading)).toEqual({ ok: false, seq: 3, reason: "closed" });
   });
 
+  it("allows a void after grading, which is when it is usually decided", () => {
+    const graded = chain(
+      started,
+      answered(),
+      submitted,
+      { type: "attempt_graded", attemptId: A, total: 5 },
+      { type: "attempt_voided", attemptId: A, reason: "Reviewed after a follow-up; attempt set aside." },
+    );
+
+    const { attempt, voidReason, total } = project(graded);
+
+    expect(attempt.state).toBe("void");
+    expect(voidReason).toMatch(/set aside/);
+    // The grade it had is still in the record; voiding does not erase it.
+    expect(total).toBe(5);
+  });
+
+  it("allows nothing at all after a void", () => {
+    const afterVoid = chain(
+      started,
+      { type: "attempt_voided", attemptId: A, reason: "Withdrawn." },
+      { type: "attempt_voided", attemptId: A, reason: "Again." },
+    );
+
+    expect(foldAttempt(afterVoid)).toEqual({ ok: false, seq: 2, reason: "closed" });
+  });
+
   it("records a void with its reason and closes the attempt", () => {
     const entries = chain(started, answered(), {
       type: "attempt_voided",

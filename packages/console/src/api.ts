@@ -28,6 +28,7 @@ export interface VivaReview {
 export interface AttemptReview {
   readonly state: string;
   readonly total: number | null;
+  readonly voidReason: string | null;
   readonly vivas: readonly VivaReview[];
 }
 
@@ -96,6 +97,13 @@ export class ConsoleClient {
 
   review(attemptId: string): Promise<AttemptReview> {
     return this.#request<AttemptReview>(`/attempts/${encodeURIComponent(attemptId)}/review`);
+  }
+
+  voidAttempt(attemptId: string, reason: string): Promise<unknown> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/void`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
   }
 
   grade(attemptId: string): Promise<{ total: number }> {

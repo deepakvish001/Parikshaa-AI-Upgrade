@@ -104,7 +104,7 @@ function Attempt({ client }: { client: ParikshaaClient }) {
     );
   }
 
-  const { exam, answers, state: attemptState, expiresAt } = state.data;
+  const { exam, answers, state: attemptState, expiresAt, voidReason } = state.data;
   const answered = new Map(answers.map((a) => [a.questionId, a.answer]));
   const open = attemptState === "in_progress";
 
@@ -123,6 +123,22 @@ function Attempt({ client }: { client: ParikshaaClient }) {
           )}
         </p>
       </header>
+
+      {attemptState === "void" ? (
+        /*
+         * SPEC §6.2: being set aside without being told why is the situation
+         * this design objects to. The reason a person recorded is shown as they
+         * wrote it, not summarized and not softened.
+         */
+        <section className="card" aria-label="This attempt was set aside">
+          <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>This attempt was set aside</h2>
+          <p style={{ margin: 0 }}>{voidReason}</p>
+          <p className="notice" style={{ marginTop: ".75rem" }}>
+            Your record below is unchanged and still checks out. If you disagree with
+            this, it is what you take to your institution.
+          </p>
+        </section>
+      ) : null}
 
       {probe !== null && open ? (
         <ProbePanel

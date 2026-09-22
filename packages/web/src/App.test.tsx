@@ -25,6 +25,7 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
     state: "in_progress" as string,
     startedAt: 1,
     expiresAt: Date.now() + 45 * 60_000,
+    voidReason: null as string | null,
     answers: [] as { questionId: string; answer: string; submittedAt: number }[],
     openProbe: null as { id: string; prompt: string } | null,
     answeredProbeCount: 0,
@@ -114,6 +115,7 @@ describe("App", () => {
       state: "in_progress",
       startedAt: 1,
       expiresAt: Date.now() + 45 * 60_000,
+    voidReason: null as string | null,
       answers: [],
       openProbe: { id: "p1", prompt: "What stops it going below zero?" },
       answeredProbeCount: 0,
@@ -139,6 +141,7 @@ describe("App", () => {
       state: "in_progress",
       startedAt: 1,
       expiresAt: Date.now() + 45 * 60_000,
+    voidReason: null as string | null,
       answers: [],
       openProbe: { id: "p9", prompt: "Reopened probe." },
       answeredProbeCount: 0,
@@ -167,6 +170,7 @@ describe("App", () => {
       state: "submitted",
       startedAt: 1,
       expiresAt: Date.now() + 45 * 60_000,
+    voidReason: null as string | null,
       answers: [{ questionId: "q-mcq", answer: "1", submittedAt: 1 }],
       openProbe: null,
       answeredProbeCount: 0,
@@ -178,6 +182,29 @@ describe("App", () => {
     expect(screen.getByRole("button", { name: "Download receipt" })).toBeInTheDocument();
     // Answers are locked once submitted.
     expect(screen.queryByRole("button", { name: "Save answer" })).not.toBeInTheDocument();
+  });
+
+  it("tells a candidate why their attempt was set aside, not only that it was", async () => {
+    const { client } = stubClient();
+    client.state = vi.fn(async () => ({
+      attemptId: "attempt-1",
+      exam,
+      state: "void",
+      startedAt: 1,
+      expiresAt: Date.now() + 45 * 60_000,
+      voidReason: "Could not establish that this work was your own.",
+      answers: [{ questionId: "q-mcq", answer: "1", submittedAt: 1 }],
+      openProbe: null,
+      answeredProbeCount: 0,
+    })) as never;
+
+    renderApp(<App client={client} />);
+
+    const notice = await screen.findByRole("region", { name: "This attempt was set aside" });
+    expect(notice).toHaveTextContent("Could not establish that this work was your own.");
+    // And their record is still theirs to check.
+    expect(notice).toHaveTextContent(/still checks out/i);
+    expect(await screen.findByTestId("head-hash")).toBeInTheDocument();
   });
 
   it("explains itself when the access code is rejected", async () => {

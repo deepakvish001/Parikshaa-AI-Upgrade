@@ -42,7 +42,8 @@ export class AttemptError extends Error {
       | "unknown_question"
       | "unknown_probe"
       | "already_replied"
-      | "expired",
+      | "expired"
+      | "reason_required",
     message: string,
   ) {
     super(message);
@@ -102,6 +103,9 @@ export class ExamService {
         submittedAt: r.submittedAt,
       })),
       expiresAt: deadlineOf(projection, exam),
+      // A candidate set aside without being told why is the situation SPEC §6.2
+      // objects to, so the reason travels with the state.
+      voidReason: projection.voidReason,
       openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
       answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
     };
@@ -396,6 +400,41 @@ export class ExamService {
     return { question, response, score };
   }
 
+  /**
+   * Set an attempt aside, with a reason.
+   *
+   * This is the act SPEC §6.1 reserves for a person. Nothing in the system
+   * reaches it on its own: no verdict, no confidence score and no combination
+   * of them produces a void. Someone reads the evidence and decides, and what
+   * lands in the ledger is their reason, not a model's.
+   *
+   * A reason is required and must say something. It is written into a
+   * tamper-evident record, it is shown to the candidate, and it is what an
+   * appeal will be argued against — "x" is not a decision anyone can defend.
+   *
+   * What is *not* recorded is who decided. Staff authenticate with a shared
+   * institution token, so any name attached here would be an unverified claim,
+   * and writing unverified claims into a record whose value is that it can be
+   * trusted would undermine the record itself. Attribution needs the identity
+   * integration SPEC §2 keeps out of scope.
+   */
+  async voidAttempt(id: AttemptId, reason: string): Promise<void> {
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_VOID_REASON) {
+      throw new AttemptError(
+        "reason_required",
+        `Voiding an attempt needs a reason of at least ${MIN_VOID_REASON} characters; it is recorded and shown to the candidate`,
+      );
+    }
+
+    const projection = await this.projection(id);
+    if (projection.attempt.state === "void") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is already void`);
+    }
+
+    await this.#store.append(id, { type: "attempt_voided", attemptId: id, reason: trimmed });
+  }
+
   // --- grading ------------------------------------------------------------
 
   /**
@@ -448,6 +487,7 @@ export interface CandidateState {
   readonly attemptId: AttemptId;
   readonly exam: CandidateExam;
   readonly state: AttemptProjection["attempt"]["state"];
+  readonly voidReason: string | null;
   readonly startedAt: Timestamp;
   /** When this attempt's window closes. Exam time, not a probe timer (SPEC §8). */
   readonly expiresAt: Timestamp;
@@ -464,6 +504,9 @@ export interface CandidateLedger {
   readonly sealed: boolean;
   readonly entries: readonly LedgerEntry[] | null;
 }
+
+/** Shortest reason that can stand as a decision on the record. */
+export const MIN_VOID_REASON = 10;
 
 /** When an attempt's window closes, from its own start and its exam's policy. */
 export function deadlineOf(projection: AttemptProjection, exam: Exam): Timestamp {
