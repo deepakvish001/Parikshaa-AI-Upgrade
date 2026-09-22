@@ -64,6 +64,7 @@ function fakeClient(options: {
             async finalMessage() {
               return {
                 content: [{ type: "text", text }],
+                usage: { input_tokens: 120, output_tokens: 40, cache_read_input_tokens: 800, speed: "fast" },
                 stop_reason: options.stopReason ?? "end_turn",
                 stop_details: options.stopReason === "refusal" ? { category: "cyber" } : null,
               };
@@ -76,6 +77,7 @@ function fakeClient(options: {
       async parse(params: Record<string, unknown>) {
         calls.push(params);
         return {
+          usage: { input_tokens: 300, output_tokens: 90 },
           stop_reason: options.stopReason ?? "end_turn",
           stop_details: options.stopReason === "refusal" ? { category: "cyber" } : null,
           parsed_output: options.parsed ?? null,
@@ -256,5 +258,35 @@ describe("gradeWithRubric", () => {
 
     const unparsed = fakeClient({ parsed: null });
     await expect(gradeWithRubric(target, { client: unparsed.client })).rejects.toThrow(/no usable score/);
+  });
+});
+
+describe("usage reporting", () => {
+  it("reports what each route cost", async () => {
+    const seen: { route: string; cost: number }[] = [];
+    const onUsage = (u: { route: string; costMicroUsd: number }) => void seen.push({ route: u.route, cost: u.costMicroUsd });
+
+    const probeClient = fakeClient({});
+    await generateProbe(target, { client: probeClient.client, onUsage });
+    const assessClient = fakeClient({ parsed: { verdict: "consistent", confidence: 0.8, reasoning: "ok" } });
+    await assessReply(target, probe, exchange, { client: assessClient.client, onUsage });
+    const gradeClient = fakeClient({ parsed: { score: 5, criteriaMet: [], reasoning: "ok" } });
+    await gradeWithRubric(target, { client: gradeClient.client, onUsage });
+
+    expect(seen.map((s) => s.route)).toEqual(["probe", "assess", "grade"]);
+    // Fast-mode probe: 120 in at 10, 40 out at 50, 800 cached at a tenth of 10.
+    expect(seen[0]?.cost).toBe(120 * 10 + 40 * 50 + 800);
+    expect(seen[1]?.cost).toBe(300 * 5 + 90 * 25);
+  });
+
+  it("reports a refused call, which is billed all the same", async () => {
+    const seen: string[] = [];
+    const { client } = fakeClient({ stopReason: "refusal" });
+
+    await expect(
+      generateProbe(target, { client, onUsage: (u) => void seen.push(u.route) }),
+    ).rejects.toBeInstanceOf(RefusedError);
+
+    expect(seen).toEqual(["probe"]);
   });
 });

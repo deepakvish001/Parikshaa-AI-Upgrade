@@ -36,6 +36,7 @@ packages/verify/  offline receipt verification — no server, no database, no ne
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
 docs/openapi.json the HTTP contract, generated from the route schemas
+docs/ROADMAP.md   what stands between the engine and a sellable product
 ```
 
 ## How an attempt runs
@@ -72,7 +73,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 193 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 248 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -91,23 +92,35 @@ With Docker — one image serves the API and both clients:
 ```bash
 export POSTGRES_PASSWORD=... ANTHROPIC_API_KEY=... \
        ATTEMPT_TOKEN_SECRET=...   # at least 32 characters
-export STAFF_TOKEN=...
+export PARIKSHAA_APP_PASSWORD=... # the API's database role; RLS binds it
 docker compose up --build
+
+# Once, per organisation: its first owner. Everyone after is added from the console.
+docker compose run --rm -e PARIKSHAA_OWNER_PASSWORD=... \
+  -e DATABASE_URL=postgres://parikshaa_owner:$POSTGRES_PASSWORD@db:5432/parikshaa \
+  api node packages/api/dist/admin-cli.js \
+  --org acme --org-name "Acme Engineering" --email hr@acme.in --name "Asha Rao"
 ```
 
-The candidate interface is then at `/` and the console at `/console`.
+The candidate interface is then at `/` and the console at `/console`, where
+staff sign in with their own accounts.
 
 Without Docker:
 
 ```bash
 export DATABASE_URL=...            # Postgres 16+
 export ANTHROPIC_API_KEY=...       # or an `ant auth login` profile
-export ATTEMPT_TOKEN_SECRET=... STAFF_TOKEN=...
+export ATTEMPT_TOKEN_SECRET=...
 
 npm run build && npm run build:clients
-npm run migrate
-npm start
+npm run migrate                    # as the schema owner
+PARIKSHAA_OWNER_PASSWORD=... npm run admin -w @parikshaa/api -- \
+  --org acme --org-name "Acme Engineering" --email hr@acme.in --name "Asha Rao"
+npm start                          # with DATABASE_URL as parikshaa_app
 ```
+
+Behind a load balancer or reverse proxy, set `TRUST_PROXY=true` so the login
+throttle sees each client's own address rather than the proxy's.
 
 Migrations are a separate step and never run on boot: several instances
 starting at once would race, and a schema change should be deliberate.
@@ -146,6 +159,10 @@ Complete, tested end to end, and deployable: an institution can author an exam,
 issue access codes and review; a candidate can sit it, answer a micro-viva and
 leave with a verifiable receipt; and the resulting chain verifies.
 
-Not built: identity and enrolment integration, which SPEC §2 keeps out of scope
-— an institution issues access codes from the console and already knows who its
-candidates are. See `docs/SPEC.md` §7 for component status.
+Many institutions can share one deployment: each is an organisation, isolated
+by row-level security as well as by every query, with its own staff accounts,
+roles, API keys, audit log and model-spend cap.
+
+Candidates still have no accounts — an institution issues access codes and
+already knows who its candidates are. See `docs/SPEC.md` §7 for component
+status and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes before selling it.

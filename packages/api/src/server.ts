@@ -10,15 +10,23 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
+import { ExamFrozen, type IdentityStore } from "@parikshaa/store";
+import { registerAccountRoutes } from "./account-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import * as S from "./schemas.js";
-import { AttemptError, ExamInvalidError, ExamService } from "./service.js";
+import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
+import { LoginThrottle, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
 
 export interface ServerOptions {
   readonly service: ExamService;
   readonly tokens: AttemptTokens;
-  /** Bearer token for institution-side routes (exam authoring, grading, review). */
-  readonly staffToken: string;
+  /** Resolves staff sessions and API keys into actors. */
+  readonly auth: StaffAuth;
+  /** Staff accounts and API keys, for the account-management routes. */
+  readonly identity: IdentityStore;
+  readonly loginThrottle?: LoginThrottle;
+  /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
+  readonly trustProxy?: boolean;
   /** Lifetime of an issued attempt token. Defaults to three hours. */
   readonly attemptTtlSeconds?: number;
   /**
@@ -35,9 +43,11 @@ const INSTITUTION = ["Institution"];
 const CANDIDATE = ["Candidate"];
 
 /** Every route answers with this shape when it refuses. */
-const errors = {
+export const errors = {
   400: S.errorResponse,
   401: S.errorResponse,
+  402: S.errorResponse,
+  403: S.errorResponse,
   404: S.errorResponse,
   409: S.errorResponse,
   410: S.errorResponse,
@@ -56,8 +66,24 @@ const errors = {
  * that `candidateView` closes in the type system.
  */
 export function buildServer(options: ServerOptions): FastifyInstance {
-  const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
-  const { service, tokens, staffToken } = options;
+  const app = Fastify({
+    logger: false,
+    // Both clients call the API under `/api`, which the Vite dev servers strip
+    // before proxying. Served from this process there is no proxy, so the
+    // prefix is stripped here instead; without it every client request in a
+    // single-process deployment would miss its route.
+    rewriteUrl: (request) => {
+      const url = request.url ?? "/";
+      if (url.startsWith("/api/")) return url.slice(4);
+      if (url === "/api" || url.startsWith("/api?")) return `/${url.slice(4)}`;
+      return url;
+    },
+    // Behind a load balancer every request arrives from the balancer's address.
+    // The login throttle keys on the client address, so without this it would
+    // key every client together — and anyone could lock any account out.
+    trustProxy: options.trustProxy ?? false,
+  }).withTypeProvider<ZodTypeProvider>();
+  const { service, tokens, auth } = options;
   const ttl = options.attemptTtlSeconds ?? 3 * 60 * 60;
 
   app.setValidatorCompiler(validatorCompiler);
@@ -70,15 +96,20 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         title: "Parikshaa",
         version: "0.0.0",
         description:
-          "Assessment with a tamper-evident ledger and a micro-viva engine. Institution routes use a shared staff bearer token; candidate routes use a short-lived token scoped to one attempt, which is why they address it as `me`.",
+          "Assessment with a tamper-evident ledger and a micro-viva engine. Institution routes take a staff session token (from `POST /auth/login`) or an API key, and act within that account's organisation; candidate routes use a short-lived token scoped to one attempt, which is why they address it as `me`.",
       },
       tags: [
         { name: "Institution", description: "Authoring exams, issuing access codes, grading and review." },
         { name: "Candidate", description: "Sitting one attempt. Scoped entirely by the bearer token." },
+        { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
       ],
       components: {
         securitySchemes: {
-          staffToken: { type: "http", scheme: "bearer", description: "The institution's shared token." },
+          staffAuth: {
+            type: "http",
+            scheme: "bearer",
+            description: "A staff session token (`pks_…`) or an API key (`pkk_…`).",
+          },
           attemptToken: { type: "http", scheme: "bearer", description: "A candidate's attempt-scoped token." },
         },
       },
@@ -92,12 +123,29 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     return header.slice("Bearer ".length);
   };
 
-  const requireStaff = async (request: FastifyRequest, reply: FastifyReply): Promise<boolean> => {
-    if (bearer(request) !== staffToken) {
-      await reply.code(401).send({ error: "staff_token_required" });
-      return false;
+  /**
+   * The staff actor behind a request, if it may do `permission`.
+   *
+   * 401 when nobody is signed in, 403 when someone is but their role does not
+   * allow this. The service checks the permission again; this check is what
+   * lets the route answer before doing any work.
+   */
+  const staff = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    permission: Permission | null,
+  ): Promise<Actor | null> => {
+    const token = bearer(request);
+    const actor = token === null ? null : await auth.resolve(token);
+    if (actor === null) {
+      await reply.code(401).send({ error: "staff_auth_required" });
+      return null;
     }
-    return true;
+    if (permission !== null && !can(actor, permission)) {
+      await reply.code(403).send({ error: "forbidden", message: `This account does not have ${permission}` });
+      return null;
+    }
+    return actor;
   };
 
   const requireAttempt = async (
@@ -131,6 +179,18 @@ export function buildServer(options: ServerOptions): FastifyInstance {
               : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
     }
+    if (error instanceof Forbidden) {
+      return reply.code(403).send({ error: "forbidden", message: error.message });
+    }
+    if (error instanceof SpendCapReached) {
+      return reply.code(402).send({ error: "spend_cap_reached", message: error.message });
+    }
+    if (error instanceof ExamFrozen) {
+      return reply.code(409).send({ error: "exam_frozen", message: error.message });
+    }
+    if (error instanceof WeakPassword) {
+      return reply.code(422).send({ error: "weak_password", message: error.message });
+    }
     if (error instanceof ExamInvalidError) {
       return reply.code(422).send({ error: "invalid_exam", problems: error.problems });
     }
@@ -142,6 +202,16 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       // the schema is what keeps a candidate's payload free of an answer key —
       // so it fails loudly rather than shipping an unchecked body.
       return reply.code(500).send({ error: "invalid_response", message: error.message });
+    }
+    // Fastify's own refusals — malformed JSON, an empty body sent as JSON, an
+    // unsupported media type — carry a 4xx status. They are the client's
+    // mistake and are reported as such, not as a fault in this service.
+    const status = (error as { statusCode?: unknown }).statusCode;
+    if (typeof status === "number" && status >= 400 && status < 500) {
+      const code = (error as { code?: unknown }).code;
+      return reply
+        .code(status)
+        .send({ error: typeof code === "string" ? code : "bad_request", message: (error as Error).message });
     }
     return reply.code(500).send({ error: "internal_error" });
   });
@@ -181,15 +251,16 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: INSTITUTION,
           summary: "Create or replace an exam",
           description: "Rejected with 422 and every problem at once if the exam is misconfigured.",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           body: S.examSchema,
           response: { 201: S.examSchema.pick({ id: true }), 422: S.examProblems, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
         const exam = request.body as unknown as Exam;
-        await service.createExam(exam);
+        await service.createExam(actor, exam);
         return reply.code(201).send({ id: exam.id });
       },
     );
@@ -200,13 +271,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         schema: {
           tags: INSTITUTION,
           summary: "List exams",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           response: { 200: S.examListResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
-        return reply.send({ exams: await service.listExams() });
+        const actor = await staff(request, reply, "exam:read");
+        if (actor === null) return;
+        return reply.send({ exams: await service.listExams(actor) });
       },
     );
 
@@ -217,14 +289,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: INSTITUTION,
           summary: "Fetch an exam in full",
           description: "Includes the answer key, which is why it is staff-only. Candidates get `GET /attempts/me`.",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           params: S.examParams,
           response: { 200: S.examSchema, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
-        return reply.send(await service.loadExam(examId(request.params.examId)));
+        const actor = await staff(request, reply, "exam:read_key");
+        if (actor === null) return;
+        return reply.send(await service.loadExam(actor, examId(request.params.examId)));
       },
     );
 
@@ -234,14 +307,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         schema: {
           tags: INSTITUTION,
           summary: "List attempts at an exam",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           params: S.examParams,
           response: { 200: S.attemptListResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
-        return reply.send({ attempts: await service.listAttempts(examId(request.params.examId)) });
+        const actor = await staff(request, reply, "attempt:read");
+        if (actor === null) return;
+        return reply.send({ attempts: await service.listAttempts(actor, examId(request.params.examId)) });
       },
     );
 
@@ -251,19 +325,23 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         schema: {
           tags: INSTITUTION,
           summary: "Start an attempt and issue its access code",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           params: S.examParams,
           body: S.startAttemptBody,
           response: { 201: S.startAttemptResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
+        const actor = await staff(request, reply, "attempt:start");
+        if (actor === null) return;
         const exam = examId(request.params.examId);
         const candidate = candidateId(request.body.candidateId);
 
-        const id = await service.startAttempt(exam, candidate);
-        const token = await tokens.issue({ attemptId: id, examId: exam, candidateId: candidate }, ttl);
+        const id = await service.startAttempt(actor, exam, candidate);
+        const token = await tokens.issue(
+          { orgId: actor.orgId, attemptId: id, examId: exam, candidateId: candidate },
+          ttl,
+        );
         return reply.code(201).send({ attemptId: id, token, expiresInSeconds: ttl });
       },
     );
@@ -275,14 +353,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: INSTITUTION,
           summary: "Grade a submitted attempt",
           description: "Consults scores only. A viva verdict never moves a grade.",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           params: S.attemptParams,
           response: { 200: S.gradeResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
-        return reply.send({ total: await service.grade(attemptId(request.params.attemptId)) });
+        const actor = await staff(request, reply, "attempt:grade");
+        if (actor === null) return;
+        return reply.send({ total: await service.grade(actor, attemptId(request.params.attemptId)) });
       },
     );
 
@@ -293,15 +372,16 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: INSTITUTION,
           summary: "Record a reading of one micro-viva exchange",
           description: "Evidence about provenance. Separate from grading, and it feeds nothing back into a score.",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           params: S.probeParams,
           response: { 200: S.assessmentResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
+        const actor = await staff(request, reply, "attempt:assess");
+        if (actor === null) return;
         const { attemptId: raw, probeId } = request.params;
-        return reply.send(await service.assess(attemptId(raw), vivaId(probeId)));
+        return reply.send(await service.assess(actor, attemptId(raw), vivaId(probeId)));
       },
     );
 
@@ -312,16 +392,17 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: INSTITUTION,
           summary: "Set an attempt aside, with a recorded reason",
           description:
-            "A person's decision. Nothing in the system reaches this on its own — no verdict, no confidence, no combination of them. The reason is written into the ledger and shown to the candidate.",
-          security: [{ staffToken: [] }],
+            "A person's decision, so a signed-in user's and never an API key's. Nothing in the system reaches this on its own — no verdict, no confidence, no combination of them. The reason and who decided are written into the ledger and shown to the candidate.",
+          security: [{ staffAuth: [] }],
           params: S.attemptParams,
           body: S.voidBody,
           response: { 200: S.okResponse, 422: S.errorResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
-        await service.voidAttempt(attemptId(request.params.attemptId), request.body.reason);
+        const actor = await staff(request, reply, "attempt:void");
+        if (actor === null) return;
+        await service.voidAttempt(actor, attemptId(request.params.attemptId), request.body.reason);
         return reply.send({ ok: true });
       },
     );
@@ -333,18 +414,20 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: INSTITUTION,
           summary: "The grade and, separately, the provenance evidence",
           description: "Verdicts are reported beside the grade, never folded into it.",
-          security: [{ staffToken: [] }],
+          security: [{ staffAuth: [] }],
           params: S.attemptParams,
           response: { 200: S.reviewResponse, ...errors },
         },
       },
       async (request, reply) => {
-        if (!(await requireStaff(request, reply))) return;
-        const projection = await service.projection(attemptId(request.params.attemptId));
+        const actor = await staff(request, reply, "attempt:review");
+        if (actor === null) return;
+        const projection = await service.projection(actor, attemptId(request.params.attemptId));
         return reply.send({
           state: projection.attempt.state,
           total: projection.total,
           voidReason: projection.voidReason,
+          voidedBy: projection.voidedBy,
           vivas: projection.vivas.map((v) => ({
             probeId: v.probe.id,
             questionId: v.probe.questionId,
@@ -375,7 +458,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
-        return reply.send(await service.candidateState(claims.attemptId));
+        return reply.send(await service.candidateState(claims));
       },
     );
 
@@ -393,7 +476,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
-        await service.submitAnswer(claims.attemptId, questionId(request.body.questionId), request.body.answer);
+        await service.submitAnswer(claims, questionId(request.body.questionId), request.body.answer);
         return reply.code(202).send({ ok: true });
       },
     );
@@ -411,7 +494,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
-        await service.submitAttempt(claims.attemptId);
+        await service.submitAttempt(claims);
         return reply.send({ ok: true });
       },
     );
@@ -453,7 +536,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         };
 
         try {
-          const probe = await service.raiseProbe(claims.attemptId, {
+          const probe = await service.raiseProbe(claims, {
             onToken: (token) => send("token", { token }),
           });
           send(probe === null ? "none" : "probe", probe === null ? {} : { id: probe.id, prompt: probe.prompt });
@@ -485,7 +568,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         if (claims === null) return;
 
         const exchange = await service.recordReply(
-          claims.attemptId,
+          claims,
           vivaId(request.params.probeId),
           request.body.reply,
         );
@@ -518,7 +601,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
 
-        const ledger = await service.candidateLedger(claims.attemptId);
+        const ledger = await service.candidateLedger(claims);
         return reply.send({
           head: ledger.head,
           length: ledger.length,
@@ -543,6 +626,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       { schema: { tags: INSTITUTION, summary: "Liveness", response: { 200: S.okResponse } } },
       async (_request, reply) => reply.send({ ok: true }),
     );
+
+    registerAccountRoutes(routes, {
+      service,
+      auth,
+      identity: options.identity,
+      throttle: options.loginThrottle ?? new LoginThrottle(),
+      bearer,
+      staff,
+    });
 
   });
 

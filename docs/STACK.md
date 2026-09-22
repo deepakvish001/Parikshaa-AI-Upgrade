@@ -25,7 +25,7 @@ the stack is TypeScript end to end, and it is not a preference.
 | Background jobs | pg-boss | Postgres-backed, so no Redis to run. Move to BullMQ only if throughput demands it. |
 | Realtime | SSE | One-way is all probe delivery needs. Survives proxies; simpler than WebSockets. |
 | LLM | Anthropic SDK, `claude-opus-5` | Two paths, different settings — see below. |
-| Auth (staff) | OIDC against the institution's IdP | Identity is out of scope (SPEC §2). Don't build accounts. |
+| Auth (staff) | Individual accounts: argon2id passwords, server-side sessions, scoped API keys | A shared token could not say who did anything, so the ledger could not record who set an attempt aside. Session and key secrets are stored only as SHA-256 digests. OIDC against an institution's IdP is next (ROADMAP §1). |
 | Auth (candidate) | Short-lived exam-scoped JWT (`jose`) | A token that grants one attempt and expires. No candidate user records. |
 | Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. No analytics, no third-party scripts, no runtime font fetches — the page cannot observe the candidate any more than it says it does. |
 | Observability | pino + OpenTelemetry + Sentry | pino is Fastify-native. |
@@ -40,6 +40,26 @@ process. That matters because everything in §1 *is* the product: a mocked
 database would only assert that the SQL we wrote is the SQL we wrote. The
 append-only trigger, the composite primary key, the row-level security policy
 and jsonb drift detection each have a test that exercises the real engine.
+
+### 0a. Organisations are isolated twice
+
+Every tenant table carries `org_id`, and every store method takes a `Scope`
+naming the organisation, so each query filters on it explicitly. That is the
+first lock. The second is row-level security: each store call runs in a
+transaction that sets `parikshaa.org_id` (and, for a candidate,
+`parikshaa.attempt_id`), and a restrictive policy on every tenant table refuses
+rows from any other organisation — so a query that forgot its filter still
+cannot leak. With no organisation set, the runtime role sees nothing at all.
+
+RLS binds only a role that does not own the tables, so the API connects as
+`parikshaa_app`; docker-compose migrates as `parikshaa_owner` and then lets
+`parikshaa_app` log in. The API tests run as `parikshaa_app` for the same
+reason, and a mutation test (dropping a query's filter) confirmed the
+isolation tests fail without RLS and pass with it.
+
+Account tables (organisations, staff, sessions, API keys) sit outside RLS on
+purpose: they are how a request finds its organisation in the first place.
+Every query on them names the organisation explicitly.
 
 ### 1. Ledger integrity is enforced in the database, not only in app code
 

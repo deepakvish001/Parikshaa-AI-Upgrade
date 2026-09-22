@@ -1,15 +1,11 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import type Anthropic from "@anthropic-ai/sdk";
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { examId, questionId, verifyChain, type Exam } from "@parikshaa/core";
-import { LedgerStore, pgliteExecutor } from "@parikshaa/store";
+import { examId, questionId, verifyChain, type Exam, type OrgId } from "@parikshaa/core";
+import { LedgerStore, pgliteExecutor, staffScope } from "@parikshaa/store";
 import { parseReceipt, verifyReceipt, type Receipt } from "@parikshaa/verify";
-import { AttemptTokens } from "./auth.js";
-import { buildServer } from "./server.js";
-import { ExamService } from "./service.js";
+import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
 const E = examId("exam-1");
 const Q_MCQ = questionId("q-mcq");
@@ -40,8 +36,8 @@ const exam: Exam = {
   policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 0.5 },
 };
 
-const STAFF = "staff-secret";
-const SECRET = "a".repeat(40);
+/** The fake reports what a real response would, so usage recording is exercised. */
+const USAGE = { input_tokens: 1000, output_tokens: 100, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 };
 
 /** Verdict the fake assessor returns; tests reassign it. */
 let verdict = { verdict: "consistent" as const, confidence: 0.9, reasoning: "Engaged the specifics." };
@@ -60,7 +56,7 @@ const fakeClient = {
           },
           async finalMessage() {
             if (probeDelayMs > 0) await new Promise((r) => setTimeout(r, probeDelayMs));
-            return { content: [{ type: "text", text }], stop_reason: "end_turn", stop_details: null };
+            return { content: [{ type: "text", text }], stop_reason: "end_turn", stop_details: null, usage: USAGE };
           },
         };
       },
@@ -72,7 +68,7 @@ const fakeClient = {
       const parsed = sent.includes("grade exam answers")
         ? { score: rubricScore, criteriaMet: ["c1"], reasoning: "Identifies the measure." }
         : verdict;
-      return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed };
+      return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed, usage: USAGE };
     },
   },
 } as unknown as Anthropic;
@@ -82,9 +78,9 @@ let app: FastifyInstance;
 let clock: number;
 let token: string;
 let attemptId: string;
-
-const migration = (name: string) =>
-  readFile(fileURLToPath(new URL(`../../store/migrations/${name}`, import.meta.url)), "utf8");
+let org: OrgId;
+/** A reviewer's session: the role that grades, assesses and sets aside. */
+let staffToken: string;
 
 beforeEach(async () => {
   clock = 1_700_000_000_000;
@@ -92,23 +88,19 @@ beforeEach(async () => {
   rubricScore = 7;
   probeDelayMs = 0;
 
-  db = new PGlite();
-  await db.exec(await migration("0001_init.sql"));
+  db = await freshDatabase();
+  const sql = pgliteExecutor(db);
 
   const now = () => (clock += 1000);
-  const store = new LedgerStore(pgliteExecutor(db), { clock: now });
   let counter = 0;
-  const service = new ExamService({
-    store,
-    client: fakeClient,
-    now,
-    newId: () => `id-${++counter}`,
-  });
+  const wiring = await wire(sql, { client: fakeClient, now, newId: () => `id-${++counter}` });
+  app = wiring.app;
 
-  app = buildServer({ service, tokens: new AttemptTokens(SECRET), staffToken: STAFF });
-  await app.ready();
+  org = await addOrganisation(wiring.identity, "org-a", "Acme");
+  await addStaff(wiring.identity, org, "owner@acme.test", "owner");
+  staffToken = await signIn(app, "owner@acme.test");
 
-  const staff = { authorization: `Bearer ${STAFF}` };
+  const staff = bearer(staffToken);
   await app.inject({ method: "POST", url: "/exams", headers: staff, payload: exam });
   const started = await app.inject({
     method: "POST",
@@ -125,7 +117,7 @@ afterEach(async () => {
 });
 
 const asCandidate = () => ({ authorization: `Bearer ${token}` });
-const asStaff = () => ({ authorization: `Bearer ${STAFF}` });
+const asStaff = () => bearer(staffToken);
 
 const answer = (question: string, text: string) =>
   app.inject({
@@ -311,10 +303,10 @@ describe("attempt lifecycle", () => {
     await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
 
     const store = new LedgerStore(pgliteExecutor(db));
-    const entries = await store.load(attemptId as never);
+    const entries = await store.load(staffScope(org), attemptId as never);
 
     expect(verifyChain(entries)).toEqual({ ok: true });
-    expect(await store.verifyStored(attemptId as never)).toMatchObject({ ok: true });
+    expect(await store.verifyStored(staffScope(org), attemptId as never)).toMatchObject({ ok: true });
   });
 });
 
@@ -337,6 +329,7 @@ describe("setting an attempt aside", () => {
     expect((await review()).json()).toMatchObject({
       state: "void",
       voidReason: "Reviewed after the follow-up; attempt set aside.",
+      voidedBy: { name: "owner" },
     });
   });
 
@@ -372,7 +365,7 @@ describe("setting an attempt aside", () => {
     expect(again.statusCode).toBe(409);
   });
 
-  it("needs the staff token", async () => {
+  it("needs a signed-in member of staff", async () => {
     const res = await app.inject({
       method: "POST",
       url: `/attempts/${attemptId}/void`,
@@ -430,7 +423,8 @@ describe("setting an attempt aside", () => {
     const report = verifyReceipt(parsed as Receipt);
 
     expect(report.ok).toBe(true);
-    if (report.ok) expect(report.timeline.at(-1)?.what).toMatch(/^Voided — Set aside following/);
+    // Attributed: the owner in this fixture is named after their address.
+    if (report.ok) expect(report.timeline.at(-1)?.what).toMatch(/^Voided by owner — Set aside following/);
   });
 });
 
@@ -664,7 +658,7 @@ describe("access control", () => {
     expect(bad.statusCode).toBe(401);
   });
 
-  it("refuses institution routes without the staff token", async () => {
+  it("refuses institution routes without a staff session", async () => {
     const res = await app.inject({
       method: "POST",
       url: `/attempts/${attemptId}/grade`,

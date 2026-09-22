@@ -12,6 +12,7 @@ import {
   type VivaProbe,
 } from "@parikshaa/core";
 import { redact, type RedactedAnswer } from "./redact.js";
+import { measure, type ModelRoute, type ModelUsage, type ReportedUsage } from "./usage.js";
 import {
   ASSESS_SYSTEM,
   GRADE_SYSTEM,
@@ -38,6 +39,12 @@ export interface EngineOptions {
   readonly fastProbes?: boolean;
   readonly now?: () => Timestamp;
   readonly newVivaId?: () => VivaId;
+  /**
+   * Called with what every model call cost, before its result is used —
+   * including a call that ends in a refusal, which is billed all the same.
+   * Awaited, so a spend ceiling sees the cost before the next call is made.
+   */
+  readonly onUsage?: (usage: ModelUsage) => void | Promise<void>;
 }
 
 interface Resolved {
@@ -68,6 +75,16 @@ function systemBlocks(answer: RedactedAnswer, instructions: string): Anthropic.T
       cache_control: { type: "ephemeral", ttl: "1h" },
     },
   ];
+}
+
+/** Pass one call's measured usage to the caller, if they asked for it. */
+async function report(
+  options: EngineOptions,
+  route: ModelRoute,
+  model: string,
+  usage: ReportedUsage,
+): Promise<void> {
+  if (options.onUsage !== undefined) await options.onUsage(measure(route, model, usage));
 }
 
 /**
@@ -133,6 +150,7 @@ export async function generateProbe(
   }
 
   const message = await stream.finalMessage();
+  await report(options, "probe", model, message.usage);
   if (message.stop_reason === "refusal") {
     throw new RefusedError(message.stop_details?.category ?? null);
   }
@@ -197,6 +215,7 @@ export async function assessReply(
       },
     ],
   });
+  await report(options, "assess", model, response.usage);
 
   if (response.stop_reason === "refusal") {
     return inconclusive("The assessment model declined to judge this exchange. Recorded as inconclusive; a human may review it.");
@@ -241,6 +260,7 @@ export async function gradeWithRubric(
     system: systemBlocks(answer, GRADE_SYSTEM),
     messages: [{ role: "user", content: answerBlock(answer) }],
   });
+  await report(options, "grade", model, response.usage);
 
   if (response.stop_reason === "refusal") {
     throw new RefusedError(response.stop_details?.category ?? null);

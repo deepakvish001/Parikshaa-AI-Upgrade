@@ -3,11 +3,12 @@ import { fileURLToPath } from "node:url";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { specDocument } from "./openapi.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
+import { StaffAuth } from "./staff-auth.js";
 
 const COMMITTED = fileURLToPath(new URL("../../../docs/openapi.json", import.meta.url));
 
@@ -65,11 +66,15 @@ describe("the OpenAPI document", () => {
   it("describes every route, each with a summary and a security scheme", () => {
     const all = operations();
 
-    expect(all.length).toBeGreaterThanOrEqual(17);
+    // The only routes open to anyone: liveness, the contract itself, and the
+    // sign-in that issues a credential in the first place.
+    const open = new Set(["get /health", "get /openapi.json", "post /auth/login"]);
+
+    expect(all.length).toBeGreaterThanOrEqual(30);
     for (const { path, method, operation } of all) {
       expect(operation.summary, `${method} ${path} has no summary`).toBeTruthy();
       expect(operation.tags, `${method} ${path} has no tag`).toBeTruthy();
-      if (path !== "/health" && path !== "/openapi.json") {
+      if (!open.has(`${method} ${path}`)) {
         expect(operation.security, `${method} ${path} declares no security scheme`).toBeTruthy();
       }
     }
@@ -120,9 +125,14 @@ describe("GET /openapi.json", () => {
     const sql = pgliteExecutor(db);
     await migrate(sql);
     app = buildServer({
-      service: new ExamService({ store: new LedgerStore(sql), client: {} as unknown as Anthropic }),
+      service: new ExamService({
+        store: new LedgerStore(sql),
+        identity: new IdentityStore(sql),
+        client: {} as unknown as Anthropic,
+      }),
       tokens: new AttemptTokens("x".repeat(40)),
-      staffToken: "staff",
+      auth: new StaffAuth(new IdentityStore(sql)),
+      identity: new IdentityStore(sql),
     });
     await app.ready();
   });

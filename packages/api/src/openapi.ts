@@ -1,8 +1,9 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { LedgerStore, type SqlExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
+import { StaffAuth } from "./staff-auth.js";
 
 /**
  * Build the OpenAPI document from the running route table.
@@ -19,13 +20,16 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     transaction: () => Promise.reject(new Error("the spec generator does not query")),
   };
 
+  const identity = new IdentityStore(unusable);
   const app = buildServer({
     service: new ExamService({
       store: new LedgerStore(unusable),
+      identity,
       client: {} as unknown as Anthropic,
     }),
     tokens: new AttemptTokens("x".repeat(40)),
-    staffToken: "unused",
+    auth: new StaffAuth(identity),
+    identity,
   });
 
   await app.ready();

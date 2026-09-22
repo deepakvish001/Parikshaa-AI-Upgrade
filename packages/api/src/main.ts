@@ -2,10 +2,11 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import postgres from "postgres";
-import { LedgerStore, postgresJsExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, postgresJsExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
+import { StaffAuth } from "./staff-auth.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
 function required(name: string): string {
@@ -17,11 +18,17 @@ function required(name: string): string {
 }
 
 async function main(): Promise<void> {
+  // Connect as the runtime role (parikshaa_app in docker-compose), not the
+  // schema owner: row-level security binds the runtime role, and the owner
+  // would bypass it.
   const sql = postgres(required("DATABASE_URL"));
-  const store = new LedgerStore(postgresJsExecutor(sql));
+  const executor = postgresJsExecutor(sql);
+  const store = new LedgerStore(executor);
+  const identity = new IdentityStore(executor);
 
   const service = new ExamService({
     store,
+    identity,
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
     // profile from the environment.
     client: new Anthropic(),
@@ -37,7 +44,9 @@ async function main(): Promise<void> {
   const app = buildServer({
     service,
     tokens: new AttemptTokens(required("ATTEMPT_TOKEN_SECRET")),
-    staffToken: required("STAFF_TOKEN"),
+    auth: new StaffAuth(identity),
+    identity,
+    trustProxy: process.env["TRUST_PROXY"] === "true",
     ...(clients === undefined ? {} : { clients }),
   });
 

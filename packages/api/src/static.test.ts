@@ -5,10 +5,11 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
+import { IdentityStore, LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
+import { StaffAuth } from "./staff-auth.js";
 
 /**
  * Serving both client bundles from the API process.
@@ -37,9 +38,14 @@ beforeEach(async () => {
   await writeFile(join(web, "assets", "app.js"), "export const x = 1;\n");
 
   app = buildServer({
-    service: new ExamService({ store: new LedgerStore(sql), client: {} as unknown as Anthropic }),
+    service: new ExamService({
+      store: new LedgerStore(sql),
+      identity: new IdentityStore(sql),
+      client: {} as unknown as Anthropic,
+    }),
     tokens: new AttemptTokens("x".repeat(40)),
-    staffToken: "staff",
+    auth: new StaffAuth(new IdentityStore(sql)),
+    identity: new IdentityStore(sql),
     clients: { web, console: consoleRoot },
   });
   await app.ready();
@@ -102,5 +108,34 @@ describe("serving the clients", () => {
 
     const posted = await app.inject({ method: "POST", url: "/nope", headers: html });
     expect(posted.statusCode).toBe(404);
+  });
+
+  it("answers the clients' /api-prefixed requests, as the dev proxy does", async () => {
+    // The bundles call `/api/...`; in development Vite strips the prefix, and
+    // served from here nothing else would.
+    const res = await app.inject({ method: "GET", url: "/api/health" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+    expect((await app.inject({ method: "GET", url: "/api/usage?since=2026-09-01T00:00:00Z" })).statusCode).toBe(401);
+    // Only the prefix is stripped; a route that merely starts with "api" is untouched.
+    expect((await app.inject({ method: "GET", url: "/api-keys" })).statusCode).toBe(401);
+  });
+
+  it("reports a malformed request as the client's error, not a server fault", async () => {
+    const empty = await app.inject({
+      method: "POST",
+      url: "/api/attempts/me/submit",
+      headers: { "content-type": "application/json", authorization: "Bearer x" },
+    });
+    expect(empty.statusCode).toBe(400);
+
+    const garbled = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      headers: { "content-type": "application/json" },
+      payload: "{not json",
+    });
+    expect(garbled.statusCode).toBe(400);
   });
 });

@@ -30,12 +30,23 @@ export class ParikshaaClient {
     this.#baseUrl = baseUrl.replace(/\/$/, "");
   }
 
-  get #headers(): Record<string, string> {
-    return { authorization: `Bearer ${this.#token}`, "content-type": "application/json" };
+  /**
+   * A JSON content type only when there is JSON. The server refuses an empty
+   * body that claims to be JSON, which is what a bare `POST .../submit` was
+   * sending.
+   */
+  #headers(hasBody: boolean): Record<string, string> {
+    return {
+      authorization: `Bearer ${this.#token}`,
+      ...(hasBody ? { "content-type": "application/json" } : {}),
+    };
   }
 
   async #request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const response = await fetch(`${this.#baseUrl}${path}`, { ...init, headers: this.#headers });
+    const response = await fetch(`${this.#baseUrl}${path}`, {
+      ...init,
+      headers: this.#headers(init.body !== undefined),
+    });
     if (!response.ok) {
       const body = (await response.json().catch(() => ({}))) as { error?: string };
       throw new ApiError(response.status, body.error ?? "request_failed");

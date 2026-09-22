@@ -87,6 +87,9 @@ td.mono, .mono { font-family: var(--mono); font-size: .8rem; }
 .verdict { font-weight: 600; }
 .verdict[data-v="inconclusive"], .verdict[data-v="shallow"] { font-weight: 500; color: var(--muted); }
 
+.account { margin-bottom: .75rem; gap: .85rem; font-size: .9rem; }
+.account button.quiet { padding: .2rem .6rem; }
+
 .gate { max-width: 24rem; margin: 6rem auto; padding: 0 1rem; }
 
 @media (max-width: 34rem) { .page { padding: 1rem 1rem 5rem; } }

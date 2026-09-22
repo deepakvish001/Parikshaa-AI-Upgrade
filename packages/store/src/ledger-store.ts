@@ -10,122 +10,209 @@ import {
   type ExamEvent,
   type ExamId,
   type LedgerEntry,
+  type OrgId,
   type Timestamp,
 } from "@parikshaa/core";
 import type { SqlExecutor } from "./sql.js";
 
 /**
- * Postgres-backed storage for exam ledgers.
+ * Who a query runs on behalf of.
  *
- * Two rules shape this class:
+ * Every method takes one, so there is no way to ask the store a question
+ * without saying which organisation it is about. That is the first of two
+ * isolation mechanisms: each query names `org_id` explicitly. The second is
+ * row-level security, fed by the same scope — each call runs in a transaction
+ * that sets `parikshaa.org_id`, `parikshaa.actor` and, for a candidate,
+ * `parikshaa.attempt_id`, and the database refuses rows from any other
+ * organisation even if a query here were to forget its filter.
+ */
+export type Scope =
+  | { readonly orgId: OrgId; readonly actor: "staff" }
+  | { readonly orgId: OrgId; readonly actor: "candidate"; readonly attemptId: AttemptId };
+
+export const staffScope = (orgId: OrgId): Scope => ({ orgId, actor: "staff" });
+export const candidateScope = (orgId: OrgId, attemptId: AttemptId): Scope => ({
+  orgId,
+  actor: "candidate",
+  attemptId,
+});
+
+/** Raised when an exam that has already been sat is changed in place. */
+export class ExamFrozen extends Error {
+  constructor(readonly examId: string) {
+    super(`Exam ${examId} has attempts and can no longer be edited; clone it instead`);
+    this.name = "ExamFrozen";
+  }
+}
+
+/** Thrown when an append's guard declined it. Not an error in the store. */
+export class AppendRefused extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "AppendRefused";
+  }
+}
+
+/**
+ * Postgres-backed storage for an organisation's exams, attempts and ledgers,
+ * and for the two other append-only records kept beside them: the audit log
+ * and model usage.
+ *
+ * Two rules from before still shape the ledger half:
  *
  * 1. An append takes a row lock on the attempt before reading the head, so two
  *    concurrent appends serialize instead of racing for the same `seq`. The
  *    primary key on `(attempt_id, seq)` is the backstop if that ever fails.
  * 2. A load rebuilds each entry from its stored `preimage`, never from the
- *    `jsonb` column. The preimage is the exact string that was hashed; the
- *    jsonb is a convenience for querying and is not authoritative.
+ *    `jsonb` column. The preimage is the exact string that was hashed.
  */
 export class LedgerStore {
   readonly #sql: SqlExecutor;
   readonly #clock: () => Timestamp;
+  readonly #newId: () => string;
 
-  constructor(sql: SqlExecutor, options: { readonly clock?: () => Timestamp } = {}) {
+  constructor(
+    sql: SqlExecutor,
+    options: { readonly clock?: () => Timestamp; readonly newId?: () => string } = {},
+  ) {
     this.#sql = sql;
     this.#clock = options.clock ?? (() => Date.now());
+    this.#newId = options.newId ?? (() => crypto.randomUUID());
   }
 
-  async createExam(exam: Exam): Promise<void> {
-    await this.#sql.query(
-      `INSERT INTO exams (id, title, definition) VALUES ($1, $2, $3)
-       ON CONFLICT (id) DO UPDATE SET title = EXCLUDED.title, definition = EXCLUDED.definition`,
-      [exam.id, exam.title, JSON.stringify(exam)],
-    );
+  /** Run `fn` in a transaction that carries the scope into the database. */
+  #scoped<T>(scope: Scope, fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
+    return this.#sql.transaction(async (tx) => {
+      await tx.query(
+        `SELECT set_config('parikshaa.org_id', $1, true),
+                set_config('parikshaa.actor', $2, true),
+                set_config('parikshaa.attempt_id', $3, true)`,
+        [scope.orgId, scope.actor, scope.actor === "candidate" ? scope.attemptId : ""],
+      );
+      return fn(tx);
+    });
   }
 
-  async loadExam(id: ExamId): Promise<Exam | null> {
-    const rows = await this.#sql.query<{ definition: Exam }>(
-      `SELECT definition FROM exams WHERE id = $1`,
-      [id],
-    );
-    return rows[0]?.definition ?? null;
+  // --- exams ----------------------------------------------------------------
+
+  /**
+   * Create an exam, or replace one that nobody has sat yet.
+   *
+   * Once an attempt exists the exam is frozen: a ledger records answers to
+   * specific questions, and editing the questions afterwards would leave those
+   * answers pointing at text the candidate never saw.
+   */
+  async createExam(scope: Scope, exam: Exam): Promise<void> {
+    await this.#scoped(scope, async (tx) => {
+      const sat = await tx.query<{ n: number | string }>(
+        `SELECT count(*) AS n FROM attempts WHERE org_id = $1 AND exam_id = $2`,
+        [scope.orgId, exam.id],
+      );
+      if (Number(sat[0]?.n ?? 0) > 0) throw new ExamFrozen(exam.id);
+
+      await tx.query(
+        `INSERT INTO exams (org_id, id, title, definition) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (org_id, id) DO UPDATE SET title = EXCLUDED.title, definition = EXCLUDED.definition`,
+        [scope.orgId, exam.id, exam.title, JSON.stringify(exam)],
+      );
+    });
+  }
+
+  async loadExam(scope: Scope, id: ExamId): Promise<Exam | null> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ definition: Exam }>(
+        `SELECT definition FROM exams WHERE org_id = $1 AND id = $2`,
+        [scope.orgId, id],
+      );
+      return rows[0]?.definition ?? null;
+    });
   }
 
   /** Exams, newest first, for an authoring console. */
-  async listExams(): Promise<readonly ExamSummary[]> {
-    const rows = await this.#sql.query<{ id: string; title: string; question_count: number | string }>(
-      `SELECT e.id, e.title, jsonb_array_length(e.definition -> 'questions') AS question_count
-         FROM exams e ORDER BY e.created_at DESC`,
-    );
-    return rows.map((row) => ({
-      id: row.id as ExamId,
-      title: row.title,
-      questionCount: Number(row.question_count),
-    }));
+  async listExams(scope: Scope): Promise<readonly ExamSummary[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ id: string; title: string; question_count: number | string }>(
+        `SELECT id, title, jsonb_array_length(definition -> 'questions') AS question_count
+           FROM exams WHERE org_id = $1 ORDER BY created_at DESC`,
+        [scope.orgId],
+      );
+      return rows.map((row) => ({
+        id: row.id as ExamId,
+        title: row.title,
+        questionCount: Number(row.question_count),
+      }));
+    });
   }
+
+  // --- attempts -------------------------------------------------------------
 
   /**
    * Attempts at one exam, with state derived in SQL.
    *
    * Folding every attempt's ledger to render a list would be correct and far
-   * too slow; the closing events are enough to say where an attempt stands, and
-   * anything that needs more opens the attempt itself.
+   * too slow; the closing events are enough to say where an attempt stands.
    */
-  async listAttempts(examId: ExamId): Promise<readonly AttemptSummary[]> {
-    const rows = await this.#sql.query<{
-      id: string;
-      candidate_id: string;
-      entries: number | string;
-      submitted: boolean;
-      graded: boolean;
-      voided: boolean;
-    }>(
-      `SELECT a.id,
-              a.candidate_id,
-              (SELECT count(*) FROM exam_ledger l WHERE l.attempt_id = a.id) AS entries,
-              EXISTS (SELECT 1 FROM exam_ledger l WHERE l.attempt_id = a.id AND l.event_type = 'attempt_submitted') AS submitted,
-              EXISTS (SELECT 1 FROM exam_ledger l WHERE l.attempt_id = a.id AND l.event_type = 'attempt_graded') AS graded,
-              EXISTS (SELECT 1 FROM exam_ledger l WHERE l.attempt_id = a.id AND l.event_type = 'attempt_voided') AS voided
-         FROM attempts a
-        WHERE a.exam_id = $1
-        ORDER BY a.created_at DESC`,
-      [examId],
-    );
+  async listAttempts(scope: Scope, examId: ExamId): Promise<readonly AttemptSummary[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{
+        id: string;
+        candidate_id: string;
+        entries: number | string;
+        submitted: boolean;
+        graded: boolean;
+        voided: boolean;
+      }>(
+        `SELECT a.id,
+                a.candidate_id,
+                (SELECT count(*) FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id) AS entries,
+                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_submitted') AS submitted,
+                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_graded') AS graded,
+                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_voided') AS voided
+           FROM attempts a
+          WHERE a.org_id = $1 AND a.exam_id = $2
+          ORDER BY a.created_at DESC`,
+        [scope.orgId, examId],
+      );
 
-    return rows.map((row) => ({
-      id: row.id as AttemptId,
-      candidateId: row.candidate_id as CandidateId,
-      entries: Number(row.entries),
-      state: row.voided ? "void" : row.graded ? "graded" : row.submitted ? "submitted" : "in_progress",
-    }));
+      return rows.map((row) => ({
+        id: row.id as AttemptId,
+        candidateId: row.candidate_id as CandidateId,
+        entries: Number(row.entries),
+        state: row.voided ? "void" : row.graded ? "graded" : row.submitted ? "submitted" : "in_progress",
+      }));
+    });
   }
 
-  async createAttempt(id: AttemptId, examId: ExamId, candidateId: CandidateId): Promise<void> {
-    await this.#sql.query(
-      `INSERT INTO attempts (id, exam_id, candidate_id) VALUES ($1, $2, $3)`,
-      [id, examId, candidateId],
+  async createAttempt(scope: Scope, id: AttemptId, examId: ExamId, candidateId: CandidateId): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(`INSERT INTO attempts (org_id, id, exam_id, candidate_id) VALUES ($1, $2, $3, $4)`, [
+        scope.orgId,
+        id,
+        examId,
+        candidateId,
+      ]),
     );
   }
+
+  // --- the ledger -----------------------------------------------------------
 
   /**
    * Append an event to an attempt's chain and return the entry committing to it.
    *
    * A `guard` is re-checked against the attempt's events *inside* the same
-   * transaction that holds the attempt's row lock. That matters for anything
-   * decided before a slow call: raising a probe reads the chain, spends a
-   * second or two at the model, and only then appends — and two requests
-   * arriving together would otherwise both pass the original check and write
-   * two probes about one answer.
+   * transaction that holds the attempt's row lock — which matters for anything
+   * decided before a slow call, such as raising a probe.
    */
   async append(
+    scope: Scope,
     attemptId: AttemptId,
     event: ExamEvent,
     options: { readonly guard?: (events: readonly ExamEvent[]) => string | null } = {},
   ): Promise<LedgerEntry> {
-    return this.#sql.transaction(async (tx) => {
+    return this.#scoped(scope, async (tx) => {
       const locked = await tx.query<{ id: string }>(
-        `SELECT id FROM attempts WHERE id = $1 FOR UPDATE`,
-        [attemptId],
+        `SELECT id FROM attempts WHERE org_id = $1 AND id = $2 FOR UPDATE`,
+        [scope.orgId, attemptId],
       );
       if (locked.length === 0) {
         throw new Error(`No such attempt: ${attemptId}`);
@@ -133,8 +220,8 @@ export class LedgerStore {
 
       if (options.guard !== undefined) {
         const rows = await tx.query<{ preimage: string }>(
-          `SELECT preimage FROM exam_ledger WHERE attempt_id = $1 ORDER BY seq ASC`,
-          [attemptId],
+          `SELECT preimage FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
+          [scope.orgId, attemptId],
         );
         const events = rows.map((row) => (JSON.parse(row.preimage) as { event: ExamEvent }).event);
         const refusal = options.guard(events);
@@ -142,8 +229,8 @@ export class LedgerStore {
       }
 
       const head = await tx.query<{ seq: number; hash: string }>(
-        `SELECT seq, hash FROM exam_ledger WHERE attempt_id = $1 ORDER BY seq DESC LIMIT 1`,
-        [attemptId],
+        `SELECT seq, hash FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq DESC LIMIT 1`,
+        [scope.orgId, attemptId],
       );
 
       const previous = head[0];
@@ -158,9 +245,19 @@ export class LedgerStore {
       const hash = hashPreimage(preimage);
 
       await tx.query(
-        `INSERT INTO exam_ledger (attempt_id, seq, ts, event_type, event, preimage, prev_hash, hash)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [attemptId, draft.seq, draft.timestamp, event.type, JSON.stringify(event), preimage, draft.prevHash, hash],
+        `INSERT INTO exam_ledger (org_id, attempt_id, seq, ts, event_type, event, preimage, prev_hash, hash)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [
+          scope.orgId,
+          attemptId,
+          draft.seq,
+          draft.timestamp,
+          event.type,
+          JSON.stringify(event),
+          preimage,
+          draft.prevHash,
+          hash,
+        ],
       );
 
       return Object.freeze({ ...draft, hash });
@@ -168,63 +265,220 @@ export class LedgerStore {
   }
 
   /** Load an attempt's chain, rebuilt from the stored preimages. */
-  async load(attemptId: AttemptId): Promise<readonly LedgerEntry[]> {
-    const rows = await this.#sql.query<StoredRow>(
-      `SELECT seq, ts, event, preimage, prev_hash, hash
-         FROM exam_ledger WHERE attempt_id = $1 ORDER BY seq ASC`,
-      [attemptId],
-    );
-    return rows.map(entryFromRow);
+  async load(scope: Scope, attemptId: AttemptId): Promise<readonly LedgerEntry[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<StoredRow>(
+        `SELECT seq, ts, event, preimage, prev_hash, hash
+           FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
+        [scope.orgId, attemptId],
+      );
+      return rows.map(entryFromRow);
+    });
   }
 
-  async head(attemptId: AttemptId): Promise<string> {
-    const rows = await this.#sql.query<{ hash: string }>(
-      `SELECT hash FROM exam_ledger WHERE attempt_id = $1 ORDER BY seq DESC LIMIT 1`,
-      [attemptId],
-    );
-    return rows[0]?.hash ?? GENESIS_HASH;
+  async head(scope: Scope, attemptId: AttemptId): Promise<string> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ hash: string }>(
+        `SELECT hash FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq DESC LIMIT 1`,
+        [scope.orgId, attemptId],
+      );
+      return rows[0]?.hash ?? GENESIS_HASH;
+    });
   }
 
   /**
    * Check stored rows against their own hashes, and check the jsonb copy
-   * against the authoritative preimage.
-   *
-   * The second check is the one worth having: a `jsonb_drift` result means the
-   * database re-rendered a value on the way in or out (numbers are the usual
-   * culprit). Nothing has been tampered with, but any code that recomputed a
-   * hash from the jsonb column would report that it had.
+   * against the authoritative preimage. A `jsonb_drift` result means the
+   * database re-rendered a value; nothing was tampered with, but any code that
+   * recomputed a hash from the jsonb column would report that it had.
    */
-  async verifyStored(attemptId: AttemptId): Promise<StoredIntegrityResult> {
-    const rows = await this.#sql.query<StoredRow>(
-      `SELECT seq, ts, event, preimage, prev_hash, hash
-         FROM exam_ledger WHERE attempt_id = $1 ORDER BY seq ASC`,
-      [attemptId],
-    );
+  async verifyStored(scope: Scope, attemptId: AttemptId): Promise<StoredIntegrityResult> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<StoredRow>(
+        `SELECT seq, ts, event, preimage, prev_hash, hash
+           FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
+        [scope.orgId, attemptId],
+      );
 
-    let expectedPrev = GENESIS_HASH;
-    for (const [index, row] of rows.entries()) {
-      const seq = Number(row.seq);
-      if (seq !== index) return { ok: false, seq: index, reason: "bad_sequence" };
-      if (row.prev_hash !== expectedPrev) return { ok: false, seq, reason: "broken_link" };
-      if (hashPreimage(row.preimage) !== row.hash) return { ok: false, seq, reason: "hash_mismatch" };
+      let expectedPrev = GENESIS_HASH;
+      for (const [index, row] of rows.entries()) {
+        const seq = Number(row.seq);
+        if (seq !== index) return { ok: false, seq: index, reason: "bad_sequence" } as const;
+        if (row.prev_hash !== expectedPrev) return { ok: false, seq, reason: "broken_link" } as const;
+        if (hashPreimage(row.preimage) !== row.hash) return { ok: false, seq, reason: "hash_mismatch" } as const;
 
-      const entry = entryFromRow(row);
-      if (entryHash(entry) !== row.hash) return { ok: false, seq, reason: "hash_mismatch" };
-      if (canonicalize(row.event) !== canonicalize(entry.event)) {
-        return { ok: false, seq, reason: "jsonb_drift" };
+        const entry = entryFromRow(row);
+        if (entryHash(entry) !== row.hash) return { ok: false, seq, reason: "hash_mismatch" } as const;
+        if (canonicalize(row.event) !== canonicalize(entry.event)) {
+          return { ok: false, seq, reason: "jsonb_drift" } as const;
+        }
+
+        expectedPrev = row.hash;
       }
-
-      expectedPrev = row.hash;
-    }
-    return { ok: true, length: rows.length };
+      return { ok: true, length: rows.length } as const;
+    });
   }
-}
 
-/** Thrown when an append's guard declined it. Not an error in the store. */
-export class AppendRefused extends Error {
-  constructor(reason: string) {
-    super(reason);
-    this.name = "AppendRefused";
+  // --- audit ----------------------------------------------------------------
+
+  async appendAudit(scope: Scope, entry: AuditEntry): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(
+        `INSERT INTO audit_log (id, org_id, actor_kind, actor_id, action, target, detail)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          this.#newId(),
+          scope.orgId,
+          entry.actorKind,
+          entry.actorId,
+          entry.action,
+          entry.target ?? null,
+          JSON.stringify(entry.detail ?? {}),
+        ],
+      ),
+    );
+  }
+
+  async listAudit(scope: Scope, limit = 100): Promise<readonly AuditRecord[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{
+        at: string | Date;
+        actor_kind: AuditEntry["actorKind"];
+        actor_id: string | null;
+        action: string;
+        target: string | null;
+        detail: Record<string, unknown>;
+      }>(
+        `SELECT at, actor_kind, actor_id, action, target, detail
+           FROM audit_log WHERE org_id = $1 ORDER BY at DESC, id DESC LIMIT $2`,
+        [scope.orgId, limit],
+      );
+      return rows.map((row) => ({
+        at: new Date(row.at).toISOString(),
+        actorKind: row.actor_kind,
+        actorId: row.actor_id,
+        action: row.action,
+        target: row.target,
+        detail: row.detail,
+      }));
+    });
+  }
+
+  // --- model usage (ROADMAP §0) ----------------------------------------------
+
+  async recordUsage(scope: Scope, usage: UsageRecord): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(
+        `INSERT INTO model_usage (id, org_id, attempt_id, route, model, speed, input_tokens, output_tokens,
+                                  cache_read_tokens, cache_write_5m_tokens, cache_write_1h_tokens, cost_micro_usd,
+                                  inference_geo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [
+          this.#newId(),
+          scope.orgId,
+          usage.attemptId,
+          usage.route,
+          usage.model,
+          usage.speed,
+          usage.inputTokens,
+          usage.outputTokens,
+          usage.cacheReadTokens,
+          usage.cacheWrite5mTokens,
+          usage.cacheWrite1hTokens,
+          usage.costMicroUsd,
+          usage.inferenceGeo,
+        ],
+      ),
+    );
+  }
+
+  /** Total model spend since a moment, in micro-dollars. */
+  async spendSince(scope: Scope, since: Date): Promise<number> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ total: number | string | null }>(
+        `SELECT coalesce(sum(cost_micro_usd), 0) AS total FROM model_usage WHERE org_id = $1 AND at >= $2`,
+        [scope.orgId, since.toISOString()],
+      );
+      return Number(rows[0]?.total ?? 0);
+    });
+  }
+
+  /**
+   * Spend and token counts since a moment, broken down by route.
+   *
+   * The per-attempt figures are the number pricing is built on (ROADMAP §0).
+   * Cache writes are reported by TTL so it is visible whether the one-hour
+   * entries are earning their doubled write price.
+   */
+  async usageReport(scope: Scope, since: Date): Promise<UsageReport> {
+    return this.#scoped(scope, async (tx) => {
+      const byRoute = await tx.query<{
+        route: UsageRecord["route"];
+        calls: number | string;
+        input_tokens: number | string;
+        output_tokens: number | string;
+        cache_read_tokens: number | string;
+        cache_write_5m_tokens: number | string;
+        cache_write_1h_tokens: number | string;
+        cost_micro_usd: number | string;
+      }>(
+        `SELECT route,
+                count(*)                   AS calls,
+                sum(input_tokens)          AS input_tokens,
+                sum(output_tokens)         AS output_tokens,
+                sum(cache_read_tokens)     AS cache_read_tokens,
+                sum(cache_write_5m_tokens) AS cache_write_5m_tokens,
+                sum(cache_write_1h_tokens) AS cache_write_1h_tokens,
+                sum(cost_micro_usd)        AS cost_micro_usd
+           FROM model_usage WHERE org_id = $1 AND at >= $2
+          GROUP BY route ORDER BY route`,
+        [scope.orgId, since.toISOString()],
+      );
+
+      const perAttempt = await tx.query<{ attempts: number | string; p50: number | null; p90: number | null; max: number | string | null }>(
+        `SELECT count(*) AS attempts,
+                percentile_cont(0.5) WITHIN GROUP (ORDER BY cost) AS p50,
+                percentile_cont(0.9) WITHIN GROUP (ORDER BY cost) AS p90,
+                max(cost) AS max
+           FROM (SELECT attempt_id, sum(cost_micro_usd) AS cost
+                   FROM model_usage
+                  WHERE org_id = $1 AND at >= $2 AND attempt_id IS NOT NULL
+                  GROUP BY attempt_id) per_attempt`,
+        [scope.orgId, since.toISOString()],
+      );
+
+      const geos = await tx.query<{ geo: string | null; calls: number | string }>(
+        `SELECT inference_geo AS geo, count(*) AS calls
+           FROM model_usage WHERE org_id = $1 AND at >= $2
+          GROUP BY inference_geo ORDER BY count(*) DESC`,
+        [scope.orgId, since.toISOString()],
+      );
+
+      const routes = byRoute.map((row) => ({
+        route: row.route,
+        calls: Number(row.calls),
+        inputTokens: Number(row.input_tokens),
+        outputTokens: Number(row.output_tokens),
+        cacheReadTokens: Number(row.cache_read_tokens),
+        cacheWrite5mTokens: Number(row.cache_write_5m_tokens),
+        cacheWrite1hTokens: Number(row.cache_write_1h_tokens),
+        costMicroUsd: Number(row.cost_micro_usd),
+      }));
+      const summary = perAttempt[0];
+
+      return {
+        since: since.toISOString(),
+        totalCostMicroUsd: routes.reduce((sum, r) => sum + r.costMicroUsd, 0),
+        routes,
+        perAttempt: {
+          attempts: Number(summary?.attempts ?? 0),
+          p50MicroUsd: summary?.p50 === null || summary?.p50 === undefined ? null : Math.round(Number(summary.p50)),
+          p90MicroUsd: summary?.p90 === null || summary?.p90 === undefined ? null : Math.round(Number(summary.p90)),
+          maxMicroUsd: summary?.max === null || summary?.max === undefined ? null : Number(summary.max),
+        },
+        inferenceGeos: geos.map((row) => ({ geo: row.geo, calls: Number(row.calls) })),
+      };
+    });
   }
 }
 
@@ -239,6 +493,54 @@ export interface AttemptSummary {
   readonly candidateId: CandidateId;
   readonly entries: number;
   readonly state: "in_progress" | "submitted" | "graded" | "void";
+}
+
+export interface AuditEntry {
+  readonly actorKind: "user" | "api_key" | "system";
+  readonly actorId: string | null;
+  readonly action: string;
+  readonly target?: string;
+  readonly detail?: Record<string, unknown>;
+}
+
+export interface AuditRecord {
+  readonly at: string;
+  readonly actorKind: AuditEntry["actorKind"];
+  readonly actorId: string | null;
+  readonly action: string;
+  readonly target: string | null;
+  readonly detail: Record<string, unknown>;
+}
+
+export interface UsageRecord {
+  readonly attemptId: AttemptId | null;
+  readonly route: "probe" | "assess" | "grade";
+  readonly model: string;
+  readonly speed: "standard" | "fast";
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cacheReadTokens: number;
+  readonly cacheWrite5mTokens: number;
+  readonly cacheWrite1hTokens: number;
+  readonly costMicroUsd: number;
+  readonly inferenceGeo: string | null;
+}
+
+export interface UsageReport {
+  readonly since: string;
+  readonly totalCostMicroUsd: number;
+  readonly routes: readonly (Omit<UsageRecord, "attemptId" | "route" | "model" | "speed" | "inferenceGeo"> & {
+    readonly route: UsageRecord["route"];
+    readonly calls: number;
+  })[];
+  readonly perAttempt: {
+    readonly attempts: number;
+    readonly p50MicroUsd: number | null;
+    readonly p90MicroUsd: number | null;
+    readonly maxMicroUsd: number | null;
+  };
+  /** Where inference ran. Matters for data-residency questions (ROADMAP §11). */
+  readonly inferenceGeos: readonly { readonly geo: string | null; readonly calls: number }[];
 }
 
 export type StoredIntegrityResult =

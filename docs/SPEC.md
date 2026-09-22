@@ -28,9 +28,13 @@ This repository holds the assessment engine, not a hosted product. In scope:
 - the candidate interface for sitting an exam and answering a probe (§8)
 - the institution console for authoring exams and reviewing evidence (§9)
 
-Out of scope for now: authoring UI, identity and enrolment, payments, and any
-form of biometric or video surveillance. The last is a design choice, not a
-backlog item — see §6.
+- organisations, each isolated from the others, with individual staff accounts,
+  roles, API keys and an audit log of what staff did
+
+Out of scope for now: candidate identity and enrolment, payments, and any form
+of biometric or video surveillance. The last is a design choice, not a backlog
+item — see §6. Candidates still have no accounts: an institution already knows
+who its candidates are, and issues each one an access code for one attempt.
 
 ## 3. Attempt lifecycle
 
@@ -188,11 +192,16 @@ An attempt may be set aside after it was graded — usually that is exactly when
 because someone has just read the evidence. Voiding does not erase the grade or
 anything else already recorded; it appends. Nothing follows a void.
 
-What is **not** recorded is who decided. Staff authenticate with a shared
-institution token, so any name attached would be an unverified claim, and
-writing unverified claims into a record whose entire value is that it can be
-trusted would undermine the record. Attribution needs the identity integration
-§2 keeps out of scope.
+Who decided **is** recorded, in the ledger entry itself (`decidedBy`: the
+staff account's id and name). While staff shared one institution token this was
+deliberately left out — any name would have been an unverified claim, and
+unverified claims in a record whose value is that it can be trusted undermine
+it. With individual accounts the name is the authenticated user's, and an
+appeal needs to know whose decision it is contesting.
+
+For the same reason only a signed-in person can do this. An API key, whatever
+its role, can grade and fetch evidence for an integration; it cannot set an
+attempt aside, because an integration is not a person.
 
 Exams are validated before they are stored, and every problem is reported at
 once rather than one per round trip. An exam is written once and sat by a whole
@@ -216,11 +225,16 @@ sitting is over.
 | Setting an attempt aside | implemented — `POST /attempts/:id/void`, console decision section |
 | Offline verification | implemented — `packages/verify` (CLI) and in-browser via WebCrypto |
 | Deployment | implemented — `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
-| Identity / enrolment | not started (out of scope, §2) |
+| Organisations and isolation | implemented — `org_id` on every tenant table, enforced by row-level security as well as by every query |
+| Staff accounts, roles, API keys | implemented — `packages/api/src/staff-auth.ts`; password sign-in (argon2id). OIDC and 2FA not yet |
+| Audit log | implemented — append-only `audit_log`, `GET /audit` |
+| Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
+| Candidate identity / enrolment | out of scope (§2) |
 
-Complete end to end and deployable: an institution can author an exam, issue
-access codes, and review; a candidate can sit it, answer a probe and leave with
-a verifiable receipt. What remains is identity and enrolment integration, which
-§2 keeps out of scope.
+Complete end to end and deployable, for more than one institution at once: an
+institution's staff sign in with their own accounts and roles, author an exam,
+issue access codes and review; a candidate can sit it, answer a probe and leave
+with a verifiable receipt. What remains before this is sold is in
+[`ROADMAP.md`](ROADMAP.md).
 
 The stack and the reasoning behind it are recorded in [`STACK.md`](STACK.md).

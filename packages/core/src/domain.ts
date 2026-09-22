@@ -12,12 +12,14 @@
 declare const brand: unique symbol;
 type Brand<T, B extends string> = T & { readonly [brand]: B };
 
+export type OrgId = Brand<string, "OrgId">;
 export type CandidateId = Brand<string, "CandidateId">;
 export type ExamId = Brand<string, "ExamId">;
 export type AttemptId = Brand<string, "AttemptId">;
 export type QuestionId = Brand<string, "QuestionId">;
 export type VivaId = Brand<string, "VivaId">;
 
+export const orgId = (v: string): OrgId => v as OrgId;
 export const candidateId = (v: string): CandidateId => v as CandidateId;
 export const examId = (v: string): ExamId => v as ExamId;
 export const attemptId = (v: string): AttemptId => v as AttemptId;
@@ -168,6 +170,25 @@ export type ExamEvent =
   | { readonly type: "viva_assessed"; readonly attemptId: AttemptId; readonly assessment: VivaAssessment }
   | { readonly type: "question_scored"; readonly attemptId: AttemptId; readonly questionId: QuestionId; readonly score: number }
   | { readonly type: "attempt_graded"; readonly attemptId: AttemptId; readonly total: number }
-  | { readonly type: "attempt_voided"; readonly attemptId: AttemptId; readonly reason: string };
+  | {
+      readonly type: "attempt_voided";
+      readonly attemptId: AttemptId;
+      readonly reason: string;
+      /**
+       * The person who decided, as they were named at the time.
+       *
+       * Hashed into the chain with everything else, so the decision is
+       * attributable and the attribution is tamper-evident. Absent on ledgers
+       * written before staff had individual accounts, when a shared token made
+       * any name an unverified claim.
+       */
+      readonly decidedBy?: StaffAttribution;
+    };
 
 export type ExamEventType = ExamEvent["type"];
+
+/** A staff member, as recorded against a decision they made. */
+export interface StaffAttribution {
+  readonly userId: string;
+  readonly name: string;
+}

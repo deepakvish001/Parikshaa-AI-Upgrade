@@ -48,6 +48,17 @@ describe("ParikshaaClient", () => {
     expect(body).not.toHaveProperty("repliedAt");
   });
 
+  it("does not claim a JSON body when submitting, which has none", async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => json({ ok: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await new ParikshaaClient("tok").submit();
+
+    // The server refuses an empty body labelled as JSON, so a bare submit that
+    // sent this header could never succeed.
+    expect(fetchMock.mock.calls[0]?.[1]?.headers).not.toHaveProperty("content-type");
+  });
+
   it("escapes a probe id into the path", async () => {
     const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => json({ ok: true }));
     vi.stubGlobal("fetch", fetchMock);
