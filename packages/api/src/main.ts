@@ -8,6 +8,7 @@ import { DeliveryWorker, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
+import { ResultsService } from "./results.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -69,6 +70,7 @@ async function main(): Promise<void> {
   const app = buildServer({
     service,
     invitations,
+    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

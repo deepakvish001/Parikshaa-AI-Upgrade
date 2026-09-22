@@ -347,6 +347,30 @@ export class LedgerStore {
     });
   }
 
+  /**
+   * Every attempt's chain at one exam, in one query — for results over a whole
+   * cohort, where loading two thousand chains one at a time would not do.
+   */
+  async loadExamLedgers(scope: Scope, examId: ExamId): Promise<ReadonlyMap<AttemptId, readonly LedgerEntry[]>> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<StoredRow & { attempt_id: string }>(
+        `SELECT l.attempt_id, l.seq, l.ts, l.event, l.preimage, l.prev_hash, l.hash
+           FROM exam_ledger l JOIN attempts a ON a.org_id = l.org_id AND a.id = l.attempt_id
+          WHERE l.org_id = $1 AND a.exam_id = $2
+          ORDER BY a.created_at, l.attempt_id, l.seq`,
+        [scope.orgId, examId],
+      );
+      const chains = new Map<AttemptId, LedgerEntry[]>();
+      for (const row of rows) {
+        const id = row.attempt_id as AttemptId;
+        const chain = chains.get(id) ?? [];
+        chain.push(entryFromRow(row));
+        chains.set(id, chain);
+      }
+      return chains;
+    });
+  }
+
   async head(scope: Scope, attemptId: AttemptId): Promise<string> {
     return this.#scoped(scope, async (tx) => {
       const rows = await tx.query<{ hash: string }>(

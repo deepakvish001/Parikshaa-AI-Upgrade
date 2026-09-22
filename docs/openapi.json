@@ -11264,6 +11264,961 @@
         }
       }
     },
+    "/exams/{examId}/results": {
+      "get": {
+        "summary": "Every candidate's result, and the cohort's analytics",
+        "tags": [
+          "Results"
+        ],
+        "description": "Computed from the ledgers, so every figure can be traced to the entries that produced it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exam": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rows": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "attemptId": {
+                            "type": "string"
+                          },
+                          "candidateId": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string"
+                          },
+                          "total": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "maxTotal": {
+                            "type": "number"
+                          },
+                          "percent": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "startedAt": {
+                            "type": "number"
+                          },
+                          "submittedAt": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "durationMs": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "scores": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "score": {
+                                  "type": "number"
+                                },
+                                "max": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "score",
+                                "max"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "probes": {
+                            "type": "object",
+                            "properties": {
+                              "asked": {
+                                "type": "number"
+                              },
+                              "replied": {
+                                "type": "number"
+                              },
+                              "verdicts": {
+                                "type": "object",
+                                "properties": {
+                                  "consistent": {
+                                    "type": "number"
+                                  },
+                                  "shallow": {
+                                    "type": "number"
+                                  },
+                                  "inconsistent": {
+                                    "type": "number"
+                                  },
+                                  "inconclusive": {
+                                    "type": "number"
+                                  }
+                                },
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "asked",
+                              "replied",
+                              "verdicts"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "voidReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ref": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "email": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "attemptId",
+                          "candidateId",
+                          "state",
+                          "total",
+                          "maxTotal",
+                          "percent",
+                          "startedAt",
+                          "submittedAt",
+                          "durationMs",
+                          "scores",
+                          "probes",
+                          "voidReason",
+                          "ref",
+                          "name",
+                          "email"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "analytics": {
+                      "type": "object",
+                      "properties": {
+                        "candidates": {
+                          "type": "number"
+                        },
+                        "graded": {
+                          "type": "number"
+                        },
+                        "setAside": {
+                          "type": "number"
+                        },
+                        "meanPercent": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "medianPercent": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "distribution": {
+                          "readOnly": true,
+                          "description": "Graded candidates per tenth of the range, 0–10% first.",
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        },
+                        "questions": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "questionId": {
+                                "type": "string"
+                              },
+                              "stem": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string"
+                              },
+                              "maxScore": {
+                                "type": "number"
+                              },
+                              "appeared": {
+                                "type": "number"
+                              },
+                              "facility": {
+                                "description": "Mean share of marks earned; low is hard.",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "discrimination": {
+                                "description": "Top 27% mean minus bottom 27% mean. Near zero or negative: the question does not separate strong from weak.",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionId",
+                              "stem",
+                              "kind",
+                              "maxScore",
+                              "appeared",
+                              "facility",
+                              "discrimination"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "time": {
+                          "type": "object",
+                          "properties": {
+                            "medianMinutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "p90Minutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "medianMinutes",
+                            "p90Minutes"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "integrity": {
+                          "type": "object",
+                          "properties": {
+                            "candidatesProbed": {
+                              "type": "number"
+                            },
+                            "asked": {
+                              "type": "number"
+                            },
+                            "replied": {
+                              "type": "number"
+                            },
+                            "read": {
+                              "type": "number"
+                            },
+                            "verdicts": {
+                              "type": "object",
+                              "properties": {
+                                "consistent": {
+                                  "type": "number"
+                                },
+                                "shallow": {
+                                  "type": "number"
+                                },
+                                "inconsistent": {
+                                  "type": "number"
+                                },
+                                "inconclusive": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "consistent",
+                                "shallow",
+                                "inconsistent",
+                                "inconclusive"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "candidatesProbed",
+                            "asked",
+                            "replied",
+                            "read",
+                            "verdicts"
+                          ],
+                          "additionalProperties": false,
+                          "description": "The cohort's follow-ups, as evidence for a person to weigh. Attached to no one."
+                        }
+                      },
+                      "required": [
+                        "candidates",
+                        "graded",
+                        "setAside",
+                        "meanPercent",
+                        "medianPercent",
+                        "distribution",
+                        "questions",
+                        "time",
+                        "integrity"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "exam",
+                    "rows",
+                    "analytics"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/results.csv": {
+      "get": {
+        "summary": "Results as CSV",
+        "tags": [
+          "Results"
+        ],
+        "description": "One row per candidate, one column per question the exam could set; times in IST. Roll numbers and phone numbers stay text. Exporting is audited.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/exams/{examId}/results.xlsx": {
+      "get": {
+        "summary": "Results as an Excel workbook",
+        "tags": [
+          "Results"
+        ],
+        "description": "One row per candidate, one column per question the exam could set; times in IST. Roll numbers and phone numbers stay text. Exporting is audited.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/attempts/{attemptId}/report": {
+      "get": {
+        "summary": "One candidate's report",
+        "tags": [
+          "Results"
+        ],
+        "description": "The grade and the answers, then — separately — the follow-up evidence, with the ledger head that lets anyone check the record behind it.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "exam": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "candidate": {
+                      "type": "object",
+                      "properties": {
+                        "ref": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "ref",
+                        "name",
+                        "email"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "result": {
+                      "type": "object",
+                      "properties": {
+                        "attemptId": {
+                          "type": "string"
+                        },
+                        "candidateId": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string"
+                        },
+                        "total": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "maxTotal": {
+                          "type": "number"
+                        },
+                        "percent": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "number"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "durationMs": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "scores": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "type": "number"
+                              },
+                              "max": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "score",
+                              "max"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "probes": {
+                          "type": "object",
+                          "properties": {
+                            "asked": {
+                              "type": "number"
+                            },
+                            "replied": {
+                              "type": "number"
+                            },
+                            "verdicts": {
+                              "type": "object",
+                              "properties": {
+                                "consistent": {
+                                  "type": "number"
+                                },
+                                "shallow": {
+                                  "type": "number"
+                                },
+                                "inconsistent": {
+                                  "type": "number"
+                                },
+                                "inconclusive": {
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "asked",
+                            "replied",
+                            "verdicts"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "voidReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "attemptId",
+                        "candidateId",
+                        "state",
+                        "total",
+                        "maxTotal",
+                        "percent",
+                        "startedAt",
+                        "submittedAt",
+                        "durationMs",
+                        "scores",
+                        "probes",
+                        "voidReason"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "questions": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "stem": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "maxScore": {
+                            "type": "number"
+                          },
+                          "score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "answer": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "language": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "stem",
+                          "kind",
+                          "maxScore",
+                          "score",
+                          "answer",
+                          "language"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "vivas": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "questionId": {
+                            "type": "string"
+                          },
+                          "prompt": {
+                            "type": "string"
+                          },
+                          "reply": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "latencyMs": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "verdict": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "confidence": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "reasoning": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "questionId",
+                          "prompt",
+                          "reply",
+                          "latencyMs",
+                          "verdict",
+                          "confidence",
+                          "reasoning"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "voidReason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "voidedBy": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "ledger": {
+                      "type": "object",
+                      "properties": {
+                        "head": {
+                          "type": "string"
+                        },
+                        "length": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "head",
+                        "length"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "exam",
+                    "candidate",
+                    "result",
+                    "questions",
+                    "vivas",
+                    "voidReason",
+                    "voidedBy",
+                    "ledger"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/auth/login": {
       "post": {
         "summary": "Sign in with email and password",
@@ -14626,6 +15581,10 @@
     {
       "name": "Invitations",
       "description": "Scheduling a sitting, inviting a cohort, and delivering each candidate's link."
+    },
+    {
+      "name": "Results",
+      "description": "Results, exports, cohort analytics and per-candidate reports."
     }
   ]
 }

@@ -16,6 +16,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvitationService } from "../invitation-service.js";
+import { ResultsService } from "../results.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
@@ -84,10 +85,11 @@ export async function wire(
     ...(options.runner === undefined ? {} : { runner: options.runner }),
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);
+  const invitationStore = new InvitationStore(sql);
   const invitations = new InvitationService({
     exams: service,
     store,
-    invitations: new InvitationStore(sql),
+    invitations: invitationStore,
     codes: new InviteCodes(TOKEN_SECRET),
     tokens,
     publicUrl: PUBLIC_URL,
@@ -96,6 +98,7 @@ export async function wire(
   const app = buildServer({
     service,
     invitations,
+    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

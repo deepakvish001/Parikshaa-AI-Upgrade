@@ -4,7 +4,16 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App.tsx";
-import { ConsoleClient, ConsoleError, type AttemptReview, type ExamSummary, type WhoAmI } from "./api.ts";
+import {
+  ConsoleClient,
+  ConsoleError,
+  type AttemptReview,
+  type CandidateReport,
+  type ExamSummary,
+  type ResultRow,
+  type Results,
+  type WhoAmI,
+} from "./api.ts";
 
 const exams: ExamSummary[] = [{ id: "exam-1", title: "Algorithms", questionCount: 2 }];
 
@@ -25,6 +34,67 @@ const review: AttemptReview = {
       reasoning: "The reply names a different quantity from the one in their answer.",
     },
   ],
+};
+
+const resultRow = (attemptId: string, ref: string, name: string, total: number | null, state: ResultRow["state"] = "graded"): ResultRow => ({
+  attemptId,
+  candidateId: `cand-${ref}`,
+  ref,
+  name,
+  email: null,
+  state,
+  total,
+  maxTotal: 10,
+  percent: total === null ? null : total * 10,
+  startedAt: Date.parse("2026-10-01T04:31:00Z"),
+  submittedAt: Date.parse("2026-10-01T05:01:00Z"),
+  durationMs: 30 * 60_000,
+  scores: {},
+  probes: { asked: 0, replied: 0, verdicts: {} },
+  voidReason: null,
+});
+
+const results: Results = {
+  exam: { id: "exam-1", title: "Algorithms" },
+  rows: [resultRow("a1", "CS002", "Rohan Das", 4), resultRow("a2", "CS001", "Ananya Iyer", 9), resultRow("a3", "CS010", "Meera Pillai", null, "submitted")],
+  analytics: {
+    candidates: 3,
+    graded: 2,
+    setAside: 0,
+    meanPercent: 65,
+    medianPercent: 65,
+    distribution: [0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
+    questions: [
+      { questionId: "q1", stem: "Which sort is stable?", kind: "mcq", maxScore: 5, appeared: 2, facility: 0.5, discrimination: -0.2 },
+      { questionId: "q2", stem: "Trace the loop", kind: "short", maxScore: 5, appeared: 2, facility: 0.8, discrimination: null },
+    ],
+    time: { medianMinutes: 30, p90Minutes: 30 },
+    integrity: { candidatesProbed: 1, asked: 1, replied: 1, read: 1, verdicts: { consistent: 0, shallow: 0, inconsistent: 1, inconclusive: 0 } },
+  },
+};
+
+const report: CandidateReport = {
+  exam: { id: "exam-1", title: "Algorithms" },
+  candidate: { ref: "CS001", name: "Ananya Iyer", email: "ananya@college.test" },
+  result: { ...resultRow("a2", "CS001", "Ananya Iyer", 9) },
+  questions: [
+    { id: "q1", stem: "Which sort is stable?", kind: "mcq", maxScore: 5, score: 5, answer: "Merge sort", language: null },
+    { id: "q2", stem: "Sum two numbers", kind: "code", maxScore: 5, score: 4, answer: "print(sum(map(int, input().split())))", language: "python" },
+  ],
+  vivas: [
+    {
+      questionId: "q2",
+      prompt: "Why map before sum?",
+      reply: "To turn the strings into numbers first.",
+      latencyMs: 9000,
+      verdict: "consistent",
+      confidence: 0.8,
+      reasoning: "Matches the code.",
+    },
+  ],
+  voidReason: null,
+  voidedBy: null,
+  ledger: { head: "ab".repeat(32), length: 9 },
 };
 
 const bankQuestion = (id: string, stem: string) => ({
@@ -149,6 +219,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     resendInvitation: vi.fn(async () => undefined),
     revokeInvitation: vi.fn(async () => undefined),
     invitationLinks: vi.fn(async () => new Blob(["ref,link"])),
+    results: vi.fn(async () => results),
+    resultsFile: vi.fn(async () => new Blob(["x"])),
+    report: vi.fn(async () => report),
     startAttempt: vi.fn(async () => ({ attemptId: "attempt-2", token: "issued-token" })),
     review: vi.fn(async () => review),
     voidAttempt: vi.fn(async () => ({})),
@@ -746,5 +819,89 @@ describe("scheduling and inviting a cohort", () => {
 
     await waitFor(() => expect(client.resendInvitation).toHaveBeenCalledWith("i1", ["email", "sms"]));
     expect(client.revokeInvitation).toHaveBeenCalledWith("i1");
+  });
+});
+
+describe("results and exports", () => {
+  const open = async (client = stubClient()) => {
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Results and exports" }));
+    return client;
+  };
+  const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
+
+  it("lists candidates best first, and sorts and filters them", async () => {
+    await open();
+    const table = await screen.findByRole("region", { name: "Candidates" });
+
+    await within(table).findByText("CS001");
+    expect(refs(table)).toEqual(["CS001", "CS002", "CS010"]);
+
+    await userEvent.click(within(table).getByRole("button", { name: "Ref" }));
+    expect(refs(table)).toEqual(["CS001", "CS002", "CS010"]);
+    await userEvent.click(within(table).getByRole("button", { name: /^Ref/ }));
+    expect(refs(table)).toEqual(["CS010", "CS002", "CS001"]);
+
+    await userEvent.type(within(table).getByLabelText("Find a candidate"), "rohan");
+    expect(refs(table)).toEqual(["CS002"]);
+    await userEvent.clear(within(table).getByLabelText("Find a candidate"));
+    await userEvent.selectOptions(within(table).getByLabelText("Show"), "submitted");
+    expect(refs(table)).toEqual(["CS010"]);
+  });
+
+  it("shows the cohort's figures, and flags a question that does not separate", async () => {
+    await open();
+    const summary = await screen.findByRole("region", { name: "Summary" });
+    expect(summary).toHaveTextContent("Mean65%");
+    expect(within(summary).getByLabelText("90–100%: 1")).toBeInTheDocument();
+
+    const questions = screen.getByRole("region", { name: "Questions" });
+    expect(within(questions).getByText("Which sort is stable?").closest("tr")).toHaveTextContent(/worth a second look/);
+    expect(within(questions).getByText("Trace the loop").closest("tr")).not.toHaveTextContent(/second look/);
+  });
+
+  it("keeps the follow-up figures apart, as evidence about no one in particular", async () => {
+    await open();
+    const evidence = await screen.findByRole("region", { name: "Follow-up evidence" });
+    expect(evidence).toHaveTextContent("1 asked of 1 candidate");
+    expect(evidence).toHaveTextContent("1 inconsistent");
+    expect(evidence).not.toHaveTextContent(/CS00|Ananya|Rohan/);
+  });
+
+  it("downloads the spreadsheet", async () => {
+    const client = await open();
+    URL.createObjectURL = vi.fn(() => "blob:x");
+    URL.revokeObjectURL = vi.fn();
+    await userEvent.click(await screen.findByRole("button", { name: "Download Excel" }));
+    await waitFor(() => expect(client.resultsFile).toHaveBeenCalledWith("exam-1", "xlsx"));
+  });
+
+  it("opens a candidate's report, with the code as written and the follow-up set apart", async () => {
+    const client = await open();
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Report" }));
+
+    expect(client.report).toHaveBeenCalledWith("a2");
+    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(screen.getByLabelText("Code in python")).toHaveTextContent("print(sum(map(int, input().split())))");
+    const answers = screen.getByRole("region", { name: "Answers" });
+    expect(answers).not.toHaveTextContent("Why map before sum?");
+    const evidence = screen.getByRole("region", { name: "Follow-up evidence" });
+    expect(evidence).toHaveTextContent("About question 2");
+    expect(evidence).toHaveTextContent("did not change the marks");
+    expect(screen.getByText(/Record: 9 entries, head abababab/)).toBeInTheDocument();
+
+    const print = vi.fn();
+    vi.stubGlobal("print", print);
+    await userEvent.click(screen.getByRole("button", { name: "Print or save as PDF" }));
+    expect(print).toHaveBeenCalled();
+  });
+
+  it("is not offered to an invigilator", async () => {
+    renderApp(<App client={stubClient({ me: vi.fn(async () => who("invigilator", ["exam:read", "attempt:start", "attempt:read", "attempt:extend"])) })} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await screen.findByRole("button", { name: "Schedule and invite candidates" });
+    expect(screen.queryByRole("button", { name: "Results and exports" })).toBeNull();
   });
 });

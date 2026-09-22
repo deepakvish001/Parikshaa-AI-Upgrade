@@ -32,6 +32,7 @@
     "@parikshaa/viva": "*",
     "fastify": "^5.5.0",
     "fastify-type-provider-zod": "^7.0.0",
+    "fflate": "^0.8.3",
     "jose": "^5.9.6",
     "nodemailer": "^10.0.10",
     "postgres": "^3.4.5",

@@ -5,6 +5,7 @@ import { ConsoleClient, ConsoleError } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { BankPanel } from "./components/Bank.tsx";
 import { Candidates } from "./components/Candidates.tsx";
+import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -17,6 +18,8 @@ type View =
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "bank" }
   | { readonly name: "candidates"; readonly examId: string }
+  | { readonly name: "results"; readonly examId: string }
+  | { readonly name: "report"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "staff" }
   | { readonly name: "keys" }
   | { readonly name: "usage" }
@@ -270,7 +273,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         </button>
       </nav>
 
-      <div className="bar">
+      <div className="bar crumbs">
         <h1>
           {view.name === "exams" ? (
             "Parikshaa console"
@@ -280,7 +283,11 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             </button>
           )}
         </h1>
-        {view.name === "attempts" || view.name === "review" || view.name === "candidates" ? (
+        {view.name === "attempts" ||
+        view.name === "review" ||
+        view.name === "candidates" ||
+        view.name === "results" ||
+        view.name === "report" ? (
           <>
             <span className="notice">/</span>
             <button
@@ -290,6 +297,14 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             >
               {examTitle(view.examId)}
             </button>
+            {view.name === "report" ? (
+              <>
+                <span className="notice">/</span>
+                <button type="button" className="crumb" onClick={() => setView({ name: "results", examId: view.examId })}>
+                  Results
+                </button>
+              </>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -333,12 +348,26 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           <button type="button" className="secondary" onClick={() => setView({ name: "candidates", examId: view.examId })}>
             Schedule and invite candidates
           </button>
+          {can("attempt:review") ? (
+            <button type="button" className="secondary" onClick={() => setView({ name: "results", examId: view.examId })}>
+              Results and exports
+            </button>
+          ) : null}
         </div>
       ) : null}
 
       {view.name === "candidates" ? (
         <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} />
       ) : null}
+
+      {view.name === "results" ? (
+        <ResultsPanel
+          client={client}
+          examId={view.examId}
+          onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
+        />
+      ) : null}
+      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} /> : null}
 
       {view.name === "attempts" && attempts.data !== undefined ? (
         <AttemptList

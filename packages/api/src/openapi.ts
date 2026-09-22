@@ -3,6 +3,7 @@ import { IdentityStore, InvitationStore, LedgerStore, QuestionBank, type SqlExec
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
+import { ResultsService } from "./results.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -36,6 +37,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
       tokens,
       publicUrl: "https://example.invalid",
     }),
+    results: new ResultsService({ store, invitations: new InvitationStore(unusable), exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

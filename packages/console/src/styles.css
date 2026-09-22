@@ -109,3 +109,30 @@ textarea.mono { font-family: var(--mono); font-size: .82rem; }
 
 /* Invitations. */
 .problems li.warning { color: var(--muted); }
+
+/* Results (ROADMAP §6). */
+.figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr)); gap: .6rem; margin: .4rem 0 .8rem; }
+.figures dt { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.figures dd { margin: 0; font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.histogram { margin: 0; }
+.histogram ol { list-style: none; display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; height: 8rem; margin: .4rem 0 0; padding: 0; }
+.histogram li { display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; text-align: center; min-width: 0; }
+.histogram .column { background: var(--accent); border-radius: 3px 3px 0 0; min-height: 1px; }
+.histogram .count { font-size: .75rem; color: var(--text); font-variant-numeric: tabular-nums; }
+.histogram .band { font-size: .7rem; color: var(--muted); border-top: 1px solid var(--border); padding-top: .15rem; }
+.scroll { overflow-x: auto; }
+th button.crumb { font-weight: 600; }
+.answer { border-top: 1px solid var(--border); padding-top: .6rem; margin-top: .6rem; }
+.answer .given { margin: .1rem 0 0; white-space: pre-wrap; }
+pre.code { font: .82rem/1.45 var(--mono); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: .6rem; overflow-x: auto; margin: .2rem 0 0; }
+
+@media print {
+  :root { --bg: #fff; --surface: #fff; --text: #000; --muted: #444; --border: #bbb; --warn-soft: #fff; }
+  body { background: #fff; font-size: 11pt; }
+  .page { max-width: none; padding: 0; }
+  .account, .crumbs, .no-print { display: none !important; }
+  .card { border: none; padding: 0; margin-bottom: 1rem; break-inside: avoid-page; }
+  .evidence { border-left: 3px solid #999; padding-left: .6rem; }
+  .answer { break-inside: avoid; }
+  pre.code { white-space: pre-wrap; border-color: #ccc; }
+}

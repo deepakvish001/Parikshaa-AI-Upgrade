@@ -239,6 +239,31 @@ message from your own MSG91 account before the first sitting.
 - A cohort integrity summary — how many answers were probed, and the verdict
   distribution — framed as evidence, never as a list of accusations.
 
+**Status — built.** Every figure is computed from the ledgers by pure functions
+in the core (`resultOf`, `cohortAnalytics`), so a number in a spreadsheet can be
+recomputed from the chain the way a grade can. The console's results page lists
+each candidate under their own roll number, sorts by marks, time, roll number or
+name, filters by state or a search, and downloads the table as CSV or as an
+Excel workbook. Times are in IST; roll numbers and phone numbers stay text (the
+workbook types each cell explicitly, so `007` is not turned into `7`); and a
+cell a spreadsheet would run as a formula is defused. Exporting needs
+`attempt:review` and is audited, since the file leaves the system.
+
+Cohort analytics: mean, median, a histogram by tenth of the range, median and
+90th-percentile time, and for each question how often it was set (with pools,
+not every paper has every question), its facility, and its discrimination —
+the top 27% of candidates against the bottom 27% — with a plain-words note on a
+question that does not separate strong from weak. The follow-up summary counts
+what was asked, answered and read, and how the readings fell, attached to no
+one; there is no way to sort candidates by it.
+
+The per-candidate report shows the grade, each answer as the candidate gave it
+(the option text for a multiple-choice question, the source for code), then —
+in its own marked section — the follow-ups, then the ledger's head and length
+so the paper copy can be checked against the record. It is laid out for print:
+the PDF comes from the browser's "Save as PDF" rather than from a server-side
+renderer, which would have meant shipping a headless browser.
+
 ## 7. Integrations
 
 **Hiring first:** outbound webhooks and ATS connectors (Greenhouse, Lever,

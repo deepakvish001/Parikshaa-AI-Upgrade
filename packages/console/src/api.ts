@@ -171,6 +171,85 @@ export type ImportResult =
     }
   | { readonly dryRun: false; readonly invited: number; readonly warnings: readonly RowProblem[] };
 
+export type Verdict = "consistent" | "shallow" | "inconsistent" | "inconclusive";
+
+export interface ResultRow {
+  readonly attemptId: string;
+  readonly candidateId: string;
+  readonly ref: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly state: "in_progress" | "submitted" | "graded" | "void";
+  readonly total: number | null;
+  readonly maxTotal: number;
+  readonly percent: number | null;
+  readonly startedAt: number;
+  readonly submittedAt: number | null;
+  readonly durationMs: number | null;
+  readonly scores: Readonly<Record<string, { readonly score: number; readonly max: number }>>;
+  readonly probes: { readonly asked: number; readonly replied: number; readonly verdicts: Partial<Record<Verdict, number>> };
+  readonly voidReason: string | null;
+}
+
+export interface QuestionStats {
+  readonly questionId: string;
+  readonly stem: string;
+  readonly kind: string;
+  readonly maxScore: number;
+  readonly appeared: number;
+  readonly facility: number | null;
+  readonly discrimination: number | null;
+}
+
+export interface Results {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly rows: readonly ResultRow[];
+  readonly analytics: {
+    readonly candidates: number;
+    readonly graded: number;
+    readonly setAside: number;
+    readonly meanPercent: number | null;
+    readonly medianPercent: number | null;
+    readonly distribution: readonly number[];
+    readonly questions: readonly QuestionStats[];
+    readonly time: { readonly medianMinutes: number | null; readonly p90Minutes: number | null };
+    readonly integrity: {
+      readonly candidatesProbed: number;
+      readonly asked: number;
+      readonly replied: number;
+      readonly read: number;
+      readonly verdicts: Readonly<Record<Verdict, number>>;
+    };
+  };
+}
+
+export interface CandidateReport {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly candidate: { readonly ref: string; readonly name: string; readonly email: string | null };
+  readonly result: Omit<ResultRow, "ref" | "name" | "email">;
+  readonly questions: readonly {
+    readonly id: string;
+    readonly stem: string;
+    readonly kind: string;
+    readonly maxScore: number;
+    readonly score: number | null;
+    readonly answer: string | null;
+    readonly language: string | null;
+  }[];
+  readonly vivas: readonly {
+    readonly questionId: string;
+    readonly prompt: string;
+    readonly reply: string | null;
+    readonly latencyMs: number | null;
+    readonly verdict: Verdict | null;
+    readonly confidence: number | null;
+    readonly reasoning: string | null;
+  }[];
+  readonly voidReason: string | null;
+  readonly voidedBy: string | null;
+  readonly ledger: { readonly head: string; readonly length: number };
+}
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
@@ -393,6 +472,25 @@ export class ConsoleClient {
     });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  // --- results ----------------------------------------------------------------
+
+  results(examId: string): Promise<Results> {
+    return this.#request<Results>(`/exams/${encodeURIComponent(examId)}/results`);
+  }
+
+  /** The results as a file to save: CSV or an Excel workbook. */
+  async resultsFile(examId: string, format: "csv" | "xlsx"): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/results.${format}`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  report(attemptId: string): Promise<CandidateReport> {
+    return this.#request<CandidateReport>(`/attempts/${encodeURIComponent(attemptId)}/report`);
   }
 
   // --- exams and attempts -----------------------------------------------------

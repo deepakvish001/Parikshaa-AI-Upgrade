@@ -16,6 +16,8 @@ import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
+import type { ResultsService } from "./results.js";
+import { registerResultsRoutes } from "./results-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
@@ -30,6 +32,7 @@ export interface ServerOptions {
   readonly identity: IdentityStore;
   readonly bank: QuestionBank;
   readonly invitations: InvitationService;
+  readonly results: ResultsService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -112,6 +115,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
+        { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
       ],
       components: {
         securitySchemes: {
@@ -754,6 +758,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
     const throttle = options.loginThrottle ?? new LoginThrottle();
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
+    registerResultsRoutes(routes, { results: options.results, staff });
 
     registerAccountRoutes(routes, {
       service,
