@@ -49,7 +49,26 @@ const kinds = {
   mcq: { kind: z.literal("mcq"), options: z.array(z.string()).readonly(), correctIndex: z.number() },
   short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
   numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number() },
-  code: { kind: z.literal("code"), language: z.string(), starter: z.string().optional() },
+  code: {
+    kind: z.literal("code"),
+    language: z.string().describe("The default language: python, javascript, c, cpp or java."),
+    languages: z.array(z.string()).readonly().optional().describe("Languages the candidate may choose between."),
+    starter: z.string().optional(),
+    tests: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          input: z.string().describe("Standard input."),
+          expected: z.string().describe("Standard output, compared ignoring line endings and trailing space."),
+          hidden: z.boolean().describe("Hidden tests decide the score and never reach the candidate."),
+          weight: z.number(),
+        }),
+      )
+      .readonly()
+      .optional()
+      .describe("When present, the answer is scored by running these rather than by a rubric grader."),
+    limits: z.object({ timeMs: z.number().optional(), memoryMb: z.number().optional() }).optional(),
+  },
 };
 
 /** A question, answer key included. Staff-side only. */
@@ -241,7 +260,12 @@ const candidateQuestion = z.discriminatedUnion("kind", [
     stem: z.string(),
     maxScore: z.number(),
     language: z.string(),
+    languages: z.array(z.string()).readonly(),
     starter: z.string().nullable(),
+    samples: z
+      .array(z.object({ input: z.string(), output: z.string() }))
+      .readonly()
+      .describe("The visible tests, as worked examples."),
   }),
 ]);
 
@@ -291,6 +315,38 @@ export const extendBody = z.object({
 export const extendResponse = z.object({ expiresAt: z.number() });
 
 export const answerBody = z.object({ questionId: z.string().min(1), answer: z.string() });
+
+export const runBody = z.object({
+  questionId: z.string().min(1),
+  language: z.string().min(1),
+  source: z.string().max(256 * 1024),
+  input: z
+    .string()
+    .max(1024 * 1024)
+    .optional()
+    .describe("Run on this input instead of the question's examples."),
+});
+
+export const runResponse = z
+  .discriminatedUnion("compiled", [
+    z.object({ compiled: z.literal(false), compileOutput: z.string() }),
+    z.object({
+      compiled: z.literal(true),
+      results: z
+        .array(
+          z.object({
+            input: z.string(),
+            expectedOutput: z.string().nullable(),
+            status: z.enum(["passed", "wrong_answer", "time_limit", "runtime_error", "output_limit", "ran"]),
+            stdout: z.string(),
+            stderr: z.string(),
+            timeMs: z.number(),
+          }),
+        )
+        .readonly(),
+    }),
+  ])
+  .describe("The examples only. Hidden tests are never run on request.");
 
 export const replyBody = z
   .object({ reply: z.string().min(1) })

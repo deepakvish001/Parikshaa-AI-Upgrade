@@ -57,6 +57,14 @@ candidate is shown only those questions, answers to any other are refused, and
 scoring and probing see nothing else. An exam that has been sat is frozen; it
 is changed by cloning it.
 
+**Code.** A code question is scored by running the candidate's code against its
+tests: visible ones, shown as examples, and hidden ones, which decide the score
+and never reach the candidate's client. When a code answer is committed it is
+tested in full and a `code_tested` entry records how many tests passed — the
+counts, not the tests, since the chain is shown to the candidate afterwards.
+That result stands in for a score until grading, so a strong solution can be
+followed up with a probe about the candidate's own code while it is fresh.
+
 **Drafts are not answers.** What a candidate types is autosaved every few
 seconds to a separate, mutable draft store, outside the ledger. A chain of
 every keystroke pause would bury the record, and on an exam that forbids
@@ -255,6 +263,7 @@ sitting is over.
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
 | Question bank, sections, per-candidate papers | implemented — `packages/store/src/question-bank.ts`, `packages/core/src/paper.ts`; CSV import; exam cloning |
+| Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Candidate identity / enrolment | out of scope (§2) |
 

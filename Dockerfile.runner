@@ -1,0 +1,39 @@
+# The code runner. A separate image and a separate container from the API, so
+# candidate code never shares a process, a filesystem or a network with the
+# database credentials or the model API key.
+#
+# It must run under gVisor (runtime: runsc). The runner checks this at start
+# and refuses otherwise; see packages/runner/src/main.ts.
+
+FROM node:22-bookworm-slim AS build
+WORKDIR /app
+COPY package.json package-lock.json tsconfig.base.json ./
+# Every workspace's manifest, so the lockfile matches what npm sees.
+COPY packages/core/package.json     packages/core/
+COPY packages/viva/package.json     packages/viva/
+COPY packages/store/package.json    packages/store/
+COPY packages/api/package.json      packages/api/
+COPY packages/verify/package.json   packages/verify/
+COPY packages/web/package.json      packages/web/
+COPY packages/console/package.json  packages/console/
+COPY packages/runner/package.json   packages/runner/
+RUN npm ci
+COPY packages/runner packages/runner
+RUN npx tsc -p packages/runner/tsconfig.json \
+ && npm prune --omit=dev
+
+FROM node:22-bookworm-slim AS runtime
+# The toolchains candidates write in, and the utilities the sandbox wraps
+# each run in (prlimit, setpriv, unshare from util-linux; pkill from procps).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      python3 gcc g++ libc6-dev openjdk-17-jdk-headless util-linux procps \
+ && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /app/node_modules ./node_modules
+COPY --from=build /app/packages/runner/dist ./packages/runner/dist
+COPY --from=build /app/packages/runner/package.json ./packages/runner/package.json
+ENV NODE_ENV=production RUNNER_WORKDIR=/tmp/parikshaa-runs
+EXPOSE 4000
+# Root inside gVisor's sandbox, so each run can be dropped to its own uid.
+CMD ["node", "packages/runner/dist/main.js"]

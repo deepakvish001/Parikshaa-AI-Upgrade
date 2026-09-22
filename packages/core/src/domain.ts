@@ -67,10 +67,33 @@ export interface NumericQuestion extends QuestionBase {
   readonly tolerance: number;
 }
 
+/**
+ * One test of a code answer: what goes to standard input, and what standard
+ * output must be.
+ *
+ * Visible tests are shown to the candidate as worked examples and run when they
+ * press Run. Hidden tests are never sent to the candidate's client in any form;
+ * they decide the score.
+ */
+export interface CodeTest {
+  readonly id: string;
+  readonly input: string;
+  readonly expected: string;
+  readonly hidden: boolean;
+  /** Share of the question's marks, relative to the other tests' weights. */
+  readonly weight: number;
+}
+
 export interface CodeQuestion extends QuestionBase {
   readonly kind: "code";
+  /** The default language, and the only one unless `languages` says otherwise. */
   readonly language: string;
+  /** Languages the candidate may choose between. */
+  readonly languages?: readonly string[];
   readonly starter?: string;
+  /** When present, the answer is scored by running these, not by a rubric grader. */
+  readonly tests?: readonly CodeTest[];
+  readonly limits?: { readonly timeMs?: number; readonly memoryMb?: number };
 }
 
 export type Question = McqQuestion | ShortQuestion | NumericQuestion | CodeQuestion;
@@ -211,6 +234,23 @@ export type ExamEvent =
        * any name an unverified claim.
        */
       readonly decidedBy?: StaffAttribution;
+    }
+  | {
+      /**
+       * A code answer run against every one of its question's tests.
+       *
+       * Recorded when the answer is committed, so a strong solution can be
+       * followed up while the candidate still remembers writing it, and so the
+       * score that grading uses is on the record. Only counts, never test
+       * contents: the chain is shown to the candidate once the attempt closes,
+       * and hidden tests stay hidden from everyone who might sit them next.
+       */
+      readonly type: "code_tested";
+      readonly attemptId: AttemptId;
+      readonly questionId: QuestionId;
+      readonly passed: number;
+      readonly total: number;
+      readonly score: number;
     }
   | {
       /**

@@ -99,3 +99,10 @@ td.mono, .mono { font-family: var(--mono); font-size: .8rem; }
 .pool li { margin: .2rem 0; }
 .picker { border-style: dashed; }
 .option { display: block; padding: .25rem 0; font-size: .9rem; color: var(--text); }
+
+/* Code questions. */
+.test-case { border-top: 1px dashed var(--border); padding-top: .6rem; margin-top: .6rem; }
+fieldset.field { border: none; padding: 0; margin: 0 0 .75rem; }
+fieldset.field legend { font-size: .85rem; color: var(--muted); padding: 0; }
+label.inline { display: inline-flex; align-items: center; gap: .3rem; margin: 0; color: var(--text); font-size: .88rem; }
+textarea.mono { font-family: var(--mono); font-size: .82rem; }

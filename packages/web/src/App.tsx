@@ -425,6 +425,7 @@ function Attempt({ client }: { client: ParikshaaClient }) {
               value={value}
               disabled={!open}
               onChange={(next) => edit(question.id, next)}
+              onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
             />
 
             {open ? (

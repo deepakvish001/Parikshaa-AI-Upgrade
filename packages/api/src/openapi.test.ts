@@ -102,7 +102,7 @@ describe("the OpenAPI document", () => {
     // `candidateView` closes in the type system, restated in the published
     // contract — and enforced at runtime, because serialization drops keys the
     // response schema does not name.
-    for (const leak of ["correctIndex", "expectedPoints", "tolerance", "expected", "rubric", "vivaTriggerRatio", "rationale"]) {
+    for (const leak of ["correctIndex", "expectedPoints", "tolerance", "expected", "rubric", "vivaTriggerRatio", "rationale", "tests", "hidden", "weight"]) {
       expect([...names], `candidate contract declares ${leak}`).not.toContain(leak);
     }
   });

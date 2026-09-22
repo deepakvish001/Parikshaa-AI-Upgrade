@@ -11,6 +11,21 @@ export interface ProbeHandlers {
   readonly onError?: (message: string) => void;
 }
 
+/** A run as the candidate sees it: the examples, or their own input. */
+export type RunOutcome =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly results: readonly {
+        readonly input: string;
+        readonly expectedOutput: string | null;
+        readonly status: string;
+        readonly stdout: string;
+        readonly stderr: string;
+        readonly timeMs: number;
+      }[];
+    };
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -80,6 +95,14 @@ export class ParikshaaClient {
   /** Check in: the attempt's state and deadline as they now stand. */
   heartbeat(): Promise<{ state: string; expiresAt: number }> {
     return this.#request("/attempts/me/heartbeat", { method: "POST" });
+  }
+
+  /** Run code against the examples, or on the candidate's own input. Records nothing. */
+  runCode(questionId: string, language: string, source: string, input?: string): Promise<RunOutcome> {
+    return this.#request("/attempts/me/run", {
+      method: "POST",
+      body: JSON.stringify(input === undefined ? { questionId, language, source } : { questionId, language, source, input }),
+    });
   }
 
   async submit(): Promise<void> {

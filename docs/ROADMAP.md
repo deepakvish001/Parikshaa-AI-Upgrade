@@ -169,6 +169,33 @@ that data structure.
 - Visible and hidden test cases, per-test scoring, output diffing.
 - Probes generated from the candidate's *own code*.
 
+**Status — built.** Candidates write in Python, JavaScript, C, C++ or Java, in
+an editor with highlighting and no completion of any kind, loaded only for
+exams that have a code question. They run their code against the visible
+examples or on input of their own; runs record nothing. A committed answer is
+tested against every test, hidden ones included, and the counts — never the
+tests — go into the ledger as `code_tested`. That result is what lets a strong
+solution be followed up while the candidate still remembers writing it, and the
+probe is generated from their source. Grading uses it, or runs the tests then
+if the runner was down when the answer was committed; an answer is never
+refused because code cannot be run.
+
+The runner is its own service and image (`packages/runner`,
+`Dockerfile.runner`), on a network with no route out, under gVisor. Each run is
+also wrapped in fresh network, IPC, UTS and PID namespaces, dropped to a
+per-slot unprivileged uid, and held to CPU, memory, process, file-size, output
+and wall-clock limits, in a clean environment and a private directory. The
+suite attacks it for real — infinite loops, fork bombs, memory exhaustion,
+output floods, network access, reading the runner's files — and CI runs those
+cases as root so they execute there too.
+
+Two limits worth knowing. Memory is a hard address-space cap for C, C++ and
+Python, but Node and the JVM cannot start under one, so for those two it is
+their own heap flag, with the container's cgroup limit as the backstop. And
+gVisor is a deployment requirement this code checks but cannot supply: the
+runner refuses to start unless it finds itself inside gVisor, or is told
+explicitly that isolation is off for development.
+
 ## 5. Bulk operations and delivery
 
 Nobody clicks "Start" two thousand times.

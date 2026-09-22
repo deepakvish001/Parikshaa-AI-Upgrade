@@ -61,6 +61,20 @@ Account tables (organisations, staff, sessions, API keys) sit outside RLS on
 purpose: they are how a request finds its organisation in the first place.
 Every query on them names the organisation explicitly.
 
+### 0b. Candidate code never runs next to anything worth stealing
+
+Code questions are executed by `@parikshaa/runner`, a separate service in a
+separate container on an `internal` network: the API can reach it, and it can
+reach nothing — not the database, not the model API, not the internet. It holds
+one secret, the token the API uses to call it, and candidate processes cannot
+read it (clean environment, different uid, `/proc/1` unreadable).
+
+The kernel boundary is gVisor (`runtime: runsc`); the runner checks for it at
+start and refuses to serve otherwise. Inside it, every run gets fresh
+namespaces, its own slot uid, `prlimit` limits and a wall-clock kill, and after
+every run the runner stops and kills everything that uid owns until it owns
+nothing — which is what contains a fork bomb that escapes its process group.
+
 ### 1. Ledger integrity is enforced in the database, not only in app code
 
 - `UNIQUE (attempt_id, seq)`. Two concurrent appends then fail loudly instead of

@@ -309,10 +309,66 @@
                               ]
                             },
                             "language": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "The default language: python, javascript, c, cpp or java."
+                            },
+                            "languages": {
+                              "description": "Languages the candidate may choose between.",
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
                             },
                             "starter": {
                               "type": "string"
+                            },
+                            "tests": {
+                              "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "input": {
+                                    "type": "string",
+                                    "description": "Standard input."
+                                  },
+                                  "expected": {
+                                    "type": "string",
+                                    "description": "Standard output, compared ignoring line endings and trailing space."
+                                  },
+                                  "hidden": {
+                                    "type": "boolean",
+                                    "description": "Hidden tests decide the score and never reach the candidate."
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "input",
+                                  "expected",
+                                  "hidden",
+                                  "weight"
+                                ]
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "properties": {
+                                "timeMs": {
+                                  "type": "number"
+                                },
+                                "memoryMb": {
+                                  "type": "number"
+                                }
+                              }
                             }
                           },
                           "required": [
@@ -578,10 +634,66 @@
                                     ]
                                   },
                                   "language": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "The default language: python, javascript, c, cpp or java."
+                                  },
+                                  "languages": {
+                                    "description": "Languages the candidate may choose between.",
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
                                   },
                                   "starter": {
                                     "type": "string"
+                                  },
+                                  "tests": {
+                                    "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "input": {
+                                          "type": "string",
+                                          "description": "Standard input."
+                                        },
+                                        "expected": {
+                                          "type": "string",
+                                          "description": "Standard output, compared ignoring line endings and trailing space."
+                                        },
+                                        "hidden": {
+                                          "type": "boolean",
+                                          "description": "Hidden tests decide the score and never reach the candidate."
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "input",
+                                        "expected",
+                                        "hidden",
+                                        "weight"
+                                      ]
+                                    }
+                                  },
+                                  "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                      "timeMs": {
+                                        "type": "number"
+                                      },
+                                      "memoryMb": {
+                                        "type": "number"
+                                      }
+                                    }
                                   }
                                 },
                                 "required": [
@@ -844,6 +956,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       },
@@ -1037,6 +1195,52 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -1329,6 +1533,52 @@
                     "problems"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
                 }
               }
             }
@@ -1635,10 +1885,68 @@
                                 ]
                               },
                               "language": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "The default language: python, javascript, c, cpp or java."
+                              },
+                              "languages": {
+                                "description": "Languages the candidate may choose between.",
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
                               },
                               "starter": {
                                 "type": "string"
+                              },
+                              "tests": {
+                                "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "input": {
+                                      "type": "string",
+                                      "description": "Standard input."
+                                    },
+                                    "expected": {
+                                      "type": "string",
+                                      "description": "Standard output, compared ignoring line endings and trailing space."
+                                    },
+                                    "hidden": {
+                                      "type": "boolean",
+                                      "description": "Hidden tests decide the score and never reach the candidate."
+                                    },
+                                    "weight": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "input",
+                                    "expected",
+                                    "hidden",
+                                    "weight"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "limits": {
+                                "type": "object",
+                                "properties": {
+                                  "timeMs": {
+                                    "type": "number"
+                                  },
+                                  "memoryMb": {
+                                    "type": "number"
+                                  }
+                                },
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -1912,10 +2220,68 @@
                                       ]
                                     },
                                     "language": {
-                                      "type": "string"
+                                      "type": "string",
+                                      "description": "The default language: python, javascript, c, cpp or java."
+                                    },
+                                    "languages": {
+                                      "description": "Languages the candidate may choose between.",
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
                                     },
                                     "starter": {
                                       "type": "string"
+                                    },
+                                    "tests": {
+                                      "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "input": {
+                                            "type": "string",
+                                            "description": "Standard input."
+                                          },
+                                          "expected": {
+                                            "type": "string",
+                                            "description": "Standard output, compared ignoring line endings and trailing space."
+                                          },
+                                          "hidden": {
+                                            "type": "boolean",
+                                            "description": "Hidden tests decide the score and never reach the candidate."
+                                          },
+                                          "weight": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "input",
+                                          "expected",
+                                          "hidden",
+                                          "weight"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "limits": {
+                                      "type": "object",
+                                      "properties": {
+                                        "timeMs": {
+                                          "type": "number"
+                                        },
+                                        "memoryMb": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "additionalProperties": false
                                     }
                                   },
                                   "required": [
@@ -2092,6 +2458,52 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -2358,6 +2770,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       },
@@ -2590,6 +3048,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -2776,6 +3280,52 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -3010,6 +3560,52 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -3281,6 +3877,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -3516,6 +4158,52 @@
             }
           },
           "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -3857,6 +4545,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -4013,11 +4747,39 @@
                                   "language": {
                                     "type": "string"
                                   },
+                                  "languages": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
                                   "starter": {
                                     "type": [
                                       "string",
                                       "null"
                                     ]
+                                  },
+                                  "samples": {
+                                    "readOnly": true,
+                                    "description": "The visible tests, as worked examples.",
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "type": "string"
+                                        },
+                                        "output": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "input",
+                                        "output"
+                                      ],
+                                      "additionalProperties": false
+                                    }
                                   }
                                 },
                                 "required": [
@@ -4026,7 +4788,9 @@
                                   "stem",
                                   "maxScore",
                                   "language",
-                                  "starter"
+                                  "languages",
+                                  "starter",
+                                  "samples"
                                 ],
                                 "additionalProperties": false
                               }
@@ -4320,6 +5084,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -4517,6 +5327,403 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/me/run": {
+      "post": {
+        "summary": "Run code against the question's examples, or on input of the candidate's own",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "Hidden tests are never run on request. Nothing is recorded: running is working, not answering. The answer is what the candidate commits, which is when it is tested in full.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "language": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 262144
+                  },
+                  "input": {
+                    "description": "Run on this input instead of the question's examples.",
+                    "type": "string",
+                    "maxLength": 1048576
+                  }
+                },
+                "required": [
+                  "questionId",
+                  "language",
+                  "source"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The examples only. Hidden tests are never run on request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "compiled": {
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "compileOutput": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "compiled",
+                        "compileOutput"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "compiled": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "results": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "input": {
+                                "type": "string"
+                              },
+                              "expectedOutput": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "passed",
+                                  "wrong_answer",
+                                  "time_limit",
+                                  "runtime_error",
+                                  "output_limit",
+                                  "ran"
+                                ]
+                              },
+                              "stdout": {
+                                "type": "string"
+                              },
+                              "stderr": {
+                                "type": "string"
+                              },
+                              "timeMs": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "input",
+                              "expectedOutput",
+                              "status",
+                              "stdout",
+                              "stderr",
+                              "timeMs"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "compiled",
+                        "results"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "The examples only. Hidden tests are never run on request."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -4766,6 +5973,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -4974,6 +6227,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -5148,6 +6447,52 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -5420,6 +6765,52 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -5655,6 +7046,52 @@
             }
           },
           "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -6014,10 +7451,68 @@
                                     ]
                                   },
                                   "language": {
-                                    "type": "string"
+                                    "type": "string",
+                                    "description": "The default language: python, javascript, c, cpp or java."
+                                  },
+                                  "languages": {
+                                    "description": "Languages the candidate may choose between.",
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
                                   },
                                   "starter": {
                                     "type": "string"
+                                  },
+                                  "tests": {
+                                    "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "input": {
+                                          "type": "string",
+                                          "description": "Standard input."
+                                        },
+                                        "expected": {
+                                          "type": "string",
+                                          "description": "Standard output, compared ignoring line endings and trailing space."
+                                        },
+                                        "hidden": {
+                                          "type": "boolean",
+                                          "description": "Hidden tests decide the score and never reach the candidate."
+                                        },
+                                        "weight": {
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "input",
+                                        "expected",
+                                        "hidden",
+                                        "weight"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "limits": {
+                                    "type": "object",
+                                    "properties": {
+                                      "timeMs": {
+                                        "type": "number"
+                                      },
+                                      "memoryMb": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "additionalProperties": false
                                   }
                                 },
                                 "required": [
@@ -6403,10 +7898,66 @@
                             ]
                           },
                           "language": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The default language: python, javascript, c, cpp or java."
+                          },
+                          "languages": {
+                            "description": "Languages the candidate may choose between.",
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "starter": {
                             "type": "string"
+                          },
+                          "tests": {
+                            "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "input": {
+                                  "type": "string",
+                                  "description": "Standard input."
+                                },
+                                "expected": {
+                                  "type": "string",
+                                  "description": "Standard output, compared ignoring line endings and trailing space."
+                                },
+                                "hidden": {
+                                  "type": "boolean",
+                                  "description": "Hidden tests decide the score and never reach the candidate."
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "input",
+                                "expected",
+                                "hidden",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "limits": {
+                            "type": "object",
+                            "properties": {
+                              "timeMs": {
+                                "type": "number"
+                              },
+                              "memoryMb": {
+                                "type": "number"
+                              }
+                            }
                           }
                         },
                         "required": [
@@ -6701,10 +8252,68 @@
                               ]
                             },
                             "language": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "The default language: python, javascript, c, cpp or java."
+                            },
+                            "languages": {
+                              "description": "Languages the candidate may choose between.",
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
                             },
                             "starter": {
                               "type": "string"
+                            },
+                            "tests": {
+                              "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "input": {
+                                    "type": "string",
+                                    "description": "Standard input."
+                                  },
+                                  "expected": {
+                                    "type": "string",
+                                    "description": "Standard output, compared ignoring line endings and trailing space."
+                                  },
+                                  "hidden": {
+                                    "type": "boolean",
+                                    "description": "Hidden tests decide the score and never reach the candidate."
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "input",
+                                  "expected",
+                                  "hidden",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "properties": {
+                                "timeMs": {
+                                  "type": "number"
+                                },
+                                "memoryMb": {
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -7120,10 +8729,66 @@
                             ]
                           },
                           "language": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "The default language: python, javascript, c, cpp or java."
+                          },
+                          "languages": {
+                            "description": "Languages the candidate may choose between.",
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
                           },
                           "starter": {
                             "type": "string"
+                          },
+                          "tests": {
+                            "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "input": {
+                                  "type": "string",
+                                  "description": "Standard input."
+                                },
+                                "expected": {
+                                  "type": "string",
+                                  "description": "Standard output, compared ignoring line endings and trailing space."
+                                },
+                                "hidden": {
+                                  "type": "boolean",
+                                  "description": "Hidden tests decide the score and never reach the candidate."
+                                },
+                                "weight": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "input",
+                                "expected",
+                                "hidden",
+                                "weight"
+                              ]
+                            }
+                          },
+                          "limits": {
+                            "type": "object",
+                            "properties": {
+                              "timeMs": {
+                                "type": "number"
+                              },
+                              "memoryMb": {
+                                "type": "number"
+                              }
+                            }
                           }
                         },
                         "required": [
@@ -7429,10 +9094,68 @@
                               ]
                             },
                             "language": {
-                              "type": "string"
+                              "type": "string",
+                              "description": "The default language: python, javascript, c, cpp or java."
+                            },
+                            "languages": {
+                              "description": "Languages the candidate may choose between.",
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
                             },
                             "starter": {
                               "type": "string"
+                            },
+                            "tests": {
+                              "description": "When present, the answer is scored by running these rather than by a rubric grader.",
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "input": {
+                                    "type": "string",
+                                    "description": "Standard input."
+                                  },
+                                  "expected": {
+                                    "type": "string",
+                                    "description": "Standard output, compared ignoring line endings and trailing space."
+                                  },
+                                  "hidden": {
+                                    "type": "boolean",
+                                    "description": "Hidden tests decide the score and never reach the candidate."
+                                  },
+                                  "weight": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "input",
+                                  "expected",
+                                  "hidden",
+                                  "weight"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "limits": {
+                              "type": "object",
+                              "properties": {
+                                "timeMs": {
+                                  "type": "number"
+                                },
+                                "memoryMb": {
+                                  "type": "number"
+                                }
+                              },
+                              "additionalProperties": false
                             }
                           },
                           "required": [

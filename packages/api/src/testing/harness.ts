@@ -11,6 +11,7 @@ import {
   type SqlExecutor,
   type StaffRole,
 } from "@parikshaa/store";
+import type { CodeRunner } from "@parikshaa/runner";
 import { AttemptTokens } from "../auth.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
@@ -64,6 +65,7 @@ export async function wire(
     readonly client: Anthropic;
     readonly now?: () => Timestamp;
     readonly newId?: () => string;
+    readonly runner?: CodeRunner;
     readonly server?: Partial<ServerOptions>;
   },
 ): Promise<Wiring> {
@@ -75,6 +77,7 @@ export async function wire(
     client: options.client,
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.newId === undefined ? {} : { newId: options.newId }),
+    ...(options.runner === undefined ? {} : { runner: options.runner }),
   });
   const app = buildServer({
     service,

@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import postgres from "postgres";
+import { HttpCodeRunner } from "@parikshaa/runner";
 import { IdentityStore, LedgerStore, QuestionBank, postgresJsExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
@@ -26,9 +27,16 @@ async function main(): Promise<void> {
   const store = new LedgerStore(executor);
   const identity = new IdentityStore(executor);
 
+  // Code questions need the runner service; without it they can be answered
+  // but not run, and grading them waits until it is configured.
+  const runnerUrl = process.env["RUNNER_URL"];
+  const runner =
+    runnerUrl === undefined || runnerUrl === "" ? undefined : new HttpCodeRunner(runnerUrl, required("RUNNER_TOKEN"));
+
   const service = new ExamService({
     store,
     identity,
+    ...(runner === undefined ? {} : { runner }),
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
     // profile from the environment.
     client: new Anthropic(),

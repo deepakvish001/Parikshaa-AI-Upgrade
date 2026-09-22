@@ -620,3 +620,50 @@ describe("exams drawn from the bank", () => {
     );
   });
 });
+
+describe("writing a code question", () => {
+  it("sets languages, a visible example and a hidden test, and saves them", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Coding round");
+    await userEvent.type(screen.getByLabelText("Question"), "Print the sum of two integers.");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "code");
+
+    await userEvent.click(screen.getByLabelText("Java")); // offered by default; take it away
+    await userEvent.click(screen.getByLabelText("C"));
+    const [example, hidden] = screen.getAllByRole("group", { name: /^Test \d$/ });
+    await userEvent.type(within(example!).getByLabelText("Input"), "2 3");
+    await userEvent.type(within(example!).getByLabelText("Expected output"), "5");
+    await userEvent.type(within(hidden!).getByLabelText("Input"), "-7 2");
+    await userEvent.type(within(hidden!).getByLabelText("Expected output"), "-5");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: unknown[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions[0]).toMatchObject({
+      kind: "code",
+      language: "python",
+      languages: ["python", "c", "cpp"],
+      tests: [
+        { input: "2 3", expected: "5", hidden: false, weight: 1 },
+        { input: "-7 2", expected: "-5", hidden: true, weight: 1 },
+      ],
+    });
+  });
+
+  it("will not save a question whose every test is visible", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Coding round");
+    await userEvent.type(screen.getByLabelText("Question"), "Anything.");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "code");
+    // The new question's second test starts hidden; make it visible too.
+    await userEvent.click(screen.getAllByLabelText("Hidden from candidates")[1]!);
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    expect(await screen.findByRole("list", { name: "Problems with this exam" })).toHaveTextContent(/print the answers/);
+    expect(client.saveExam).not.toHaveBeenCalled();
+  });
+});

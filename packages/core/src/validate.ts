@@ -1,4 +1,5 @@
 import type { Exam, Question } from "./domain.js";
+import { CODE_LANGUAGES, languagesOf } from "./code.js";
 import { allQuestions } from "./paper.js";
 
 /**
@@ -80,14 +81,45 @@ export function validateQuestion(question: Question, at: string): ExamProblem[] 
       break;
     }
     case "code": {
-      if (question.language.trim() === "") {
-        problems.push({ path: `${at}.language`, message: "A code question needs a language." });
+      const tests = question.tests ?? [];
+      for (const language of languagesOf(question)) {
+        if (!(CODE_LANGUAGES as readonly string[]).includes(language)) {
+          problems.push({
+            path: `${at}.language`,
+            message: `"${language}" cannot be run; offer one of ${CODE_LANGUAGES.join(", ")}.`,
+          });
+        }
       }
-      if (question.rubric.length === 0) {
+      if (question.languages !== undefined && question.languages.length > 0 && !question.languages.includes(question.language)) {
+        problems.push({ path: `${at}.languages`, message: "The default language must be one of those offered." });
+      }
+      // Scored by its tests if it has any; otherwise a grader needs a rubric.
+      if (tests.length === 0 && question.rubric.length === 0) {
         problems.push({
           path: `${at}.rubric`,
-          message: "A code answer is graded against its rubric, so it needs at least one criterion.",
+          message: "A code question is scored by its tests, or by a rubric if it has none; it needs one or the other.",
         });
+      }
+      if (new Set(tests.map((t) => t.id)).size !== tests.length) {
+        problems.push({ path: `${at}.tests`, message: "Test ids must be unique within a question." });
+      }
+      tests.forEach((test, j) => {
+        if (!Number.isFinite(test.weight) || test.weight <= 0) {
+          problems.push({ path: `${at}.tests.${j}.weight`, message: "Every test needs a weight greater than zero." });
+        }
+      });
+      if (tests.length > 0 && tests.every((t) => !t.hidden)) {
+        problems.push({
+          path: `${at}.tests`,
+          message: "At least one test must be hidden; a candidate who has seen every test can print the answers.",
+        });
+      }
+      const { timeMs, memoryMb } = question.limits ?? {};
+      if (timeMs !== undefined && (!Number.isInteger(timeMs) || timeMs < 100 || timeMs > 10_000)) {
+        problems.push({ path: `${at}.limits.timeMs`, message: "A time limit is 100 to 10,000 milliseconds per test." });
+      }
+      if (memoryMb !== undefined && (!Number.isInteger(memoryMb) || memoryMb < 32 || memoryMb > 1024)) {
+        problems.push({ path: `${at}.limits.memoryMb`, message: "A memory limit is 32 to 1024 megabytes." });
       }
       break;
     }

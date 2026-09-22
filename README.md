@@ -73,7 +73,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 322 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 372 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -93,7 +93,8 @@ With Docker — one image serves the API and both clients:
 export POSTGRES_PASSWORD=... ANTHROPIC_API_KEY=... \
        ATTEMPT_TOKEN_SECRET=...   # at least 32 characters
 export PARIKSHAA_APP_PASSWORD=... # the API's database role; RLS binds it
-docker compose up --build
+export RUNNER_TOKEN=...           # 32+ characters; the API's key to the code runner
+docker compose up --build         # needs gVisor on the host for the runner: https://gvisor.dev
 
 # Once, per organisation: its first owner. Everyone after is added from the console.
 docker compose run --rm -e PARIKSHAA_OWNER_PASSWORD=... \
@@ -118,6 +119,14 @@ PARIKSHAA_OWNER_PASSWORD=... npm run admin -w @parikshaa/api -- \
   --org acme --org-name "Acme Engineering" --email hr@acme.in --name "Asha Rao"
 npm start                          # with DATABASE_URL as parikshaa_app
 ```
+
+Code questions need the runner (`packages/runner`), which runs candidate code
+and must run under gVisor; it refuses to start otherwise. Point the API at it
+with `RUNNER_URL` and `RUNNER_TOKEN`. For local development only, a runner can
+be started without isolation — `RUNNER_ISOLATION=unsafe-none RUNNER_TOKEN=...
+npm start -w @parikshaa/runner` — and never with real candidates. Without a
+runner, code questions can still be answered; they are tested when grading
+finds one configured.
 
 Behind a load balancer or reverse proxy, set `TRUST_PROXY=true` so the login
 throttle sees each client's own address rather than the proxy's.

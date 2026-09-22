@@ -1,7 +1,12 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import {
   candidateView,
+  decodeCodeAnswer,
   foldAttempt,
+  languagesOf,
+  scoreTests,
+  type CodeAnswer,
+  type CodeQuestion,
   paperOf,
   resolvePaper,
   validateExam,
@@ -37,6 +42,7 @@ import type {
   UsageReport,
 } from "@parikshaa/store";
 import { AppendRefused, LedgerStore, candidateScope, staffScope } from "@parikshaa/store";
+import { RunnerUnavailable, type CodeRunner, type RunResult, type TestResult } from "@parikshaa/runner";
 import { assessReply, generateProbe, gradeWithRubric, type EngineOptions } from "@parikshaa/viva";
 import { can, type Actor, type Permission } from "./staff-auth.js";
 
@@ -63,7 +69,10 @@ export class AttemptError extends Error {
       | "already_replied"
       | "expired"
       | "reason_required"
-      | "invalid_extension",
+      | "invalid_extension"
+      | "not_code"
+      | "language_not_offered"
+      | "too_many_runs",
     message: string,
   ) {
     super(message);
@@ -107,7 +116,12 @@ export interface ServiceOptions {
   readonly fastProbes?: boolean;
   readonly now?: () => Timestamp;
   readonly newId?: () => string;
+  /** Runs candidate code. Without one, code questions can be answered but not run or tested. */
+  readonly runner?: CodeRunner;
 }
+
+/** Most times a candidate may press Run on one question in one attempt. */
+export const MAX_RUNS_PER_QUESTION = 100;
 
 interface AttemptContext {
   readonly entries: readonly LedgerEntry[];
@@ -121,8 +135,16 @@ export class ExamService {
   readonly #engine: { client: Anthropic; model?: string; fastProbes?: boolean };
   readonly #now: () => Timestamp;
   readonly #newId: () => string;
+  readonly #runner: CodeRunner | null;
+  /**
+   * Runs so far, per attempt and question. In memory, so per process: it is a
+   * brake on a runaway client, not an entitlement, and a restart that resets it
+   * costs nothing that matters.
+   */
+  readonly #runs = new Map<string, number>();
 
   constructor(options: ServiceOptions) {
+    this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
     this.#engine = {
@@ -360,7 +382,27 @@ export class ExamService {
           questionId: question.id,
           score: recorded,
           maxScore: question.maxScore,
-          method: needsRubricGrading(question) ? "rubric" : "deterministic",
+          method:
+            question.kind === "code" && (question.tests ?? []).length > 0
+              ? "tests"
+              : needsRubricGrading(question)
+                ? "rubric"
+                : "deterministic",
+          reasoning: null,
+        });
+        continue;
+      }
+
+      // A code answer tested when it was committed: its result stands in for a
+      // score until grading records one, which is what lets a strong solution
+      // be followed up mid-exam.
+      const tested = projection.codeScores.get(response.questionId);
+      if (tested !== undefined) {
+        scores.push({
+          questionId: question.id,
+          score: tested.score,
+          maxScore: question.maxScore,
+          method: "tests",
           reasoning: null,
         });
         continue;
@@ -475,6 +517,132 @@ export class ExamService {
     // The committed text is now also the latest draft, so an older autosave
     // still in flight cannot resurface as "unsent" on another device.
     await this.#store.saveDraft(scope, id, questionId, answer, submittedAt);
+
+    const question = context.exam.questions.find((q) => q.id === questionId);
+    if (question?.kind === "code") await this.#testOnCommit(scope, id, question, answer);
+  }
+
+  // --- code (ROADMAP §4) ----------------------------------------------------
+
+  /**
+   * Run a candidate's code against the question's visible tests, or against
+   * input of their own. Hidden tests are never run here: a candidate who could
+   * run them could search for what passes.
+   *
+   * Nothing is recorded. Running is working, not answering; the answer is what
+   * the candidate commits.
+   */
+  async runCode(
+    access: CandidateAccess,
+    questionId: QuestionId,
+    answer: CodeAnswer,
+    input?: string,
+  ): Promise<CandidateRun> {
+    const scope = candidateOf(access);
+    const id = access.attemptId;
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
+    }
+    const question = this.#codeQuestion(context.exam, questionId, answer.language);
+    await this.#refuseIfExpired(scope, id, context);
+
+    const key = `${id}\u0000${questionId}`;
+    const runs = (this.#runs.get(key) ?? 0) + 1;
+    if (runs > MAX_RUNS_PER_QUESTION) {
+      throw new AttemptError("too_many_runs", `At most ${MAX_RUNS_PER_QUESTION} runs per question`);
+    }
+    this.#runs.set(key, runs);
+
+    const samples = (question.tests ?? []).filter((t) => !t.hidden);
+    const tests =
+      input !== undefined
+        ? [{ id: "custom", input, expected: "" }]
+        : samples.map((t, i) => ({ id: `sample-${i + 1}`, input: t.input, expected: t.expected }));
+    const result = await this.#run(question, answer, tests);
+
+    if (!result.compiled) return { compiled: false, compileOutput: result.compileOutput };
+    return {
+      compiled: true,
+      results: result.tests.map((r, i) => ({
+        input: tests[i]!.input,
+        // Custom input has no expected output, so no verdict either.
+        expectedOutput: input !== undefined ? null : tests[i]!.expected,
+        status: input !== undefined ? (r.status === "passed" || r.status === "wrong_answer" ? "ran" : r.status) : r.status,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        timeMs: r.timeMs,
+      })),
+    };
+  }
+
+  #codeQuestion(exam: Exam, questionId: QuestionId, language: string): CodeQuestion {
+    const question = exam.questions.find((q) => q.id === questionId);
+    if (question === undefined) throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
+    if (question.kind !== "code") throw new AttemptError("not_code", `Question ${questionId} is not a code question`);
+    if (!languagesOf(question).includes(language)) {
+      throw new AttemptError("language_not_offered", `This question is answered in ${languagesOf(question).join(" or ")}`);
+    }
+    return question;
+  }
+
+  async #run(
+    question: CodeQuestion,
+    answer: CodeAnswer,
+    tests: readonly { id: string; input: string; expected: string }[],
+  ): Promise<RunResult> {
+    if (this.#runner === null) throw new RunnerUnavailable("No code runner is configured");
+    return this.#runner.run({
+      language: answer.language as never,
+      source: answer.source,
+      tests,
+      ...(question.limits === undefined ? {} : { limits: question.limits }),
+    });
+  }
+
+  /** Every test of a code question, scored. */
+  async #runAllTests(question: CodeQuestion, answer: string): Promise<{ score: number; passed: number; total: number }> {
+    const tests = question.tests ?? [];
+    const result = await this.#run(question, decodeCodeAnswer(answer, question), tests);
+    const passed = new Set(result.compiled ? result.tests.filter((r) => r.status === "passed").map((r) => r.id) : []);
+    return { score: scoreTests(question, passed), passed: passed.size, total: tests.length };
+  }
+
+  /**
+   * Test a committed code answer against all its tests and record the result.
+   *
+   * Best effort: an answer is never refused because the runner is busy or
+   * down — grading tests anything that was not tested here. The result is
+   * recorded only if the answer is still the latest for its question and the
+   * attempt has not closed, both checked under the attempt's lock.
+   */
+  async #testOnCommit(scope: Scope, id: AttemptId, question: CodeQuestion, answer: string): Promise<void> {
+    if (this.#runner === null || (question.tests ?? []).length === 0) return;
+    let result: { score: number; passed: number; total: number };
+    try {
+      result = await this.#runAllTests(question, answer);
+    } catch {
+      return;
+    }
+    try {
+      await this.#store.append(
+        scope,
+        id,
+        { type: "code_tested", attemptId: id, questionId: question.id, ...result },
+        {
+          guard: (events) => {
+            if (whileOpen(events) !== null) return "closed";
+            const latest = events.filter(
+              (e): e is Extract<ExamEvent, { type: "answer_submitted" }> =>
+                e.type === "answer_submitted" && e.response.questionId === question.id,
+            ).at(-1);
+            return latest?.response.answer === answer ? null : "superseded";
+          },
+        },
+      );
+    } catch (error) {
+      if (!(error instanceof AppendRefused)) throw error;
+    }
   }
 
   /**
@@ -776,19 +944,35 @@ export class ExamService {
       return question === undefined ? [] : [{ question, response }];
     });
 
+    const byTests = (q: (typeof answered)[number]["question"]): q is CodeQuestion =>
+      q.kind === "code" && (q.tests ?? []).length > 0;
+
     const needsModel = answered.some(
-      ({ question, response }) => scoreDeterministic(question, response.answer) === null,
+      ({ question, response }) => !byTests(question) && scoreDeterministic(question, response.answer) === null,
     );
     if (needsModel && !(await this.#withinBudget(scope))) throw new SpendCapReached();
 
     const scores: QuestionScore[] = [];
+    const tested: ExamEvent[] = [];
     for (const { question, response } of answered) {
+      if (byTests(question)) {
+        // Tested when committed, or now if it was not (the runner was down, or
+        // the answer was committed at the close of the window).
+        let result = projection.codeScores.get(question.id);
+        if (result === undefined) {
+          result = await this.#runAllTests(question, response.answer);
+          tested.push({ type: "code_tested", attemptId: id, questionId: question.id, ...result });
+        }
+        scores.push({ questionId: question.id, score: result.score, maxScore: question.maxScore, method: "tests", reasoning: null });
+        continue;
+      }
       scores.push(
         scoreDeterministic(question, response.answer) ??
           (await gradeWithRubric({ question, response }, this.#engineFor(scope, id))),
       );
     }
 
+    for (const event of tested) await this.#store.append(scope, id, event);
     for (const score of scores) {
       await this.#store.append(scope, id, {
         type: "question_scored",
@@ -855,6 +1039,22 @@ export class ExamInvalidError extends Error {
     this.name = "ExamInvalidError";
   }
 }
+
+/** What a candidate sees of a run: their own examples, never a hidden test. */
+export type CandidateRun =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly results: readonly {
+        readonly input: string;
+        /** Null for a run on the candidate's own input, which has nothing to compare with. */
+        readonly expectedOutput: string | null;
+        readonly status: TestResult["status"] | "ran";
+        readonly stdout: string;
+        readonly stderr: string;
+        readonly timeMs: number;
+      }[];
+    };
 
 export interface UsageSummary extends UsageReport {
   readonly monthStartedAt: string;

@@ -10,6 +10,7 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
+import { RunnerUnavailable } from "@parikshaa/runner";
 import { ExamFrozen, type IdentityStore, type QuestionBank } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
@@ -50,6 +51,8 @@ export const errors = {
   401: S.errorResponse,
   402: S.errorResponse,
   403: S.errorResponse,
+  429: S.errorResponse,
+  503: S.errorResponse,
   404: S.errorResponse,
   409: S.errorResponse,
   410: S.errorResponse,
@@ -179,8 +182,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
             ? 410
             : error.code === "reason_required" || error.code === "invalid_extension"
               ? 422
-              : 409;
+              : error.code === "too_many_runs"
+                ? 429
+                : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
+    }
+    if (error instanceof RunnerUnavailable) {
+      return reply.code(503).send({ error: "runner_unavailable", message: "Code cannot be run just now." });
     }
     if (error instanceof Forbidden) {
       return reply.code(403).send({ error: "forbidden", message: error.message });
@@ -527,6 +535,27 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         if (claims === null) return;
         await service.submitAnswer(claims, questionId(request.body.questionId), request.body.answer);
         return reply.code(202).send({ ok: true });
+      },
+    );
+
+    routes.post(
+      "/attempts/me/run",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Run code against the question's examples, or on input of the candidate's own",
+          description:
+            "Hidden tests are never run on request. Nothing is recorded: running is working, not answering. The answer is what the candidate commits, which is when it is tested in full.",
+          security: [{ attemptToken: [] }],
+          body: S.runBody,
+          response: { 200: S.runResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        const { questionId: q, language, source, input } = request.body;
+        return reply.send(await service.runCode(claims, questionId(q), { language, source }, input));
       },
     );
 

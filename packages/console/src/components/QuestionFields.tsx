@@ -1,4 +1,5 @@
 import type { Question, QuestionKind, RubricCriterion } from "@parikshaa/core/browser";
+import { CodeFields } from "./CodeFields.tsx";
 
 /** Swap a question's kind, replacing the fields that do not carry across. */
 export function changeKind(question: Question, kind: QuestionKind): Question {
@@ -11,7 +12,16 @@ export function changeKind(question: Question, kind: QuestionKind): Question {
     case "short":
       return { ...base, kind, expectedPoints: [] };
     case "code":
-      return { ...base, kind, language: "python" };
+      return {
+        ...base,
+        kind,
+        language: "python",
+        languages: ["python", "cpp", "java"],
+        tests: [
+          { id: "t1", input: "", expected: "", hidden: false, weight: 1 },
+          { id: "t2", input: "", expected: "", hidden: true, weight: 1 },
+        ],
+      };
   }
 }
 
@@ -135,16 +145,7 @@ export function QuestionFields({ question, onChange }: { question: Question; onC
         </div>
       ) : null}
 
-      {question.kind === "code" ? (
-        <div className="field">
-          <label htmlFor={`lang-${question.id}`}>Language</label>
-          <input
-            id={`lang-${question.id}`}
-            value={question.language}
-            onChange={(e) => onChange({ ...question, language: e.target.value })}
-          />
-        </div>
-      ) : null}
+      {question.kind === "code" ? <CodeFields question={question} onChange={onChange} /> : null}
 
       {question.kind === "short" || question.kind === "code" ? (
         <div className="field">
