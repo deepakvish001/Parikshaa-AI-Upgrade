@@ -36,6 +36,7 @@ packages/verify/  offline receipt verification — no server, no database, no ne
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
 docs/openapi.json the HTTP contract, generated from the route schemas
+docs/ROADMAP.md   what stands between the engine and a sellable product
 ```
 
 ## How an attempt runs
