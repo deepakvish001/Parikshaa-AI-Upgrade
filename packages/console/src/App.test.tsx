@@ -219,6 +219,23 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     resendInvitation: vi.fn(async () => undefined),
     revokeInvitation: vi.fn(async () => undefined),
     invitationLinks: vi.fn(async () => new Blob(["ref,link"])),
+    listWebhooks: vi.fn(async () => [
+      { id: "wh_1", url: "https://ats.example.com/hook", events: [], version: 1, description: "", createdAt: "2026-09-01T00:00:00.000Z", disabled: false },
+    ]),
+    addWebhook: vi.fn(async (url: string) => ({
+      webhook: { id: "wh_2", url, events: [], version: 1, description: "", createdAt: "", disabled: false },
+      secret: "whsec_c2VjcmV0",
+    })),
+    webhookSecret: vi.fn(async () => "whsec_c2VjcmV0"),
+    rotateWebhook: vi.fn(),
+    disableWebhook: vi.fn(async () => undefined),
+    testWebhook: vi.fn(async () => undefined),
+    webhookDeliveries: vi.fn(async () => [
+      { id: "d1", event: "attempt.graded", attemptId: "a1", status: "pending", attempts: 3, error: "HTTP 503", createdAt: "2026-09-01T00:00:00.000Z", sentAt: null },
+    ]),
+    greenhouse: vi.fn(async () => ({ enabled: false, endpoints: { list_tests: "https://exam.test/api/integrations/greenhouse/list_tests" } })),
+    issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
+    disableGreenhouse: vi.fn(async () => undefined),
     results: vi.fn(async () => results),
     resultsFile: vi.fn(async () => new Blob(["x"])),
     report: vi.fn(async () => report),
@@ -903,5 +920,66 @@ describe("results and exports", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
     await screen.findByRole("button", { name: "Schedule and invite candidates" });
     expect(screen.queryByRole("button", { name: "Results and exports" })).toBeNull();
+  });
+});
+
+describe("integrations", () => {
+  const open = async (client = stubClient()) => {
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Integrations" }));
+    return client;
+  };
+
+  it("adds a webhook and shows its signing secret", async () => {
+    const client = await open();
+    const form = await screen.findByRole("region", { name: "Add a webhook" });
+    await userEvent.type(within(form).getByLabelText("Address (https)"), "https://hr.example.com/in");
+    await userEvent.click(within(form).getByLabelText("attempt.graded"));
+    await userEvent.click(within(form).getByRole("button", { name: "Add" }));
+
+    expect(client.addWebhook).toHaveBeenCalledWith("https://hr.example.com/in", ["attempt.graded"], "");
+    expect(await screen.findByRole("status", { name: /Signing secret/ })).toHaveTextContent("whsec_c2VjcmV0");
+  });
+
+  it("says why an address was refused", async () => {
+    await open(stubClient({ addWebhook: vi.fn(async () => Promise.reject(new ConsoleError(422, "unsafe_url", [], "Only https URLs are allowed"))) }));
+    const form = await screen.findByRole("region", { name: "Add a webhook" });
+    await userEvent.type(within(form).getByLabelText("Address (https)"), "https://10.0.0.1/x");
+    await userEvent.click(within(form).getByRole("button", { name: "Add" }));
+    expect(await within(form).findByText(/cannot be used: Only https URLs are allowed/)).toBeInTheDocument();
+  });
+
+  it("shows a hook's deliveries, with what went wrong", async () => {
+    await open();
+    const hooks = await screen.findByRole("region", { name: "Webhooks" });
+    await userEvent.click(await within(hooks).findByRole("button", { name: "Log" }));
+    const log = await within(hooks).findByRole("table", { name: "Deliveries to https://ats.example.com/hook" });
+    expect(log).toHaveTextContent("attempt.graded");
+    expect(log).toHaveTextContent("after 3 tries");
+    expect(log).toHaveTextContent("HTTP 503");
+  });
+
+  it("turns Greenhouse on and shows the key once", async () => {
+    const client = await open();
+    const greenhouse = await screen.findByRole("region", { name: "Greenhouse" });
+    expect(greenhouse).toHaveTextContent("list_tests");
+    await userEvent.click(within(greenhouse).getByRole("button", { name: "Turn on and issue a key" }));
+    expect(client.issueGreenhouseKey).toHaveBeenCalled();
+    expect(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).toHaveTextContent("ghk.acme.1.abc");
+  });
+
+  it("is not offered to anyone but the owner", async () => {
+    renderApp(<App client={stubClient({ me: vi.fn(async () => who("author", ["exam:read", "exam:read_key", "exam:write", "attempt:start", "attempt:read"])) })} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    expect(screen.queryByRole("button", { name: "Integrations" })).toBeNull();
+  });
+
+  it("opens a candidate's report from a ?report= link", async () => {
+    window.history.replaceState(null, "", "/console/?report=a2");
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(client.report).toHaveBeenCalledWith("a2");
+    expect(window.location.search).toBe("");
   });
 });

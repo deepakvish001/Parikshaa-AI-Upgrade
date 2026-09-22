@@ -16,6 +16,8 @@ import type { CodeRunner } from "@parikshaa/runner";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvitationService } from "../invitation-service.js";
+import { buildIntegrations } from "../integrations.js";
+import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
@@ -58,6 +60,7 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"];
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
@@ -72,6 +75,9 @@ export async function wire(
     readonly newId?: () => string;
     readonly runner?: CodeRunner;
     readonly server?: Partial<ServerOptions>;
+    /** For integration tests against a local server. */
+    readonly http?: SafeHttpOptions;
+    readonly greenhouseHosts?: readonly string[];
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, options.now === undefined ? {} : { clock: options.now });
@@ -95,10 +101,24 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const integrations = buildIntegrations({
+    sql,
+    store,
+    invitationStore,
+    invitations,
+    exams: service,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    ...(options.http === undefined ? {} : { http: options.http }),
+    ...(options.greenhouseHosts === undefined ? {} : { greenhouseHosts: options.greenhouseHosts }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
+    webhooks: integrations.webhooks,
+    greenhouse: integrations.greenhouse,
     tokens,
     auth: new StaffAuth(identity),
     identity,
@@ -106,7 +126,7 @@ export async function wire(
     ...options.server,
   });
   await app.ready();
-  return { store, identity, service, app };
+  return { store, identity, service, app, handlers: integrations.handlers };
 }
 
 export async function addOrganisation(identity: IdentityStore, id: string, name = id): Promise<OrgId> {

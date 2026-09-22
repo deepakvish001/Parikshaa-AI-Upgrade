@@ -73,7 +73,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 434 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 500 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -130,6 +130,11 @@ be started without isolation — `RUNNER_ISOLATION=unsafe-none RUNNER_TOKEN=...
 npm start -w @parikshaa/runner` — and never with real candidates. Without a
 runner, code questions can still be answered; they are tested when grading
 finds one configured.
+
+Webhooks and the Greenhouse connector are set up by an owner from the console's
+Integrations page. Their signing secrets and keys are derived from
+`ATTEMPT_TOKEN_SECRET` rather than stored, so rotating that secret also rotates
+every webhook secret and Greenhouse key: warn integrators first.
 
 Behind a load balancer or reverse proxy, set `TRUST_PROXY=true` so the login
 throttle sees each client's own address rather than the proxy's.

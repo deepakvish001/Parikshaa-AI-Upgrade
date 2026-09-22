@@ -3,6 +3,7 @@ import { IdentityStore, InvitationStore, LedgerStore, QuestionBank, type SqlExec
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
+import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -27,17 +28,30 @@ export async function specDocument(): Promise<Record<string, unknown>> {
   const store = new LedgerStore(unusable);
   const service = new ExamService({ store, identity, client: {} as unknown as Anthropic });
   const tokens = new AttemptTokens("x".repeat(40));
+  const invitationStore = new InvitationStore(unusable);
+  const invitations = new InvitationService({
+    exams: service,
+    store,
+    invitations: invitationStore,
+    codes: new InviteCodes("x".repeat(40)),
+    tokens,
+    publicUrl: "https://example.invalid",
+  });
+  const { webhooks, greenhouse } = buildIntegrations({
+    sql: unusable,
+    store,
+    invitationStore,
+    invitations,
+    exams: service,
+    secret: "x".repeat(40),
+    publicUrl: "https://example.invalid",
+  });
   const app = buildServer({
     service,
-    invitations: new InvitationService({
-      exams: service,
-      store,
-      invitations: new InvitationStore(unusable),
-      codes: new InviteCodes("x".repeat(40)),
-      tokens,
-      publicUrl: "https://example.invalid",
-    }),
-    results: new ResultsService({ store, invitations: new InvitationStore(unusable), exams: service }),
+    invitations,
+    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
+    webhooks,
+    greenhouse,
     tokens,
     auth: new StaffAuth(identity),
     identity,

@@ -1,5 +1,6 @@
 import type { OrgId } from "@parikshaa/core";
 import { withScope, type Scope } from "./ledger-store.js";
+import { enqueue, type OutboxDraft } from "./outbox-store.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
@@ -47,14 +48,6 @@ export interface DeliveryState {
   readonly error: string | null;
 }
 
-/** Something to send later, written with the change that caused it. */
-export interface OutboxDraft {
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse";
-  readonly subject: Record<string, unknown>;
-  readonly purpose: string;
-  readonly sendAfter?: Date;
-}
-
 interface Row {
   org_id: string;
   id: string;
@@ -95,15 +88,6 @@ const COLUMNS = `org_id, id, exam_id, candidate_ref, name, email, phone, opens_a
                  attempt_id, source, created_at, revoked_at`;
 
 /** Insert outbox rows inside a caller's transaction. */
-export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string) {
-  for (const d of drafts) {
-    await tx.query(
-      `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6)`,
-      [newId(), orgId, d.kind, JSON.stringify(d.subject), d.purpose, (d.sendAfter ?? new Date()).toISOString()],
-    );
-  }
-}
-
 export class InvitationStore {
   readonly #sql: SqlExecutor;
   readonly #newId: () => string;

@@ -8,6 +8,7 @@ import { DeliveryWorker, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
+import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -67,10 +68,24 @@ async function main(): Promise<void> {
     publicUrl: required("PUBLIC_URL"),
   });
 
+  // Webhooks and Greenhouse. Their secrets are derived from ATTEMPT_TOKEN_SECRET,
+  // so rotating that secret rotates every webhook secret and Greenhouse key too.
+  const integrations = buildIntegrations({
+    sql: executor,
+    store,
+    invitationStore,
+    invitations,
+    exams: service,
+    secret: tokenSecret,
+    publicUrl: required("PUBLIC_URL"),
+  });
+
   const app = buildServer({
     service,
     invitations,
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
+    webhooks: integrations.webhooks,
+    greenhouse: integrations.greenhouse,
     tokens,
     auth: new StaffAuth(identity),
     identity,
@@ -92,6 +107,7 @@ async function main(): Promise<void> {
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
+    handlers: integrations.handlers,
   });
   // Every instance runs a worker; the outbox's SKIP LOCKED claims keep them
   // from sending anything twice. Set DELIVERY_WORKER=off to run API-only nodes.

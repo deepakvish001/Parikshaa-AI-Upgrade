@@ -17,6 +17,26 @@ export interface OutboxItem {
   readonly attempts: number;
 }
 
+/** Something to send later, written with the change that caused it. */
+export interface OutboxDraft {
+  readonly kind: "email" | "sms" | "webhook" | "greenhouse";
+  readonly subject: Record<string, unknown>;
+  readonly purpose: string;
+  readonly sendAfter?: Date;
+  /** A fixed id makes writing the item idempotent: a second write of it is a no-op. */
+  readonly id?: string;
+}
+
+/** Write outbox items inside the caller's transaction, so they exist exactly when the change that caused them does. */
+export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string) {
+  for (const d of drafts) {
+    await tx.query(
+      `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+      [d.id ?? newId(), orgId, d.kind, JSON.stringify(d.subject), d.purpose, (d.sendAfter ?? new Date()).toISOString()],
+    );
+  }
+}
+
 /** How long a claimed item is held before another worker may retry it. */
 const LEASE_SECONDS = 120;
 

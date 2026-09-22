@@ -272,6 +272,43 @@ Zoho, Darwinbox). `docs/openapi.json` already gives an integrator the contract.
 **Universities later:** Moodle via LTI 1.3, and CSV exchange for SIS and ERP
 systems that have no API worth using.
 
+**Status — webhooks and Greenhouse built; Lever, Zoho Recruit and Darwinbox not
+yet.** Every start, submission, grade and voiding is announced by the ledger in
+the same transaction that records it, so an integration hears of everything
+that happened and nothing that did not. The worker fans each announcement out,
+one delivery per interested webhook under a fixed id — a fan-out repeated after
+a crash sends nothing twice — and delivers it signed as Standard Webhooks
+specifies (`webhook-id`, `webhook-timestamp`, `webhook-signature`), so a
+receiver verifies it with an off-the-shelf library. A receiver that is down is
+retried with backoff; each webhook's log shows every try. Owners register,
+test, rotate and stop webhooks from the console.
+
+Every outbound request — webhooks, and Greenhouse's completion call — goes
+through one guard against server-side request forgery: HTTPS only, no
+credentials in the URL, every address the name resolves to must be public (the
+check runs in the socket's own DNS lookup, so DNS rebinding cannot slip a
+private address past it; IPv6 forms that embed an IPv4 address are judged by
+it), no redirects followed, and the reply read to 64 KiB at most.
+
+Greenhouse: the four endpoints of its Assessment Partner API — `list_tests`
+(the organisation's exams), `send_test` (an invitation, emailed from here;
+repeated for the same application, the same invitation), `test_status`
+(`complete` once graded or set aside, with the score, marks and a link to the
+report) and `response_error` (kept in the audit log, without the candidate's
+email) — and the `PATCH` Greenhouse now requires in place of polling, sent when
+the attempt is graded, only to a Greenhouse address. Greenhouse acts with an
+author's rights: it never sees an answer key, an answer or a follow-up.
+
+Neither webhook secrets nor the Greenhouse key are stored: each is derived from
+the server's secret and a version number, which is what rotation moves on. A
+copy of the database signs nothing and authenticates as no one.
+
+Not verified here: the connector follows Greenhouse's published partner
+documentation, and has not been run against a Greenhouse sandbox, which
+Greenhouse's partnerships team provides once the endpoints are registered with
+them. Lever, Zoho Recruit and Darwinbox have no connector yet; until they do,
+their customers can use webhooks and the API.
+
 ## 8. Live invigilation
 
 - A dashboard showing who has started, where they are, who has submitted.

@@ -250,6 +250,29 @@ export interface CandidateReport {
   readonly ledger: { readonly head: string; readonly length: number };
 }
 
+export interface Webhook {
+  readonly id: string;
+  readonly url: string;
+  readonly events: readonly string[];
+  readonly version: number;
+  readonly description: string;
+  readonly createdAt: string;
+  readonly disabled: boolean;
+}
+
+export interface WebhookDelivery {
+  readonly id: string;
+  readonly event: string;
+  readonly attemptId: string | null;
+  readonly status: string;
+  readonly attempts: number;
+  readonly error: string | null;
+  readonly createdAt: string;
+  readonly sentAt: string | null;
+}
+
+export const WEBHOOK_EVENTS = ["attempt.started", "attempt.submitted", "attempt.graded", "attempt.voided"] as const;
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
@@ -491,6 +514,48 @@ export class ConsoleClient {
 
   report(attemptId: string): Promise<CandidateReport> {
     return this.#request<CandidateReport>(`/attempts/${encodeURIComponent(attemptId)}/report`);
+  }
+
+  // --- integrations -----------------------------------------------------------
+
+  async listWebhooks(): Promise<readonly Webhook[]> {
+    return (await this.#request<{ webhooks: Webhook[] }>("/webhooks")).webhooks;
+  }
+
+  addWebhook(url: string, events: readonly string[], description: string): Promise<{ webhook: Webhook; secret: string }> {
+    return this.#request("/webhooks", { method: "POST", body: JSON.stringify({ url, events, description }) });
+  }
+
+  async webhookSecret(id: string): Promise<string> {
+    return (await this.#request<{ secret: string }>(`/webhooks/${encodeURIComponent(id)}/secret`)).secret;
+  }
+
+  rotateWebhook(id: string): Promise<{ webhook: Webhook; secret: string }> {
+    return this.#request(`/webhooks/${encodeURIComponent(id)}/rotate`, { method: "POST" });
+  }
+
+  async disableWebhook(id: string): Promise<void> {
+    await this.#request(`/webhooks/${encodeURIComponent(id)}/disable`, { method: "POST" });
+  }
+
+  async testWebhook(id: string): Promise<void> {
+    await this.#request(`/webhooks/${encodeURIComponent(id)}/test`, { method: "POST" });
+  }
+
+  async webhookDeliveries(id: string): Promise<readonly WebhookDelivery[]> {
+    return (await this.#request<{ deliveries: WebhookDelivery[] }>(`/webhooks/${encodeURIComponent(id)}/deliveries`)).deliveries;
+  }
+
+  greenhouse(): Promise<{ enabled: boolean; endpoints: Record<string, string> }> {
+    return this.#request("/integrations/greenhouse");
+  }
+
+  issueGreenhouseKey(): Promise<{ key: string; endpoints: Record<string, string> }> {
+    return this.#request("/integrations/greenhouse/key", { method: "POST" });
+  }
+
+  async disableGreenhouse(): Promise<void> {
+    await this.#request("/integrations/greenhouse/disable", { method: "POST" });
   }
 
   // --- exams and attempts -----------------------------------------------------

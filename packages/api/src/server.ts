@@ -18,6 +18,10 @@ import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
 import { registerResultsRoutes } from "./results-routes.js";
+import type { GreenhouseService } from "./greenhouse.js";
+import { registerIntegrationRoutes } from "./integration-routes.js";
+import { UnsafeUrl } from "./safe-http.js";
+import type { WebhookService } from "./webhooks.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
@@ -33,6 +37,8 @@ export interface ServerOptions {
   readonly bank: QuestionBank;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
+  readonly webhooks: WebhookService;
+  readonly greenhouse: GreenhouseService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -116,6 +122,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
+        { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
+        {
+          name: "Greenhouse",
+          description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
+        },
       ],
       components: {
         securitySchemes: {
@@ -125,6 +136,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
             description: "A staff session token (`pks_…`) or an API key (`pkk_…`).",
           },
           attemptToken: { type: "http", scheme: "bearer", description: "A candidate's attempt-scoped token." },
+          greenhouseKey: {
+            type: "http",
+            scheme: "basic",
+            description: "The organisation's Greenhouse key (`ghk.…`) as the username, with no password.",
+          },
         },
       },
     },
@@ -206,6 +222,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     if (error instanceof ExamFrozen) {
       return reply.code(409).send({ error: "exam_frozen", message: error.message });
+    }
+    if (error instanceof UnsafeUrl) {
+      return reply.code(422).send({ error: "unsafe_url", message: error.message });
     }
     if (error instanceof WeakPassword) {
       return reply.code(422).send({ error: "weak_password", message: error.message });
@@ -759,6 +778,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const throttle = options.loginThrottle ?? new LoginThrottle();
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });
+    registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
 
     registerAccountRoutes(routes, {
       service,

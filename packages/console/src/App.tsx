@@ -6,6 +6,7 @@ import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "
 import { BankPanel } from "./components/Bank.tsx";
 import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
+import { IntegrationsPanel } from "./components/Integrations.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -24,6 +25,7 @@ type View =
   | { readonly name: "keys" }
   | { readonly name: "usage" }
   | { readonly name: "audit" }
+  | { readonly name: "integrations" }
   | { readonly name: "account" };
 
 /**
@@ -132,7 +134,13 @@ function SignIn({ onSignedIn }: { onSignedIn: (token: string) => void }) {
 
 function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<View>({ name: "exams" });
+  // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
+  const [view, setView] = useState<View>(() => {
+    const report = new URLSearchParams(window.location.search).get("report");
+    if (report === null || report === "") return { name: "exams" };
+    window.history.replaceState(null, "", window.location.pathname);
+    return { name: "report", examId: "", attemptId: report };
+  });
   const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
   const can = (permission: string) => me.data?.permissions.includes(permission) ?? false;
 
@@ -244,6 +252,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage" },
     { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
     { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
+    { view: { name: "integrations" }, label: "Integrations", permission: "org:manage" },
   ];
 
   return (
@@ -283,11 +292,12 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             </button>
           )}
         </h1>
-        {view.name === "attempts" ||
-        view.name === "review" ||
-        view.name === "candidates" ||
-        view.name === "results" ||
-        view.name === "report" ? (
+        {(view.name === "attempts" ||
+          view.name === "review" ||
+          view.name === "candidates" ||
+          view.name === "results" ||
+          view.name === "report") &&
+        view.examId !== "" ? (
           <>
             <span className="notice">/</span>
             <button
@@ -409,6 +419,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
       {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
       {view.name === "audit" ? <AuditPanel client={client} /> : null}
+      {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
       {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
     </main>
   );

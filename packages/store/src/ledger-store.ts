@@ -14,6 +14,7 @@ import {
   type QuestionId,
   type Timestamp,
 } from "@parikshaa/core";
+import { enqueue } from "./outbox-store.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
@@ -54,6 +55,14 @@ export function withScope<T>(sql: SqlExecutor, scope: Scope, fn: (tx: SqlExecuto
     return fn(tx);
   });
 }
+
+/** Ledger events that integrations are told about, by the name they are told. */
+export const ANNOUNCED: Partial<Record<ExamEvent["type"], string>> = {
+  attempt_started: "attempt.started",
+  attempt_submitted: "attempt.submitted",
+  attempt_graded: "attempt.graded",
+  attempt_voided: "attempt.voided",
+};
 
 /** Raised when an exam that has already been sat is changed in place. */
 export class ExamFrozen extends Error {
@@ -330,6 +339,14 @@ export class LedgerStore {
           hash,
         ],
       );
+
+      // Announced in the same transaction: an integration hears of every
+      // start, submission, grade and voiding that happened, and of none that
+      // did not. The worker fans it out to webhooks and connectors (§7).
+      const announced = ANNOUNCED[event.type];
+      if (announced !== undefined) {
+        await enqueue(tx, scope.orgId, [{ kind: "webhook", purpose: "event", subject: { event: announced, attemptId, seq: draft.seq } }], this.#newId);
+      }
 
       return Object.freeze({ ...draft, hash });
     });
