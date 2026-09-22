@@ -11,6 +11,7 @@ import {
   type ExamId,
   type LedgerEntry,
   type OrgId,
+  type QuestionId,
   type Timestamp,
 } from "@parikshaa/core";
 import type { SqlExecutor } from "./sql.js";
@@ -157,6 +158,7 @@ export class LedgerStore {
       const rows = await tx.query<{
         id: string;
         candidate_id: string;
+        last_seen_at: string | Date | null;
         entries: number | string;
         submitted: boolean;
         graded: boolean;
@@ -164,6 +166,7 @@ export class LedgerStore {
       }>(
         `SELECT a.id,
                 a.candidate_id,
+                a.last_seen_at,
                 (SELECT count(*) FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id) AS entries,
                 EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_submitted') AS submitted,
                 EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_graded') AS graded,
@@ -177,6 +180,7 @@ export class LedgerStore {
       return rows.map((row) => ({
         id: row.id as AttemptId,
         candidateId: row.candidate_id as CandidateId,
+        lastSeenAt: row.last_seen_at === null ? null : new Date(row.last_seen_at).toISOString(),
         entries: Number(row.entries),
         state: row.voided ? "void" : row.graded ? "graded" : row.submitted ? "submitted" : "in_progress",
       }));
@@ -192,6 +196,59 @@ export class LedgerStore {
         candidateId,
       ]),
     );
+  }
+
+  /** Record that the candidate's page checked in. Operational state, not evidence. */
+  async touch(scope: Scope, attemptId: AttemptId, at: Timestamp): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(`UPDATE attempts SET last_seen_at = $3 WHERE org_id = $1 AND id = $2`, [
+        scope.orgId,
+        attemptId,
+        new Date(at).toISOString(),
+      ]),
+    );
+  }
+
+  // --- drafts ---------------------------------------------------------------
+
+  /**
+   * Keep the latest text for a question, uncommitted.
+   *
+   * Drafts are mutable and outside the chain on purpose (see migration 0004).
+   * `savedAt` is the server's clock: it is compared against the deadline when
+   * drafts are committed at the close of the window.
+   */
+  async saveDraft(
+    scope: Scope,
+    attemptId: AttemptId,
+    questionId: QuestionId,
+    answer: string,
+    savedAt: Timestamp,
+  ): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(
+        `INSERT INTO answer_drafts (org_id, attempt_id, question_id, answer, saved_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, attempt_id, question_id)
+         DO UPDATE SET answer = EXCLUDED.answer, saved_at = EXCLUDED.saved_at`,
+        [scope.orgId, attemptId, questionId, answer, savedAt],
+      ),
+    );
+  }
+
+  async loadDrafts(scope: Scope, attemptId: AttemptId): Promise<readonly Draft[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ question_id: string; answer: string; saved_at: number | string }>(
+        `SELECT question_id, answer, saved_at FROM answer_drafts
+          WHERE org_id = $1 AND attempt_id = $2 ORDER BY question_id`,
+        [scope.orgId, attemptId],
+      );
+      return rows.map((row) => ({
+        questionId: row.question_id as QuestionId,
+        answer: row.answer,
+        savedAt: Number(row.saved_at),
+      }));
+    });
   }
 
   // --- the ledger -----------------------------------------------------------
@@ -491,8 +548,16 @@ export interface ExamSummary {
 export interface AttemptSummary {
   readonly id: AttemptId;
   readonly candidateId: CandidateId;
+  /** When the candidate's page last checked in, or null if it never has. */
+  readonly lastSeenAt: string | null;
   readonly entries: number;
   readonly state: "in_progress" | "submitted" | "graded" | "void";
+}
+
+export interface Draft {
+  readonly questionId: QuestionId;
+  readonly answer: string;
+  readonly savedAt: Timestamp;
 }
 
 export interface AuditEntry {

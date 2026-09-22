@@ -155,6 +155,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     queryKey: ["attempts", view.name === "attempts" || view.name === "review" ? view.examId : null],
     queryFn: () => client.listAttempts((view as { examId: string }).examId),
     enabled: view.name === "attempts" || view.name === "review",
+    // Keeps "here / last seen" current while an invigilator watches the room.
+    refetchInterval: view.name === "attempts" ? 30_000 : false,
   });
 
   const review = useQuery({
@@ -307,6 +309,14 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           starting={startAttempt.isPending}
           canStart={can("attempt:start")}
           canReview={can("attempt:review")}
+          {...(can("attempt:extend")
+            ? {
+                onExtend: async (attemptId: string, minutes: number, reason: string) => {
+                  await client.extendTime(attemptId, minutes, reason);
+                  await queryClient.invalidateQueries({ queryKey: ["attempts"] });
+                },
+              }
+            : {})}
           onStart={(candidateId) => startAttempt.mutate({ examId: view.examId, candidateId })}
           onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
         />

@@ -250,7 +250,7 @@ describe("roles", () => {
     const me = (await get(invigilator, "/auth/me")).json();
 
     expect(me).toMatchObject({ kind: "user", role: "invigilator", organisation: { id: "org-a", name: "Acme" } });
-    expect(me.permissions).toEqual(["exam:read", "attempt:start", "attempt:read"]);
+    expect(me.permissions).toEqual(["exam:read", "attempt:start", "attempt:read", "attempt:extend"]);
   });
 });
 

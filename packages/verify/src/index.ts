@@ -64,6 +64,8 @@ function describe(event: ExamEvent): string {
       return `Scored ${event.questionId}: ${event.score}`;
     case "attempt_graded":
       return `Graded: ${event.total}`;
+    case "time_extended":
+      return `Time extended by ${Math.round(event.extraMs / 60_000)} min by ${event.decidedBy.name} — ${event.reason}`;
     case "attempt_voided":
       return `Voided${event.decidedBy === undefined ? "" : ` by ${event.decidedBy.name}`} — ${event.reason}`;
   }

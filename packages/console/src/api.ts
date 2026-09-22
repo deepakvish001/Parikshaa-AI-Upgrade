@@ -9,6 +9,8 @@ export interface ExamSummary {
 export interface AttemptSummary {
   readonly id: string;
   readonly candidateId: string;
+  /** When the candidate's page last checked in. */
+  readonly lastSeenAt?: string | null;
   readonly entries: number;
   readonly state: "in_progress" | "submitted" | "graded" | "void";
 }
@@ -257,6 +259,14 @@ export class ConsoleClient {
     return this.#request(`/attempts/${encodeURIComponent(attemptId)}/void`, {
       method: "POST",
       body: JSON.stringify({ reason }),
+    });
+  }
+
+  /** More time for an open attempt, with a reason that goes into its ledger. */
+  extendTime(attemptId: string, minutes: number, reason: string): Promise<{ expiresAt: number }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/extend`, {
+      method: "POST",
+      body: JSON.stringify({ minutes, reason }),
     });
   }
 

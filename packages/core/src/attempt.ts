@@ -42,6 +42,8 @@ export interface AttemptProjection {
   readonly voidReason: string | null;
   /** Who set the attempt aside. Null for a void recorded before staff had accounts. */
   readonly voidedBy: StaffAttribution | null;
+  /** Time added to the exam's window for this attempt, by `time_extended` entries. */
+  readonly extraTimeMs: number;
 }
 
 export type FoldFailure =
@@ -98,6 +100,7 @@ export function foldAttempt(
   let total: number | null = null;
   let voidReason: string | null = null;
   let voidedBy: StaffAttribution | null = null;
+  let extraTimeMs = 0;
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
   const scores = new Map<QuestionId, number>();
@@ -111,6 +114,7 @@ export function foldAttempt(
       total,
       voidReason,
       voidedBy,
+      extraTimeMs,
     },
   });
 
@@ -179,6 +183,13 @@ export function foldAttempt(
         if (state !== "submitted") return fail("not_submitted");
         state = "graded";
         total = event.total;
+        break;
+      }
+
+      // Only while the attempt is open: an extension cannot reopen a closed one.
+      case "time_extended": {
+        if (state !== "in_progress") return fail("not_in_progress");
+        extraTimeMs += event.extraMs;
         break;
       }
 

@@ -104,6 +104,25 @@ One such incident loses the account.
 - Invigilator time extension for a technical failure or an accommodation —
   appended to the ledger like everything else, with a reason.
 
+**Status — built.** Drafts autosave about a second after typing pauses, to the
+server and to the device; while offline they stay on the device and are sent
+when the connection returns. Reopening the exam — after a reload, a crash or on
+another machine — restores unsent drafts and any open probe. Drafts live
+outside the ledger; the server commits them when the attempt is submitted or
+runs out of time, keeping only what was saved before the deadline (SPEC §3).
+Pages check in every 30 seconds and the console shows who is here. An
+invigilator can grant up to four hours at a time, with a reason; it is a
+`time_extended` ledger entry naming them, shown on the candidate's receipt.
+A failed probe stream no longer leaves a half-written probe on screen.
+
+Two bugs fixed on the way: an answer arriving as the attempt closed could land
+behind the submission and make the attempt unreadable, and two simultaneous
+submissions could close it twice with the same effect. Both appends are now
+re-checked under the attempt's lock.
+
+Not in it, deliberately: an exam that forbids revision still commits an answer
+only when the candidate says so, because committing there is final.
+
 ## 3. Question banks and authoring at scale
 
 An exam is a one-off JSON document today. Institutions reuse questions across

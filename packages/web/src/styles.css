@@ -125,3 +125,7 @@ button:disabled { opacity: .5; cursor: default; }
   .page { padding: 1.25rem 1rem 5rem; }
   .q-head { flex-direction: column; gap: .2rem; }
 }
+
+/* Offline: stated plainly and calmly. The candidate should keep working, not
+   stop to worry — their text is safe on the device. */
+.offline { border-left: 3px solid var(--muted); font-size: .92rem; }

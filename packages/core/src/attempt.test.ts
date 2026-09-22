@@ -248,4 +248,28 @@ describe("foldAttempt", () => {
       reason: "closed",
     });
   });
+
+  describe("time extensions", () => {
+    const extended = (minutes: number): ExamEvent => ({
+      type: "time_extended",
+      attemptId: A,
+      extraMs: minutes * 60_000,
+      reason: "Power cut in the exam hall.",
+      decidedBy: { userId: "u1", name: "Invigilator" },
+    });
+
+    it("adds up every extension granted while the attempt is open", () => {
+      const { extraTimeMs } = project(chain(started, extended(10), answered(), extended(5)));
+      expect(extraTimeMs).toBe(15 * 60_000);
+    });
+
+    it("starts at none", () => {
+      expect(project(chain(started)).extraTimeMs).toBe(0);
+    });
+
+    it("cannot reopen an attempt that has closed", () => {
+      const result = foldAttempt(chain(started, submitted, extended(10)));
+      expect(result).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+    });
+  });
 });

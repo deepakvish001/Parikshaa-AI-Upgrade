@@ -12,6 +12,7 @@ import {
   type CandidateExam,
   type CandidateId,
   type Exam,
+  type ExamEvent,
   type ExamId,
   type LedgerEntry,
   type OrgId,
@@ -27,6 +28,7 @@ import {
 import type {
   AttemptSummary,
   AuditRecord,
+  Draft,
   ExamSummary,
   IdentityStore,
   Scope,
@@ -58,7 +60,8 @@ export class AttemptError extends Error {
       | "unknown_probe"
       | "already_replied"
       | "expired"
-      | "reason_required",
+      | "reason_required"
+      | "invalid_extension",
     message: string,
   ) {
     super(message);
@@ -190,8 +193,10 @@ export class ExamService {
    * mid-exam whether an answer was right.
    */
   async candidateState(access: CandidateAccess): Promise<CandidateState> {
-    const { projection, exam } = await this.#context(candidateOf(access), access.attemptId);
+    const scope = candidateOf(access);
+    const { projection, exam } = await this.#context(scope, access.attemptId);
     const open = projection.vivas.find((v) => v.exchange === null);
+    const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
 
     return {
       attemptId: access.attemptId,
@@ -209,6 +214,14 @@ export class ExamService {
       voidReason: projection.voidReason,
       openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
       answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
+      // Only drafts that say something the ledger does not: resuming on another
+      // device restores unsent work, not a stale copy of what was committed.
+      drafts:
+        projection.attempt.state === "in_progress"
+          ? (await this.#store.loadDrafts(scope, access.attemptId)).filter(
+              (d) => d.answer !== (committed.get(d.questionId) ?? ""),
+            )
+          : [],
     };
   }
 
@@ -349,10 +362,54 @@ export class ExamService {
   async #refuseIfExpired(scope: Scope, id: AttemptId, context: AttemptContext): Promise<void> {
     const { projection, exam } = context;
     if (projection.attempt.state !== "in_progress") return;
-    if (this.#now() <= deadlineOf(projection, exam)) return;
+    const deadline = deadlineOf(projection, exam);
+    if (this.#now() <= deadline) return;
 
-    await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id });
-    throw new AttemptError("expired", `Attempt ${id} is past its ${exam.policy.durationMs}ms window`);
+    // Whatever the candidate typed before time ran out is theirs; only what
+    // arrived after it is not.
+    await this.#close(scope, id, context, deadline);
+    throw new AttemptError("expired", `Attempt ${id} is past its window`);
+  }
+
+  /**
+   * Commit outstanding drafts, then submit.
+   *
+   * A draft is committed when it says something the ledger does not, was
+   * saved by `cutoff`, and the exam's policy allows it — an exam that forbids
+   * revision keeps the answer the candidate committed. Each is recorded with
+   * the time it was saved, so the chain shows when the words were written, not
+   * when the window closed.
+   *
+   * Every append is guarded against an attempt that has already closed, so two
+   * requests that find the window over at once close it once.
+   */
+  async #close(scope: Scope, id: AttemptId, context: AttemptContext, cutoff: Timestamp): Promise<void> {
+    const { projection, exam } = context;
+    const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
+    const onExam = new Set(exam.questions.map((q) => q.id));
+
+    try {
+      for (const draft of await this.#store.loadDrafts(scope, id)) {
+        if (!onExam.has(draft.questionId) || draft.savedAt > cutoff) continue;
+        if (draft.answer.trim() === "" || draft.answer === committed.get(draft.questionId)) continue;
+        if (!exam.policy.allowRevision && committed.has(draft.questionId)) continue;
+
+        await this.#store.append(
+          scope,
+          id,
+          {
+            type: "answer_submitted",
+            attemptId: id,
+            response: { questionId: draft.questionId, answer: draft.answer, submittedAt: draft.savedAt },
+          },
+          { guard: whileOpen },
+        );
+      }
+      await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id }, { guard: whileOpen });
+    } catch (error) {
+      // Another request closed it first. Closed is closed.
+      if (!(error instanceof AppendRefused)) throw error;
+    }
   }
 
   async startAttempt(actor: Actor, examId: ExamId, candidateId: CandidateId): Promise<AttemptId> {
@@ -381,21 +438,81 @@ export class ExamService {
     }
     await this.#refuseIfExpired(scope, id, context);
 
-    await this.#store.append(scope, id, {
+    const submittedAt = this.#now();
+    await this.#appendWhileOpen(scope, id, {
       type: "answer_submitted",
       attemptId: id,
-      response: { questionId, answer, submittedAt: this.#now() },
+      response: { questionId, answer, submittedAt },
     });
+    // The committed text is now also the latest draft, so an older autosave
+    // still in flight cannot resurface as "unsent" on another device.
+    await this.#store.saveDraft(scope, id, questionId, answer, submittedAt);
   }
 
+  /**
+   * Keep what the candidate has typed so far, without committing it.
+   *
+   * Autosave calls this every few seconds. It writes nothing to the ledger;
+   * see {@link ExamService.#close} for how drafts become answers.
+   */
+  async saveDraft(access: CandidateAccess, questionId: QuestionId, answer: string): Promise<void> {
+    const scope = candidateOf(access);
+    const id = access.attemptId;
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
+    }
+    if (!context.exam.questions.some((q) => q.id === questionId)) {
+      throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
+    }
+    await this.#refuseIfExpired(scope, id, context);
+    await this.#store.saveDraft(scope, id, questionId, answer, this.#now());
+  }
+
+  /**
+   * The candidate's page checking in.
+   *
+   * Records that they are here, for an invigilator, and answers with the
+   * attempt's state and deadline, so a page learns of an extension — or of
+   * being set aside — without reloading. Reads only; it never closes an
+   * attempt, for the same reason looking at one never does.
+   */
+  async heartbeat(
+    access: CandidateAccess,
+  ): Promise<{ state: AttemptProjection["attempt"]["state"]; expiresAt: Timestamp }> {
+    const scope = candidateOf(access);
+    const { projection, exam } = await this.#context(scope, access.attemptId);
+    await this.#store.touch(scope, access.attemptId, this.#now());
+    return { state: projection.attempt.state, expiresAt: deadlineOf(projection, exam) };
+  }
+
+  /** Append, unless the attempt closed since it was read. */
+  async #appendWhileOpen(scope: Scope, id: AttemptId, event: ExamEvent): Promise<void> {
+    try {
+      await this.#store.append(scope, id, event, { guard: whileOpen });
+    } catch (error) {
+      if (error instanceof AppendRefused) {
+        throw new AttemptError("invalid_state", `Attempt ${id} closed while this was being recorded`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Submit, committing anything typed but not yet committed.
+   *
+   * A candidate who presses submit means everything on their screen; a draft
+   * that autosaved but was never committed is part of that. Pressed after the
+   * window closed, it still submits — with only what was saved in time.
+   */
   async submitAttempt(access: CandidateAccess): Promise<void> {
     const scope = candidateOf(access);
     const id = access.attemptId;
-    const { projection } = await this.#context(scope, id);
-    if (projection.attempt.state !== "in_progress") {
-      throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}`);
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
     }
-    await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id });
+    await this.#close(scope, id, context, Math.min(this.#now(), deadlineOf(context.projection, context.exam)));
   }
 
   // --- micro-viva -----------------------------------------------------------
@@ -565,6 +682,47 @@ export class ExamService {
     await this.#audit(actor, "attempt.voided", id, { reason: trimmed });
   }
 
+  /**
+   * Give an attempt more time, with a reason.
+   *
+   * For a technical failure or an accommodation. Recorded in the ledger with
+   * who granted it, because an answer accepted after the original window is
+   * only defensible if the record shows why. Allowed while the attempt is open
+   * — including after its window has passed but before anything closed it,
+   * which is exactly the laptop-died-at-the-end case.
+   */
+  async extendTime(actor: Actor, id: AttemptId, minutes: number, reason: string): Promise<Timestamp> {
+    const scope = this.#require(actor, "attempt:extend");
+    if (actor.kind !== "user") throw new Forbidden("attempt:extend");
+
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_VOID_REASON) {
+      throw new AttemptError(
+        "reason_required",
+        `An extension needs a reason of at least ${MIN_VOID_REASON} characters; it is recorded in the attempt's ledger`,
+      );
+    }
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_EXTENSION_MINUTES) {
+      throw new AttemptError("invalid_extension", `Extend by 1 to ${MAX_EXTENSION_MINUTES} whole minutes`);
+    }
+
+    const { projection, exam } = await this.#context(scope, id);
+    if (projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}; only an open attempt can be extended`);
+    }
+
+    const extraMs = minutes * 60_000;
+    await this.#appendWhileOpen(scope, id, {
+      type: "time_extended",
+      attemptId: id,
+      extraMs,
+      reason: trimmed,
+      decidedBy: { userId: actor.id, name: actor.name },
+    });
+    await this.#audit(actor, "attempt.extended", id, { minutes, reason: trimmed });
+    return deadlineOf(projection, exam) + extraMs;
+  }
+
   // --- grading --------------------------------------------------------------
 
   /**
@@ -652,6 +810,10 @@ export class ExamService {
 
 const candidateOf = (access: CandidateAccess): Scope => candidateScope(access.orgId, access.attemptId);
 
+/** An append guard: refuse once the attempt has been submitted or set aside. */
+const whileOpen = (events: readonly ExamEvent[]): string | null =>
+  events.some((e) => e.type === "attempt_submitted" || e.type === "attempt_voided") ? "The attempt has closed" : null;
+
 /** The first instant of the calendar month (UTC) containing `now`. */
 export function monthStart(now: Timestamp): Date {
   const date = new Date(now);
@@ -684,6 +846,8 @@ export interface CandidateState {
   /** A probe awaiting a reply, by prompt alone. */
   readonly openProbe: { readonly id: VivaId; readonly prompt: string } | null;
   readonly answeredProbeCount: number;
+  /** Typed but not committed, where that differs from what was committed. */
+  readonly drafts: readonly Draft[];
 }
 
 export interface CandidateLedger {
@@ -697,7 +861,13 @@ export interface CandidateLedger {
 /** Shortest reason that can stand as a decision on the record. */
 export const MIN_VOID_REASON = 10;
 
-/** When an attempt's window closes, from its own start and its exam's policy. */
+/** The most one extension may add. More is a different sitting, not an extension. */
+export const MAX_EXTENSION_MINUTES = 240;
+
+/**
+ * When an attempt's window closes: its own start, its exam's duration, and any
+ * time a person granted it.
+ */
 export function deadlineOf(projection: AttemptProjection, exam: Exam): Timestamp {
-  return projection.attempt.startedAt + exam.policy.durationMs;
+  return projection.attempt.startedAt + exam.policy.durationMs + projection.extraTimeMs;
 }

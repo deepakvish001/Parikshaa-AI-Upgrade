@@ -69,6 +69,19 @@ export class ParikshaaClient {
     });
   }
 
+  /** Autosave the text so far. Not an answer until committed; see the server's drafts route. */
+  async saveDraft(questionId: string, answer: string): Promise<void> {
+    await this.#request(`/attempts/me/drafts/${encodeURIComponent(questionId)}`, {
+      method: "PUT",
+      body: JSON.stringify({ answer }),
+    });
+  }
+
+  /** Check in: the attempt's state and deadline as they now stand. */
+  heartbeat(): Promise<{ state: string; expiresAt: number }> {
+    return this.#request("/attempts/me/heartbeat", { method: "POST" });
+  }
+
   async submit(): Promise<void> {
     await this.#request("/attempts/me/submit", { method: "POST" });
   }

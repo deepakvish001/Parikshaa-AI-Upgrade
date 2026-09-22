@@ -92,8 +92,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     })),
     saveExam: vi.fn(async () => undefined),
     listAttempts: vi.fn(async () => [
-      { id: "attempt-1", candidateId: "cand-1", entries: 7, state: "graded" as const },
+      { id: "attempt-1", candidateId: "cand-1", entries: 7, state: "graded" as const, lastSeenAt: null },
     ]),
+    extendTime: vi.fn(async () => ({ expiresAt: 1 })),
     startAttempt: vi.fn(async () => ({ attemptId: "attempt-2", token: "issued-token" })),
     review: vi.fn(async () => review),
     voidAttempt: vi.fn(async () => ({})),
@@ -420,5 +421,67 @@ describe("administration", () => {
     expect(spend).toHaveTextContent("$0.02");
     expect(spend).toHaveTextContent("$0.0075");
     expect(spend).toHaveTextContent(/Cap \$50\.00/);
+  });
+});
+
+describe("the room, for an invigilator", () => {
+  const sitting = vi.fn(async () => [
+    { id: "attempt-1", candidateId: "cand-1", entries: 7, state: "graded" as const, lastSeenAt: null },
+    {
+      id: "attempt-3",
+      candidateId: "cand-3",
+      entries: 2,
+      state: "in_progress" as const,
+      lastSeenAt: new Date(Date.now() - 20_000).toISOString(),
+    },
+  ]);
+  const invigilator = () =>
+    stubClient({
+      listAttempts: sitting,
+      me: vi.fn(async () => who("invigilator", ["exam:read", "attempt:start", "attempt:read", "attempt:extend"])),
+    });
+
+  it("shows who is here", async () => {
+    renderApp(<App client={invigilator()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+
+    const row = (await screen.findByText("cand-3")).closest("tr")!;
+    expect(row).toHaveTextContent("here");
+  });
+
+  it("grants extra time with a reason", async () => {
+    const client = invigilator();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Extra time…" }));
+
+    const form = screen.getByRole("form", { name: "Extra time for cand-3" });
+    const grant = within(form).getByRole("button", { name: "Grant extra time" });
+    await userEvent.clear(within(form).getByLabelText("Minutes"));
+    await userEvent.type(within(form).getByLabelText("Minutes"), "15");
+    await userEvent.type(within(form).getByLabelText("Reason"), "short");
+    expect(grant).toBeDisabled();
+
+    await userEvent.type(within(form).getByLabelText("Reason"), " — power cut in hall B");
+    await userEvent.click(grant);
+
+    await waitFor(() =>
+      expect(client.extendTime).toHaveBeenCalledWith("attempt-3", 15, "short — power cut in hall B"),
+    );
+  });
+
+  it("offers extra time only to those who may grant it, and only on open attempts", async () => {
+    renderApp(
+      <App
+        client={stubClient({
+          listAttempts: sitting,
+          me: vi.fn(async () => who("viewer", ["exam:read", "attempt:read", "attempt:review"])),
+        })}
+      />,
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await screen.findByText("cand-3");
+
+    expect(screen.queryByRole("button", { name: "Extra time…" })).not.toBeInTheDocument();
   });
 });

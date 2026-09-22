@@ -174,7 +174,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required"
+            : error.code === "reason_required" || error.code === "invalid_extension"
               ? 422
               : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
@@ -407,6 +407,29 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       },
     );
 
+    routes.post(
+      "/attempts/:attemptId/extend",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Give an open attempt more time, with a reason",
+          description:
+            "For a technical failure or an accommodation. A signed-in person's decision, recorded in the ledger with their name and the reason, and shown on the candidate's receipt. Works after the window has passed, as long as nothing has closed the attempt yet.",
+          security: [{ staffAuth: [] }],
+          params: S.attemptParams,
+          body: S.extendBody,
+          response: { 200: S.extendResponse, 422: S.errorResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "attempt:extend");
+        if (actor === null) return;
+        const { minutes, reason } = request.body;
+        const expiresAt = await service.extendTime(actor, attemptId(request.params.attemptId), minutes, reason);
+        return reply.send({ expiresAt });
+      },
+    );
+
     routes.get(
       "/attempts/:attemptId/review",
       {
@@ -478,6 +501,47 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         if (claims === null) return;
         await service.submitAnswer(claims, questionId(request.body.questionId), request.body.answer);
         return reply.code(202).send({ ok: true });
+      },
+    );
+
+    routes.put(
+      "/attempts/me/drafts/:questionId",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Autosave what has been typed so far",
+          description:
+            "Not an answer yet: nothing is written to the ledger. Drafts are committed when the candidate commits the answer, submits, or the window closes — and restored if the page is reopened, on this device or another.",
+          security: [{ attemptToken: [] }],
+          params: S.draftParams,
+          body: S.draftBody,
+          response: { 202: S.okResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        await service.saveDraft(claims, questionId(request.params.questionId), request.body.answer);
+        return reply.code(202).send({ ok: true });
+      },
+    );
+
+    routes.post(
+      "/attempts/me/heartbeat",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Check in",
+          description:
+            "Tells an invigilator the candidate is here, and returns the deadline as it now stands so the page learns of an extension without reloading. Records presence only — nothing about what the candidate is doing.",
+          security: [{ attemptToken: [] }],
+          response: { 200: S.heartbeatResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        return reply.send(await service.heartbeat(claims));
       },
     );
 

@@ -183,6 +183,21 @@ export type ExamEvent =
        * any name an unverified claim.
        */
       readonly decidedBy?: StaffAttribution;
+    }
+  | {
+      /**
+       * More time, granted by a person, with a reason — for a technical failure
+       * or an accommodation.
+       *
+       * In the chain because the deadline is part of what the candidate is held
+       * to: an answer accepted after the original window is only defensible if
+       * the record shows who allowed it and why.
+       */
+      readonly type: "time_extended";
+      readonly attemptId: AttemptId;
+      readonly extraMs: number;
+      readonly reason: string;
+      readonly decidedBy: StaffAttribution;
     };
 
 export type ExamEventType = ExamEvent["type"];

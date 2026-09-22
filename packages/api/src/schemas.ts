@@ -74,6 +74,10 @@ export const attemptListResponse = z.object({
     z.object({
       id: z.string(),
       candidateId: z.string(),
+      lastSeenAt: z
+        .string()
+        .nullable()
+        .describe("When the candidate's page last checked in. Pages check in every 30 seconds while open."),
       entries: z.number(),
       state: z.enum(["in_progress", "submitted", "graded", "void"]),
     }),
@@ -182,7 +186,29 @@ export const candidateStateResponse = z.object({
     .nullable()
     .describe("By prompt alone: a probe's rationale records the score that triggered it."),
   answeredProbeCount: z.number(),
+  drafts: z
+    .array(z.object({ questionId: z.string(), answer: z.string(), savedAt: z.number() }))
+    .readonly()
+    .describe("Typed but not yet committed, where that differs from the committed answer. Restored on resume."),
 });
+
+export const draftParams = z.object({ questionId: z.string().min(1) });
+
+export const draftBody = z
+  .object({ answer: z.string().max(100_000) })
+  .describe("The text so far. Kept by the server, not written to the ledger until committed.");
+
+export const heartbeatResponse = z.object({
+  state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
+  expiresAt: z.number().describe("The deadline as it now stands, extensions included."),
+});
+
+export const extendBody = z.object({
+  minutes: z.number().int().min(1).max(240),
+  reason: z.string().min(1).describe("Recorded in the attempt's ledger with who granted it."),
+});
+
+export const extendResponse = z.object({ expiresAt: z.number() });
 
 export const answerBody = z.object({ questionId: z.string().min(1), answer: z.string() });
 
