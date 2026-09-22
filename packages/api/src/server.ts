@@ -10,8 +10,18 @@ import {
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
-import { ExamFrozen, type IdentityStore } from "@parikshaa/store";
+import { RunnerUnavailable } from "@parikshaa/runner";
+import { ExamFrozen, type IdentityStore, type QuestionBank } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
+import { registerBankRoutes } from "./bank-routes.js";
+import type { InvitationService } from "./invitation-service.js";
+import { registerInvitationRoutes } from "./invitation-routes.js";
+import type { ResultsService } from "./results.js";
+import { registerResultsRoutes } from "./results-routes.js";
+import type { GreenhouseService } from "./greenhouse.js";
+import { registerIntegrationRoutes } from "./integration-routes.js";
+import { UnsafeUrl } from "./safe-http.js";
+import type { WebhookService } from "./webhooks.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
@@ -24,6 +34,11 @@ export interface ServerOptions {
   readonly auth: StaffAuth;
   /** Staff accounts and API keys, for the account-management routes. */
   readonly identity: IdentityStore;
+  readonly bank: QuestionBank;
+  readonly invitations: InvitationService;
+  readonly results: ResultsService;
+  readonly webhooks: WebhookService;
+  readonly greenhouse: GreenhouseService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -48,6 +63,8 @@ export const errors = {
   401: S.errorResponse,
   402: S.errorResponse,
   403: S.errorResponse,
+  429: S.errorResponse,
+  503: S.errorResponse,
   404: S.errorResponse,
   409: S.errorResponse,
   410: S.errorResponse,
@@ -102,6 +119,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Institution", description: "Authoring exams, issuing access codes, grading and review." },
         { name: "Candidate", description: "Sitting one attempt. Scoped entirely by the bearer token." },
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
+        { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
+        { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
+        { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
+        { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
+        {
+          name: "Greenhouse",
+          description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
+        },
       ],
       components: {
         securitySchemes: {
@@ -111,6 +136,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
             description: "A staff session token (`pks_…`) or an API key (`pkk_…`).",
           },
           attemptToken: { type: "http", scheme: "bearer", description: "A candidate's attempt-scoped token." },
+          greenhouseKey: {
+            type: "http",
+            scheme: "basic",
+            description: "The organisation's Greenhouse key (`ghk.…`) as the username, with no password.",
+          },
         },
       },
     },
@@ -174,10 +204,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required"
+            : error.code === "reason_required" || error.code === "invalid_extension"
               ? 422
-              : 409;
+              : error.code === "too_many_runs"
+                ? 429
+                : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
+    }
+    if (error instanceof RunnerUnavailable) {
+      return reply.code(503).send({ error: "runner_unavailable", message: "Code cannot be run just now." });
     }
     if (error instanceof Forbidden) {
       return reply.code(403).send({ error: "forbidden", message: error.message });
@@ -187,6 +222,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     if (error instanceof ExamFrozen) {
       return reply.code(409).send({ error: "exam_frozen", message: error.message });
+    }
+    if (error instanceof UnsafeUrl) {
+      return reply.code(422).send({ error: "unsafe_url", message: error.message });
     }
     if (error instanceof WeakPassword) {
       return reply.code(422).send({ error: "weak_password", message: error.message });
@@ -262,6 +300,29 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const exam = request.body as unknown as Exam;
         await service.createExam(actor, exam);
         return reply.code(201).send({ id: exam.id });
+      },
+    );
+
+    routes.post(
+      "/exams/:examId/clone",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Copy an exam under a new id",
+          description:
+            "The way to change an exam that has been sat. A sat exam is frozen, because its ledgers record answers to its questions as they were; the copy has no attempts and can be edited.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          body: S.cloneExamBody,
+          response: { 201: S.examSchema.pick({ id: true }), 422: S.examProblems, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
+        const { id, title } = request.body;
+        await service.cloneExam(actor, examId(request.params.examId), examId(id), title);
+        return reply.code(201).send({ id });
       },
     );
 
@@ -407,6 +468,29 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       },
     );
 
+    routes.post(
+      "/attempts/:attemptId/extend",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Give an open attempt more time, with a reason",
+          description:
+            "For a technical failure or an accommodation. A signed-in person's decision, recorded in the ledger with their name and the reason, and shown on the candidate's receipt. Works after the window has passed, as long as nothing has closed the attempt yet.",
+          security: [{ staffAuth: [] }],
+          params: S.attemptParams,
+          body: S.extendBody,
+          response: { 200: S.extendResponse, 422: S.errorResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "attempt:extend");
+        if (actor === null) return;
+        const { minutes, reason } = request.body;
+        const expiresAt = await service.extendTime(actor, attemptId(request.params.attemptId), minutes, reason);
+        return reply.send({ expiresAt });
+      },
+    );
+
     routes.get(
       "/attempts/:attemptId/review",
       {
@@ -478,6 +562,68 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         if (claims === null) return;
         await service.submitAnswer(claims, questionId(request.body.questionId), request.body.answer);
         return reply.code(202).send({ ok: true });
+      },
+    );
+
+    routes.post(
+      "/attempts/me/run",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Run code against the question's examples, or on input of the candidate's own",
+          description:
+            "Hidden tests are never run on request. Nothing is recorded: running is working, not answering. The answer is what the candidate commits, which is when it is tested in full.",
+          security: [{ attemptToken: [] }],
+          body: S.runBody,
+          response: { 200: S.runResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        const { questionId: q, language, source, input } = request.body;
+        return reply.send(await service.runCode(claims, questionId(q), { language, source }, input));
+      },
+    );
+
+    routes.put(
+      "/attempts/me/drafts/:questionId",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Autosave what has been typed so far",
+          description:
+            "Not an answer yet: nothing is written to the ledger. Drafts are committed when the candidate commits the answer, submits, or the window closes — and restored if the page is reopened, on this device or another.",
+          security: [{ attemptToken: [] }],
+          params: S.draftParams,
+          body: S.draftBody,
+          response: { 202: S.okResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        await service.saveDraft(claims, questionId(request.params.questionId), request.body.answer);
+        return reply.code(202).send({ ok: true });
+      },
+    );
+
+    routes.post(
+      "/attempts/me/heartbeat",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Check in",
+          description:
+            "Tells an invigilator the candidate is here, and returns the deadline as it now stands so the page learns of an extension without reloading. Records presence only — nothing about what the candidate is doing.",
+          security: [{ attemptToken: [] }],
+          response: { 200: S.heartbeatResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        return reply.send(await service.heartbeat(claims));
       },
     );
 
@@ -627,11 +773,18 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (_request, reply) => reply.send({ ok: true }),
     );
 
+    registerBankRoutes(routes, { service, bank: options.bank, staff });
+
+    const throttle = options.loginThrottle ?? new LoginThrottle();
+    registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
+    registerResultsRoutes(routes, { results: options.results, staff });
+    registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
+
     registerAccountRoutes(routes, {
       service,
       auth,
       identity: options.identity,
-      throttle: options.loginThrottle ?? new LoginThrottle(),
+      throttle,
       bearer,
       staff,
     });

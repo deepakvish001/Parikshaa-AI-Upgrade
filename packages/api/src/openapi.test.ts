@@ -1,14 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type Anthropic from "@anthropic-ai/sdk";
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
+import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { IdentityStore, LedgerStore, migrate, pgliteExecutor } from "@parikshaa/store";
-import { AttemptTokens } from "./auth.js";
+import { pgliteExecutor } from "@parikshaa/store";
 import { specDocument } from "./openapi.js";
-import { buildServer } from "./server.js";
-import { ExamService } from "./service.js";
-import { StaffAuth } from "./staff-auth.js";
+import { freshDatabase, wire } from "./testing/harness.js";
 
 const COMMITTED = fileURLToPath(new URL("../../../docs/openapi.json", import.meta.url));
 
@@ -67,8 +65,10 @@ describe("the OpenAPI document", () => {
     const all = operations();
 
     // The only routes open to anyone: liveness, the contract itself, and the
-    // sign-in that issues a credential in the first place.
-    const open = new Set(["get /health", "get /openapi.json", "post /auth/login"]);
+    // two that turn something a person holds into a credential — a staff
+    // sign-in, and a candidate opening their invitation link (whose code is
+    // itself the proof).
+    const open = new Set(["get /health", "get /openapi.json", "post /auth/login", "post /invitations/redeem"]);
 
     expect(all.length).toBeGreaterThanOrEqual(30);
     for (const { path, method, operation } of all) {
@@ -86,7 +86,9 @@ describe("the OpenAPI document", () => {
         .filter(({ operation }) => operation.tags?.includes(tag) === true)
         .map(({ path }) => path);
 
-    expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me"))).toBe(true);
+    // Everything a candidate does is to their own attempt, addressed as `me` —
+    // except opening the invitation that gives them one.
+    expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me") || p === "/invitations/redeem")).toBe(true);
     expect(tagged("Institution").some((p) => p === "/exams")).toBe(true);
   });
 
@@ -102,7 +104,7 @@ describe("the OpenAPI document", () => {
     // `candidateView` closes in the type system, restated in the published
     // contract — and enforced at runtime, because serialization drops keys the
     // response schema does not name.
-    for (const leak of ["correctIndex", "expectedPoints", "tolerance", "expected", "rubric", "vivaTriggerRatio", "rationale"]) {
+    for (const leak of ["correctIndex", "expectedPoints", "tolerance", "expected", "rubric", "vivaTriggerRatio", "rationale", "tests", "hidden", "weight"]) {
       expect([...names], `candidate contract declares ${leak}`).not.toContain(leak);
     }
   });
@@ -118,23 +120,11 @@ describe("the OpenAPI document", () => {
 
 describe("GET /openapi.json", () => {
   let db: PGlite;
-  let app: ReturnType<typeof buildServer>;
+  let app: FastifyInstance;
 
   beforeEach(async () => {
-    db = new PGlite();
-    const sql = pgliteExecutor(db);
-    await migrate(sql);
-    app = buildServer({
-      service: new ExamService({
-        store: new LedgerStore(sql),
-        identity: new IdentityStore(sql),
-        client: {} as unknown as Anthropic,
-      }),
-      tokens: new AttemptTokens("x".repeat(40)),
-      auth: new StaffAuth(new IdentityStore(sql)),
-      identity: new IdentityStore(sql),
-    });
-    await app.ready();
+    db = await freshDatabase();
+    ({ app } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic }));
   });
 
   afterEach(async () => {

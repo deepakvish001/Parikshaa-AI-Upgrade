@@ -2,8 +2,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
-import { describe, expect, it, vi } from "vitest";
-import { App } from "./App.tsx";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { App, AUTOSAVE_DELAY_MS } from "./App.tsx";
 import type { ParikshaaClient } from "./api.ts";
 
 const exam = {
@@ -29,6 +29,7 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
     answers: [] as { questionId: string; answer: string; submittedAt: number }[],
     openProbe: null as { id: string; prompt: string } | null,
     answeredProbeCount: 0,
+    drafts: [] as { questionId: string; answer: string; savedAt: number }[],
   };
 
   const client = {
@@ -44,6 +45,8 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
       state = { ...state, openProbe: null };
     }),
     streamProbe: vi.fn(async (handlers: { onNone?: () => void }) => handlers.onNone?.()),
+    saveDraft: vi.fn(async () => undefined),
+    heartbeat: vi.fn(async () => ({ state: state.state, expiresAt: state.expiresAt })),
     ...overrides,
   };
   return { client: client as unknown as ParikshaaClient, setState: (patch: object) => (state = { ...state, ...patch }) };
@@ -217,5 +220,165 @@ describe("App", () => {
     renderApp(<App client={client} />);
 
     expect(await screen.findByText(/access code may have expired/i)).toBeInTheDocument();
+  });
+});
+
+describe("nothing a candidate types is lost", () => {
+  afterEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  const shortAnswer = () => screen.getByLabelText("Why does it terminate?");
+
+  it("autosaves once typing pauses, not on every keystroke, and says so", async () => {
+    const { client } = stubClient();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.type(shortAnswer(), "The measure decreases");
+
+    await waitFor(() => expect(client.saveDraft).toHaveBeenCalledWith("q-short", "The measure decreases"), {
+      timeout: AUTOSAVE_DELAY_MS + 1000,
+    });
+    expect(client.saveDraft).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText("Draft saved")).toBeInTheDocument();
+    // Autosave is not an answer: nothing was committed, and no probe was asked for.
+    expect(client.saveAnswer).not.toHaveBeenCalled();
+    expect(client.streamProbe).not.toHaveBeenCalled();
+  });
+
+  it("keeps the text on this device when the connection is down", async () => {
+    const { client } = stubClient({
+      saveDraft: vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.type(shortAnswer(), "Offline words");
+
+    expect(
+      await screen.findByText(/Kept on this device/, undefined, { timeout: AUTOSAVE_DELAY_MS + 1000 }),
+    ).toBeInTheDocument();
+    const stored = JSON.parse(localStorage.getItem("parikshaa.drafts.attempt-1") ?? "{}");
+    expect(stored.drafts["q-short"]).toEqual({ answer: "Offline words", synced: false });
+  });
+
+  it("restores the server's drafts when the exam is reopened", async () => {
+    const { client, setState } = stubClient();
+    setState({ drafts: [{ questionId: "q-short", answer: "Typed on the other laptop", savedAt: 5 }] });
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByDisplayValue("Typed on the other laptop")).toBeInTheDocument();
+    expect(screen.getByText("Draft saved")).toBeInTheDocument();
+  });
+
+  it("prefers this device's unsent text, which the server never saw, and sends it", async () => {
+    localStorage.setItem(
+      "parikshaa.drafts.attempt-1",
+      JSON.stringify({
+        expiresAt: Date.now() + 60_000,
+        drafts: { "q-short": { answer: "Written while offline", synced: false } },
+      }),
+    );
+    const { client, setState } = stubClient();
+    setState({ drafts: [{ questionId: "q-short", answer: "Older", savedAt: 5 }] });
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByDisplayValue("Written while offline")).toBeInTheDocument();
+    window.dispatchEvent(new Event("online"));
+    await waitFor(() => expect(client.saveDraft).toHaveBeenCalledWith("q-short", "Written while offline"));
+  });
+
+  it("commits an answer when the candidate moves on, and only then asks about a probe", async () => {
+    const { client } = stubClient();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.type(shortAnswer(), "Because it halves");
+    await userEvent.click(screen.getByLabelText("mergesort")); // on to the next question
+
+    await waitFor(() => expect(client.saveAnswer).toHaveBeenCalledWith("q-short", "Because it halves"));
+    await waitFor(() => expect(client.streamProbe).toHaveBeenCalled());
+  });
+
+  it("does not commit on moving on when the exam forbids revision", async () => {
+    const { client, setState } = stubClient();
+    setState({ exam: { ...exam, allowRevision: false } });
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.type(shortAnswer(), "Still thinking");
+    await userEvent.click(screen.getByLabelText("mergesort"));
+
+    // Committing is final here, so it waits for the candidate to say so.
+    expect(client.saveAnswer).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("button", { name: "Save final answer" })).toHaveLength(2);
+  });
+
+  it("sends what is still waiting to autosave before submitting", async () => {
+    const { client } = stubClient();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.type(shortAnswer(), "Last words");
+    await userEvent.click(screen.getByRole("button", { name: "Submit attempt" }));
+
+    await waitFor(() => expect(client.submit).toHaveBeenCalled());
+    const draftOrder = (client.saveDraft as unknown as { mock: { invocationCallOrder: number[] } }).mock
+      .invocationCallOrder[0]!;
+    const submitOrder = (client.submit as unknown as { mock: { invocationCallOrder: number[] } }).mock
+      .invocationCallOrder[0]!;
+    expect(draftOrder).toBeLessThan(submitOrder);
+  });
+
+  it("recovers when the probe stream fails, instead of leaving a half-written probe", async () => {
+    const { client } = stubClient({
+      streamProbe: vi.fn(async () => {
+        throw new TypeError("network lost");
+      }),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+    const loads = (client.state as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
+
+    await userEvent.click(screen.getByLabelText("mergesort"));
+    await userEvent.click(screen.getAllByRole("button", { name: "Save answer" })[0]!);
+
+    await waitFor(() => expect(client.streamProbe).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Follow-up question" })).not.toBeInTheDocument());
+    // Re-read, so a probe the server did record comes back through openProbe.
+    expect((client.state as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBeGreaterThan(loads);
+  });
+
+  it("learns of extra time from its check-in, without a reload", async () => {
+    const extended = Date.now() + 75 * 60_000;
+    const { client, setState } = stubClient({
+      // An invigilator granted 30 minutes after the page loaded; the check-in
+      // is the first to hear of it.
+      heartbeat: vi.fn(async () => {
+        setState({ expiresAt: extended });
+        return { state: "in_progress", expiresAt: extended };
+      }),
+    });
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByText(/1h 1[45]m left/)).toBeInTheDocument();
+  });
+});
+
+describe("the access code", () => {
+  afterEach(() => sessionStorage.clear());
+
+  it("is taken out of the address bar and kept for this tab only", () => {
+    window.history.replaceState(null, "", "/?token=secret-code&lang=hi");
+
+    renderApp(<App />);
+
+    expect(window.location.search).toBe("?lang=hi");
+    expect(sessionStorage.getItem("parikshaa.attempt-token")).toBe("secret-code");
+    window.history.replaceState(null, "", "/");
   });
 });

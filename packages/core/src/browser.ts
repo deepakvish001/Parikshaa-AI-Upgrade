@@ -17,4 +17,6 @@ export * from "./domain.js";
 export * from "./chain.js";
 export * from "./candidate-view.js";
 export * from "./validate.js";
+export * from "./paper.js";
+export * from "./code.js";
 export * from "./scoring.js";

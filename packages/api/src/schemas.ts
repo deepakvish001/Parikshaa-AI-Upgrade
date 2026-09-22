@@ -45,6 +45,49 @@ const questionBase = {
   rubric: z.array(rubricCriterion).readonly(),
 };
 
+const kinds = {
+  mcq: { kind: z.literal("mcq"), options: z.array(z.string()).readonly(), correctIndex: z.number() },
+  short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
+  numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number() },
+  code: {
+    kind: z.literal("code"),
+    language: z.string().describe("The default language: python, javascript, c, cpp or java."),
+    languages: z.array(z.string()).readonly().optional().describe("Languages the candidate may choose between."),
+    starter: z.string().optional(),
+    tests: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          input: z.string().describe("Standard input."),
+          expected: z.string().describe("Standard output, compared ignoring line endings and trailing space."),
+          hidden: z.boolean().describe("Hidden tests decide the score and never reach the candidate."),
+          weight: z.number(),
+        }),
+      )
+      .readonly()
+      .optional()
+      .describe("When present, the answer is scored by running these rather than by a rubric grader."),
+    limits: z.object({ timeMs: z.number().optional(), memoryMb: z.number().optional() }).optional(),
+  },
+};
+
+/** A question, answer key included. Staff-side only. */
+export const questionSchema = z.discriminatedUnion("kind", [
+  z.object({ ...questionBase, ...kinds.mcq }),
+  z.object({ ...questionBase, ...kinds.short }),
+  z.object({ ...questionBase, ...kinds.numeric }),
+  z.object({ ...questionBase, ...kinds.code }),
+]);
+
+/** The same, before the bank has given it an id. */
+const { id: _unused, ...questionBody } = questionBase;
+export const newQuestionSchema = z.discriminatedUnion("kind", [
+  z.object({ ...questionBody, ...kinds.mcq }),
+  z.object({ ...questionBody, ...kinds.short }),
+  z.object({ ...questionBody, ...kinds.numeric }),
+  z.object({ ...questionBody, ...kinds.code }),
+]);
+
 export const examSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
@@ -53,16 +96,72 @@ export const examSchema = z.object({
     allowRevision: z.boolean(),
     vivaTriggerRatio: z.number(),
   }),
-  questions: z
+  questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
+  sections: z
     .array(
-      z.discriminatedUnion("kind", [
-        z.object({ ...questionBase, kind: z.literal("mcq"), options: z.array(z.string()).readonly(), correctIndex: z.number() }),
-        z.object({ ...questionBase, kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() }),
-        z.object({ ...questionBase, kind: z.literal("numeric"), expected: z.number(), tolerance: z.number() }),
-        z.object({ ...questionBase, kind: z.literal("code"), language: z.string(), starter: z.string().optional() }),
-      ]),
+      z.object({
+        id: z.string().min(1),
+        title: z.string(),
+        pick: z.number().describe("How many of the pool each candidate draws."),
+        pool: z.array(questionSchema).readonly(),
+      }),
     )
-    .readonly(),
+    .readonly()
+    .optional()
+    .describe(
+      "Questions drawn per candidate, seeded by the attempt, so neighbours sit different papers. Each candidate's paper is recorded in their ledger.",
+    ),
+});
+
+export const cloneExamBody = z.object({
+  id: z.string().min(1).describe("The copy's id. Must not already exist."),
+  title: z.string().optional().describe('Defaults to the original\'s title with " (copy)".'),
+});
+
+// --- the question bank -------------------------------------------------------
+
+const difficulty = z.enum(["easy", "medium", "hard"]);
+
+export const bankEntry = z.object({
+  id: z.string(),
+  question: questionSchema,
+  topic: z.string(),
+  difficulty,
+  tags: z.array(z.string()).readonly(),
+  updatedAt: z.string(),
+  archived: z.boolean(),
+});
+
+export const bankQuery = z.object({
+  topic: z.string().optional(),
+  difficulty: difficulty.optional(),
+  tag: z.string().optional(),
+  q: z.string().optional().describe("Matched against the question's text."),
+});
+
+export const bankListResponse = z.object({
+  questions: z.array(bankEntry).readonly(),
+  topics: z.array(z.string()).readonly(),
+});
+
+export const bankDraftBody = z.object({
+  question: newQuestionSchema,
+  topic: z.string().default(""),
+  difficulty: difficulty.default("medium"),
+  tags: z.array(z.string()).readonly().default([]),
+});
+
+export const bankParams = z.object({ questionId: z.string().min(1) });
+
+export const bankImportBody = z.object({
+  csv: z.string().max(5_000_000).describe("The file's contents. See the import format in the description."),
+});
+
+export const bankImportResponse = z.object({ imported: z.number() });
+
+export const bankImportProblems = z.object({
+  error: z.literal("invalid_import"),
+  problems: z.array(z.object({ row: z.number(), message: z.string() })).readonly(),
 });
 
 export const examListResponse = z.object({
@@ -74,6 +173,10 @@ export const attemptListResponse = z.object({
     z.object({
       id: z.string(),
       candidateId: z.string(),
+      lastSeenAt: z
+        .string()
+        .nullable()
+        .describe("When the candidate's page last checked in. Pages check in every 30 seconds while open."),
       entries: z.number(),
       state: z.enum(["in_progress", "submitted", "graded", "void"]),
     }),
@@ -157,7 +260,12 @@ const candidateQuestion = z.discriminatedUnion("kind", [
     stem: z.string(),
     maxScore: z.number(),
     language: z.string(),
+    languages: z.array(z.string()).readonly(),
     starter: z.string().nullable(),
+    samples: z
+      .array(z.object({ input: z.string(), output: z.string() }))
+      .readonly()
+      .describe("The visible tests, as worked examples."),
   }),
 ]);
 
@@ -182,9 +290,63 @@ export const candidateStateResponse = z.object({
     .nullable()
     .describe("By prompt alone: a probe's rationale records the score that triggered it."),
   answeredProbeCount: z.number(),
+  drafts: z
+    .array(z.object({ questionId: z.string(), answer: z.string(), savedAt: z.number() }))
+    .readonly()
+    .describe("Typed but not yet committed, where that differs from the committed answer. Restored on resume."),
 });
 
+export const draftParams = z.object({ questionId: z.string().min(1) });
+
+export const draftBody = z
+  .object({ answer: z.string().max(100_000) })
+  .describe("The text so far. Kept by the server, not written to the ledger until committed.");
+
+export const heartbeatResponse = z.object({
+  state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
+  expiresAt: z.number().describe("The deadline as it now stands, extensions included."),
+});
+
+export const extendBody = z.object({
+  minutes: z.number().int().min(1).max(240),
+  reason: z.string().min(1).describe("Recorded in the attempt's ledger with who granted it."),
+});
+
+export const extendResponse = z.object({ expiresAt: z.number() });
+
 export const answerBody = z.object({ questionId: z.string().min(1), answer: z.string() });
+
+export const runBody = z.object({
+  questionId: z.string().min(1),
+  language: z.string().min(1),
+  source: z.string().max(256 * 1024),
+  input: z
+    .string()
+    .max(1024 * 1024)
+    .optional()
+    .describe("Run on this input instead of the question's examples."),
+});
+
+export const runResponse = z
+  .discriminatedUnion("compiled", [
+    z.object({ compiled: z.literal(false), compileOutput: z.string() }),
+    z.object({
+      compiled: z.literal(true),
+      results: z
+        .array(
+          z.object({
+            input: z.string(),
+            expectedOutput: z.string().nullable(),
+            status: z.enum(["passed", "wrong_answer", "time_limit", "runtime_error", "output_limit", "ran"]),
+            stdout: z.string(),
+            stderr: z.string(),
+            timeMs: z.number(),
+          }),
+        )
+        .readonly(),
+    }),
+  ])
+  .describe("The examples only. Hidden tests are never run on request.");
 
 export const replyBody = z
   .object({ reply: z.string().min(1) })

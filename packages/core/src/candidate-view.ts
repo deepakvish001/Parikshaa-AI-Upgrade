@@ -1,3 +1,4 @@
+import { languagesOf } from "./code.js";
 import type { Exam, ExamId, Question, QuestionId, QuestionKind } from "./domain.js";
 
 /**
@@ -37,7 +38,13 @@ export interface CandidateNumericQuestion extends CandidateQuestionBase {
 export interface CandidateCodeQuestion extends CandidateQuestionBase {
   readonly kind: "code";
   readonly language: string;
+  readonly languages: readonly string[];
   readonly starter: string | null;
+  /**
+   * The visible tests, as worked examples. Hidden tests have no field here and
+   * so cannot reach a candidate by any route.
+   */
+  readonly samples: readonly { readonly input: string; readonly output: string }[];
 }
 
 export type CandidateQuestion =
@@ -65,7 +72,18 @@ export function candidateQuestion(question: Question): CandidateQuestion {
     case "numeric":
       return { ...base, kind: "numeric" };
     case "code":
-      return { ...base, kind: "code", language: question.language, starter: question.starter ?? null };
+      return {
+        ...base,
+        kind: "code",
+        language: question.language,
+        languages: languagesOf(question),
+        starter: question.starter ?? null,
+        samples: (question.tests ?? [])
+          .filter((t) => !t.hidden)
+          // `output`, not `expected`: `expected` is the numeric answer key's
+          // name, and the contract test forbids it anywhere a candidate sees.
+          .map((t) => ({ input: t.input, output: t.expected })),
+      };
   }
 }
 

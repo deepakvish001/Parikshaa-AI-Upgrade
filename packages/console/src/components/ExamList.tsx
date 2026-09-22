@@ -7,9 +7,11 @@ interface Props {
   readonly onNew: () => void;
   /** Whether this account may author exams; the server refuses it either way. */
   readonly canWrite?: boolean;
+  /** Copy an exam, which is how a sat — and so frozen — exam is changed. */
+  readonly onClone?: (examId: string) => void;
 }
 
-export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true }: Props) {
+export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true, onClone }: Props) {
   return (
     <section className="card">
       <div className="bar">
@@ -46,6 +48,11 @@ export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true }: Prop
                   {canWrite ? (
                     <button type="button" className="quiet" onClick={() => onEdit(exam.id)}>
                       Edit
+                    </button>
+                  ) : null}{" "}
+                  {canWrite && onClone !== undefined ? (
+                    <button type="button" className="quiet" onClick={() => onClone(exam.id)}>
+                      Copy
                     </button>
                   ) : null}
                 </td>

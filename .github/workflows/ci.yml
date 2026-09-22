@@ -32,6 +32,12 @@ jobs:
       # no service container is needed.
       - run: npm test
 
+      # The runner's isolation tests need root — to drop each run to its own
+      # uid and enter fresh namespaces — so the suite runs again under sudo,
+      # where the cases skipped above actually execute.
+      - run: sudo -E env "PATH=$PATH" npx vitest run
+        working-directory: packages/runner
+
       - run: npm run build -w @parikshaa/web
       - run: npm run build -w @parikshaa/console
 
@@ -46,3 +52,10 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.runner
+          push: false
+          cache-from: type=gha,scope=runner
+          cache-to: type=gha,mode=max,scope=runner

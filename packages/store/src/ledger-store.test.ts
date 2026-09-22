@@ -348,6 +348,32 @@ describe("LedgerStore", () => {
       expect((await store.listAudit(S)).map((e) => e.action)).toEqual(["test.mine"]);
     });
 
+    it("keeps the latest draft per question, for the candidate's own attempt only", async () => {
+      const mine = candidateScope(ORG, A);
+      await store.saveDraft(mine, A, questionId("q1"), "first", 10);
+      await store.saveDraft(mine, A, questionId("q1"), "first, then more", 20);
+      await store.saveDraft(mine, A, questionId("q2"), "other", 30);
+
+      expect(await store.loadDrafts(mine, A)).toEqual([
+        { questionId: "q1", answer: "first, then more", savedAt: 20 },
+        { questionId: "q2", answer: "other", savedAt: 30 },
+      ]);
+      // Another candidate in the same organisation, and the right attempt in the wrong one.
+      expect(await store.loadDrafts(candidateScope(ORG, B), A)).toEqual([]);
+      expect(await store.loadDrafts(candidateScope(OTHER, A), A)).toEqual([]);
+      await expect(store.saveDraft(candidateScope(ORG, B), A, questionId("q1"), "x", 40)).rejects.toThrow();
+      // Staff within the organisation can read them, to commit them at close.
+      expect(await store.loadDrafts(S, A)).toHaveLength(2);
+    });
+
+    it("records when a candidate's page last checked in", async () => {
+      expect((await store.listAttempts(S, E)).find((a) => a.id === A)?.lastSeenAt).toBeNull();
+
+      await store.touch(candidateScope(ORG, A), A, Date.UTC(2026, 8, 22, 10, 0));
+
+      expect((await store.listAttempts(S, E)).find((a) => a.id === A)?.lastSeenAt).toBe("2026-09-22T10:00:00.000Z");
+    });
+
     it("reports model spend per organisation", async () => {
       const usage = {
         attemptId: A,

@@ -1,14 +1,18 @@
 import type { CandidateQuestion } from "@parikshaa/core/browser";
+import type { RunOutcome } from "../api.ts";
+import { CodeAnswer } from "./CodeAnswer.tsx";
 
 interface Props {
   readonly question: CandidateQuestion;
   readonly value: string;
   readonly disabled: boolean;
   readonly onChange: (value: string) => void;
+  /** Runs a code answer; only code questions use it. */
+  readonly onRun?: (language: string, source: string, input?: string) => Promise<RunOutcome>;
 }
 
 /** The input for one question, chosen by its kind. */
-export function AnswerInput({ question, value, disabled, onChange }: Props) {
+export function AnswerInput({ question, value, disabled, onChange, onRun }: Props) {
   switch (question.kind) {
     case "mcq":
       return (
@@ -43,13 +47,12 @@ export function AnswerInput({ question, value, disabled, onChange }: Props) {
 
     case "code":
       return (
-        <textarea
-          className="code"
-          aria-label={question.stem}
-          spellCheck={false}
-          value={value === "" ? (question.starter ?? "") : value}
+        <CodeAnswer
+          question={question}
+          value={value}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={onChange}
+          onRun={onRun ?? (() => Promise.reject(new Error("Running is not available here")))}
         />
       );
 

@@ -3,6 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Exam } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
+import { BankPanel } from "./components/Bank.tsx";
+import { Candidates } from "./components/Candidates.tsx";
+import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
+import { IntegrationsPanel } from "./components/Integrations.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -13,10 +17,15 @@ type View =
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
+  | { readonly name: "bank" }
+  | { readonly name: "candidates"; readonly examId: string }
+  | { readonly name: "results"; readonly examId: string }
+  | { readonly name: "report"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "staff" }
   | { readonly name: "keys" }
   | { readonly name: "usage" }
   | { readonly name: "audit" }
+  | { readonly name: "integrations" }
   | { readonly name: "account" };
 
 /**
@@ -125,7 +134,13 @@ function SignIn({ onSignedIn }: { onSignedIn: (token: string) => void }) {
 
 function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
   const queryClient = useQueryClient();
-  const [view, setView] = useState<View>({ name: "exams" });
+  // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
+  const [view, setView] = useState<View>(() => {
+    const report = new URLSearchParams(window.location.search).get("report");
+    if (report === null || report === "") return { name: "exams" };
+    window.history.replaceState(null, "", window.location.pathname);
+    return { name: "report", examId: "", attemptId: report };
+  });
   const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
   const can = (permission: string) => me.data?.permissions.includes(permission) ?? false;
 
@@ -155,6 +170,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     queryKey: ["attempts", view.name === "attempts" || view.name === "review" ? view.examId : null],
     queryFn: () => client.listAttempts((view as { examId: string }).examId),
     enabled: view.name === "attempts" || view.name === "review",
+    // Keeps "here / last seen" current while an invigilator watches the room.
+    refetchInterval: view.name === "attempts" ? 30_000 : false,
   });
 
   const review = useQuery({
@@ -172,7 +189,26 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     },
     // The server validates independently of the client; if it disagrees, show
     // exactly what it objected to rather than a generic failure.
-    onError: (error) => setProblems(error instanceof ConsoleError ? error.problems : []),
+    onError: (error) =>
+      setProblems(
+        error instanceof ConsoleError && error.code === "exam_frozen"
+          ? [{ path: "exam", message: "This exam has been sat, so it can no longer be changed. Make a copy from the exam list and edit that." }]
+          : error instanceof ConsoleError
+            ? error.problems
+            : [],
+      ),
+  });
+
+  const cloneExam = useMutation({
+    mutationFn: (examId: string) => {
+      const id = `${examId}-copy-${Date.now().toString(36)}`;
+      return client.cloneExam(examId, id).then(() => id);
+    },
+    onSuccess: async (id) => {
+      await queryClient.invalidateQueries({ queryKey: ["exams"] });
+      setProblems([]);
+      setView({ name: "editor", examId: id });
+    },
   });
 
   const startAttempt = useMutation({
@@ -211,10 +247,12 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
 
   const tabs: readonly { readonly view: View; readonly label: string; readonly permission: string }[] = [
+    { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key" },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage" },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage" },
     { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
     { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
+    { view: { name: "integrations" }, label: "Integrations", permission: "org:manage" },
   ];
 
   return (
@@ -244,7 +282,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         </button>
       </nav>
 
-      <div className="bar">
+      <div className="bar crumbs">
         <h1>
           {view.name === "exams" ? (
             "Parikshaa console"
@@ -254,7 +292,12 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             </button>
           )}
         </h1>
-        {view.name === "attempts" || view.name === "review" ? (
+        {(view.name === "attempts" ||
+          view.name === "review" ||
+          view.name === "candidates" ||
+          view.name === "results" ||
+          view.name === "report") &&
+        view.examId !== "" ? (
           <>
             <span className="notice">/</span>
             <button
@@ -264,6 +307,14 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             >
               {examTitle(view.examId)}
             </button>
+            {view.name === "report" ? (
+              <>
+                <span className="notice">/</span>
+                <button type="button" className="crumb" onClick={() => setView({ name: "results", examId: view.examId })}>
+                  Results
+                </button>
+              </>
+            ) : null}
           </>
         ) : null}
       </div>
@@ -277,6 +328,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           <ExamList
             exams={exams.data}
             canWrite={can("exam:write")}
+            onClone={(examId) => cloneExam.mutate(examId)}
             onOpen={(examId) => {
               setIssued(null);
               setView({ name: "attempts", examId });
@@ -297,8 +349,35 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           serverProblems={problems}
           onSave={(exam) => saveExam.mutate(exam)}
           onCancel={() => setView({ name: "exams" })}
+          {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
         />
       ) : null}
+
+      {view.name === "attempts" ? (
+        <div className="row" style={{ marginTop: 0, marginBottom: ".85rem" }}>
+          <button type="button" className="secondary" onClick={() => setView({ name: "candidates", examId: view.examId })}>
+            Schedule and invite candidates
+          </button>
+          {can("attempt:review") ? (
+            <button type="button" className="secondary" onClick={() => setView({ name: "results", examId: view.examId })}>
+              Results and exports
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {view.name === "candidates" ? (
+        <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} />
+      ) : null}
+
+      {view.name === "results" ? (
+        <ResultsPanel
+          client={client}
+          examId={view.examId}
+          onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
+        />
+      ) : null}
+      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} /> : null}
 
       {view.name === "attempts" && attempts.data !== undefined ? (
         <AttemptList
@@ -307,6 +386,14 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           starting={startAttempt.isPending}
           canStart={can("attempt:start")}
           canReview={can("attempt:review")}
+          {...(can("attempt:extend")
+            ? {
+                onExtend: async (attemptId: string, minutes: number, reason: string) => {
+                  await client.extendTime(attemptId, minutes, reason);
+                  await queryClient.invalidateQueries({ queryKey: ["attempts"] });
+                },
+              }
+            : {})}
           onStart={(candidateId) => startAttempt.mutate({ examId: view.examId, candidateId })}
           onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
         />
@@ -327,10 +414,12 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         />
       ) : null}
 
+      {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
       {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
       {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
       {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
       {view.name === "audit" ? <AuditPanel client={client} /> : null}
+      {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
       {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
     </main>
   );

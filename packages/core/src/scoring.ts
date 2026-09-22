@@ -11,7 +11,7 @@ import type { Exam, ExamPolicy, Question, QuestionId, Response } from "./domain.
  * majority of scoring stays cheap, offline and exactly reproducible.
  */
 
-export type ScoreMethod = "deterministic" | "rubric";
+export type ScoreMethod = "deterministic" | "rubric" | "tests";
 
 export interface QuestionScore {
   readonly questionId: QuestionId;
@@ -22,9 +22,9 @@ export interface QuestionScore {
   readonly reasoning: string | null;
 }
 
-/** Whether this question can only be scored by a rubric grader. */
+/** Whether this question can only be scored by a rubric grader. A code question with tests is scored by running them. */
 export function needsRubricGrading(question: Question): boolean {
-  return question.kind === "short" || question.kind === "code";
+  return question.kind === "short" || (question.kind === "code" && (question.tests ?? []).length === 0);
 }
 
 /**

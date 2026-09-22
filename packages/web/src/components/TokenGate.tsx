@@ -8,9 +8,9 @@ interface Props {
  * Entry point when no attempt token is present in the URL.
  *
  * The token is the whole of a candidate's access: it names one attempt and
- * expires with the exam window. It is held in memory for the session and is not
- * written to storage — a shared or invigilated machine should not keep it after
- * the tab closes.
+ * expires with the exam window. It is kept for this tab only (sessionStorage),
+ * so a reload does not lock the candidate out but a shared or invigilated
+ * machine does not keep it after the tab closes.
  */
 export function TokenGate({ onToken }: Props) {
   const [value, setValue] = useState("");

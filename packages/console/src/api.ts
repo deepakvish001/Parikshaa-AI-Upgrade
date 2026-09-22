@@ -1,4 +1,4 @@
-import type { Exam, ExamProblem } from "@parikshaa/core/browser";
+import type { Exam, ExamProblem, Question } from "@parikshaa/core/browser";
 
 export interface ExamSummary {
   readonly id: string;
@@ -9,6 +9,8 @@ export interface ExamSummary {
 export interface AttemptSummary {
   readonly id: string;
   readonly candidateId: string;
+  /** When the candidate's page last checked in. */
+  readonly lastSeenAt?: string | null;
   readonly entries: number;
   readonly state: "in_progress" | "submitted" | "graded" | "void";
 }
@@ -100,12 +102,184 @@ export interface AuditEntry {
   readonly detail: Record<string, unknown>;
 }
 
+export type Difficulty = "easy" | "medium" | "hard";
+
+export interface BankEntry {
+  readonly id: string;
+  readonly question: Question;
+  readonly topic: string;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+  readonly updatedAt: string;
+  readonly archived: boolean;
+}
+
+export interface BankDraft {
+  readonly question: Omit<Question, "id">;
+  readonly topic: string;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+}
+
+export interface BankFilter {
+  readonly topic?: string;
+  readonly difficulty?: Difficulty;
+  readonly q?: string;
+}
+
+export type Channel = "email" | "sms";
+
+export interface ExamWindow {
+  readonly opensAt: string;
+  readonly closesAt: string;
+  readonly hardClose: boolean;
+}
+
+export interface Delivery {
+  readonly status: string;
+  readonly purpose: string;
+  readonly at: string;
+  readonly error: string | null;
+}
+
+export interface InvitationRow {
+  readonly id: string;
+  readonly candidateRef: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly opensAt: string;
+  readonly closesAt: string;
+  readonly attemptId: string | null;
+  readonly attemptState: "not_started" | "in_progress" | "submitted" | "graded" | "void";
+  readonly revoked: boolean;
+  readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
+}
+
+export interface RowProblem {
+  readonly row: number;
+  readonly message: string;
+}
+
+export type ImportResult =
+  | {
+      readonly dryRun: true;
+      readonly candidates: number;
+      readonly problems: readonly RowProblem[];
+      readonly warnings: readonly RowProblem[];
+      readonly preview: readonly { candidateRef: string; name: string; email: string | null; phone: string | null }[];
+    }
+  | { readonly dryRun: false; readonly invited: number; readonly warnings: readonly RowProblem[] };
+
+export type Verdict = "consistent" | "shallow" | "inconsistent" | "inconclusive";
+
+export interface ResultRow {
+  readonly attemptId: string;
+  readonly candidateId: string;
+  readonly ref: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly state: "in_progress" | "submitted" | "graded" | "void";
+  readonly total: number | null;
+  readonly maxTotal: number;
+  readonly percent: number | null;
+  readonly startedAt: number;
+  readonly submittedAt: number | null;
+  readonly durationMs: number | null;
+  readonly scores: Readonly<Record<string, { readonly score: number; readonly max: number }>>;
+  readonly probes: { readonly asked: number; readonly replied: number; readonly verdicts: Partial<Record<Verdict, number>> };
+  readonly voidReason: string | null;
+}
+
+export interface QuestionStats {
+  readonly questionId: string;
+  readonly stem: string;
+  readonly kind: string;
+  readonly maxScore: number;
+  readonly appeared: number;
+  readonly facility: number | null;
+  readonly discrimination: number | null;
+}
+
+export interface Results {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly rows: readonly ResultRow[];
+  readonly analytics: {
+    readonly candidates: number;
+    readonly graded: number;
+    readonly setAside: number;
+    readonly meanPercent: number | null;
+    readonly medianPercent: number | null;
+    readonly distribution: readonly number[];
+    readonly questions: readonly QuestionStats[];
+    readonly time: { readonly medianMinutes: number | null; readonly p90Minutes: number | null };
+    readonly integrity: {
+      readonly candidatesProbed: number;
+      readonly asked: number;
+      readonly replied: number;
+      readonly read: number;
+      readonly verdicts: Readonly<Record<Verdict, number>>;
+    };
+  };
+}
+
+export interface CandidateReport {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly candidate: { readonly ref: string; readonly name: string; readonly email: string | null };
+  readonly result: Omit<ResultRow, "ref" | "name" | "email">;
+  readonly questions: readonly {
+    readonly id: string;
+    readonly stem: string;
+    readonly kind: string;
+    readonly maxScore: number;
+    readonly score: number | null;
+    readonly answer: string | null;
+    readonly language: string | null;
+  }[];
+  readonly vivas: readonly {
+    readonly questionId: string;
+    readonly prompt: string;
+    readonly reply: string | null;
+    readonly latencyMs: number | null;
+    readonly verdict: Verdict | null;
+    readonly confidence: number | null;
+    readonly reasoning: string | null;
+  }[];
+  readonly voidReason: string | null;
+  readonly voidedBy: string | null;
+  readonly ledger: { readonly head: string; readonly length: number };
+}
+
+export interface Webhook {
+  readonly id: string;
+  readonly url: string;
+  readonly events: readonly string[];
+  readonly version: number;
+  readonly description: string;
+  readonly createdAt: string;
+  readonly disabled: boolean;
+}
+
+export interface WebhookDelivery {
+  readonly id: string;
+  readonly event: string;
+  readonly attemptId: string | null;
+  readonly status: string;
+  readonly attempts: number;
+  readonly error: string | null;
+  readonly createdAt: string;
+  readonly sentAt: string | null;
+}
+
+export const WEBHOOK_EVENTS = ["attempt.started", "attempt.submitted", "attempt.graded", "attempt.voided"] as const;
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
     readonly problems: readonly ExamProblem[] = [],
     readonly detail?: string,
+    readonly rows: readonly { readonly row: number; readonly message: string }[] = [],
   ) {
     super(detail ?? `${code} (${status})`);
     this.name = "ConsoleError";
@@ -156,9 +330,16 @@ export class ConsoleClient {
       const body = (await response.json().catch(() => ({}))) as {
         error?: string;
         message?: string;
-        problems?: ExamProblem[];
+        problems?: (ExamProblem | { row: number; message: string })[];
       };
-      throw new ConsoleError(response.status, body.error ?? "request_failed", body.problems ?? [], body.message);
+      const problems = body.problems ?? [];
+      throw new ConsoleError(
+        response.status,
+        body.error ?? "request_failed",
+        problems.filter((p): p is ExamProblem => "path" in p),
+        body.message,
+        problems.filter((p): p is { row: number; message: string } => "row" in p),
+      );
     }
     return (await response.json()) as T;
   }
@@ -219,6 +400,164 @@ export class ConsoleClient {
     return (await this.#request<{ entries: AuditEntry[] }>("/audit")).entries;
   }
 
+  // --- the question bank -------------------------------------------------------
+
+  listBank(filter: BankFilter = {}): Promise<{ questions: readonly BankEntry[]; topics: readonly string[] }> {
+    const query = new URLSearchParams(
+      Object.entries(filter).filter((entry): entry is [string, string] => entry[1] !== undefined && entry[1] !== ""),
+    ).toString();
+    return this.#request(`/bank${query === "" ? "" : `?${query}`}`);
+  }
+
+  fileQuestion(draft: BankDraft): Promise<BankEntry> {
+    return this.#request("/bank", { method: "POST", body: JSON.stringify(draft) });
+  }
+
+  editQuestion(id: string, draft: BankDraft): Promise<BankEntry> {
+    return this.#request(`/bank/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async archiveQuestion(id: string): Promise<void> {
+    await this.#request(`/bank/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  /**
+   * Import a CSV file. A rejected file throws a {@link ConsoleError} whose
+   * problems name the rows, as `row 7`.
+   */
+  async importBank(csv: string): Promise<number> {
+    try {
+      return (await this.#request<{ imported: number }>("/bank/import", { method: "POST", body: JSON.stringify({ csv }) }))
+        .imported;
+    } catch (error) {
+      if (error instanceof ConsoleError && error.rows.length > 0) {
+        throw new ConsoleError(
+          error.status,
+          error.code,
+          error.rows.map((r) => ({ path: `row ${r.row}`, message: r.message })),
+        );
+      }
+      throw error;
+    }
+  }
+
+  async cloneExam(examId: string, id: string, title?: string): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/clone`, {
+      method: "POST",
+      body: JSON.stringify(title === undefined ? { id } : { id, title }),
+    });
+  }
+
+  // --- scheduling and inviting -------------------------------------------------
+
+  getWindow(examId: string): Promise<ExamWindow | null> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/window`);
+  }
+
+  async setWindow(examId: string, window: ExamWindow): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/window`, { method: "PUT", body: JSON.stringify(window) });
+  }
+
+  /**
+   * Check a candidate list (dry run) or import it. A rejected import throws a
+   * {@link ConsoleError} whose problems name the rows.
+   */
+  async importCandidates(examId: string, csv: string, dryRun: boolean, channels: readonly Channel[]): Promise<ImportResult> {
+    try {
+      return await this.#request(`/exams/${encodeURIComponent(examId)}/invitations/import`, {
+        method: "POST",
+        body: JSON.stringify({ csv, dryRun, channels }),
+      });
+    } catch (error) {
+      if (error instanceof ConsoleError && error.rows.length > 0) {
+        throw new ConsoleError(error.status, error.code, error.rows.map((r) => ({ path: `row ${r.row}`, message: r.message })));
+      }
+      throw error;
+    }
+  }
+
+  async listInvitations(examId: string): Promise<readonly InvitationRow[]> {
+    return (await this.#request<{ invitations: InvitationRow[] }>(`/exams/${encodeURIComponent(examId)}/invitations`)).invitations;
+  }
+
+  async resendInvitation(id: string, channels: readonly Channel[]): Promise<void> {
+    await this.#request(`/invitations/${encodeURIComponent(id)}/resend`, { method: "POST", body: JSON.stringify({ channels }) });
+  }
+
+  async revokeInvitation(id: string): Promise<void> {
+    await this.#request(`/invitations/${encodeURIComponent(id)}/revoke`, { method: "POST" });
+  }
+
+  /** Every candidate's link, as a CSV file's contents. */
+  async invitationLinks(examId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/invitations/links.csv`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  // --- results ----------------------------------------------------------------
+
+  results(examId: string): Promise<Results> {
+    return this.#request<Results>(`/exams/${encodeURIComponent(examId)}/results`);
+  }
+
+  /** The results as a file to save: CSV or an Excel workbook. */
+  async resultsFile(examId: string, format: "csv" | "xlsx"): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/results.${format}`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  report(attemptId: string): Promise<CandidateReport> {
+    return this.#request<CandidateReport>(`/attempts/${encodeURIComponent(attemptId)}/report`);
+  }
+
+  // --- integrations -----------------------------------------------------------
+
+  async listWebhooks(): Promise<readonly Webhook[]> {
+    return (await this.#request<{ webhooks: Webhook[] }>("/webhooks")).webhooks;
+  }
+
+  addWebhook(url: string, events: readonly string[], description: string): Promise<{ webhook: Webhook; secret: string }> {
+    return this.#request("/webhooks", { method: "POST", body: JSON.stringify({ url, events, description }) });
+  }
+
+  async webhookSecret(id: string): Promise<string> {
+    return (await this.#request<{ secret: string }>(`/webhooks/${encodeURIComponent(id)}/secret`)).secret;
+  }
+
+  rotateWebhook(id: string): Promise<{ webhook: Webhook; secret: string }> {
+    return this.#request(`/webhooks/${encodeURIComponent(id)}/rotate`, { method: "POST" });
+  }
+
+  async disableWebhook(id: string): Promise<void> {
+    await this.#request(`/webhooks/${encodeURIComponent(id)}/disable`, { method: "POST" });
+  }
+
+  async testWebhook(id: string): Promise<void> {
+    await this.#request(`/webhooks/${encodeURIComponent(id)}/test`, { method: "POST" });
+  }
+
+  async webhookDeliveries(id: string): Promise<readonly WebhookDelivery[]> {
+    return (await this.#request<{ deliveries: WebhookDelivery[] }>(`/webhooks/${encodeURIComponent(id)}/deliveries`)).deliveries;
+  }
+
+  greenhouse(): Promise<{ enabled: boolean; endpoints: Record<string, string> }> {
+    return this.#request("/integrations/greenhouse");
+  }
+
+  issueGreenhouseKey(): Promise<{ key: string; endpoints: Record<string, string> }> {
+    return this.#request("/integrations/greenhouse/key", { method: "POST" });
+  }
+
+  async disableGreenhouse(): Promise<void> {
+    await this.#request("/integrations/greenhouse/disable", { method: "POST" });
+  }
+
   // --- exams and attempts -----------------------------------------------------
 
   async listExams(): Promise<readonly ExamSummary[]> {
@@ -257,6 +596,14 @@ export class ConsoleClient {
     return this.#request(`/attempts/${encodeURIComponent(attemptId)}/void`, {
       method: "POST",
       body: JSON.stringify({ reason }),
+    });
+  }
+
+  /** More time for an open attempt, with a reason that goes into its ledger. */
+  extendTime(attemptId: string, minutes: number, reason: string): Promise<{ expiresAt: number }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/extend`, {
+      method: "POST",
+      body: JSON.stringify({ minutes, reason }),
     });
   }
 

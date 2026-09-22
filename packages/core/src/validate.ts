@@ -1,4 +1,6 @@
 import type { Exam, Question } from "./domain.js";
+import { CODE_LANGUAGES, languagesOf } from "./code.js";
+import { allQuestions } from "./paper.js";
 
 /**
  * Exam validation.
@@ -19,7 +21,8 @@ export type ExamValidation =
   | { readonly ok: true }
   | { readonly ok: false; readonly problems: readonly ExamProblem[] };
 
-function validateQuestion(question: Question, at: string): ExamProblem[] {
+/** Problems with one question, reported under `at` (e.g. `questions.2`). */
+export function validateQuestion(question: Question, at: string): ExamProblem[] {
   const problems: ExamProblem[] = [];
 
   if (question.stem.trim() === "") {
@@ -78,14 +81,45 @@ function validateQuestion(question: Question, at: string): ExamProblem[] {
       break;
     }
     case "code": {
-      if (question.language.trim() === "") {
-        problems.push({ path: `${at}.language`, message: "A code question needs a language." });
+      const tests = question.tests ?? [];
+      for (const language of languagesOf(question)) {
+        if (!(CODE_LANGUAGES as readonly string[]).includes(language)) {
+          problems.push({
+            path: `${at}.language`,
+            message: `"${language}" cannot be run; offer one of ${CODE_LANGUAGES.join(", ")}.`,
+          });
+        }
       }
-      if (question.rubric.length === 0) {
+      if (question.languages !== undefined && question.languages.length > 0 && !question.languages.includes(question.language)) {
+        problems.push({ path: `${at}.languages`, message: "The default language must be one of those offered." });
+      }
+      // Scored by its tests if it has any; otherwise a grader needs a rubric.
+      if (tests.length === 0 && question.rubric.length === 0) {
         problems.push({
           path: `${at}.rubric`,
-          message: "A code answer is graded against its rubric, so it needs at least one criterion.",
+          message: "A code question is scored by its tests, or by a rubric if it has none; it needs one or the other.",
         });
+      }
+      if (new Set(tests.map((t) => t.id)).size !== tests.length) {
+        problems.push({ path: `${at}.tests`, message: "Test ids must be unique within a question." });
+      }
+      tests.forEach((test, j) => {
+        if (!Number.isFinite(test.weight) || test.weight <= 0) {
+          problems.push({ path: `${at}.tests.${j}.weight`, message: "Every test needs a weight greater than zero." });
+        }
+      });
+      if (tests.length > 0 && tests.every((t) => !t.hidden)) {
+        problems.push({
+          path: `${at}.tests`,
+          message: "At least one test must be hidden; a candidate who has seen every test can print the answers.",
+        });
+      }
+      const { timeMs, memoryMb } = question.limits ?? {};
+      if (timeMs !== undefined && (!Number.isInteger(timeMs) || timeMs < 100 || timeMs > 10_000)) {
+        problems.push({ path: `${at}.limits.timeMs`, message: "A time limit is 100 to 10,000 milliseconds per test." });
+      }
+      if (memoryMb !== undefined && (!Number.isInteger(memoryMb) || memoryMb < 32 || memoryMb > 1024)) {
+        problems.push({ path: `${at}.limits.memoryMb`, message: "A memory limit is 32 to 1024 megabytes." });
       }
       break;
     }
@@ -100,14 +134,45 @@ export function validateExam(exam: Exam): ExamValidation {
   if (exam.title.trim() === "") {
     problems.push({ path: "title", message: "An exam needs a title." });
   }
-  if (exam.questions.length === 0) {
+  const sections = exam.sections ?? [];
+  if (exam.questions.length === 0 && sections.length === 0) {
     problems.push({ path: "questions", message: "An exam needs at least one question." });
   }
 
-  const ids = new Set(exam.questions.map((q) => q.id));
-  if (ids.size !== exam.questions.length) {
-    problems.push({ path: "questions", message: "Question ids must be unique within an exam." });
+  const everything = allQuestions(exam);
+  const ids = new Set(everything.map((q) => q.id));
+  if (ids.size !== everything.length) {
+    problems.push({
+      path: "questions",
+      message: "Question ids must be unique within an exam, across its fixed questions and every section's pool.",
+    });
   }
+
+  const sectionIds = new Set(sections.map((s) => s.id));
+  if (sectionIds.size !== sections.length) {
+    problems.push({ path: "sections", message: "Section ids must be unique within an exam." });
+  }
+  sections.forEach((section, index) => {
+    const at = `sections.${index}`;
+    if (section.title.trim() === "") problems.push({ path: `${at}.title`, message: "A section needs a title." });
+    if (section.pool.length === 0) {
+      problems.push({ path: `${at}.pool`, message: "A section needs at least one question to draw from." });
+    } else if (!Number.isInteger(section.pick) || section.pick < 1 || section.pick > section.pool.length) {
+      problems.push({
+        path: `${at}.pick`,
+        message: `Each candidate draws between 1 and ${section.pool.length} questions from this pool.`,
+      });
+    }
+    // Candidates draw different questions, so a pool whose questions carry
+    // different marks would give neighbours papers worth different totals.
+    if (new Set(section.pool.map((q) => q.maxScore)).size > 1) {
+      problems.push({
+        path: `${at}.pool`,
+        message: "Every question in a pool must carry the same marks, so every candidate's paper is worth the same.",
+      });
+    }
+    section.pool.forEach((question, j) => problems.push(...validateQuestion(question, `${at}.pool.${j}`)));
+  });
 
   const { durationMs, vivaTriggerRatio } = exam.policy;
   if (!Number.isFinite(durationMs) || durationMs <= 0) {

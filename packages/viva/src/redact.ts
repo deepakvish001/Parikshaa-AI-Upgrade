@@ -1,4 +1,4 @@
-import type { Question, QuestionKind, Response, RubricCriterion } from "@parikshaa/core";
+import { decodeCodeAnswer, type Question, type QuestionKind, type Response, type RubricCriterion } from "@parikshaa/core";
 
 /**
  * The pseudonymization boundary (SPEC §6.4, STACK §5).
@@ -26,6 +26,11 @@ export function redact(question: Question, response: Response): RedactedAnswer {
     stem: question.stem,
     rubric: question.rubric,
     maxScore: question.maxScore,
-    answer: response.answer,
+    // For code, the source itself, labelled — so a probe is asked about the
+    // candidate's own code, not about the envelope it was stored in.
+    answer:
+      question.kind === "code"
+        ? ((a) => `(${a.language})\n${a.source}`)(decodeCodeAnswer(response.answer, question))
+        : response.answer,
   };
 }

@@ -1,7 +1,14 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import {
   candidateView,
+  decodeCodeAnswer,
   foldAttempt,
+  languagesOf,
+  scoreTests,
+  type CodeAnswer,
+  type CodeQuestion,
+  paperOf,
+  resolvePaper,
   validateExam,
   scoreDeterministic,
   selectProbeTargets,
@@ -12,6 +19,7 @@ import {
   type CandidateExam,
   type CandidateId,
   type Exam,
+  type ExamEvent,
   type ExamId,
   type LedgerEntry,
   type OrgId,
@@ -27,12 +35,14 @@ import {
 import type {
   AttemptSummary,
   AuditRecord,
+  Draft,
   ExamSummary,
   IdentityStore,
   Scope,
   UsageReport,
 } from "@parikshaa/store";
 import { AppendRefused, LedgerStore, candidateScope, staffScope } from "@parikshaa/store";
+import { RunnerUnavailable, type CodeRunner, type RunResult, type TestResult } from "@parikshaa/runner";
 import { assessReply, generateProbe, gradeWithRubric, type EngineOptions } from "@parikshaa/viva";
 import { can, type Actor, type Permission } from "./staff-auth.js";
 
@@ -58,7 +68,11 @@ export class AttemptError extends Error {
       | "unknown_probe"
       | "already_replied"
       | "expired"
-      | "reason_required",
+      | "reason_required"
+      | "invalid_extension"
+      | "not_code"
+      | "language_not_offered"
+      | "too_many_runs",
     message: string,
   ) {
     super(message);
@@ -102,7 +116,12 @@ export interface ServiceOptions {
   readonly fastProbes?: boolean;
   readonly now?: () => Timestamp;
   readonly newId?: () => string;
+  /** Runs candidate code. Without one, code questions can be answered but not run or tested. */
+  readonly runner?: CodeRunner;
 }
+
+/** Most times a candidate may press Run on one question in one attempt. */
+export const MAX_RUNS_PER_QUESTION = 100;
 
 interface AttemptContext {
   readonly entries: readonly LedgerEntry[];
@@ -116,8 +135,16 @@ export class ExamService {
   readonly #engine: { client: Anthropic; model?: string; fastProbes?: boolean };
   readonly #now: () => Timestamp;
   readonly #newId: () => string;
+  readonly #runner: CodeRunner | null;
+  /**
+   * Runs so far, per attempt and question. In memory, so per process: it is a
+   * brake on a runaway client, not an entitlement, and a restart that resets it
+   * costs nothing that matters.
+   */
+  readonly #runs = new Map<string, number>();
 
   constructor(options: ServiceOptions) {
+    this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
     this.#engine = {
@@ -190,8 +217,10 @@ export class ExamService {
    * mid-exam whether an answer was right.
    */
   async candidateState(access: CandidateAccess): Promise<CandidateState> {
-    const { projection, exam } = await this.#context(candidateOf(access), access.attemptId);
+    const scope = candidateOf(access);
+    const { projection, exam } = await this.#context(scope, access.attemptId);
     const open = projection.vivas.find((v) => v.exchange === null);
+    const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
 
     return {
       attemptId: access.attemptId,
@@ -209,6 +238,14 @@ export class ExamService {
       voidReason: projection.voidReason,
       openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
       answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
+      // Only drafts that say something the ledger does not: resuming on another
+      // device restores unsent work, not a stale copy of what was committed.
+      drafts:
+        projection.attempt.state === "in_progress"
+          ? (await this.#store.loadDrafts(scope, access.attemptId)).filter(
+              (d) => d.answer !== (committed.get(d.questionId) ?? ""),
+            )
+          : [],
     };
   }
 
@@ -251,6 +288,23 @@ export class ExamService {
     await this.#audit(actor, "exam.saved", exam.id, { title: exam.title, questions: exam.questions.length });
   }
 
+  /**
+   * Copy an exam under a new id.
+   *
+   * The way to change an exam that has been sat: it is frozen, because its
+   * ledgers record answers to its questions as they were. The copy starts with
+   * no attempts and can be edited freely.
+   */
+  async cloneExam(actor: Actor, sourceId: ExamId, id: ExamId, title?: string): Promise<void> {
+    const scope = this.#require(actor, "exam:write");
+    const source = await this.#store.loadExam(scope, sourceId);
+    if (source === null) throw new AttemptError("not_found", `No such exam: ${sourceId}`);
+    if ((await this.#store.loadExam(scope, id)) !== null) {
+      throw new AttemptError("invalid_state", `An exam with id ${id} already exists`);
+    }
+    await this.createExam(actor, { ...source, id, title: title ?? `${source.title} (copy)` });
+  }
+
   listExams(actor: Actor): Promise<readonly ExamSummary[]> {
     return this.#store.listExams(this.#require(actor, "exam:read"));
   }
@@ -288,10 +342,13 @@ export class ExamService {
     if (first === undefined || first.event.type !== "attempt_started") {
       throw new AttemptError("invalid_state", "Ledger does not open with attempt_started");
     }
-    const exam = await this.#store.loadExam(scope, first.event.examId);
-    if (exam === null) {
+    const definition = await this.#store.loadExam(scope, first.event.examId);
+    if (definition === null) {
       throw new AttemptError("not_found", `No such exam: ${first.event.examId}`);
     }
+    // From here on "the exam" is this attempt's paper: the questions it was
+    // given, as recorded in its first entry, and nothing it did not draw.
+    const exam = paperOf(definition, first.event.questionIds);
 
     const result = foldAttempt(entries, { exam });
     if (!result.ok) {
@@ -325,7 +382,27 @@ export class ExamService {
           questionId: question.id,
           score: recorded,
           maxScore: question.maxScore,
-          method: needsRubricGrading(question) ? "rubric" : "deterministic",
+          method:
+            question.kind === "code" && (question.tests ?? []).length > 0
+              ? "tests"
+              : needsRubricGrading(question)
+                ? "rubric"
+                : "deterministic",
+          reasoning: null,
+        });
+        continue;
+      }
+
+      // A code answer tested when it was committed: its result stands in for a
+      // score until grading records one, which is what lets a strong solution
+      // be followed up mid-exam.
+      const tested = projection.codeScores.get(response.questionId);
+      if (tested !== undefined) {
+        scores.push({
+          questionId: question.id,
+          score: tested.score,
+          maxScore: question.maxScore,
+          method: "tests",
           reasoning: null,
         });
         continue;
@@ -349,10 +426,54 @@ export class ExamService {
   async #refuseIfExpired(scope: Scope, id: AttemptId, context: AttemptContext): Promise<void> {
     const { projection, exam } = context;
     if (projection.attempt.state !== "in_progress") return;
-    if (this.#now() <= deadlineOf(projection, exam)) return;
+    const deadline = deadlineOf(projection, exam);
+    if (this.#now() <= deadline) return;
 
-    await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id });
-    throw new AttemptError("expired", `Attempt ${id} is past its ${exam.policy.durationMs}ms window`);
+    // Whatever the candidate typed before time ran out is theirs; only what
+    // arrived after it is not.
+    await this.#close(scope, id, context, deadline);
+    throw new AttemptError("expired", `Attempt ${id} is past its window`);
+  }
+
+  /**
+   * Commit outstanding drafts, then submit.
+   *
+   * A draft is committed when it says something the ledger does not, was
+   * saved by `cutoff`, and the exam's policy allows it — an exam that forbids
+   * revision keeps the answer the candidate committed. Each is recorded with
+   * the time it was saved, so the chain shows when the words were written, not
+   * when the window closed.
+   *
+   * Every append is guarded against an attempt that has already closed, so two
+   * requests that find the window over at once close it once.
+   */
+  async #close(scope: Scope, id: AttemptId, context: AttemptContext, cutoff: Timestamp): Promise<void> {
+    const { projection, exam } = context;
+    const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
+    const onExam = new Set(exam.questions.map((q) => q.id));
+
+    try {
+      for (const draft of await this.#store.loadDrafts(scope, id)) {
+        if (!onExam.has(draft.questionId) || draft.savedAt > cutoff) continue;
+        if (draft.answer.trim() === "" || draft.answer === committed.get(draft.questionId)) continue;
+        if (!exam.policy.allowRevision && committed.has(draft.questionId)) continue;
+
+        await this.#store.append(
+          scope,
+          id,
+          {
+            type: "answer_submitted",
+            attemptId: id,
+            response: { questionId: draft.questionId, answer: draft.answer, submittedAt: draft.savedAt },
+          },
+          { guard: whileOpen },
+        );
+      }
+      await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id }, { guard: whileOpen });
+    } catch (error) {
+      // Another request closed it first. Closed is closed.
+      if (!(error instanceof AppendRefused)) throw error;
+    }
   }
 
   async startAttempt(actor: Actor, examId: ExamId, candidateId: CandidateId): Promise<AttemptId> {
@@ -362,9 +483,53 @@ export class ExamService {
 
     const id = this.#newId() as AttemptId;
     await this.#store.createAttempt(scope, id, examId, candidateId);
-    await this.#store.append(scope, id, { type: "attempt_started", attemptId: id, examId, candidateId });
+    await this.#store.append(scope, id, {
+      type: "attempt_started",
+      attemptId: id,
+      examId,
+      candidateId,
+      questionIds: resolvePaper(exam, id),
+    });
     await this.#audit(actor, "attempt.started", id, { examId, candidateId });
     return id;
+  }
+
+  /**
+   * Start an attempt for a candidate who redeemed an invitation.
+   *
+   * No person is acting — the candidate opened their link inside their window
+   * — so the audit log records the system, naming the invitation. A hard close
+   * from the window is written into the first ledger entry, where it governs
+   * the deadline and can be checked like everything else.
+   */
+  async startInvited(
+    orgId: OrgId,
+    invitationId: string,
+    examId: ExamId,
+    candidateId: CandidateId,
+    attemptId: AttemptId,
+    closesAt: Timestamp | null,
+  ): Promise<void> {
+    const scope = staffScope(orgId);
+    const exam = await this.#store.loadExam(scope, examId);
+    if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
+
+    await this.#store.createAttempt(scope, attemptId, examId, candidateId);
+    await this.#store.append(scope, attemptId, {
+      type: "attempt_started",
+      attemptId,
+      examId,
+      candidateId,
+      questionIds: resolvePaper(exam, attemptId),
+      ...(closesAt === null ? {} : { closesAt }),
+    });
+    await this.#store.appendAudit(scope, {
+      actorKind: "system",
+      actorId: null,
+      action: "attempt.started",
+      target: attemptId,
+      detail: { examId, candidateId, invitationId },
+    });
   }
 
   // --- candidate: writing ---------------------------------------------------
@@ -381,21 +546,207 @@ export class ExamService {
     }
     await this.#refuseIfExpired(scope, id, context);
 
-    await this.#store.append(scope, id, {
+    const submittedAt = this.#now();
+    await this.#appendWhileOpen(scope, id, {
       type: "answer_submitted",
       attemptId: id,
-      response: { questionId, answer, submittedAt: this.#now() },
+      response: { questionId, answer, submittedAt },
+    });
+    // The committed text is now also the latest draft, so an older autosave
+    // still in flight cannot resurface as "unsent" on another device.
+    await this.#store.saveDraft(scope, id, questionId, answer, submittedAt);
+
+    const question = context.exam.questions.find((q) => q.id === questionId);
+    if (question?.kind === "code") await this.#testOnCommit(scope, id, question, answer);
+  }
+
+  // --- code (ROADMAP §4) ----------------------------------------------------
+
+  /**
+   * Run a candidate's code against the question's visible tests, or against
+   * input of their own. Hidden tests are never run here: a candidate who could
+   * run them could search for what passes.
+   *
+   * Nothing is recorded. Running is working, not answering; the answer is what
+   * the candidate commits.
+   */
+  async runCode(
+    access: CandidateAccess,
+    questionId: QuestionId,
+    answer: CodeAnswer,
+    input?: string,
+  ): Promise<CandidateRun> {
+    const scope = candidateOf(access);
+    const id = access.attemptId;
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
+    }
+    const question = this.#codeQuestion(context.exam, questionId, answer.language);
+    await this.#refuseIfExpired(scope, id, context);
+
+    const key = `${id}\u0000${questionId}`;
+    const runs = (this.#runs.get(key) ?? 0) + 1;
+    if (runs > MAX_RUNS_PER_QUESTION) {
+      throw new AttemptError("too_many_runs", `At most ${MAX_RUNS_PER_QUESTION} runs per question`);
+    }
+    this.#runs.set(key, runs);
+
+    const samples = (question.tests ?? []).filter((t) => !t.hidden);
+    const tests =
+      input !== undefined
+        ? [{ id: "custom", input, expected: "" }]
+        : samples.map((t, i) => ({ id: `sample-${i + 1}`, input: t.input, expected: t.expected }));
+    const result = await this.#run(question, answer, tests);
+
+    if (!result.compiled) return { compiled: false, compileOutput: result.compileOutput };
+    return {
+      compiled: true,
+      results: result.tests.map((r, i) => ({
+        input: tests[i]!.input,
+        // Custom input has no expected output, so no verdict either.
+        expectedOutput: input !== undefined ? null : tests[i]!.expected,
+        status: input !== undefined ? (r.status === "passed" || r.status === "wrong_answer" ? "ran" : r.status) : r.status,
+        stdout: r.stdout,
+        stderr: r.stderr,
+        timeMs: r.timeMs,
+      })),
+    };
+  }
+
+  #codeQuestion(exam: Exam, questionId: QuestionId, language: string): CodeQuestion {
+    const question = exam.questions.find((q) => q.id === questionId);
+    if (question === undefined) throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
+    if (question.kind !== "code") throw new AttemptError("not_code", `Question ${questionId} is not a code question`);
+    if (!languagesOf(question).includes(language)) {
+      throw new AttemptError("language_not_offered", `This question is answered in ${languagesOf(question).join(" or ")}`);
+    }
+    return question;
+  }
+
+  async #run(
+    question: CodeQuestion,
+    answer: CodeAnswer,
+    tests: readonly { id: string; input: string; expected: string }[],
+  ): Promise<RunResult> {
+    if (this.#runner === null) throw new RunnerUnavailable("No code runner is configured");
+    return this.#runner.run({
+      language: answer.language as never,
+      source: answer.source,
+      tests,
+      ...(question.limits === undefined ? {} : { limits: question.limits }),
     });
   }
 
+  /** Every test of a code question, scored. */
+  async #runAllTests(question: CodeQuestion, answer: string): Promise<{ score: number; passed: number; total: number }> {
+    const tests = question.tests ?? [];
+    const result = await this.#run(question, decodeCodeAnswer(answer, question), tests);
+    const passed = new Set(result.compiled ? result.tests.filter((r) => r.status === "passed").map((r) => r.id) : []);
+    return { score: scoreTests(question, passed), passed: passed.size, total: tests.length };
+  }
+
+  /**
+   * Test a committed code answer against all its tests and record the result.
+   *
+   * Best effort: an answer is never refused because the runner is busy or
+   * down — grading tests anything that was not tested here. The result is
+   * recorded only if the answer is still the latest for its question and the
+   * attempt has not closed, both checked under the attempt's lock.
+   */
+  async #testOnCommit(scope: Scope, id: AttemptId, question: CodeQuestion, answer: string): Promise<void> {
+    if (this.#runner === null || (question.tests ?? []).length === 0) return;
+    let result: { score: number; passed: number; total: number };
+    try {
+      result = await this.#runAllTests(question, answer);
+    } catch {
+      return;
+    }
+    try {
+      await this.#store.append(
+        scope,
+        id,
+        { type: "code_tested", attemptId: id, questionId: question.id, ...result },
+        {
+          guard: (events) => {
+            if (whileOpen(events) !== null) return "closed";
+            const latest = events.filter(
+              (e): e is Extract<ExamEvent, { type: "answer_submitted" }> =>
+                e.type === "answer_submitted" && e.response.questionId === question.id,
+            ).at(-1);
+            return latest?.response.answer === answer ? null : "superseded";
+          },
+        },
+      );
+    } catch (error) {
+      if (!(error instanceof AppendRefused)) throw error;
+    }
+  }
+
+  /**
+   * Keep what the candidate has typed so far, without committing it.
+   *
+   * Autosave calls this every few seconds. It writes nothing to the ledger;
+   * see {@link ExamService.#close} for how drafts become answers.
+   */
+  async saveDraft(access: CandidateAccess, questionId: QuestionId, answer: string): Promise<void> {
+    const scope = candidateOf(access);
+    const id = access.attemptId;
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
+    }
+    if (!context.exam.questions.some((q) => q.id === questionId)) {
+      throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
+    }
+    await this.#refuseIfExpired(scope, id, context);
+    await this.#store.saveDraft(scope, id, questionId, answer, this.#now());
+  }
+
+  /**
+   * The candidate's page checking in.
+   *
+   * Records that they are here, for an invigilator, and answers with the
+   * attempt's state and deadline, so a page learns of an extension — or of
+   * being set aside — without reloading. Reads only; it never closes an
+   * attempt, for the same reason looking at one never does.
+   */
+  async heartbeat(
+    access: CandidateAccess,
+  ): Promise<{ state: AttemptProjection["attempt"]["state"]; expiresAt: Timestamp }> {
+    const scope = candidateOf(access);
+    const { projection, exam } = await this.#context(scope, access.attemptId);
+    await this.#store.touch(scope, access.attemptId, this.#now());
+    return { state: projection.attempt.state, expiresAt: deadlineOf(projection, exam) };
+  }
+
+  /** Append, unless the attempt closed since it was read. */
+  async #appendWhileOpen(scope: Scope, id: AttemptId, event: ExamEvent): Promise<void> {
+    try {
+      await this.#store.append(scope, id, event, { guard: whileOpen });
+    } catch (error) {
+      if (error instanceof AppendRefused) {
+        throw new AttemptError("invalid_state", `Attempt ${id} closed while this was being recorded`);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Submit, committing anything typed but not yet committed.
+   *
+   * A candidate who presses submit means everything on their screen; a draft
+   * that autosaved but was never committed is part of that. Pressed after the
+   * window closed, it still submits — with only what was saved in time.
+   */
   async submitAttempt(access: CandidateAccess): Promise<void> {
     const scope = candidateOf(access);
     const id = access.attemptId;
-    const { projection } = await this.#context(scope, id);
-    if (projection.attempt.state !== "in_progress") {
-      throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}`);
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
     }
-    await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id });
+    await this.#close(scope, id, context, Math.min(this.#now(), deadlineOf(context.projection, context.exam)));
   }
 
   // --- micro-viva -----------------------------------------------------------
@@ -565,6 +916,47 @@ export class ExamService {
     await this.#audit(actor, "attempt.voided", id, { reason: trimmed });
   }
 
+  /**
+   * Give an attempt more time, with a reason.
+   *
+   * For a technical failure or an accommodation. Recorded in the ledger with
+   * who granted it, because an answer accepted after the original window is
+   * only defensible if the record shows why. Allowed while the attempt is open
+   * — including after its window has passed but before anything closed it,
+   * which is exactly the laptop-died-at-the-end case.
+   */
+  async extendTime(actor: Actor, id: AttemptId, minutes: number, reason: string): Promise<Timestamp> {
+    const scope = this.#require(actor, "attempt:extend");
+    if (actor.kind !== "user") throw new Forbidden("attempt:extend");
+
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_VOID_REASON) {
+      throw new AttemptError(
+        "reason_required",
+        `An extension needs a reason of at least ${MIN_VOID_REASON} characters; it is recorded in the attempt's ledger`,
+      );
+    }
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_EXTENSION_MINUTES) {
+      throw new AttemptError("invalid_extension", `Extend by 1 to ${MAX_EXTENSION_MINUTES} whole minutes`);
+    }
+
+    const { projection, exam } = await this.#context(scope, id);
+    if (projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}; only an open attempt can be extended`);
+    }
+
+    const extraMs = minutes * 60_000;
+    await this.#appendWhileOpen(scope, id, {
+      type: "time_extended",
+      attemptId: id,
+      extraMs,
+      reason: trimmed,
+      decidedBy: { userId: actor.id, name: actor.name },
+    });
+    await this.#audit(actor, "attempt.extended", id, { minutes, reason: trimmed });
+    return deadlineOf(projection, exam) + extraMs;
+  }
+
   // --- grading --------------------------------------------------------------
 
   /**
@@ -590,19 +982,35 @@ export class ExamService {
       return question === undefined ? [] : [{ question, response }];
     });
 
+    const byTests = (q: (typeof answered)[number]["question"]): q is CodeQuestion =>
+      q.kind === "code" && (q.tests ?? []).length > 0;
+
     const needsModel = answered.some(
-      ({ question, response }) => scoreDeterministic(question, response.answer) === null,
+      ({ question, response }) => !byTests(question) && scoreDeterministic(question, response.answer) === null,
     );
     if (needsModel && !(await this.#withinBudget(scope))) throw new SpendCapReached();
 
     const scores: QuestionScore[] = [];
+    const tested: ExamEvent[] = [];
     for (const { question, response } of answered) {
+      if (byTests(question)) {
+        // Tested when committed, or now if it was not (the runner was down, or
+        // the answer was committed at the close of the window).
+        let result = projection.codeScores.get(question.id);
+        if (result === undefined) {
+          result = await this.#runAllTests(question, response.answer);
+          tested.push({ type: "code_tested", attemptId: id, questionId: question.id, ...result });
+        }
+        scores.push({ questionId: question.id, score: result.score, maxScore: question.maxScore, method: "tests", reasoning: null });
+        continue;
+      }
       scores.push(
         scoreDeterministic(question, response.answer) ??
           (await gradeWithRubric({ question, response }, this.#engineFor(scope, id))),
       );
     }
 
+    for (const event of tested) await this.#store.append(scope, id, event);
     for (const score of scores) {
       await this.#store.append(scope, id, {
         type: "question_scored",
@@ -652,6 +1060,10 @@ export class ExamService {
 
 const candidateOf = (access: CandidateAccess): Scope => candidateScope(access.orgId, access.attemptId);
 
+/** An append guard: refuse once the attempt has been submitted or set aside. */
+const whileOpen = (events: readonly ExamEvent[]): string | null =>
+  events.some((e) => e.type === "attempt_submitted" || e.type === "attempt_voided") ? "The attempt has closed" : null;
+
 /** The first instant of the calendar month (UTC) containing `now`. */
 export function monthStart(now: Timestamp): Date {
   const date = new Date(now);
@@ -665,6 +1077,22 @@ export class ExamInvalidError extends Error {
     this.name = "ExamInvalidError";
   }
 }
+
+/** What a candidate sees of a run: their own examples, never a hidden test. */
+export type CandidateRun =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly results: readonly {
+        readonly input: string;
+        /** Null for a run on the candidate's own input, which has nothing to compare with. */
+        readonly expectedOutput: string | null;
+        readonly status: TestResult["status"] | "ran";
+        readonly stdout: string;
+        readonly stderr: string;
+        readonly timeMs: number;
+      }[];
+    };
 
 export interface UsageSummary extends UsageReport {
   readonly monthStartedAt: string;
@@ -684,6 +1112,8 @@ export interface CandidateState {
   /** A probe awaiting a reply, by prompt alone. */
   readonly openProbe: { readonly id: VivaId; readonly prompt: string } | null;
   readonly answeredProbeCount: number;
+  /** Typed but not committed, where that differs from what was committed. */
+  readonly drafts: readonly Draft[];
 }
 
 export interface CandidateLedger {
@@ -697,7 +1127,18 @@ export interface CandidateLedger {
 /** Shortest reason that can stand as a decision on the record. */
 export const MIN_VOID_REASON = 10;
 
-/** When an attempt's window closes, from its own start and its exam's policy. */
+/** The most one extension may add. More is a different sitting, not an extension. */
+export const MAX_EXTENSION_MINUTES = 240;
+
+/**
+ * When an attempt's window closes: its own start and its exam's duration — or
+ * its scheduled window's hard close, if that comes first — plus any time a
+ * person granted it.
+ */
 export function deadlineOf(projection: AttemptProjection, exam: Exam): Timestamp {
-  return projection.attempt.startedAt + exam.policy.durationMs;
+  const byDuration = projection.attempt.startedAt + exam.policy.durationMs;
+  // A hard-closing window ends the attempt when it closes, however late it was
+  // started. Extra time a person granted still applies on top of either.
+  const base = projection.closesAt === null ? byDuration : Math.min(byDuration, projection.closesAt);
+  return base + projection.extraTimeMs;
 }

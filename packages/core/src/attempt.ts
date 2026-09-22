@@ -5,6 +5,7 @@ import type {
   QuestionId,
   Response,
   StaffAttribution,
+  Timestamp,
   VivaAssessment,
   VivaExchange,
   VivaId,
@@ -42,6 +43,12 @@ export interface AttemptProjection {
   readonly voidReason: string | null;
   /** Who set the attempt aside. Null for a void recorded before staff had accounts. */
   readonly voidedBy: StaffAttribution | null;
+  /** A hard close from the attempt's scheduled window, if it had one. */
+  readonly closesAt: Timestamp | null;
+  /** Time added to the exam's window for this attempt, by `time_extended` entries. */
+  readonly extraTimeMs: number;
+  /** Test results for each code question's current answer; cleared when the answer changes. */
+  readonly codeScores: ReadonlyMap<QuestionId, { readonly score: number; readonly passed: number; readonly total: number }>;
 }
 
 export type FoldFailure =
@@ -92,12 +99,15 @@ export function foldAttempt(
 
   const allowRevision = options.exam?.policy.allowRevision ?? true;
   const { attemptId, examId, candidateId } = first.event;
+  const closesAt = first.event.closesAt ?? null;
   const startedAt = first.timestamp;
 
   let state: AttemptState = "in_progress";
   let total: number | null = null;
   let voidReason: string | null = null;
   let voidedBy: StaffAttribution | null = null;
+  let extraTimeMs = 0;
+  const codeScores = new Map<QuestionId, { score: number; passed: number; total: number }>();
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
   const scores = new Map<QuestionId, number>();
@@ -111,6 +121,9 @@ export function foldAttempt(
       total,
       voidReason,
       voidedBy,
+      closesAt,
+      extraTimeMs,
+      codeScores,
     },
   });
 
@@ -139,6 +152,8 @@ export function foldAttempt(
           if (!allowRevision) return fail("revision_not_allowed");
           responses[existing] = event.response;
         }
+        // A result belongs to the answer it tested, not to the question.
+        codeScores.delete(event.response.questionId);
         break;
       }
 
@@ -179,6 +194,21 @@ export function foldAttempt(
         if (state !== "submitted") return fail("not_submitted");
         state = "graded";
         total = event.total;
+        break;
+      }
+
+      // While open, when an answer is committed, or after submission, when
+      // grading tests one that was never tested — never once graded.
+      case "code_tested": {
+        if (state !== "in_progress" && state !== "submitted") return fail("not_in_progress");
+        codeScores.set(event.questionId, { score: event.score, passed: event.passed, total: event.total });
+        break;
+      }
+
+      // Only while the attempt is open: an extension cannot reopen a closed one.
+      case "time_extended": {
+        if (state !== "in_progress") return fail("not_in_progress");
+        extraTimeMs += event.extraMs;
         break;
       }
 

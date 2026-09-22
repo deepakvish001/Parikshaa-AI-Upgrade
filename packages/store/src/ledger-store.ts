@@ -11,8 +11,10 @@ import {
   type ExamId,
   type LedgerEntry,
   type OrgId,
+  type QuestionId,
   type Timestamp,
 } from "@parikshaa/core";
+import { enqueue } from "./outbox-store.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
@@ -36,6 +38,31 @@ export const candidateScope = (orgId: OrgId, attemptId: AttemptId): Scope => ({
   actor: "candidate",
   attemptId,
 });
+
+/**
+ * Run `fn` in a transaction that carries the scope into the database, where
+ * row-level security reads it. Every tenant query in this package goes through
+ * here.
+ */
+export function withScope<T>(sql: SqlExecutor, scope: Scope, fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
+  return sql.transaction(async (tx) => {
+    await tx.query(
+      `SELECT set_config('parikshaa.org_id', $1, true),
+              set_config('parikshaa.actor', $2, true),
+              set_config('parikshaa.attempt_id', $3, true)`,
+      [scope.orgId, scope.actor, scope.actor === "candidate" ? scope.attemptId : ""],
+    );
+    return fn(tx);
+  });
+}
+
+/** Ledger events that integrations are told about, by the name they are told. */
+export const ANNOUNCED: Partial<Record<ExamEvent["type"], string>> = {
+  attempt_started: "attempt.started",
+  attempt_submitted: "attempt.submitted",
+  attempt_graded: "attempt.graded",
+  attempt_voided: "attempt.voided",
+};
 
 /** Raised when an exam that has already been sat is changed in place. */
 export class ExamFrozen extends Error {
@@ -82,15 +109,7 @@ export class LedgerStore {
 
   /** Run `fn` in a transaction that carries the scope into the database. */
   #scoped<T>(scope: Scope, fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-    return this.#sql.transaction(async (tx) => {
-      await tx.query(
-        `SELECT set_config('parikshaa.org_id', $1, true),
-                set_config('parikshaa.actor', $2, true),
-                set_config('parikshaa.attempt_id', $3, true)`,
-        [scope.orgId, scope.actor, scope.actor === "candidate" ? scope.attemptId : ""],
-      );
-      return fn(tx);
-    });
+    return withScope(this.#sql, scope, fn);
   }
 
   // --- exams ----------------------------------------------------------------
@@ -132,7 +151,12 @@ export class LedgerStore {
   async listExams(scope: Scope): Promise<readonly ExamSummary[]> {
     return this.#scoped(scope, async (tx) => {
       const rows = await tx.query<{ id: string; title: string; question_count: number | string }>(
-        `SELECT id, title, jsonb_array_length(definition -> 'questions') AS question_count
+        // Questions per paper: the fixed ones, plus what each section draws.
+        `SELECT id, title,
+                jsonb_array_length(definition -> 'questions')
+                  + coalesce((SELECT sum((s ->> 'pick')::int)
+                                FROM jsonb_array_elements(coalesce(definition -> 'sections', '[]'::jsonb)) s), 0)
+                  AS question_count
            FROM exams WHERE org_id = $1 ORDER BY created_at DESC`,
         [scope.orgId],
       );
@@ -157,6 +181,7 @@ export class LedgerStore {
       const rows = await tx.query<{
         id: string;
         candidate_id: string;
+        last_seen_at: string | Date | null;
         entries: number | string;
         submitted: boolean;
         graded: boolean;
@@ -164,6 +189,7 @@ export class LedgerStore {
       }>(
         `SELECT a.id,
                 a.candidate_id,
+                a.last_seen_at,
                 (SELECT count(*) FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id) AS entries,
                 EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_submitted') AS submitted,
                 EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_graded') AS graded,
@@ -177,6 +203,7 @@ export class LedgerStore {
       return rows.map((row) => ({
         id: row.id as AttemptId,
         candidateId: row.candidate_id as CandidateId,
+        lastSeenAt: row.last_seen_at === null ? null : new Date(row.last_seen_at).toISOString(),
         entries: Number(row.entries),
         state: row.voided ? "void" : row.graded ? "graded" : row.submitted ? "submitted" : "in_progress",
       }));
@@ -192,6 +219,59 @@ export class LedgerStore {
         candidateId,
       ]),
     );
+  }
+
+  /** Record that the candidate's page checked in. Operational state, not evidence. */
+  async touch(scope: Scope, attemptId: AttemptId, at: Timestamp): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(`UPDATE attempts SET last_seen_at = $3 WHERE org_id = $1 AND id = $2`, [
+        scope.orgId,
+        attemptId,
+        new Date(at).toISOString(),
+      ]),
+    );
+  }
+
+  // --- drafts ---------------------------------------------------------------
+
+  /**
+   * Keep the latest text for a question, uncommitted.
+   *
+   * Drafts are mutable and outside the chain on purpose (see migration 0004).
+   * `savedAt` is the server's clock: it is compared against the deadline when
+   * drafts are committed at the close of the window.
+   */
+  async saveDraft(
+    scope: Scope,
+    attemptId: AttemptId,
+    questionId: QuestionId,
+    answer: string,
+    savedAt: Timestamp,
+  ): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(
+        `INSERT INTO answer_drafts (org_id, attempt_id, question_id, answer, saved_at)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, attempt_id, question_id)
+         DO UPDATE SET answer = EXCLUDED.answer, saved_at = EXCLUDED.saved_at`,
+        [scope.orgId, attemptId, questionId, answer, savedAt],
+      ),
+    );
+  }
+
+  async loadDrafts(scope: Scope, attemptId: AttemptId): Promise<readonly Draft[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ question_id: string; answer: string; saved_at: number | string }>(
+        `SELECT question_id, answer, saved_at FROM answer_drafts
+          WHERE org_id = $1 AND attempt_id = $2 ORDER BY question_id`,
+        [scope.orgId, attemptId],
+      );
+      return rows.map((row) => ({
+        questionId: row.question_id as QuestionId,
+        answer: row.answer,
+        savedAt: Number(row.saved_at),
+      }));
+    });
   }
 
   // --- the ledger -----------------------------------------------------------
@@ -260,6 +340,14 @@ export class LedgerStore {
         ],
       );
 
+      // Announced in the same transaction: an integration hears of every
+      // start, submission, grade and voiding that happened, and of none that
+      // did not. The worker fans it out to webhooks and connectors (§7).
+      const announced = ANNOUNCED[event.type];
+      if (announced !== undefined) {
+        await enqueue(tx, scope.orgId, [{ kind: "webhook", purpose: "event", subject: { event: announced, attemptId, seq: draft.seq } }], this.#newId);
+      }
+
       return Object.freeze({ ...draft, hash });
     });
   }
@@ -273,6 +361,30 @@ export class LedgerStore {
         [scope.orgId, attemptId],
       );
       return rows.map(entryFromRow);
+    });
+  }
+
+  /**
+   * Every attempt's chain at one exam, in one query — for results over a whole
+   * cohort, where loading two thousand chains one at a time would not do.
+   */
+  async loadExamLedgers(scope: Scope, examId: ExamId): Promise<ReadonlyMap<AttemptId, readonly LedgerEntry[]>> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<StoredRow & { attempt_id: string }>(
+        `SELECT l.attempt_id, l.seq, l.ts, l.event, l.preimage, l.prev_hash, l.hash
+           FROM exam_ledger l JOIN attempts a ON a.org_id = l.org_id AND a.id = l.attempt_id
+          WHERE l.org_id = $1 AND a.exam_id = $2
+          ORDER BY a.created_at, l.attempt_id, l.seq`,
+        [scope.orgId, examId],
+      );
+      const chains = new Map<AttemptId, LedgerEntry[]>();
+      for (const row of rows) {
+        const id = row.attempt_id as AttemptId;
+        const chain = chains.get(id) ?? [];
+        chain.push(entryFromRow(row));
+        chains.set(id, chain);
+      }
+      return chains;
     });
   }
 
@@ -491,8 +603,16 @@ export interface ExamSummary {
 export interface AttemptSummary {
   readonly id: AttemptId;
   readonly candidateId: CandidateId;
+  /** When the candidate's page last checked in, or null if it never has. */
+  readonly lastSeenAt: string | null;
   readonly entries: number;
   readonly state: "in_progress" | "submitted" | "graded" | "void";
+}
+
+export interface Draft {
+  readonly questionId: QuestionId;
+  readonly answer: string;
+  readonly savedAt: Timestamp;
 }
 
 export interface AuditEntry {

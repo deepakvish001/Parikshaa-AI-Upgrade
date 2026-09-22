@@ -13,6 +13,7 @@ COPY packages/api/package.json      packages/api/
 COPY packages/verify/package.json   packages/verify/
 COPY packages/web/package.json      packages/web/
 COPY packages/console/package.json  packages/console/
+COPY packages/runner/package.json   packages/runner/
 RUN npm ci
 
 COPY . .
@@ -40,6 +41,8 @@ COPY --from=build /app/packages/api/dist         ./packages/api/dist
 COPY --from=build /app/packages/api/package.json ./packages/api/package.json
 COPY --from=build /app/packages/verify/dist         ./packages/verify/dist
 COPY --from=build /app/packages/verify/package.json ./packages/verify/package.json
+COPY --from=build /app/packages/runner/dist         ./packages/runner/dist
+COPY --from=build /app/packages/runner/package.json ./packages/runner/package.json
 COPY --from=build /app/packages/web/dist         ./packages/web/dist
 COPY --from=build /app/packages/console/dist     ./packages/console/dist
 

@@ -37,12 +37,47 @@ services:
       DATABASE_URL: postgres://parikshaa_app:${PARIKSHAA_APP_PASSWORD}@db:5432/parikshaa
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
       ATTEMPT_TOKEN_SECRET: ${ATTEMPT_TOKEN_SECRET:?set ATTEMPT_TOKEN_SECRET (32+ characters)}
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL (where candidates open their links)}
+      # Optional: email over SMTP and SMS through MSG91. Without them, invitations
+      # are recorded as not sent, and links can be exported instead.
+      SMTP_URL: ${SMTP_URL:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
+      RUNNER_URL: http://runner:4000
+      RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
       PORT: "3000"
     ports:
       - "3000:3000"
+    networks: [default, sandbox]
     depends_on:
       migrate:
         condition: service_completed_successfully
 
+  # Runs candidate code (ROADMAP §4). Under gVisor, on a network with no route
+  # out: it can be reached by the API and can reach nothing, not even the
+  # database. Needs gVisor installed on the host (https://gvisor.dev/docs/user_guide/install/).
+  runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.runner
+    runtime: runsc
+    environment:
+      RUNNER_ISOLATION: gvisor
+      RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
+    networks: [sandbox]
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m,mode=1777
+    mem_limit: 4g
+    pids_limit: 1024
+    cpus: 4
+
 volumes:
   parikshaa-data:
+
+networks:
+  default: {}
+  # Internal: no gateway, so nothing on it can reach the internet.
+  sandbox:
+    internal: true

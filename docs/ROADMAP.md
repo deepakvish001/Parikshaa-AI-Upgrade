@@ -104,6 +104,25 @@ One such incident loses the account.
 - Invigilator time extension for a technical failure or an accommodation —
   appended to the ledger like everything else, with a reason.
 
+**Status — built.** Drafts autosave about a second after typing pauses, to the
+server and to the device; while offline they stay on the device and are sent
+when the connection returns. Reopening the exam — after a reload, a crash or on
+another machine — restores unsent drafts and any open probe. Drafts live
+outside the ledger; the server commits them when the attempt is submitted or
+runs out of time, keeping only what was saved before the deadline (SPEC §3).
+Pages check in every 30 seconds and the console shows who is here. An
+invigilator can grant up to four hours at a time, with a reason; it is a
+`time_extended` ledger entry naming them, shown on the candidate's receipt.
+A failed probe stream no longer leaves a half-written probe on screen.
+
+Two bugs fixed on the way: an answer arriving as the attempt closed could land
+behind the submission and make the attempt unreadable, and two simultaneous
+submissions could close it twice with the same effect. Both appends are now
+re-checked under the attempt's lock.
+
+Not in it, deliberately: an exam that forbids revision still commits an answer
+only when the candidate says so, because committing there is final.
+
 ## 3. Question banks and authoring at scale
 
 An exam is a one-off JSON document today. Institutions reuse questions across
@@ -117,6 +136,22 @@ sections, sittings and years.
 - Versioning: an exam that has been sat is frozen. It can be cloned, not
   edited — otherwise the ledger records answers to a question that no longer
   exists.
+
+**Status — built, with two pieces deferred.** Each organisation has a question
+bank, filed by topic, difficulty and tags, searchable, and importable from CSV
+(what every spreadsheet exports), all or nothing with every bad row reported by
+its number. An exam can carry sections, each a pool of questions of which every
+candidate draws `pick`. The draw is seeded by the attempt, so it is
+reproducible by an auditor, and the resulting paper is recorded in the
+attempt's first ledger entry. Pools must carry equal marks so every paper is
+worth the same. Questions are *copied* from the bank into an exam, so editing
+the bank never changes an exam; a sat exam is frozen and is changed by cloning
+it.
+
+Deferred: **per-section timing** (a section with its own clock, locked once
+left) needs its own ledger event and a sequential candidate flow, and
+**Word import**, which needs a document parser and a convention for marking
+answers in prose. Neither blocks a campus hiring round.
 
 ## 4. Coding assessment
 
@@ -134,6 +169,33 @@ that data structure.
 - Visible and hidden test cases, per-test scoring, output diffing.
 - Probes generated from the candidate's *own code*.
 
+**Status — built.** Candidates write in Python, JavaScript, C, C++ or Java, in
+an editor with highlighting and no completion of any kind, loaded only for
+exams that have a code question. They run their code against the visible
+examples or on input of their own; runs record nothing. A committed answer is
+tested against every test, hidden ones included, and the counts — never the
+tests — go into the ledger as `code_tested`. That result is what lets a strong
+solution be followed up while the candidate still remembers writing it, and the
+probe is generated from their source. Grading uses it, or runs the tests then
+if the runner was down when the answer was committed; an answer is never
+refused because code cannot be run.
+
+The runner is its own service and image (`packages/runner`,
+`Dockerfile.runner`), on a network with no route out, under gVisor. Each run is
+also wrapped in fresh network, IPC, UTS and PID namespaces, dropped to a
+per-slot unprivileged uid, and held to CPU, memory, process, file-size, output
+and wall-clock limits, in a clean environment and a private directory. The
+suite attacks it for real — infinite loops, fork bombs, memory exhaustion,
+output floods, network access, reading the runner's files — and CI runs those
+cases as root so they execute there too.
+
+Two limits worth knowing. Memory is a hard address-space cap for C, C++ and
+Python, but Node and the JVM cannot start under one, so for those two it is
+their own heap flag, with the container's cgroup limit as the backstop. And
+gVisor is a deployment requirement this code checks but cannot supply: the
+runner refuses to start unless it finds itself inside gVisor, or is told
+explicitly that isolation is off for development.
+
 ## 5. Bulk operations and delivery
 
 Nobody clicks "Start" two thousand times.
@@ -143,6 +205,29 @@ Nobody clicks "Start" two thousand times.
 - Delivery by email and SMS through Indian providers, with per-candidate exam
   windows and reminders.
 - Scheduling: an exam window, and a per-candidate window inside it.
+
+**Status — built.** An exam gets a window, hard-closing by default, so a
+candidate who starts late ends with everyone else; the close is written into
+the attempt's first ledger entry, so the deadline is on the record. A cohort
+comes in from CSV — roll numbers, names, emails, Indian mobiles in any usual
+form, optional per-candidate windows read as IST — checked by a dry run that
+changes nothing, then imported all or nothing. Each candidate gets a personal
+link, by email (SMTP, so any provider) and SMS (MSG91's DLT template flow), and
+a reminder an hour before the window opens; reminders to candidates who have
+already started are skipped. The link does not start anything: the attempt,
+and its clock, start when the candidate opens it inside their window, and the
+same link resumes from any device until the window closes.
+
+Links are signed, not stored: the database holds no code, plain or hashed.
+Delivery runs through a transactional outbox, claimed with `SKIP LOCKED` so
+every API instance can run a worker without sending anything twice, with
+retries and backoff for failures that might pass and a recorded reason for
+those that will not. The outbox holds ids, never personal data. Links can also
+be exported, as an audited CSV, for an institution that hands them out itself.
+
+Not verified here: the MSG91 request shape follows their published v5 flow API,
+whose documentation could not be reached from this environment. Send a test
+message from your own MSG91 account before the first sitting.
 
 ## 6. Results, reports and export
 
@@ -154,6 +239,31 @@ Nobody clicks "Start" two thousand times.
 - A cohort integrity summary — how many answers were probed, and the verdict
   distribution — framed as evidence, never as a list of accusations.
 
+**Status — built.** Every figure is computed from the ledgers by pure functions
+in the core (`resultOf`, `cohortAnalytics`), so a number in a spreadsheet can be
+recomputed from the chain the way a grade can. The console's results page lists
+each candidate under their own roll number, sorts by marks, time, roll number or
+name, filters by state or a search, and downloads the table as CSV or as an
+Excel workbook. Times are in IST; roll numbers and phone numbers stay text (the
+workbook types each cell explicitly, so `007` is not turned into `7`); and a
+cell a spreadsheet would run as a formula is defused. Exporting needs
+`attempt:review` and is audited, since the file leaves the system.
+
+Cohort analytics: mean, median, a histogram by tenth of the range, median and
+90th-percentile time, and for each question how often it was set (with pools,
+not every paper has every question), its facility, and its discrimination —
+the top 27% of candidates against the bottom 27% — with a plain-words note on a
+question that does not separate strong from weak. The follow-up summary counts
+what was asked, answered and read, and how the readings fell, attached to no
+one; there is no way to sort candidates by it.
+
+The per-candidate report shows the grade, each answer as the candidate gave it
+(the option text for a multiple-choice question, the source for code), then —
+in its own marked section — the follow-ups, then the ledger's head and length
+so the paper copy can be checked against the record. It is laid out for print:
+the PDF comes from the browser's "Save as PDF" rather than from a server-side
+renderer, which would have meant shipping a headless browser.
+
 ## 7. Integrations
 
 **Hiring first:** outbound webhooks and ATS connectors (Greenhouse, Lever,
@@ -161,6 +271,43 @@ Zoho, Darwinbox). `docs/openapi.json` already gives an integrator the contract.
 
 **Universities later:** Moodle via LTI 1.3, and CSV exchange for SIS and ERP
 systems that have no API worth using.
+
+**Status — webhooks and Greenhouse built; Lever, Zoho Recruit and Darwinbox not
+yet.** Every start, submission, grade and voiding is announced by the ledger in
+the same transaction that records it, so an integration hears of everything
+that happened and nothing that did not. The worker fans each announcement out,
+one delivery per interested webhook under a fixed id — a fan-out repeated after
+a crash sends nothing twice — and delivers it signed as Standard Webhooks
+specifies (`webhook-id`, `webhook-timestamp`, `webhook-signature`), so a
+receiver verifies it with an off-the-shelf library. A receiver that is down is
+retried with backoff; each webhook's log shows every try. Owners register,
+test, rotate and stop webhooks from the console.
+
+Every outbound request — webhooks, and Greenhouse's completion call — goes
+through one guard against server-side request forgery: HTTPS only, no
+credentials in the URL, every address the name resolves to must be public (the
+check runs in the socket's own DNS lookup, so DNS rebinding cannot slip a
+private address past it; IPv6 forms that embed an IPv4 address are judged by
+it), no redirects followed, and the reply read to 64 KiB at most.
+
+Greenhouse: the four endpoints of its Assessment Partner API — `list_tests`
+(the organisation's exams), `send_test` (an invitation, emailed from here;
+repeated for the same application, the same invitation), `test_status`
+(`complete` once graded or set aside, with the score, marks and a link to the
+report) and `response_error` (kept in the audit log, without the candidate's
+email) — and the `PATCH` Greenhouse now requires in place of polling, sent when
+the attempt is graded, only to a Greenhouse address. Greenhouse acts with an
+author's rights: it never sees an answer key, an answer or a follow-up.
+
+Neither webhook secrets nor the Greenhouse key are stored: each is derived from
+the server's secret and a version number, which is what rotation moves on. A
+copy of the database signs nothing and authenticates as no one.
+
+Not verified here: the connector follows Greenhouse's published partner
+documentation, and has not been run against a Greenhouse sandbox, which
+Greenhouse's partnerships team provides once the endpoints are registered with
+them. Lever, Zoho Recruit and Darwinbox have no connector yet; until they do,
+their customers can use webhooks and the API.
 
 ## 8. Live invigilation
 

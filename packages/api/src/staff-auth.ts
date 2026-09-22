@@ -53,6 +53,7 @@ export type Permission =
   | "attempt:grade"
   | "attempt:assess"
   | "attempt:void"
+  | "attempt:extend"
   | "usage:read"
   | "audit:read"
   | "staff:manage"
@@ -69,6 +70,7 @@ const EVERYTHING: readonly Permission[] = [
   "attempt:grade",
   "attempt:assess",
   "attempt:void",
+  "attempt:extend",
   "usage:read",
   "audit:read",
   "staff:manage",
@@ -79,7 +81,7 @@ const EVERYTHING: readonly Permission[] = [
 const GRANTS: Record<StaffRole, ReadonlySet<Permission>> = {
   owner: new Set(EVERYTHING),
   author: new Set(["exam:read", "exam:read_key", "exam:write", "attempt:start", "attempt:read"]),
-  invigilator: new Set(["exam:read", "attempt:start", "attempt:read"]),
+  invigilator: new Set(["exam:read", "attempt:start", "attempt:read", "attempt:extend"]),
   reviewer: new Set([
     "exam:read",
     "exam:read_key",
@@ -97,10 +99,12 @@ const GRANTS: Record<StaffRole, ReadonlySet<Permission>> = {
  *
  * One rule sits above the role table: setting an attempt aside is a person's
  * decision (SPEC §6.1), so an API key cannot do it whatever its role. An
- * integration can grade and fetch evidence; it cannot decide.
+ * integration can grade and fetch evidence; it cannot decide. Granting extra
+ * time is held to the same rule, because the ledger records who granted it.
  */
 export function can(actor: Actor, permission: Permission): boolean {
-  if (permission === "attempt:void" && actor.kind !== "user") return false;
+  // Granting time is recorded against a person for the same reason.
+  if ((permission === "attempt:void" || permission === "attempt:extend") && actor.kind !== "user") return false;
   return GRANTS[actor.role].has(permission);
 }
 

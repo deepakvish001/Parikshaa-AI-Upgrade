@@ -11,14 +11,53 @@ export interface ProbeHandlers {
   readonly onError?: (message: string) => void;
 }
 
+/** A run as the candidate sees it: the examples, or their own input. */
+export type RunOutcome =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly results: readonly {
+        readonly input: string;
+        readonly expectedOutput: string | null;
+        readonly status: string;
+        readonly stdout: string;
+        readonly stderr: string;
+        readonly timeMs: number;
+      }[];
+    };
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    /** The rest of the server's answer — for a window, when it opens and closes. */
+    readonly detail: Readonly<Record<string, unknown>> = {},
   ) {
     super(`${code} (${status})`);
     this.name = "ApiError";
   }
+}
+
+/** What opening an invitation link gives: a token for the attempt it started or resumed. */
+export interface Opened {
+  readonly token: string;
+  readonly attemptId: string;
+  readonly resumed: boolean;
+}
+
+/**
+ * Open an invitation link. Throws an {@link ApiError}: `not_open_yet` (403) and
+ * `window_closed` (410) carry `opensAt` and `closesAt` in `detail`.
+ */
+export async function redeemInvitation(code: string, baseUrl = "/api"): Promise<Opened> {
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/invitations/redeem`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) throw new ApiError(response.status, typeof body["error"] === "string" ? body["error"] : "request_failed", body);
+  return body as unknown as Opened;
 }
 
 export class ParikshaaClient {
@@ -66,6 +105,27 @@ export class ParikshaaClient {
     await this.#request("/attempts/me/answers", {
       method: "POST",
       body: JSON.stringify({ questionId, answer }),
+    });
+  }
+
+  /** Autosave the text so far. Not an answer until committed; see the server's drafts route. */
+  async saveDraft(questionId: string, answer: string): Promise<void> {
+    await this.#request(`/attempts/me/drafts/${encodeURIComponent(questionId)}`, {
+      method: "PUT",
+      body: JSON.stringify({ answer }),
+    });
+  }
+
+  /** Check in: the attempt's state and deadline as they now stand. */
+  heartbeat(): Promise<{ state: string; expiresAt: number }> {
+    return this.#request("/attempts/me/heartbeat", { method: "POST" });
+  }
+
+  /** Run code against the examples, or on the candidate's own input. Records nothing. */
+  runCode(questionId: string, language: string, source: string, input?: string): Promise<RunOutcome> {
+    return this.#request("/attempts/me/run", {
+      method: "POST",
+      body: JSON.stringify(input === undefined ? { questionId, language, source } : { questionId, language, source, input }),
     });
   }
 

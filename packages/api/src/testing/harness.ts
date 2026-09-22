@@ -2,8 +2,23 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
-import { IdentityStore, LedgerStore, migrate, pgliteExecutor, type SqlExecutor, type StaffRole } from "@parikshaa/store";
+import {
+  IdentityStore,
+  InvitationStore,
+  LedgerStore,
+  QuestionBank,
+  migrate,
+  pgliteExecutor,
+  type SqlExecutor,
+  type StaffRole,
+} from "@parikshaa/store";
+import type { CodeRunner } from "@parikshaa/runner";
 import { AttemptTokens } from "../auth.js";
+import { InviteCodes } from "../invite-codes.js";
+import { InvitationService } from "../invitation-service.js";
+import { buildIntegrations } from "../integrations.js";
+import type { SafeHttpOptions } from "../safe-http.js";
+import { ResultsService } from "../results.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
@@ -18,6 +33,7 @@ import { StaffAuth, hashPassword } from "../staff-auth.js";
 
 export const PASSWORD = "correct horse battery staple";
 export const TOKEN_SECRET = "a".repeat(40);
+export const PUBLIC_URL = "https://exam.test";
 
 /**
  * A migrated, empty database.
@@ -44,6 +60,7 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"];
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
@@ -56,7 +73,11 @@ export async function wire(
     readonly client: Anthropic;
     readonly now?: () => Timestamp;
     readonly newId?: () => string;
+    readonly runner?: CodeRunner;
     readonly server?: Partial<ServerOptions>;
+    /** For integration tests against a local server. */
+    readonly http?: SafeHttpOptions;
+    readonly greenhouseHosts?: readonly string[];
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, options.now === undefined ? {} : { clock: options.now });
@@ -67,16 +88,45 @@ export async function wire(
     client: options.client,
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.newId === undefined ? {} : { newId: options.newId }),
+    ...(options.runner === undefined ? {} : { runner: options.runner }),
+  });
+  const tokens = new AttemptTokens(TOKEN_SECRET);
+  const invitationStore = new InvitationStore(sql);
+  const invitations = new InvitationService({
+    exams: service,
+    store,
+    invitations: invitationStore,
+    codes: new InviteCodes(TOKEN_SECRET),
+    tokens,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const integrations = buildIntegrations({
+    sql,
+    store,
+    invitationStore,
+    invitations,
+    exams: service,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    ...(options.http === undefined ? {} : { http: options.http }),
+    ...(options.greenhouseHosts === undefined ? {} : { greenhouseHosts: options.greenhouseHosts }),
+    ...(options.now === undefined ? {} : { now: options.now }),
   });
   const app = buildServer({
     service,
-    tokens: new AttemptTokens(TOKEN_SECRET),
+    invitations,
+    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
+    webhooks: integrations.webhooks,
+    greenhouse: integrations.greenhouse,
+    tokens,
     auth: new StaffAuth(identity),
     identity,
+    bank: new QuestionBank(sql),
     ...options.server,
   });
   await app.ready();
-  return { store, identity, service, app };
+  return { store, identity, service, app, handlers: integrations.handlers };
 }
 
 export async function addOrganisation(identity: IdentityStore, id: string, name = id): Promise<OrgId> {

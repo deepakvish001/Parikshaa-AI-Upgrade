@@ -43,10 +43,42 @@ created → in_progress → submitted → graded
                       ↘ void
 ```
 
-`in_progress` ends either when the candidate submits or when the exam's
-`durationMs` runs out. An expired attempt is closed by the next write that
-touches it, which refuses that write; reads never close one, so looking at an
-attempt cannot end it.
+`in_progress` ends either when the candidate submits or when the window runs
+out — the exam's `durationMs` plus any `time_extended` a person granted, with a
+reason, recorded in the ledger. An expired attempt is closed by the next write
+that touches it, which refuses that write; reads never close one, so looking at
+an attempt cannot end it.
+
+**Each candidate's paper.** An exam's fixed questions go to everyone; each
+section contributes `pick` questions drawn from its pool, seeded by the attempt
+id (`resolvePaper` in `packages/core/src/paper.ts`). The paper is recorded in
+`attempt_started` and from then on *is* the exam for that attempt: the
+candidate is shown only those questions, answers to any other are refused, and
+scoring and probing see nothing else. An exam that has been sat is frozen; it
+is changed by cloning it.
+
+**Code.** A code question is scored by running the candidate's code against its
+tests: visible ones, shown as examples, and hidden ones, which decide the score
+and never reach the candidate's client. When a code answer is committed it is
+tested in full and a `code_tested` entry records how many tests passed — the
+counts, not the tests, since the chain is shown to the candidate afterwards.
+That result stands in for a score until grading, so a strong solution can be
+followed up with a probe about the candidate's own code while it is fresh.
+
+**Drafts are not answers.** What a candidate types is autosaved every few
+seconds to a separate, mutable draft store, outside the ledger. A chain of
+every keystroke pause would bury the record, and on an exam that forbids
+revision it would lock the first half-typed answer. The ledger records answers
+the candidate committed. When the attempt closes — by submission or by time —
+the server commits any draft that says something the ledger does not and was
+saved before the deadline, stamped with the time it was saved. A crash, a dead
+battery or a lost connection therefore costs nothing written in time; what was
+typed after the window is not committed. On an exam that forbids revision, a
+committed answer is never replaced by a later draft.
+
+Appends that depend on the attempt being open (answers, extensions, closing)
+are re-checked under the attempt's row lock, so a request that read the attempt
+as open cannot land behind a submission that won the race.
 
 An attempt is never mutated in place. Every step appends an `ExamEvent` to the
 attempt's ledger, and the attempt's current state is a fold over that stream.
@@ -229,6 +261,10 @@ sitting is over.
 | Staff accounts, roles, API keys | implemented — `packages/api/src/staff-auth.ts`; password sign-in (argon2id). OIDC and 2FA not yet |
 | Audit log | implemented — append-only `audit_log`, `GET /audit` |
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
+| Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
+| Question bank, sections, per-candidate papers | implemented — `packages/store/src/question-bank.ts`, `packages/core/src/paper.ts`; CSV import; exam cloning |
+| Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
+| Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Candidate identity / enrolment | out of scope (§2) |
 
 Complete end to end and deployable, for more than one institution at once: an

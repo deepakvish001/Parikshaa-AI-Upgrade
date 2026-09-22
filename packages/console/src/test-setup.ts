@@ -6,3 +6,15 @@ import { afterEach } from "vitest";
 // This suite does not, so it is registered explicitly — without it, each test
 // renders on top of the previous one's DOM and queries match stale elements.
 afterEach(cleanup);
+
+// jsdom lacks Blob#text, which every browser the console supports has.
+if (typeof Blob.prototype.text !== "function") {
+  Blob.prototype.text = function text(this: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}

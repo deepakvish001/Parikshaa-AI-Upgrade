@@ -67,10 +67,33 @@ export interface NumericQuestion extends QuestionBase {
   readonly tolerance: number;
 }
 
+/**
+ * One test of a code answer: what goes to standard input, and what standard
+ * output must be.
+ *
+ * Visible tests are shown to the candidate as worked examples and run when they
+ * press Run. Hidden tests are never sent to the candidate's client in any form;
+ * they decide the score.
+ */
+export interface CodeTest {
+  readonly id: string;
+  readonly input: string;
+  readonly expected: string;
+  readonly hidden: boolean;
+  /** Share of the question's marks, relative to the other tests' weights. */
+  readonly weight: number;
+}
+
 export interface CodeQuestion extends QuestionBase {
   readonly kind: "code";
+  /** The default language, and the only one unless `languages` says otherwise. */
   readonly language: string;
+  /** Languages the candidate may choose between. */
+  readonly languages?: readonly string[];
   readonly starter?: string;
+  /** When present, the answer is scored by running these, not by a rubric grader. */
+  readonly tests?: readonly CodeTest[];
+  readonly limits?: { readonly timeMs?: number; readonly memoryMb?: number };
 }
 
 export type Question = McqQuestion | ShortQuestion | NumericQuestion | CodeQuestion;
@@ -92,10 +115,27 @@ export interface ExamPolicy {
   readonly vivaTriggerRatio: number;
 }
 
+/**
+ * A pool of interchangeable questions, of which each candidate gets `pick`.
+ *
+ * The pool is part of the exam, copied in when the exam is written — from the
+ * question bank or by hand — and frozen with it once anyone has sat it. Editing
+ * a bank question later changes no exam already built from it.
+ */
+export interface ExamSection {
+  readonly id: string;
+  readonly title: string;
+  readonly pick: number;
+  readonly pool: readonly Question[];
+}
+
 export interface Exam {
   readonly id: ExamId;
   readonly title: string;
+  /** Questions every candidate gets. */
   readonly questions: readonly Question[];
+  /** Questions drawn per candidate, so no two neighbours sit the same paper. */
+  readonly sections?: readonly ExamSection[];
   readonly policy: ExamPolicy;
 }
 
@@ -162,7 +202,25 @@ export interface VivaAssessment {
  * chains together; each one is append-only and never edited after the fact.
  */
 export type ExamEvent =
-  | { readonly type: "attempt_started"; readonly attemptId: AttemptId; readonly examId: ExamId; readonly candidateId: CandidateId }
+  | {
+      readonly type: "attempt_started";
+      readonly attemptId: AttemptId;
+      readonly examId: ExamId;
+      readonly candidateId: CandidateId;
+      /**
+       * The candidate's paper: which questions they were given, in order.
+       * Hashed into the chain, so the receipt proves which paper was sat. Absent
+       * on ledgers from before exams could draw questions per candidate.
+       */
+      readonly questionIds?: readonly QuestionId[];
+      /**
+       * When the scheduled window this attempt was started in closes, if it
+       * closes hard: the attempt ends then even if its duration has not run
+       * out. On the record, so the deadline a candidate was held to can be
+       * checked like everything else.
+       */
+      readonly closesAt?: Timestamp;
+    }
   | { readonly type: "answer_submitted"; readonly attemptId: AttemptId; readonly response: Response }
   | { readonly type: "attempt_submitted"; readonly attemptId: AttemptId }
   | { readonly type: "viva_probed"; readonly attemptId: AttemptId; readonly probe: VivaProbe }
@@ -183,6 +241,38 @@ export type ExamEvent =
        * any name an unverified claim.
        */
       readonly decidedBy?: StaffAttribution;
+    }
+  | {
+      /**
+       * A code answer run against every one of its question's tests.
+       *
+       * Recorded when the answer is committed, so a strong solution can be
+       * followed up while the candidate still remembers writing it, and so the
+       * score that grading uses is on the record. Only counts, never test
+       * contents: the chain is shown to the candidate once the attempt closes,
+       * and hidden tests stay hidden from everyone who might sit them next.
+       */
+      readonly type: "code_tested";
+      readonly attemptId: AttemptId;
+      readonly questionId: QuestionId;
+      readonly passed: number;
+      readonly total: number;
+      readonly score: number;
+    }
+  | {
+      /**
+       * More time, granted by a person, with a reason — for a technical failure
+       * or an accommodation.
+       *
+       * In the chain because the deadline is part of what the candidate is held
+       * to: an answer accepted after the original window is only defensible if
+       * the record shows who allowed it and why.
+       */
+      readonly type: "time_extended";
+      readonly attemptId: AttemptId;
+      readonly extraMs: number;
+      readonly reason: string;
+      readonly decidedBy: StaffAttribution;
     };
 
 export type ExamEventType = ExamEvent["type"];
