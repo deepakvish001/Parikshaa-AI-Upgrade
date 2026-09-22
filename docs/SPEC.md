@@ -210,7 +210,7 @@ sitting is over.
 | Verdict assessment | implemented — `packages/viva/src/engine.ts` |
 | Scoring | implemented — `packages/core/src/scoring.ts` (deterministic) and `packages/viva` (rubric) |
 | Persistence | implemented — `packages/store` |
-| HTTP API | implemented — `packages/api` |
+| HTTP API | implemented — `packages/api`, contract at `docs/openapi.json` |
 | Candidate interface | implemented — `packages/web` |
 | Exam authoring and review console | implemented — `packages/console` |
 | Setting an attempt aside | implemented — `POST /attempts/:id/void`, console decision section |

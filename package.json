@@ -14,7 +14,8 @@
     "start": "node packages/api/dist/main.js",
     "build:clients": "npm run build -w @parikshaa/web && npm run build -w @parikshaa/console",
     "migrate": "npm run migrate -w @parikshaa/store",
-    "verify": "node packages/verify/dist/cli.js"
+    "verify": "node packages/verify/dist/cli.js",
+    "openapi": "npm run build && npm run openapi -w @parikshaa/api"
   },
   "engines": {
     "node": ">=20"

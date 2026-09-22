@@ -35,6 +35,7 @@ packages/console/ institution console: authoring exams, issuing access codes, re
 packages/verify/  offline receipt verification — no server, no database, no network
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
+docs/openapi.json the HTTP contract, generated from the route schemas
 ```
 
 ## How an attempt runs
@@ -47,6 +48,7 @@ GET  /attempts/me/probe          SSE: a probe is generated from their answer and
 POST /attempts/me/probes/:id/reply   the reply; latency is measured server-side
 POST /attempts/me/submit
 GET  /attempts/me/ledger         head hash during the attempt, full chain once closed
+GET  /openapi.json               the full contract, generated from the same schemas
 POST /attempts/:id/assess/:probeId   institution records a verdict
 POST /attempts/:id/grade         institution grades
 POST /attempts/:id/void          a person sets the attempt aside, with a recorded reason
@@ -70,10 +72,11 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 187 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 193 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
+npm run openapi   # regenerate docs/openapi.json; a test fails if it has drifted
 
 npm run dev -w @parikshaa/web       # candidate interface  :5173
 npm run dev -w @parikshaa/console   # institution console  :5174
