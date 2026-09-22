@@ -104,7 +104,7 @@ function Attempt({ client }: { client: ParikshaaClient }) {
     );
   }
 
-  const { exam, answers, state: attemptState } = state.data;
+  const { exam, answers, state: attemptState, expiresAt, voidReason } = state.data;
   const answered = new Map(answers.map((a) => [a.questionId, a.answer]));
   const open = attemptState === "in_progress";
 
@@ -113,11 +113,32 @@ function Attempt({ client }: { client: ParikshaaClient }) {
       <header className="exam">
         <h1>{exam.title}</h1>
         <p className="sub">
-          {open
-            ? `${answered.size} of ${exam.questions.length} answered`
-            : `Attempt ${attemptState.replace(/_/g, " ")}`}
+          {open ? (
+            <>
+              {answered.size} of {exam.questions.length} answered
+              <TimeLeft expiresAt={expiresAt} />
+            </>
+          ) : (
+            `Attempt ${attemptState.replace(/_/g, " ")}`
+          )}
         </p>
       </header>
+
+      {attemptState === "void" ? (
+        /*
+         * SPEC §6.2: being set aside without being told why is the situation
+         * this design objects to. The reason a person recorded is shown as they
+         * wrote it, not summarized and not softened.
+         */
+        <section className="card" aria-label="This attempt was set aside">
+          <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>This attempt was set aside</h2>
+          <p style={{ margin: 0 }}>{voidReason}</p>
+          <p className="notice" style={{ marginTop: ".75rem" }}>
+            Your record below is unchanged and still checks out. If you disagree with
+            this, it is what you take to your institution.
+          </p>
+        </section>
+      ) : null}
 
       {probe !== null && open ? (
         <ProbePanel
@@ -184,5 +205,30 @@ function Attempt({ client }: { client: ParikshaaClient }) {
         <Receipt ledger={ledger.data} />
       ) : null}
     </main>
+  );
+}
+
+/**
+ * Time left in the exam.
+ *
+ * This is the exam's own window, which a candidate is entitled to see. It is
+ * not a timer on the micro-viva — SPEC §8 rules that out, and the probe panel
+ * shows none.
+ */
+function TimeLeft({ expiresAt }: { expiresAt: number }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const remaining = Math.max(0, expiresAt - now);
+  if (remaining === 0) return <> · time is up</>;
+
+  const minutes = Math.floor(remaining / 60_000);
+  const hours = Math.floor(minutes / 60);
+  return (
+    <> · {hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`} left</>
   );
 }

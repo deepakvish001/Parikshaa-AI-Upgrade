@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { attemptId, candidateId, examId, questionId, type ExamEvent } from "./domain.js";
-import {
-  canonicalize,
-  entryHash,
-  ExamLedger,
-  GENESIS_HASH,
-  verifyChain,
-  type LedgerEntry,
-} from "./ledger.js";
+import { canonicalize, GENESIS_HASH, type LedgerEntry } from "./chain.js";
+import { entryHash, ExamLedger, verifyChain } from "./ledger.js";
 
 const A = attemptId("attempt-1");
 

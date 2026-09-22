@@ -32,8 +32,10 @@ packages/store/   PostgreSQL persistence and the schema's integrity constraints
 packages/api/     HTTP API: attempts, micro-viva delivery, ledger access
 packages/web/     candidate interface: sitting an exam, answering a probe, taking a receipt
 packages/console/ institution console: authoring exams, issuing access codes, reviewing evidence
+packages/verify/  offline receipt verification — no server, no database, no network
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
+docs/openapi.json the HTTP contract, generated from the route schemas
 ```
 
 ## How an attempt runs
@@ -46,8 +48,10 @@ GET  /attempts/me/probe          SSE: a probe is generated from their answer and
 POST /attempts/me/probes/:id/reply   the reply; latency is measured server-side
 POST /attempts/me/submit
 GET  /attempts/me/ledger         head hash during the attempt, full chain once closed
+GET  /openapi.json               the full contract, generated from the same schemas
 POST /attempts/:id/assess/:probeId   institution records a verdict
 POST /attempts/:id/grade         institution grades
+POST /attempts/:id/void          a person sets the attempt aside, with a recorded reason
 GET  /attempts/:id/review        verdicts reported beside the grade, never folded into it
 ```
 
@@ -58,16 +62,21 @@ The candidate sees a follow-up question, not an accusation: no warning colour, n
 countdown, and no mention of integrity or verification anywhere in the interface.
 See SPEC §8 for why that is a correctness requirement and not a courtesy.
 
+Nothing in the system sets an attempt aside on its own — no verdict, no
+confidence score, no combination of them. A person does that, in two steps, with
+a written reason that is recorded and shown to the candidate.
+
 ## Development
 
 Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 127 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 193 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
+npm run openapi   # regenerate docs/openapi.json; a test fails if it has drifted
 
 npm run dev -w @parikshaa/web       # candidate interface  :5173
 npm run dev -w @parikshaa/console   # institution console  :5174
@@ -102,6 +111,34 @@ npm start
 
 Migrations are a separate step and never run on boot: several instances
 starting at once would race, and a schema change should be deliberate.
+
+## Checking a record
+
+A record that can only be checked by the institution holding it is not evidence.
+After an attempt closes the candidate gets their head hash and the full chain,
+and can check it two ways — in the browser on the receipt screen, or offline:
+
+```bash
+npx parikshaa-verify receipt.json --head <hash you noted during the exam>
+```
+
+```
+VERIFIED — 8 entries, unbroken.
+head ab9685e35d379583d6ea506eec9f269a40a22addad055bcb0dc13ada41327b50
+The head you pinned appears in this record at its own position.
+
+What the record says:
+    0  2025-09-20T20:27:27.000Z  Attempt started
+    1  2025-09-20T20:28:14.000Z  Answered q1
+    2  2025-09-20T20:29:01.000Z  Follow-up asked about q1
+    3  2025-09-20T20:29:48.000Z  Replied to the follow-up after 23s
+    ...
+```
+
+`--head` is the check that matters. A receipt verifying on its own proves less
+than it looks like: any internally consistent chain verifies, including one
+written from scratch. The hash noted *during* the exam is a commitment made
+before anything could be reconsidered.
 
 ## Status
 

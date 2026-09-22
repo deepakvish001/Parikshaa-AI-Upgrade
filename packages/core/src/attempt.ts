@@ -9,7 +9,7 @@ import type {
   VivaId,
   VivaProbe,
 } from "./domain.js";
-import type { LedgerEntry } from "./ledger.js";
+import type { LedgerEntry } from "./chain.js";
 
 /**
  * Reconstructing an attempt from its ledger.
@@ -51,7 +51,7 @@ export type FoldFailure =
   | "not_in_progress"
   /** Scoring or grading before the attempt was submitted. */
   | "not_submitted"
-  /** Any event after the attempt was graded or voided. */
+  /** An event after the attempt was voided, or a non-void event after grading. */
   | "closed"
   /** A second answer to a question, under a policy that forbids revision. */
   | "revision_not_allowed"
@@ -114,7 +114,12 @@ export function foldAttempt(
     const fail = (reason: FoldFailure): FoldResult => ({ ok: false, seq: entry.seq, reason });
 
     if (event.attemptId !== attemptId) return fail("foreign_attempt");
-    if (state === "graded" || state === "void") return fail("closed");
+
+    // Voiding is the one thing that may follow grading, and deliberately so:
+    // an attempt is usually voided *because* someone reviewed it, which happens
+    // after it was graded. Nothing follows a void.
+    if (state === "void") return fail("closed");
+    if (state === "graded" && event.type !== "attempt_voided") return fail("closed");
 
     switch (event.type) {
       case "attempt_started":
@@ -177,6 +182,7 @@ export function foldAttempt(
         voidReason = event.reason;
         break;
       }
+
     }
   }
 

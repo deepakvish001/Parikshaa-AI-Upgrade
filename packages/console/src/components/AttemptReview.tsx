@@ -1,12 +1,18 @@
+import { useState } from "react";
 import type { AttemptReview as Review, VivaReview } from "../api.ts";
+
+/** Mirrors the server's minimum; the reason is recorded and shown to the candidate. */
+const MIN_REASON = 10;
 
 interface Props {
   readonly attemptId: string;
   readonly review: Review;
   readonly grading: boolean;
   readonly assessing: string | null;
+  readonly voiding: boolean;
   readonly onGrade: () => void;
   readonly onAssess: (probeId: string) => void;
+  readonly onVoid: (reason: string) => void;
 }
 
 const VERDICT_LABEL: Record<NonNullable<VivaReview["verdict"]>, string> = {
@@ -28,8 +34,19 @@ const seconds = (ms: number | null) => (ms === null ? "—" : `${Math.round(ms /
  * grade is a decision someone makes and owns, not a button that launders a
  * model's opinion into a number.
  */
-export function AttemptReview({ attemptId, review, grading, assessing, onGrade, onAssess }: Props) {
+export function AttemptReview({
+  attemptId,
+  review,
+  grading,
+  assessing,
+  voiding,
+  onGrade,
+  onAssess,
+  onVoid,
+}: Props) {
   const gradable = review.state === "submitted";
+  const [deciding, setDeciding] = useState(false);
+  const [reason, setReason] = useState("");
 
   return (
     <>
@@ -106,6 +123,66 @@ export function AttemptReview({ attemptId, review, grading, assessing, onGrade, 
           ))
         )}
       </section>
+
+      {review.state === "void" ? (
+        <section className="card" aria-label="Set aside">
+          <h2 style={{ fontSize: ".95rem", margin: "0 0 .3rem" }}>This attempt was set aside</h2>
+          <p className="notice">{review.voidReason}</p>
+        </section>
+      ) : (
+        /*
+         * The decision, and deliberately its own section — not in the grade card,
+         * which would make it look like a grading action, and not in the evidence
+         * card, which would make it look like the verdict's consequence. SPEC §6.1
+         * reserves this for a person.
+         *
+         * It takes two steps and a written reason on purpose. The reason goes into
+         * a tamper-evident record, is shown to the candidate, and is what an appeal
+         * is argued against; a one-click button would not produce one worth having.
+         */
+        <section className="card" aria-label="Decision">
+          <h2 style={{ fontSize: ".95rem", margin: "0 0 .3rem" }}>Decision</h2>
+          <p className="notice">
+            Nothing above sets this attempt aside on its own. If you decide it should
+            be, the reason you give is recorded and shown to the candidate.
+          </p>
+
+          {deciding ? (
+            <>
+              <div className="field" style={{ marginTop: ".75rem" }}>
+                <label htmlFor="void-reason">Reason</label>
+                <textarea
+                  id="void-reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="What you concluded, and on what basis."
+                />
+              </div>
+              <div className="row">
+                <button
+                  type="button"
+                  disabled={voiding || reason.trim().length < MIN_REASON}
+                  onClick={() => onVoid(reason.trim())}
+                >
+                  {voiding ? "Recording…" : "Set this attempt aside"}
+                </button>
+                <button type="button" className="quiet" onClick={() => setDeciding(false)}>
+                  Cancel
+                </button>
+                {reason.trim().length > 0 && reason.trim().length < MIN_REASON ? (
+                  <span className="notice">A reason this short cannot be defended on appeal.</span>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <div className="row">
+              <button type="button" className="quiet" onClick={() => setDeciding(true)}>
+                Set aside…
+              </button>
+            </div>
+          )}
+        </section>
+      )}
 
       <p className="notice mono">{attemptId}</p>
     </>

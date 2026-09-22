@@ -11,6 +11,7 @@ const exams: ExamSummary[] = [{ id: "exam-1", title: "Algorithms", questionCount
 const review: AttemptReview = {
   state: "graded",
   total: 11,
+  voidReason: null,
   vivas: [
     {
       probeId: "p1",
@@ -41,6 +42,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     ]),
     startAttempt: vi.fn(async () => ({ attemptId: "attempt-2", token: "issued-token" })),
     review: vi.fn(async () => review),
+    voidAttempt: vi.fn(async () => ({})),
     grade: vi.fn(async () => ({ total: 11 })),
     assess: vi.fn(async () => ({})),
     ...overrides,
@@ -181,6 +183,64 @@ describe("attempt review", () => {
       expect(control.textContent ?? "").not.toMatch(/mark|score|grade|deduct|penal|adjust|fail|void/i);
     }
     expect(evidence).not.toHaveTextContent(/deduct|penalt/i);
+  });
+
+  it("keeps the decision out of the evidence section", async () => {
+    await openReview();
+
+    const evidence = await screen.findByRole("region", { name: "Provenance evidence" });
+    const decision = screen.getByRole("region", { name: "Decision" });
+
+    // Placing it in the evidence card would make setting an attempt aside look
+    // like the verdict's consequence; in the grade card, like a grading action.
+    // It is neither (SPEC §6.1).
+    expect(within(evidence).queryByRole("button", { name: /set aside/i })).not.toBeInTheDocument();
+    expect(within(decision)).toBeTruthy();
+    expect(decision).toHaveTextContent(/Nothing above sets this attempt aside on its own/i);
+  });
+
+  it("takes two steps and a written reason", async () => {
+    const client = await openReview();
+    const decision = await screen.findByRole("region", { name: "Decision" });
+
+    // No reason field until the reviewer has said they are deciding.
+    expect(screen.queryByLabelText("Reason")).not.toBeInTheDocument();
+    await userEvent.click(within(decision).getByRole("button", { name: "Set aside…" }));
+
+    const confirm = screen.getByRole("button", { name: "Set this attempt aside" });
+    expect(confirm).toBeDisabled();
+
+    await userEvent.type(screen.getByLabelText("Reason"), "too short");
+    expect(confirm).toBeDisabled();
+    expect(screen.getByText(/cannot be defended on appeal/i)).toBeInTheDocument();
+
+    await userEvent.clear(screen.getByLabelText("Reason"));
+    await userEvent.type(screen.getByLabelText("Reason"), "Provenance could not be established on review.");
+    await userEvent.click(confirm);
+
+    await waitFor(() =>
+      expect(client.voidAttempt).toHaveBeenCalledWith(
+        "attempt-1",
+        "Provenance could not be established on review.",
+      ),
+    );
+  });
+
+  it("shows the recorded reason once an attempt is set aside", async () => {
+    const client = stubClient({
+      review: vi.fn(async () => ({
+        ...review,
+        state: "void",
+        voidReason: "Could not establish that this work was the candidate's own.",
+      })),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Review" }));
+
+    const aside = await screen.findByRole("region", { name: "Set aside" });
+    expect(aside).toHaveTextContent(/Could not establish that this work was the candidate's own/);
+    expect(screen.queryByRole("button", { name: "Set aside…" })).not.toBeInTheDocument();
   });
 
   it("shows the staff-side rationale, which the candidate never sees", async () => {

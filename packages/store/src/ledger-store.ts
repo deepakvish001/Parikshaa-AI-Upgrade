@@ -107,8 +107,21 @@ export class LedgerStore {
     );
   }
 
-  /** Append an event to an attempt's chain and return the entry committing to it. */
-  async append(attemptId: AttemptId, event: ExamEvent): Promise<LedgerEntry> {
+  /**
+   * Append an event to an attempt's chain and return the entry committing to it.
+   *
+   * A `guard` is re-checked against the attempt's events *inside* the same
+   * transaction that holds the attempt's row lock. That matters for anything
+   * decided before a slow call: raising a probe reads the chain, spends a
+   * second or two at the model, and only then appends — and two requests
+   * arriving together would otherwise both pass the original check and write
+   * two probes about one answer.
+   */
+  async append(
+    attemptId: AttemptId,
+    event: ExamEvent,
+    options: { readonly guard?: (events: readonly ExamEvent[]) => string | null } = {},
+  ): Promise<LedgerEntry> {
     return this.#sql.transaction(async (tx) => {
       const locked = await tx.query<{ id: string }>(
         `SELECT id FROM attempts WHERE id = $1 FOR UPDATE`,
@@ -116,6 +129,16 @@ export class LedgerStore {
       );
       if (locked.length === 0) {
         throw new Error(`No such attempt: ${attemptId}`);
+      }
+
+      if (options.guard !== undefined) {
+        const rows = await tx.query<{ preimage: string }>(
+          `SELECT preimage FROM exam_ledger WHERE attempt_id = $1 ORDER BY seq ASC`,
+          [attemptId],
+        );
+        const events = rows.map((row) => (JSON.parse(row.preimage) as { event: ExamEvent }).event);
+        const refusal = options.guard(events);
+        if (refusal !== null) throw new AppendRefused(refusal);
       }
 
       const head = await tx.query<{ seq: number; hash: string }>(
@@ -194,6 +217,14 @@ export class LedgerStore {
       expectedPrev = row.hash;
     }
     return { ok: true, length: rows.length };
+  }
+}
+
+/** Thrown when an append's guard declined it. Not an error in the store. */
+export class AppendRefused extends Error {
+  constructor(reason: string) {
+    super(reason);
+    this.name = "AppendRefused";
   }
 }
 

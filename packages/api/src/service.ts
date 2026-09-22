@@ -24,7 +24,7 @@ import {
   type VivaProbe,
 } from "@parikshaa/core";
 import type { AttemptSummary, ExamSummary } from "@parikshaa/store";
-import { LedgerStore } from "@parikshaa/store";
+import { AppendRefused, LedgerStore } from "@parikshaa/store";
 import { assessReply, generateProbe, gradeWithRubric } from "@parikshaa/viva";
 
 /**
@@ -41,7 +41,9 @@ export class AttemptError extends Error {
       | "invalid_state"
       | "unknown_question"
       | "unknown_probe"
-      | "already_replied",
+      | "already_replied"
+      | "expired"
+      | "reason_required",
     message: string,
   ) {
     super(message);
@@ -100,6 +102,10 @@ export class ExamService {
         answer: r.answer,
         submittedAt: r.submittedAt,
       })),
+      expiresAt: deadlineOf(projection, exam),
+      // A candidate set aside without being told why is the situation SPEC §6.2
+      // objects to, so the reason travels with the state.
+      voidReason: projection.voidReason,
       openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
       answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
     };
@@ -224,6 +230,23 @@ export class ExamService {
     return scores;
   }
 
+  /**
+   * Close an attempt whose time is up, then refuse the write that found it.
+   *
+   * `durationMs` was policy that nothing enforced: an attempt stayed open
+   * indefinitely, so its receipt never sealed and a candidate could keep
+   * answering long after the window. Closing on the next write keeps that
+   * deterministic without a scheduler — reads never write, so looking at an
+   * attempt cannot end it.
+   */
+  async #refuseIfExpired(id: AttemptId, projection: AttemptProjection, exam: Exam): Promise<void> {
+    if (projection.attempt.state !== "in_progress") return;
+    if (this.#now() <= deadlineOf(projection, exam)) return;
+
+    await this.#store.append(id, { type: "attempt_submitted", attemptId: id });
+    throw new AttemptError("expired", `Attempt ${id} is past its ${exam.policy.durationMs}ms window`);
+  }
+
   // --- writing ------------------------------------------------------------
 
   async startAttempt(examId: ExamId, candidateId: CandidateId): Promise<AttemptId> {
@@ -245,6 +268,7 @@ export class ExamService {
     if (exam === null || !exam.questions.some((q) => q.id === questionId)) {
       throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
     }
+    await this.#refuseIfExpired(id, projection, exam);
 
     await this.#store.append(id, {
       type: "answer_submitted",
@@ -276,6 +300,7 @@ export class ExamService {
   ): Promise<VivaProbe | null> {
     const projection = await this.projection(id);
     const exam = await this.#examFor(await this.#store.load(id));
+    await this.#refuseIfExpired(id, projection, exam);
 
     const targets = selectProbeTargets(projection, exam, this.scoresFor(projection, exam));
     const target = targets[0];
@@ -288,7 +313,28 @@ export class ExamService {
       ...(options.onToken === undefined ? {} : { onToken: options.onToken }),
     });
 
-    await this.#store.append(id, { type: "viva_probed", attemptId: id, probe });
+    try {
+      await this.#store.append(
+        id,
+        { type: "viva_probed", attemptId: id, probe },
+        {
+          // Re-checked under the attempt's row lock. The selection above
+          // happened before a model call that takes a second or two, and a
+          // second request arriving in that window would otherwise raise a
+          // duplicate probe about the same answer — an interrogation, which
+          // SPEC §4 rules out.
+          guard: (events) =>
+            events.some((e) => e.type === "viva_probed" && e.probe.questionId === target.question.id)
+              ? `A probe for ${target.question.id} was raised concurrently`
+              : null,
+        },
+      );
+    } catch (error) {
+      // The other request won. Nothing is due from this one; its probe is
+      // discarded rather than shown alongside the one already asked.
+      if (error instanceof AppendRefused) return null;
+      throw error;
+    }
     return probe;
   }
 
@@ -307,6 +353,7 @@ export class ExamService {
     if (viva.exchange !== null) {
       throw new AttemptError("already_replied", `Probe ${probeId} already has a reply`);
     }
+    await this.#refuseIfExpired(id, projection, await this.#examFor(await this.#store.load(id)));
 
     const repliedAt = this.#now();
     const exchange: VivaExchange = {
@@ -351,6 +398,41 @@ export class ExamService {
       reasoning: null,
     };
     return { question, response, score };
+  }
+
+  /**
+   * Set an attempt aside, with a reason.
+   *
+   * This is the act SPEC §6.1 reserves for a person. Nothing in the system
+   * reaches it on its own: no verdict, no confidence score and no combination
+   * of them produces a void. Someone reads the evidence and decides, and what
+   * lands in the ledger is their reason, not a model's.
+   *
+   * A reason is required and must say something. It is written into a
+   * tamper-evident record, it is shown to the candidate, and it is what an
+   * appeal will be argued against — "x" is not a decision anyone can defend.
+   *
+   * What is *not* recorded is who decided. Staff authenticate with a shared
+   * institution token, so any name attached here would be an unverified claim,
+   * and writing unverified claims into a record whose value is that it can be
+   * trusted would undermine the record itself. Attribution needs the identity
+   * integration SPEC §2 keeps out of scope.
+   */
+  async voidAttempt(id: AttemptId, reason: string): Promise<void> {
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_VOID_REASON) {
+      throw new AttemptError(
+        "reason_required",
+        `Voiding an attempt needs a reason of at least ${MIN_VOID_REASON} characters; it is recorded and shown to the candidate`,
+      );
+    }
+
+    const projection = await this.projection(id);
+    if (projection.attempt.state === "void") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is already void`);
+    }
+
+    await this.#store.append(id, { type: "attempt_voided", attemptId: id, reason: trimmed });
   }
 
   // --- grading ------------------------------------------------------------
@@ -405,7 +487,10 @@ export interface CandidateState {
   readonly attemptId: AttemptId;
   readonly exam: CandidateExam;
   readonly state: AttemptProjection["attempt"]["state"];
+  readonly voidReason: string | null;
   readonly startedAt: Timestamp;
+  /** When this attempt's window closes. Exam time, not a probe timer (SPEC §8). */
+  readonly expiresAt: Timestamp;
   readonly answers: readonly { questionId: QuestionId; answer: string; submittedAt: Timestamp }[];
   /** A probe awaiting a reply, by prompt alone. */
   readonly openProbe: { readonly id: VivaId; readonly prompt: string } | null;
@@ -418,4 +503,12 @@ export interface CandidateLedger {
   /** False while the attempt is open, when only the head hash is released. */
   readonly sealed: boolean;
   readonly entries: readonly LedgerEntry[] | null;
+}
+
+/** Shortest reason that can stand as a decision on the record. */
+export const MIN_VOID_REASON = 10;
+
+/** When an attempt's window closes, from its own start and its exam's policy. */
+export function deadlineOf(projection: AttemptProjection, exam: Exam): Timestamp {
+  return projection.attempt.startedAt + exam.policy.durationMs;
 }

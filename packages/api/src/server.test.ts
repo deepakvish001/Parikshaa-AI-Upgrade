@@ -6,6 +6,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { examId, questionId, verifyChain, type Exam } from "@parikshaa/core";
 import { LedgerStore, pgliteExecutor } from "@parikshaa/store";
+import { parseReceipt, verifyReceipt, type Receipt } from "@parikshaa/verify";
 import { AttemptTokens } from "./auth.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -45,6 +46,8 @@ const SECRET = "a".repeat(40);
 /** Verdict the fake assessor returns; tests reassign it. */
 let verdict = { verdict: "consistent" as const, confidence: 0.9, reasoning: "Engaged the specifics." };
 let rubricScore = 7;
+/** How long the fake takes to "generate" a probe, so races can be staged. */
+let probeDelayMs = 0;
 
 const fakeClient = {
   beta: {
@@ -56,6 +59,7 @@ const fakeClient = {
             cb(text);
           },
           async finalMessage() {
+            if (probeDelayMs > 0) await new Promise((r) => setTimeout(r, probeDelayMs));
             return { content: [{ type: "text", text }], stop_reason: "end_turn", stop_details: null };
           },
         };
@@ -86,6 +90,7 @@ beforeEach(async () => {
   clock = 1_700_000_000_000;
   verdict = { verdict: "consistent", confidence: 0.9, reasoning: "Engaged the specifics." };
   rubricScore = 7;
+  probeDelayMs = 0;
 
   db = new PGlite();
   await db.exec(await migration("0001_init.sql"));
@@ -310,6 +315,274 @@ describe("attempt lifecycle", () => {
 
     expect(verifyChain(entries)).toEqual({ ok: true });
     expect(await store.verifyStored(attemptId as never)).toMatchObject({ ok: true });
+  });
+});
+
+describe("setting an attempt aside", () => {
+  const voidIt = (reason: string) =>
+    app.inject({
+      method: "POST",
+      url: `/attempts/${attemptId}/void`,
+      headers: asStaff(),
+      payload: { reason },
+    });
+
+  const review = () =>
+    app.inject({ method: "GET", url: `/attempts/${attemptId}/review`, headers: asStaff() });
+
+  it("records the reason and closes the attempt", async () => {
+    const res = await voidIt("Reviewed after the follow-up; attempt set aside.");
+
+    expect(res.statusCode).toBe(200);
+    expect((await review()).json()).toMatchObject({
+      state: "void",
+      voidReason: "Reviewed after the follow-up; attempt set aside.",
+    });
+  });
+
+  it("refuses a reason that says nothing", async () => {
+    // What lands here is written into a tamper-evident record, shown to the
+    // candidate, and argued against on appeal. "x" is not a decision.
+    for (const reason of ["", "   ", "x", "bad"]) {
+      const res = await voidIt(reason);
+      expect([422, 400]).toContain(res.statusCode);
+    }
+    expect((await review()).json().state).not.toBe("void");
+  });
+
+  it("can set aside an attempt that was already graded", async () => {
+    await answer(Q_MCQ, "1");
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
+
+    // The usual case: someone reads the evidence after grading and decides.
+    expect((await voidIt("Provenance could not be established on review.")).statusCode).toBe(200);
+
+    const body = (await review()).json();
+    expect(body.state).toBe("void");
+    // Voiding does not erase what was recorded before it.
+    expect(body.total).toBe(4);
+  });
+
+  it("refuses to void an attempt twice", async () => {
+    await voidIt("Set aside after review of the exchange.");
+
+    const again = await voidIt("Set aside again for some reason.");
+
+    expect(again.statusCode).toBe(409);
+  });
+
+  it("needs the staff token", async () => {
+    const res = await app.inject({
+      method: "POST",
+      url: `/attempts/${attemptId}/void`,
+      headers: asCandidate(),
+      payload: { reason: "Trying to void my own attempt." },
+    });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it("tells the candidate why, rather than only that", async () => {
+    await voidIt("Could not establish that this work was your own.");
+
+    const state = (await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() })).json();
+
+    // SPEC §6.2: being set aside without being told why is the thing this
+    // design objects to.
+    expect(state.state).toBe("void");
+    expect(state.voidReason).toBe("Could not establish that this work was your own.");
+  });
+
+  it("is never reached by the system on its own", async () => {
+    await answer(Q_MCQ, "1");
+    const raised = await app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });
+    const probeId = JSON.parse(
+      raised.payload.split("event: probe\ndata: ")[1]?.split("\n")[0] ?? "{}",
+    ).id as string;
+    await app.inject({
+      method: "POST",
+      url: `/attempts/me/probes/${probeId}/reply`,
+      headers: asCandidate(),
+      payload: { reply: "no idea at all" },
+    });
+
+    // The worst verdict the assessor can return, at full confidence.
+    verdict = { verdict: "inconsistent" as never, confidence: 1, reasoning: "Contradicts their answer." };
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/assess/${probeId}`, headers: asStaff() });
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
+
+    // No verdict, however damning, sets an attempt aside. A person does that.
+    const body = (await review()).json();
+    expect(body.state).toBe("graded");
+    expect(body.voidReason).toBeNull();
+  });
+
+  it("leaves a chain that still verifies", async () => {
+    await answer(Q_MCQ, "1");
+    await voidIt("Set aside following review of the follow-up exchange.");
+
+    const parsed = parseReceipt(
+      JSON.parse((await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() })).payload),
+    );
+    if ("error" in parsed) throw new Error(parsed.error);
+    const report = verifyReceipt(parsed as Receipt);
+
+    expect(report.ok).toBe(true);
+    if (report.ok) expect(report.timeline.at(-1)?.what).toMatch(/^Voided — Set aside following/);
+  });
+});
+
+describe("the exam window", () => {
+  const probe = () =>
+    app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });
+
+  it("reports when the attempt closes", async () => {
+    const body = (await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() })).json();
+
+    expect(body.expiresAt).toBe(body.startedAt + exam.policy.durationMs);
+  });
+
+  it("refuses an answer once the window has passed, and closes the attempt", async () => {
+    clock += exam.policy.durationMs + 1;
+
+    const late = await answer(Q_MCQ, "1");
+
+    expect(late.statusCode).toBe(410);
+    expect(late.json().error).toBe("expired");
+
+    // Closed rather than left open forever, so the receipt can seal.
+    const state = (await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() })).json();
+    expect(state.state).toBe("submitted");
+  });
+
+  it("refuses a probe and a reply after the window too", async () => {
+    await answer(Q_MCQ, "1");
+    const raised = await probe();
+    const probeId = JSON.parse(
+      raised.payload.split("event: probe\ndata: ")[1]?.split("\n")[0] ?? "{}",
+    ).id as string;
+
+    clock += exam.policy.durationMs + 1;
+
+    const reply = await app.inject({
+      method: "POST",
+      url: `/attempts/me/probes/${probeId}/reply`,
+      headers: asCandidate(),
+      payload: { reply: "too late" },
+    });
+    expect(reply.statusCode).toBe(410);
+  });
+
+  it("does not end an attempt merely because someone looked at it", async () => {
+    clock += exam.policy.durationMs + 1;
+
+    await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() });
+    await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() });
+
+    const state = (await app.inject({ method: "GET", url: "/attempts/me", headers: asCandidate() })).json();
+    expect(state.state).toBe("in_progress");
+  });
+});
+
+describe("concurrent probe requests", () => {
+  it("raises one probe, not two, when two requests arrive together", async () => {
+    await answer(Q_MCQ, "1");
+    // A real generation takes a second or two; both requests select the same
+    // target before either has appended.
+    probeDelayMs = 50;
+
+    const [first, second] = await Promise.all([
+      app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() }),
+      app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() }),
+    ]);
+
+    const raised = [first, second].filter((r) => r.payload.includes("event: probe"));
+    const declined = [first, second].filter((r) => r.payload.includes("event: none"));
+    expect(raised).toHaveLength(1);
+    expect(declined).toHaveLength(1);
+
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    const review = await app.inject({ method: "GET", url: `/attempts/${attemptId}/review`, headers: asStaff() });
+    // One answer, one follow-up. Two would be the interrogation SPEC §4 rules out.
+    expect(review.json().vivas).toHaveLength(1);
+  });
+});
+
+describe("the receipt a candidate takes away", () => {
+  /**
+   * The contract between the server and the offline verifier. If these ever
+   * drift, a candidate's own record would fail to verify in front of the people
+   * deciding their appeal — which is the exact failure the ledger exists to
+   * prevent.
+   */
+  const finish = async () => {
+    await answer(Q_MCQ, "1");
+    await answer(Q_SHORT, "It terminates because the measure decreases.");
+    const probeRes = await app.inject({ method: "GET", url: "/attempts/me/probe", headers: asCandidate() });
+    const probeId = JSON.parse(
+      probeRes.payload.split("event: probe\ndata: ")[1]?.split("\n")[0] ?? "{}",
+    ).id as string;
+    await app.inject({
+      method: "POST",
+      url: `/attempts/me/probes/${probeId}/reply`,
+      headers: asCandidate(),
+      payload: { reply: "The potential function." },
+    });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/assess/${probeId}`, headers: asStaff() });
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
+
+    const res = await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() });
+    // Through JSON, exactly as a downloaded file would be.
+    const parsed = parseReceipt(JSON.parse(res.payload));
+    if ("error" in parsed) throw new Error(`not a receipt: ${parsed.error}`);
+    return parsed as Receipt;
+  };
+
+  it("verifies offline with @parikshaa/verify", async () => {
+    const report = verifyReceipt(await finish());
+
+    expect(report.ok).toBe(true);
+    if (report.ok) {
+      expect(report.timeline.map((t) => t.what)).toEqual([
+        "Attempt started",
+        "Answered q-mcq",
+        "Answered q-short",
+        "Follow-up asked about q-mcq",
+        // The exact latency is whatever the test clock advanced by; that it is
+        // reported at all is the contract.
+        expect.stringMatching(/^Replied to the follow-up after \d+s$/),
+        'Follow-up read as "consistent"',
+        "Attempt submitted",
+        "Scored q-mcq: 4",
+        "Scored q-short: 7",
+        "Graded: 11",
+      ]);
+    }
+  });
+
+  it("still verifies against a head the candidate pinned mid-exam", async () => {
+    await answer(Q_MCQ, "1");
+    const pinned = (
+      await app.inject({ method: "GET", url: "/attempts/me/ledger", headers: asCandidate() })
+    ).json().head as string;
+
+    const receipt = await finish();
+
+    expect(verifyReceipt(receipt, pinned).ok).toBe(true);
+  });
+
+  it("fails verification if a single byte of the record is changed", async () => {
+    const receipt = await finish();
+    const entries = [...receipt.entries!];
+    entries[1] = { ...entries[1]!, timestamp: entries[1]!.timestamp + 1 } as (typeof entries)[number];
+
+    const report = verifyReceipt({ ...receipt, entries });
+
+    expect(report.ok).toBe(false);
+    if (!report.ok) expect(report.problem).toMatchObject({ kind: "chain", seq: 1 });
   });
 });
 

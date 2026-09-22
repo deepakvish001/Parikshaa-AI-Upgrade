@@ -19,7 +19,7 @@ the stack is TypeScript end to end, and it is not a preference.
 | Layer | Choice | Why this one |
 |---|---|---|
 | Language / runtime | TypeScript, Node 22 | See above. Also keeps domain types shared between API and client. |
-| HTTP | Fastify + Zod (`fastify-type-provider-zod`) | Schemas generate the OpenAPI spec. Institutions integrate against this; they need a spec, not a client library. |
+| HTTP | Fastify + Zod (`fastify-type-provider-zod`) | Schemas validate requests, generate the OpenAPI document institutions integrate against, and validate responses. Institutions need a spec, not a client library. |
 | Database | PostgreSQL 16+ | The ledger's integrity properties are enforceable in the schema (below). |
 | Migrations / queries | Plain SQL over a thin executor | Drizzle was the original choice; building it showed the ORM had nothing to add. The schema's value is in constraints, triggers and row-level security, which are reviewed as SQL either way, and a two-method executor interface lets the same store run against a pool in production and an in-process Postgres in tests. |
 | Background jobs | pg-boss | Postgres-backed, so no Redis to run. Move to BullMQ only if throughput demands it. |
@@ -119,16 +119,33 @@ belongs in an India region (`ap-south-1`). Whether an India inference region is
 available for the model calls is **unverified** — check before relying on it.
 Pseudonymization holds either way.
 
+### 5a. Response schemas are a second lock on the answer key
+
+The candidate-facing routes declare Zod response schemas, and serialization
+drops keys a schema does not name. `candidateView` already makes an answer key
+impossible to express in the type system; this catches the same mistake at
+runtime, on the wire, if a future change ever slips past the types. A response
+that does not match its schema fails with a 500 rather than shipping an
+unchecked body — the louder failure is the safer one here.
+
+`docs/openapi.json` is generated from those same schemas and committed. A test
+regenerates it and fails if the two diverge, so a route cannot change without
+the published contract changing with it. `npm run openapi` regenerates it.
+
 ### 6. `@parikshaa/core` has two entry points
 
-`.` carries everything, including the ledger, which hashes with `node:crypto`.
-`./browser` carries the vocabulary, the candidate projection, exam validation
-and deterministic scoring — all pure, and what the two clients import.
+`.` carries everything, including `ExamLedger`, which appends and hashes with
+`node:crypto`. `./browser` carries the vocabulary, the candidate projection,
+exam validation, deterministic scoring — and the chain itself, which is
+platform-independent.
 
 The split is a boundary, not a packaging workaround: a client has no business
-holding the hashing code because it has no business producing ledger entries.
-Only the server appends. (A candidate verifying their own receipt in the browser
-is a real feature, and would need WebCrypto's async digest. It is not this one.)
+*appending*, so it has no business holding the code that does. It does have
+business *checking*, so `chain.ts` walks the chain parameterized by a digest,
+and both the server's `node:crypto` and a browser's WebCrypto bind to the same
+walk. One implementation, two primitives, and a conformance test pinning them to
+identical output — because two chain implementations would eventually disagree,
+and the disagreement would look like tampering.
 
 ## Deliberately not in the stack yet
 

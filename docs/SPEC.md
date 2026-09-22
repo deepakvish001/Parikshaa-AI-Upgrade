@@ -39,6 +39,11 @@ created → in_progress → submitted → graded
                       ↘ void
 ```
 
+`in_progress` ends either when the candidate submits or when the exam's
+`durationMs` runs out. An expired attempt is closed by the next write that
+touches it, which refuses that write; reads never close one, so looking at an
+attempt cannot end it.
+
 An attempt is never mutated in place. Every step appends an `ExamEvent` to the
 attempt's ledger, and the attempt's current state is a fold over that stream.
 This makes the record replayable: given the ledger, any grade Parikshaa reported
@@ -85,12 +90,32 @@ time of the attempt, and any of them can later prove that the record they are
 shown is or is not the one that was written. Assessment disputes turn on exactly
 that, and on nothing a webcam recorded.
 
-See `packages/core/src/ledger.ts`.
+A record that cannot be checked is not evidence, so checking it must not
+require the institution's cooperation. `@parikshaa/verify` verifies a downloaded
+receipt with no server, no database and no network, and the candidate's own
+browser does the same with WebCrypto. Both walk one implementation of the chain,
+parameterized by the digest, because two copies would eventually disagree — and
+a disagreement would look exactly like the tampering this is meant to detect. A
+conformance test pins the two digests to identical output.
+
+**A receipt that verifies on its own proves less than it appears to.** Any
+internally consistent chain verifies, including one written from scratch. What
+makes substitution detectable is the head hash the candidate pinned *during* the
+attempt: a commitment made before anything could be reconsidered. Finding it at
+its own position proves the record now being shown grew from the one they saw
+then. The verifier takes it with `--head`.
+
+See `packages/core/src/chain.ts`, `packages/core/src/ledger.ts` and
+`packages/verify`.
 
 ## 6. Design commitments
 
 1. **A grade and a suspicion are different objects.** Provenance evidence never
-   silently moves a score. A human decides, with the reasoning in front of them.
+   silently moves a score. A human decides, with the reasoning in front of them —
+   and the deciding is a real act with a real path (§9), not a sentiment. What
+   they may do is set the attempt aside, and the ledger records *their* reason,
+   never a model's. No verdict, confidence or combination of them reaches that
+   outcome on its own.
 2. **The candidate can see their own ledger.** A record kept against someone
    that they cannot inspect is not evidence. While the attempt is open they get
    the head hash alone, which is what the guarantee actually needs — pin it now,
@@ -130,7 +155,13 @@ live, so a field added to `Question` later cannot leak by being forgotten. The
 a candidate which of their answers scored well.
 
 **The candidate leaves with something.** After submission they get their head
-hash and can download the full record. That is the artefact an appeal turns on.
+hash and can download the full record, and can check it in the browser. That is
+the artefact an appeal turns on.
+
+**A candidate who is set aside is told why.** The reason a reviewer recorded is
+shown to them as written — not summarized, not softened — alongside the note
+that their record is unchanged and still checks out. Being set aside without
+being told why is the situation §6.2 objects to.
 
 ## 9. The review console
 
@@ -143,8 +174,25 @@ reasoning.
 There is deliberately no control on that screen that turns a verdict into a
 mark. Adjusting a grade is a decision someone makes and owns; a button for it
 would launder a model's reading into a number and make the separation in §6.1
-decorative. Whatever a reviewer decides, they decide outside this screen, with
-the reasoning in front of them.
+decorative.
+
+**Setting an attempt aside** is the act §6.1 reserves for a person, and it has
+its own section on the screen — not in the grade card, which would make it look
+like a grading action, and not in the evidence card, which would make it look
+like the verdict's consequence. It takes two steps and a written reason, and
+that friction is the point: the reason is written into a tamper-evident record,
+shown to the candidate, and is what an appeal will be argued against. A
+one-click button would not produce one worth having.
+
+An attempt may be set aside after it was graded — usually that is exactly when,
+because someone has just read the evidence. Voiding does not erase the grade or
+anything else already recorded; it appends. Nothing follows a void.
+
+What is **not** recorded is who decided. Staff authenticate with a shared
+institution token, so any name attached would be an unverified claim, and
+writing unverified claims into a record whose entire value is that it can be
+trusted would undermine the record. Attribution needs the identity integration
+§2 keeps out of scope.
 
 Exams are validated before they are stored, and every problem is reported at
 once rather than one per round trip. An exam is written once and sat by a whole
@@ -162,9 +210,11 @@ sitting is over.
 | Verdict assessment | implemented — `packages/viva/src/engine.ts` |
 | Scoring | implemented — `packages/core/src/scoring.ts` (deterministic) and `packages/viva` (rubric) |
 | Persistence | implemented — `packages/store` |
-| HTTP API | implemented — `packages/api` |
+| HTTP API | implemented — `packages/api`, contract at `docs/openapi.json` |
 | Candidate interface | implemented — `packages/web` |
 | Exam authoring and review console | implemented — `packages/console` |
+| Setting an attempt aside | implemented — `POST /attempts/:id/void`, console decision section |
+| Offline verification | implemented — `packages/verify` (CLI) and in-browser via WebCrypto |
 | Deployment | implemented — `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
 | Identity / enrolment | not started (out of scope, §2) |
 

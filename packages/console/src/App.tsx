@@ -103,6 +103,14 @@ function Console({ client }: { client: ConsoleClient }) {
     },
   });
 
+  const voidAttempt = useMutation({
+    mutationFn: ({ attemptId, reason }: { attemptId: string; reason: string }) =>
+      client.voidAttempt(attemptId, reason),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries();
+    },
+  });
+
   const assess = useMutation({
     mutationFn: ({ attemptId, probeId }: { attemptId: string; probeId: string }) =>
       client.assess(attemptId, probeId),
@@ -186,8 +194,10 @@ function Console({ client }: { client: ConsoleClient }) {
           review={review.data}
           grading={grade.isPending}
           assessing={assess.isPending ? assess.variables.probeId : null}
+          voiding={voidAttempt.isPending}
           onGrade={() => grade.mutate(view.attemptId)}
           onAssess={(probeId) => assess.mutate({ attemptId: view.attemptId, probeId })}
+          onVoid={(reason) => voidAttempt.mutate({ attemptId: view.attemptId, reason })}
         />
       ) : null}
     </main>
