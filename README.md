@@ -73,7 +73,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 372 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 412 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -94,6 +94,9 @@ export POSTGRES_PASSWORD=... ANTHROPIC_API_KEY=... \
        ATTEMPT_TOKEN_SECRET=...   # at least 32 characters
 export PARIKSHAA_APP_PASSWORD=... # the API's database role; RLS binds it
 export RUNNER_TOKEN=...           # 32+ characters; the API's key to the code runner
+export PUBLIC_URL=https://exam.example.ac.in   # where candidates open their links
+# Optional delivery: SMTP_URL=smtps://user:pass@email-smtp.ap-south-1.amazonaws.com
+#   EMAIL_FROM="Acme Hiring <hiring@acme.in>"  MSG91_AUTH_KEY=...  MSG91_TEMPLATE_ID=...
 docker compose up --build         # needs gVisor on the host for the runner: https://gvisor.dev
 
 # Once, per organisation: its first owner. Everyone after is added from the console.

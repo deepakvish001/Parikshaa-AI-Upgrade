@@ -106,3 +106,6 @@ fieldset.field { border: none; padding: 0; margin: 0 0 .75rem; }
 fieldset.field legend { font-size: .85rem; color: var(--muted); padding: 0; }
 label.inline { display: inline-flex; align-items: center; gap: .3rem; margin: 0; color: var(--text); font-size: .88rem; }
 textarea.mono { font-family: var(--mono); font-size: .82rem; }
+
+/* Invitations. */
+.problems li.warning { color: var(--muted); }

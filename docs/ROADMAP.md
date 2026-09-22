@@ -206,6 +206,29 @@ Nobody clicks "Start" two thousand times.
   windows and reminders.
 - Scheduling: an exam window, and a per-candidate window inside it.
 
+**Status — built.** An exam gets a window, hard-closing by default, so a
+candidate who starts late ends with everyone else; the close is written into
+the attempt's first ledger entry, so the deadline is on the record. A cohort
+comes in from CSV — roll numbers, names, emails, Indian mobiles in any usual
+form, optional per-candidate windows read as IST — checked by a dry run that
+changes nothing, then imported all or nothing. Each candidate gets a personal
+link, by email (SMTP, so any provider) and SMS (MSG91's DLT template flow), and
+a reminder an hour before the window opens; reminders to candidates who have
+already started are skipped. The link does not start anything: the attempt,
+and its clock, start when the candidate opens it inside their window, and the
+same link resumes from any device until the window closes.
+
+Links are signed, not stored: the database holds no code, plain or hashed.
+Delivery runs through a transactional outbox, claimed with `SKIP LOCKED` so
+every API instance can run a worker without sending anything twice, with
+retries and backoff for failures that might pass and a recorded reason for
+those that will not. The outbox holds ids, never personal data. Links can also
+be exported, as an audited CSV, for an institution that hands them out itself.
+
+Not verified here: the MSG91 request shape follows their published v5 flow API,
+whose documentation could not be reached from this environment. Send a test
+message from your own MSG91 account before the first sitting.
+
 ## 6. Results, reports and export
 
 - A results table that filters, sorts and exports to CSV and Excel.

@@ -5,6 +5,7 @@ import type {
   QuestionId,
   Response,
   StaffAttribution,
+  Timestamp,
   VivaAssessment,
   VivaExchange,
   VivaId,
@@ -42,6 +43,8 @@ export interface AttemptProjection {
   readonly voidReason: string | null;
   /** Who set the attempt aside. Null for a void recorded before staff had accounts. */
   readonly voidedBy: StaffAttribution | null;
+  /** A hard close from the attempt's scheduled window, if it had one. */
+  readonly closesAt: Timestamp | null;
   /** Time added to the exam's window for this attempt, by `time_extended` entries. */
   readonly extraTimeMs: number;
   /** Test results for each code question's current answer; cleared when the answer changes. */
@@ -96,6 +99,7 @@ export function foldAttempt(
 
   const allowRevision = options.exam?.policy.allowRevision ?? true;
   const { attemptId, examId, candidateId } = first.event;
+  const closesAt = first.event.closesAt ?? null;
   const startedAt = first.timestamp;
 
   let state: AttemptState = "in_progress";
@@ -117,6 +121,7 @@ export function foldAttempt(
       total,
       voidReason,
       voidedBy,
+      closesAt,
       extraTimeMs,
       codeScores,
     },

@@ -37,6 +37,13 @@ services:
       DATABASE_URL: postgres://parikshaa_app:${PARIKSHAA_APP_PASSWORD}@db:5432/parikshaa
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
       ATTEMPT_TOKEN_SECRET: ${ATTEMPT_TOKEN_SECRET:?set ATTEMPT_TOKEN_SECRET (32+ characters)}
+      PUBLIC_URL: ${PUBLIC_URL:?set PUBLIC_URL (where candidates open their links)}
+      # Optional: email over SMTP and SMS through MSG91. Without them, invitations
+      # are recorded as not sent, and links can be exported instead.
+      SMTP_URL: ${SMTP_URL:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
       RUNNER_URL: http://runner:4000
       RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
       PORT: "3000"

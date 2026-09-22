@@ -143,3 +143,9 @@ button:disabled { opacity: .5; cursor: default; }
 .run-result .stderr { color: var(--muted); }
 @media (max-width: 34rem) { .sample { grid-template-columns: 1fr; } }
 .code-answer .eyebrow, .run-output .eyebrow { display: block; margin: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+/* Opening an invitation. */
+.when { font-size: 1.15rem; font-weight: 600; margin: .2rem 0 .8rem; }
+
+/* Opening an invitation. */
+.when { font-size: 1.15rem; font-weight: 600; margin: .2rem 0 .8rem; }

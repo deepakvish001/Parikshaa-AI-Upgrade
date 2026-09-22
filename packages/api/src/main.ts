@@ -3,8 +3,11 @@ import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
 import postgres from "postgres";
 import { HttpCodeRunner } from "@parikshaa/runner";
-import { IdentityStore, LedgerStore, QuestionBank, postgresJsExecutor } from "@parikshaa/store";
+import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, QuestionBank, postgresJsExecutor } from "@parikshaa/store";
+import { DeliveryWorker, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { AttemptTokens } from "./auth.js";
+import { InviteCodes } from "./invite-codes.js";
+import { InvitationService } from "./invitation-service.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -49,9 +52,24 @@ async function main(): Promise<void> {
     process.env["CONSOLE_ROOT"] ?? fileURLToPath(new URL("../../console/dist", import.meta.url));
   const clients = existsSync(web) && existsSync(consoleRoot) ? { web, console: consoleRoot } : undefined;
 
+  const tokenSecret = required("ATTEMPT_TOKEN_SECRET");
+  const tokens = new AttemptTokens(tokenSecret);
+  const invitationStore = new InvitationStore(executor);
+  const invitations = new InvitationService({
+    exams: service,
+    store,
+    invitations: invitationStore,
+    codes: new InviteCodes(tokenSecret),
+    tokens,
+    // Where candidates open their links. Required: a link to the wrong host
+    // reaches nobody, and one to localhost reaches everybody's own machine.
+    publicUrl: required("PUBLIC_URL"),
+  });
+
   const app = buildServer({
     service,
-    tokens: new AttemptTokens(required("ATTEMPT_TOKEN_SECRET")),
+    invitations,
+    tokens,
     auth: new StaffAuth(identity),
     identity,
     bank: new QuestionBank(executor),
@@ -59,12 +77,42 @@ async function main(): Promise<void> {
     ...(clients === undefined ? {} : { clients }),
   });
 
+  // Delivery: email over SMTP and SMS through MSG91, each optional. Without
+  // one, messages for that channel are recorded as skipped, with the reason,
+  // and links can still be exported and handed out.
+  const smtpUrl = process.env["SMTP_URL"];
+  const msg91Key = process.env["MSG91_AUTH_KEY"];
+  const worker = new DeliveryWorker({
+    outbox: new OutboxStore(executor),
+    invitations: invitationStore,
+    store,
+    identity,
+    link: (orgId, invitationId) => invitations.link(orgId, invitationId),
+    mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
+    sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
+  });
+  // Every instance runs a worker; the outbox's SKIP LOCKED claims keep them
+  // from sending anything twice. Set DELIVERY_WORKER=off to run API-only nodes.
+  let delivering: ReturnType<typeof setInterval> | undefined;
+  if (process.env["DELIVERY_WORKER"] !== "off") {
+    let busy = false;
+    delivering = setInterval(() => {
+      if (busy) return;
+      busy = true;
+      worker
+        .tick()
+        .catch((error: unknown) => process.stderr.write(`delivery: ${error instanceof Error ? error.message : String(error)}\n`))
+        .finally(() => (busy = false));
+    }, 5_000);
+  }
+
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);
   await app.listen({ port, host: "0.0.0.0" });
   process.stdout.write(`parikshaa listening on :${port}\n`);
 
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, () => {
+      clearInterval(delivering);
       void app.close().then(() => sql.end()).then(() => process.exit(0));
     });
   }

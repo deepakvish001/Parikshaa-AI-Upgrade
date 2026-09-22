@@ -2,14 +2,11 @@ import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { IdentityStore, LedgerStore, QuestionBank, migrate, pgliteExecutor } from "@parikshaa/store";
-import { AttemptTokens } from "./auth.js";
-import { buildServer } from "./server.js";
-import { ExamService } from "./service.js";
-import { StaffAuth } from "./staff-auth.js";
+import { pgliteExecutor } from "@parikshaa/store";
+import { freshDatabase, wire } from "./testing/harness.js";
 
 /**
  * Serving both client bundles from the API process.
@@ -23,9 +20,8 @@ let db: PGlite;
 let app: FastifyInstance;
 
 beforeEach(async () => {
-  db = new PGlite();
+  db = await freshDatabase();
   const sql = pgliteExecutor(db);
-  await migrate(sql);
 
   const root = await mkdtemp(join(tmpdir(), "parikshaa-clients-"));
   const web = join(root, "web");
@@ -37,19 +33,7 @@ beforeEach(async () => {
   await mkdir(join(web, "assets"));
   await writeFile(join(web, "assets", "app.js"), "export const x = 1;\n");
 
-  app = buildServer({
-    service: new ExamService({
-      store: new LedgerStore(sql),
-      identity: new IdentityStore(sql),
-      client: {} as unknown as Anthropic,
-    }),
-    tokens: new AttemptTokens("x".repeat(40)),
-    auth: new StaffAuth(new IdentityStore(sql)),
-    identity: new IdentityStore(sql),
-    bank: new QuestionBank(sql),
-    clients: { web, console: consoleRoot },
-  });
-  await app.ready();
+  ({ app } = await wire(sql, { client: {} as unknown as Anthropic, server: { clients: { web, console: consoleRoot } } }));
 });
 
 afterEach(async () => {

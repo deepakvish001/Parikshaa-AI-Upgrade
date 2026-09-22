@@ -494,6 +494,44 @@ export class ExamService {
     return id;
   }
 
+  /**
+   * Start an attempt for a candidate who redeemed an invitation.
+   *
+   * No person is acting — the candidate opened their link inside their window
+   * — so the audit log records the system, naming the invitation. A hard close
+   * from the window is written into the first ledger entry, where it governs
+   * the deadline and can be checked like everything else.
+   */
+  async startInvited(
+    orgId: OrgId,
+    invitationId: string,
+    examId: ExamId,
+    candidateId: CandidateId,
+    attemptId: AttemptId,
+    closesAt: Timestamp | null,
+  ): Promise<void> {
+    const scope = staffScope(orgId);
+    const exam = await this.#store.loadExam(scope, examId);
+    if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
+
+    await this.#store.createAttempt(scope, attemptId, examId, candidateId);
+    await this.#store.append(scope, attemptId, {
+      type: "attempt_started",
+      attemptId,
+      examId,
+      candidateId,
+      questionIds: resolvePaper(exam, attemptId),
+      ...(closesAt === null ? {} : { closesAt }),
+    });
+    await this.#store.appendAudit(scope, {
+      actorKind: "system",
+      actorId: null,
+      action: "attempt.started",
+      target: attemptId,
+      detail: { examId, candidateId, invitationId },
+    });
+  }
+
   // --- candidate: writing ---------------------------------------------------
 
   async submitAnswer(access: CandidateAccess, questionId: QuestionId, answer: string): Promise<void> {
@@ -1093,9 +1131,14 @@ export const MIN_VOID_REASON = 10;
 export const MAX_EXTENSION_MINUTES = 240;
 
 /**
- * When an attempt's window closes: its own start, its exam's duration, and any
- * time a person granted it.
+ * When an attempt's window closes: its own start and its exam's duration — or
+ * its scheduled window's hard close, if that comes first — plus any time a
+ * person granted it.
  */
 export function deadlineOf(projection: AttemptProjection, exam: Exam): Timestamp {
-  return projection.attempt.startedAt + exam.policy.durationMs + projection.extraTimeMs;
+  const byDuration = projection.attempt.startedAt + exam.policy.durationMs;
+  // A hard-closing window ends the attempt when it closes, however late it was
+  // started. Extra time a person granted still applies on top of either.
+  const base = projection.closesAt === null ? byDuration : Math.min(byDuration, projection.closesAt);
+  return base + projection.extraTimeMs;
 }

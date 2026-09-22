@@ -115,6 +115,40 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     archiveQuestion: vi.fn(async () => undefined),
     importBank: vi.fn(async () => 2),
     cloneExam: vi.fn(async () => undefined),
+    getWindow: vi.fn(async () => ({ opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true })),
+    setWindow: vi.fn(async () => undefined),
+    importCandidates: vi.fn(async (_exam: string, _csv: string, dryRun: boolean) =>
+      dryRun
+        ? {
+            dryRun: true,
+            candidates: 2,
+            problems: [],
+            warnings: [{ row: 3, message: '"CS002" has no email or phone; hand them their code yourself.' }],
+            preview: [],
+          }
+        : { dryRun: false, invited: 2, warnings: [] },
+    ),
+    listInvitations: vi.fn(async () => [
+      {
+        id: "i1",
+        candidateRef: "CS001",
+        name: "Ananya Iyer",
+        email: "a@college.test",
+        phone: "919876543210",
+        opensAt: "2026-10-01T04:30:00.000Z",
+        closesAt: "2026-10-01T07:30:00.000Z",
+        attemptId: null,
+        attemptState: "not_started",
+        revoked: false,
+        delivery: {
+          email: { status: "sent", purpose: "invite", at: "2026-09-29T00:00:00.000Z", error: null },
+          sms: { status: "failed", purpose: "invite", at: "2026-09-29T00:00:00.000Z", error: "MSG91 400: bad number" },
+        },
+      },
+    ]),
+    resendInvitation: vi.fn(async () => undefined),
+    revokeInvitation: vi.fn(async () => undefined),
+    invitationLinks: vi.fn(async () => new Blob(["ref,link"])),
     startAttempt: vi.fn(async () => ({ attemptId: "attempt-2", token: "issued-token" })),
     review: vi.fn(async () => review),
     voidAttempt: vi.fn(async () => ({})),
@@ -665,5 +699,52 @@ describe("writing a code question", () => {
 
     expect(await screen.findByRole("list", { name: "Problems with this exam" })).toHaveTextContent(/print the answers/);
     expect(client.saveExam).not.toHaveBeenCalled();
+  });
+});
+
+describe("scheduling and inviting a cohort", () => {
+  const open = async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Schedule and invite candidates" }));
+    return client;
+  };
+
+  it("checks a list first, shows what it found, and invites only when told to", async () => {
+    const client = await open();
+    const file = new File(["ref,name\nCS001,A\nCS002,B"], "cohort.csv", { type: "text/csv" });
+
+    await userEvent.upload(await screen.findByLabelText("Candidate list (CSV)"), file);
+
+    const preview = await screen.findByRole("group", { name: "Import preview" });
+    expect(preview).toHaveTextContent("2 candidates ready to invite");
+    expect(preview).toHaveTextContent(/row 3.*no email or phone/);
+    expect(client.importCandidates).toHaveBeenCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", true, ["email", "sms"]);
+    expect(client.importCandidates).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(within(preview).getByRole("button", { name: "Invite 2 and send their links" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("Invited 2");
+    expect(client.importCandidates).toHaveBeenLastCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", false, ["email", "sms"]);
+  });
+
+  it("shows each candidate's delivery, including what failed and why", async () => {
+    await open();
+    const table = await screen.findByRole("region", { name: "Invited candidates" });
+
+    const row = (await within(table).findByText("CS001")).closest("tr")!;
+    expect(row).toHaveTextContent("Email sent · SMS failed");
+    expect(row.querySelector("[title]")?.getAttribute("title")).toContain("bad number");
+  });
+
+  it("resends and revokes a candidate who has not started", async () => {
+    const client = await open();
+    const table = await screen.findByRole("region", { name: "Invited candidates" });
+
+    await userEvent.click(await within(table).findByRole("button", { name: "Resend" }));
+    await userEvent.click(within(table).getByRole("button", { name: "Revoke" }));
+
+    await waitFor(() => expect(client.resendInvitation).toHaveBeenCalledWith("i1", ["email", "sms"]));
+    expect(client.revokeInvitation).toHaveBeenCalledWith("i1");
   });
 });

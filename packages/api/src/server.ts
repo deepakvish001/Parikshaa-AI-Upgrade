@@ -14,6 +14,8 @@ import { RunnerUnavailable } from "@parikshaa/runner";
 import { ExamFrozen, type IdentityStore, type QuestionBank } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
+import type { InvitationService } from "./invitation-service.js";
+import { registerInvitationRoutes } from "./invitation-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
@@ -27,6 +29,7 @@ export interface ServerOptions {
   /** Staff accounts and API keys, for the account-management routes. */
   readonly identity: IdentityStore;
   readonly bank: QuestionBank;
+  readonly invitations: InvitationService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -108,6 +111,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Candidate", description: "Sitting one attempt. Scoped entirely by the bearer token." },
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
+        { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
       ],
       components: {
         securitySchemes: {
@@ -748,11 +752,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
     registerBankRoutes(routes, { service, bank: options.bank, staff });
 
+    const throttle = options.loginThrottle ?? new LoginThrottle();
+    registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
+
     registerAccountRoutes(routes, {
       service,
       auth,
       identity: options.identity,
-      throttle: options.loginThrottle ?? new LoginThrottle(),
+      throttle,
       bearer,
       staff,
     });

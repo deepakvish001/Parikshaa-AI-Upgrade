@@ -4,6 +4,7 @@ import type { Exam } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { BankPanel } from "./components/Bank.tsx";
+import { Candidates } from "./components/Candidates.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -15,6 +16,7 @@ type View =
   | { readonly name: "attempts"; readonly examId: string }
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "bank" }
+  | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "staff" }
   | { readonly name: "keys" }
   | { readonly name: "usage" }
@@ -278,7 +280,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             </button>
           )}
         </h1>
-        {view.name === "attempts" || view.name === "review" ? (
+        {view.name === "attempts" || view.name === "review" || view.name === "candidates" ? (
           <>
             <span className="notice">/</span>
             <button
@@ -324,6 +326,18 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           onCancel={() => setView({ name: "exams" })}
           {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
         />
+      ) : null}
+
+      {view.name === "attempts" ? (
+        <div className="row" style={{ marginTop: 0, marginBottom: ".85rem" }}>
+          <button type="button" className="secondary" onClick={() => setView({ name: "candidates", examId: view.examId })}>
+            Schedule and invite candidates
+          </button>
+        </div>
+      ) : null}
+
+      {view.name === "candidates" ? (
+        <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} />
       ) : null}
 
       {view.name === "attempts" && attempts.data !== undefined ? (

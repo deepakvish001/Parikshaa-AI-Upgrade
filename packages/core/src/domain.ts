@@ -213,6 +213,13 @@ export type ExamEvent =
        * on ledgers from before exams could draw questions per candidate.
        */
       readonly questionIds?: readonly QuestionId[];
+      /**
+       * When the scheduled window this attempt was started in closes, if it
+       * closes hard: the attempt ends then even if its duration has not run
+       * out. On the record, so the deadline a candidate was held to can be
+       * checked like everything else.
+       */
+      readonly closesAt?: Timestamp;
     }
   | { readonly type: "answer_submitted"; readonly attemptId: AttemptId; readonly response: Response }
   | { readonly type: "attempt_submitted"; readonly attemptId: AttemptId }

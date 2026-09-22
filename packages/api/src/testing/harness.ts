@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
 import {
   IdentityStore,
+  InvitationStore,
   LedgerStore,
   QuestionBank,
   migrate,
@@ -13,6 +14,8 @@ import {
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
 import { AttemptTokens } from "../auth.js";
+import { InviteCodes } from "../invite-codes.js";
+import { InvitationService } from "../invitation-service.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
@@ -27,6 +30,7 @@ import { StaffAuth, hashPassword } from "../staff-auth.js";
 
 export const PASSWORD = "correct horse battery staple";
 export const TOKEN_SECRET = "a".repeat(40);
+export const PUBLIC_URL = "https://exam.test";
 
 /**
  * A migrated, empty database.
@@ -79,9 +83,20 @@ export async function wire(
     ...(options.newId === undefined ? {} : { newId: options.newId }),
     ...(options.runner === undefined ? {} : { runner: options.runner }),
   });
+  const tokens = new AttemptTokens(TOKEN_SECRET);
+  const invitations = new InvitationService({
+    exams: service,
+    store,
+    invitations: new InvitationStore(sql),
+    codes: new InviteCodes(TOKEN_SECRET),
+    tokens,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
-    tokens: new AttemptTokens(TOKEN_SECRET),
+    invitations,
+    tokens,
     auth: new StaffAuth(identity),
     identity,
     bank: new QuestionBank(sql),

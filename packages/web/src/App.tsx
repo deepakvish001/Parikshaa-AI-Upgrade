@@ -4,6 +4,7 @@ import { ApiError, ParikshaaClient } from "./api.ts";
 import { AnswerInput } from "./components/AnswerInput.tsx";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
+import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 
@@ -30,49 +31,94 @@ const RETRY_MS = 15_000;
  * otherwise sit in history and be shared by anyone who copies the link.
  */
 const TOKEN_KEY = "parikshaa.attempt-token";
-function initialToken(): string | null {
+/**
+ * An invitation link's code, kept the same way. It is the durable credential
+ * for the window: when a token runs out, the page quietly opens the link again.
+ */
+const INVITE_KEY = "parikshaa.invite";
+
+const session = {
+  get: (key: string): string | null => {
+    try {
+      return sessionStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  set: (key: string, value: string | null): void => {
+    try {
+      if (value === null) sessionStorage.removeItem(key);
+      else sessionStorage.setItem(key, value);
+    } catch {
+      // Held in memory only; a reload will ask again.
+    }
+  },
+};
+
+/** Move a credential from the address bar into this tab's storage. */
+function takeFromUrl(name: string, key: string): string | null {
   const params = new URLSearchParams(window.location.search);
-  const fromUrl = params.get("token");
-  if (fromUrl !== null) {
-    rememberToken(fromUrl);
-    params.delete("token");
-    const query = params.toString();
-    window.history.replaceState(null, "", `${window.location.pathname}${query === "" ? "" : `?${query}`}${window.location.hash}`);
-    return fromUrl;
-  }
-  try {
-    return sessionStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-function rememberToken(token: string): void {
-  try {
-    sessionStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    // Held in memory only; a reload will ask for the code again.
-  }
+  const value = params.get(name);
+  if (value === null) return session.get(key);
+  session.set(key, value);
+  params.delete(name);
+  const query = params.toString();
+  window.history.replaceState(null, "", `${window.location.pathname}${query === "" ? "" : `?${query}`}${window.location.hash}`);
+  return value;
 }
 
+function rememberToken(token: string | null): void {
+  session.set(TOKEN_KEY, token);
+}
+
+/** An invitation code (org.invitation.mac) rather than an attempt token, which is a JWT. */
+const isInviteCode = (value: string) => !value.startsWith("eyJ") && value.split(".").length === 3;
+
 export function App({ client: injected }: { client?: ParikshaaClient } = {}) {
-  const [token, setToken] = useState<string | null>(() => (injected === undefined ? initialToken() : null));
+  const [invite, setInvite] = useState<string | null>(() =>
+    injected === undefined ? takeFromUrl("invite", INVITE_KEY) : null,
+  );
+  const [token, setToken] = useState<string | null>(() => (injected === undefined ? takeFromUrl("token", TOKEN_KEY) : null));
 
   const client = useMemo(
     () => injected ?? (token === null ? null : new ParikshaaClient(token)),
     [injected, token],
   );
+  const opened = useCallback((next: string) => {
+    rememberToken(next);
+    setToken(next);
+  }, []);
+  const expired = useCallback(() => {
+    rememberToken(null);
+    setToken(null);
+  }, []);
 
-  if (client === null) {
+  if (client === null && invite !== null) {
     return (
-      <TokenGate
-        onToken={(next) => {
-          rememberToken(next);
-          setToken(next);
+      <InviteGate
+        code={invite}
+        onOpened={opened}
+        onForget={() => {
+          session.set(INVITE_KEY, null);
+          setInvite(null);
         }}
       />
     );
   }
-  return <Attempt client={client} />;
+  if (client === null) {
+    return (
+      <TokenGate
+        onToken={(next) => {
+          if (isInviteCode(next)) {
+            session.set(INVITE_KEY, next);
+            setInvite(next);
+          } else opened(next);
+        }}
+      />
+    );
+  }
+  // A token that ran out, with the invitation still in hand: open it again.
+  return <Attempt client={client} {...(invite === null ? {} : { onExpired: expired })} />;
 }
 
 /** Where a question's unsent text stands. */
@@ -93,7 +139,7 @@ function useOnline(): boolean {
   return online;
 }
 
-function Attempt({ client }: { client: ParikshaaClient }) {
+function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: () => void }) {
   const queryClient = useQueryClient();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<Record<string, DraftStatus>>({});
@@ -323,6 +369,11 @@ function Attempt({ client }: { client: ParikshaaClient }) {
       await queryClient.invalidateQueries();
     },
   });
+
+  const expired = state.error instanceof ApiError && state.error.status === 401;
+  useEffect(() => {
+    if (expired) onExpired?.();
+  }, [expired, onExpired]);
 
   if (state.isPending) return <main className="page"><p className="notice">Loading your exam…</p></main>;
   if (state.error !== null) {

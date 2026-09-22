@@ -127,6 +127,50 @@ export interface BankFilter {
   readonly q?: string;
 }
 
+export type Channel = "email" | "sms";
+
+export interface ExamWindow {
+  readonly opensAt: string;
+  readonly closesAt: string;
+  readonly hardClose: boolean;
+}
+
+export interface Delivery {
+  readonly status: string;
+  readonly purpose: string;
+  readonly at: string;
+  readonly error: string | null;
+}
+
+export interface InvitationRow {
+  readonly id: string;
+  readonly candidateRef: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly opensAt: string;
+  readonly closesAt: string;
+  readonly attemptId: string | null;
+  readonly attemptState: "not_started" | "in_progress" | "submitted" | "graded" | "void";
+  readonly revoked: boolean;
+  readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
+}
+
+export interface RowProblem {
+  readonly row: number;
+  readonly message: string;
+}
+
+export type ImportResult =
+  | {
+      readonly dryRun: true;
+      readonly candidates: number;
+      readonly problems: readonly RowProblem[];
+      readonly warnings: readonly RowProblem[];
+      readonly preview: readonly { candidateRef: string; name: string; email: string | null; phone: string | null }[];
+    }
+  | { readonly dryRun: false; readonly invited: number; readonly warnings: readonly RowProblem[] };
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
@@ -300,6 +344,55 @@ export class ConsoleClient {
       method: "POST",
       body: JSON.stringify(title === undefined ? { id } : { id, title }),
     });
+  }
+
+  // --- scheduling and inviting -------------------------------------------------
+
+  getWindow(examId: string): Promise<ExamWindow | null> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/window`);
+  }
+
+  async setWindow(examId: string, window: ExamWindow): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/window`, { method: "PUT", body: JSON.stringify(window) });
+  }
+
+  /**
+   * Check a candidate list (dry run) or import it. A rejected import throws a
+   * {@link ConsoleError} whose problems name the rows.
+   */
+  async importCandidates(examId: string, csv: string, dryRun: boolean, channels: readonly Channel[]): Promise<ImportResult> {
+    try {
+      return await this.#request(`/exams/${encodeURIComponent(examId)}/invitations/import`, {
+        method: "POST",
+        body: JSON.stringify({ csv, dryRun, channels }),
+      });
+    } catch (error) {
+      if (error instanceof ConsoleError && error.rows.length > 0) {
+        throw new ConsoleError(error.status, error.code, error.rows.map((r) => ({ path: `row ${r.row}`, message: r.message })));
+      }
+      throw error;
+    }
+  }
+
+  async listInvitations(examId: string): Promise<readonly InvitationRow[]> {
+    return (await this.#request<{ invitations: InvitationRow[] }>(`/exams/${encodeURIComponent(examId)}/invitations`)).invitations;
+  }
+
+  async resendInvitation(id: string, channels: readonly Channel[]): Promise<void> {
+    await this.#request(`/invitations/${encodeURIComponent(id)}/resend`, { method: "POST", body: JSON.stringify({ channels }) });
+  }
+
+  async revokeInvitation(id: string): Promise<void> {
+    await this.#request(`/invitations/${encodeURIComponent(id)}/revoke`, { method: "POST" });
+  }
+
+  /** Every candidate's link, as a CSV file's contents. */
+  async invitationLinks(examId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/invitations/links.csv`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
   }
 
   // --- exams and attempts -----------------------------------------------------

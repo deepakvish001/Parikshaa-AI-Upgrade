@@ -1,6 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { IdentityStore, LedgerStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
+import { IdentityStore, InvitationStore, LedgerStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
+import { InviteCodes } from "./invite-codes.js";
+import { InvitationService } from "./invitation-service.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -21,13 +23,20 @@ export async function specDocument(): Promise<Record<string, unknown>> {
   };
 
   const identity = new IdentityStore(unusable);
+  const store = new LedgerStore(unusable);
+  const service = new ExamService({ store, identity, client: {} as unknown as Anthropic });
+  const tokens = new AttemptTokens("x".repeat(40));
   const app = buildServer({
-    service: new ExamService({
-      store: new LedgerStore(unusable),
-      identity,
-      client: {} as unknown as Anthropic,
+    service,
+    invitations: new InvitationService({
+      exams: service,
+      store,
+      invitations: new InvitationStore(unusable),
+      codes: new InviteCodes("x".repeat(40)),
+      tokens,
+      publicUrl: "https://example.invalid",
     }),
-    tokens: new AttemptTokens("x".repeat(40)),
+    tokens,
     auth: new StaffAuth(identity),
     identity,
     bank: new QuestionBank(unusable),
