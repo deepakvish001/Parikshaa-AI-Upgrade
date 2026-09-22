@@ -144,3 +144,5 @@ export function explain(problem: ReceiptProblem): string {
       return `The hash you pinned appears at position ${problem.seq}, which is not its own sequence number. The record has been rearranged.`;
   }
 }
+
+export { runCli, USAGE, type CliIO } from "./cli-core.js";
