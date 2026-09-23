@@ -338,6 +338,20 @@ their customers can use webhooks and the API.
 - Backups, point-in-time recovery, and a restore drill that has actually been
   run.
 
+**Status — built, except read replicas, which the load test showed are not
+needed at this scale.** A load run of 1,000 candidates on one 4-core machine
+(load generator, API and Postgres together) sat a drive with no errors and
+every chain intact afterwards; see `docs/OPERATIONS.md` for the figures and
+what they mean for sizing. Request logs are one JSON line per request, by
+route pattern, and a test runs a whole sitting and fails if an answer, a
+follow-up, a reply, a credential or a contact detail reaches them. Per-
+organisation and per-attempt rate limits answer 429 with `Retry-After`. The
+pool size is configurable. `verify-all` checks every chain in a database, and
+`scripts/restore-drill.sh` restores a dump into a scratch database and runs it
+— the drill ran here and runs in CI. Backups and point-in-time recovery are
+the database's job: the runbook names the managed services in Indian regions
+and what to turn on.
+
 ## 11. Compliance and trust
 
 - DPDP: consent capture, a stated retention policy, erasure that is honest
@@ -364,6 +378,22 @@ their customers can use webhooks and the API.
   full attempt end to end.
 - Chaos: kill the network mid-probe, kill the server mid-append, and prove the
   ledger still verifies afterwards.
+
+**Status — built.** `packages/e2e` runs the real service against a real
+Postgres. Playwright drives a whole sitting — a follow-up answered, the
+downloaded receipt checked by the standalone verifier — and answers typed
+offline, a follow-up whose connection drops mid-stream, resuming on another
+device, and a recruiter's results, spreadsheet and report; CI runs it in
+Chrome, Firefox and WebKit (only Chromium was available where this was
+written). The chaos run SIGKILLs the server mid-write and, separately,
+terminates every database connection under a running server; after each,
+every chain verifies and every candidate reopens their link and carries on.
+
+Running against a real Postgres for the first time found three faults the
+in-process test database could not: every jsonb value stored as a string by
+the previous driver (nothing worked end to end), that driver crashing the
+process when connections dropped, and a failure mid-start locking a candidate
+out. All three are fixed and tested; `docs/OPERATIONS.md` has the detail.
 
 ---
 

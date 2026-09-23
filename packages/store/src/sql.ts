@@ -19,8 +19,22 @@ export interface SqlExecutor {
    * parameters, so nothing reaches it that a caller could interpolate into.
    */
   exec(text: string): Promise<void>;
-  transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T>;
+  /**
+   * Run `fn` in a transaction. `settings` are applied transaction-locally
+   * before it runs (`set_config(name, value, true)`) — in the same round trip
+   * as BEGIN where the driver allows, since every tenant query pays for it.
+   */
+  transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T>;
 }
+
+/** Transaction-local settings: names are fixed by the caller's code, values may come from input. */
+export type TransactionSettings = Readonly<Record<string, string>>;
+
+const settingsParams = (settings: TransactionSettings) => Object.entries(settings).flat();
+const settingsSql = (settings: TransactionSettings) =>
+  `SELECT ${Object.keys(settings)
+    .map((_, i) => `set_config($${2 * i + 1}, $${2 * i + 2}, true)`)
+    .join(", ")}`;
 
 // --- adapters --------------------------------------------------------------
 // PGlite is typed structurally, so only the tests depend on it.
@@ -46,8 +60,11 @@ export function pgliteExecutor(db: PGliteRoot): SqlExecutor {
     async exec(text: string): Promise<void> {
       await db.exec(text);
     },
-    transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-      return db.transaction((tx) => fn(pgliteTransactionExecutor(tx)));
+    transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
+      return db.transaction(async (tx) => {
+        if (settings !== undefined) await tx.query(settingsSql(settings), settingsParams(settings));
+        return fn(pgliteTransactionExecutor(tx));
+      });
     },
   };
 }
@@ -67,9 +84,10 @@ function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
     async exec(text: string): Promise<void> {
       await tx.exec(text);
     },
-    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
+    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
       const name = `parikshaa_sp_${++savepointCounter}`;
       await tx.query(`SAVEPOINT ${name}`);
+      if (settings !== undefined) await tx.query(settingsSql(settings), settingsParams(settings));
       try {
         const result = await fn(pgliteTransactionExecutor(tx));
         await tx.query(`RELEASE SAVEPOINT ${name}`);
@@ -131,12 +149,21 @@ export function connect(
       // No parameters: the simple protocol, which accepts several statements.
       await pool.query(text);
     },
-    async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
+    async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
       const client = await pool.connect();
       client.on("error", onError);
       let broken: Error | undefined;
       try {
-        await client.query("BEGIN");
+        // One round trip for BEGIN and the settings. A multi-statement query
+        // cannot take parameters, so values are quoted by the driver's own
+        // escapeLiteral; names come from this code, never from input.
+        await client.query(
+          settings === undefined
+            ? "BEGIN"
+            : `BEGIN; SELECT ${Object.entries(settings)
+                .map(([name, value]) => `set_config(${client.escapeLiteral(name)}, ${client.escapeLiteral(value)}, true)`)
+                .join(", ")}`,
+        );
         const result = await fn(pgTransactionExecutor(client));
         await client.query("COMMIT");
         return result;
@@ -165,9 +192,10 @@ function pgTransactionExecutor(client: pg.PoolClient): SqlExecutor {
     async exec(text: string): Promise<void> {
       await client.query(text);
     },
-    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
+    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
       const name = `parikshaa_sp_${++savepointCounter}`;
       await client.query(`SAVEPOINT ${name}`);
+      if (settings !== undefined) await client.query(settingsSql(settings), settingsParams(settings));
       try {
         const result = await fn(pgTransactionExecutor(client));
         await client.query(`RELEASE SAVEPOINT ${name}`);

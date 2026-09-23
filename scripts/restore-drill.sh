@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Restore drill (ROADMAP §10): prove a backup restores, not just that it exists.
 #
-#   SOURCE_URL=postgres://parikshaa_owner:…@db/parikshaa \
+#   SOURCE_URL=postgres://parikshaa_backup:…@db/parikshaa \
 #   ADMIN_URL=postgres://postgres:…@db/postgres \
 #   ./scripts/restore-drill.sh
 #
@@ -14,11 +14,17 @@
 # 4. Drops the scratch database (KEEP=1 to keep it), and prints how long each
 #    step took: the restore time is your recovery time for this data size.
 #
+# SOURCE_URL must be a role that bypasses row-level security: the ledger
+# forces it even on its owner, so a dump as the owner fails. Create one once:
+#
+#   CREATE ROLE parikshaa_backup LOGIN PASSWORD '…' BYPASSRLS;
+#   GRANT pg_read_all_data TO parikshaa_backup;
+#
 # Needs pg_dump, pg_restore, psql and a built checkout (npm run build).
 # Exits non-zero if anything does not match.
 set -euo pipefail
 
-: "${SOURCE_URL:?set SOURCE_URL to the database to back up, as its owner}"
+: "${SOURCE_URL:?set SOURCE_URL to the database to back up, as a role that bypasses row-level security}"
 : "${ADMIN_URL:?set ADMIN_URL to a role that may create databases on the restore server}"
 here="$(cd "$(dirname "$0")/.." && pwd)"
 scratch="parikshaa_restore_drill_$(date -u +%Y%m%d%H%M%S)"

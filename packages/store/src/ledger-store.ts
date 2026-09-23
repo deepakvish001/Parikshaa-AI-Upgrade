@@ -45,14 +45,10 @@ export const candidateScope = (orgId: OrgId, attemptId: AttemptId): Scope => ({
  * here.
  */
 export function withScope<T>(sql: SqlExecutor, scope: Scope, fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-  return sql.transaction(async (tx) => {
-    await tx.query(
-      `SELECT set_config('parikshaa.org_id', $1, true),
-              set_config('parikshaa.actor', $2, true),
-              set_config('parikshaa.attempt_id', $3, true)`,
-      [scope.orgId, scope.actor, scope.actor === "candidate" ? scope.attemptId : ""],
-    );
-    return fn(tx);
+  return sql.transaction(fn, {
+    "parikshaa.org_id": scope.orgId,
+    "parikshaa.actor": scope.actor,
+    "parikshaa.attempt_id": scope.actor === "candidate" ? scope.attemptId : "",
   });
 }
 
@@ -410,6 +406,13 @@ export class LedgerStore {
       );
       return rows[0]?.hash ?? GENESIS_HASH;
     });
+  }
+
+  /** Whether the attempt's chain has begun: one indexed lookup, for the common case of a candidate reopening their link. */
+  async hasStarted(scope: Scope, attemptId: AttemptId): Promise<boolean> {
+    return this.#scoped(scope, async (tx) =>
+      (await tx.query(`SELECT 1 FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 LIMIT 1`, [scope.orgId, attemptId])).length > 0,
+    );
   }
 
   /** Every attempt in the organisation, oldest first: for walking all of its chains. */

@@ -86,13 +86,16 @@ jobs:
       - run: npm ci
 
       # The roles the harnesses expect. The owner may terminate the runtime
-      # role's connections, which the chaos run does on purpose.
+      # role's connections, which the chaos run does on purpose; the backup
+      # role bypasses row-level security, which a dump of the ledger needs.
       - name: Database and roles
         run: |
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
             -c "CREATE ROLE parikshaa_owner LOGIN PASSWORD 'owner-e2e'" \
             -c "CREATE ROLE parikshaa_app LOGIN PASSWORD 'app-e2e'" \
             -c "GRANT pg_signal_backend TO parikshaa_owner" \
+            -c "CREATE ROLE parikshaa_backup LOGIN PASSWORD 'backup-e2e' BYPASSRLS" \
+            -c "GRANT pg_read_all_data TO parikshaa_backup" \
             -c "CREATE DATABASE parikshaa_e2e OWNER parikshaa_owner"
 
       - run: npm run build && npm run build:clients && npm run build -w @parikshaa/e2e
@@ -111,7 +114,7 @@ jobs:
 
       - name: Restore drill
         run: |
-          SOURCE_URL=postgres://parikshaa_owner:owner-e2e@localhost:5432/parikshaa_e2e \
+          SOURCE_URL=postgres://parikshaa_backup:backup-e2e@localhost:5432/parikshaa_e2e \
           ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
           ./scripts/restore-drill.sh
 

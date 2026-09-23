@@ -509,9 +509,11 @@ export class ExamService {
     candidateId: CandidateId,
     attemptId: AttemptId,
     closesAt: Timestamp | null,
+    /** The exam, if the caller has already loaded it. */
+    loaded?: Exam,
   ): Promise<void> {
     const scope = staffScope(orgId);
-    const exam = await this.#store.loadExam(scope, examId);
+    const exam = loaded ?? (await this.#store.loadExam(scope, examId));
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
 
     // Idempotent, so that a redemption can finish a start an earlier one began

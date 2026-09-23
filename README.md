@@ -73,7 +73,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 500 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 507 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -141,6 +141,10 @@ throttle sees each client's own address rather than the proxy's.
 
 Migrations are a separate step and never run on boot: several instances
 starting at once would race, and a schema change should be deliberate.
+
+Sizing, logs, rate limits, backups and the restore drill are in
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md), with the browser, chaos and load
+suites in `packages/e2e` that run against a real Postgres.
 
 ## Checking a record
 
