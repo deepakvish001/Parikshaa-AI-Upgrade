@@ -5,11 +5,15 @@ import { connect, IdentityStore, migrate } from "@parikshaa/store";
  * The harnesses' database: a real Postgres, migrated as the schema owner and
  * served to the application as the runtime role, as in production.
  *
- *   E2E_OWNER_URL  postgres://parikshaa_owner:…@localhost/parikshaa_e2e
- *   E2E_APP_URL    postgres://parikshaa_app:…@localhost/parikshaa_e2e
+ *   E2E_OWNER_URL  default postgres://parikshaa_owner@localhost:5432/parikshaa_e2e
+ *   E2E_APP_URL    default postgres://parikshaa_app@localhost:5432/parikshaa_e2e
+ *
+ * The defaults carry no password: a throwaway test cluster uses `trust`
+ * authentication on localhost (as CI does), or PGPASSWORD / ~/.pgpass. No
+ * credential lives in the repository, even a test one.
  */
-export const ownerUrl = process.env["E2E_OWNER_URL"] ?? "postgres://parikshaa_owner:owner-e2e@localhost:5432/parikshaa_e2e";
-export const appUrl = process.env["E2E_APP_URL"] ?? "postgres://parikshaa_app:app-e2e@localhost:5432/parikshaa_e2e";
+export const ownerUrl = process.env["E2E_OWNER_URL"] ?? "postgres://parikshaa_owner@localhost:5432/parikshaa_e2e";
+export const appUrl = process.env["E2E_APP_URL"] ?? "postgres://parikshaa_app@localhost:5432/parikshaa_e2e";
 
 export const ORG = "e2e";
 export const OWNER_EMAIL = "owner@e2e.test";

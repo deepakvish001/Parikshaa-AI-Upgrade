@@ -174,13 +174,15 @@ role requirement above was found.
   (candidates, minutes, model ms, seconds between drafts, seconds over which
   everyone starts).
 
-They need Postgres 16 with three login roles and a database:
+They need a throwaway Postgres 16 — `trust` authentication on localhost, as
+CI uses, or passwords supplied through `PGPASSWORD` or `~/.pgpass` — with
+three login roles and a database:
 
 ```sql
-CREATE ROLE parikshaa_owner LOGIN PASSWORD 'owner-e2e';
-CREATE ROLE parikshaa_app LOGIN PASSWORD 'app-e2e';
+CREATE ROLE parikshaa_owner LOGIN;
+CREATE ROLE parikshaa_app LOGIN;
 GRANT pg_signal_backend TO parikshaa_owner;  -- the chaos run terminates connections on purpose
-CREATE ROLE parikshaa_backup LOGIN PASSWORD 'backup-e2e' BYPASSRLS;  -- for the restore drill
+CREATE ROLE parikshaa_backup LOGIN BYPASSRLS;  -- for the restore drill
 GRANT pg_read_all_data TO parikshaa_backup;
 CREATE DATABASE parikshaa_e2e OWNER parikshaa_owner;
 ```

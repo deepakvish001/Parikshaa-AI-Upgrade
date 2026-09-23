@@ -69,12 +69,11 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_PASSWORD: postgres
+          # A throwaway database on the runner: no password to keep, and none in the repository.
+          POSTGRES_HOST_AUTH_METHOD: trust
         ports: ["5432:5432"]
         options: >-
           --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
-    env:
-      PGPASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
 
@@ -91,10 +90,10 @@ jobs:
       - name: Database and roles
         run: |
           psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
-            -c "CREATE ROLE parikshaa_owner LOGIN PASSWORD 'owner-e2e'" \
-            -c "CREATE ROLE parikshaa_app LOGIN PASSWORD 'app-e2e'" \
+            -c "CREATE ROLE parikshaa_owner LOGIN" \
+            -c "CREATE ROLE parikshaa_app LOGIN" \
             -c "GRANT pg_signal_backend TO parikshaa_owner" \
-            -c "CREATE ROLE parikshaa_backup LOGIN PASSWORD 'backup-e2e' BYPASSRLS" \
+            -c "CREATE ROLE parikshaa_backup LOGIN BYPASSRLS" \
             -c "GRANT pg_read_all_data TO parikshaa_backup" \
             -c "CREATE DATABASE parikshaa_e2e OWNER parikshaa_owner"
 
@@ -114,8 +113,8 @@ jobs:
 
       - name: Restore drill
         run: |
-          SOURCE_URL=postgres://parikshaa_backup:backup-e2e@localhost:5432/parikshaa_e2e \
-          ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
+          SOURCE_URL=postgres://parikshaa_backup@localhost:5432/parikshaa_e2e \
+          ADMIN_URL=postgres://postgres@localhost:5432/postgres \
           ./scripts/restore-drill.sh
 
       - uses: actions/upload-artifact@v4
