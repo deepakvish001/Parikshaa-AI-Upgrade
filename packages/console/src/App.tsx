@@ -7,6 +7,9 @@ import { BankPanel } from "./components/Bank.tsx";
 import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { IntegrationsPanel } from "./components/Integrations.tsx";
+import { PrivacyPanel } from "./components/Privacy.tsx";
+import { BillingPanel } from "./components/Billing.tsx";
+import { LivePanel } from "./components/Live.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
@@ -20,12 +23,15 @@ type View =
   | { readonly name: "bank" }
   | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "results"; readonly examId: string }
+  | { readonly name: "live"; readonly examId: string }
   | { readonly name: "report"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "staff" }
   | { readonly name: "keys" }
   | { readonly name: "usage" }
   | { readonly name: "audit" }
   | { readonly name: "integrations" }
+  | { readonly name: "privacy" }
+  | { readonly name: "billing" }
   | { readonly name: "account" };
 
 /**
@@ -253,6 +259,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
     { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
     { view: { name: "integrations" }, label: "Integrations", permission: "org:manage" },
+    { view: { name: "privacy" }, label: "Privacy", permission: "org:manage" },
+    { view: { name: "billing" }, label: "Billing", permission: "org:manage" },
   ];
 
   return (
@@ -296,6 +304,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           view.name === "review" ||
           view.name === "candidates" ||
           view.name === "results" ||
+          view.name === "live" ||
           view.name === "report") &&
         view.examId !== "" ? (
           <>
@@ -358,6 +367,9 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           <button type="button" className="secondary" onClick={() => setView({ name: "candidates", examId: view.examId })}>
             Schedule and invite candidates
           </button>
+          <button type="button" className="secondary" onClick={() => setView({ name: "live", examId: view.examId })}>
+            Live sitting
+          </button>
           {can("attempt:review") ? (
             <button type="button" className="secondary" onClick={() => setView({ name: "results", examId: view.examId })}>
               Results and exports
@@ -377,7 +389,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
         />
       ) : null}
-      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} /> : null}
+      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} /> : null}
+      {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
 
       {view.name === "attempts" && attempts.data !== undefined ? (
         <AttemptList
@@ -420,6 +433,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
       {view.name === "audit" ? <AuditPanel client={client} /> : null}
       {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
+      {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
+      {view.name === "billing" ? <BillingPanel client={client} /> : null}
       {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
     </main>
   );

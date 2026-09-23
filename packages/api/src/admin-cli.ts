@@ -1,7 +1,6 @@
 import { parseArgs } from "node:util";
-import postgres from "postgres";
 import { orgId } from "@parikshaa/core";
-import { IdentityStore, postgresJsExecutor } from "@parikshaa/store";
+import { connect, IdentityStore } from "@parikshaa/store";
 import { hashPassword } from "./staff-auth.js";
 
 /**
@@ -43,9 +42,9 @@ if (!/^[a-z0-9][a-z0-9-]{1,62}$/.test(org)) {
   fail("--org must be lowercase letters, digits and hyphens, 2-63 characters");
 }
 
-const sql = postgres(url, { max: 1 });
+const sql = connect(url, { max: 1 });
 try {
-  const identity = new IdentityStore(postgresJsExecutor(sql));
+  const identity = new IdentityStore(sql);
   const id = orgId(org);
 
   if ((await identity.getOrganisation(id)) === null) {

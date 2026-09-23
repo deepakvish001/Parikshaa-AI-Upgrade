@@ -14,6 +14,7 @@ import { importCandidates, type CandidateProblem } from "./candidate-import.js";
 import type { InviteCodes } from "./invite-codes.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor, type Permission } from "./staff-auth.js";
+import { ConsentRequired, type Notice } from "./privacy.js";
 
 /**
  * Inviting a cohort, scheduling it, and letting each candidate in (ROADMAP §5).
@@ -67,6 +68,11 @@ export interface InvitationServiceOptions {
   readonly reminderLeadMs?: number;
   readonly now?: () => number;
   readonly newId?: () => string;
+  /**
+   * The privacy notice an organisation's candidates must agree to before
+   * their attempt starts (ROADMAP §11), or null if it has not set one.
+   */
+  readonly notice?: (orgId: OrgId) => Promise<Notice | null>;
 }
 
 export interface ImportPreview {
@@ -78,7 +84,8 @@ export interface ImportPreview {
 }
 
 export class InvitationService {
-  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId">>;
+  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice">>;
+  readonly #notice: (orgId: OrgId) => Promise<Notice | null>;
   readonly #lead: number;
   readonly #now: () => number;
   readonly #newId: () => string;
@@ -88,6 +95,7 @@ export class InvitationService {
     this.#lead = options.reminderLeadMs ?? 60 * 60 * 1000;
     this.#now = options.now ?? (() => Date.now());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
+    this.#notice = options.notice ?? (async () => null);
   }
 
   #require(actor: Actor, permission: Permission) {
@@ -188,7 +196,7 @@ export class InvitationService {
     const closesAt = draft.closesAt ?? window?.closesAt ?? new Date(this.#now() + 7 * 24 * 3600 * 1000).toISOString();
     const full: InvitationDraft = { ...draft, opensAt, closesAt, hardClose: window?.hardClose ?? true };
     const [invitation] = await this.#o.invitations.invite(scope, examId, [full], (id) => this.#messages(full, channels)(id));
-    await this.#audit(actor, "invitations.created", invitation!.id, { examId, candidateRef: draft.candidateRef });
+    await this.#audit(actor, "invitations.created", invitation!.id, { examId });
     return invitation!;
   }
 
@@ -237,8 +245,16 @@ export class InvitationService {
    * The first opening inside the window starts the attempt, and with it the
    * clock. Every later opening — another device, a reload after a crash —
    * returns a fresh token for the same attempt, until the window closes.
+   *
+   * Where the organisation has a privacy notice, the first opening must carry
+   * agreement to its current version; without it, {@link ConsentRequired}
+   * hands back the notice to show. Consent comes before the clock, so reading
+   * the notice costs the candidate none of their time.
    */
-  async redeem(code: string): Promise<{ token: string; attemptId: string; resumed: boolean }> {
+  async redeem(
+    code: string,
+    consent?: { readonly noticeVersion: number },
+  ): Promise<{ token: string; attemptId: string; resumed: boolean }> {
     const named = this.#o.codes.verify(code);
     if (named === null) throw new InvalidInvitation();
     const orgId = toOrgId(named.orgId);
@@ -256,8 +272,15 @@ export class InvitationService {
     const exam = await this.#o.store.loadExam(scope, toExamId(invitation.examId));
     if (exam === null) throw new InvalidInvitation();
 
+    const starting = invitation.attemptId === null || !(await this.#o.store.hasStarted(scope, invitation.attemptId as AttemptId));
+    const notice = starting ? await this.#notice(orgId) : null;
+    if (notice !== null && consent?.noticeVersion !== notice.version) throw new ConsentRequired(notice);
+
     const claim = await this.#o.invitations.claimAttempt(scope, invitation.id, this.#newId());
-    if (claim.claimed) {
+    // Not only the first redemption starts the attempt: if the first died
+    // between claiming the id and starting it, a later one finishes the job
+    // instead of leaving the candidate locked out. Starting is idempotent.
+    if (claim.claimed || !(await this.#o.store.hasStarted(scope, claim.attemptId as AttemptId))) {
       await this.#o.exams.startInvited(
         orgId,
         invitation.id,
@@ -265,6 +288,8 @@ export class InvitationService {
         candidateId(invitation.candidateRef),
         claim.attemptId as AttemptId,
         invitation.hardClose ? closes : null,
+        exam,
+        notice === null ? undefined : { noticeVersion: notice.version, noticeHash: notice.hash },
       );
     }
 

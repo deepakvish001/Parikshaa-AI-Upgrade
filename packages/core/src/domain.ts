@@ -41,6 +41,24 @@ export interface RubricCriterion {
   readonly weight: number;
 }
 
+/**
+ * Languages a question can be translated into (ROADMAP §9): Hindi, then the
+ * scheduled languages a hiring drive most often needs. English is the
+ * original, `stem` and `options` themselves.
+ */
+export const CONTENT_LOCALES = ["hi", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa", "or"] as const;
+export type ContentLocale = (typeof CONTENT_LOCALES)[number];
+
+/**
+ * A question in another language. Only what a candidate reads: an mcq's
+ * options in the same order as the original, since the answer is recorded as
+ * the option's position and so means the same in every language.
+ */
+export interface QuestionTranslation {
+  readonly stem: string;
+  readonly options?: readonly string[];
+}
+
 interface QuestionBase {
   readonly id: QuestionId;
   readonly kind: QuestionKind;
@@ -48,6 +66,8 @@ interface QuestionBase {
   readonly maxScore: number;
   /** Criteria a grader (human or model) must justify itself against. */
   readonly rubric: readonly RubricCriterion[];
+  /** The question in other languages, by locale. The grader always reads the original. */
+  readonly translations?: Readonly<Partial<Record<ContentLocale, QuestionTranslation>>>;
 }
 
 export interface McqQuestion extends QuestionBase {
@@ -273,6 +293,47 @@ export type ExamEvent =
       readonly extraMs: number;
       readonly reason: string;
       readonly decidedBy: StaffAttribution;
+    }
+  | {
+      /**
+       * A submitted attempt opened again by a person, with a reason and more
+       * time: the machine crashed and submitted, the candidate pressed submit
+       * by mistake, the power went. Never once graded or set aside.
+       *
+       * `extraMs` is added to the deadline like an extension, and is enough to
+       * cover the time since the attempt closed plus what was granted, so the
+       * record shows exactly how long the candidate was given.
+       */
+      readonly type: "attempt_reopened";
+      readonly attemptId: AttemptId;
+      readonly extraMs: number;
+      readonly reason: string;
+      readonly decidedBy: StaffAttribution;
+    }
+  | {
+      /**
+       * The candidate read the organisation's privacy notice and agreed to it
+       * before their clock started (DPDP Act, s.6). `noticeHash` is the SHA-256
+       * of the notice exactly as shown, so what they agreed to can be proved
+       * later even after the notice has changed.
+       */
+      readonly type: "consent_given";
+      readonly attemptId: AttemptId;
+      readonly noticeVersion: number;
+      readonly noticeHash: string;
+    }
+  | {
+      /**
+       * The attempt's personal data was erased: its data key destroyed, so the
+       * sealed answers, replies and identity in this chain can no longer be
+       * read. The chain itself — and the scores — stay, and still verify.
+       * `request` is the candidate asking; `retention` is the organisation's
+       * retention period running out.
+       */
+      readonly type: "data_erased";
+      readonly attemptId: AttemptId;
+      readonly reason: "request" | "retention";
+      readonly decidedBy?: StaffAttribution;
     };
 
 export type ExamEventType = ExamEvent["type"];

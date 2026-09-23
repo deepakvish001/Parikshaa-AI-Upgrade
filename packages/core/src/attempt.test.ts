@@ -272,4 +272,62 @@ describe("foldAttempt", () => {
       expect(result).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
     });
   });
+
+  describe("reopening", () => {
+    const reopened = (minutes: number): ExamEvent => ({
+      type: "attempt_reopened",
+      attemptId: A,
+      extraMs: minutes * 60_000,
+      reason: "The laptop crashed and submitted on its own.",
+      decidedBy: { userId: "u1", name: "Invigilator" },
+    });
+    const graded: ExamEvent = { type: "attempt_graded", attemptId: A, total: 3 };
+
+    it("opens a submitted attempt again, with the time granted, and takes answers again", () => {
+      const projection = project(chain(started, answered(Q1, "1"), submitted, reopened(20), answered(Q1, "2"), submitted));
+      expect(projection.attempt.state).toBe("submitted");
+      expect(projection.extraTimeMs).toBe(20 * 60_000);
+      expect(projection.attempt.responses).toEqual([expect.objectContaining({ questionId: Q1, answer: "2" })]);
+    });
+
+    it("forgets scores from a grading that had begun on the old submission", () => {
+      const scored: ExamEvent = { type: "question_scored", attemptId: A, questionId: Q1, score: 1 };
+      expect(project(chain(started, answered(), submitted, scored, reopened(5))).scores.size).toBe(0);
+    });
+
+    it("never reopens an attempt that is open, graded or set aside", () => {
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Sat by someone else, it turned out." };
+      expect(foldAttempt(chain(started, reopened(5)))).toMatchObject({ ok: false, reason: "not_submitted", seq: 1 });
+      expect(foldAttempt(chain(started, submitted, graded, reopened(5)))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
+      expect(foldAttempt(chain(started, submitted, voided, reopened(5)))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
+    });
+  });
+
+  describe("consent and erasure (ROADMAP §11)", () => {
+    const consent: ExamEvent = { type: "consent_given", attemptId: A, noticeVersion: 2, noticeHash: "ab".repeat(32) };
+    const erased: ExamEvent = { type: "data_erased", attemptId: A, reason: "request" };
+    const graded: ExamEvent = { type: "attempt_graded", attemptId: A, total: 3 };
+
+    it("records the notice agreed to, before anything the candidate does", () => {
+      expect(project(chain(started, consent, answered())).consent).toEqual({ noticeVersion: 2, noticeHash: "ab".repeat(32) });
+      expect(project(chain(started)).consent).toBeNull();
+      expect(foldAttempt(chain(started, answered(), consent))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+      expect(foldAttempt(chain(started, consent, consent))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+    });
+
+    it("erases a closed attempt — graded or set aside too — and keeps its scores", () => {
+      const projection = project(chain(started, answered(), submitted, graded, erased));
+      expect(projection.erasedAt).not.toBeNull();
+      expect(projection.total).toBe(3);
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Sat by someone else, it turned out." };
+      expect(project(chain(started, submitted, voided, erased)).erasedAt).not.toBeNull();
+    });
+
+    it("never erases an open attempt, and nothing but a void follows erasure", () => {
+      expect(foldAttempt(chain(started, erased))).toMatchObject({ ok: false, reason: "not_submitted", seq: 1 });
+      expect(foldAttempt(chain(started, submitted, erased, graded))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Erased before it could be graded." };
+      expect(project(chain(started, submitted, erased, voided)).attempt.state).toBe("void");
+    });
+  });
 });

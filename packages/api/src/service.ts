@@ -70,6 +70,8 @@ export class AttemptError extends Error {
       | "expired"
       | "reason_required"
       | "invalid_extension"
+      | "invalid_privacy"
+      | "invalid_billing"
       | "not_code"
       | "language_not_offered"
       | "too_many_runs",
@@ -118,13 +120,27 @@ export interface ServiceOptions {
   readonly newId?: () => string;
   /** Runs candidate code. Without one, code questions can be answered but not run or tested. */
   readonly runner?: CodeRunner;
+  /**
+   * Meters attempts as they start (ROADMAP §12): spends a prepaid credit, or
+   * refuses the start by throwing. Without one, nothing is metered.
+   */
+  readonly meter?: Meter;
+}
+
+/** What starting an attempt costs. `consume` is idempotent per attempt; `refund` undoes it for a start that failed. */
+export interface Meter {
+  consume(orgId: OrgId, attemptId: AttemptId): Promise<void>;
+  refund(orgId: OrgId, attemptId: AttemptId): Promise<void>;
 }
 
 /** Most times a candidate may press Run on one question in one attempt. */
 export const MAX_RUNS_PER_QUESTION = 100;
 
 interface AttemptContext {
+  /** Personal fields opened (or `[erased]`): what the application reads. */
   readonly entries: readonly LedgerEntry[];
+  /** The chain exactly as hashed: what a receipt carries and a verifier checks. */
+  readonly record: readonly LedgerEntry[];
   readonly exam: Exam;
   readonly projection: AttemptProjection;
 }
@@ -143,7 +159,10 @@ export class ExamService {
    */
   readonly #runs = new Map<string, number>();
 
+  readonly #meter: Meter | null;
+
   constructor(options: ServiceOptions) {
+    this.#meter = options.meter ?? null;
     this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
@@ -260,14 +279,14 @@ export class ExamService {
    * defeating it.
    */
   async candidateLedger(access: CandidateAccess): Promise<CandidateLedger> {
-    const { entries, projection } = await this.#context(candidateOf(access), access.attemptId);
+    const { record, projection } = await this.#context(candidateOf(access), access.attemptId);
     const sealed = projection.attempt.state !== "in_progress";
-    const head = entries.at(-1)?.hash ?? null;
+    const head = record.at(-1)?.hash ?? null;
 
     if (!sealed) {
-      return { head, length: entries.length, sealed: false, entries: null };
+      return { head, length: record.length, sealed: false, entries: null };
     }
-    return { head, length: entries.length, sealed: true, entries };
+    return { head, length: record.length, sealed: true, entries: record };
   }
 
   // --- staff: exams ---------------------------------------------------------
@@ -323,7 +342,7 @@ export class ExamService {
   // --- staff: attempts ------------------------------------------------------
 
   async ledger(actor: Actor, id: AttemptId): Promise<readonly LedgerEntry[]> {
-    return (await this.#context(this.#require(actor, "attempt:review"), id)).entries;
+    return (await this.#context(this.#require(actor, "attempt:review"), id)).record;
   }
 
   /** Fold the attempt for review. */
@@ -333,7 +352,7 @@ export class ExamService {
 
   /** Load, find the exam, and fold — or fail loudly if the chain does not make sense. */
   async #context(scope: Scope, id: AttemptId): Promise<AttemptContext> {
-    const entries = await this.#store.load(scope, id);
+    const { opened: entries, record } = await this.#store.loadBoth(scope, id);
     if (entries.length === 0) {
       throw new AttemptError("not_found", `No ledger for attempt ${id}`);
     }
@@ -357,7 +376,7 @@ export class ExamService {
         `Attempt ${id} does not fold: ${result.reason} at seq ${result.seq}`,
       );
     }
-    return { entries, exam, projection: result.projection };
+    return { entries, record, exam, projection: result.projection };
   }
 
   /**
@@ -436,6 +455,22 @@ export class ExamService {
   }
 
   /**
+   * Close an attempt whose time has run out and that nothing has written to
+   * since — abandoned — committing what was saved in time, as the next write
+   * would have. For the retention sweep, which cannot erase an open attempt.
+   * Returns whether it is closed now.
+   */
+  async closeIfExpired(orgId: OrgId, id: AttemptId): Promise<boolean> {
+    const scope = staffScope(orgId);
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") return true;
+    const deadline = deadlineOf(context.projection, context.exam);
+    if (this.#now() <= deadline) return false;
+    await this.#close(scope, id, context, deadline);
+    return true;
+  }
+
+  /**
    * Commit outstanding drafts, then submit.
    *
    * A draft is committed when it says something the ledger does not, was
@@ -482,15 +517,21 @@ export class ExamService {
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
 
     const id = this.#newId() as AttemptId;
-    await this.#store.createAttempt(scope, id, examId, candidateId);
-    await this.#store.append(scope, id, {
-      type: "attempt_started",
-      attemptId: id,
-      examId,
-      candidateId,
-      questionIds: resolvePaper(exam, id),
-    });
-    await this.#audit(actor, "attempt.started", id, { examId, candidateId });
+    await this.#meter?.consume(actor.orgId, id);
+    try {
+      await this.#store.createAttempt(scope, id, examId, candidateId);
+      await this.#store.append(scope, id, {
+        type: "attempt_started",
+        attemptId: id,
+        examId,
+        candidateId,
+        questionIds: resolvePaper(exam, id),
+      });
+    } catch (error) {
+      await this.#meter?.refund(actor.orgId, id);
+      throw error;
+    }
+    await this.#audit(actor, "attempt.started", id, { examId });
     return id;
   }
 
@@ -509,26 +550,60 @@ export class ExamService {
     candidateId: CandidateId,
     attemptId: AttemptId,
     closesAt: Timestamp | null,
+    /** The exam, if the caller has already loaded it. */
+    loaded?: Exam,
+    /** The privacy notice the candidate agreed to before starting, if they were asked. */
+    consent?: { readonly noticeVersion: number; readonly noticeHash: string },
   ): Promise<void> {
     const scope = staffScope(orgId);
-    const exam = await this.#store.loadExam(scope, examId);
+    const exam = loaded ?? (await this.#store.loadExam(scope, examId));
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
 
-    await this.#store.createAttempt(scope, attemptId, examId, candidateId);
-    await this.#store.append(scope, attemptId, {
-      type: "attempt_started",
-      attemptId,
-      examId,
-      candidateId,
-      questionIds: resolvePaper(exam, attemptId),
-      ...(closesAt === null ? {} : { closesAt }),
-    });
+    // Metered first, and idempotently: a start that is finished by a later
+    // redemption spends the credit the first one spent, and no more.
+    await this.#meter?.consume(orgId, attemptId);
+    // Idempotent, so that a redemption can finish a start an earlier one began
+    // and did not complete: the invitation already names this attempt.
+    await this.#store.ensureAttempt(scope, attemptId, examId, candidateId);
+    let started = true;
+    try {
+      await this.#store.append(
+        scope,
+        attemptId,
+        {
+          type: "attempt_started",
+          attemptId,
+          examId,
+          candidateId,
+          questionIds: resolvePaper(exam, attemptId),
+          ...(closesAt === null ? {} : { closesAt }),
+        },
+        { guard: (events) => (events.length === 0 ? null : "already started") },
+      );
+    } catch (error) {
+      if (!(error instanceof AppendRefused)) throw error;
+      started = false;
+    }
+    if (consent !== undefined) {
+      // Straight after the start, before anything the candidate does; a start
+      // that died before this is finished by the next opening, which asks again.
+      await this.#store
+        .append(scope, attemptId, { type: "consent_given", attemptId, ...consent }, {
+          guard: (events) => (events.length === 1 ? null : "consent is recorded first or not at all"),
+        })
+        .catch((error: unknown) => {
+          if (!(error instanceof AppendRefused)) throw error;
+        });
+    }
+    if (!started) return;
+    // The audit log is append-only and outlives an erasure, so it names the
+    // invitation and the attempt, never the candidate.
     await this.#store.appendAudit(scope, {
       actorKind: "system",
       actorId: null,
       action: "attempt.started",
       target: attemptId,
-      detail: { examId, candidateId, invitationId },
+      detail: { examId, invitationId },
     });
   }
 
@@ -957,6 +1032,51 @@ export class ExamService {
     return deadlineOf(projection, exam) + extraMs;
   }
 
+  /**
+   * Open a submitted attempt again (ROADMAP §8): the laptop crashed and
+   * submitted, the power went, submit was pressed by mistake.
+   *
+   * A person's decision, with a reason, in the ledger — like voiding and
+   * extending, and for the same reason: it is exactly what an appeal asks
+   * about. The candidate gets `minutes` from now; the event records the whole
+   * addition to the deadline, including the time since it passed. Never after
+   * grading or setting aside: a mark or a decision already made is not undone
+   * by giving the paper back.
+   */
+  async reopen(actor: Actor, id: AttemptId, minutes: number, reason: string): Promise<Timestamp> {
+    const scope = this.#require(actor, "attempt:extend");
+    if (actor.kind !== "user") throw new Forbidden("attempt:extend");
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_VOID_REASON) {
+      throw new AttemptError("reason_required", `Reopening needs a reason of at least ${MIN_VOID_REASON} characters; it is recorded in the attempt's ledger`);
+    }
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_EXTENSION_MINUTES) {
+      throw new AttemptError("invalid_extension", `Reopen for 1 to ${MAX_EXTENSION_MINUTES} whole minutes`);
+    }
+
+    const { projection, exam } = await this.#context(scope, id);
+    if (projection.attempt.state !== "submitted") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}; only a submitted attempt, not yet graded, can be reopened`);
+    }
+    if (projection.erasedAt !== null) throw new AttemptError("invalid_state", `Attempt ${id}'s personal data has been erased`);
+    const deadline = deadlineOf(projection, exam);
+    const until = this.#now() + minutes * 60_000;
+    const extraMs = Math.max(0, until - deadline);
+    try {
+      await this.#store.append(
+        scope,
+        id,
+        { type: "attempt_reopened", attemptId: id, extraMs, reason: trimmed, decidedBy: { userId: actor.id, name: actor.name } },
+        { guard: whileSubmitted },
+      );
+    } catch (error) {
+      if (error instanceof AppendRefused) throw new AttemptError("invalid_state", `Attempt ${id} changed while this was being recorded`);
+      throw error;
+    }
+    await this.#audit(actor, "attempt.reopened", id, { minutes, reason: trimmed });
+    return deadline + extraMs;
+  }
+
   // --- grading --------------------------------------------------------------
 
   /**
@@ -974,6 +1094,9 @@ export class ExamService {
     const { projection, exam } = await this.#context(scope, id);
     if (projection.attempt.state !== "submitted") {
       throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}`);
+    }
+    if (projection.erasedAt !== null) {
+      throw new AttemptError("invalid_state", `Attempt ${id}'s personal data was erased before grading: it can only be set aside`);
     }
     const questions = new Map(exam.questions.map((q) => [q.id, q]));
 
@@ -1060,9 +1183,25 @@ export class ExamService {
 
 const candidateOf = (access: CandidateAccess): Scope => candidateScope(access.orgId, access.attemptId);
 
-/** An append guard: refuse once the attempt has been submitted or set aside. */
-const whileOpen = (events: readonly ExamEvent[]): string | null =>
-  events.some((e) => e.type === "attempt_submitted" || e.type === "attempt_voided") ? "The attempt has closed" : null;
+/** Where the latest event that opened or closed the attempt left it. */
+const isOpen = (events: readonly ExamEvent[]): boolean => {
+  let open = true;
+  for (const e of events) {
+    if (e.type === "attempt_submitted" || e.type === "attempt_graded" || e.type === "attempt_voided") open = false;
+    else if (e.type === "attempt_reopened") open = true;
+  }
+  return open;
+};
+
+/** An append guard: refuse once the attempt has been submitted or set aside — unless it was reopened since. */
+const whileOpen = (events: readonly ExamEvent[]): string | null => (isOpen(events) ? null : "The attempt has closed");
+
+/** An append guard for reopening: only a submitted attempt, not graded, not set aside, not already open. */
+const whileSubmitted = (events: readonly ExamEvent[]): string | null => {
+  if (events.some((e) => e.type === "attempt_graded" || e.type === "attempt_voided")) return "The attempt is graded or set aside";
+  if (events.some((e) => e.type === "data_erased")) return "The attempt's personal data has been erased";
+  return isOpen(events) ? "The attempt is already open" : null;
+};
 
 /** The first instant of the calendar month (UTC) containing `now`. */
 export function monthStart(now: Timestamp): Date {

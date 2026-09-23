@@ -1,6 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { z } from "zod";
+import fastifyCompress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
@@ -22,7 +25,15 @@ import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
+import type { InvigilationService } from "./invigilation.js";
+import { registerInvigilationRoutes } from "./invigilation-routes.js";
+import type { PrivacyService } from "./privacy.js";
+import { BillingNotConfigured, OutOfCredits, type BillingService } from "./billing.js";
+import { registerBillingRoutes } from "./billing-routes.js";
+import { GatewayUnavailable } from "./razorpay.js";
+import { registerPrivacyRoutes } from "./privacy-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
+import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
 import { LoginThrottle, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
@@ -39,6 +50,9 @@ export interface ServerOptions {
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
   readonly greenhouse: GreenhouseService;
+  readonly invigilation: InvigilationService;
+  readonly privacy: PrivacyService;
+  readonly billing: BillingService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -52,6 +66,22 @@ export interface ServerOptions {
    * across origins to get wrong.
    */
   readonly clients?: { readonly web: string; readonly console: string };
+  /**
+   * Structured request logs. Off unless given. Each line names the route
+   * pattern, status, duration and organisation — never a body, a query string,
+   * a header or an error message, since any of those can carry an answer, a
+   * token or someone's email address (see `observability.test.ts`).
+   */
+  readonly log?: { readonly level?: string; readonly stream?: { write(line: string): void } };
+  /** Per-organisation and per-attempt request rates; `false` turns limiting off. */
+  readonly rateLimits?: { readonly organisation: RateLimit; readonly attempt: RateLimit } | false;
+}
+
+declare module "fastify" {
+  interface FastifyRequest {
+    /** The organisation a request acted for, once authenticated: for the log line. */
+    orgId?: string;
+  }
 }
 
 const INSTITUTION = ["Institution"];
@@ -84,7 +114,21 @@ export const errors = {
  */
 export function buildServer(options: ServerOptions): FastifyInstance {
   const app = Fastify({
-    logger: false,
+    logger:
+      options.log === undefined
+        ? false
+        : {
+            level: options.log.level ?? "info",
+            ...(options.log.stream === undefined ? {} : { stream: options.log.stream }),
+            // Belt and braces: nothing below logs these, and if a future line does, they are masked.
+            redact: {
+              paths: ["req.headers", "req.body", "req.query", "*.authorization", "*.password", "*.token", "*.answer", "*.reply", "*.email"],
+              censor: "[redacted]",
+            },
+          },
+    // One line per request, written below, instead of Fastify's own pair, which include the URL.
+    logController: new LogController({ disableRequestLogging: true }),
+    genReqId: () => randomUUID(),
     // Both clients call the API under `/api`, which the Vite dev servers strip
     // before proxying. Served from this process there is no proxy, so the
     // prefix is stripped here instead; without it every client request in a
@@ -106,6 +150,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
+  // Compressed when the client accepts it (ROADMAP §9): on a 2G connection
+  // the exam, the state polls and the client bundles are most of the wait.
+  // Small replies are left alone; the probe stream writes to the raw socket
+  // and is never buffered by this.
+  void app.register(fastifyCompress, { global: true, threshold: 1024, encodings: ["br", "gzip"] });
+
   void app.register(fastifySwagger, {
     openapi: {
       openapi: "3.1.0",
@@ -123,6 +173,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
+        { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
+        { name: "Privacy", description: "The DPDP Act: the notice candidates agree to, retention, and erasure." },
+        { name: "Billing", description: "Prepaid attempt credits, Razorpay payments and GST tax invoices." },
         {
           name: "Greenhouse",
           description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
@@ -141,10 +194,48 @@ export function buildServer(options: ServerOptions): FastifyInstance {
             scheme: "basic",
             description: "The organisation's Greenhouse key (`ghk.…`) as the username, with no password.",
           },
+          razorpaySignature: {
+            type: "apiKey",
+            in: "header",
+            name: "X-Razorpay-Signature",
+            description: "HMAC-SHA256 of the raw body with the webhook secret, as Razorpay sends it.",
+          },
         },
       },
     },
     transform: jsonSchemaTransform,
+  });
+
+  const limits = options.rateLimits ?? DEFAULT_LIMITS;
+  const limiters =
+    limits === false ? null : { organisation: new RateLimiter(limits.organisation), attempt: new RateLimiter(limits.attempt) };
+
+  /** Refuse with 429 when `key` has spent its bucket. */
+  const limited = async (reply: FastifyReply, kind: "organisation" | "attempt", key: string): Promise<boolean> => {
+    const verdict = limiters?.[kind].take(key) ?? { ok: true as const };
+    if (verdict.ok) return false;
+    await reply
+      .code(429)
+      .header("retry-after", String(verdict.retryAfterSeconds))
+      .send({ error: "rate_limited", message: `Too many requests; try again in ${verdict.retryAfterSeconds}s` });
+    return true;
+  };
+
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("x-request-id", request.id);
+  });
+  // The route *pattern*, never the URL: a URL can carry a token or an invitation code.
+  app.addHook("onResponse", async (request, reply) => {
+    request.log.info(
+      {
+        method: request.method,
+        route: request.routeOptions.url ?? "(no route)",
+        status: reply.statusCode,
+        ms: Math.round(reply.elapsedTime),
+        ...(request.orgId === undefined ? {} : { org: request.orgId }),
+      },
+      "request",
+    );
   });
 
   const bearer = (request: FastifyRequest): string | null => {
@@ -171,10 +262,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       await reply.code(401).send({ error: "staff_auth_required" });
       return null;
     }
+    request.orgId = actor.orgId;
     if (permission !== null && !can(actor, permission)) {
       await reply.code(403).send({ error: "forbidden", message: `This account does not have ${permission}` });
       return null;
     }
+    if (await limited(reply, "organisation", actor.orgId)) return null;
     return actor;
   };
 
@@ -187,15 +280,19 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       await reply.code(401).send({ error: "attempt_token_required" });
       return null;
     }
+    let claims: AttemptClaims;
     try {
-      return await tokens.verify(token);
+      claims = await tokens.verify(token);
     } catch {
       await reply.code(401).send({ error: "invalid_attempt_token" });
       return null;
     }
+    request.orgId = claims.orgId;
+    if (await limited(reply, "attempt", claims.attemptId)) return null;
+    return claims;
   };
 
-  app.setErrorHandler(async (error, _request, reply) => {
+  app.setErrorHandler(async (error, request, reply) => {
     if (error instanceof AttemptError) {
       // 410 for an expired attempt: the window is gone, not merely a bad
       // request against the current state.
@@ -204,7 +301,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -216,6 +313,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     if (error instanceof Forbidden) {
       return reply.code(403).send({ error: "forbidden", message: error.message });
+    }
+    if (error instanceof OutOfCredits) {
+      return reply.code(402).send({ error: "out_of_credits", message: error.message });
+    }
+    if (error instanceof BillingNotConfigured) {
+      return reply.code(503).send({ error: "billing_not_configured", message: error.message });
+    }
+    if (error instanceof GatewayUnavailable) {
+      return reply.code(502).send({ error: "payment_gateway_unavailable", message: "Razorpay could not take the order just now. Try again in a moment." });
     }
     if (error instanceof SpendCapReached) {
       return reply.code(402).send({ error: "spend_cap_reached", message: error.message });
@@ -251,6 +357,20 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         .code(status)
         .send({ error: typeof code === "string" ? code : "bad_request", message: (error as Error).message });
     }
+    // The message is left out: a database error quotes the row it tripped on,
+    // which can be a roll number or an email. The type, code and call stack
+    // are enough to find the fault.
+    const failure = error as Error & { code?: unknown };
+    request.log.error(
+      {
+        err: {
+          type: failure.name,
+          ...(typeof failure.code === "string" ? { code: failure.code } : {}),
+          stack: (failure.stack ?? "").split("\n").slice(1, 12).join("\n"),
+        },
+      },
+      "unhandled error",
+    );
     return reply.code(500).send({ error: "internal_error" });
   });
 
@@ -623,7 +743,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
-        return reply.send(await service.heartbeat(claims));
+        const beat = await service.heartbeat(claims);
+        const announcements = (await options.invigilation.forCandidate(claims)).length;
+        return reply.send({ ...beat, announcements });
       },
     );
 
@@ -661,8 +783,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: CANDIDATE,
           summary: "Stream the next micro-viva probe, if one is due",
           description:
-            "text/event-stream. Events: `token` while the probe is written, then `probe` with its id and prompt, or `none` when nothing qualifies — which is the ordinary case.",
+            "text/event-stream. Events: `token` while the probe is written, then `probe` with its id and prompt, or `none` when nothing qualifies — which is the ordinary case. With `stream=0` (low-bandwidth mode), one JSON reply instead: `{ probe: { id, prompt } | null }`.",
           security: [{ attemptToken: [] }],
+          querystring: z.object({ stream: z.enum(["0", "1"]).default("1") }),
           // No response schema: this writes to the raw socket, so the serializer
           // never sees it.
         },
@@ -670,6 +793,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
+
+        // One reply, no stream: a flaky 2G connection holds a short request
+        // better than an open one, and a proxy that buffers streams cannot stall it.
+        if (request.query.stream === "0") {
+          const probe = await service.raiseProbe(claims, {});
+          return reply.send({ probe: probe === null ? null : { id: probe.id, prompt: probe.prompt } });
+        }
 
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",
@@ -779,6 +909,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
+    registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
+    registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
+    registerBillingRoutes(routes, { billing: options.billing, staff });
 
     registerAccountRoutes(routes, {
       service,

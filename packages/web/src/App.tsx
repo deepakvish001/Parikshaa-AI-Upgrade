@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, ParikshaaClient } from "./api.ts";
+import type { CandidateQuestion } from "@parikshaa/core/browser";
+import { ApiError, ParikshaaClient, type Announcement } from "./api.ts";
 import { AnswerInput } from "./components/AnswerInput.tsx";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
+import { LANGUAGE_NAMES, PreferencesBar, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 
 interface OpenProbe {
   readonly id: string;
@@ -18,6 +20,13 @@ interface OpenProbe {
 export const AUTOSAVE_DELAY_MS = 1200;
 /** How often an open page checks in while visible. */
 export const HEARTBEAT_MS = 30_000;
+/**
+ * The same in low-bandwidth mode (ROADMAP §9): fewer, larger saves and fewer
+ * check-ins. Nothing typed is at more risk — it is kept on the device as it
+ * is typed either way.
+ */
+export const LITE_AUTOSAVE_DELAY_MS = 5_000;
+export const LITE_HEARTBEAT_MS = 60_000;
 /** How often unsent drafts are retried while the connection is down. */
 const RETRY_MS = 15_000;
 
@@ -74,7 +83,15 @@ function rememberToken(token: string | null): void {
 /** An invitation code (org.invitation.mac) rather than an attempt token, which is a JWT. */
 const isInviteCode = (value: string) => !value.startsWith("eyJ") && value.split(".").length === 3;
 
-export function App({ client: injected }: { client?: ParikshaaClient } = {}) {
+export function App(props: { client?: ParikshaaClient } = {}) {
+  return (
+    <PreferencesProvider>
+      <Screens {...props} />
+    </PreferencesProvider>
+  );
+}
+
+function Screens({ client: injected }: { client?: ParikshaaClient }) {
   const [invite, setInvite] = useState<string | null>(() =>
     injected === undefined ? takeFromUrl("invite", INVITE_KEY) : null,
   );
@@ -149,6 +166,11 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const restored = useRef(false);
   const online = useOnline();
+  const { t, language, lite } = usePreferences();
+  const heartbeatMs = lite ? LITE_HEARTBEAT_MS : HEARTBEAT_MS;
+  const autosaveMs = lite ? LITE_AUTOSAVE_DELAY_MS : AUTOSAVE_DELAY_MS;
+  // Per question: the candidate asked to read the original rather than the translation.
+  const [original, setOriginal] = useState<ReadonlySet<string>>(new Set());
 
   const state = useQuery({ queryKey: ["state"], queryFn: () => client.state() });
   const ledger = useQuery({
@@ -160,6 +182,19 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const attemptId = state.data?.attemptId ?? null;
   const expiresAt = state.data?.expiresAt ?? 0;
   const inProgress = state.data?.state === "in_progress";
+
+  const announcements = useQuery({ queryKey: ["announcements"], queryFn: () => client.announcements(), enabled: inProgress });
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const announcementCount = useRef(0);
+  announcementCount.current = announcements.data?.length ?? 0;
+
+  // A submitted attempt can be reopened by an invigilator (a crash, a power
+  // cut); look now and then, so the page opens again without a reload.
+  useEffect(() => {
+    if (state.data?.state !== "submitted") return;
+    const id = setInterval(() => void queryClient.invalidateQueries({ queryKey: ["state"] }), heartbeatMs);
+    return () => clearInterval(id);
+  }, [state.data?.state, queryClient, heartbeatMs]);
 
   // Kept in refs so timers and event handlers always see the latest values
   // without being torn down and re-armed on every keystroke.
@@ -258,7 +293,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       setTimeout(() => {
         timers.current.delete(questionId);
         void flush(questionId);
-      }, AUTOSAVE_DELAY_MS),
+      }, autosaveMs),
     );
   };
 
@@ -285,14 +320,17 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         if (now.expiresAt !== known.expiresAt || now.state !== "in_progress") {
           await queryClient.invalidateQueries({ queryKey: ["state"] });
         }
+        if (now.announcements !== announcementCount.current) {
+          await queryClient.invalidateQueries({ queryKey: ["announcements"] });
+        }
       } catch {
         // Offline; the banner says so, and the next beat will try again.
       }
     };
     void beat();
-    const id = setInterval(() => void beat(), HEARTBEAT_MS);
+    const id = setInterval(() => void beat(), heartbeatMs);
     return () => clearInterval(id);
-  }, [client, queryClient, inProgress]);
+  }, [client, queryClient, inProgress, heartbeatMs]);
 
   /**
    * Ask whether a probe is due.
@@ -313,6 +351,12 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       await queryClient.invalidateQueries({ queryKey: ["state"] });
     };
     try {
+      // Low bandwidth: one short request for the whole probe, no stream to hold open.
+      if (lite) {
+        const raised = await client.probeOnce();
+        setProbe(raised === null ? null : { id: raised.id, prompt: raised.prompt, streaming: false });
+        return;
+      }
       await client.streamProbe({
         onToken: (chunk) =>
           setProbe((current) =>
@@ -328,7 +372,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     } finally {
       probeRequested.current = false;
     }
-  }, [client, queryClient]);
+  }, [client, queryClient, lite]);
 
   // Reopen a probe the candidate left unanswered, e.g. after a reload.
   useEffect(() => {
@@ -375,11 +419,11 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     if (expired) onExpired?.();
   }, [expired, onExpired]);
 
-  if (state.isPending) return <main className="page"><p className="notice">Loading your exam…</p></main>;
+  if (state.isPending) return <main className="page"><p className="notice">{t("exam.loading")}</p></main>;
   if (state.error !== null) {
     return (
       <main className="page">
-        <p className="error">Could not load this attempt. The access code may have expired.</p>
+        <p className="error">{t("exam.loadFailed")}</p>
       </main>
     );
   }
@@ -387,6 +431,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const { exam, answers, state: attemptState, voidReason } = state.data;
   const answered = new Map<string, string>(answers.map((a) => [a.questionId, a.answer]));
   const open = attemptState === "in_progress";
+  // The languages this exam's questions can be read in, besides English.
+  const offered = [...new Set(exam.questions.flatMap((q) => Object.keys(q.translations ?? {})))] as Language[];
 
   /**
    * Leaving a question commits it, when the exam allows answers to be revised.
@@ -401,24 +447,24 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
 
   return (
     <main className="page">
+      <PreferencesBar offered={offered} />
       <header className="exam">
         <h1>{exam.title}</h1>
         <p className="sub">
           {open ? (
             <>
-              {answered.size} of {exam.questions.length} answered
+              {t("exam.answeredOf", { answered: answered.size, total: exam.questions.length })}
               <TimeLeft expiresAt={state.data.expiresAt} />
             </>
           ) : (
-            `Attempt ${attemptState.replace(/_/g, " ")}`
+            t(`exam.state.${attemptState}`)
           )}
         </p>
       </header>
 
       {open && !online ? (
         <p className="card offline" role="status">
-          You are offline. Keep going — what you type is kept on this device and sent when the connection
-          returns.
+          {t("exam.offline")}
         </p>
       ) : null}
 
@@ -428,14 +474,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
          * this design objects to. The reason a person recorded is shown as they
          * wrote it, not summarized and not softened.
          */
-        <section className="card" aria-label="This attempt was set aside">
-          <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>This attempt was set aside</h2>
+        <section className="card" aria-label={t("exam.voidTitle")}>
+          <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>{t("exam.voidTitle")}</h2>
           <p style={{ margin: 0 }}>{voidReason}</p>
           <p className="notice" style={{ marginTop: ".75rem" }}>
-            Your record below is unchanged and still checks out. If you disagree with
-            this, it is what you take to your institution.
+            {t("exam.voidNote")}
           </p>
         </section>
+      ) : null}
+
+      {open ? (
+        <Announcements
+          items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
+          onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
+        />
       ) : null}
 
       {probe !== null && open ? (
@@ -450,7 +502,12 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         />
       ) : null}
 
-      {exam.questions.map((question, index) => {
+      {exam.questions.map((original_, index) => {
+        // The question as this candidate reads it: in their language when it
+        // has been translated, unless they asked for the original.
+        const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
+        const question = translation === undefined ? original_ : localised(original_, translation);
+        const shownIn: Language = translation === undefined ? "en" : language;
         const committed = answered.get(question.id) ?? "";
         const value = drafts[question.id] ?? committed;
         const dirty = value !== committed;
@@ -465,11 +522,25 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             }}
           >
             <div className="q-head">
-              <h2>
+              <h2 lang={shownIn}>
                 {index + 1}. {question.stem}
               </h2>
-              <span className="marks">{question.maxScore} marks</span>
+              <span className="marks">{t("exam.marks", { n: question.maxScore })}</span>
             </div>
+            {language !== "en" && original_.translations?.[language] !== undefined ? (
+              <button
+                type="button"
+                className="quiet"
+                onClick={() => {
+                  const next = new Set(original);
+                  if (next.has(original_.id)) next.delete(original_.id);
+                  else next.add(original_.id);
+                  setOriginal(next);
+                }}
+              >
+                {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
+              </button>
+            ) : null}
 
             <AnswerInput
               question={question}
@@ -487,19 +558,19 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
                   disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
                   onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
                 >
-                  {exam.allowRevision ? "Save answer" : "Save final answer"}
+                  {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
                 </button>
                 <span className="saved" aria-live="polite">
                   {!dirty
                     ? savedAt[question.id] !== undefined || committed !== ""
-                      ? "Saved"
+                      ? t("exam.saved")
                       : ""
                     : draftStatus === "offline"
-                      ? "Kept on this device — will send when you're back online"
+                      ? t("exam.keptOffline")
                       : draftStatus === "synced"
-                        ? "Draft saved"
+                        ? t("exam.draftSaved")
                         : draftStatus === "saving"
-                          ? "Saving…"
+                          ? t("exam.saving")
                           : ""}
                 </span>
               </div>
@@ -515,12 +586,12 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             onClick={() => submit.mutate()}
             disabled={submit.isPending || (answered.size === 0 && Object.keys(drafts).length === 0)}
           >
-            {submit.isPending ? "Submitting…" : "Submit attempt"}
+            {submit.isPending ? t("exam.submitting") : t("exam.submit")}
           </button>
-          <span className="notice">You cannot change your answers after this.</span>
+          <span className="notice">{t("exam.submitNote")}</span>
         </div>
       ) : ledger.data !== undefined ? (
-        <Receipt ledger={ledger.data} />
+        <Receipt ledger={ledger.data} myData={() => client.myData()} />
       ) : null}
     </main>
   );
@@ -534,6 +605,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
  * shows none.
  */
 function TimeLeft({ expiresAt }: { expiresAt: number }) {
+  const { t } = usePreferences();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -542,11 +614,41 @@ function TimeLeft({ expiresAt }: { expiresAt: number }) {
   }, []);
 
   const remaining = Math.max(0, expiresAt - now);
-  if (remaining === 0) return <> · time is up</>;
+  if (remaining === 0) return <>{t("exam.timeUp")}</>;
 
   const minutes = Math.floor(remaining / 60_000);
   const hours = Math.floor(minutes / 60);
+  return <>{t("exam.timeLeft", { time: hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m` })}</>;
+}
+
+/**
+ * What the invigilators have told the room, newest first. Announced to screen
+ * readers as it arrives, and dismissed one by one; dismissing only hides it here.
+ */
+function Announcements({ items, onDismiss }: { items: readonly Announcement[]; onDismiss: (id: string) => void }) {
+  const { t } = usePreferences();
   return (
-    <> · {hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`} left</>
+    <section aria-label={t("announce.region")} aria-live="assertive">
+      {[...items].reverse().map((a) => (
+        <div className="card announcement" key={a.id}>
+          <p className="eyebrow">
+            {t("announce.from")} ·{" "}
+            {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", timeStyle: "short" }).format(new Date(a.at))}
+          </p>
+          <p style={{ margin: ".2rem 0 .5rem" }}>{a.message}</p>
+          <button type="button" className="secondary" onClick={() => onDismiss(a.id)}>
+            {t("announce.gotIt")}
+          </button>
+        </div>
+      ))}
+    </section>
   );
+}
+
+/** A question with a translation's stem and options in place of the original's. */
+function localised(question: CandidateQuestion, translation: { readonly stem: string; readonly options?: readonly string[] }): CandidateQuestion {
+  if (question.kind === "mcq" && translation.options !== undefined && translation.options.length === question.options.length) {
+    return { ...question, stem: translation.stem, options: translation.options };
+  }
+  return { ...question, stem: translation.stem };
 }

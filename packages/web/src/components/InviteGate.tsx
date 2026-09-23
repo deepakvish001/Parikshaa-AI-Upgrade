@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, redeemInvitation } from "../api.ts";
+import { ApiError, redeemInvitation, type Notice } from "../api.ts";
+import { PreferencesBar, uiLocaleOf, usePreferences } from "../i18n.tsx";
 
 interface Props {
   readonly code: string;
@@ -10,14 +11,16 @@ interface Props {
 
 type Stage =
   | { readonly kind: "opening" }
+  | { readonly kind: "notice"; readonly notice: Notice }
   | { readonly kind: "early"; readonly opensAt: string }
   | { readonly kind: "closed"; readonly closesAt: string }
   | { readonly kind: "invalid" }
+  | { readonly kind: "unavailable" }
   | { readonly kind: "offline" };
 
 /** Times as the candidate reads them: IST, spelled out. */
-const ist = (iso: string) =>
-  `${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
+const ist = (iso: string, locale: "en" | "hi" = "en") =>
+  `${new Intl.DateTimeFormat(locale === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
 
 /**
  * Opening an invitation link.
@@ -27,14 +30,19 @@ const ist = (iso: string) =>
  * invalid link says only that, and who to ask.
  */
 export function InviteGate({ code, onOpened, onForget }: Props) {
+  const { t, language } = usePreferences();
+  const ui = uiLocaleOf(language);
   const [stage, setStage] = useState<Stage>({ kind: "opening" });
 
-  const open = useCallback(async () => {
+  const open = useCallback(async (consent?: { noticeVersion: number }) => {
     setStage({ kind: "opening" });
     try {
-      onOpened((await redeemInvitation(code)).token);
+      onOpened((await redeemInvitation(code, "/api", consent)).token);
     } catch (error) {
       if (!(error instanceof ApiError)) return setStage({ kind: "offline" });
+      // The organisation's account, not the candidate's doing: say so without the details.
+      if (error.code === "out_of_credits") return setStage({ kind: "unavailable" });
+      if (error.code === "consent_required") return setStage({ kind: "notice", notice: error.detail["notice"] as Notice });
       if (error.code === "not_open_yet") return setStage({ kind: "early", opensAt: String(error.detail["opensAt"]) });
       if (error.code === "window_closed") return setStage({ kind: "closed", closesAt: String(error.detail["closesAt"]) });
       setStage({ kind: "invalid" });
@@ -55,41 +63,101 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
 
   return (
     <main className="gate">
+      <PreferencesBar />
       <h1>Parikshaa</h1>
-      {stage.kind === "opening" ? <p className="notice">Opening your test…</p> : null}
+      {stage.kind === "opening" ? <p className="notice">{t("invite.opening")}</p> : null}
+      {stage.kind === "notice" ? <PrivacyNotice notice={stage.notice} onAgree={() => void open({ noticeVersion: stage.notice.version })} /> : null}
       {stage.kind === "early" ? (
-        <section className="card" aria-label="Not open yet">
-          <p style={{ marginTop: 0 }}>Your test opens on</p>
-          <p className="when">{ist(stage.opensAt)}</p>
-          <p className="notice">
-            Keep this page open and it will let you in at that time, or come back to the same link then. Nothing has
-            started yet.
-          </p>
+        <section className="card" aria-label={t("invite.earlyRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.opensOn")}</p>
+          <p className="when">{ist(stage.opensAt, ui)}</p>
+          <p className="notice">{t("invite.earlyNote")}</p>
         </section>
       ) : null}
       {stage.kind === "closed" ? (
-        <section className="card" aria-label="Closed">
-          <p style={{ marginTop: 0 }}>This test closed on {ist(stage.closesAt)}.</p>
-          <p className="notice">If you think you should still be able to take it, contact whoever sent you the link.</p>
+        <section className="card" aria-label={t("invite.closedRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.closedOn", { when: ist(stage.closesAt, ui) })}</p>
+          <p className="notice">{t("invite.closedNote")}</p>
         </section>
       ) : null}
       {stage.kind === "invalid" ? (
-        <section className="card" aria-label="Invalid link">
-          <p style={{ marginTop: 0 }}>This link does not work.</p>
-          <p className="notice">Ask whoever sent it for a new one. Links are personal and stop working if they are withdrawn.</p>
+        <section className="card" aria-label={t("invite.invalidRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.invalid")}</p>
+          <p className="notice">{t("invite.invalidNote")}</p>
           <button type="button" className="secondary" onClick={onForget}>
-            I have an access code instead
+            {t("invite.haveCode")}
+          </button>
+        </section>
+      ) : null}
+      {stage.kind === "unavailable" ? (
+        <section className="card" aria-label={t("invite.unavailableRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.unavailable")}</p>
+          <p className="notice">{t("invite.unavailableNote")}</p>
+          <button type="button" onClick={() => void open()}>
+            {t("invite.tryAgain")}
           </button>
         </section>
       ) : null}
       {stage.kind === "offline" ? (
-        <section className="card" aria-label="No connection">
-          <p style={{ marginTop: 0 }}>Could not reach the server.</p>
+        <section className="card" aria-label={t("invite.offlineRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.offline")}</p>
           <button type="button" onClick={() => void open()}>
-            Try again
+            {t("invite.tryAgain")}
           </button>
         </section>
       ) : null}
     </main>
+  );
+}
+
+/**
+ * The organisation's privacy notice, before anything starts (DPDP Act, s.5–6).
+ * Reading it costs no test time: the clock starts only once it is agreed to.
+ */
+function PrivacyNotice({ notice, onAgree }: { notice: Notice; onAgree: () => void }) {
+  const { t, language } = usePreferences();
+  const [agreed, setAgreed] = useState(false);
+  // The standing parts of the notice, in the candidate's language where Parikshaa has them.
+  const own = uiLocaleOf(language) === "hi" ? notice.translations?.hi : undefined;
+  const collected = own?.collected ?? notice.collected;
+  const rights = own?.rights ?? notice.rights;
+  return (
+    <section className="card notice-card" aria-labelledby="privacy-heading">
+      <h2 id="privacy-heading" style={{ marginTop: 0 }}>
+        {t("notice.heading")}
+      </h2>
+      <p>
+        <strong>{notice.controllerName}</strong>
+        {t("notice.responsible")}
+      </p>
+      <h3>{t("notice.why")}</h3>
+      <p>{notice.purpose}</p>
+      <h3>{t("notice.collected")}</h3>
+      <ul>
+        {collected.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <h3>{t("notice.kept")}</h3>
+      <p>{t("notice.keptFor", { days: notice.retentionDays })}</p>
+      <h3>{t("notice.rights")}</h3>
+      <ul>
+        {rights.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p>
+        {t("notice.grievance")}: {notice.grievance.name}, <a href={`mailto:${notice.grievance.email}`}>{notice.grievance.email}</a>
+      </p>
+      <label className="inline">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> {t("notice.agree")}
+      </label>
+      <div className="row">
+        <button type="button" disabled={!agreed} onClick={onAgree}>
+          {t("notice.start")}
+        </button>
+      </div>
+      <p className="notice">{t("notice.version", { version: notice.version })}</p>
+    </section>
   );
 }

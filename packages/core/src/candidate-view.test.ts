@@ -58,6 +58,7 @@ describe("candidateView", () => {
       stem: "Which sort is stable?",
       maxScore: 4,
       options: ["quicksort", "mergesort"],
+      translations: {},
     });
     expect(view.questions[3]).toMatchObject({ language: "python", starter: "def solve():" });
   });
@@ -85,5 +86,22 @@ describe("candidateView", () => {
     };
 
     expect(candidateView(withoutStarter).questions[0]).toMatchObject({ starter: null });
+  });
+
+  it("carries a question's translations — stems and options, and nothing else", () => {
+    const translated: Exam = {
+      ...exam,
+      questions: [
+        {
+          ...(exam.questions[0] as Extract<Exam["questions"][number], { kind: "mcq" }>),
+          translations: { hi: { stem: "कौन सा सॉर्ट स्थिर है?", options: ["क्विकसॉर्ट", "मर्जसॉर्ट"], note: "correctIndex 1" } as never },
+        },
+        { ...exam.questions[1]!, translations: { hi: { stem: "g का मान?" } } },
+      ],
+    };
+    const view = candidateView(translated);
+    expect(view.questions[0]!.translations).toEqual({ hi: { stem: "कौन सा सॉर्ट स्थिर है?", options: ["क्विकसॉर्ट", "मर्जसॉर्ट"] } });
+    expect(view.questions[1]!.translations).toEqual({ hi: { stem: "g का मान?" } });
+    expect(JSON.stringify(view)).not.toContain("correctIndex");
   });
 });

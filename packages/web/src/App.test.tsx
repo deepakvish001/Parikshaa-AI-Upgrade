@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -46,7 +46,8 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
     }),
     streamProbe: vi.fn(async (handlers: { onNone?: () => void }) => handlers.onNone?.()),
     saveDraft: vi.fn(async () => undefined),
-    heartbeat: vi.fn(async () => ({ state: state.state, expiresAt: state.expiresAt })),
+    heartbeat: vi.fn(async () => ({ state: state.state, expiresAt: state.expiresAt, announcements: 0 })),
+    announcements: vi.fn(async () => []),
     ...overrides,
   };
   return { client: client as unknown as ParikshaaClient, setState: (patch: object) => (state = { ...state, ...patch }) };
@@ -380,5 +381,34 @@ describe("the access code", () => {
     expect(window.location.search).toBe("?lang=hi");
     expect(sessionStorage.getItem("parikshaa.attempt-token")).toBe("secret-code");
     window.history.replaceState(null, "", "/");
+  });
+});
+
+describe("announcements from the invigilators", () => {
+  it("are shown as they arrive, announced to screen readers, and can be dismissed", async () => {
+    const said = [{ id: "a1", message: "Question 2: assume the list is sorted.", at: "2026-10-01T05:00:00.000Z" }];
+    const { client } = stubClient({ announcements: vi.fn(async () => said) });
+    renderApp(<App client={client} />);
+
+    const region = await screen.findByRole("region", { name: "Announcements" });
+    expect(region).toHaveAttribute("aria-live", "assertive");
+    expect(await within(region).findByText("Question 2: assume the list is sorted.")).toBeInTheDocument();
+
+    await userEvent.click(within(region).getByRole("button", { name: "Got it" }));
+    expect(within(region).queryByText(/assume the list is sorted/)).toBeNull();
+  });
+
+  it("are fetched again when a check-in says there are new ones", async () => {
+    // Loaded before the announcement was made; the check-in then reports one.
+    const announcements = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValue([{ id: "a1", message: "Ten minutes left.", at: "2026-10-01T05:00:00.000Z" }]);
+    const heartbeat = vi.fn(async () => ({ state: "in_progress", expiresAt: Date.now() + 45 * 60_000, announcements: 1 }));
+    const { client } = stubClient({ announcements, heartbeat });
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByText("Ten minutes left.")).toBeInTheDocument();
+    expect(announcements).toHaveBeenCalledTimes(2);
   });
 });

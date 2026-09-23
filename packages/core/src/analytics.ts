@@ -46,7 +46,11 @@ export function resultOf(entries: readonly LedgerEntry[], definition: Exam): Att
   if (!folded.ok) return null;
   const { projection } = folded;
 
-  const submitted = entries.find((e) => e.event.type === "attempt_submitted");
+  // The last submission: an attempt that was reopened was submitted again.
+  let submitted: LedgerEntry | undefined;
+  if (projection.attempt.state !== "in_progress") {
+    for (const e of entries) if (e.event.type === "attempt_submitted") submitted = e;
+  }
   const maxTotal = paper.questions.reduce((sum, q) => sum + q.maxScore, 0);
   const graded = projection.total !== null;
   const scores: Record<string, { score: number; max: number }> = {};

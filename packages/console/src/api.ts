@@ -273,6 +273,39 @@ export interface WebhookDelivery {
 
 export const WEBHOOK_EVENTS = ["attempt.started", "attempt.submitted", "attempt.graded", "attempt.voided"] as const;
 
+export interface LiveRow {
+  readonly invitationId: string | null;
+  readonly attemptId: string | null;
+  readonly ref: string;
+  readonly name: string;
+  readonly state: "not_started" | "in_progress" | "submitted" | "graded" | "void";
+  readonly answered: number;
+  readonly questions: number;
+  readonly startedAt: number | null;
+  readonly lastSeenAt: number | null;
+  readonly lastActivityAt: number | null;
+  readonly expiresAt: number | null;
+  readonly extraMinutes: number;
+  readonly reopened: number;
+  readonly awaitingReply: boolean;
+  readonly flags: { readonly away: boolean; readonly idle: boolean; readonly overdue: boolean };
+}
+
+export interface Announcement {
+  readonly id: string;
+  readonly message: string;
+  readonly authorName: string;
+  readonly at: string;
+}
+
+export interface LiveView {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly at: number;
+  readonly counts: Readonly<Record<"invited" | "notStarted" | "inProgress" | "away" | "idle" | "submitted" | "graded" | "void", number>>;
+  readonly rows: readonly LiveRow[];
+  readonly announcements: readonly Announcement[];
+}
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
@@ -600,6 +633,52 @@ export class ConsoleClient {
   }
 
   /** More time for an open attempt, with a reason that goes into its ledger. */
+  live(examId: string, idleMinutes = 5): Promise<LiveView> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/live?idleMinutes=${idleMinutes}`);
+  }
+
+  billing(): Promise<BillingSummary> {
+    return this.#request("/billing");
+  }
+
+  saveBillingDetails(details: BuyerDetails): Promise<BillingAccount> {
+    return this.#request("/billing/details", { method: "PUT", body: JSON.stringify(details) });
+  }
+
+  createOrder(credits: number): Promise<BillingOrder> {
+    return this.#request("/billing/orders", { method: "POST", body: JSON.stringify({ credits }) });
+  }
+
+  /** Checkout's result: credited only if the server finds Razorpay's signature good. */
+  verifyPayment(orderId: string, paymentId: string, signature: string): Promise<{ credits: number; invoice: TaxInvoice }> {
+    return this.#request("/billing/payments/verify", { method: "POST", body: JSON.stringify({ orderId, paymentId, signature }) });
+  }
+
+  invoice(id: string): Promise<TaxInvoice> {
+    return this.#request(`/billing/invoices/${encodeURIComponent(id)}`);
+  }
+
+  privacy(): Promise<{ settings: PrivacySettings | null; notice: Notice | null }> {
+    return this.#request("/privacy");
+  }
+
+  savePrivacy(settings: PrivacyDraft): Promise<{ settings: PrivacySettings; notice: Notice }> {
+    return this.#request("/privacy", { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  /** Irreversible: destroys the attempt's data key. */
+  eraseAttempt(attemptId: string): Promise<{ erased: boolean }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/erase`, { method: "POST" });
+  }
+
+  announce(examId: string, message: string): Promise<Announcement> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/announcements`, { method: "POST", body: JSON.stringify({ message }) });
+  }
+
+  reopen(attemptId: string, minutes: number, reason: string): Promise<{ expiresAt: number }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/reopen`, { method: "POST", body: JSON.stringify({ minutes, reason }) });
+  }
+
   extendTime(attemptId: string, minutes: number, reason: string): Promise<{ expiresAt: number }> {
     return this.#request(`/attempts/${encodeURIComponent(attemptId)}/extend`, {
       method: "POST",
@@ -617,4 +696,101 @@ export class ConsoleClient {
       { method: "POST" },
     );
   }
+}
+
+/** What candidates are told before they start, and how long their data is kept (ROADMAP §11). */
+export interface PrivacyDraft {
+  readonly controllerName: string;
+  readonly grievanceName: string;
+  readonly grievanceEmail: string;
+  readonly purpose: string;
+  readonly retentionDays: number;
+}
+
+export interface PrivacySettings extends PrivacyDraft {
+  readonly noticeVersion: number;
+  readonly updatedAt: string;
+}
+
+export interface Notice {
+  readonly version: number;
+  readonly hash: string;
+  readonly controllerName: string;
+  readonly purpose: string;
+  readonly retentionDays: number;
+  readonly grievance: { readonly name: string; readonly email: string };
+  readonly collected: readonly string[];
+  readonly rights: readonly string[];
+}
+
+/** Billing (ROADMAP §12). Amounts are paise. */
+export interface BillingAccount {
+  readonly mode: "prepaid" | "invoiced";
+  readonly pricePaise: number;
+  readonly credits: number;
+  readonly legalName: string;
+  readonly gstin: string | null;
+  readonly stateCode: string | null;
+  readonly address: string;
+  readonly billingEmail: string | null;
+  readonly updatedAt: string;
+}
+
+export type BuyerDetails = Pick<BillingAccount, "legalName" | "gstin" | "stateCode" | "address" | "billingEmail">;
+
+export interface InvoiceSummary {
+  readonly id: string;
+  readonly number: string;
+  readonly kind: "credits" | "usage";
+  readonly paymentId: string | null;
+  readonly period: string | null;
+  readonly totalPaise: number;
+  readonly issuedAt: string;
+}
+
+export interface TaxInvoice extends InvoiceSummary {
+  readonly document: InvoiceDocument;
+}
+
+export interface InvoiceDocument {
+  readonly title: string;
+  readonly number: string;
+  readonly date: string;
+  readonly supplier: { readonly legalName: string; readonly gstin: string; readonly address: string; readonly state: string; readonly stateCode: string };
+  readonly buyer: { readonly legalName: string; readonly gstin: string | null; readonly address: string; readonly state: string | null; readonly stateCode: string | null };
+  readonly placeOfSupply: { readonly code: string; readonly state: string };
+  readonly reverseCharge: boolean;
+  readonly lines: readonly { readonly description: string; readonly sac: string; readonly quantity: number; readonly ratePaise: number; readonly amountPaise: number }[];
+  readonly taxablePaise: number;
+  readonly taxes: readonly { readonly name: string; readonly ratePercent: number; readonly amountPaise: number }[];
+  readonly totalPaise: number;
+  readonly totalInWords: string;
+  readonly note?: string;
+}
+
+export interface BillingSummary {
+  readonly account: BillingAccount | null;
+  readonly history: readonly {
+    readonly id: string;
+    readonly delta: number;
+    readonly reason: "purchase" | "attempt" | "grant" | "refund";
+    readonly attemptId: string | null;
+    readonly paymentId: string | null;
+    readonly note: string | null;
+    readonly at: string;
+  }[];
+  readonly invoices: readonly InvoiceSummary[];
+  readonly checkout: { readonly available: boolean; readonly keyId: string | null };
+  readonly supplier: { readonly legalName: string; readonly stateCode: string } | null;
+}
+
+export interface BillingOrder {
+  readonly orderId: string;
+  readonly keyId: string;
+  readonly currency: "INR";
+  readonly credits: number;
+  readonly taxablePaise: number;
+  readonly taxPaise: number;
+  readonly amountPaise: number;
+  readonly supplierName: string;
 }

@@ -1,3 +1,4 @@
+import pg from "pg";
 /**
  * A minimal SQL surface.
  *
@@ -18,11 +19,25 @@ export interface SqlExecutor {
    * parameters, so nothing reaches it that a caller could interpolate into.
    */
   exec(text: string): Promise<void>;
-  transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T>;
+  /**
+   * Run `fn` in a transaction. `settings` are applied transaction-locally
+   * before it runs (`set_config(name, value, true)`) — in the same round trip
+   * as BEGIN where the driver allows, since every tenant query pays for it.
+   */
+  transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T>;
 }
 
+/** Transaction-local settings: names are fixed by the caller's code, values may come from input. */
+export type TransactionSettings = Readonly<Record<string, string>>;
+
+const settingsParams = (settings: TransactionSettings) => Object.entries(settings).flat();
+const settingsSql = (settings: TransactionSettings) =>
+  `SELECT ${Object.keys(settings)
+    .map((_, i) => `set_config($${2 * i + 1}, $${2 * i + 2}, true)`)
+    .join(", ")}`;
+
 // --- adapters --------------------------------------------------------------
-// Typed structurally so this package does not depend on either driver.
+// PGlite is typed structurally, so only the tests depend on it.
 
 interface PGliteQueryable {
   query<Row>(query: string, params?: unknown[]): Promise<{ rows: Row[] }>;
@@ -45,8 +60,11 @@ export function pgliteExecutor(db: PGliteRoot): SqlExecutor {
     async exec(text: string): Promise<void> {
       await db.exec(text);
     },
-    transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-      return db.transaction((tx) => fn(pgliteTransactionExecutor(tx)));
+    transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
+      return db.transaction(async (tx) => {
+        if (settings !== undefined) await tx.query(settingsSql(settings), settingsParams(settings));
+        return fn(pgliteTransactionExecutor(tx));
+      });
     },
   };
 }
@@ -66,9 +84,10 @@ function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
     async exec(text: string): Promise<void> {
       await tx.exec(text);
     },
-    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
+    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
       const name = `parikshaa_sp_${++savepointCounter}`;
       await tx.query(`SAVEPOINT ${name}`);
+      if (settings !== undefined) await tx.query(settingsSql(settings), settingsParams(settings));
       try {
         const result = await fn(pgliteTransactionExecutor(tx));
         await tx.query(`RELEASE SAVEPOINT ${name}`);
@@ -81,55 +100,110 @@ function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
   };
 }
 
-interface PostgresJsQueryable {
-  unsafe(query: string, params?: unknown[]): PromiseLike<unknown>;
-}
-
-interface PostgresJsRoot extends PostgresJsQueryable {
-  begin<T>(cb: (tx: PostgresJsTransaction) => T | Promise<T>): PromiseLike<unknown>;
-}
-
-interface PostgresJsTransaction extends PostgresJsQueryable {
-  savepoint<T>(cb: (tx: PostgresJsTransaction) => T | Promise<T>): PromiseLike<unknown>;
-}
-
-async function unsafeRows<Row>(
-  sql: PostgresJsQueryable,
-  text: string,
-  params: readonly unknown[],
-): Promise<Row[]> {
-  return (await sql.unsafe(text, [...params])) as Row[];
+/**
+ * A pool of connections to a real Postgres, with the production driver,
+ * node-postgres. `end` closes it.
+ */
+export interface Database extends SqlExecutor {
+  end(): Promise<void>;
 }
 
 /**
- * Adapter for `postgres` (porsager), the production driver.
+ * Open a pool with node-postgres.
  *
- * A nested transaction becomes a savepoint, which is how that driver models
- * one — so a store method that opens a transaction stays correct when it is
- * called from inside another.
+ * Chosen over postgres.js, which this code used first, after the chaos run
+ * (ROADMAP §13) terminated the database's connections under a running server:
+ * postgres.js 3.4.9 threw from inside its socket handling, outside any promise,
+ * and took the whole process down with it — so a failover would have taken
+ * every API instance down at once. It also serialized jsonb parameters a second
+ * time, storing every exam as a JSON string. node-postgres sends JSON text as
+ * it is, as PGlite does, and reports a lost connection as a failed query.
+ *
+ * A connection lost while idle, or while checked out for a transaction, is an
+ * `error` event rather than a rejected promise; unhandled, Node treats it as
+ * fatal. Both are handled here, and passed to `onError` to be logged.
  */
-export function postgresJsExecutor(sql: PostgresJsRoot): SqlExecutor {
+export function connect(
+  url: string,
+  options: {
+    readonly max?: number;
+    readonly idleTimeoutMs?: number;
+    readonly connectTimeoutMs?: number;
+    readonly onError?: (error: Error) => void;
+  } = {},
+): Database {
+  const pool = new pg.Pool({
+    connectionString: url,
+    max: options.max ?? 10,
+    idleTimeoutMillis: options.idleTimeoutMs ?? 30_000,
+    connectionTimeoutMillis: options.connectTimeoutMs ?? 10_000,
+  });
+  const onError = options.onError ?? (() => undefined);
+  pool.on("error", onError);
+
   return {
-    query: (text, params = []) => unsafeRows(sql, text, params),
+    async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
+      return (await pool.query(text, [...params])).rows as Row[];
+    },
     async exec(text: string): Promise<void> {
-      // No parameters, so this runs on the simple protocol and may contain
-      // several statements.
-      await sql.unsafe(text);
+      // No parameters: the simple protocol, which accepts several statements.
+      await pool.query(text);
     },
-    async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-      return (await sql.begin((tx) => fn(postgresJsTransactionExecutor(tx)))) as T;
+    async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
+      const client = await pool.connect();
+      client.on("error", onError);
+      let broken: Error | undefined;
+      try {
+        // One round trip for BEGIN and the settings. A multi-statement query
+        // cannot take parameters, so values are quoted by the driver's own
+        // escapeLiteral; names come from this code, never from input.
+        await client.query(
+          settings === undefined
+            ? "BEGIN"
+            : `BEGIN; SELECT ${Object.entries(settings)
+                .map(([name, value]) => `set_config(${client.escapeLiteral(name)}, ${client.escapeLiteral(value)}, true)`)
+                .join(", ")}`,
+        );
+        const result = await fn(pgTransactionExecutor(client));
+        await client.query("COMMIT");
+        return result;
+      } catch (error) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackFailed) {
+          // The connection itself is gone: do not return it to the pool.
+          broken = rollbackFailed instanceof Error ? rollbackFailed : new Error(String(rollbackFailed));
+        }
+        throw error;
+      } finally {
+        client.removeListener("error", onError);
+        client.release(broken);
+      }
     },
+    end: () => pool.end(),
   };
 }
 
-function postgresJsTransactionExecutor(tx: PostgresJsTransaction): SqlExecutor {
+function pgTransactionExecutor(client: pg.PoolClient): SqlExecutor {
   return {
-    query: (text, params = []) => unsafeRows(tx, text, params),
-    async exec(text: string): Promise<void> {
-      await tx.unsafe(text);
+    async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
+      return (await client.query(text, [...params])).rows as Row[];
     },
-    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
-      return (await tx.savepoint((inner) => fn(postgresJsTransactionExecutor(inner)))) as T;
+    async exec(text: string): Promise<void> {
+      await client.query(text);
+    },
+    async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
+      const name = `parikshaa_sp_${++savepointCounter}`;
+      await client.query(`SAVEPOINT ${name}`);
+      if (settings !== undefined) await client.query(settingsSql(settings), settingsParams(settings));
+      try {
+        const result = await fn(pgTransactionExecutor(client));
+        await client.query(`RELEASE SAVEPOINT ${name}`);
+        return result;
+      } catch (error) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+        throw error;
+      }
     },
   };
 }

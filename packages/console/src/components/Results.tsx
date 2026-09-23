@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateReport, ConsoleClient, QuestionStats, ResultRow, Results, Verdict } from "../api.ts";
+import { EraseCard } from "./Privacy.tsx";
 
 /**
  * What a recruiter takes away from a sitting (ROADMAP §6): the cohort's
@@ -278,11 +279,26 @@ function Integrity({ integrity }: { integrity: Results["analytics"]["integrity"]
  * separately, and marked as such — the follow-up evidence, then the record's
  * head so the paper copy can be checked against the ledger.
  */
-export function ReportPanel({ client, attemptId }: { client: ConsoleClient; attemptId: string }) {
+export function ReportPanel({ client, attemptId, canErase = false }: { client: ConsoleClient; attemptId: string; canErase?: boolean }) {
+  const queryClient = useQueryClient();
   const report = useQuery({ queryKey: ["report", attemptId], queryFn: () => client.report(attemptId) });
   if (report.isPending) return <p className="notice">Loading…</p>;
   if (report.error !== null) return <p className="error">Could not load the report.</p>;
-  return <Report report={report.data} />;
+  const { ref } = report.data.candidate;
+  const erasable = canErase && report.data.result.state !== "in_progress" && !ref.startsWith("erased-") && ref !== "[erased]";
+  return (
+    <>
+      <Report report={report.data} />
+      {erasable ? (
+        <EraseCard
+          client={client}
+          attemptId={attemptId}
+          reference={report.data.candidate.ref}
+          onErased={() => void queryClient.invalidateQueries({ queryKey: ["report", attemptId] })}
+        />
+      ) : null}
+    </>
+  );
 }
 
 export function Report({ report }: { report: CandidateReport }) {

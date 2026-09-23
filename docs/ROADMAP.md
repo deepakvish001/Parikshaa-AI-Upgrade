@@ -318,6 +318,20 @@ their customers can use webhooks and the API.
   ledger with a reason, because an invigilator's action is exactly the kind of
   thing an appeal asks about.
 
+**Status — built.** The console's *Live sitting* page, refreshed every five
+seconds, shows who has not started, who is taking it, how far each candidate
+has got, when their page last checked in, and how long they have left — and
+never an answer. Two flags are kept apart because they mean different things:
+*away* (the page has stopped checking in: closed, or offline) and *idle* (the
+page is open but nothing has been typed for a threshold the invigilator sets).
+An invigilator can tell the whole room something at once; it reaches every
+candidate's open page at their next check-in, is read out by screen readers,
+and is audited. A submitted attempt can be **reopened** — a crash, a power cut,
+submit pressed by mistake — with minutes and a reason, as an
+`attempt_reopened` entry in the ledger with the person's name, shown on the
+candidate's receipt; never once graded or set aside. The candidate's page
+opens again by itself. Extending time (§2) sits beside it.
+
 ## 9. Language, accessibility, low bandwidth
 
 - Interface translation, Hindi first, then the regional languages the buyer
@@ -326,6 +340,35 @@ their customers can use webhooks and the API.
 - A low-bandwidth mode: no streaming, smaller payloads, tolerant of 2G.
 - Keyboard navigation, screen-reader labels, contrast — an exam a candidate
   cannot operate is an exam they failed for the wrong reason.
+
+**Status — built.** The candidate's page is in English and Hindi, chosen from
+a picker on every screen and remembered on the device; the page's `lang`
+follows, so a screen reader pronounces it. The privacy notice's standing text
+is in Hindi too, and hashed with the rest. A question can carry translations
+into Hindi and nine more scheduled languages (Bengali, Tamil, Telugu, Marathi,
+Gujarati, Kannada, Malayalam, Punjabi, Odia), written in the console's editor;
+an mcq's translated options must come in the original's order, because the
+answer is recorded by position and so means the same in every language. A
+candidate reading a translation can switch any question back to the
+original. Grading always reads the original; the follow-up is asked, and the
+assessor reasons, in the language the candidate answered in — Hindi, English
+or the mix of the two many candidates write.
+
+Low-bandwidth mode — on by itself where the browser reports Data Saver or a
+2G connection, and a switch for everyone else — fetches a follow-up in one
+short request instead of holding a stream open, answers code in a plain text
+area without ever downloading the editor, and saves and checks in half as
+often (nothing typed is at more risk: it is kept on the device as it is
+typed). Every response over 1 KB, the client bundles included, is compressed
+with Brotli or gzip.
+
+Every screen a candidate meets — the exam, a follow-up, the receipt, the
+privacy notice, in English and in Hindi — and the console's busiest pages are
+checked against WCAG 2.1 AA by axe in the browser suite, and one test sits the
+whole exam from the keyboard alone. Focus is always visible.
+
+Not in it: the interface in languages other than English and Hindi (the
+string table is one file to add to), and translated exam titles.
 
 ## 10. Scale and operations
 
@@ -337,6 +380,20 @@ their customers can use webhooks and the API.
   has to hold for observability too.
 - Backups, point-in-time recovery, and a restore drill that has actually been
   run.
+
+**Status — built, except read replicas, which the load test showed are not
+needed at this scale.** A load run of 1,000 candidates on one 4-core machine
+(load generator, API and Postgres together) sat a drive with no errors and
+every chain intact afterwards; see `docs/OPERATIONS.md` for the figures and
+what they mean for sizing. Request logs are one JSON line per request, by
+route pattern, and a test runs a whole sitting and fails if an answer, a
+follow-up, a reply, a credential or a contact detail reaches them. Per-
+organisation and per-attempt rate limits answer 429 with `Retry-After`. The
+pool size is configurable. `verify-all` checks every chain in a database, and
+`scripts/restore-drill.sh` restores a dump into a scratch database and runs it
+— the drill ran here and runs in CI. Backups and point-in-time recovery are
+the database's job: the runbook names the managed services in Indian regions
+and what to turn on.
 
 ## 11. Compliance and trust
 
@@ -351,6 +408,39 @@ their customers can use webhooks and the API.
 *Requires people and money, not code:* a penetration test, an ISO 27001 or SOC
 2 audit, and legal review of the DPA.
 
+**Status — DPDP built; the rest is not.** An owner sets the organisation's
+privacy notice — who is responsible, why the data is collected, the grievance
+officer, and a retention period — on the console's *Privacy* page. From then
+on a candidate opening their link reads the notice and agrees to it **before
+their clock starts**; the agreement goes into the ledger as `consent_given`
+with the notice's version and SHA-256, so what they agreed to stays provable
+after the wording changes. Changing the wording issues a new version.
+
+Erasure is crypto-shredding. Each attempt gets its own data key, wrapped by a
+key held outside the database (`PARIKSHAA_DATA_KEY`); what a candidate wrote,
+their replies to follow-ups, the follow-up questions about their answers and
+their reference are stored — in the ledger and in its queryable copy — only
+as AES-256-GCM ciphertext under it, bound to the attempt and field. The chain
+hashes the ciphertext. Erasing destroys the key: the chain still verifies,
+the scores stay, and nobody, including whoever holds a later backup, can read
+what was sealed. It also clears the invitation's name, email, phone and
+reference, deletes unsent drafts, stops queued messages, and records
+`data_erased` in the chain. An owner erases on request (typing the reference
+back to confirm); an hourly sweep erases closed attempts once the retention
+period has run out. The audit log, which cannot be erased, no longer records
+candidates' references. A candidate can download everything held about them —
+details, the notice they agreed to, their answers and replies, the timeline,
+no scores — from their receipt.
+
+What is deliberately not in it: a candidate cannot erase their own data from
+the page (they ask the grievance officer, as the notice says), and the
+receipt carries the sealed record, so it verifies but does not show their
+answers — "Download my data" does. Answers are sealed from here on. A ledger
+written before this change holds its answers in the clear and cannot be
+shredded: erasing it clears everything around it — invitation, drafts,
+queued messages — and records `data_erased`, but its entries stay readable.
+Data residency, CI secret scanning and the evidence pack are still to do.
+
 ## 12. Billing
 
 - Per-organisation metering of attempts and model spend.
@@ -358,12 +448,60 @@ their customers can use webhooks and the API.
 - A hard per-organisation cost ceiling, so one customer's traffic cannot run up
   an unbounded model bill.
 
+**Status — built.** An organisation is either on **prepaid credits** or
+**invoiced monthly**, at a price per attempt — the operator's decision, set
+with `npm run billing -w @parikshaa/api -- plan <org> prepaid|invoiced
+<rupees>` (which also grants trial credits and issues monthly invoices); an
+organisation with no plan is not metered. A prepaid attempt starts only
+against a credit, taken under the account's row lock in the same transaction
+that records why: concurrent starts cannot spend the last credit twice, and an
+attempt spends one however often its start is retried or its link reopened. A
+candidate whose organisation has run out is told the test cannot start yet —
+not why — and loses no time.
+
+The owner buys credits on the console's *Billing* page through Razorpay
+Checkout. Nothing is credited on the browser's word: the server checks
+Razorpay's signature (HMAC-SHA256 of `order_id|payment_id`), and Razorpay's
+webhook (`X-Razorpay-Signature` over the raw body) credits a payment whose tab
+was closed before Checkout returned. Either may arrive first; the second
+changes nothing. Each payment issues a **GST tax invoice** in the same
+transaction: supplier and buyer with GSTINs (checked, check digit included),
+place of supply, SAC, taxable value, CGST+SGST within the supplier's state or
+IGST outside it, the total in figures and in Indian-system words — numbered in
+one consecutive series per financial year (`PKS/2627/000123`, within GST's 16
+characters), with no gaps because the serial is taken in the transaction that
+stores the invoice. Invoiced organisations get a monthly invoice for the
+attempts their ledgers record as started in that IST month. Invoices are
+printable from the console.
+
+The model-spend ceiling of §0 still applies on top, per organisation.
+
+Not in it: e-invoicing (IRN from the GST portal, needed above ₹5 crore
+turnover), credit notes and refunds of payments, TDS, and automatic monthly
+invoicing (the operator runs `invoice-all` — a cron line).
+
 ## 13. Real-browser testing and hardening
 
 - Playwright across both clients, on Chrome, Firefox and Safari, including a
   full attempt end to end.
 - Chaos: kill the network mid-probe, kill the server mid-append, and prove the
   ledger still verifies afterwards.
+
+**Status — built.** `packages/e2e` runs the real service against a real
+Postgres. Playwright drives a whole sitting — a follow-up answered, the
+downloaded receipt checked by the standalone verifier — and answers typed
+offline, a follow-up whose connection drops mid-stream, resuming on another
+device, and a recruiter's results, spreadsheet and report; CI runs it in
+Chrome, Firefox and WebKit (only Chromium was available where this was
+written). The chaos run SIGKILLs the server mid-write and, separately,
+terminates every database connection under a running server; after each,
+every chain verifies and every candidate reopens their link and carries on.
+
+Running against a real Postgres for the first time found three faults the
+in-process test database could not: every jsonb value stored as a string by
+the previous driver (nothing worked end to end), that driver crashing the
+process when connections dropped, and a failure mid-start locking a candidate
+out. All three are fixed and tested; `docs/OPERATIONS.md` has the detail.
 
 ---
 

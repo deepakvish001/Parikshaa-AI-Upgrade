@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CONTENT_LOCALES } from "@parikshaa/core";
 
 /**
  * The HTTP contract, as schemas.
@@ -38,11 +39,17 @@ const rubricCriterion = z.object({
   weight: z.number(),
 });
 
+/** A question in other languages, by locale (ROADMAP §9): what a candidate reads, and nothing else. */
+const translations = z
+  .partialRecord(z.enum(CONTENT_LOCALES), z.object({ stem: z.string(), options: z.array(z.string()).readonly().optional() }))
+  .describe("The question in other languages. An mcq's options come in the original's order: the answer is recorded by position.");
+
 const questionBase = {
   id: z.string().min(1),
   stem: z.string(),
   maxScore: z.number(),
   rubric: z.array(rubricCriterion).readonly(),
+  translations: translations.optional(),
 };
 
 const kinds = {
@@ -251,14 +258,16 @@ const candidateQuestion = z.discriminatedUnion("kind", [
     stem: z.string(),
     maxScore: z.number(),
     options: z.array(z.string()).readonly(),
+    translations,
   }),
-  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number() }),
-  z.object({ id: z.string(), kind: z.literal("numeric"), stem: z.string(), maxScore: z.number() }),
+  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations }),
+  z.object({ id: z.string(), kind: z.literal("numeric"), stem: z.string(), maxScore: z.number(), translations }),
   z.object({
     id: z.string(),
     kind: z.literal("code"),
     stem: z.string(),
     maxScore: z.number(),
+    translations,
     language: z.string(),
     languages: z.array(z.string()).readonly(),
     starter: z.string().nullable(),
@@ -305,6 +314,7 @@ export const draftBody = z
 export const heartbeatResponse = z.object({
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
   expiresAt: z.number().describe("The deadline as it now stands, extensions included."),
+  announcements: z.number().describe("How many announcements this sitting has had; fetch them when it goes up."),
 });
 
 export const extendBody = z.object({

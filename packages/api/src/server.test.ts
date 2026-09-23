@@ -302,8 +302,9 @@ describe("attempt lifecycle", () => {
     await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
     await app.inject({ method: "POST", url: `/attempts/${attemptId}/grade`, headers: asStaff() });
 
+    // The chain as hashed, sealed fields and all: it needs no key to check.
     const store = new LedgerStore(pgliteExecutor(db));
-    const entries = await store.load(staffScope(org), attemptId as never);
+    const entries = await store.loadRecord(staffScope(org), attemptId as never);
 
     expect(verifyChain(entries)).toEqual({ ok: true });
     expect(await store.verifyStored(staffScope(org), attemptId as never)).toMatchObject({ ok: true });

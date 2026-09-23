@@ -1,0 +1,26 @@
+{
+  "name": "@parikshaa/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Real-browser, chaos and load tests against a real Postgres (ROADMAP §10, §13).",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
+    "e2e": "playwright test",
+    "chaos": "node dist/chaos.js",
+    "load": "node dist/load.js"
+  },
+  "dependencies": {
+    "@parikshaa/api": "*",
+    "@parikshaa/core": "*",
+    "@parikshaa/store": "*",
+    "@parikshaa/verify": "*"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}

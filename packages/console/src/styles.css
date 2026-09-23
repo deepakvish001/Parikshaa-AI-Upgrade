@@ -136,3 +136,8 @@ pre.code { font: .82rem/1.45 var(--mono); background: var(--bg); border: 1px sol
   .answer { break-inside: avoid; }
   pre.code { white-space: pre-wrap; border-color: #ccc; }
 }
+
+/* The live sitting (ROADMAP §8). */
+.pill.attention { border-color: var(--warn-line); color: var(--text); background: var(--warn-soft); }
+.figures dd.warn { color: #b4432f; }
+meter { width: 4.5rem; vertical-align: middle; }

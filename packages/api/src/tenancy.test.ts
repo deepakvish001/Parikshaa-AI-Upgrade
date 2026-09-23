@@ -491,7 +491,7 @@ describe("grading", () => {
 
     // No partial scores: the mcq was scorable without a model, but it was not
     // written on its own, so the attempt can simply be graded again.
-    const entries = await new LedgerStore(pgliteExecutor(db)).load(staffScope(orgId("org-a")), toAttemptId(attemptId));
+    const entries = await new LedgerStore(pgliteExecutor(db)).loadRecord(staffScope(orgId("org-a")), toAttemptId(attemptId));
     expect(entries.map((e) => e.event.type)).not.toContain("question_scored");
     expect((await post(ownerA, `/attempts/${attemptId}/grade`)).json()).toEqual({ total: 10 });
   });

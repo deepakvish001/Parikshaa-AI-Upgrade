@@ -116,4 +116,80 @@ describe("an invitation link", () => {
 
     expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
   });
+
+  it("shows the privacy notice first, and starts only once it is agreed to", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const notice = {
+      version: 3,
+      hash: "ab".repeat(32),
+      controllerName: "Acme Technologies Pvt Ltd",
+      purpose: "To assess candidates for engineering roles.",
+      retentionDays: 90,
+      grievance: { name: "Priya Menon", email: "privacy@acme.test" },
+      collected: ["Your answers."],
+      rights: ["Have it erased."],
+    };
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (!url.endsWith("/invitations/redeem")) return json(state);
+      const body = JSON.parse(String(init?.body)) as { consent?: { noticeVersion: number } };
+      return body.consent?.noticeVersion === 3
+        ? json({ token: "eyJ.token", attemptId: "a1", resumed: false })
+        : json({ error: "consent_required", notice }, 428);
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Before you start: your data" })).toBeInTheDocument();
+    expect(screen.getByText("Acme Technologies Pvt Ltd")).toBeInTheDocument();
+    expect(screen.getByText(/90 days after you finish/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "privacy@acme.test" })).toHaveAttribute("href", "mailto:privacy@acme.test");
+    const start = screen.getByRole("button", { name: "Agree and start the test" });
+    expect(start).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /agree to my data being used/ }));
+    await userEvent.click(start);
+
+    expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/invitations/redeem",
+      expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC", consent: { noticeVersion: 3 } }) }),
+    );
+  });
+
+  it("shows the notice in Hindi to a candidate reading in Hindi", async () => {
+    localStorage.setItem("parikshaa.language", "hi");
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const notice = {
+      version: 1,
+      hash: "ab".repeat(32),
+      controllerName: "Acme",
+      purpose: "Hiring.",
+      retentionDays: 30,
+      grievance: { name: "Priya", email: "p@acme.test" },
+      collected: ["Your answers."],
+      rights: ["Have it erased."],
+      translations: { hi: { collected: ["आपके उत्तर।"], rights: ["इसे मिटवाएँ।"] } },
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "consent_required", notice }, 428)));
+
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "शुरू करने से पहले: आपका डेटा" })).toBeInTheDocument();
+    expect(screen.getByText("आपके उत्तर।")).toBeInTheDocument();
+    expect(screen.getByText("इसे मिटवाएँ।")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "सहमत हूँ, परीक्षा शुरू करें" })).toBeDisabled();
+    localStorage.clear();
+  });
+
+  it("tells a candidate the test cannot start yet when the organisation's credits have run out, without the details", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "out_of_credits", message: "This organisation has no attempt credits left." }, 402)));
+
+    renderApp(<App />);
+
+    const card = await screen.findByRole("region", { name: "Cannot start yet" });
+    expect(card).toHaveTextContent("no time has been used");
+    expect(card).not.toHaveTextContent(/credit/i);
+  });
 });

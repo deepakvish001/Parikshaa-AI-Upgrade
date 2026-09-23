@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePreferences } from "../i18n.tsx";
 
 interface Props {
   readonly prompt: string;
@@ -20,6 +21,7 @@ interface Props {
  * took, from when it wrote the probe to when the reply arrives.
  */
 export function ProbePanel({ prompt, streaming, onReply }: Props) {
+  const { t } = usePreferences();
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,22 +32,22 @@ export function ProbePanel({ prompt, streaming, onReply }: Props) {
     try {
       await onReply(reply);
     } catch {
-      setError("Could not send that reply. Try again.");
+      setError(t("probe.failed"));
       setSending(false);
     }
   };
 
   return (
-    <section className="card probe" aria-label="Follow-up question">
-      <p className="eyebrow">A follow-up on your answer</p>
+    <section className="card probe" aria-label={t("probe.region")}>
+      <p className="eyebrow">{t("probe.eyebrow")}</p>
       <p className="prompt">
         {prompt}
         {streaming ? <span className="cursor" aria-hidden="true" /> : null}
       </p>
 
       <textarea
-        aria-label="Your reply to the follow-up"
-        placeholder="In your own words."
+        aria-label={t("probe.replyLabel")}
+        placeholder={t("probe.placeholder")}
         value={reply}
         disabled={sending || streaming}
         onChange={(e) => setReply(e.target.value)}
@@ -53,9 +55,9 @@ export function ProbePanel({ prompt, streaming, onReply }: Props) {
 
       <div className="row">
         <button type="button" onClick={send} disabled={sending || streaming || reply.trim() === ""}>
-          {sending ? "Sending…" : "Send reply"}
+          {sending ? t("probe.sending") : t("probe.send")}
         </button>
-        <span className="notice">Take the time you need.</span>
+        <span className="notice">{t("probe.takeTime")}</span>
       </div>
 
       {error === null ? null : <p className="error">{error}</p>}

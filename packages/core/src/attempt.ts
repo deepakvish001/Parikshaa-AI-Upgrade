@@ -47,6 +47,10 @@ export interface AttemptProjection {
   readonly closesAt: Timestamp | null;
   /** Time added to the exam's window for this attempt, by `time_extended` entries. */
   readonly extraTimeMs: number;
+  /** When the attempt's personal data was erased, if it was (`data_erased`). */
+  readonly erasedAt: Timestamp | null;
+  /** The privacy notice the candidate agreed to, if one was asked for. */
+  readonly consent: { readonly noticeVersion: number; readonly noticeHash: string } | null;
   /** Test results for each code question's current answer; cleared when the answer changes. */
   readonly codeScores: ReadonlyMap<QuestionId, { readonly score: number; readonly passed: number; readonly total: number }>;
 }
@@ -107,6 +111,8 @@ export function foldAttempt(
   let voidReason: string | null = null;
   let voidedBy: StaffAttribution | null = null;
   let extraTimeMs = 0;
+  let erasedAt: Timestamp | null = null;
+  let consent: { noticeVersion: number; noticeHash: string } | null = null;
   const codeScores = new Map<QuestionId, { score: number; passed: number; total: number }>();
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
@@ -123,6 +129,8 @@ export function foldAttempt(
       voidedBy,
       closesAt,
       extraTimeMs,
+      erasedAt,
+      consent,
       codeScores,
     },
   });
@@ -136,7 +144,15 @@ export function foldAttempt(
     // Voiding is the one thing that may follow grading, and deliberately so:
     // an attempt is usually voided *because* someone reviewed it, which happens
     // after it was graded. Nothing follows a void.
+    // Erasure may follow either, and only a void may follow erasure: there is
+    // nothing left to grade, and nothing personal may be written again.
+    if (event.type === "data_erased") {
+      if (state === "in_progress") return fail("not_submitted");
+      erasedAt = entry.timestamp;
+      continue;
+    }
     if (state === "void") return fail("closed");
+    if (erasedAt !== null && event.type !== "attempt_voided") return fail("closed");
     if (state === "graded" && event.type !== "attempt_voided") return fail("closed");
 
     switch (event.type) {
@@ -209,6 +225,24 @@ export function foldAttempt(
       case "time_extended": {
         if (state !== "in_progress") return fail("not_in_progress");
         extraTimeMs += event.extraMs;
+        break;
+      }
+
+      // Only a submitted attempt, not yet graded: grading and voiding are the
+      // guard above. Scores from a partial grading belong to the old
+      // submission, so they go; test results belong to the answers, so they stay.
+      case "attempt_reopened": {
+        if (state !== "submitted") return fail("not_submitted");
+        state = "in_progress";
+        extraTimeMs += event.extraMs;
+        scores.clear();
+        break;
+      }
+
+      // Before anything the candidate does: consent is asked before the clock starts.
+      case "consent_given": {
+        if (state !== "in_progress" || consent !== null || responses.length > 0) return fail("not_in_progress");
+        consent = { noticeVersion: event.noticeVersion, noticeHash: event.noticeHash };
         break;
       }
 

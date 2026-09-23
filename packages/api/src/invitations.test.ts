@@ -197,6 +197,25 @@ describe("a candidate opening their link", () => {
     expect(ledger.entries[0].event.closesAt).toBe(CLOSES);
   });
 
+  it("finishes a start that died part-way, instead of locking the candidate out", async () => {
+    const [first] = await inviteAll();
+    clock = OPENS + 10 * 60_000;
+    // As if the server died after the invitation claimed its attempt id and before the attempt existed.
+    await db.exec(`RESET ROLE`);
+    await db.exec(`UPDATE invitations SET attempt_id = 'orphaned-attempt' WHERE id = '${first!.id}'`);
+    await db.exec(`SET ROLE parikshaa_app`);
+
+    const opened = await redeem(codeFor(first!.id));
+
+    expect(opened.statusCode, opened.payload).toBe(200);
+    expect(opened.json().attemptId).toBe("orphaned-attempt");
+    expect((await call("GET", opened.json().token, "/attempts/me")).json().state).toBe("in_progress");
+    expect((await call("GET", opened.json().token, "/attempts/me/ledger")).json().length).toBe(1);
+    // And opening it again starts nothing twice.
+    await redeem(codeFor(first!.id));
+    expect((await call("GET", opened.json().token, "/attempts/me/ledger")).json().length).toBe(1);
+  });
+
   it("will not start after the window, but still lets a started candidate back in", async () => {
     const [first, second] = await inviteAll();
     clock = OPENS + HOUR;

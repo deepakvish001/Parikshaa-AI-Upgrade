@@ -10,6 +10,8 @@ import {
   type AttemptReview,
   type CandidateReport,
   type ExamSummary,
+  type LiveRow,
+  type LiveView,
   type ResultRow,
   type Results,
   type WhoAmI,
@@ -73,6 +75,53 @@ const results: Results = {
   },
 };
 
+const billingSummary = {
+  account: {
+    mode: "prepaid",
+    pricePaise: 5000,
+    credits: 12,
+    legalName: "Acme Technologies Pvt Ltd",
+    gstin: "27AAACR5055K1Z7",
+    stateCode: "27",
+    address: "1 MG Road, Pune",
+    billingEmail: "accounts@acme.test",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  history: [{ id: "m1", delta: 12, reason: "grant", attemptId: null, paymentId: null, note: "trial", at: "2026-10-01T00:00:00.000Z" }],
+  invoices: [{ id: "inv1", number: "PKS/2627/000001", kind: "credits", paymentId: "p1", period: null, totalPaise: 590_000, issuedAt: "2026-10-01T06:00:00.000Z" }],
+  checkout: { available: true, keyId: "rzp_test_x" },
+  supplier: { legalName: "Parikshaa Assessments Pvt Ltd", stateCode: "29" },
+};
+
+const taxInvoice = {
+  ...billingSummary.invoices[0]!,
+  document: {
+    title: "Tax Invoice",
+    number: "PKS/2627/000001",
+    date: "1 Oct 2026",
+    supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "Bengaluru", state: "Karnataka", stateCode: "29" },
+    buyer: { legalName: "Acme Technologies Pvt Ltd", gstin: "27AAACR5055K1Z7", address: "Pune", state: "Maharashtra", stateCode: "27" },
+    placeOfSupply: { code: "27", state: "Maharashtra" },
+    reverseCharge: false,
+    lines: [{ description: "Assessment attempt credits (prepaid)", sac: "998399", quantity: 100, ratePaise: 5000, amountPaise: 500_000 }],
+    taxablePaise: 500_000,
+    taxes: [{ name: "IGST", ratePercent: 18, amountPaise: 90_000 }],
+    totalPaise: 590_000,
+    totalInWords: "Rupees Five Thousand Nine Hundred Only",
+  },
+};
+
+const notice = {
+  version: 1,
+  hash: "ab".repeat(32),
+  controllerName: "Acme Technologies Pvt Ltd",
+  purpose: "To assess candidates for engineering roles.",
+  retentionDays: 90,
+  grievance: { name: "Priya Menon", email: "privacy@acme.test" },
+  collected: ["Your answers."],
+  rights: ["Have it erased."],
+};
+
 const report: CandidateReport = {
   exam: { id: "exam-1", title: "Algorithms" },
   candidate: { ref: "CS001", name: "Ananya Iyer", email: "ananya@college.test" },
@@ -95,6 +144,38 @@ const report: CandidateReport = {
   voidReason: null,
   voidedBy: null,
   ledger: { head: "ab".repeat(32), length: 9 },
+};
+
+const liveRow = (ref: string, patch: Partial<LiveRow> = {}): LiveRow => ({
+  invitationId: `inv-${ref}`,
+  attemptId: `att-${ref}`,
+  ref,
+  name: `Candidate ${ref}`,
+  state: "in_progress",
+  answered: 3,
+  questions: 10,
+  startedAt: 1_000,
+  lastSeenAt: 1_790_000_000_000,
+  lastActivityAt: 1_790_000_000_000,
+  expiresAt: 1_790_000_000_000 + 30 * 60_000,
+  extraMinutes: 0,
+  reopened: 0,
+  awaitingReply: false,
+  flags: { away: false, idle: false, overdue: false },
+  ...patch,
+});
+
+const liveView: LiveView = {
+  exam: { id: "exam-1", title: "Algorithms" },
+  at: 1_790_000_000_000,
+  counts: { invited: 4, notStarted: 1, inProgress: 2, away: 1, idle: 0, submitted: 1, graded: 0, void: 0 },
+  rows: [
+    liveRow("R1"),
+    liveRow("R2", { lastSeenAt: 1_790_000_000_000 - 10 * 60_000, flags: { away: true, idle: false, overdue: false } }),
+    liveRow("R3", { state: "submitted", answered: 10 }),
+    liveRow("R4", { state: "not_started", attemptId: null, answered: 0, startedAt: null, lastSeenAt: null }),
+  ],
+  announcements: [{ id: "n1", message: "Question 2: assume sorted input.", authorName: "Meera", at: "2026-10-01T05:00:00.000Z" }],
 };
 
 const bankQuestion = (id: string, stem: string) => ({
@@ -121,6 +202,7 @@ const OWNER_PERMISSIONS = [
   "attempt:grade",
   "attempt:assess",
   "attempt:void",
+  "attempt:extend",
   "usage:read",
   "audit:read",
   "staff:manage",
@@ -236,6 +318,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     greenhouse: vi.fn(async () => ({ enabled: false, endpoints: { list_tests: "https://exam.test/api/integrations/greenhouse/list_tests" } })),
     issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
     disableGreenhouse: vi.fn(async () => undefined),
+    live: vi.fn(async () => liveView),
+    announce: vi.fn(async () => ({ id: "n2", message: "x", authorName: "Asha", at: "2026-10-01T05:00:00.000Z" })),
+    reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
     resultsFile: vi.fn(async () => new Blob(["x"])),
     report: vi.fn(async () => report),
@@ -244,6 +329,23 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     voidAttempt: vi.fn(async () => ({})),
     grade: vi.fn(async () => ({ total: 11 })),
     assess: vi.fn(async () => ({})),
+    privacy: vi.fn(async () => ({ settings: null, notice: null })),
+    savePrivacy: vi.fn(async (draft: object) => ({ settings: { ...draft, noticeVersion: 1, updatedAt: "" }, notice })),
+    eraseAttempt: vi.fn(async () => ({ erased: true })),
+    billing: vi.fn(async () => billingSummary),
+    saveBillingDetails: vi.fn(async (d: object) => ({ ...billingSummary.account, ...d })),
+    createOrder: vi.fn(async (credits: number) => ({
+      orderId: "order_1",
+      keyId: "rzp_test_x",
+      currency: "INR",
+      credits,
+      taxablePaise: credits * 5000,
+      taxPaise: credits * 900,
+      amountPaise: credits * 5900,
+      supplierName: "Parikshaa Assessments Pvt Ltd",
+    })),
+    verifyPayment: vi.fn(async () => ({ credits: 112, invoice: taxInvoice })),
+    invoice: vi.fn(async () => taxInvoice),
     ...overrides,
   } as unknown as ConsoleClient;
 }
@@ -332,6 +434,26 @@ describe("exam editor", () => {
     };
     expect(saved.title).toBe("Mechanics");
     expect(saved.questions[0]?.options).toEqual(["quicksort", "mergesort"]);
+  });
+
+  it("saves a question's Hindi translation, options in the original's order", async () => {
+    const client = await openEditor();
+
+    await userEvent.type(screen.getByLabelText("Title"), "Mechanics");
+    await userEvent.type(screen.getByLabelText("Question"), "Which is stable?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "quicksort");
+    await userEvent.type(screen.getByLabelText("Option 2"), "mergesort");
+    await userEvent.click(screen.getByText("Translations"));
+    await userEvent.selectOptions(screen.getByLabelText("Language to add"), "hi");
+    await userEvent.click(screen.getByRole("button", { name: "Add translation" }));
+    await userEvent.type(screen.getByLabelText("Question in Hindi"), "कौन सा स्थिर है?");
+    await userEvent.type(screen.getByLabelText("Option 1 in Hindi"), "क्विकसॉर्ट");
+    await userEvent.type(screen.getByLabelText("Option 2 in Hindi"), "मर्जसॉर्ट");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: { translations: unknown }[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions[0]!.translations).toEqual({ hi: { stem: "कौन सा स्थिर है?", options: ["क्विकसॉर्ट", "मर्जसॉर्ट"] } });
   });
 
   it("replaces the fields that do not carry across when the type changes", async () => {
@@ -981,5 +1103,180 @@ describe("integrations", () => {
     expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
     expect(client.report).toHaveBeenCalledWith("a2");
     expect(window.location.search).toBe("");
+  });
+});
+
+describe("the live sitting", () => {
+  const open = async (client = stubClient()) => {
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Live sitting" }));
+    return client;
+  };
+
+  it("shows the room at a glance, and who has gone away", async () => {
+    await open();
+    const summary = await screen.findByRole("region", { name: "The sitting now" });
+    expect(summary).toHaveTextContent("Away1");
+    const table = screen.getByRole("region", { name: "Candidates now" });
+    const r2 = within(table).getByText("R2").closest("tr")!;
+    expect(r2).toHaveTextContent("10 min ago");
+    expect(within(r2).getByText("away")).toBeInTheDocument();
+    expect(within(table).getByText("R1").closest("tr")).toHaveTextContent("here now");
+    expect(within(within(table).getByText("R1").closest("tr")!).getByLabelText("3 of 10 answered")).toBeInTheDocument();
+  });
+
+  it("narrows to the candidates who need attention", async () => {
+    await open();
+    const table = await screen.findByRole("region", { name: "Candidates now" });
+    await userEvent.selectOptions(within(table).getByLabelText("Show"), "attention");
+    expect(within(table).queryByText("R1")).toBeNull();
+    expect(within(table).getByText("R2")).toBeInTheDocument();
+  });
+
+  it("tells the room something, and shows what it was told", async () => {
+    const client = await open();
+    expect(await screen.findByRole("region", { name: "Told to the room" })).toHaveTextContent("assume sorted input");
+    await userEvent.type(screen.getByLabelText("Tell everyone sitting this exam"), "Ten minutes left.");
+    await userEvent.click(screen.getByRole("button", { name: "Send to everyone" }));
+    await waitFor(() => expect(client.announce).toHaveBeenCalledWith("exam-1", "Ten minutes left."));
+  });
+
+  it("reopens a submitted attempt with minutes and a reason", async () => {
+    const client = await open();
+    const table = await screen.findByRole("region", { name: "Candidates now" });
+    await userEvent.click(within(within(table).getByText("R3").closest("tr")!).getByRole("button", { name: "Reopen…" }));
+    const form = screen.getByRole("form", { name: "Reopen R3" });
+    await userEvent.clear(within(form).getByLabelText("Minutes from now"));
+    await userEvent.type(within(form).getByLabelText("Minutes from now"), "20");
+    await userEvent.type(within(form).getByLabelText(/Reason/), "Laptop crashed and submitted.");
+    await userEvent.click(within(form).getByRole("button", { name: "Reopen" }));
+    await waitFor(() => expect(client.reopen).toHaveBeenCalledWith("att-R3", 20, "Laptop crashed and submitted."));
+  });
+
+  it("offers no interventions to someone who can only watch", async () => {
+    await open(stubClient({ me: vi.fn(async () => who("viewer", ["exam:read", "attempt:read", "attempt:review"])) }));
+    await screen.findByRole("region", { name: "Candidates now" });
+    expect(screen.queryByRole("region", { name: "Tell the room" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reopen…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Extend…" })).toBeNull();
+  });
+});
+
+describe("privacy (ROADMAP §11)", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("lets an owner set the notice and retention, and shows what candidates will see", async () => {
+    let saved = false;
+    const client = stubClient({
+      privacy: vi.fn(async () => (saved ? { settings: { ...notice, grievanceName: "Priya Menon", grievanceEmail: "privacy@acme.test", noticeVersion: 1, updatedAt: "" }, notice } : { settings: null, notice: null })),
+    });
+    vi.mocked(client.savePrivacy).mockImplementation(async () => {
+      saved = true;
+      return { settings: { controllerName: "", grievanceName: "", grievanceEmail: "", purpose: "", retentionDays: 90, noticeVersion: 1, updatedAt: "" }, notice };
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Privacy" }));
+
+    expect(await screen.findByText(/Not set yet/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Organisation responsible for the data"), "Acme Technologies Pvt Ltd");
+    await userEvent.type(screen.getByLabelText("Grievance officer"), "Priya Menon");
+    await userEvent.type(screen.getByLabelText("Grievance officer's email"), "privacy@acme.test");
+    await userEvent.type(screen.getByLabelText("Why the data is collected"), "To assess candidates for engineering roles.");
+    await userEvent.clear(screen.getByLabelText("Erase personal data after (days)"));
+    await userEvent.type(screen.getByLabelText("Erase personal data after (days)"), "90");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(client.savePrivacy).toHaveBeenCalledWith({
+      controllerName: "Acme Technologies Pvt Ltd",
+      grievanceName: "Priya Menon",
+      grievanceEmail: "privacy@acme.test",
+      purpose: "To assess candidates for engineering roles.",
+      retentionDays: 90,
+    });
+    const preview = await screen.findByRole("region", { name: "What candidates see" });
+    expect(preview).toHaveTextContent("Kept for 90 days after the attempt closes, then erased.");
+  });
+
+  it("erases a candidate's data only once their reference is typed back", async () => {
+    window.history.replaceState(null, "", "/console/?report=a2");
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Erase personal data…" }));
+
+    const erase = screen.getByRole("button", { name: "Erase permanently" });
+    await userEvent.type(screen.getByLabelText("Type CS001 to confirm"), "CS00");
+    expect(erase).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Type CS001 to confirm"), "1");
+    await userEvent.click(erase);
+
+    expect(client.eraseAttempt).toHaveBeenCalledWith("a2");
+  });
+
+  it("is not offered to someone who does not manage the organisation", async () => {
+    window.history.replaceState(null, "", "/console/?report=a2");
+    renderApp(<App client={stubClient({ me: vi.fn(async () => who("reviewer", ["exam:read", "attempt:read", "attempt:review"])) })} />);
+    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Erase personal data…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
+  });
+});
+
+describe("billing (ROADMAP §12)", () => {
+  afterEach(() => {
+    delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  const openBilling = async (client = stubClient()) => {
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Billing" }));
+    await screen.findByRole("region", { name: "Plan and balance" });
+    return client;
+  };
+
+  it("shows the balance and prices a purchase with the GST it will carry", async () => {
+    await openBilling();
+    expect(within(screen.getByRole("region", { name: "Plan and balance" })).getByText("12")).toBeInTheDocument();
+    const buy = screen.getByRole("region", { name: "Buy credits" });
+    // Pune to a Karnataka supplier: IGST.
+    expect(buy).toHaveTextContent("100 × ₹50.00 = ₹5,000.00 + IGST 18% ₹900.00 = ₹5,900.00");
+  });
+
+  it("pays through Razorpay Checkout, and has the server check the payment before saying it is paid", async () => {
+    const opened: Record<string, unknown>[] = [];
+    (window as { Razorpay?: unknown }).Razorpay = class {
+      constructor(readonly options: Record<string, unknown>) {
+        opened.push(options);
+      }
+      on() {}
+      open() {
+        (this.options["handler"] as (r: object) => void)({ razorpay_payment_id: "pay_1", razorpay_order_id: "order_1", razorpay_signature: "sig" });
+      }
+    };
+    const client = await openBilling();
+    await userEvent.click(screen.getByRole("button", { name: /^Pay ₹5,900.00 with Razorpay$/ }));
+
+    expect(await screen.findByText(/Paid\. 100 credits added; tax invoice PKS\/2627\/000001/)).toBeInTheDocument();
+    expect(client.createOrder).toHaveBeenCalledWith(100);
+    expect(opened[0]).toMatchObject({ key: "rzp_test_x", order_id: "order_1", amount: 590_000, currency: "INR" });
+    expect(client.verifyPayment).toHaveBeenCalledWith("order_1", "pay_1", "sig");
+  });
+
+  it("keeps the details a tax invoice carries", async () => {
+    const client = await openBilling();
+    await userEvent.clear(screen.getByLabelText("GSTIN (if registered)"));
+    await userEvent.selectOptions(screen.getByLabelText("State"), "29");
+    await userEvent.click(screen.getByRole("button", { name: "Save details" }));
+    expect(client.saveBillingDetails).toHaveBeenCalledWith(expect.objectContaining({ gstin: null, stateCode: "29", legalName: "Acme Technologies Pvt Ltd" }));
+  });
+
+  it("shows a tax invoice as issued, ready to print", async () => {
+    await openBilling();
+    await userEvent.click(screen.getByRole("button", { name: "View PKS/2627/000001" }));
+    const invoice = await screen.findByRole("article", { name: "Tax invoice PKS/2627/000001" });
+    expect(invoice).toHaveTextContent("Place of supply: Maharashtra (27)");
+    expect(invoice).toHaveTextContent("IGST @ 18%");
+    expect(invoice).toHaveTextContent("Rupees Five Thousand Nine Hundred Only");
+    expect(within(invoice).getByRole("button", { name: "Print or save as PDF" })).toBeInTheDocument();
   });
 });

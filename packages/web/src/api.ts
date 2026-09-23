@@ -1,5 +1,12 @@
 import type { CandidateLedger, CandidateState } from "@parikshaa/api";
 
+/** Something an invigilator told everyone in the sitting. */
+export interface Announcement {
+  readonly id: string;
+  readonly message: string;
+  readonly at: string;
+}
+
 export type { CandidateLedger, CandidateState };
 
 export interface ProbeHandlers {
@@ -45,15 +52,47 @@ export interface Opened {
   readonly resumed: boolean;
 }
 
+/** An organisation's privacy notice (DPDP Act), agreed to before the clock starts. */
+export interface Notice {
+  readonly version: number;
+  readonly hash: string;
+  readonly controllerName: string;
+  readonly purpose: string;
+  readonly retentionDays: number;
+  readonly grievance: { readonly name: string; readonly email: string };
+  readonly collected: readonly string[];
+  readonly rights: readonly string[];
+  /** The standing parts of the notice in other languages, hashed with the rest. */
+  readonly translations?: { readonly hi?: { readonly collected: readonly string[]; readonly rights: readonly string[] } };
+}
+
+/** Everything held about the candidate for this attempt, as they may download it. */
+export interface CandidateData {
+  readonly generatedAt: string;
+  readonly organisation: string;
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly you: { readonly reference: string; readonly name: string; readonly email: string | null; readonly phone: string | null } | null;
+  readonly consent: { readonly noticeVersion: number; readonly noticeHash: string; readonly at: number } | null;
+  readonly erased: boolean;
+  readonly answers: readonly { readonly questionId: string; readonly answer: string; readonly at: number }[];
+  readonly followUps: readonly { readonly questionId: string; readonly question: string; readonly reply: string | null; readonly at: number }[];
+  readonly timeline: readonly { readonly at: number; readonly event: string }[];
+}
+
 /**
  * Open an invitation link. Throws an {@link ApiError}: `not_open_yet` (403) and
- * `window_closed` (410) carry `opensAt` and `closesAt` in `detail`.
+ * `window_closed` (410) carry `opensAt` and `closesAt` in `detail`;
+ * `consent_required` (428) carries the privacy notice as `detail.notice`.
  */
-export async function redeemInvitation(code: string, baseUrl = "/api"): Promise<Opened> {
+export async function redeemInvitation(
+  code: string,
+  baseUrl = "/api",
+  consent?: { readonly noticeVersion: number },
+): Promise<Opened> {
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/invitations/redeem`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify(consent === undefined ? { code } : { code, consent }),
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) throw new ApiError(response.status, typeof body["error"] === "string" ? body["error"] : "request_failed", body);
@@ -101,6 +140,11 @@ export class ParikshaaClient {
     return this.#request<CandidateLedger>("/attempts/me/ledger");
   }
 
+  /** Everything held about the candidate: details, consent, answers and replies. */
+  myData(): Promise<CandidateData> {
+    return this.#request<CandidateData>("/attempts/me/data");
+  }
+
   async saveAnswer(questionId: string, answer: string): Promise<void> {
     await this.#request("/attempts/me/answers", {
       method: "POST",
@@ -117,8 +161,13 @@ export class ParikshaaClient {
   }
 
   /** Check in: the attempt's state and deadline as they now stand. */
-  heartbeat(): Promise<{ state: string; expiresAt: number }> {
+  heartbeat(): Promise<{ state: string; expiresAt: number; announcements: number }> {
     return this.#request("/attempts/me/heartbeat", { method: "POST" });
+  }
+
+  /** What the invigilators have told this sitting, oldest first. */
+  async announcements(): Promise<readonly Announcement[]> {
+    return (await this.#request<{ announcements: Announcement[] }>("/attempts/me/announcements")).announcements;
   }
 
   /** Run code against the examples, or on the candidate's own input. Records nothing. */
@@ -155,6 +204,11 @@ export class ParikshaaClient {
    * Authorization header — putting the attempt token in the query string
    * instead would leak it into proxy logs and browser history.
    */
+  /** The next probe in one reply, for low-bandwidth mode: no stream to hold open. */
+  async probeOnce(): Promise<{ readonly id: string; readonly prompt: string } | null> {
+    return (await this.#request<{ probe: { id: string; prompt: string } | null }>("/attempts/me/probe?stream=0")).probe;
+  }
+
   async streamProbe(handlers: ProbeHandlers, signal?: AbortSignal): Promise<void> {
     const response = await fetch(`${this.#baseUrl}/attempts/me/probe`, {
       headers: { authorization: `Bearer ${this.#token}` },
