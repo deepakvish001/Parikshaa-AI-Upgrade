@@ -83,7 +83,7 @@ export function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
 }
 
-const split = (value: string, on: RegExp = /\|/): string[] =>
+export const split = (value: string, on: RegExp = /\|/): string[] =>
   value
     .split(on)
     .map((s) => s.trim())
@@ -115,83 +115,102 @@ export function importQuestions(csv: string): ImportResult {
   body.forEach((cells, index) => {
     const rowNumber = index + 2;
     const cell = (name: string): string => (cells[columns.indexOf(name)] ?? "").trim();
-    const fail = (message: string) => problems.push({ row: rowNumber, message });
-
-    const kind = cell("kind").toLowerCase();
-    const stem = cell("question");
-    const marksText = cell("marks");
-    const maxScore = marksText === "" ? 1 : Number(marksText);
-    const difficultyText = cell("difficulty").toLowerCase();
-    const difficulty = (difficultyText === "" ? "medium" : difficultyText) as Difficulty;
-
-    if (!DIFFICULTIES.includes(difficulty)) {
-      fail(`Difficulty must be easy, medium or hard, not "${cell("difficulty")}".`);
-      return;
-    }
-    if (!Number.isFinite(maxScore)) {
-      fail(`Marks must be a number, not "${marksText}".`);
-      return;
-    }
-
-    let question: Question;
-    const id = questionId(`row-${rowNumber}`);
-    switch (kind) {
-      case "mcq": {
-        const options = split(cell("options"));
-        const answer = cell("answer");
-        const correctIndex = mcqAnswer(answer, options);
-        if (correctIndex === null) {
-          fail(`The answer "${answer}" is not one of the options; use a letter (B), a number (2) or the option's text.`);
-          return;
-        }
-        question = { id, kind: "mcq", stem, maxScore, rubric: [], options, correctIndex };
-        break;
-      }
-      case "numeric": {
-        const expected = Number(cell("answer"));
-        const toleranceText = cell("tolerance");
-        const tolerance = toleranceText === "" ? 0 : Number(toleranceText);
-        if (cell("answer") === "" || !Number.isFinite(expected)) {
-          fail(`A numeric question's answer must be a number, not "${cell("answer")}".`);
-          return;
-        }
-        if (!Number.isFinite(tolerance)) {
-          fail(`Tolerance must be a number, not "${toleranceText}".`);
-          return;
-        }
-        question = { id, kind: "numeric", stem, maxScore, rubric: [], expected, tolerance };
-        break;
-      }
-      case "short": {
-        const expectedPoints = split(cell("answer"));
-        const criteria = split(cell("rubric"));
-        const rubric = (criteria.length > 0 ? criteria : expectedPoints).map((description, i) => ({
-          id: `c${i + 1}`,
-          description,
-          weight: 1,
-        }));
-        question = { id, kind: "short", stem, maxScore, rubric, expectedPoints };
-        break;
-      }
-      case "code":
-        fail("Code questions carry test cases; write them in the console rather than a spreadsheet.");
-        return;
-      default:
-        fail(`Kind must be mcq, numeric or short, not "${cell("kind")}".`);
-        return;
-    }
-
-    const invalid = validateQuestion(question, "");
-    if (invalid.length > 0) {
-      for (const problem of invalid) fail(problem.message);
-      return;
-    }
-
-    const { id: _, ...withoutId } = question;
-    drafts.push({ question: withoutId, topic: cell("topic"), difficulty, tags: split(cell("tags"), /[|,]/) });
+    const built = draftFrom(
+      {
+        kind: cell("kind"),
+        question: cell("question"),
+        options: split(cell("options")),
+        answer: cell("answer"),
+        tolerance: cell("tolerance"),
+        marks: cell("marks"),
+        rubric: cell("rubric"),
+        topic: cell("topic"),
+        difficulty: cell("difficulty"),
+        tags: cell("tags"),
+      },
+      `row-${rowNumber}`,
+    );
+    if ("problems" in built) for (const message of built.problems) problems.push({ row: rowNumber, message });
+    else drafts.push(built.draft);
   });
 
   return problems.length > 0 ? { ok: false, problems } : { ok: true, drafts };
+}
+
+/** One question's fields as written, whatever the file they came from. */
+export interface QuestionFields {
+  readonly kind: string;
+  readonly question: string;
+  readonly options: readonly string[];
+  /** mcq: a letter, number or the option's text; numeric: the value; short: expected points separated by | */
+  readonly answer: string;
+  readonly tolerance: string;
+  readonly marks: string;
+  /** short: criteria separated by | */
+  readonly rubric: string;
+  readonly topic: string;
+  readonly difficulty: string;
+  /** separated by | or , */
+  readonly tags: string;
+}
+
+/** A bank draft from one question's fields, or every reason it cannot be one. */
+export function draftFrom(fields: QuestionFields, idHint: string): { readonly draft: BankDraft } | { readonly problems: readonly string[] } {
+  const kind = fields.kind.trim().toLowerCase();
+  const stem = fields.question.trim();
+  const marksText = fields.marks.trim();
+  const maxScore = marksText === "" ? 1 : Number(marksText);
+  const difficultyText = fields.difficulty.trim().toLowerCase();
+  const difficulty = (difficultyText === "" ? "medium" : difficultyText) as Difficulty;
+  const fail = (message: string) => ({ problems: [message] });
+
+  if (!DIFFICULTIES.includes(difficulty)) return fail(`Difficulty must be easy, medium or hard, not "${fields.difficulty}".`);
+  if (!Number.isFinite(maxScore)) return fail(`Marks must be a number, not "${marksText}".`);
+
+  let question: Question;
+  const id = questionId(idHint);
+  const answer = fields.answer.trim();
+  switch (kind) {
+    case "mcq": {
+      const options = fields.options.map((o) => o.trim()).filter((o) => o !== "");
+      const correctIndex = mcqAnswer(answer, options);
+      if (correctIndex === null) {
+        return fail(`The answer "${answer}" is not one of the options; use a letter (B), a number (2) or the option's text.`);
+      }
+      question = { id, kind: "mcq", stem, maxScore, rubric: [], options, correctIndex };
+      break;
+    }
+    case "numeric": {
+      const expected = Number(answer);
+      const toleranceText = fields.tolerance.trim();
+      const tolerance = toleranceText === "" ? 0 : Number(toleranceText);
+      if (answer === "" || !Number.isFinite(expected)) return fail(`A numeric question's answer must be a number, not "${answer}".`);
+      if (!Number.isFinite(tolerance)) return fail(`Tolerance must be a number, not "${toleranceText}".`);
+      question = { id, kind: "numeric", stem, maxScore, rubric: [], expected, tolerance };
+      break;
+    }
+    case "short": {
+      const expectedPoints = split(answer);
+      const criteria = split(fields.rubric);
+      const rubric = (criteria.length > 0 ? criteria : expectedPoints).map((description, i) => ({
+        id: `c${i + 1}`,
+        description,
+        weight: 1,
+      }));
+      question = { id, kind: "short", stem, maxScore, rubric, expectedPoints };
+      break;
+    }
+    case "code":
+      return fail("Code questions carry test cases; write them in the console rather than a file.");
+    default:
+      return fail(`Kind must be mcq, numeric or short, not "${fields.kind}".`);
+  }
+
+  const invalid = validateQuestion(question, "");
+  if (invalid.length > 0) return { problems: invalid.map((p) => p.message) };
+
+  const { id: _, ...withoutId } = question;
+  return { draft: { question: withoutId, topic: fields.topic.trim(), difficulty, tags: split(fields.tags, /[|,]/) } };
 }
 
 /** An mcq answer as a letter, a 1-based number, or the option's own text. */

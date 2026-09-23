@@ -1,7 +1,17 @@
 import { examId as toExamId, foldAttempt, paperOf, type AttemptId, type ExamId } from "@parikshaa/core";
-import { candidateScope, staffScope, type Announcement, type InvigilationStore, type InvitationStore, type LedgerStore } from "@parikshaa/store";
+import {
+  candidateScope,
+  staffScope,
+  type Announcement,
+  type InvigilationStore,
+  type InvitationStore,
+  type LedgerStore,
+  type ProctorStore,
+  type ProctorSummary,
+} from "@parikshaa/store";
 import { AttemptError, Forbidden, deadlineOf, type CandidateAccess, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
+import { identityState, type LiveProctoring } from "./proctoring.js";
 
 /**
  * Live invigilation (ROADMAP §8): who has started, where they are, who has
@@ -29,13 +39,23 @@ export interface LiveRow {
   readonly extraMinutes: number;
   readonly reopened: number;
   readonly awaitingReply: boolean;
-  readonly flags: { readonly away: boolean; readonly idle: boolean; readonly overdue: boolean };
+  /** For a proctored exam (ROADMAP §14): the identity check, and what the camera and browser sent. */
+  readonly proctoring: LiveProctoring | null;
+  readonly flags: {
+    readonly away: boolean;
+    readonly idle: boolean;
+    readonly overdue: boolean;
+    /** A proctored attempt whose webcam photos have stopped arriving. */
+    readonly cameraOff: boolean;
+  };
 }
 
 export interface LiveView {
   readonly exam: { readonly id: string; readonly title: string };
   readonly at: number;
-  readonly counts: Readonly<Record<"invited" | "notStarted" | "inProgress" | "away" | "idle" | "submitted" | "graded" | "void", number>>;
+  readonly counts: Readonly<
+    Record<"invited" | "notStarted" | "inProgress" | "away" | "idle" | "cameraOff" | "identityPending" | "submitted" | "graded" | "void", number>
+  >;
   readonly rows: readonly LiveRow[];
   readonly announcements: readonly Announcement[];
 }
@@ -51,6 +71,7 @@ export class InvigilationService {
     readonly invitations: InvitationStore;
     readonly invigilation: InvigilationStore;
     readonly exams: ExamService;
+    readonly proctor: ProctorStore | null;
     readonly now: () => number;
   };
 
@@ -59,9 +80,11 @@ export class InvigilationService {
     invitations: InvitationStore;
     invigilation: InvigilationStore;
     exams: ExamService;
+    /** Proctoring photos and events, for a proctored exam's rows. */
+    proctor?: ProctorStore | null;
     now?: () => number;
   }) {
-    this.#o = { ...options, now: options.now ?? (() => Date.now()) };
+    this.#o = { ...options, proctor: options.proctor ?? null, now: options.now ?? (() => Date.now()) };
   }
 
   async live(actor: Actor, id: string, idleMinutes = DEFAULT_IDLE_MINUTES): Promise<LiveView> {
@@ -72,12 +95,16 @@ export class InvigilationService {
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${id}`);
     const now = this.#o.now();
 
-    const [chains, invited, summaries, drafts, announcements] = await Promise.all([
+    const policy = exam.policy.proctoring ?? null;
+    const [chains, invited, summaries, drafts, announcements, proctored] = await Promise.all([
       this.#o.store.loadExamLedgers(scope, examId),
       this.#o.invitations.list(scope, examId),
       this.#o.store.listAttempts(scope, examId),
       this.#o.invigilation.lastDraftAt(scope, examId),
       this.#o.invigilation.announcements(scope, examId),
+      policy === null || this.#o.proctor === null
+        ? Promise.resolve(new Map<string, ProctorSummary>())
+        : this.#o.proctor.summary(scope, examId),
     ]);
     const lastSeen = new Map(summaries.map((s) => [s.id as string, s.lastSeenAt === null ? null : Date.parse(s.lastSeenAt)]));
 
@@ -100,7 +127,8 @@ export class InvigilationService {
           extraMinutes: 0,
           reopened: 0,
           awaitingReply: false,
-          flags: { away: false, idle: false, overdue: false },
+          proctoring: null,
+          flags: { away: false, idle: false, overdue: false, cameraOff: false },
         };
       }
       const paper = paperOf(exam, first.event.questionIds);
@@ -114,6 +142,20 @@ export class InvigilationService {
       const committed = entries.filter((e) => e.event.type === "answer_submitted").at(-1)?.timestamp ?? null;
       const activity = Math.max(projection.attempt.startedAt, committed ?? 0, drafts.get(attemptId!) ?? 0);
       const open = state === "in_progress";
+      const sent = proctored.get(attemptId!);
+      const proctoring: LiveProctoring | null =
+        policy === null
+          ? null
+          : {
+              identity: identityState(projection.identity),
+              snapshots: sent?.snapshots ?? 0,
+              lastSnapshotAt: sent?.lastSnapshotAt ?? null,
+              events: sent?.events ?? {},
+            };
+      // Three intervals without a photo, a minute's grace at the start.
+      const every = policy?.snapshotEverySeconds ?? null;
+      const lastPhoto = proctoring?.lastSnapshotAt ?? projection.attempt.startedAt;
+      const cameraOff = open && every !== null && now - lastPhoto > every * 3000 + 60_000;
       return {
         invitationId,
         attemptId,
@@ -129,7 +171,9 @@ export class InvigilationService {
         extraMinutes: Math.round(projection.extraTimeMs / 60_000),
         reopened: entries.filter((e) => e.event.type === "attempt_reopened").length,
         awaitingReply: projection.vivas.some((v) => v.exchange === null),
+        proctoring,
         flags: {
+          cameraOff,
           away: open && (seen === null ? now - projection.attempt.startedAt > AWAY_AFTER_MS : now - seen > AWAY_AFTER_MS),
           idle: open && now - activity > idleMinutes * 60_000,
           // Time is up but nothing has written since to close it; the next write will.
@@ -154,6 +198,8 @@ export class InvigilationService {
         inProgress: count((r) => r.state === "in_progress"),
         away: count((r) => r.flags.away),
         idle: count((r) => r.flags.idle),
+        cameraOff: count((r) => r.flags.cameraOff),
+        identityPending: count((r) => r.proctoring?.identity === "pending"),
         submitted: count((r) => r.state === "submitted"),
         graded: count((r) => r.state === "graded"),
         void: count((r) => r.state === "void"),

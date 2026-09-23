@@ -39,6 +39,13 @@ const rubricCriterion = z.object({
   weight: z.number(),
 });
 
+/** Camera proctoring for an exam (ROADMAP §14). */
+export const proctoringPolicy = z.object({
+  identity: z.boolean().describe("A photo of the candidate and of their photo ID before they begin, checked by an invigilator."),
+  snapshotEverySeconds: z.number().int().nullable().describe("A webcam photo this often while the attempt is open; null for none."),
+  browserEvents: z.boolean().describe("Record leaving the tab or full screen, and copying or pasting."),
+});
+
 /** A question in other languages, by locale (ROADMAP §9): what a candidate reads, and nothing else. */
 const translations = z
   .partialRecord(z.enum(CONTENT_LOCALES), z.object({ stem: z.string(), options: z.array(z.string()).readonly().optional() }))
@@ -102,6 +109,7 @@ export const examSchema = z.object({
     durationMs: z.number(),
     allowRevision: z.boolean(),
     vivaTriggerRatio: z.number(),
+    proctoring: proctoringPolicy.optional().describe("Camera proctoring. Absent: none."),
   }),
   questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
   sections: z
@@ -111,6 +119,10 @@ export const examSchema = z.object({
         title: z.string(),
         pick: z.number().describe("How many of the pool each candidate draws."),
         pool: z.array(questionSchema).readonly(),
+        durationMs: z
+          .number()
+          .optional()
+          .describe("The section's own time. When any section has one, sections are taken in order and locked once left."),
       }),
     )
     .readonly()
@@ -169,6 +181,39 @@ export const bankImportResponse = z.object({ imported: z.number() });
 export const bankImportProblems = z.object({
   error: z.literal("invalid_import"),
   problems: z.array(z.object({ row: z.number(), message: z.string() })).readonly(),
+});
+
+export const bankDocxBody = z.object({
+  file: z.string().max(14_000_000).describe("The .docx file, base64-encoded. At most 10 MB."),
+  dryRun: z.boolean().default(false).describe("Check and preview the questions without adding them to the bank."),
+});
+
+export const bankDocxResponse = z.object({
+  imported: z.number().describe("Questions added to the bank; 0 on a dry run."),
+  preview: z
+    .array(
+      z.object({
+        question: z.number().describe("Which question, counting from the top of the document"),
+        kind: z.string(),
+        stem: z.string(),
+        marks: z.number(),
+        note: z.string().nullable().describe("Something in the question that was not imported, such as a picture"),
+      }),
+    )
+    .readonly(),
+});
+
+export const bankDocxProblems = z.object({
+  error: z.literal("invalid_import"),
+  problems: z
+    .array(
+      z.object({
+        question: z.number().describe("Which question, counting from the top of the document; 0 for the file as a whole"),
+        written: z.number().nullable().describe("The number written on it, which may restart in each section of a paper"),
+        message: z.string(),
+      }),
+    )
+    .readonly(),
 });
 
 export const examListResponse = z.object({
@@ -286,8 +331,24 @@ export const candidateStateResponse = z.object({
     durationMs: z.number(),
     allowRevision: z.boolean(),
     questions: z.array(candidateQuestion).readonly(),
+    proctoring: proctoringPolicy.nullable().describe("What the camera and browser are asked for. Null: nothing."),
   }),
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
+  identityCaptured: z.boolean().describe("A proctored exam's identity photos have been taken; until then its questions wait."),
+  parts: z
+    .array(
+      z.object({
+        sectionId: z.string().nullable().describe("Null: the exam's fixed questions, taken first."),
+        title: z.string(),
+        durationMs: z.number().nullable(),
+        questionIds: z.array(z.string()).readonly(),
+        state: z.enum(["done", "current", "upcoming"]),
+        endsAt: z.number().nullable().describe("When the current part's own time is up."),
+      }),
+    )
+    .readonly()
+    .nullable()
+    .describe("A sectioned exam's parts, in order. Null: every question is open at once."),
   voidReason: z.string().nullable(),
   startedAt: z.number(),
   expiresAt: z.number().describe("When this attempt's window closes. Exam time, not a probe timer."),

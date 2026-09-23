@@ -137,7 +137,7 @@ sections, sittings and years.
   edited — otherwise the ledger records answers to a question that no longer
   exists.
 
-**Status — built, with two pieces deferred.** Each organisation has a question
+**Status — built.** Each organisation has a question
 bank, filed by topic, difficulty and tags, searchable, and importable from CSV
 (what every spreadsheet exports), all or nothing with every bad row reported by
 its number. An exam can carry sections, each a pool of questions of which every
@@ -148,10 +148,25 @@ worth the same. Questions are *copied* from the bank into an exam, so editing
 the bank never changes an exam; a sat exam is frozen and is changed by cloning
 it.
 
-Deferred: **per-section timing** (a section with its own clock, locked once
-left) needs its own ledger event and a sequential candidate flow, and
-**Word import**, which needs a document parser and a convention for marking
-answers in prose. Neither blocks a campus hiring round.
+**Per-section timing** is built too. A section can carry its own time; the
+test is then taken in parts, in order — the fixed questions, then each section.
+Entering a section records `section_started` and starts its clock; leaving it
+or running out of time records `section_closed`, and it is locked from then
+on. Drafts saved before a section's time ran out are kept, as they are for the
+exam's own window. The candidate sees only the current part, its clock to the
+second, a warning before leaving a part for good, and a card to start the next
+section when they are ready.
+
+**Word import** is built as well. A question paper typed in Word the usual way
+— numbered questions (typed, or Word's numbered list), lettered options, then
+an `Answer:` line, or the right option marked with `*`, and optional `Marks:`,
+`Topic:`, `Difficulty:`, `Tags:`, `Type:` lines — is read straight from the
+.docx. Options make a question mcq; otherwise a numeric answer makes it numeric
+and anything else short answer. A title, instructions and "Section B" headings
+are skipped. The console reads the file first and shows every question found,
+naming any picture or equation it left out, before anything is added; like the
+CSV import it is all or nothing, with each problem named by its question.
+`docs/samples/question-paper.docx` is a paper to copy.
 
 ## 4. Coding assessment
 
@@ -504,6 +519,38 @@ process when connections dropped, and a failure mid-start locking a candidate
 out. All three are fixed and tested; `docs/OPERATIONS.md` has the detail.
 
 ---
+
+## 14. Identity check and camera proctoring
+
+Some buyers — campus drives with thousands of unseen candidates, companies
+whose policy demands it — will not buy an assessment that cannot say who sat
+it. Parikshaa's answer to "did they write it?" stays the micro-viva; this
+section adds "is it them?", for an exam whose author asks.
+
+**Status — built, off by default.** An exam's author can turn on, separately:
+an **identity check** (a photo of the candidate and of their photo ID before
+the first question), **webcam photos** at an interval (15 s to 15 min), and
+**browser events** (leaving the tab or full screen, copy and paste, the
+camera stopping). The candidate is told exactly which, in English or Hindi,
+before their clock starts, and the attempt starts only once their camera
+works. The ledger commits to both identity photos' SHA-256
+(`identity_captured`); an invigilator compares them on the live sitting and
+records a decision with a reason (`identity_reviewed`, with their name) —
+correctable, and only before grading. Webcam photos and browser events are
+kept outside the chain (there are too many to chain one by one). The live
+sitting flags a camera that has gone quiet and identities still to check;
+the report carries the decision and the counts.
+
+What it deliberately is not: automatic. No face matching, no gaze tracking,
+no "suspicion score" — a photo or a switched tab is a reason for a person to
+look, never a finding, and none of it reaches a probe, a verdict or a grade.
+Every photo is personal data: sealed under the attempt's data key (§11),
+opened only for staff, never cached, and destroyed with the key on erasure
+or at the end of the retention period. The privacy notice says so.
+
+Not in it: a lockdown browser, screen recording, audio, and a second-device
+camera. Webcam photos are stored in Postgres; at very large volumes an object
+store would be the better home.
 
 ## Sequencing
 

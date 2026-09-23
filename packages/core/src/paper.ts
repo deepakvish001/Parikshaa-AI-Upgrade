@@ -76,3 +76,41 @@ function mulberry32(state: number): () => number {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+
+/** One part of a sectioned exam as this attempt sits it: its questions, in order, and its own time. */
+export interface PaperPart {
+  /** null: the exam's fixed questions, which come before any section. */
+  readonly sectionId: string | null;
+  readonly title: string;
+  readonly durationMs: number | null;
+  readonly questionIds: readonly QuestionId[];
+}
+
+/**
+ * Whether the exam is taken section by section (ROADMAP §3): when any
+ * section has its own clock.
+ */
+export const isSequential = (exam: Exam): boolean => (exam.sections ?? []).some((s) => s.durationMs !== undefined);
+
+/**
+ * The parts of this attempt's paper, in the order they are taken: the fixed
+ * questions (if any), then each section with the questions this attempt drew
+ * from it. Null for an exam that is not sectioned by time.
+ */
+export function partsOf(exam: Exam, questionIds: readonly QuestionId[]): readonly PaperPart[] | null {
+  if (!isSequential(exam)) return null;
+  const onPaper = new Set(questionIds);
+  const parts: PaperPart[] = [];
+  const fixed = exam.questions.map((q) => q.id).filter((id) => onPaper.has(id));
+  if (fixed.length > 0) parts.push({ sectionId: null, title: "General", durationMs: null, questionIds: fixed });
+  for (const section of exam.sections ?? []) {
+    const drawn = new Set(section.pool.map((q) => q.id));
+    parts.push({
+      sectionId: section.id,
+      title: section.title,
+      durationMs: section.durationMs ?? null,
+      questionIds: questionIds.filter((id) => drawn.has(id)),
+    });
+  }
+  return parts;
+}

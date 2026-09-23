@@ -8,6 +8,7 @@ export interface Announcement {
 }
 
 export type { CandidateLedger, CandidateState };
+export type CandidatePart = NonNullable<CandidateState["parts"]>[number];
 
 export interface ProbeHandlers {
   /** A fragment of the probe as it is written. */
@@ -88,11 +89,13 @@ export async function redeemInvitation(
   code: string,
   baseUrl = "/api",
   consent?: { readonly noticeVersion: number },
+  /** The camera is working, for a proctored exam's first opening. */
+  camera?: boolean,
 ): Promise<Opened> {
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/invitations/redeem`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(consent === undefined ? { code } : { code, consent }),
+    body: JSON.stringify({ code, ...(consent === undefined ? {} : { consent }), ...(camera === undefined ? {} : { camera }) }),
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) throw new ApiError(response.status, typeof body["error"] === "string" ? body["error"] : "request_failed", body);
@@ -140,6 +143,19 @@ export class ParikshaaClient {
     return this.#request<CandidateLedger>("/attempts/me/ledger");
   }
 
+  /** The identity photos, base64 JPEG (ROADMAP §14). */
+  async captureIdentity(selfie: string, id: string): Promise<void> {
+    await this.#request("/attempts/me/identity", { method: "POST", body: JSON.stringify({ selfie, id }) });
+  }
+
+  async snapshot(image: string): Promise<void> {
+    await this.#request("/attempts/me/snapshots", { method: "POST", body: JSON.stringify({ image }) });
+  }
+
+  async proctorEvents(events: readonly string[]): Promise<void> {
+    await this.#request("/attempts/me/proctor-events", { method: "POST", body: JSON.stringify({ events }) });
+  }
+
   /** Everything held about the candidate: details, consent, answers and replies. */
   myData(): Promise<CandidateData> {
     return this.#request<CandidateData>("/attempts/me/data");
@@ -176,6 +192,11 @@ export class ParikshaaClient {
       method: "POST",
       body: JSON.stringify(input === undefined ? { questionId, language, source } : { questionId, language, source, input }),
     });
+  }
+
+  /** Leave the current part of a sectioned test and start the next section's clock (ROADMAP §3). */
+  async nextSection(): Promise<void> {
+    await this.#request("/attempts/me/sections/next", { method: "POST" });
   }
 
   async submit(): Promise<void> {

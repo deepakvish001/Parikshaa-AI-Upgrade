@@ -1,5 +1,5 @@
 import { languagesOf } from "./code.js";
-import type { ContentLocale, Exam, ExamId, Question, QuestionId, QuestionKind, QuestionTranslation } from "./domain.js";
+import type { ContentLocale, Exam, ExamId, ProctoringPolicy, Question, QuestionId, QuestionKind, QuestionTranslation } from "./domain.js";
 
 /**
  * What a candidate is allowed to see while sitting an exam.
@@ -61,6 +61,8 @@ export interface CandidateExam {
   readonly durationMs: number;
   readonly allowRevision: boolean;
   readonly questions: readonly CandidateQuestion[];
+  /** What the camera and browser are asked for: the candidate is told before they start. Null: nothing. */
+  readonly proctoring: ProctoringPolicy | null;
 }
 
 export function candidateQuestion(question: Question): CandidateQuestion {
@@ -108,5 +110,6 @@ export function candidateView(exam: Exam): CandidateExam {
     durationMs: exam.policy.durationMs,
     allowRevision: exam.policy.allowRevision,
     questions: exam.questions.map(candidateQuestion),
+    proctoring: exam.policy.proctoring ?? null,
   };
 }

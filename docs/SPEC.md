@@ -31,10 +31,14 @@ This repository holds the assessment engine, not a hosted product. In scope:
 - organisations, each isolated from the others, with individual staff accounts,
   roles, API keys and an audit log of what staff did
 
-Out of scope for now: candidate identity and enrolment, payments, and any form
-of biometric or video surveillance. The last is a design choice, not a backlog
-item — see §6. Candidates still have no accounts: an institution already knows
-who its candidates are, and issues each one an access code for one attempt.
+Out of scope for now: candidate accounts and enrolment. Candidates have no
+accounts: an institution already knows who its candidates are, and issues each
+one an access code for one attempt.
+
+Camera proctoring — an identity check, webcam photos and browser events — is
+available per exam for buyers who require it (ROADMAP §14). It is off unless an
+exam's author turns it on, it is disclosed to the candidate before their clock
+starts, and it never reaches the engine: see §6.4.
 
 ## 3. Attempt lifecycle
 
@@ -56,6 +60,16 @@ id (`resolvePaper` in `packages/core/src/paper.ts`). The paper is recorded in
 candidate is shown only those questions, answers to any other are refused, and
 scoring and probing see nothing else. An exam that has been sat is frozen; it
 is changed by cloning it.
+
+**Sections with their own time.** When any section carries `durationMs`, the
+paper is taken in parts, in order: the fixed questions first, then each section
+(`partsOf` in `packages/core/src/paper.ts`). Entering a section appends
+`section_started`, which starts its clock; leaving it, or its time running out,
+appends `section_closed` (reason `left` or `time_up`). Only the current part's
+questions can be answered or drafted, and a part once left is locked. A section
+whose time ran out keeps the drafts saved in time, committed with the time they
+were saved, exactly as the exam's own window does. The exam's own deadline still
+applies over all of it.
 
 **Code.** A code question is scored by running the candidate's code against its
 tests: visible ones, shown as examples, and hidden ones, which decide the score
@@ -160,9 +174,14 @@ See `packages/core/src/chain.ts`, `packages/core/src/ledger.ts` and
    and turn the assessment into a feedback loop for defeating it.
 3. **Inconclusive is a real answer.** The engine is not required to reach a
    verdict, and is not tuned to.
-4. **No surveillance.** No webcam, screen capture, keystroke biometrics or
-   device fingerprinting. The engine's only input is what the candidate wrote
-   and said in response to being asked about it.
+4. **The camera never grades.** By default there is no webcam, screen capture,
+   keystroke biometrics or device fingerprinting. An exam may turn on camera
+   proctoring (ROADMAP §14), and then the candidate is told exactly what is
+   taken before their clock starts. Even so, the engine's only input is what
+   the candidate wrote and said in response to being asked about it: photos
+   and browser events go to a person, as observations to weigh, and never
+   into a probe, a verdict or a score. They are sealed and erased like the
+   rest of the attempt's personal data.
 5. **Explainable by construction.** Every probe carries the rationale for asking
    it; every verdict carries reasoning. Both survive in the ledger for appeal.
 
@@ -263,13 +282,16 @@ sitting is over.
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
 | Question bank, sections, per-candidate papers | implemented — `packages/store/src/question-bank.ts`, `packages/core/src/paper.ts`; CSV import; exam cloning |
+| Word question papers | implemented — `packages/api/src/docx-import.ts`, `POST /bank/import/docx` (dry run to preview); sample at `docs/samples/question-paper.docx` |
+| Sections with their own time | implemented — `section_started` / `section_closed` events, `POST /attempts/me/sections/next`; candidate page shows one part at a time |
 | Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
 | Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
 | Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
-| Candidate identity / enrolment | out of scope (§2) |
+| Identity check and camera proctoring | implemented, per exam and off by default — photo + photo ID reviewed by a person (`identity_reviewed` in the ledger), webcam photos, browser events |
+| Candidate accounts / enrolment | out of scope (§2) |
 
 Complete end to end and deployable, for more than one institution at once: an
 institution's staff sign in with their own accounts and roles, author an exam,

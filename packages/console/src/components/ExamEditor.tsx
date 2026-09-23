@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { validateExam, type Exam, type ExamProblem, type Question } from "@parikshaa/core/browser";
+import { validateExam, type Exam, type ExamProblem, type ProctoringPolicy, type Question } from "@parikshaa/core/browser";
 import { BankPicker, type BankLoader } from "./Bank.tsx";
 import { QuestionFields, blankQuestion } from "./QuestionFields.tsx";
 
@@ -125,6 +125,13 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
             </select>
           </div>
         </div>
+        <ProctoringFields
+          value={exam.policy.proctoring}
+          onChange={(proctoring) => {
+            const { proctoring: _, ...rest } = exam.policy;
+            setExam({ ...exam, policy: proctoring === undefined ? rest : { ...rest, proctoring } });
+          }}
+        />
       </section>
 
       {exam.questions.map((question, index) => (
@@ -206,10 +213,27 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                 onChange={(e) => patchSection(index, { ...section, pick: Number(e.target.value) })}
               />
             </div>
+            <div className="field">
+              <label htmlFor={`section-time-${section.id}`}>Own time (minutes)</label>
+              <input
+                id={`section-time-${section.id}`}
+                type="number"
+                min={1}
+                placeholder="None"
+                value={section.durationMs === undefined ? "" : section.durationMs / 60_000}
+                onChange={(e) => {
+                  const { durationMs: _, ...rest } = section;
+                  patchSection(index, e.target.value === "" ? rest : { ...rest, durationMs: Number(e.target.value) * 60_000 });
+                }}
+              />
+            </div>
           </div>
           <p className="notice">
             Each candidate draws {section.pick} of these {section.pool.length}. Every question in the pool must carry the
             same marks, so every paper is worth the same.
+            {section.durationMs === undefined
+              ? null
+              : ` Once any section has its own time, the test is taken section by section, in order: each is locked once left, and closes when its ${section.durationMs / 60_000} minutes are up.`}
           </p>
           <ul className="pool">
             {section.pool.map((question) => (
@@ -273,5 +297,59 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Camera proctoring (ROADMAP §14), off unless the author turns it on. Each
+ * piece is an observation for a person; candidates are told exactly what is
+ * taken before their clock starts.
+ */
+function ProctoringFields({ value, onChange }: { value: ProctoringPolicy | undefined; onChange: (next: ProctoringPolicy | undefined) => void }) {
+  const on = value !== undefined;
+  const policy: ProctoringPolicy = value ?? { identity: true, snapshotEverySeconds: 60, browserEvents: true };
+  return (
+    <fieldset className="proctoring">
+      <legend>Proctoring</legend>
+      <label className="inline">
+        <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked ? policy : undefined)} /> Use the candidate's camera
+      </label>
+      {on ? (
+        <div className="grid">
+          <label className="inline">
+            <input type="checkbox" checked={policy.identity} onChange={(e) => onChange({ ...policy, identity: e.target.checked })} /> Photo of the candidate and
+            their ID before they start
+          </label>
+          <label className="inline">
+            <input
+              type="checkbox"
+              checked={policy.snapshotEverySeconds !== null}
+              onChange={(e) => onChange({ ...policy, snapshotEverySeconds: e.target.checked ? 60 : null })}
+            />{" "}
+            Webcam photos while they answer
+          </label>
+          {policy.snapshotEverySeconds === null ? null : (
+            <div className="field">
+              <label htmlFor="snapshot-every">Every (seconds)</label>
+              <input
+                id="snapshot-every"
+                type="number"
+                min={15}
+                max={900}
+                value={policy.snapshotEverySeconds}
+                onChange={(e) => onChange({ ...policy, snapshotEverySeconds: Number(e.target.value) })}
+              />
+            </div>
+          )}
+          <label className="inline">
+            <input type="checkbox" checked={policy.browserEvents} onChange={(e) => onChange({ ...policy, browserEvents: e.target.checked })} /> Record leaving
+            the tab or full screen, copy and paste
+          </label>
+        </div>
+      ) : (
+        <p className="notice">Off: the test uses no camera, and records nothing about the candidate's browser.</p>
+      )}
+      {on ? <p className="notice">Candidates are told all of this before their clock starts. Nothing here marks anyone down by itself.</p> : null}
+    </fieldset>
   );
 }

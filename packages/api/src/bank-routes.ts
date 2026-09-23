@@ -10,6 +10,7 @@ import type {
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { questionId, validateQuestion, type Question } from "@parikshaa/core";
 import { staffScope, type BankDraft, type QuestionBank } from "@parikshaa/store";
+import { importDocx } from "./docx-import.js";
 import { importQuestions } from "./bank-import.js";
 import * as S from "./schemas.js";
 import type { ExamService } from "./service.js";
@@ -178,6 +179,33 @@ export function registerBankRoutes(routes: Routes, deps: BankRouteDeps): void {
       const added = await bank.add(staffScope(actor.orgId), result.drafts);
       await service.recordAudit(actor, "bank.imported", actor.orgId, { questions: added.length });
       return reply.code(201).send({ imported: added.length });
+    },
+  );
+
+  routes.post(
+    "/bank/import/docx",
+    {
+      bodyLimit: 14_500_000,
+      schema: {
+        tags: BANK,
+        summary: "Import questions from a Word (.docx) document",
+        description:
+          'A question paper as it is usually typed: each question numbered ("1.", "Q1.", or Word\'s own numbered list), mcq options lettered ("a)", "(a)"), then "Answer:", and optionally "Marks:", "Topic:", "Difficulty:", "Tags:", "Type:", "Tolerance:", "Rubric:" lines. The right option can instead be marked with a leading "*". Options make a question mcq; otherwise a numeric answer makes it numeric and anything else short (expected points separated by | or ;). Text before the first question is skipped; pictures and equations are not imported and are noted in the preview. All or nothing, like the CSV import. Send with dryRun first to preview.',
+        security: SECURED,
+        body: S.bankDocxBody,
+        response: { 200: S.bankDocxResponse, 201: S.bankDocxResponse, 422: S.bankDocxProblems, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      const result = importDocx(Buffer.from(request.body.file, "base64"));
+      if (!result.ok) return reply.code(422).send({ error: "invalid_import", problems: result.problems });
+      if (request.body.dryRun) return reply.code(200).send({ imported: 0, preview: result.preview });
+
+      const added = await bank.add(staffScope(actor.orgId), result.drafts);
+      await service.recordAudit(actor, "bank.imported", actor.orgId, { questions: added.length, from: "docx" });
+      return reply.code(201).send({ imported: added.length, preview: result.preview });
     },
   );
 }

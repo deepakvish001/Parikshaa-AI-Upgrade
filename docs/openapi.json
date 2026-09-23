@@ -78,6 +78,38 @@
                       },
                       "vivaTriggerRatio": {
                         "type": "number"
+                      },
+                      "proctoring": {
+                        "description": "Camera proctoring. Absent: none.",
+                        "type": "object",
+                        "properties": {
+                          "identity": {
+                            "type": "boolean",
+                            "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                          },
+                          "snapshotEverySeconds": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "A webcam photo this often while the attempt is open; null for none."
+                          },
+                          "browserEvents": {
+                            "type": "boolean",
+                            "description": "Record leaving the tab or full screen, and copying or pasting."
+                          }
+                        },
+                        "required": [
+                          "identity",
+                          "snapshotEverySeconds",
+                          "browserEvents"
+                        ]
                       }
                     },
                     "required": [
@@ -1014,6 +1046,10 @@
                               }
                             ]
                           }
+                        },
+                        "durationMs": {
+                          "description": "The section's own time. When any section has one, sections are taken in order and locked once left.",
+                          "type": "number"
                         }
                       },
                       "required": [
@@ -1942,6 +1978,39 @@
                         },
                         "vivaTriggerRatio": {
                           "type": "number"
+                        },
+                        "proctoring": {
+                          "description": "Camera proctoring. Absent: none.",
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "type": "boolean",
+                              "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                            },
+                            "snapshotEverySeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "A webcam photo this often while the attempt is open; null for none."
+                            },
+                            "browserEvents": {
+                              "type": "boolean",
+                              "description": "Record leaving the tab or full screen, and copying or pasting."
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "snapshotEverySeconds",
+                            "browserEvents"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -2907,6 +2976,10 @@
                                 }
                               ]
                             }
+                          },
+                          "durationMs": {
+                            "description": "The section's own time. When any section has one, sections are taken in order and locked once left.",
+                            "type": "number"
                           }
                         },
                         "required": [
@@ -5563,6 +5636,46 @@
                               }
                             ]
                           }
+                        },
+                        "proctoring": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "identity": {
+                                  "type": "boolean",
+                                  "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                                },
+                                "snapshotEverySeconds": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "A webcam photo this often while the attempt is open; null for none."
+                                },
+                                "browserEvents": {
+                                  "type": "boolean",
+                                  "description": "Record leaving the tab or full screen, and copying or pasting."
+                                }
+                              },
+                              "required": [
+                                "identity",
+                                "snapshotEverySeconds",
+                                "browserEvents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "What the camera and browser are asked for. Null: nothing."
                         }
                       },
                       "required": [
@@ -5570,7 +5683,8 @@
                         "title",
                         "durationMs",
                         "allowRevision",
-                        "questions"
+                        "questions",
+                        "proctoring"
                       ],
                       "additionalProperties": false
                     },
@@ -5583,6 +5697,74 @@
                         "graded",
                         "void"
                       ]
+                    },
+                    "identityCaptured": {
+                      "type": "boolean",
+                      "description": "A proctored exam's identity photos have been taken; until then its questions wait."
+                    },
+                    "parts": {
+                      "anyOf": [
+                        {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sectionId": {
+                                "description": "Null: the exam's fixed questions, taken first.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "durationMs": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "questionIds": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "done",
+                                  "current",
+                                  "upcoming"
+                                ]
+                              },
+                              "endsAt": {
+                                "description": "When the current part's own time is up.",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "sectionId",
+                              "title",
+                              "durationMs",
+                              "questionIds",
+                              "state",
+                              "endsAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "A sectioned exam's parts, in order. Null: every question is open at once."
                     },
                     "voidReason": {
                       "type": [
@@ -5678,6 +5860,8 @@
                     "attemptId",
                     "exam",
                     "state",
+                    "identityCaptured",
+                    "parts",
                     "voidReason",
                     "startedAt",
                     "expiresAt",
@@ -7070,6 +7254,251 @@
                   "properties": {
                     "ok": {
                       "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/me/sections/next": {
+      "post": {
+        "summary": "Leave the current part and enter the next section",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "For an exam whose sections have their own time. The part left is locked; the next section's clock starts now. A section whose time is up keeps only the drafts saved in time.",
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
                     }
                   },
                   "required": [
@@ -11211,6 +11640,307 @@
         }
       }
     },
+    "/bank/import/docx": {
+      "post": {
+        "summary": "Import questions from a Word (.docx) document",
+        "tags": [
+          "Question bank"
+        ],
+        "description": "A question paper as it is usually typed: each question numbered (\"1.\", \"Q1.\", or Word's own numbered list), mcq options lettered (\"a)\", \"(a)\"), then \"Answer:\", and optionally \"Marks:\", \"Topic:\", \"Difficulty:\", \"Tags:\", \"Type:\", \"Tolerance:\", \"Rubric:\" lines. The right option can instead be marked with a leading \"*\". Options make a question mcq; otherwise a numeric answer makes it numeric and anything else short (expected points separated by | or ;). Text before the first question is skipped; pictures and equations are not imported and are noted in the preview. All or nothing, like the CSV import. Send with dryRun first to preview.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "maxLength": 14000000,
+                    "description": "The .docx file, base64-encoded. At most 10 MB."
+                  },
+                  "dryRun": {
+                    "default": false,
+                    "description": "Check and preview the questions without adding them to the bank.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imported": {
+                      "type": "number",
+                      "description": "Questions added to the bank; 0 on a dry run."
+                    },
+                    "preview": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "number",
+                            "description": "Which question, counting from the top of the document"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "stem": {
+                            "type": "string"
+                          },
+                          "marks": {
+                            "type": "number"
+                          },
+                          "note": {
+                            "description": "Something in the question that was not imported, such as a picture",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "kind",
+                          "stem",
+                          "marks",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "imported",
+                    "preview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imported": {
+                      "type": "number",
+                      "description": "Questions added to the bank; 0 on a dry run."
+                    },
+                    "preview": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "number",
+                            "description": "Which question, counting from the top of the document"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "stem": {
+                            "type": "string"
+                          },
+                          "marks": {
+                            "type": "number"
+                          },
+                          "note": {
+                            "description": "Something in the question that was not imported, such as a picture",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "kind",
+                          "stem",
+                          "marks",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "imported",
+                    "preview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_import"
+                      ]
+                    },
+                    "problems": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "number",
+                            "description": "Which question, counting from the top of the document; 0 for the file as a whole"
+                          },
+                          "written": {
+                            "description": "The number written on it, which may restart in each section of a paper",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "written",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exams/{examId}/window": {
       "put": {
         "summary": "Schedule an exam",
@@ -12671,6 +13401,10 @@
                     "required": [
                       "noticeVersion"
                     ]
+                  },
+                  "camera": {
+                    "description": "The page has the camera working. Needed on the first opening of a proctored exam.",
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -12819,116 +13553,168 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": {
-                      "type": "string",
-                      "enum": [
-                        "consent_required"
-                      ]
-                    },
-                    "notice": {
+                  "anyOf": [
+                    {
                       "type": "object",
                       "properties": {
-                        "version": {
-                          "type": "number"
-                        },
-                        "hash": {
+                        "error": {
                           "type": "string",
-                          "description": "SHA-256 of the notice's canonical form; the consent in the ledger records it."
+                          "enum": [
+                            "consent_required"
+                          ]
                         },
-                        "controllerName": {
-                          "type": "string"
-                        },
-                        "purpose": {
-                          "type": "string"
-                        },
-                        "retentionDays": {
-                          "type": "number"
-                        },
-                        "grievance": {
+                        "notice": {
                           "type": "object",
                           "properties": {
-                            "name": {
+                            "version": {
+                              "type": "number"
+                            },
+                            "hash": {
+                              "type": "string",
+                              "description": "SHA-256 of the notice's canonical form; the consent in the ledger records it."
+                            },
+                            "controllerName": {
                               "type": "string"
                             },
-                            "email": {
+                            "purpose": {
                               "type": "string"
-                            }
-                          },
-                          "required": [
-                            "name",
-                            "email"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "collected": {
-                          "readOnly": true,
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "rights": {
-                          "readOnly": true,
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "translations": {
-                          "type": "object",
-                          "properties": {
-                            "hi": {
+                            },
+                            "retentionDays": {
+                              "type": "number"
+                            },
+                            "grievance": {
                               "type": "object",
                               "properties": {
-                                "collected": {
-                                  "readOnly": true,
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string"
-                                  }
+                                "name": {
+                                  "type": "string"
                                 },
-                                "rights": {
-                                  "readOnly": true,
-                                  "type": "array",
-                                  "items": {
-                                    "type": "string"
-                                  }
+                                "email": {
+                                  "type": "string"
                                 }
                               },
                               "required": [
-                                "collected",
-                                "rights"
+                                "name",
+                                "email"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "collected": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "rights": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "properties": {
+                                "hi": {
+                                  "type": "object",
+                                  "properties": {
+                                    "collected": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "rights": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "collected",
+                                    "rights"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "hi"
                               ],
                               "additionalProperties": false
                             }
                           },
                           "required": [
-                            "hi"
+                            "version",
+                            "hash",
+                            "controllerName",
+                            "purpose",
+                            "retentionDays",
+                            "grievance",
+                            "collected",
+                            "rights",
+                            "translations"
                           ],
                           "additionalProperties": false
                         }
                       },
                       "required": [
-                        "version",
-                        "hash",
-                        "controllerName",
-                        "purpose",
-                        "retentionDays",
-                        "grievance",
-                        "collected",
-                        "rights",
-                        "translations"
+                        "error",
+                        "notice"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "error": {
+                          "type": "string",
+                          "enum": [
+                            "camera_required"
+                          ]
+                        },
+                        "proctoring": {
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "type": "boolean",
+                              "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                            },
+                            "snapshotEverySeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "A webcam photo this often while the attempt is open; null for none."
+                            },
+                            "browserEvents": {
+                              "type": "boolean",
+                              "description": "Record leaving the tab or full screen, and copying or pasting."
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "snapshotEverySeconds",
+                            "browserEvents"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "error",
+                        "proctoring"
                       ],
                       "additionalProperties": false
                     }
-                  },
-                  "required": [
-                    "error",
-                    "notice"
-                  ],
-                  "additionalProperties": false
+                  ]
                 }
               }
             }
@@ -13802,6 +14588,60 @@
                         "length"
                       ],
                       "additionalProperties": false
+                    },
+                    "proctoring": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "type": "string",
+                              "enum": [
+                                "not_taken",
+                                "pending",
+                                "verified",
+                                "rejected"
+                              ]
+                            },
+                            "identityReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "identityDecidedBy": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "snapshots": {
+                              "type": "number"
+                            },
+                            "events": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": "number"
+                              }
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "identityReason",
+                            "identityDecidedBy",
+                            "snapshots",
+                            "events"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "For a proctored exam: observations for a person to weigh, never a finding."
                     }
                   },
                   "required": [
@@ -13812,7 +14652,8 @@
                     "vivas",
                     "voidReason",
                     "voidedBy",
-                    "ledger"
+                    "ledger",
+                    "proctoring"
                   ],
                   "additionalProperties": false
                 }
@@ -16488,6 +17329,12 @@
                         "idle": {
                           "type": "number"
                         },
+                        "cameraOff": {
+                          "type": "number"
+                        },
+                        "identityPending": {
+                          "type": "number"
+                        },
                         "submitted": {
                           "type": "number"
                         },
@@ -16504,6 +17351,8 @@
                         "inProgress",
                         "away",
                         "idle",
+                        "cameraOff",
+                        "identityPending",
                         "submitted",
                         "graded",
                         "void"
@@ -16585,9 +17434,61 @@
                             "type": "boolean",
                             "description": "A follow-up question is waiting for the candidate's reply."
                           },
+                          "proctoring": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "identity": {
+                                    "type": "string",
+                                    "enum": [
+                                      "not_taken",
+                                      "pending",
+                                      "verified",
+                                      "rejected"
+                                    ]
+                                  },
+                                  "snapshots": {
+                                    "type": "number"
+                                  },
+                                  "lastSnapshotAt": {
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "events": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "number"
+                                    },
+                                    "description": "What the browser reported, by kind: tab_hidden, fullscreen_exit, copy, paste, camera_off."
+                                  }
+                                },
+                                "required": [
+                                  "identity",
+                                  "snapshots",
+                                  "lastSnapshotAt",
+                                  "events"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "For a proctored exam: the identity check and what the camera and browser sent. Observations, not findings."
+                          },
                           "flags": {
                             "type": "object",
                             "properties": {
+                              "cameraOff": {
+                                "type": "boolean",
+                                "description": "A proctored attempt whose webcam photos have stopped arriving."
+                              },
                               "away": {
                                 "type": "boolean",
                                 "description": "The page has stopped checking in: closed, or offline."
@@ -16602,6 +17503,7 @@
                               }
                             },
                             "required": [
+                              "cameraOff",
                               "away",
                               "idle",
                               "overdue"
@@ -16624,6 +17526,7 @@
                           "extraMinutes",
                           "reopened",
                           "awaitingReply",
+                          "proctoring",
                           "flags"
                         ],
                         "additionalProperties": false
@@ -18258,6 +19161,67 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "proctoring": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "photos": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "takenAt": {
+                                    "type": "string"
+                                  },
+                                  "sha256": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "takenAt",
+                                  "sha256"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "events": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string"
+                                  },
+                                  "at": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "at"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "photos",
+                            "events"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -18269,7 +19233,8 @@
                     "erased",
                     "answers",
                     "followUps",
-                    "timeline"
+                    "timeline",
+                    "proctoring"
                   ],
                   "additionalProperties": false
                 }
@@ -19880,6 +20845,1377 @@
             }
           },
           "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/me/identity": {
+      "post": {
+        "summary": "The identity photos: the candidate, and their photo ID",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "Once, before the questions. The ledger records both photos' SHA-256; the photos are sealed under the attempt's key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "selfie": {
+                    "type": "string",
+                    "minLength": 100,
+                    "description": "A JPEG or PNG, base64 (a data: URL prefix is accepted)."
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 100,
+                    "description": "A JPEG or PNG, base64 (a data: URL prefix is accepted)."
+                  }
+                },
+                "required": [
+                  "selfie",
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/me/snapshots": {
+      "post": {
+        "summary": "A webcam photo, at the exam's interval",
+        "tags": [
+          "Candidate"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "minLength": 100,
+                    "description": "A JPEG or PNG, base64 (a data: URL prefix is accepted)."
+                  }
+                },
+                "required": [
+                  "image"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/me/proctor-events": {
+      "post": {
+        "summary": "What the browser reported: the tab hidden, full screen left, a copy or paste, the camera stopping",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "Timed on arrival, by the server.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "events": {
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "events"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/{attemptId}/proctoring": {
+      "get": {
+        "summary": "An attempt's identity photos, webcam photos and browser events",
+        "tags": [
+          "Proctoring"
+        ],
+        "description": "Observations for a person to weigh; none of it decides anything.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "policy": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "type": "boolean",
+                              "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                            },
+                            "snapshotEverySeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "A webcam photo this often while the attempt is open; null for none."
+                            },
+                            "browserEvents": {
+                              "type": "boolean",
+                              "description": "Record leaving the tab or full screen, and copying or pasting."
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "snapshotEverySeconds",
+                            "browserEvents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "identity": {
+                      "type": "object",
+                      "properties": {
+                        "selfie": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "selfie",
+                                    "id",
+                                    "snapshot"
+                                  ]
+                                },
+                                "takenAt": {
+                                  "type": "string"
+                                },
+                                "sha256": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "kind",
+                                "takenAt",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "selfie",
+                                    "id",
+                                    "snapshot"
+                                  ]
+                                },
+                                "takenAt": {
+                                  "type": "string"
+                                },
+                                "sha256": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "kind",
+                                "takenAt",
+                                "sha256"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "capturedAt": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "review": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "verified",
+                                    "rejected"
+                                  ]
+                                },
+                                "reason": {
+                                  "type": "string"
+                                },
+                                "decidedBy": {
+                                  "type": "string"
+                                },
+                                "at": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "outcome",
+                                "reason",
+                                "decidedBy",
+                                "at"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "matchesLedger": {
+                          "type": "boolean",
+                          "description": "The stored photos are the ones the ledger committed to."
+                        }
+                      },
+                      "required": [
+                        "selfie",
+                        "id",
+                        "capturedAt",
+                        "review",
+                        "matchesLedger"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "snapshots": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "selfie",
+                              "id",
+                              "snapshot"
+                            ]
+                          },
+                          "takenAt": {
+                            "type": "string"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "takenAt",
+                          "sha256"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "events": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "policy",
+                    "identity",
+                    "snapshots",
+                    "events"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/{attemptId}/proctoring/photos/{mediaId}": {
+      "get": {
+        "summary": "One proctoring photo, as an image",
+        "tags": [
+          "Proctoring"
+        ],
+        "description": "Opened from its seal and checked against its hash. Not cached.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "mediaId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/attempts/{attemptId}/identity/review": {
+      "post": {
+        "summary": "Decide on the identity photos",
+        "tags": [
+          "Proctoring"
+        ],
+        "description": "A signed-in person's decision, with a reason, recorded in the ledger with their name. Before grading; a later decision corrects an earlier one.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "verified",
+                      "rejected"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "outcome",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {
@@ -23368,6 +25704,10 @@
     {
       "name": "Billing",
       "description": "Prepaid attempt credits, Razorpay payments and GST tax invoices."
+    },
+    {
+      "name": "Proctoring",
+      "description": "Camera proctoring an exam's author turns on: identity photos, webcam photos, browser events. Observations, never verdicts."
     },
     {
       "name": "Greenhouse",

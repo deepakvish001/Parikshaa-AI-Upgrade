@@ -75,6 +75,19 @@ const results: Results = {
   },
 };
 
+const proctoringView = {
+  policy: { identity: true, snapshotEverySeconds: 60, browserEvents: true },
+  identity: {
+    selfie: { id: "m-selfie", kind: "selfie", takenAt: "2026-10-01T05:00:00.000Z", sha256: "a".repeat(64) },
+    id: { id: "m-id", kind: "id", takenAt: "2026-10-01T05:00:00.000Z", sha256: "b".repeat(64) },
+    capturedAt: 1,
+    review: null,
+    matchesLedger: true,
+  },
+  snapshots: [{ id: "m-1", kind: "snapshot", takenAt: "2026-10-01T05:01:00.000Z", sha256: "c".repeat(64) }],
+  events: [{ kind: "tab_hidden", at: "2026-10-01T05:02:00.000Z" }],
+};
+
 const billingSummary = {
   account: {
     mode: "prepaid",
@@ -161,17 +174,18 @@ const liveRow = (ref: string, patch: Partial<LiveRow> = {}): LiveRow => ({
   extraMinutes: 0,
   reopened: 0,
   awaitingReply: false,
-  flags: { away: false, idle: false, overdue: false },
+  proctoring: null,
+  flags: { away: false, idle: false, overdue: false, cameraOff: false },
   ...patch,
 });
 
 const liveView: LiveView = {
   exam: { id: "exam-1", title: "Algorithms" },
   at: 1_790_000_000_000,
-  counts: { invited: 4, notStarted: 1, inProgress: 2, away: 1, idle: 0, submitted: 1, graded: 0, void: 0 },
+  counts: { invited: 4, notStarted: 1, inProgress: 2, away: 1, idle: 0, cameraOff: 0, identityPending: 0, submitted: 1, graded: 0, void: 0 },
   rows: [
     liveRow("R1"),
-    liveRow("R2", { lastSeenAt: 1_790_000_000_000 - 10 * 60_000, flags: { away: true, idle: false, overdue: false } }),
+    liveRow("R2", { lastSeenAt: 1_790_000_000_000 - 10 * 60_000, flags: { away: true, idle: false, overdue: false, cameraOff: false } }),
     liveRow("R3", { state: "submitted", answered: 10 }),
     liveRow("R4", { state: "not_started", attemptId: null, answered: 0, startedAt: null, lastSeenAt: null }),
   ],
@@ -266,6 +280,13 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     editQuestion: vi.fn(async () => bankEntries[0]),
     archiveQuestion: vi.fn(async () => undefined),
     importBank: vi.fn(async () => 2),
+    importDocx: vi.fn(async (_file: string, dryRun: boolean) => ({
+      imported: dryRun ? 0 : 2,
+      preview: [
+        { question: 1, kind: "mcq", stem: "Which is stable?", marks: 2, note: null },
+        { question: 2, kind: "short", stem: "What does the diagram show?", marks: 5, note: "Had a picture or equation, which was not imported; add it in the console." },
+      ],
+    })),
     cloneExam: vi.fn(async () => undefined),
     getWindow: vi.fn(async () => ({ opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true })),
     setWindow: vi.fn(async () => undefined),
@@ -346,6 +367,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     })),
     verifyPayment: vi.fn(async () => ({ credits: 112, invoice: taxInvoice })),
     invoice: vi.fn(async () => taxInvoice),
+    proctoring: vi.fn(async () => proctoringView),
+    photoUrl: vi.fn(async (_a: string, id: string) => `blob:${id}`),
+    reviewIdentity: vi.fn(async () => ({ ok: true })),
     ...overrides,
   } as unknown as ConsoleClient;
 }
@@ -783,6 +807,33 @@ describe("the question bank", () => {
     expect(client.importBank).toHaveBeenCalledWith("kind,question\nmcq,x");
   });
 
+  it("reads a Word paper first, shows every question found, and adds them only when asked", async () => {
+    const client = await openBank();
+    const file = new File(["PK fake docx"], "paper.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), file);
+
+    const found = await screen.findByRole("table", { name: "Questions found" });
+    expect(within(found).getByText("Which is stable?")).toBeInTheDocument();
+    expect(within(found).getByText(/picture or equation, which was not imported/)).toBeInTheDocument();
+    expect(client.importDocx).toHaveBeenCalledWith(btoa("PK fake docx"), true);
+    expect(client.importDocx).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add 2 questions to the bank" }));
+    expect(await screen.findByText("Imported 2 questions from the document.")).toBeInTheDocument();
+    expect(client.importDocx).toHaveBeenLastCalledWith(btoa("PK fake docx"), false);
+  });
+
+  it("lists a Word paper's problems by question", async () => {
+    const client = await openBank();
+    (client.importDocx as unknown as { mockRejectedValueOnce: (e: unknown) => void }).mockRejectedValueOnce(
+      new ConsoleError(422, "invalid_import", [{ path: "question 4 (numbered 2)", message: 'No answer: add an "Answer:" line.' }]),
+    );
+    await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), new File(["x"], "paper.docx"));
+    const problems = await screen.findByRole("list", { name: "Problems with this document" });
+    expect(problems).toHaveTextContent("question 4 (numbered 2)");
+    expect(screen.queryByRole("table", { name: "Questions found" })).not.toBeInTheDocument();
+  });
+
   it("files a new question with its topic and tags", async () => {
     const client = await openBank();
     await userEvent.click(await screen.findByRole("button", { name: "New question" }));
@@ -831,6 +882,31 @@ describe("exams drawn from the bank", () => {
     expect(saved.sections).toEqual([
       { id: "s1", title: "Quant", pick: 1, pool: [bankEntries[0]!.question, bankEntries[1]!.question] },
     ]);
+  });
+
+  it("gives a section its own time, which makes the test go section by section", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Aptitude");
+    await userEvent.type(screen.getByLabelText("Question"), "Fixed question");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Add a section drawn per candidate" }));
+    const section = screen.getByRole("region", { name: "Section 1" });
+    await userEvent.type(within(section).getByLabelText("Section title"), "Quant");
+    await userEvent.click(within(section).getByRole("button", { name: "Add from bank" }));
+    const picker = await screen.findByRole("dialog", { name: "Add from the question bank" });
+    await userEvent.click(await within(picker).findByRole("button", { name: "Select all 2" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Add 2 questions" }));
+
+    await userEvent.type(within(section).getByLabelText("Own time (minutes)"), "15");
+    expect(within(section).getByText(/locked once left, and closes when its 15 minutes are up/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ sections: { durationMs?: number }[] }][] } }).mock.calls[0]![0];
+    expect(saved.sections[0]!.durationMs).toBe(15 * 60_000);
   });
 
   it("copies an exam, which is how a sat exam is changed", async () => {
@@ -1278,5 +1354,76 @@ describe("billing (ROADMAP §12)", () => {
     expect(invoice).toHaveTextContent("IGST @ 18%");
     expect(invoice).toHaveTextContent("Rupees Five Thousand Nine Hundred Only");
     expect(within(invoice).getByRole("button", { name: "Print or save as PDF" })).toBeInTheDocument();
+  });
+});
+
+describe("proctoring (ROADMAP §14)", () => {
+  it("is off by default in the editor, and saved with what the author turns on", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    expect(screen.getByText(/Off: the test uses no camera/)).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Use the candidate's camera" }));
+    await userEvent.clear(screen.getByLabelText("Every (seconds)"));
+    await userEvent.type(screen.getByLabelText("Every (seconds)"), "120");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Record leaving the tab/ }));
+    await userEvent.type(screen.getByLabelText("Title"), "Watched");
+    await userEvent.type(screen.getByLabelText("Question"), "Which is stable?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "quicksort");
+    await userEvent.type(screen.getByLabelText("Option 2"), "mergesort");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ policy: object }][] } }).mock.calls[0]![0];
+    expect(saved.policy).toMatchObject({ proctoring: { identity: true, snapshotEverySeconds: 120, browserEvents: false } });
+  });
+
+  it("shows the identity check and the camera on the live sitting, and records a decision with its reason", async () => {
+    const proctored = {
+      ...liveView,
+      counts: { ...liveView.counts, cameraOff: 1, identityPending: 1 },
+      rows: [
+        liveRow("R1", {
+          proctoring: { identity: "pending" as const, snapshots: 4, lastSnapshotAt: 1, events: { tab_hidden: 2 } },
+          flags: { away: false, idle: false, overdue: false, cameraOff: true },
+        }),
+      ],
+    };
+    const client = stubClient({ live: vi.fn(async () => proctored) });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Live sitting" }));
+
+    const row = (await screen.findByText("R1")).closest("tr")!;
+    expect(row).toHaveTextContent("camera off");
+    expect(row).toHaveTextContent("ID to check");
+    expect(row).toHaveTextContent("2 browser events");
+    await userEvent.click(within(row).getByRole("button", { name: "Review R1" }));
+
+    const panel = await screen.findByRole("region", { name: "Proctoring for Candidate R1" });
+    expect(await within(panel).findByRole("img", { name: "Photo of Candidate R1" })).toHaveAttribute("src", "blob:m-selfie");
+    expect(within(panel).getByRole("img", { name: "Photo ID held by Candidate R1" })).toHaveAttribute("src", "blob:m-id");
+    expect(panel).toHaveTextContent("Left the tab");
+    const confirm = within(panel).getByRole("button", { name: "Confirm identity" });
+    expect(confirm).toBeDisabled();
+    await userEvent.type(within(panel).getByLabelText(/What you compared/), "Face matches the college ID");
+    await userEvent.click(confirm);
+    expect(client.reviewIdentity).toHaveBeenCalledWith("att-R1", "verified", "Face matches the college ID");
+  });
+
+  it("appears in the candidate's report as observations", async () => {
+    window.history.replaceState(null, "", "/console/?report=a2");
+    const client = stubClient({
+      report: vi.fn(async () => ({
+        ...report,
+        proctoring: { identity: "verified", identityReason: "Face matches", identityDecidedBy: "Meera", snapshots: 12, events: { tab_hidden: 1 } },
+      })),
+    });
+    renderApp(<App client={client} />);
+    const section = await screen.findByRole("region", { name: "Proctoring" });
+    expect(section).toHaveTextContent("ID confirmed by Meera — Face matches");
+    expect(section).toHaveTextContent("12 webcam photos · tab hidden ×1");
+    window.history.replaceState(null, "", "/");
   });
 });

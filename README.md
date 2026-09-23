@@ -19,7 +19,10 @@ Two pieces make that work:
   candidate, the institution and an appeals board can each verify that the
   record they are shown is the one that was written.
 
-No webcam, no screen capture, no keystroke biometrics. See
+By default: no webcam, no screen capture, no keystroke biometrics. A buyer who
+needs them can turn on camera proctoring for an exam — an identity check
+reviewed by a person, webcam photos, browser events — disclosed to the
+candidate before they start and never an input to the grade. See
 [`docs/SPEC.md`](docs/SPEC.md) for the design and its commitments, and
 [`docs/STACK.md`](docs/STACK.md) for the stack and the reasoning behind it.
 
@@ -73,7 +76,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 604 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 652 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients

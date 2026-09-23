@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
-import { ApiError, ParikshaaClient, type Announcement } from "./api.ts";
+import { ApiError, ParikshaaClient, type Announcement, type CandidatePart } from "./api.ts";
 import { AnswerInput } from "./components/AnswerInput.tsx";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
+import { IdentityCapture } from "./components/IdentityCapture.tsx";
+import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesBar, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 
@@ -182,6 +184,10 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const attemptId = state.data?.attemptId ?? null;
   const expiresAt = state.data?.expiresAt ?? 0;
   const inProgress = state.data?.state === "in_progress";
+  // Proctored (ROADMAP §14): photos and browser events once the identity step, if any, is done.
+  const policy = state.data?.exam.proctoring ?? null;
+  const identityDue = inProgress && policy?.identity === true && state.data?.identityCaptured === false;
+  const { cameraOn } = useProctoring(client, policy, inProgress && !identityDue, lite);
 
   const announcements = useQuery({ queryKey: ["announcements"], queryFn: () => client.announcements(), enabled: inProgress });
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
@@ -397,14 +403,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     },
   });
 
+  /** Send anything still waiting on the debounce, so the server commits it. */
+  const flushPending = async () => {
+    for (const [questionId, timer] of timers.current) {
+      clearTimeout(timer);
+      timers.current.delete(questionId);
+      await flush(questionId);
+    }
+  };
+
   const submit = useMutation({
     mutationFn: async () => {
-      // Send anything still waiting on the debounce, so the server commits it.
-      for (const [questionId, timer] of timers.current) {
-        clearTimeout(timer);
-        timers.current.delete(questionId);
-        await flush(questionId);
-      }
+      await flushPending();
       await client.submit();
     },
     onSuccess: async () => {
@@ -413,6 +423,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       await queryClient.invalidateQueries();
     },
   });
+
+  // Sections with their own time (ROADMAP §3): leaving one locks it and starts the next one's clock.
+  const [leaving, setLeaving] = useState(false);
+  const advance = useMutation({
+    mutationFn: async () => {
+      await flushPending();
+      await client.nextSection();
+    },
+    onSettled: async () => {
+      setLeaving(false);
+      await queryClient.invalidateQueries({ queryKey: ["state"] });
+    },
+  });
+  const now = useNow(inProgress && (state.data?.parts ?? []).some((p) => p.endsAt !== null));
 
   const expired = state.error instanceof ApiError && state.error.status === 401;
   useEffect(() => {
@@ -429,8 +453,37 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   }
 
   const { exam, answers, state: attemptState, voidReason } = state.data;
+
+  if (identityDue) {
+    return (
+      <main className="page">
+        <PreferencesBar />
+        <header className="exam">
+          <h1>{exam.title}</h1>
+        </header>
+        <IdentityCapture
+          onSubmit={async (selfie, id) => {
+            await client.captureIdentity(selfie, id);
+            await queryClient.invalidateQueries({ queryKey: ["state"] });
+          }}
+        />
+      </main>
+    );
+  }
   const answered = new Map<string, string>(answers.map((a) => [a.questionId, a.answer]));
   const open = attemptState === "in_progress";
+  // A sectioned test shows one part at a time. A part whose own time is up is
+  // treated as over here at once; the server closes it on the next request.
+  const parts = state.data.parts ?? null;
+  const currentPart = parts?.find((p) => p.state === "current") ?? null;
+  const partTimeUp = currentPart?.endsAt != null && now >= currentPart.endsAt;
+  const nextPart = parts?.find((p) => p.state === "upcoming") ?? null;
+  const shown =
+    parts === null
+      ? exam.questions
+      : currentPart === null || partTimeUp
+        ? []
+        : exam.questions.filter((q) => currentPart.questionIds.includes(q.id));
   // The languages this exam's questions can be read in, besides English.
   const offered = [...new Set(exam.questions.flatMap((q) => Object.keys(q.translations ?? {})))] as Language[];
 
@@ -439,7 +492,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
    * Where it does not, committing is final, so it waits for the button.
    */
   const leave = (questionId: string) => {
-    if (!open || !exam.allowRevision || saveAnswer.isPending) return;
+    if (!open || !exam.allowRevision || saveAnswer.isPending || partTimeUp) return;
     const value = drafts[questionId];
     if (value === undefined || value.trim() === "" || value === (answered.get(questionId) ?? "")) return;
     saveAnswer.mutate({ questionId, answer: value });
@@ -455,12 +508,23 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             <>
               {t("exam.answeredOf", { answered: answered.size, total: exam.questions.length })}
               <TimeLeft expiresAt={state.data.expiresAt} />
+              {cameraOn === true ? (
+                <span className="camera-pill" role="status">
+                  {t("camera.on")}
+                </span>
+              ) : null}
             </>
           ) : (
             t(`exam.state.${attemptState}`)
           )}
         </p>
       </header>
+
+      {open && cameraOn === false ? (
+        <p className="card offline" role="alert">
+          {t("camera.offBanner")}
+        </p>
+      ) : null}
 
       {open && !online ? (
         <p className="card offline" role="status">
@@ -502,7 +566,35 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         />
       ) : null}
 
-      {exam.questions.map((original_, index) => {
+      {parts !== null && open ? <SectionSteps parts={parts} now={now} /> : null}
+
+      {open && currentPart !== null && partTimeUp ? (
+        <p className="card notice-card" role="status">
+          {t("section.timeUp", { title: currentPart.title })}
+        </p>
+      ) : null}
+
+      {open && parts !== null && (currentPart === null || partTimeUp) && nextPart !== null ? (
+        <section className="card section-intro" aria-labelledby="section-intro-title">
+          <p className="eyebrow">{t("section.introEyebrow")}</p>
+          <h2 id="section-intro-title">{nextPart.title}</h2>
+          <ul className="facts">
+            <li>{t("section.questions", { n: nextPart.questionIds.length })}</li>
+            <li>
+              {nextPart.durationMs === null
+                ? t("section.untimed")
+                : t("section.timed", { minutes: Math.round(nextPart.durationMs / 60_000) })}
+            </li>
+          </ul>
+          <p className="notice">{t("section.lockNote")}</p>
+          <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
+            {advance.isPending ? t("section.starting") : t("section.start", { title: nextPart.title })}
+          </button>
+        </section>
+      ) : null}
+
+      {shown.map((original_) => {
+        const index = exam.questions.indexOf(original_);
         // The question as this candidate reads it: in their language when it
         // has been translated, unless they asked for the original.
         const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
@@ -579,7 +671,30 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         );
       })}
 
-      {open ? (
+      {open && currentPart !== null && !partTimeUp && nextPart !== null ? (
+        leaving ? (
+          <div className="card confirm" role="alertdialog" aria-labelledby="leave-section">
+            <p id="leave-section" style={{ margin: "0 0 .75rem" }}>
+              {t("section.confirm", { title: currentPart.title })}
+            </p>
+            <div className="row" style={{ marginTop: 0 }}>
+              <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
+                {t("section.confirmYes", { title: currentPart.title })}
+              </button>
+              <button type="button" className="secondary" onClick={() => setLeaving(false)}>
+                {t("section.stay")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="row">
+            <button type="button" onClick={() => setLeaving(true)}>
+              {t("section.next", { title: currentPart.title })}
+            </button>
+            <span className="notice">{t("section.lockNote")}</span>
+          </div>
+        )
+      ) : open && (parts === null || nextPart === null) ? (
         <div className="row">
           <button
             type="button"
@@ -619,6 +734,52 @@ function TimeLeft({ expiresAt }: { expiresAt: number }) {
   const minutes = Math.floor(remaining / 60_000);
   const hours = Math.floor(minutes / 60);
   return <>{t("exam.timeLeft", { time: hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m` })}</>;
+}
+
+/** The time now, ticking each second while `running`. */
+function useNow(running: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!running) return;
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [running]);
+  return now;
+}
+
+const clockOf = (ms: number): string => {
+  const seconds = Math.ceil(ms / 1000);
+  const m = Math.floor(seconds / 60);
+  return `${m}:${String(seconds % 60).padStart(2, "0")}`;
+};
+
+/**
+ * Where a sectioned test stands: each part, done, now or to come, and the
+ * current part's own time, to the second: a section is short enough for
+ * seconds to matter.
+ */
+function SectionSteps({ parts, now }: { parts: readonly CandidatePart[]; now: number }) {
+  const { t } = usePreferences();
+  const current = parts.find((p) => p.state === "current");
+  const left = current?.endsAt == null ? null : Math.max(0, current.endsAt - now);
+  return (
+    <nav className="sections card" aria-label={t("section.region")}>
+      <ol>
+        {parts.map((p) => (
+          <li key={p.sectionId ?? "fixed"} className={`step ${p.state}`} aria-current={p.state === "current" ? "step" : undefined}>
+            <span className="step-title">{p.title}</span>
+            <span className="step-state">{t(`section.${p.state}`)}</span>
+          </li>
+        ))}
+      </ol>
+      {left !== null && left > 0 ? (
+        <p className={`section-clock${left < 60_000 ? " urgent" : ""}`} role="timer">
+          {t("section.timeLeft", { time: clockOf(left) })}
+        </p>
+      ) : null}
+    </nav>
+  );
 }
 
 /**

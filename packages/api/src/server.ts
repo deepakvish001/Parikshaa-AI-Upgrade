@@ -30,6 +30,8 @@ import { registerInvigilationRoutes } from "./invigilation-routes.js";
 import type { PrivacyService } from "./privacy.js";
 import { BillingNotConfigured, OutOfCredits, type BillingService } from "./billing.js";
 import { registerBillingRoutes } from "./billing-routes.js";
+import type { ProctorService } from "./proctoring.js";
+import { registerProctoringRoutes } from "./proctoring-routes.js";
 import { GatewayUnavailable } from "./razorpay.js";
 import { registerPrivacyRoutes } from "./privacy-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
@@ -53,6 +55,7 @@ export interface ServerOptions {
   readonly invigilation: InvigilationService;
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
+  readonly proctor: ProctorService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -176,6 +179,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
         { name: "Privacy", description: "The DPDP Act: the notice candidates agree to, retention, and erasure." },
         { name: "Billing", description: "Prepaid attempt credits, Razorpay payments and GST tax invoices." },
+        { name: "Proctoring", description: "Camera proctoring an exam's author turns on: identity photos, webcam photos, browser events. Observations, never verdicts." },
         {
           name: "Greenhouse",
           description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
@@ -301,7 +305,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -776,6 +780,26 @@ export function buildServer(options: ServerOptions): FastifyInstance {
      * timestamp, not anything the client reports, is what reply latency is
      * measured from.
      */
+    routes.post(
+      "/attempts/me/sections/next",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Leave the current part and enter the next section",
+          description:
+            "For an exam whose sections have their own time. The part left is locked; the next section's clock starts now. A section whose time is up keeps only the drafts saved in time.",
+          security: [{ attemptToken: [] }],
+          response: { 200: z.object({ ok: z.literal(true) }), ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        await service.nextSection(claims);
+        return reply.send({ ok: true });
+      },
+    );
+
     routes.get(
       "/attempts/me/probe",
       {
@@ -912,6 +936,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });
+    registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
 
     registerAccountRoutes(routes, {
       service,

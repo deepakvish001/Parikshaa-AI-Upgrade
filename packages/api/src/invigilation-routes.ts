@@ -51,7 +51,17 @@ const liveRow = z.object({
   extraMinutes: z.number(),
   reopened: z.number(),
   awaitingReply: z.boolean().describe("A follow-up question is waiting for the candidate's reply."),
+  proctoring: z
+    .object({
+      identity: z.enum(["not_taken", "pending", "verified", "rejected"]),
+      snapshots: z.number(),
+      lastSnapshotAt: z.number().nullable(),
+      events: z.record(z.string(), z.number()).describe("What the browser reported, by kind: tab_hidden, fullscreen_exit, copy, paste, camera_off."),
+    })
+    .nullable()
+    .describe("For a proctored exam: the identity check and what the camera and browser sent. Observations, not findings."),
   flags: z.object({
+    cameraOff: z.boolean().describe("A proctored attempt whose webcam photos have stopped arriving."),
     away: z.boolean().describe("The page has stopped checking in: closed, or offline."),
     idle: z.boolean().describe("The page is open, but nothing has been typed for the idle threshold."),
     overdue: z.boolean().describe("Time is up and nothing has written since to close the attempt."),
@@ -82,6 +92,8 @@ export function registerInvigilationRoutes(routes: Routes, deps: InvigilationRou
               inProgress: z.number(),
               away: z.number(),
               idle: z.number(),
+              cameraOff: z.number(),
+              identityPending: z.number(),
               submitted: z.number(),
               graded: z.number(),
               void: z.number(),

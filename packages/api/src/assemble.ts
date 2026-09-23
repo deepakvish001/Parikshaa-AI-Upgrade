@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PrivacyStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PrivacyStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -10,6 +10,7 @@ import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
 import { PrivacyService } from "./privacy.js";
 import { BillingService } from "./billing.js";
+import { ProctorService } from "./proctoring.js";
 import type { Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
@@ -47,7 +48,9 @@ export interface AssembleOptions {
 }
 
 export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: DeliveryWorker; privacy: PrivacyService; billing: BillingService } {
-  const store = new LedgerStore(o.sql, { keys: new DataKeys(o.dataKey) });
+  const keys = new DataKeys(o.dataKey);
+  const proctorStore = new ProctorStore(o.sql, keys);
+  const store = new LedgerStore(o.sql, { keys });
   const identity = new IdentityStore(o.sql);
   // Metering needs the exam service for its audit, and the exam service meters: bound late.
   let billing: BillingService | undefined;
@@ -68,7 +71,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
   });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
-  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service });
+  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
     exams: service,
@@ -91,12 +94,19 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
   const app = buildServer({
     service,
     invitations,
-    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
+    results: new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
-    invigilation: new InvigilationService({ store, invitations: invitationStore, invigilation: new InvigilationStore(o.sql), exams: service }),
+    invigilation: new InvigilationService({
+      store,
+      invitations: invitationStore,
+      invigilation: new InvigilationStore(o.sql),
+      exams: service,
+      proctor: proctorStore,
+    }),
     privacy,
     billing,
+    proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

@@ -109,3 +109,23 @@ export function openEvent(event: ExamEvent, key: Buffer | null): ExamEvent {
     return aesOpen(key, value.slice(PREFIX.length), `${event.attemptId}/${field}`).toString("utf8");
   });
 }
+
+/**
+ * Seal a file — a proctoring photo — under an attempt's data key, bound to
+ * `aad` (the attempt and the photo's id). Returns iv | ciphertext | tag.
+ */
+export function sealBytes(key: Buffer, plaintext: Buffer, aad: string): Buffer {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  cipher.setAAD(Buffer.from(aad));
+  const body = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  return Buffer.concat([iv, body, cipher.getAuthTag()]);
+}
+
+export function openBytes(key: Buffer, sealed: Buffer, aad: string): Buffer {
+  if (sealed.length < 28) throw new Error("A sealed file is too short");
+  const decipher = createDecipheriv("aes-256-gcm", key, sealed.subarray(0, 12));
+  decipher.setAAD(Buffer.from(aad));
+  decipher.setAuthTag(sealed.subarray(sealed.length - 16));
+  return Buffer.concat([decipher.update(sealed.subarray(12, sealed.length - 16)), decipher.final()]);
+}

@@ -133,6 +133,12 @@ export function registerPrivacyRoutes(routes: Routes, deps: PrivacyRouteDeps): v
             answers: z.array(z.object({ questionId: z.string(), answer: z.string(), at: z.number() })).readonly(),
             followUps: z.array(z.object({ questionId: z.string(), question: z.string(), reply: z.string().nullable(), at: z.number() })).readonly(),
             timeline: z.array(z.object({ at: z.number(), event: z.string() })).readonly(),
+            proctoring: z
+              .object({
+                photos: z.array(z.object({ kind: z.string(), takenAt: z.string(), sha256: z.string() })).readonly(),
+                events: z.array(z.object({ kind: z.string(), at: z.string() })).readonly(),
+              })
+              .nullable(),
           }),
           401: S.errorResponse,
           409: S.errorResponse,

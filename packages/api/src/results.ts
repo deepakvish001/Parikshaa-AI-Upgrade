@@ -6,11 +6,14 @@ import {
   paperOf,
   resultOf,
   type AttemptId,
+  type AttemptProjection,
   type AttemptResult,
+  type Exam,
   type CohortAnalytics,
   type ExamId,
 } from "@parikshaa/core";
-import { staffScope, type Invitation, type InvitationStore, type LedgerStore } from "@parikshaa/store";
+import { staffScope, type Invitation, type InvitationStore, type LedgerStore, type ProctorStore, type Scope } from "@parikshaa/store";
+import { identityState } from "./proctoring.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
 import type { Cell } from "./xlsx.js";
@@ -61,6 +64,14 @@ export interface CandidateReport {
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
   readonly ledger: { readonly head: string; readonly length: number };
+  /** For a proctored exam (ROADMAP §14): the identity decision and what the camera and browser sent. Observations. */
+  readonly proctoring: {
+    readonly identity: "not_taken" | "pending" | "verified" | "rejected";
+    readonly identityReason: string | null;
+    readonly identityDecidedBy: string | null;
+    readonly snapshots: number;
+    readonly events: Readonly<Record<string, number>>;
+  } | null;
 }
 
 /** "2026-10-01 10:05" in India Standard Time: what a spreadsheet column should say. */
@@ -85,8 +96,15 @@ export class ResultsService {
   readonly #store: LedgerStore;
   readonly #invitations: InvitationStore;
   readonly #exams: ExamService;
+  readonly #proctor: ProctorStore | null;
 
-  constructor(options: { readonly store: LedgerStore; readonly invitations: InvitationStore; readonly exams: ExamService }) {
+  constructor(options: {
+    readonly store: LedgerStore;
+    readonly invitations: InvitationStore;
+    readonly exams: ExamService;
+    readonly proctor?: ProctorStore | null;
+  }) {
+    this.#proctor = options.proctor ?? null;
     this.#store = options.store;
     this.#invitations = options.invitations;
     this.#exams = options.exams;
@@ -213,6 +231,22 @@ export class ResultsService {
       voidReason: projection.voidReason,
       voidedBy: projection.voidedBy?.name ?? null,
       ledger: { head: entries.at(-1)!.hash, length: entries.length },
+      proctoring: await this.#proctoring(scope, attemptId, definition, projection),
+    };
+  }
+
+  async #proctoring(scope: Scope, attemptId: AttemptId, exam: Exam, projection: AttemptProjection): Promise<CandidateReport["proctoring"]> {
+    if (exam.policy.proctoring === undefined || this.#proctor === null) return null;
+    const [photos, events] = await Promise.all([this.#proctor.media(scope, attemptId, "snapshot"), this.#proctor.events(scope, attemptId)]);
+    const counts: Record<string, number> = {};
+    for (const e of events) counts[e.kind] = (counts[e.kind] ?? 0) + 1;
+    const review = projection.identity?.review ?? null;
+    return {
+      identity: identityState(projection.identity),
+      identityReason: review?.reason ?? null,
+      identityDecidedBy: review?.decidedBy.name ?? null,
+      snapshots: photos.length,
+      events: counts,
     };
   }
 }

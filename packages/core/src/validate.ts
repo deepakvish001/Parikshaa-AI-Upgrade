@@ -194,6 +194,9 @@ export function validateExam(exam: Exam): ExamValidation {
       });
     }
     section.pool.forEach((question, j) => problems.push(...validateQuestion(question, `${at}.pool.${j}`)));
+    if (section.durationMs !== undefined && (!Number.isFinite(section.durationMs) || section.durationMs < 60_000)) {
+      problems.push({ path: `${at}.durationMs`, message: "A section's own time must be at least a minute." });
+    }
   });
 
   const { durationMs, vivaTriggerRatio } = exam.policy;
@@ -204,6 +207,13 @@ export function validateExam(exam: Exam): ExamValidation {
     problems.push({
       path: "policy.vivaTriggerRatio",
       message: "The viva trigger ratio is a fraction of a question's marks, so it must be between 0 and 1.",
+    });
+  }
+  const every = exam.policy.proctoring?.snapshotEverySeconds;
+  if (every !== undefined && every !== null && (!Number.isInteger(every) || every < 15 || every > 900)) {
+    problems.push({
+      path: "policy.proctoring.snapshotEverySeconds",
+      message: "Webcam photos are taken between every 15 seconds and every 15 minutes.",
     });
   }
 

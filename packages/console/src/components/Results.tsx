@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateReport, ConsoleClient, QuestionStats, ResultRow, Results, Verdict } from "../api.ts";
 import { EraseCard } from "./Privacy.tsx";
+import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
 /**
  * What a recruiter takes away from a sitting (ROADMAP §6): the cohort's
@@ -329,6 +330,23 @@ export function Report({ report }: { report: CandidateReport }) {
           {result.submittedAt === null ? "" : ` · submitted ${when(result.submittedAt)} · ${minutes(result.durationMs)}`}
         </p>
       </section>
+
+      {report.proctoring === null || report.proctoring === undefined ? null : (
+        <section className="card" aria-label="Proctoring">
+          <strong>Proctoring</strong>
+          <p className="notice">Observations to weigh. None of this marks anyone down by itself.</p>
+          <p>
+            {IDENTITY_LABEL[report.proctoring.identity]}
+            {report.proctoring.identityDecidedBy === null ? "" : ` by ${report.proctoring.identityDecidedBy} — ${report.proctoring.identityReason ?? ""}`}
+          </p>
+          <p>
+            {report.proctoring.snapshots} webcam photo{report.proctoring.snapshots === 1 ? "" : "s"}
+            {Object.entries(report.proctoring.events)
+              .map(([kind, n]) => ` · ${kind.replace(/_/g, " ")} ×${n}`)
+              .join("")}
+          </p>
+        </section>
+      )}
 
       <section className="card" aria-label="Answers">
         <strong>Answers</strong>

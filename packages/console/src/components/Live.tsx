@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleError, type ConsoleClient, type LiveRow } from "../api.ts";
+import { IDENTITY_LABEL, ProctoringReview } from "./Proctoring.tsx";
 
 /**
  * The sitting, live (ROADMAP §8): who has started, how far each candidate is,
@@ -32,7 +33,8 @@ const left = (now: number, at: number | null) => (at === null ? "—" : at <= no
 
 type Filter = "attention" | "all" | "not_started" | "submitted";
 
-const needsAttention = (r: LiveRow) => r.flags.away || r.flags.idle || r.flags.overdue || r.awaitingReply;
+const needsAttention = (r: LiveRow) =>
+  r.flags.away || r.flags.idle || r.flags.overdue || r.flags.cameraOff || r.awaitingReply || r.proctoring?.identity === "pending";
 
 export function LivePanel({ client, examId, canIntervene }: { client: ConsoleClient; examId: string; canIntervene: boolean }) {
   const [idleMinutes, setIdleMinutes] = useState(5);
@@ -63,6 +65,12 @@ export function LivePanel({ client, examId, canIntervene }: { client: ConsoleCli
           <Figure label="Taking it" value={counts.inProgress} />
           <Figure label="Away" value={counts.away} warn={counts.away > 0} />
           <Figure label="Idle" value={counts.idle} />
+          {rows.some((r) => r.proctoring !== null) ? (
+            <>
+              <Figure label="Camera off" value={counts.cameraOff} warn={counts.cameraOff > 0} />
+              <Figure label="ID to check" value={counts.identityPending} warn={counts.identityPending > 0} />
+            </>
+          ) : null}
           <Figure label="Submitted" value={counts.submitted + counts.graded} />
           <Figure label="Set aside" value={counts.void} />
         </dl>
@@ -149,8 +157,12 @@ function Figure({ label, value, warn = false }: { label: string; value: number; 
 }
 
 function Row({ row, now, client, canIntervene, examId }: { row: LiveRow; now: number; client: ConsoleClient; canIntervene: boolean; examId: string }) {
-  const [acting, setActing] = useState<"extend" | "reopen" | null>(null);
+  const [acting, setActing] = useState<"extend" | "reopen" | "proctoring" | null>(null);
+  const browser = Object.values(row.proctoring?.events ?? {}).reduce((sum, n) => sum + n, 0) - (row.proctoring?.events["camera_on"] ?? 0);
   const flags = [
+    row.flags.cameraOff ? "camera off" : null,
+    row.proctoring === null || row.proctoring.identity === "not_taken" ? null : IDENTITY_LABEL[row.proctoring.identity],
+    browser > 0 ? `${browser} browser event${browser === 1 ? "" : "s"}` : null,
     row.flags.away ? "away" : null,
     row.flags.idle ? "idle" : null,
     row.flags.overdue ? "time up" : null,
@@ -178,7 +190,16 @@ function Row({ row, now, client, canIntervene, examId }: { row: LiveRow; now: nu
         <td>
           <span className="pill">{STATE[row.state]}</span>{" "}
           {flags.map((f) => (
-            <span key={f} className={f === "away" || f === "time up" ? "pill attention" : "pill"}>
+            <span
+              key={f}
+              className={
+                f === "away" || f === "time up" || f === "camera off" || f === IDENTITY_LABEL.rejected || f === IDENTITY_LABEL.pending
+                  ? "pill attention"
+                  : f === IDENTITY_LABEL.verified
+                    ? "pill ok"
+                    : "pill"
+              }
+            >
               {f}
             </span>
           ))}
@@ -187,6 +208,11 @@ function Row({ row, now, client, canIntervene, examId }: { row: LiveRow; now: nu
           {canIntervene && row.attemptId !== null && row.state === "in_progress" ? (
             <button type="button" className="quiet" onClick={() => setActing(acting === "extend" ? null : "extend")}>
               Extend…
+            </button>
+          ) : null}
+          {row.proctoring !== null && row.attemptId !== null ? (
+            <button type="button" className="quiet" onClick={() => setActing(acting === "proctoring" ? null : "proctoring")}>
+              Review {row.ref}
             </button>
           ) : null}
           {canIntervene && row.attemptId !== null && row.state === "submitted" ? (
@@ -199,7 +225,17 @@ function Row({ row, now, client, canIntervene, examId }: { row: LiveRow; now: nu
       {acting !== null && row.attemptId !== null ? (
         <tr>
           <td colSpan={7}>
-            <Intervene client={client} examId={examId} attemptId={row.attemptId} kind={acting} ref_={row.ref} onDone={() => setActing(null)} />
+            {acting === "proctoring" ? (
+              <ProctoringReview
+                client={client}
+                attemptId={row.attemptId}
+                name={row.name === "" ? row.ref : row.name}
+                canDecide={canIntervene}
+                onClose={() => setActing(null)}
+              />
+            ) : (
+              <Intervene client={client} examId={examId} attemptId={row.attemptId} kind={acting} ref_={row.ref} onDone={() => setActing(null)} />
+            )}
           </td>
         </tr>
       ) : null}

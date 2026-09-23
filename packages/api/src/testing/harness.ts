@@ -9,6 +9,7 @@ import {
   LedgerStore,
   PrivacyStore,
   BillingStore,
+  ProctorStore,
   QuestionBank,
   DataKeys,
   migrate,
@@ -23,6 +24,7 @@ import { InvigilationService } from "../invigilation.js";
 import { InvitationService } from "../invitation-service.js";
 import { PrivacyService } from "../privacy.js";
 import { BillingService } from "../billing.js";
+import { ProctorService } from "../proctoring.js";
 import type { Supplier } from "../gst.js";
 import { FakeRazorpay } from "../razorpay.js";
 import { buildIntegrations } from "../integrations.js";
@@ -127,6 +129,7 @@ export async function wire(
   const invitationStore = new InvitationStore(sql);
   const privacy = new PrivacyService({
     store,
+    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
     privacy: new PrivacyStore(sql),
     invitations: invitationStore,
     identity,
@@ -158,11 +161,12 @@ export async function wire(
   const app = buildServer({
     service,
     invitations,
-    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
+    results: new ResultsService({ store, invitations: invitationStore, exams: service, proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)) }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
     invigilation: new InvigilationService({
       store,
+      proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
       invitations: invitationStore,
       invigilation: new InvigilationStore(sql),
       exams: service,
@@ -170,6 +174,12 @@ export async function wire(
     }),
     privacy,
     billing,
+    proctor: new ProctorService({
+      store,
+      proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+      exams: service,
+      ...(options.now === undefined ? {} : { now: options.now }),
+    }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

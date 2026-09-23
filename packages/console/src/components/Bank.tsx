@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { validateQuestion, type ExamProblem, type Question } from "@parikshaa/core/browser";
-import { ConsoleError, type BankEntry, type BankFilter, type ConsoleClient, type Difficulty } from "../api.ts";
+import { base64Of, ConsoleError, type BankEntry, type BankFilter, type ConsoleClient, type Difficulty, type DocxImport } from "../api.ts";
 import { QuestionFields, blankQuestion } from "./QuestionFields.tsx";
 
 /**
@@ -202,7 +202,134 @@ export function BankPanel({ client, canWrite }: { client: ConsoleClient; canWrit
           )}
         </section>
       ) : null}
+
+      {canWrite ? <WordImport client={client} onImported={refresh} /> : null}
     </>
+  );
+}
+
+// --- importing a Word question paper ---------------------------------------------
+
+/**
+ * A question paper typed in Word. The file is read first without adding
+ * anything, so the teacher sees what it became — and anything left out, such
+ * as a picture — before the bank changes.
+ */
+function WordImport({ client, onImported }: { client: ConsoleClient; onImported: () => Promise<unknown> }) {
+  const [file, setFile] = useState<{ name: string; data: string } | null>(null);
+  const [preview, setPreview] = useState<DocxImport["preview"] | null>(null);
+  const [problems, setProblems] = useState<readonly ExamProblem[]>([]);
+  const [done, setDone] = useState<string | null>(null);
+
+  const failed = (error: unknown) => {
+    setPreview(null);
+    setProblems(error instanceof ConsoleError && error.problems.length > 0 ? error.problems : [{ path: "", message: "The file could not be read." }]);
+  };
+  const check = useMutation({
+    mutationFn: (data: string) => client.importDocx(data, true),
+    onSuccess: (result) => {
+      setProblems([]);
+      setPreview(result.preview);
+    },
+    onError: failed,
+  });
+  const commit = useMutation({
+    mutationFn: (data: string) => client.importDocx(data, false),
+    onSuccess: async (result) => {
+      setPreview(null);
+      setFile(null);
+      setDone(`Imported ${result.imported} question${result.imported === 1 ? "" : "s"} from the document.`);
+      await onImported();
+    },
+    onError: failed,
+  });
+
+  return (
+    <section className="card" aria-label="Import from Word">
+      <strong>Import from a Word document</strong>
+      <p className="notice">
+        Type the paper as usual: number each question (<span className="mono">1.</span> or Word's numbered list), letter its
+        options (<span className="mono">a)</span>), then an <span className="mono">Answer:</span> line — or mark the right
+        option with <span className="mono">*</span>. Optional lines: <span className="mono">Marks:</span>,{" "}
+        <span className="mono">Topic:</span>, <span className="mono">Difficulty:</span>, <span className="mono">Tags:</span>,{" "}
+        <span className="mono">Type:</span>. Questions without options become numeric or short answer. You will see every
+        question before anything is added.
+      </p>
+      <div className="field">
+        <label htmlFor="bank-import-docx">Word file (.docx)</label>
+        <input
+          id="bank-import-docx"
+          type="file"
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          onChange={async (e) => {
+            const chosen = e.target.files?.[0];
+            e.target.value = "";
+            if (chosen === undefined) return;
+            setDone(null);
+            const data = await base64Of(chosen);
+            setFile({ name: chosen.name, data });
+            check.mutate(data);
+          }}
+        />
+      </div>
+      {check.isPending ? <p className="notice">Reading {file?.name}…</p> : null}
+      {done === null ? null : (
+        <p className="notice" role="status">
+          {done}
+        </p>
+      )}
+      {problems.length === 0 ? null : (
+        <ul className="problems" aria-label="Problems with this document">
+          {problems.map((p) => (
+            <li key={`${p.path}:${p.message}`}>
+              <span className="mono">{p.path}</span> — {p.message}
+            </li>
+          ))}
+        </ul>
+      )}
+      {preview === null || file === null ? null : (
+        <>
+          <table aria-label="Questions found">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Question</th>
+                <th scope="col">Type</th>
+                <th scope="col">Marks</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preview.map((q) => (
+                <tr key={q.question}>
+                  <td>{q.question}</td>
+                  <td>
+                    {q.stem}
+                    {q.note === null ? null : <div className="notice">{q.note}</div>}
+                  </td>
+                  <td>{q.kind}</td>
+                  <td>{q.marks}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="bar">
+            <button type="button" onClick={() => commit.mutate(file.data)} disabled={commit.isPending}>
+              Add {preview.length} question{preview.length === 1 ? "" : "s"} to the bank
+            </button>
+            <button
+              type="button"
+              className="quiet"
+              onClick={() => {
+                setPreview(null);
+                setFile(null);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 

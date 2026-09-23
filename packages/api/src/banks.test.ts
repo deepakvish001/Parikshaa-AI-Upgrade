@@ -3,6 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pgliteExecutor, type IdentityStore } from "@parikshaa/store";
+import { docxOf } from "./testing/docx.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
 /**
@@ -206,5 +207,43 @@ describe("versioning", () => {
 
     const pool = (await call("GET", owner, "/exams/aptitude")).json().sections[0].pool as { id: string; stem: string }[];
     expect(pool.find((q) => q.id === first!.id)?.stem).toBe(first!.question.stem);
+  });
+});
+
+describe("importing a Word document into the bank", () => {
+  const paper = Buffer.from(
+    docxOf(["Aptitude paper", "1. Which is stable?", "a) Heap sort", "b) Merge sort", "Answer: b", "Topic: sorting", "2. What is 6 * 7?", "Answer: 42"]),
+  ).toString("base64");
+
+  it("previews on a dry run without adding anything, then imports", async () => {
+    const dry = await call("POST", owner, "/bank/import/docx", { file: paper, dryRun: true });
+    expect(dry.statusCode, dry.payload).toBe(200);
+    expect(dry.json()).toEqual({
+      imported: 0,
+      preview: [
+        { question: 1, kind: "mcq", stem: "Which is stable?", marks: 1, note: null },
+        { question: 2, kind: "numeric", stem: "What is 6 * 7?", marks: 1, note: null },
+      ],
+    });
+    expect((await call("GET", owner, "/bank")).json().questions).toHaveLength(0);
+
+    const res = await call("POST", owner, "/bank/import/docx", { file: paper });
+    expect(res.statusCode, res.payload).toBe(201);
+    expect(res.json().imported).toBe(2);
+    const questions = (await call("GET", owner, "/bank?topic=sorting")).json().questions;
+    expect(questions.map((q: { question: { stem: string } }) => q.question.stem)).toEqual(["Which is stable?"]);
+  });
+
+  it("imports nothing when any question has a problem, and says which", async () => {
+    const bad = Buffer.from(docxOf(["1. Which is stable?", "a) Heap sort", "Answer: c", "2. Fine?", "Answer: yes"])).toString("base64");
+    const res = await call("POST", owner, "/bank/import/docx", { file: bad });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().problems).toEqual([{ question: 1, written: 1, message: expect.stringContaining('The answer "c"') }]);
+    expect((await call("GET", owner, "/bank")).json().questions).toHaveLength(0);
+  });
+
+  it("is for those who write exams", async () => {
+    const invigilator = await signIn(app, "inv@acme.test");
+    expect((await call("POST", invigilator, "/bank/import/docx", { file: paper })).statusCode).toBe(403);
   });
 });
