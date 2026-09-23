@@ -1,5 +1,5 @@
 import { languagesOf } from "./code.js";
-import type { Exam, ExamId, Question, QuestionId, QuestionKind } from "./domain.js";
+import type { ContentLocale, Exam, ExamId, Question, QuestionId, QuestionKind, QuestionTranslation } from "./domain.js";
 
 /**
  * What a candidate is allowed to see while sitting an exam.
@@ -20,6 +20,8 @@ interface CandidateQuestionBase {
   readonly kind: QuestionKind;
   readonly stem: string;
   readonly maxScore: number;
+  /** The question in other languages: stems and options only, like the original. */
+  readonly translations: Readonly<Partial<Record<ContentLocale, QuestionTranslation>>>;
 }
 
 export interface CandidateMcqQuestion extends CandidateQuestionBase {
@@ -62,7 +64,12 @@ export interface CandidateExam {
 }
 
 export function candidateQuestion(question: Question): CandidateQuestion {
-  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore } as const;
+  // Copied field by field, so nothing a translation might one day grow can ride along.
+  const translations: Partial<Record<ContentLocale, QuestionTranslation>> = {};
+  for (const [locale, t] of Object.entries(question.translations ?? {}) as [ContentLocale, QuestionTranslation][]) {
+    translations[locale] = question.kind === "mcq" && t.options !== undefined ? { stem: t.stem, options: t.options } : { stem: t.stem };
+  }
+  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, translations } as const;
 
   switch (question.kind) {
     case "mcq":

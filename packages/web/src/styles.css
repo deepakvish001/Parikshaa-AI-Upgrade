@@ -153,3 +153,12 @@ button:disabled { opacity: .5; cursor: default; }
 /* Announcements from the invigilators (ROADMAP §8): hard to miss, easy to dismiss. */
 .announcement { border-left: 3px solid var(--accent); }
 .announcement .eyebrow { margin: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+
+/* Language and bandwidth (ROADMAP §9). */
+.prefs { display: flex; flex-wrap: wrap; gap: .5rem 1.25rem; justify-content: flex-end; font-size: .85rem; color: var(--muted); margin-bottom: .75rem; }
+.prefs select { width: auto; padding: .2rem .4rem; }
+label.inline { display: inline-flex; align-items: center; gap: .4rem; }
+button.quiet { background: transparent; color: var(--accent); border: none; padding: .2rem 0; text-decoration: underline; font-size: .85rem; }
+
+/* Every control shows where the keyboard is. */
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

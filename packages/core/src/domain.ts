@@ -41,6 +41,24 @@ export interface RubricCriterion {
   readonly weight: number;
 }
 
+/**
+ * Languages a question can be translated into (ROADMAP §9): Hindi, then the
+ * scheduled languages a hiring drive most often needs. English is the
+ * original, `stem` and `options` themselves.
+ */
+export const CONTENT_LOCALES = ["hi", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa", "or"] as const;
+export type ContentLocale = (typeof CONTENT_LOCALES)[number];
+
+/**
+ * A question in another language. Only what a candidate reads: an mcq's
+ * options in the same order as the original, since the answer is recorded as
+ * the option's position and so means the same in every language.
+ */
+export interface QuestionTranslation {
+  readonly stem: string;
+  readonly options?: readonly string[];
+}
+
 interface QuestionBase {
   readonly id: QuestionId;
   readonly kind: QuestionKind;
@@ -48,6 +66,8 @@ interface QuestionBase {
   readonly maxScore: number;
   /** Criteria a grader (human or model) must justify itself against. */
   readonly rubric: readonly RubricCriterion[];
+  /** The question in other languages, by locale. The grader always reads the original. */
+  readonly translations?: Readonly<Partial<Record<ContentLocale, QuestionTranslation>>>;
 }
 
 export interface McqQuestion extends QuestionBase {

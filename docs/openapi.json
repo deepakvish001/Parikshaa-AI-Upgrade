@@ -123,6 +123,43 @@
                                 ]
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ]
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -187,6 +224,43 @@
                                 ]
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ]
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -247,6 +321,43 @@
                                 ]
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ]
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -306,6 +417,43 @@
                                   "weight"
                                 ]
                               }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ]
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                             },
                             "kind": {
                               "type": "string",
@@ -448,6 +596,43 @@
                                       ]
                                     }
                                   },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ]
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "enum": [
@@ -512,6 +697,43 @@
                                       ]
                                     }
                                   },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ]
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "enum": [
@@ -572,6 +794,43 @@
                                       ]
                                     }
                                   },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ]
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "enum": [
@@ -631,6 +890,43 @@
                                         "weight"
                                       ]
                                     }
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ]
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   },
                                   "kind": {
                                     "type": "string",
@@ -1693,6 +1989,44 @@
                                   "additionalProperties": false
                                 }
                               },
+                              "translations": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hi",
+                                    "bn",
+                                    "ta",
+                                    "te",
+                                    "mr",
+                                    "gu",
+                                    "kn",
+                                    "ml",
+                                    "pa",
+                                    "or"
+                                  ]
+                                },
+                                "additionalProperties": {
+                                  "type": "object",
+                                  "properties": {
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "options": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "stem"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                              },
                               "kind": {
                                 "type": "string",
                                 "enum": [
@@ -1759,6 +2093,44 @@
                                   "additionalProperties": false
                                 }
                               },
+                              "translations": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hi",
+                                    "bn",
+                                    "ta",
+                                    "te",
+                                    "mr",
+                                    "gu",
+                                    "kn",
+                                    "ml",
+                                    "pa",
+                                    "or"
+                                  ]
+                                },
+                                "additionalProperties": {
+                                  "type": "object",
+                                  "properties": {
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "options": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "stem"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                              },
                               "kind": {
                                 "type": "string",
                                 "enum": [
@@ -1821,6 +2193,44 @@
                                   "additionalProperties": false
                                 }
                               },
+                              "translations": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hi",
+                                    "bn",
+                                    "ta",
+                                    "te",
+                                    "mr",
+                                    "gu",
+                                    "kn",
+                                    "ml",
+                                    "pa",
+                                    "or"
+                                  ]
+                                },
+                                "additionalProperties": {
+                                  "type": "object",
+                                  "properties": {
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "options": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "stem"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                              },
                               "kind": {
                                 "type": "string",
                                 "enum": [
@@ -1882,6 +2292,44 @@
                                   ],
                                   "additionalProperties": false
                                 }
+                              },
+                              "translations": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string",
+                                  "enum": [
+                                    "hi",
+                                    "bn",
+                                    "ta",
+                                    "te",
+                                    "mr",
+                                    "gu",
+                                    "kn",
+                                    "ml",
+                                    "pa",
+                                    "or"
+                                  ]
+                                },
+                                "additionalProperties": {
+                                  "type": "object",
+                                  "properties": {
+                                    "stem": {
+                                      "type": "string"
+                                    },
+                                    "options": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "stem"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                               },
                               "kind": {
                                 "type": "string",
@@ -2028,6 +2476,44 @@
                                         "additionalProperties": false
                                       }
                                     },
+                                    "translations": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hi",
+                                          "bn",
+                                          "ta",
+                                          "te",
+                                          "mr",
+                                          "gu",
+                                          "kn",
+                                          "ml",
+                                          "pa",
+                                          "or"
+                                        ]
+                                      },
+                                      "additionalProperties": {
+                                        "type": "object",
+                                        "properties": {
+                                          "stem": {
+                                            "type": "string"
+                                          },
+                                          "options": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "stem"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                    },
                                     "kind": {
                                       "type": "string",
                                       "enum": [
@@ -2094,6 +2580,44 @@
                                         "additionalProperties": false
                                       }
                                     },
+                                    "translations": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hi",
+                                          "bn",
+                                          "ta",
+                                          "te",
+                                          "mr",
+                                          "gu",
+                                          "kn",
+                                          "ml",
+                                          "pa",
+                                          "or"
+                                        ]
+                                      },
+                                      "additionalProperties": {
+                                        "type": "object",
+                                        "properties": {
+                                          "stem": {
+                                            "type": "string"
+                                          },
+                                          "options": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "stem"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                    },
                                     "kind": {
                                       "type": "string",
                                       "enum": [
@@ -2156,6 +2680,44 @@
                                         "additionalProperties": false
                                       }
                                     },
+                                    "translations": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hi",
+                                          "bn",
+                                          "ta",
+                                          "te",
+                                          "mr",
+                                          "gu",
+                                          "kn",
+                                          "ml",
+                                          "pa",
+                                          "or"
+                                        ]
+                                      },
+                                      "additionalProperties": {
+                                        "type": "object",
+                                        "properties": {
+                                          "stem": {
+                                            "type": "string"
+                                          },
+                                          "options": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "stem"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                    },
                                     "kind": {
                                       "type": "string",
                                       "enum": [
@@ -2217,6 +2779,44 @@
                                         ],
                                         "additionalProperties": false
                                       }
+                                    },
+                                    "translations": {
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string",
+                                        "enum": [
+                                          "hi",
+                                          "bn",
+                                          "ta",
+                                          "te",
+                                          "mr",
+                                          "gu",
+                                          "kn",
+                                          "ml",
+                                          "pa",
+                                          "or"
+                                        ]
+                                      },
+                                      "additionalProperties": {
+                                        "type": "object",
+                                        "properties": {
+                                          "stem": {
+                                            "type": "string"
+                                          },
+                                          "options": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "stem"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                     },
                                     "kind": {
                                       "type": "string",
@@ -4666,6 +5266,44 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   }
                                 },
                                 "required": [
@@ -4673,7 +5311,8 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
-                                  "options"
+                                  "options",
+                                  "translations"
                                 ],
                                 "additionalProperties": false
                               },
@@ -4694,13 +5333,52 @@
                                   },
                                   "maxScore": {
                                     "type": "number"
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
                                   "stem",
-                                  "maxScore"
+                                  "maxScore",
+                                  "translations"
                                 ],
                                 "additionalProperties": false
                               },
@@ -4721,13 +5399,52 @@
                                   },
                                   "maxScore": {
                                     "type": "number"
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   }
                                 },
                                 "required": [
                                   "id",
                                   "kind",
                                   "stem",
-                                  "maxScore"
+                                  "maxScore",
+                                  "translations"
                                 ],
                                 "additionalProperties": false
                               },
@@ -4748,6 +5465,44 @@
                                   },
                                   "maxScore": {
                                     "type": "number"
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   },
                                   "language": {
                                     "type": "string"
@@ -4792,6 +5547,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "translations",
                                   "language",
                                   "languages",
                                   "starter",
@@ -6534,7 +7290,22 @@
         "tags": [
           "Candidate"
         ],
-        "description": "text/event-stream. Events: `token` while the probe is written, then `probe` with its id and prompt, or `none` when nothing qualifies — which is the ordinary case.",
+        "description": "text/event-stream. Events: `token` while the probe is written, then `probe` with its id and prompt, or `none` when nothing qualifies — which is the ordinary case. With `stream=0` (low-bandwidth mode), one JSON reply instead: `{ probe: { id, prompt } | null }`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "1",
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            },
+            "in": "query",
+            "name": "stream",
+            "required": false
+          }
+        ],
         "security": [
           {
             "attemptToken": []
@@ -7264,6 +8035,44 @@
                                       "additionalProperties": false
                                     }
                                   },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "enum": [
@@ -7330,6 +8139,44 @@
                                       "additionalProperties": false
                                     }
                                   },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "enum": [
@@ -7392,6 +8239,44 @@
                                       "additionalProperties": false
                                     }
                                   },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
                                   "kind": {
                                     "type": "string",
                                     "enum": [
@@ -7453,6 +8338,44 @@
                                       ],
                                       "additionalProperties": false
                                     }
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   },
                                   "kind": {
                                     "type": "string",
@@ -7732,6 +8655,43 @@
                               ]
                             }
                           },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                          },
                           "kind": {
                             "type": "string",
                             "enum": [
@@ -7791,6 +8751,43 @@
                               ]
                             }
                           },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                          },
                           "kind": {
                             "type": "string",
                             "enum": [
@@ -7846,6 +8843,43 @@
                               ]
                             }
                           },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                          },
                           "kind": {
                             "type": "string",
                             "enum": [
@@ -7900,6 +8934,43 @@
                                 "weight"
                               ]
                             }
+                          },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                           },
                           "kind": {
                             "type": "string",
@@ -8065,6 +9136,44 @@
                                 "additionalProperties": false
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -8131,6 +9240,44 @@
                                 "additionalProperties": false
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -8193,6 +9340,44 @@
                                 "additionalProperties": false
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -8254,6 +9439,44 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                             },
                             "kind": {
                               "type": "string",
@@ -8563,6 +9786,43 @@
                               ]
                             }
                           },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                          },
                           "kind": {
                             "type": "string",
                             "enum": [
@@ -8622,6 +9882,43 @@
                               ]
                             }
                           },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                          },
                           "kind": {
                             "type": "string",
                             "enum": [
@@ -8677,6 +9974,43 @@
                               ]
                             }
                           },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                          },
                           "kind": {
                             "type": "string",
                             "enum": [
@@ -8731,6 +10065,43 @@
                                 "weight"
                               ]
                             }
+                          },
+                          "translations": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string",
+                              "enum": [
+                                "hi",
+                                "bn",
+                                "ta",
+                                "te",
+                                "mr",
+                                "gu",
+                                "kn",
+                                "ml",
+                                "pa",
+                                "or"
+                              ]
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "stem": {
+                                  "type": "string"
+                                },
+                                "options": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "stem"
+                              ]
+                            },
+                            "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                           },
                           "kind": {
                             "type": "string",
@@ -8907,6 +10278,44 @@
                                 "additionalProperties": false
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -8973,6 +10382,44 @@
                                 "additionalProperties": false
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -9035,6 +10482,44 @@
                                 "additionalProperties": false
                               }
                             },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
                             "kind": {
                               "type": "string",
                               "enum": [
@@ -9096,6 +10581,44 @@
                                 ],
                                 "additionalProperties": false
                               }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string",
+                                "enum": [
+                                  "hi",
+                                  "bn",
+                                  "ta",
+                                  "te",
+                                  "mr",
+                                  "gu",
+                                  "kn",
+                                  "ml",
+                                  "pa",
+                                  "or"
+                                ]
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "stem"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                             },
                             "kind": {
                               "type": "string",
@@ -11323,6 +12846,39 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        "translations": {
+                          "type": "object",
+                          "properties": {
+                            "hi": {
+                              "type": "object",
+                              "properties": {
+                                "collected": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "rights": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "collected",
+                                "rights"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "hi"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -11333,7 +12889,8 @@
                         "retentionDays",
                         "grievance",
                         "collected",
-                        "rights"
+                        "rights",
+                        "translations"
                       ],
                       "additionalProperties": false
                     }
@@ -15808,6 +17365,39 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "properties": {
+                                "hi": {
+                                  "type": "object",
+                                  "properties": {
+                                    "collected": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "rights": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "collected",
+                                    "rights"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "hi"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -15818,7 +17408,8 @@
                             "retentionDays",
                             "grievance",
                             "collected",
-                            "rights"
+                            "rights",
+                            "translations"
                           ],
                           "additionalProperties": false
                         },
@@ -16117,6 +17708,39 @@
                           "items": {
                             "type": "string"
                           }
+                        },
+                        "translations": {
+                          "type": "object",
+                          "properties": {
+                            "hi": {
+                              "type": "object",
+                              "properties": {
+                                "collected": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "rights": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "collected",
+                                "rights"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "hi"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -16127,7 +17751,8 @@
                         "retentionDays",
                         "grievance",
                         "collected",
-                        "rights"
+                        "rights",
+                        "translations"
                       ],
                       "additionalProperties": false
                     }

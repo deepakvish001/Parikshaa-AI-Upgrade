@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
+import fastifyCompress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
 import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
@@ -143,6 +145,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+
+  // Compressed when the client accepts it (ROADMAP §9): on a 2G connection
+  // the exam, the state polls and the client bundles are most of the wait.
+  // Small replies are left alone; the probe stream writes to the raw socket
+  // and is never buffered by this.
+  void app.register(fastifyCompress, { global: true, threshold: 1024, encodings: ["br", "gzip"] });
 
   void app.register(fastifySwagger, {
     openapi: {
@@ -755,8 +763,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           tags: CANDIDATE,
           summary: "Stream the next micro-viva probe, if one is due",
           description:
-            "text/event-stream. Events: `token` while the probe is written, then `probe` with its id and prompt, or `none` when nothing qualifies — which is the ordinary case.",
+            "text/event-stream. Events: `token` while the probe is written, then `probe` with its id and prompt, or `none` when nothing qualifies — which is the ordinary case. With `stream=0` (low-bandwidth mode), one JSON reply instead: `{ probe: { id, prompt } | null }`.",
           security: [{ attemptToken: [] }],
+          querystring: z.object({ stream: z.enum(["0", "1"]).default("1") }),
           // No response schema: this writes to the raw socket, so the serializer
           // never sees it.
         },
@@ -764,6 +773,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
+
+        // One reply, no stream: a flaky 2G connection holds a short request
+        // better than an open one, and a proxy that buffers streams cannot stall it.
+        if (request.query.stream === "0") {
+          const probe = await service.raiseProbe(claims, {});
+          return reply.send({ probe: probe === null ? null : { id: probe.id, prompt: probe.prompt } });
+        }
 
         reply.raw.writeHead(200, {
           "Content-Type": "text/event-stream",

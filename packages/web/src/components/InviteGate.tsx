@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, redeemInvitation, type Notice } from "../api.ts";
+import { PreferencesBar, uiLocaleOf, usePreferences } from "../i18n.tsx";
 
 interface Props {
   readonly code: string;
@@ -17,8 +18,8 @@ type Stage =
   | { readonly kind: "offline" };
 
 /** Times as the candidate reads them: IST, spelled out. */
-const ist = (iso: string) =>
-  `${new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
+const ist = (iso: string, locale: "en" | "hi" = "en") =>
+  `${new Intl.DateTimeFormat(locale === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
 
 /**
  * Opening an invitation link.
@@ -28,6 +29,8 @@ const ist = (iso: string) =>
  * invalid link says only that, and who to ask.
  */
 export function InviteGate({ code, onOpened, onForget }: Props) {
+  const { t, language } = usePreferences();
+  const ui = uiLocaleOf(language);
   const [stage, setStage] = useState<Stage>({ kind: "opening" });
 
   const open = useCallback(async (consent?: { noticeVersion: number }) => {
@@ -57,39 +60,37 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
 
   return (
     <main className="gate">
+      <PreferencesBar />
       <h1>Parikshaa</h1>
-      {stage.kind === "opening" ? <p className="notice">Opening your test…</p> : null}
+      {stage.kind === "opening" ? <p className="notice">{t("invite.opening")}</p> : null}
       {stage.kind === "notice" ? <PrivacyNotice notice={stage.notice} onAgree={() => void open({ noticeVersion: stage.notice.version })} /> : null}
       {stage.kind === "early" ? (
-        <section className="card" aria-label="Not open yet">
-          <p style={{ marginTop: 0 }}>Your test opens on</p>
-          <p className="when">{ist(stage.opensAt)}</p>
-          <p className="notice">
-            Keep this page open and it will let you in at that time, or come back to the same link then. Nothing has
-            started yet.
-          </p>
+        <section className="card" aria-label={t("invite.earlyRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.opensOn")}</p>
+          <p className="when">{ist(stage.opensAt, ui)}</p>
+          <p className="notice">{t("invite.earlyNote")}</p>
         </section>
       ) : null}
       {stage.kind === "closed" ? (
-        <section className="card" aria-label="Closed">
-          <p style={{ marginTop: 0 }}>This test closed on {ist(stage.closesAt)}.</p>
-          <p className="notice">If you think you should still be able to take it, contact whoever sent you the link.</p>
+        <section className="card" aria-label={t("invite.closedRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.closedOn", { when: ist(stage.closesAt, ui) })}</p>
+          <p className="notice">{t("invite.closedNote")}</p>
         </section>
       ) : null}
       {stage.kind === "invalid" ? (
-        <section className="card" aria-label="Invalid link">
-          <p style={{ marginTop: 0 }}>This link does not work.</p>
-          <p className="notice">Ask whoever sent it for a new one. Links are personal and stop working if they are withdrawn.</p>
+        <section className="card" aria-label={t("invite.invalidRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.invalid")}</p>
+          <p className="notice">{t("invite.invalidNote")}</p>
           <button type="button" className="secondary" onClick={onForget}>
-            I have an access code instead
+            {t("invite.haveCode")}
           </button>
         </section>
       ) : null}
       {stage.kind === "offline" ? (
-        <section className="card" aria-label="No connection">
-          <p style={{ marginTop: 0 }}>Could not reach the server.</p>
+        <section className="card" aria-label={t("invite.offlineRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.offline")}</p>
           <button type="button" onClick={() => void open()}>
-            Try again
+            {t("invite.tryAgain")}
           </button>
         </section>
       ) : null}
@@ -102,48 +103,49 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
  * Reading it costs no test time: the clock starts only once it is agreed to.
  */
 function PrivacyNotice({ notice, onAgree }: { notice: Notice; onAgree: () => void }) {
+  const { t, language } = usePreferences();
   const [agreed, setAgreed] = useState(false);
+  // The standing parts of the notice, in the candidate's language where Parikshaa has them.
+  const own = uiLocaleOf(language) === "hi" ? notice.translations?.hi : undefined;
+  const collected = own?.collected ?? notice.collected;
+  const rights = own?.rights ?? notice.rights;
   return (
     <section className="card notice-card" aria-labelledby="privacy-heading">
       <h2 id="privacy-heading" style={{ marginTop: 0 }}>
-        Before you start: your data
+        {t("notice.heading")}
       </h2>
       <p>
-        <strong>{notice.controllerName}</strong> is responsible for the data collected while you take this test. Your
-        time has not started yet.
+        <strong>{notice.controllerName}</strong>
+        {t("notice.responsible")}
       </p>
-      <h3>Why</h3>
+      <h3>{t("notice.why")}</h3>
       <p>{notice.purpose}</p>
-      <h3>What is collected</h3>
+      <h3>{t("notice.collected")}</h3>
       <ul>
-        {notice.collected.map((item) => (
+        {collected.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
-      <h3>How long it is kept</h3>
-      <p>
-        {notice.retentionDays} days after you finish. After that it is erased: your answers and your details can no
-        longer be read by anyone.
-      </p>
-      <h3>Your rights</h3>
+      <h3>{t("notice.kept")}</h3>
+      <p>{t("notice.keptFor", { days: notice.retentionDays })}</p>
+      <h3>{t("notice.rights")}</h3>
       <ul>
-        {notice.rights.map((item) => (
+        {rights.map((item) => (
           <li key={item}>{item}</li>
         ))}
       </ul>
       <p>
-        Grievance officer: {notice.grievance.name}, <a href={`mailto:${notice.grievance.email}`}>{notice.grievance.email}</a>
+        {t("notice.grievance")}: {notice.grievance.name}, <a href={`mailto:${notice.grievance.email}`}>{notice.grievance.email}</a>
       </p>
       <label className="inline">
-        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> I have read this and
-        agree to my data being used as it describes
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> {t("notice.agree")}
       </label>
       <div className="row">
         <button type="button" disabled={!agreed} onClick={onAgree}>
-          Agree and start the test
+          {t("notice.start")}
         </button>
       </div>
-      <p className="notice">Notice version {notice.version}</p>
+      <p className="notice">{t("notice.version", { version: notice.version })}</p>
     </section>
   );
 }

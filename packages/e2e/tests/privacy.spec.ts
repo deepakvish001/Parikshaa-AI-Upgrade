@@ -1,22 +1,12 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { local, MCQ, PRIVATE_OWNER, seedSitting } from "./support.js";
+import { local, MCQ, PRIVATE_OWNER, seedSitting, setPrivacyNotice } from "./support.js";
 
 /** ROADMAP §11, in a real browser: consent before the clock, and the candidate's own data after. */
 
 test("a candidate agrees to the privacy notice before starting, and can download their data afterwards", async ({ page, request }) => {
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ] });
-  const saved = await request.put("/api/privacy", {
-    headers: { authorization: `Bearer ${sitting.token}` },
-    data: {
-      controllerName: "E2E Private Ltd",
-      grievanceName: "Priya Menon",
-      grievanceEmail: "privacy@private.e2e.test",
-      purpose: "To assess candidates for engineering roles.",
-      retentionDays: 90,
-    },
-  });
-  expect(saved.status(), await saved.text()).toBe(200);
+  await setPrivacyNotice(request, sitting.token);
 
   await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "Before you start: your data" })).toBeVisible();

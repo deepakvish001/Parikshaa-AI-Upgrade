@@ -42,6 +42,7 @@ export const noticeSchema = z.object({
   grievance: z.object({ name: z.string(), email: z.string() }),
   collected: z.array(z.string()).readonly(),
   rights: z.array(z.string()).readonly(),
+  translations: z.object({ hi: z.object({ collected: z.array(z.string()).readonly(), rights: z.array(z.string()).readonly() }) }),
 });
 
 const settingsBody = z.object({

@@ -33,6 +33,8 @@ Rules:
 - Two sentences at most. Plain language.
 - Never imply suspicion, never accuse, never mention cheating or provenance.
 - Never reveal whether their answer was right or wrong.
+- Write in the language the candidate answered in: Hindi, English, or the mix
+  of the two many candidates write. Keep technical terms as they used them.
 
 Reply with the probe text and nothing else. No preamble, no quotation marks.`;
 
@@ -57,6 +59,10 @@ Verdicts:
 a decisive verdict you cannot support; a wrong confident verdict is far more
 costly here than an honest "inconclusive".
 
+Replies and answers may be in Hindi, English or a mix of the two. Judge the
+reasoning, never the language it is in, and write your reasoning in the
+language of the reply.
+
 You are assessing PROVENANCE, not correctness. A wrong answer defended coherently
 is "consistent". A correct answer that the candidate cannot engage with is not.
 
@@ -73,6 +79,8 @@ scaled to the maximum score.
 - Grade only what the answer says, never what you assume the candidate meant.
 - Do not award marks for correct statements that no criterion asks for.
 - Do not deduct marks for style, length or spelling unless a criterion says to.
+- An answer may be in Hindi, English or a mix of the two. Grade what it says,
+  whatever the language; never deduct for the language itself.
 - Your reasoning is shown to the candidate. Cite the answer, name the criteria.`;
 
 /** The cacheable half: everything that is the same for every candidate. */

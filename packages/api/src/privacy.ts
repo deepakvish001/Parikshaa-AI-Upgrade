@@ -38,6 +38,22 @@ export const RIGHTS: readonly string[] = [
   "Complain to the grievance officer, and after that to the Data Protection Board of India.",
 ];
 
+/** The same, in Hindi (DPDP Act s.5(3): a notice in English or a language of the Eighth Schedule). */
+export const NOTICE_HI = {
+  collected: [
+    "आपका नाम, ईमेल पता, फ़ोन नंबर और संदर्भ (जैसे रोल नंबर), जैसा संस्था ने हमें दिया।",
+    "आपके उत्तर, और किसी भी अनुवर्ती प्रश्न पर आपके जवाब।",
+    "आपने कब शुरू किया, कब सहेजा, कब उत्तर दिया और कब जमा किया, और क्या यह पेज खुला था — ताकि निरीक्षक आपकी मदद कर सकें।",
+    "आपके उत्तर और जवाब एक AI मॉडल पढ़ता है, ताकि उन्हें अंक दे सके और अनुवर्ती प्रश्न पूछ सके। उनसे मॉडल को प्रशिक्षित नहीं किया जाता।",
+  ],
+  rights: [
+    "अपने बारे में रखा गया डेटा देखें: परीक्षा समाप्त करने के बाद इसे इसी पेज से डाउनलोड करें।",
+    "यहाँ दिए गए शिकायत अधिकारी को लिखकर इसे सुधरवाएँ या मिटवाएँ। मिटाना स्थायी है; आपके अंक बने रहते हैं, पर यह नहीं कि आप कौन हैं या आपने क्या लिखा।",
+    "अपनी सहमति कभी भी वापस लें, इसी तरह। वापस लेने से पहले जो हो चुका है, वह नहीं बदलता।",
+    "शिकायत अधिकारी से शिकायत करें, और उसके बाद भारतीय डेटा संरक्षण बोर्ड से।",
+  ],
+} as const;
+
 export interface Notice {
   readonly version: number;
   /** SHA-256 of the notice's canonical form: what a consent in the ledger commits to. */
@@ -48,6 +64,8 @@ export interface Notice {
   readonly grievance: { readonly name: string; readonly email: string };
   readonly collected: readonly string[];
   readonly rights: readonly string[];
+  /** The standing parts in other languages; hashed with the rest, so a consent covers whichever was read. */
+  readonly translations: { readonly hi: { readonly collected: readonly string[]; readonly rights: readonly string[] } };
 }
 
 export function noticeOf(settings: PrivacySettings): Notice {
@@ -59,6 +77,7 @@ export function noticeOf(settings: PrivacySettings): Notice {
     grievance: { name: settings.grievanceName, email: settings.grievanceEmail },
     collected: COLLECTED,
     rights: RIGHTS,
+    translations: { hi: NOTICE_HI },
   };
   return { ...body, hash: createHash("sha256").update(canonicalize(body)).digest("hex") };
 }

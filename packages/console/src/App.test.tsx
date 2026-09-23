@@ -386,6 +386,26 @@ describe("exam editor", () => {
     expect(saved.questions[0]?.options).toEqual(["quicksort", "mergesort"]);
   });
 
+  it("saves a question's Hindi translation, options in the original's order", async () => {
+    const client = await openEditor();
+
+    await userEvent.type(screen.getByLabelText("Title"), "Mechanics");
+    await userEvent.type(screen.getByLabelText("Question"), "Which is stable?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "quicksort");
+    await userEvent.type(screen.getByLabelText("Option 2"), "mergesort");
+    await userEvent.click(screen.getByText("Translations"));
+    await userEvent.selectOptions(screen.getByLabelText("Language to add"), "hi");
+    await userEvent.click(screen.getByRole("button", { name: "Add translation" }));
+    await userEvent.type(screen.getByLabelText("Question in Hindi"), "कौन सा स्थिर है?");
+    await userEvent.type(screen.getByLabelText("Option 1 in Hindi"), "क्विकसॉर्ट");
+    await userEvent.type(screen.getByLabelText("Option 2 in Hindi"), "मर्जसॉर्ट");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: { translations: unknown }[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions[0]!.translations).toEqual({ hi: { stem: "कौन सा स्थिर है?", options: ["क्विकसॉर्ट", "मर्जसॉर्ट"] } });
+  });
+
   it("replaces the fields that do not carry across when the type changes", async () => {
     await openEditor();
 

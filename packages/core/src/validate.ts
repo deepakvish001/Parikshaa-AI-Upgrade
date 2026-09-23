@@ -1,4 +1,4 @@
-import type { Exam, Question } from "./domain.js";
+import { CONTENT_LOCALES, type Exam, type Question } from "./domain.js";
 import { CODE_LANGUAGES, languagesOf } from "./code.js";
 import { allQuestions } from "./paper.js";
 
@@ -42,6 +42,28 @@ export function validateQuestion(question: Question, at: string): ExamProblem[] 
   const criterionIds = new Set(question.rubric.map((c) => c.id));
   if (criterionIds.size !== question.rubric.length) {
     problems.push({ path: `${at}.rubric`, message: "Rubric criterion ids must be unique." });
+  }
+
+  for (const [locale, t] of Object.entries(question.translations ?? {})) {
+    const where = `${at}.translations.${locale}`;
+    if (!(CONTENT_LOCALES as readonly string[]).includes(locale)) {
+      problems.push({ path: where, message: `Not a language questions can be translated into: ${locale}.` });
+      continue;
+    }
+    if (t === undefined) continue;
+    if (t.stem.trim() === "") problems.push({ path: `${where}.stem`, message: "A translation needs its stem." });
+    if (question.kind === "mcq") {
+      if (t.options === undefined || t.options.length !== question.options.length) {
+        problems.push({
+          path: `${where}.options`,
+          message: "A translated mcq needs every option, in the original's order: the answer is recorded by position.",
+        });
+      } else if (t.options.some((o) => o.trim() === "")) {
+        problems.push({ path: `${where}.options`, message: "A translated option cannot be empty." });
+      }
+    } else if (t.options !== undefined) {
+      problems.push({ path: `${where}.options`, message: "Only an mcq has options to translate." });
+    }
   }
 
   switch (question.kind) {

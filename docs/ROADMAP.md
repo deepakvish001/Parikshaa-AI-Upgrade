@@ -341,6 +341,35 @@ opens again by itself. Extending time (§2) sits beside it.
 - Keyboard navigation, screen-reader labels, contrast — an exam a candidate
   cannot operate is an exam they failed for the wrong reason.
 
+**Status — built.** The candidate's page is in English and Hindi, chosen from
+a picker on every screen and remembered on the device; the page's `lang`
+follows, so a screen reader pronounces it. The privacy notice's standing text
+is in Hindi too, and hashed with the rest. A question can carry translations
+into Hindi and nine more scheduled languages (Bengali, Tamil, Telugu, Marathi,
+Gujarati, Kannada, Malayalam, Punjabi, Odia), written in the console's editor;
+an mcq's translated options must come in the original's order, because the
+answer is recorded by position and so means the same in every language. A
+candidate reading a translation can switch any question back to the
+original. Grading always reads the original; the follow-up is asked, and the
+assessor reasons, in the language the candidate answered in — Hindi, English
+or the mix of the two many candidates write.
+
+Low-bandwidth mode — on by itself where the browser reports Data Saver or a
+2G connection, and a switch for everyone else — fetches a follow-up in one
+short request instead of holding a stream open, answers code in a plain text
+area without ever downloading the editor, and saves and checks in half as
+often (nothing typed is at more risk: it is kept on the device as it is
+typed). Every response over 1 KB, the client bundles included, is compressed
+with Brotli or gzip.
+
+Every screen a candidate meets — the exam, a follow-up, the receipt, the
+privacy notice, in English and in Hindi — and the console's busiest pages are
+checked against WCAG 2.1 AA by axe in the browser suite, and one test sits the
+whole exam from the keyboard alone. Focus is always visible.
+
+Not in it: the interface in languages other than English and Hindi (the
+string table is one file to add to), and translated exam titles.
+
 ## 10. Scale and operations
 
 - Load test at a thousand concurrent candidates. Exam traffic is bursty by

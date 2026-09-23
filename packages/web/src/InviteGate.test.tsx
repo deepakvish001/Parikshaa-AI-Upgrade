@@ -156,4 +156,29 @@ describe("an invitation link", () => {
       expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC", consent: { noticeVersion: 3 } }) }),
     );
   });
+
+  it("shows the notice in Hindi to a candidate reading in Hindi", async () => {
+    localStorage.setItem("parikshaa.language", "hi");
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const notice = {
+      version: 1,
+      hash: "ab".repeat(32),
+      controllerName: "Acme",
+      purpose: "Hiring.",
+      retentionDays: 30,
+      grievance: { name: "Priya", email: "p@acme.test" },
+      collected: ["Your answers."],
+      rights: ["Have it erased."],
+      translations: { hi: { collected: ["आपके उत्तर।"], rights: ["इसे मिटवाएँ।"] } },
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "consent_required", notice }, 428)));
+
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "शुरू करने से पहले: आपका डेटा" })).toBeInTheDocument();
+    expect(screen.getByText("आपके उत्तर।")).toBeInTheDocument();
+    expect(screen.getByText("इसे मिटवाएँ।")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "सहमत हूँ, परीक्षा शुरू करें" })).toBeDisabled();
+    localStorage.clear();
+  });
 });

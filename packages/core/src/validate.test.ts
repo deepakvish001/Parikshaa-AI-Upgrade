@@ -106,4 +106,27 @@ describe("validateExam", () => {
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.problems.length).toBeGreaterThanOrEqual(3);
   });
+
+  describe("translations", () => {
+    const problems = (q: Question) => {
+      const r = validateExam(exam({ questions: [q] }));
+      return r.ok ? [] : r.problems.map((p) => p.path);
+    };
+
+    it("accepts a question in Hindi, options in the same order", () => {
+      expect(problems({ ...mcq, translations: { hi: { stem: "कौन सा सॉर्ट स्थिर है?", options: ["क्विकसॉर्ट", "मर्जसॉर्ट"] } } })).toEqual([]);
+      expect(problems({ ...short, translations: { hi: { stem: "यह क्यों रुकता है?" } } })).toEqual([]);
+    });
+
+    it("refuses an mcq translated without every option, since the answer is recorded by position", () => {
+      expect(problems({ ...mcq, translations: { hi: { stem: "कौन?", options: ["क्विकसॉर्ट"] } } })).toEqual(["questions.0.translations.hi.options"]);
+      expect(problems({ ...mcq, translations: { hi: { stem: "कौन?" } } })).toEqual(["questions.0.translations.hi.options"]);
+    });
+
+    it("refuses an empty stem, options on a question without them, and a language it does not know", () => {
+      expect(problems({ ...short, translations: { hi: { stem: " " } } })).toEqual(["questions.0.translations.hi.stem"]);
+      expect(problems({ ...short, translations: { hi: { stem: "क्यों?", options: ["a"] } } })).toEqual(["questions.0.translations.hi.options"]);
+      expect(problems({ ...short, translations: { xx: { stem: "?" } } as never })).toEqual(["questions.0.translations.xx"]);
+    });
+  });
 });

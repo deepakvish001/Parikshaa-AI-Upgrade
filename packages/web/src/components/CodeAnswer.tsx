@@ -1,6 +1,7 @@
 import { Suspense, lazy, useState } from "react";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome } from "../api.ts";
+import { usePreferences } from "../i18n.tsx";
 
 /**
  * The editor is loaded only for an exam that has a code question. Most papers
@@ -56,6 +57,7 @@ export function readCodeAnswer(value: string, question: CandidateCodeQuestion): 
  * scored — against tests this page never receives.
  */
 export function CodeAnswer({ question, value, disabled, onChange, onRun }: Props) {
+  const { t, lite } = usePreferences();
   const { language, source } = readCodeAnswer(value, question);
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(false);
@@ -80,6 +82,17 @@ export function CodeAnswer({ question, value, disabled, onChange, onRun }: Props
     }
   };
 
+  const plain = (
+    <textarea
+      className="code"
+      aria-label={question.stem}
+      spellCheck={false}
+      value={source}
+      disabled={disabled}
+      onChange={(e) => write({ language, source: e.target.value })}
+    />
+  );
+
   return (
     <div className="code-answer">
       {question.languages.length > 1 ? (
@@ -102,38 +115,32 @@ export function CodeAnswer({ question, value, disabled, onChange, onRun }: Props
         <p className="notice">{LANGUAGE_NAMES[language] ?? language}</p>
       )}
 
-      <Suspense
-        fallback={
-          <textarea
-            className="code"
-            aria-label={question.stem}
-            spellCheck={false}
+      {/* Low-bandwidth mode never downloads the editor: the plain text area answers just as well. */}
+      {lite ? (
+        plain
+      ) : (
+        <Suspense fallback={plain}>
+          <CodeEditor
             value={source}
+            language={language}
+            label={question.stem}
             disabled={disabled}
-            onChange={(e) => write({ language, source: e.target.value })}
+            onChange={(next) => write({ language, source: next })}
           />
-        }
-      >
-        <CodeEditor
-          value={source}
-          language={language}
-          label={question.stem}
-          disabled={disabled}
-          onChange={(next) => write({ language, source: next })}
-        />
-      </Suspense>
+        </Suspense>
+      )}
 
       {question.samples.length === 0 ? null : (
         <details className="samples" open>
-          <summary>Examples</summary>
+          <summary>{t("code.examples")}</summary>
           {question.samples.map((sample, i) => (
             <div className="sample" key={i}>
               <div>
-                <span className="eyebrow">Input</span>
+                <span className="eyebrow">{t("code.input")}</span>
                 <pre>{sample.input}</pre>
               </div>
               <div>
-                <span className="eyebrow">Output</span>
+                <span className="eyebrow">{t("code.output")}</span>
                 <pre>{sample.output}</pre>
               </div>
             </div>
@@ -146,12 +153,12 @@ export function CodeAnswer({ question, value, disabled, onChange, onRun }: Props
           <div className="row">
             {question.samples.length === 0 ? null : (
               <button type="button" className="secondary" disabled={running || source.trim() === ""} onClick={() => void run()}>
-                {running ? "Running…" : "Run examples"}
+                {running ? t("code.running") : t("code.run")}
               </button>
             )}
           </div>
           <div className="field">
-            <label htmlFor={`input-${question.id}`}>Your own input</label>
+            <label htmlFor={`input-${question.id}`}>{t("code.myInput")}</label>
             <textarea
               id={`input-${question.id}`}
               className="code"
@@ -162,9 +169,9 @@ export function CodeAnswer({ question, value, disabled, onChange, onRun }: Props
           </div>
           <div className="row">
             <button type="button" className="secondary" disabled={running || source.trim() === ""} onClick={() => void run(input)}>
-              Run on my input
+              {t("code.runMine")}
             </button>
-            <span className="notice">Running is for you; only what you save is marked.</span>
+            <span className="notice">{t("code.runNote")}</span>
           </div>
         </>
       )}

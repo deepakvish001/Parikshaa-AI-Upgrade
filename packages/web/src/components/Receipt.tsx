@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { checkChainAsync, webcryptoSha256 } from "@parikshaa/core/browser";
 import type { CandidateData, CandidateLedger } from "../api.ts";
+import { usePreferences } from "../i18n.tsx";
 
 interface Props {
   readonly ledger: CandidateLedger;
@@ -34,6 +35,7 @@ function save(value: unknown, name: string): void {
 }
 
 export function Receipt({ ledger, myData }: Props) {
+  const { t } = usePreferences();
   const [check, setCheck] = useState<CheckState>({ status: "idle" });
   const [fetching, setFetching] = useState<"idle" | "busy" | "failed">("idle");
 
@@ -72,13 +74,9 @@ export function Receipt({ ledger, myData }: Props) {
   const download = () => save(ledger, `parikshaa-receipt-${ledger.head?.slice(0, 12) ?? "attempt"}.json`);
 
   return (
-    <section className="card receipt" aria-label="Your record">
-      <h2>Your record</h2>
-      <p className="notice">
-        This is the fingerprint of everything recorded during your attempt. Keep
-        it. If the record is ever questioned, it proves which version you were
-        shown.
-      </p>
+    <section className="card receipt" aria-label={t("receipt.region")}>
+      <h2>{t("receipt.region")}</h2>
+      <p className="notice">{t("receipt.fingerprint")}</p>
 
       <p className="hash" data-testid="head-hash">
         {ledger.head ?? "—"}
@@ -86,7 +84,7 @@ export function Receipt({ ledger, myData }: Props) {
 
       <div className="row">
         <button type="button" onClick={download} disabled={ledger.head === null}>
-          Download receipt
+          {t("receipt.download")}
         </button>
         {ledger.entries === null ? null : (
           <button
@@ -95,44 +93,39 @@ export function Receipt({ ledger, myData }: Props) {
             onClick={verify}
             disabled={check.status === "checking"}
           >
-            {check.status === "checking" ? "Checking…" : "Check this record"}
+            {check.status === "checking" ? t("receipt.checking") : t("receipt.check")}
           </button>
         )}
         {myData !== undefined && ledger.entries !== null ? (
           <button type="button" className="secondary" onClick={() => void downloadMyData()} disabled={fetching === "busy"}>
-            Download my data
+            {t("receipt.myData")}
           </button>
         ) : null}
-        <span className="notice">{ledger.length} entries</span>
+        <span className="notice">{t("receipt.entries", { n: ledger.length })}</span>
       </div>
       {ledger.entries !== null ? (
-        <p className="notice">
-          What you wrote is sealed in this record, so that it can be erased without breaking it. &ldquo;Download my
-          data&rdquo; gives you a readable copy of everything held about you.
-        </p>
+        <p className="notice">{t("receipt.sealedNote")}</p>
       ) : null}
       {fetching === "failed" ? (
         <p className="error" role="status">
-          Could not fetch your data just now. Try again in a moment.
+          {t("receipt.myDataFailed")}
         </p>
       ) : null}
 
       {check.status === "verified" ? (
         <p className="saved" role="status">
-          Checked in this browser: {check.count} entries, unbroken. Every entry still
-          matches what was written.
+          {t("receipt.verified", { n: check.count })}
         </p>
       ) : null}
       {check.status === "failed" ? (
         <p className="error" role="status">
-          This record does not check out: entry {check.seq} shows {check.reason}. Keep this
-          file and raise it with your institution.
+          {t("receipt.failed", { seq: check.seq, reason: check.reason })}
         </p>
       ) : null}
 
       {ledger.entries === null ? (
         <p className="notice" style={{ marginTop: "1.5rem" }}>
-          The full record opens once your attempt is closed.
+          {t("receipt.opensLater")}
         </p>
       ) : (
         <table className="ledger" style={{ marginTop: "1.5rem" }}>

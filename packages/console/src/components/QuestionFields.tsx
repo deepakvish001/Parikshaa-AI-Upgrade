@@ -1,9 +1,14 @@
-import type { Question, QuestionKind, RubricCriterion } from "@parikshaa/core/browser";
+import { useState } from "react";
+import { CONTENT_LOCALES, type ContentLocale, type Question, type QuestionKind, type QuestionTranslation, type RubricCriterion } from "@parikshaa/core/browser";
 import { CodeFields } from "./CodeFields.tsx";
 
 /** Swap a question's kind, replacing the fields that do not carry across. */
 export function changeKind(question: Question, kind: QuestionKind): Question {
-  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, rubric: question.rubric };
+  // Translated stems carry across; translated options only belong to an mcq.
+  const translations = Object.fromEntries(
+    Object.entries(question.translations ?? {}).map(([locale, t]) => [locale, kind === "mcq" ? { stem: t.stem, options: ["", ""] } : { stem: t.stem }]),
+  );
+  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, rubric: question.rubric, translations };
   switch (kind) {
     case "mcq":
       return { ...base, kind, options: ["", ""], correctIndex: 0 };
@@ -147,6 +152,8 @@ export function QuestionFields({ question, onChange }: { question: Question; onC
 
       {question.kind === "code" ? <CodeFields question={question} onChange={onChange} /> : null}
 
+      <Translations question={question} onChange={onChange} />
+
       {question.kind === "short" || question.kind === "code" ? (
         <div className="field">
           <label>Rubric — what a grader must justify against</label>
@@ -196,5 +203,89 @@ export function QuestionFields({ question, onChange }: { question: Question; onC
         </div>
       ) : null}
     </>
+  );
+}
+
+/** Each language by its own name, as a translator looks for it. */
+const LANGUAGE_NAMES: Record<ContentLocale, string> = {
+  hi: "Hindi — हिन्दी",
+  bn: "Bengali — বাংলা",
+  ta: "Tamil — தமிழ்",
+  te: "Telugu — తెలుగు",
+  mr: "Marathi — मराठी",
+  gu: "Gujarati — ગુજરાતી",
+  kn: "Kannada — ಕನ್ನಡ",
+  ml: "Malayalam — മലയാളം",
+  pa: "Punjabi — ਪੰਜਾਬੀ",
+  or: "Odia — ଓଡ଼ିଆ",
+};
+
+/**
+ * The question in other languages (ROADMAP §9): the stem, and an mcq's options
+ * in the original's order — the answer is recorded by position, so option 2
+ * in Hindi must be option 2 in English. Grading always reads the original.
+ */
+function Translations({ question, onChange }: { question: Question; onChange: (next: Question) => void }) {
+  const current = question.translations ?? {};
+  const present = CONTENT_LOCALES.filter((l) => current[l] !== undefined);
+  const missing = CONTENT_LOCALES.filter((l) => current[l] === undefined);
+  const [adding, setAdding] = useState<ContentLocale>(missing[0] ?? "hi");
+
+  const set = (locale: ContentLocale, next: QuestionTranslation | undefined) => {
+    const translations: Partial<Record<ContentLocale, QuestionTranslation>> = { ...current };
+    if (next === undefined) delete translations[locale];
+    else translations[locale] = next;
+    onChange({ ...question, translations });
+  };
+  const blank = (): QuestionTranslation => (question.kind === "mcq" ? { stem: "", options: question.options.map(() => "") } : { stem: "" });
+
+  return (
+    <details className="field" open={present.length > 0}>
+      <summary>Translations{present.length > 0 ? ` (${present.length})` : ""}</summary>
+      {present.map((locale) => {
+        const t = current[locale]!;
+        return (
+          <fieldset key={locale} lang={locale} style={{ marginTop: ".5rem" }}>
+            <legend>{LANGUAGE_NAMES[locale]}</legend>
+            <label htmlFor={`stem-${question.id}-${locale}`}>Question in {LANGUAGE_NAMES[locale].split(" — ")[0]}</label>
+            <textarea id={`stem-${question.id}-${locale}`} value={t.stem} onChange={(e) => set(locale, { ...t, stem: e.target.value })} />
+            {question.kind === "mcq"
+              ? question.options.map((original, i) => (
+                  <input
+                    key={i}
+                    aria-label={`Option ${i + 1} in ${LANGUAGE_NAMES[locale].split(" — ")[0]}`}
+                    placeholder={original}
+                    value={t.options?.[i] ?? ""}
+                    style={{ marginTop: ".35rem" }}
+                    onChange={(e) => {
+                      const options = question.options.map((_, j) => (j === i ? e.target.value : (t.options?.[j] ?? "")));
+                      set(locale, { ...t, options });
+                    }}
+                  />
+                ))
+              : null}
+            <div className="row">
+              <button type="button" className="quiet" onClick={() => set(locale, undefined)}>
+                Remove {LANGUAGE_NAMES[locale].split(" — ")[0]}
+              </button>
+            </div>
+          </fieldset>
+        );
+      })}
+      {missing.length > 0 ? (
+        <div className="row">
+          <select aria-label="Language to add" value={adding} onChange={(e) => setAdding(e.target.value as ContentLocale)} style={{ width: "auto" }}>
+            {missing.map((l) => (
+              <option key={l} value={l}>
+                {LANGUAGE_NAMES[l]}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="secondary" onClick={() => set(missing.includes(adding) ? adding : missing[0]!, blank())}>
+            Add translation
+          </button>
+        </div>
+      ) : null}
+    </details>
   );
 }

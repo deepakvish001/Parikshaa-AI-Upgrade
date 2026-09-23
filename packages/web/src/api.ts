@@ -62,6 +62,8 @@ export interface Notice {
   readonly grievance: { readonly name: string; readonly email: string };
   readonly collected: readonly string[];
   readonly rights: readonly string[];
+  /** The standing parts of the notice in other languages, hashed with the rest. */
+  readonly translations?: { readonly hi?: { readonly collected: readonly string[]; readonly rights: readonly string[] } };
 }
 
 /** Everything held about the candidate for this attempt, as they may download it. */
@@ -202,6 +204,11 @@ export class ParikshaaClient {
    * Authorization header — putting the attempt token in the query string
    * instead would leak it into proxy logs and browser history.
    */
+  /** The next probe in one reply, for low-bandwidth mode: no stream to hold open. */
+  async probeOnce(): Promise<{ readonly id: string; readonly prompt: string } | null> {
+    return (await this.#request<{ probe: { id: string; prompt: string } | null }>("/attempts/me/probe?stream=0")).probe;
+  }
+
   async streamProbe(handlers: ProbeHandlers, signal?: AbortSignal): Promise<void> {
     const response = await fetch(`${this.#baseUrl}/attempts/me/probe`, {
       headers: { authorization: `Bearer ${this.#token}` },

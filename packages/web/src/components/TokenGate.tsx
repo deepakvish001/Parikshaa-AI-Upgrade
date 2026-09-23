@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PreferencesBar, usePreferences } from "../i18n.tsx";
 
 interface Props {
   readonly onToken: (token: string) => void;
@@ -13,14 +14,14 @@ interface Props {
  * machine does not keep it after the tab closes.
  */
 export function TokenGate({ onToken }: Props) {
+  const { t } = usePreferences();
   const [value, setValue] = useState("");
 
   return (
     <main className="gate">
+      <PreferencesBar />
       <h1>Parikshaa</h1>
-      <p className="notice">
-        Paste the access code your institution gave you for this exam.
-      </p>
+      <p className="notice">{t("gate.prompt")}</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -28,20 +29,18 @@ export function TokenGate({ onToken }: Props) {
         }}
       >
         <textarea
-          aria-label="Access code"
+          aria-label={t("gate.code")}
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
         <div className="row">
           <button type="submit" disabled={value.trim() === ""}>
-            Begin
+            {t("gate.begin")}
           </button>
         </div>
       </form>
       <p className="notice" style={{ marginTop: "2rem" }}>
-        This exam uses no webcam, no screen capture and no keystroke monitoring.
-        You will be asked a short follow-up question about one or two of your
-        answers.
+        {t("gate.noSurveillance")}
       </p>
     </main>
   );

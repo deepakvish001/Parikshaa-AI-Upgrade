@@ -76,3 +76,22 @@ export const local = (link: string) => {
   const url = new URL(link);
   return `${url.pathname}${url.search}`;
 };
+
+/**
+ * The private organisation's notice. One wording for every spec: specs run
+ * side by side, and a different wording saved by one would move the notice to
+ * a new version under another candidate's feet.
+ */
+export async function setPrivacyNotice(request: APIRequestContext, token: string): Promise<void> {
+  const saved = await request.put("/api/privacy", {
+    headers: { authorization: `Bearer ${token}` },
+    data: {
+      controllerName: "E2E Private Ltd",
+      grievanceName: "Priya Menon",
+      grievanceEmail: "privacy@private.e2e.test",
+      purpose: "To assess candidates for engineering roles.",
+      retentionDays: 90,
+    },
+  });
+  expect(saved.status(), await saved.text()).toBe(200);
+}
