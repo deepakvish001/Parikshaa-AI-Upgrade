@@ -206,6 +206,13 @@ export function validateExam(exam: Exam): ExamValidation {
       message: "The viva trigger ratio is a fraction of a question's marks, so it must be between 0 and 1.",
     });
   }
+  const every = exam.policy.proctoring?.snapshotEverySeconds;
+  if (every !== undefined && every !== null && (!Number.isInteger(every) || every < 15 || every > 900)) {
+    problems.push({
+      path: "policy.proctoring.snapshotEverySeconds",
+      message: "Webcam photos are taken between every 15 seconds and every 15 minutes.",
+    });
+  }
 
   exam.questions.forEach((question, index) => {
     problems.push(...validateQuestion(question, `questions.${index}`));

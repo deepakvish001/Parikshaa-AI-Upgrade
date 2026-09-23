@@ -9,6 +9,7 @@ import {
   type PrivacyDraft,
   type PrivacySettings,
   type PrivacyStore,
+  type ProctorStore,
 } from "@parikshaa/store";
 import { AttemptError, Forbidden, type CandidateAccess, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
@@ -29,6 +30,7 @@ export const COLLECTED: readonly string[] = [
   "Your answers, and your replies to any follow-up questions.",
   "When you started, saved, answered and submitted, and whether this page was open — so that invigilators can help.",
   "Your answers and replies are read by an AI model, to score them and to ask follow-up questions. They are not used to train it.",
+  "If a test uses the camera — it tells you before it starts — a photo of you and of your photo ID, a photo every few minutes while you answer, and whether you left the tab or full screen. Invigilators look at these; nothing decides anything by itself.",
 ];
 
 export const RIGHTS: readonly string[] = [
@@ -45,6 +47,7 @@ export const NOTICE_HI = {
     "आपके उत्तर, और किसी भी अनुवर्ती प्रश्न पर आपके जवाब।",
     "आपने कब शुरू किया, कब सहेजा, कब उत्तर दिया और कब जमा किया, और क्या यह पेज खुला था — ताकि निरीक्षक आपकी मदद कर सकें।",
     "आपके उत्तर और जवाब एक AI मॉडल पढ़ता है, ताकि उन्हें अंक दे सके और अनुवर्ती प्रश्न पूछ सके। उनसे मॉडल को प्रशिक्षित नहीं किया जाता।",
+    "अगर परीक्षा कैमरे का उपयोग करती है — शुरू होने से पहले बताया जाता है — तो आपकी और आपके फ़ोटो पहचान-पत्र की एक फ़ोटो, उत्तर देते समय हर कुछ मिनट में एक फ़ोटो, और क्या आपने टैब या फ़ुल स्क्रीन छोड़ी। निरीक्षक इन्हें देखते हैं; इनमें से कोई भी चीज़ अपने आप कुछ तय नहीं करती।",
   ],
   rights: [
     "अपने बारे में रखा गया डेटा देखें: परीक्षा समाप्त करने के बाद इसे इसी पेज से डाउनलोड करें।",
@@ -101,6 +104,11 @@ export interface CandidateData {
   readonly answers: readonly { readonly questionId: string; readonly answer: string; readonly at: number }[];
   readonly followUps: readonly { readonly questionId: string; readonly question: string; readonly reply: string | null; readonly at: number }[];
   readonly timeline: readonly { readonly at: number; readonly event: string }[];
+  /** A proctored exam's photos (not the images: ask the grievance officer for those) and what the browser reported. */
+  readonly proctoring: {
+    readonly photos: readonly { readonly kind: string; readonly takenAt: string; readonly sha256: string }[];
+    readonly events: readonly { readonly kind: string; readonly at: string }[];
+  } | null;
 }
 
 const MIN_TEXT = 2;
@@ -112,6 +120,7 @@ export class PrivacyService {
     readonly invitations: InvitationStore;
     readonly identity: IdentityStore;
     readonly exams: ExamService;
+    readonly proctor: ProctorStore | null;
     readonly now: () => number;
   };
 
@@ -121,9 +130,10 @@ export class PrivacyService {
     invitations: InvitationStore;
     identity: IdentityStore;
     exams: ExamService;
+    proctor?: ProctorStore | null;
     now?: () => number;
   }) {
-    this.#o = { ...options, now: options.now ?? (() => Date.now()) };
+    this.#o = { ...options, proctor: options.proctor ?? null, now: options.now ?? (() => Date.now()) };
   }
 
   // --- settings ---------------------------------------------------------------
@@ -203,6 +213,13 @@ export class PrivacyService {
       followUps: followUps.map(({ probeId: _, ...f }) => f),
       // What happened when, in the words a receipt uses — no scores or verdicts.
       timeline: opened.filter((e) => TIMELINE.has(e.event.type)).map((e) => ({ at: e.timestamp, event: e.event.type })),
+      proctoring:
+        exam?.policy.proctoring === undefined || this.#o.proctor === null
+          ? null
+          : {
+              photos: (await this.#o.proctor.media(scope, access.attemptId)).map(({ kind, takenAt, sha256 }) => ({ kind, takenAt, sha256 })),
+              events: await this.#o.proctor.events(scope, access.attemptId),
+            },
     };
   }
 

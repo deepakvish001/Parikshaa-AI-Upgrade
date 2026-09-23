@@ -505,6 +505,38 @@ out. All three are fixed and tested; `docs/OPERATIONS.md` has the detail.
 
 ---
 
+## 14. Identity check and camera proctoring
+
+Some buyers — campus drives with thousands of unseen candidates, companies
+whose policy demands it — will not buy an assessment that cannot say who sat
+it. Parikshaa's answer to "did they write it?" stays the micro-viva; this
+section adds "is it them?", for an exam whose author asks.
+
+**Status — built, off by default.** An exam's author can turn on, separately:
+an **identity check** (a photo of the candidate and of their photo ID before
+the first question), **webcam photos** at an interval (15 s to 15 min), and
+**browser events** (leaving the tab or full screen, copy and paste, the
+camera stopping). The candidate is told exactly which, in English or Hindi,
+before their clock starts, and the attempt starts only once their camera
+works. The ledger commits to both identity photos' SHA-256
+(`identity_captured`); an invigilator compares them on the live sitting and
+records a decision with a reason (`identity_reviewed`, with their name) —
+correctable, and only before grading. Webcam photos and browser events are
+kept outside the chain (there are too many to chain one by one). The live
+sitting flags a camera that has gone quiet and identities still to check;
+the report carries the decision and the counts.
+
+What it deliberately is not: automatic. No face matching, no gaze tracking,
+no "suspicion score" — a photo or a switched tab is a reason for a person to
+look, never a finding, and none of it reaches a probe, a verdict or a grade.
+Every photo is personal data: sealed under the attempt's data key (§11),
+opened only for staff, never cached, and destroyed with the key on erasure
+or at the end of the retention period. The privacy notice says so.
+
+Not in it: a lockdown browser, screen recording, audio, and a second-device
+camera. Webcam photos are stored in Postgres; at very large volumes an object
+store would be the better home.
+
 ## Sequencing
 
 §0 and §1 come first and are not negotiable: the cost number decides pricing,

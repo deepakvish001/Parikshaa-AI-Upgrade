@@ -87,7 +87,7 @@ describe("the sitting, live", () => {
 
     expect(live.counts).toMatchObject({ invited: 4, notStarted: 1, inProgress: 3, away: 1, idle: 2 });
     expect(row(live, "R1")).toMatchObject({ name: "Ananya", state: "in_progress", answered: 1, questions: 2, flags: { away: false, idle: false } });
-    expect(row(live, "R2").flags).toEqual({ away: false, idle: true, overdue: false });
+    expect(row(live, "R2").flags).toEqual({ away: false, idle: true, overdue: false, cameraOff: false });
     expect(row(live, "R3").flags).toMatchObject({ away: true, idle: true });
     expect(row(live, "R4")).toMatchObject({ state: "not_started", attemptId: null });
     expect(res.payload).not.toContain("SECRET-DRAFT");

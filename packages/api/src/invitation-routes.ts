@@ -9,7 +9,7 @@ import type {
 } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
-import { ImportRejected, InvalidInvitation, OutsideWindow, type InvitationService } from "./invitation-service.js";
+import { CameraRequired, ImportRejected, InvalidInvitation, OutsideWindow, type InvitationService } from "./invitation-service.js";
 import { ConsentRequired } from "./privacy.js";
 import { noticeSchema } from "./privacy-routes.js";
 import * as S from "./schemas.js";
@@ -263,11 +263,15 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
             .object({ noticeVersion: z.number().int().min(1) })
             .optional()
             .describe("Agreement to the organisation's privacy notice, by version. Needed on the first opening when the organisation has one."),
+          camera: z.boolean().optional().describe("The page has the camera working. Needed on the first opening of a proctored exam."),
         }),
         response: {
           200: z.object({ token: z.string(), attemptId: z.string(), resumed: z.boolean() }),
           402: S.errorResponse.describe("out_of_credits: the organisation's prepaid credits have run out."),
-          428: z.object({ error: z.literal("consent_required"), notice: noticeSchema }),
+          428: z.union([
+            z.object({ error: z.literal("consent_required"), notice: noticeSchema }),
+            z.object({ error: z.literal("camera_required"), proctoring: S.proctoringPolicy }),
+          ]),
           403: z.object({ error: z.literal("not_open_yet"), opensAt: z.string(), closesAt: z.string() }),
           404: S.errorResponse,
           410: z.object({ error: z.literal("window_closed"), opensAt: z.string(), closesAt: z.string() }),
@@ -280,10 +284,11 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
       }
       try {
-        const opened = await invitations.redeem(request.body.code, request.body.consent);
+        const opened = await invitations.redeem(request.body.code, request.body.consent, request.body.camera);
         return reply.send(opened);
       } catch (error) {
         if (error instanceof ConsentRequired) return reply.code(428).send({ error: "consent_required", notice: error.notice });
+        if (error instanceof CameraRequired) return reply.code(428).send({ error: "camera_required", proctoring: error.proctoring });
         if (error instanceof InvalidInvitation) {
           throttle.failed(request.ip, "invitation");
           return reply.code(404).send({ error: "invalid_invitation", message: error.message });

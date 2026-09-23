@@ -123,6 +123,16 @@ const reportResponse = z.object({
   voidReason: z.string().nullable(),
   voidedBy: z.string().nullable(),
   ledger: z.object({ head: z.string(), length: z.number() }),
+  proctoring: z
+    .object({
+      identity: z.enum(["not_taken", "pending", "verified", "rejected"]),
+      identityReason: z.string().nullable(),
+      identityDecidedBy: z.string().nullable(),
+      snapshots: z.number(),
+      events: z.record(z.string(), z.number()),
+    })
+    .nullable()
+    .describe("For a proctored exam: observations for a person to weigh, never a finding."),
 });
 
 /** A CSV cell, quoted, and defused if a spreadsheet would run it as a formula. */

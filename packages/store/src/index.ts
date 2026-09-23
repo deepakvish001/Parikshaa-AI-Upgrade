@@ -10,3 +10,4 @@ export * from "./migrate.js";
 export * from "./privacy-store.js";
 export * from "./sealing.js";
 export * from "./billing-store.js";
+export * from "./proctor-store.js";

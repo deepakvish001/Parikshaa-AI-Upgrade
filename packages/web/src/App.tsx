@@ -7,6 +7,8 @@ import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
+import { IdentityCapture } from "./components/IdentityCapture.tsx";
+import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesBar, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 
@@ -182,6 +184,10 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const attemptId = state.data?.attemptId ?? null;
   const expiresAt = state.data?.expiresAt ?? 0;
   const inProgress = state.data?.state === "in_progress";
+  // Proctored (ROADMAP §14): photos and browser events once the identity step, if any, is done.
+  const policy = state.data?.exam.proctoring ?? null;
+  const identityDue = inProgress && policy?.identity === true && state.data?.identityCaptured === false;
+  const { cameraOn } = useProctoring(client, policy, inProgress && !identityDue, lite);
 
   const announcements = useQuery({ queryKey: ["announcements"], queryFn: () => client.announcements(), enabled: inProgress });
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
@@ -429,6 +435,23 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   }
 
   const { exam, answers, state: attemptState, voidReason } = state.data;
+
+  if (identityDue) {
+    return (
+      <main className="page">
+        <PreferencesBar />
+        <header className="exam">
+          <h1>{exam.title}</h1>
+        </header>
+        <IdentityCapture
+          onSubmit={async (selfie, id) => {
+            await client.captureIdentity(selfie, id);
+            await queryClient.invalidateQueries({ queryKey: ["state"] });
+          }}
+        />
+      </main>
+    );
+  }
   const answered = new Map<string, string>(answers.map((a) => [a.questionId, a.answer]));
   const open = attemptState === "in_progress";
   // The languages this exam's questions can be read in, besides English.
@@ -455,12 +478,23 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             <>
               {t("exam.answeredOf", { answered: answered.size, total: exam.questions.length })}
               <TimeLeft expiresAt={state.data.expiresAt} />
+              {cameraOn === true ? (
+                <span className="camera-pill" role="status">
+                  {t("camera.on")}
+                </span>
+              ) : null}
             </>
           ) : (
             t(`exam.state.${attemptState}`)
           )}
         </p>
       </header>
+
+      {open && cameraOn === false ? (
+        <p className="card offline" role="alert">
+          {t("camera.offBanner")}
+        </p>
+      ) : null}
 
       {open && !online ? (
         <p className="card offline" role="status">

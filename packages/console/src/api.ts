@@ -248,6 +248,14 @@ export interface CandidateReport {
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
   readonly ledger: { readonly head: string; readonly length: number };
+  /** For a proctored exam: observations, never findings. */
+  readonly proctoring?: {
+    readonly identity: IdentityState;
+    readonly identityReason: string | null;
+    readonly identityDecidedBy: string | null;
+    readonly snapshots: number;
+    readonly events: Readonly<Record<string, number>>;
+  } | null;
 }
 
 export interface Webhook {
@@ -288,7 +296,38 @@ export interface LiveRow {
   readonly extraMinutes: number;
   readonly reopened: number;
   readonly awaitingReply: boolean;
-  readonly flags: { readonly away: boolean; readonly idle: boolean; readonly overdue: boolean };
+  /** For a proctored exam (ROADMAP §14). */
+  readonly proctoring: LiveProctoring | null;
+  readonly flags: { readonly away: boolean; readonly idle: boolean; readonly overdue: boolean; readonly cameraOff: boolean };
+}
+
+export type IdentityState = "not_taken" | "pending" | "verified" | "rejected";
+
+export interface LiveProctoring {
+  readonly identity: IdentityState;
+  readonly snapshots: number;
+  readonly lastSnapshotAt: number | null;
+  readonly events: Readonly<Record<string, number>>;
+}
+
+export interface ProctoringMedia {
+  readonly id: string;
+  readonly kind: "selfie" | "id" | "snapshot";
+  readonly takenAt: string;
+  readonly sha256: string;
+}
+
+export interface ProctoringView {
+  readonly policy: { readonly identity: boolean; readonly snapshotEverySeconds: number | null; readonly browserEvents: boolean } | null;
+  readonly identity: {
+    readonly selfie: ProctoringMedia | null;
+    readonly id: ProctoringMedia | null;
+    readonly capturedAt: number | null;
+    readonly review: { readonly outcome: "verified" | "rejected"; readonly reason: string; readonly decidedBy: string; readonly at: number } | null;
+    readonly matchesLedger: boolean;
+  };
+  readonly snapshots: readonly ProctoringMedia[];
+  readonly events: readonly { readonly kind: string; readonly at: string }[];
 }
 
 export interface Announcement {
@@ -301,7 +340,9 @@ export interface Announcement {
 export interface LiveView {
   readonly exam: { readonly id: string; readonly title: string };
   readonly at: number;
-  readonly counts: Readonly<Record<"invited" | "notStarted" | "inProgress" | "away" | "idle" | "submitted" | "graded" | "void", number>>;
+  readonly counts: Readonly<
+    Record<"invited" | "notStarted" | "inProgress" | "away" | "idle" | "cameraOff" | "identityPending" | "submitted" | "graded" | "void", number>
+  >;
   readonly rows: readonly LiveRow[];
   readonly announcements: readonly Announcement[];
 }
@@ -633,6 +674,29 @@ export class ConsoleClient {
   }
 
   /** More time for an open attempt, with a reason that goes into its ledger. */
+  proctoring(attemptId: string): Promise<ProctoringView> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/proctoring`);
+  }
+
+  /**
+   * One photo, as an object URL for an <img>: the image needs the session's
+   * bearer token, which an <img src> cannot send. Revoke it when done.
+   */
+  async photoUrl(attemptId: string, mediaId: string): Promise<string> {
+    const response = await fetch(`${this.#baseUrl}/attempts/${encodeURIComponent(attemptId)}/proctoring/photos/${encodeURIComponent(mediaId)}`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "photo_unavailable");
+    return URL.createObjectURL(await response.blob());
+  }
+
+  reviewIdentity(attemptId: string, outcome: "verified" | "rejected", reason: string): Promise<{ ok: true }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/identity/review`, {
+      method: "POST",
+      body: JSON.stringify({ outcome, reason }),
+    });
+  }
+
   live(examId: string, idleMinutes = 5): Promise<LiveView> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/live?idleMinutes=${idleMinutes}`);
   }

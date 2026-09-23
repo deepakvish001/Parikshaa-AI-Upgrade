@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, redeemInvitation, type Notice } from "../api.ts";
 import { PreferencesBar, uiLocaleOf, usePreferences } from "../i18n.tsx";
+import type { ProctoringPolicy } from "@parikshaa/core/browser";
+import { CameraCheck } from "./CameraCheck.tsx";
 
 interface Props {
   readonly code: string;
@@ -12,6 +14,7 @@ interface Props {
 type Stage =
   | { readonly kind: "opening" }
   | { readonly kind: "notice"; readonly notice: Notice }
+  | { readonly kind: "camera"; readonly policy: ProctoringPolicy; readonly consent: { noticeVersion: number } | undefined }
   | { readonly kind: "early"; readonly opensAt: string }
   | { readonly kind: "closed"; readonly closesAt: string }
   | { readonly kind: "invalid" }
@@ -34,14 +37,15 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
   const ui = uiLocaleOf(language);
   const [stage, setStage] = useState<Stage>({ kind: "opening" });
 
-  const open = useCallback(async (consent?: { noticeVersion: number }) => {
+  const open = useCallback(async (consent?: { noticeVersion: number }, camera?: boolean) => {
     setStage({ kind: "opening" });
     try {
-      onOpened((await redeemInvitation(code, "/api", consent)).token);
+      onOpened((await redeemInvitation(code, "/api", consent, camera)).token);
     } catch (error) {
       if (!(error instanceof ApiError)) return setStage({ kind: "offline" });
       // The organisation's account, not the candidate's doing: say so without the details.
       if (error.code === "out_of_credits") return setStage({ kind: "unavailable" });
+      if (error.code === "camera_required") return setStage({ kind: "camera", policy: error.detail["proctoring"] as ProctoringPolicy, consent });
       if (error.code === "consent_required") return setStage({ kind: "notice", notice: error.detail["notice"] as Notice });
       if (error.code === "not_open_yet") return setStage({ kind: "early", opensAt: String(error.detail["opensAt"]) });
       if (error.code === "window_closed") return setStage({ kind: "closed", closesAt: String(error.detail["closesAt"]) });
@@ -67,6 +71,7 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
       <h1>Parikshaa</h1>
       {stage.kind === "opening" ? <p className="notice">{t("invite.opening")}</p> : null}
       {stage.kind === "notice" ? <PrivacyNotice notice={stage.notice} onAgree={() => void open({ noticeVersion: stage.notice.version })} /> : null}
+      {stage.kind === "camera" ? <CameraCheck policy={stage.policy} onReady={() => void open(stage.consent, true)} /> : null}
       {stage.kind === "early" ? (
         <section className="card" aria-label={t("invite.earlyRegion")}>
           <p style={{ marginTop: 0 }}>{t("invite.opensOn")}</p>

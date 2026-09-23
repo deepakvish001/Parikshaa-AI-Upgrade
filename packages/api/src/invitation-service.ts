@@ -15,6 +15,19 @@ import type { InviteCodes } from "./invite-codes.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor, type Permission } from "./staff-auth.js";
 import { ConsentRequired, type Notice } from "./privacy.js";
+import { needsCamera } from "./proctoring.js";
+import type { ProctoringPolicy } from "@parikshaa/core";
+
+/**
+ * A proctored exam starts only once the candidate's page has its camera
+ * working: the clock should not run while they find the permission prompt.
+ */
+export class CameraRequired extends Error {
+  constructor(readonly proctoring: ProctoringPolicy) {
+    super("This test uses the camera: allow it, then open the test");
+    this.name = "CameraRequired";
+  }
+}
 
 /**
  * Inviting a cohort, scheduling it, and letting each candidate in (ROADMAP §5).
@@ -254,6 +267,8 @@ export class InvitationService {
   async redeem(
     code: string,
     consent?: { readonly noticeVersion: number },
+    /** The candidate's page has the camera working, for a proctored exam. */
+    camera?: boolean,
   ): Promise<{ token: string; attemptId: string; resumed: boolean }> {
     const named = this.#o.codes.verify(code);
     if (named === null) throw new InvalidInvitation();
@@ -275,6 +290,8 @@ export class InvitationService {
     const starting = invitation.attemptId === null || !(await this.#o.store.hasStarted(scope, invitation.attemptId as AttemptId));
     const notice = starting ? await this.#notice(orgId) : null;
     if (notice !== null && consent?.noticeVersion !== notice.version) throw new ConsentRequired(notice);
+    const proctoring = exam.policy.proctoring;
+    if (starting && proctoring !== undefined && needsCamera(proctoring) && camera !== true) throw new CameraRequired(proctoring);
 
     const claim = await this.#o.invitations.claimAttempt(scope, invitation.id, this.#newId());
     // Not only the first redemption starts the attempt: if the first died

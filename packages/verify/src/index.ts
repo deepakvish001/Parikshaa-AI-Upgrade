@@ -70,6 +70,10 @@ function describe(event: ExamEvent): string {
       return `Time extended by ${Math.round(event.extraMs / 60_000)} min by ${event.decidedBy.name} — ${event.reason}`;
     case "attempt_reopened":
       return `Reopened by ${event.decidedBy.name}, with ${Math.round(event.extraMs / 60_000)} min more — ${event.reason}`;
+    case "identity_captured":
+      return "Photos of the candidate and their ID taken";
+    case "identity_reviewed":
+      return `Identity ${event.outcome === "verified" ? "confirmed" : "not confirmed"} by ${event.decidedBy.name} — ${event.reason}`;
     case "consent_given":
       return `Agreed to the privacy notice (version ${event.noticeVersion})`;
     case "data_erased":

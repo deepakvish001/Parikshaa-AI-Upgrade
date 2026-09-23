@@ -65,7 +65,7 @@ describe("App", () => {
     expect(screen.getByRole("heading", { name: "Parikshaa" })).toBeInTheDocument();
     expect(screen.getByLabelText("Access code")).toBeInTheDocument();
     // The candidate is told what the exam does and does not do, up front.
-    expect(screen.getByText(/no webcam/i)).toBeInTheDocument();
+    expect(screen.getByText(/If a test uses your camera, it says so before it starts/)).toBeInTheDocument();
   });
 
   it("renders the exam and its questions", async () => {

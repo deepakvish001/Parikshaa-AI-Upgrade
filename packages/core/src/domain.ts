@@ -133,6 +133,25 @@ export interface ExamPolicy {
    * provenance matters). Expressed as a fraction of the question's maxScore.
    */
   readonly vivaTriggerRatio: number;
+  /** Camera proctoring (ROADMAP §14). Absent: none — the default, and Parikshaa's own position. */
+  readonly proctoring?: ProctoringPolicy;
+}
+
+/**
+ * What a proctored exam asks of the candidate's camera and browser.
+ *
+ * Every piece is an observation for a person to weigh, never a verdict: a
+ * photo does not fail anyone, and a switched tab is a reason to look, not a
+ * finding. Everything captured is personal data, sealed under the attempt's
+ * key and erased with the rest of it.
+ */
+export interface ProctoringPolicy {
+  /** A photo of the candidate and of their photo ID before they begin, for an invigilator to check. */
+  readonly identity: boolean;
+  /** A webcam photo every this many seconds while the attempt is open; null for none. */
+  readonly snapshotEverySeconds: number | null;
+  /** Record leaving the tab, leaving full screen, and copying or pasting. */
+  readonly browserEvents: boolean;
 }
 
 /**
@@ -307,6 +326,25 @@ export type ExamEvent =
       readonly type: "attempt_reopened";
       readonly attemptId: AttemptId;
       readonly extraMs: number;
+      readonly reason: string;
+      readonly decidedBy: StaffAttribution;
+    }
+  | {
+      /**
+       * The candidate's photo and their photo ID's, taken before they began
+       * (ROADMAP §14). The images themselves are sealed outside the ledger;
+       * the chain commits to their SHA-256, so neither can be swapped later.
+       */
+      readonly type: "identity_captured";
+      readonly attemptId: AttemptId;
+      readonly selfieSha256: string;
+      readonly idSha256: string;
+    }
+  | {
+      /** A person compared the photos and decided, with a reason on the record. */
+      readonly type: "identity_reviewed";
+      readonly attemptId: AttemptId;
+      readonly outcome: "verified" | "rejected";
       readonly reason: string;
       readonly decidedBy: StaffAttribution;
     }

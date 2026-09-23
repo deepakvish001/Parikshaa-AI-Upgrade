@@ -31,10 +31,14 @@ This repository holds the assessment engine, not a hosted product. In scope:
 - organisations, each isolated from the others, with individual staff accounts,
   roles, API keys and an audit log of what staff did
 
-Out of scope for now: candidate identity and enrolment, payments, and any form
-of biometric or video surveillance. The last is a design choice, not a backlog
-item — see §6. Candidates still have no accounts: an institution already knows
-who its candidates are, and issues each one an access code for one attempt.
+Out of scope for now: candidate accounts and enrolment. Candidates have no
+accounts: an institution already knows who its candidates are, and issues each
+one an access code for one attempt.
+
+Camera proctoring — an identity check, webcam photos and browser events — is
+available per exam for buyers who require it (ROADMAP §14). It is off unless an
+exam's author turns it on, it is disclosed to the candidate before their clock
+starts, and it never reaches the engine: see §6.4.
 
 ## 3. Attempt lifecycle
 
@@ -160,9 +164,14 @@ See `packages/core/src/chain.ts`, `packages/core/src/ledger.ts` and
    and turn the assessment into a feedback loop for defeating it.
 3. **Inconclusive is a real answer.** The engine is not required to reach a
    verdict, and is not tuned to.
-4. **No surveillance.** No webcam, screen capture, keystroke biometrics or
-   device fingerprinting. The engine's only input is what the candidate wrote
-   and said in response to being asked about it.
+4. **The camera never grades.** By default there is no webcam, screen capture,
+   keystroke biometrics or device fingerprinting. An exam may turn on camera
+   proctoring (ROADMAP §14), and then the candidate is told exactly what is
+   taken before their clock starts. Even so, the engine's only input is what
+   the candidate wrote and said in response to being asked about it: photos
+   and browser events go to a person, as observations to weigh, and never
+   into a probe, a verdict or a score. They are sealed and erased like the
+   rest of the attempt's personal data.
 5. **Explainable by construction.** Every probe carries the rationale for asking
    it; every verdict carries reasoning. Both survive in the ledger for appeal.
 
@@ -269,7 +278,8 @@ sitting is over.
 | Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
 | Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
-| Candidate identity / enrolment | out of scope (§2) |
+| Identity check and camera proctoring | implemented, per exam and off by default — photo + photo ID reviewed by a person (`identity_reviewed` in the ledger), webcam photos, browser events |
+| Candidate accounts / enrolment | out of scope (§2) |
 
 Complete end to end and deployable, for more than one institution at once: an
 institution's staff sign in with their own accounts and roles, author an exam,

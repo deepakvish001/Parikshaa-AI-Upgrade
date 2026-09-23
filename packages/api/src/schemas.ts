@@ -39,6 +39,13 @@ const rubricCriterion = z.object({
   weight: z.number(),
 });
 
+/** Camera proctoring for an exam (ROADMAP §14). */
+export const proctoringPolicy = z.object({
+  identity: z.boolean().describe("A photo of the candidate and of their photo ID before they begin, checked by an invigilator."),
+  snapshotEverySeconds: z.number().int().nullable().describe("A webcam photo this often while the attempt is open; null for none."),
+  browserEvents: z.boolean().describe("Record leaving the tab or full screen, and copying or pasting."),
+});
+
 /** A question in other languages, by locale (ROADMAP §9): what a candidate reads, and nothing else. */
 const translations = z
   .partialRecord(z.enum(CONTENT_LOCALES), z.object({ stem: z.string(), options: z.array(z.string()).readonly().optional() }))
@@ -102,6 +109,7 @@ export const examSchema = z.object({
     durationMs: z.number(),
     allowRevision: z.boolean(),
     vivaTriggerRatio: z.number(),
+    proctoring: proctoringPolicy.optional().describe("Camera proctoring. Absent: none."),
   }),
   questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
   sections: z
@@ -286,8 +294,10 @@ export const candidateStateResponse = z.object({
     durationMs: z.number(),
     allowRevision: z.boolean(),
     questions: z.array(candidateQuestion).readonly(),
+    proctoring: proctoringPolicy.nullable().describe("What the camera and browser are asked for. Null: nothing."),
   }),
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
+  identityCaptured: z.boolean().describe("A proctored exam's identity photos have been taken; until then its questions wait."),
   voidReason: z.string().nullable(),
   startedAt: z.number(),
   expiresAt: z.number().describe("When this attempt's window closes. Exam time, not a probe timer."),

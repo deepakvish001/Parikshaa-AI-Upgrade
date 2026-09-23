@@ -49,6 +49,13 @@ export interface AttemptProjection {
   readonly extraTimeMs: number;
   /** When the attempt's personal data was erased, if it was (`data_erased`). */
   readonly erasedAt: Timestamp | null;
+  /** The identity check (ROADMAP §14): the photos' hashes, and a person's decision on them. */
+  readonly identity: {
+    readonly selfieSha256: string;
+    readonly idSha256: string;
+    readonly capturedAt: Timestamp;
+    readonly review: { readonly outcome: "verified" | "rejected"; readonly reason: string; readonly decidedBy: StaffAttribution; readonly at: Timestamp } | null;
+  } | null;
   /** The privacy notice the candidate agreed to, if one was asked for. */
   readonly consent: { readonly noticeVersion: number; readonly noticeHash: string } | null;
   /** Test results for each code question's current answer; cleared when the answer changes. */
@@ -113,6 +120,7 @@ export function foldAttempt(
   let extraTimeMs = 0;
   let erasedAt: Timestamp | null = null;
   let consent: { noticeVersion: number; noticeHash: string } | null = null;
+  let identity: AttemptProjection["identity"] = null;
   const codeScores = new Map<QuestionId, { score: number; passed: number; total: number }>();
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
@@ -130,6 +138,7 @@ export function foldAttempt(
       closesAt,
       extraTimeMs,
       erasedAt,
+      identity,
       consent,
       codeScores,
     },
@@ -236,6 +245,23 @@ export function foldAttempt(
         state = "in_progress";
         extraTimeMs += event.extraMs;
         scores.clear();
+        break;
+      }
+
+      // Once, while the attempt is open: the photos are the first thing asked for.
+      case "identity_captured": {
+        if (state !== "in_progress" || identity !== null) return fail("not_in_progress");
+        identity = { selfieSha256: event.selfieSha256, idSha256: event.idSha256, capturedAt: entry.timestamp, review: null };
+        break;
+      }
+
+      // Before grading — the closed guard refuses it after — and only of photos taken.
+      // A later review replaces an earlier one: a person may correct themselves, on the record.
+      case "identity_reviewed": {
+        // (widened: TypeScript narrows the loop variable to its initial null)
+        const captured = identity as AttemptProjection["identity"];
+        if (captured === null) return fail("not_in_progress");
+        identity = { ...captured, review: { outcome: event.outcome, reason: event.reason, decidedBy: event.decidedBy, at: entry.timestamp } };
         break;
       }
 

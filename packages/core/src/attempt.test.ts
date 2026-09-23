@@ -330,4 +330,29 @@ describe("foldAttempt", () => {
       expect(project(chain(started, submitted, erased, voided)).attempt.state).toBe("void");
     });
   });
+
+  describe("the identity check (ROADMAP §14)", () => {
+    const captured: ExamEvent = { type: "identity_captured", attemptId: A, selfieSha256: "a".repeat(64), idSha256: "b".repeat(64) };
+    const reviewed = (outcome: "verified" | "rejected"): ExamEvent => ({
+      type: "identity_reviewed",
+      attemptId: A,
+      outcome,
+      reason: outcome === "verified" ? "Face matches the college ID." : "The photo ID is someone else's.",
+      decidedBy: { userId: "u1", name: "Meera" },
+    });
+
+    it("records the photos' hashes and a person's decision, which a later one may correct", () => {
+      const projection = project(chain(started, captured, answered(), submitted, reviewed("rejected"), reviewed("verified")));
+      expect(projection.identity).toMatchObject({ selfieSha256: "a".repeat(64), review: { outcome: "verified", decidedBy: { name: "Meera" } } });
+      expect(project(chain(started)).identity).toBeNull();
+    });
+
+    it("takes photos once, while open, and reviews only photos taken, before grading", () => {
+      const graded: ExamEvent = { type: "attempt_graded", attemptId: A, total: 1 };
+      expect(foldAttempt(chain(started, captured, captured))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+      expect(foldAttempt(chain(started, submitted, captured))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+      expect(foldAttempt(chain(started, reviewed("verified")))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 1 });
+      expect(foldAttempt(chain(started, captured, submitted, graded, reviewed("verified")))).toMatchObject({ ok: false, reason: "closed", seq: 4 });
+    });
+  });
 });

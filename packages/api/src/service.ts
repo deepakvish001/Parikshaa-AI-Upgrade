@@ -72,6 +72,7 @@ export class AttemptError extends Error {
       | "invalid_extension"
       | "invalid_privacy"
       | "invalid_billing"
+      | "invalid_proctoring"
       | "not_code"
       | "language_not_offered"
       | "too_many_runs",
@@ -257,6 +258,7 @@ export class ExamService {
       voidReason: projection.voidReason,
       openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
       answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
+      identityCaptured: projection.identity !== null,
       // Only drafts that say something the ledger does not: resuming on another
       // device restores unsent work, not a stale copy of what was committed.
       drafts:
@@ -1253,6 +1255,8 @@ export interface CandidateState {
   readonly answeredProbeCount: number;
   /** Typed but not committed, where that differs from what was committed. */
   readonly drafts: readonly Draft[];
+  /** A proctored exam's identity photos have been taken (ROADMAP §14). */
+  readonly identityCaptured: boolean;
 }
 
 export interface CandidateLedger {
