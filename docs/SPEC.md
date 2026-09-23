@@ -267,6 +267,7 @@ sitting is over.
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
 | Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
+| Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
 | Candidate identity / enrolment | out of scope (§2) |
 

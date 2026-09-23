@@ -15,6 +15,7 @@ type Stage =
   | { readonly kind: "early"; readonly opensAt: string }
   | { readonly kind: "closed"; readonly closesAt: string }
   | { readonly kind: "invalid" }
+  | { readonly kind: "unavailable" }
   | { readonly kind: "offline" };
 
 /** Times as the candidate reads them: IST, spelled out. */
@@ -39,6 +40,8 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
       onOpened((await redeemInvitation(code, "/api", consent)).token);
     } catch (error) {
       if (!(error instanceof ApiError)) return setStage({ kind: "offline" });
+      // The organisation's account, not the candidate's doing: say so without the details.
+      if (error.code === "out_of_credits") return setStage({ kind: "unavailable" });
       if (error.code === "consent_required") return setStage({ kind: "notice", notice: error.detail["notice"] as Notice });
       if (error.code === "not_open_yet") return setStage({ kind: "early", opensAt: String(error.detail["opensAt"]) });
       if (error.code === "window_closed") return setStage({ kind: "closed", closesAt: String(error.detail["closesAt"]) });
@@ -83,6 +86,15 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
           <p className="notice">{t("invite.invalidNote")}</p>
           <button type="button" className="secondary" onClick={onForget}>
             {t("invite.haveCode")}
+          </button>
+        </section>
+      ) : null}
+      {stage.kind === "unavailable" ? (
+        <section className="card" aria-label={t("invite.unavailableRegion")}>
+          <p style={{ marginTop: 0 }}>{t("invite.unavailable")}</p>
+          <p className="notice">{t("invite.unavailableNote")}</p>
+          <button type="button" onClick={() => void open()}>
+            {t("invite.tryAgain")}
           </button>
         </section>
       ) : null}

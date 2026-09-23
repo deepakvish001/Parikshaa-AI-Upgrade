@@ -181,4 +181,15 @@ describe("an invitation link", () => {
     expect(screen.getByRole("button", { name: "सहमत हूँ, परीक्षा शुरू करें" })).toBeDisabled();
     localStorage.clear();
   });
+
+  it("tells a candidate the test cannot start yet when the organisation's credits have run out, without the details", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "out_of_credits", message: "This organisation has no attempt credits left." }, 402)));
+
+    renderApp(<App />);
+
+    const card = await screen.findByRole("region", { name: "Cannot start yet" });
+    expect(card).toHaveTextContent("no time has been used");
+    expect(card).not.toHaveTextContent(/credit/i);
+  });
 });

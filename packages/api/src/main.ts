@@ -5,6 +5,8 @@ import { HttpCodeRunner } from "@parikshaa/runner";
 import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
 import { Msg91Sender, SmtpMailer } from "./delivery.js";
+import { supplierFromEnv } from "./gst.js";
+import { RazorpayGateway } from "./razorpay.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
 function required(name: string): string {
@@ -50,6 +52,19 @@ async function main(): Promise<void> {
   const smtpUrl = process.env["SMTP_URL"];
   const msg91Key = process.env["MSG91_AUTH_KEY"];
 
+  // Billing (ROADMAP §12): Razorpay to sell prepaid credits, and the supplier
+  // Parikshaa's tax invoices are issued by. Both optional: without them,
+  // credits can be granted (billing-cli) but not bought.
+  const razorpayKey = process.env["RAZORPAY_KEY_ID"];
+  const gateway =
+    razorpayKey === undefined || razorpayKey === ""
+      ? null
+      : new RazorpayGateway({
+          keyId: razorpayKey,
+          keySecret: required("RAZORPAY_KEY_SECRET"),
+          webhookSecret: required("RAZORPAY_WEBHOOK_SECRET"),
+        });
+
   const { app, worker, privacy } = assemble({
     sql,
     ...(runner === undefined ? {} : { runner }),
@@ -65,6 +80,8 @@ async function main(): Promise<void> {
     // Wraps every attempt's data key (ROADMAP §11). Keep it outside the
     // database and its backups, and never lose it: `openssl rand -base64 32`.
     dataKey: required("PARIKSHAA_DATA_KEY"),
+    gateway,
+    supplier: supplierFromEnv(process.env),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
     server: {

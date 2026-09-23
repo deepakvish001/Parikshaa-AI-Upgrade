@@ -28,6 +28,9 @@ import type { WebhookService } from "./webhooks.js";
 import type { InvigilationService } from "./invigilation.js";
 import { registerInvigilationRoutes } from "./invigilation-routes.js";
 import type { PrivacyService } from "./privacy.js";
+import { BillingNotConfigured, OutOfCredits, type BillingService } from "./billing.js";
+import { registerBillingRoutes } from "./billing-routes.js";
+import { GatewayUnavailable } from "./razorpay.js";
 import { registerPrivacyRoutes } from "./privacy-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
@@ -49,6 +52,7 @@ export interface ServerOptions {
   readonly greenhouse: GreenhouseService;
   readonly invigilation: InvigilationService;
   readonly privacy: PrivacyService;
+  readonly billing: BillingService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -171,6 +175,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
         { name: "Privacy", description: "The DPDP Act: the notice candidates agree to, retention, and erasure." },
+        { name: "Billing", description: "Prepaid attempt credits, Razorpay payments and GST tax invoices." },
         {
           name: "Greenhouse",
           description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
@@ -188,6 +193,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
             type: "http",
             scheme: "basic",
             description: "The organisation's Greenhouse key (`ghk.…`) as the username, with no password.",
+          },
+          razorpaySignature: {
+            type: "apiKey",
+            in: "header",
+            name: "X-Razorpay-Signature",
+            description: "HMAC-SHA256 of the raw body with the webhook secret, as Razorpay sends it.",
           },
         },
       },
@@ -290,7 +301,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -302,6 +313,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     if (error instanceof Forbidden) {
       return reply.code(403).send({ error: "forbidden", message: error.message });
+    }
+    if (error instanceof OutOfCredits) {
+      return reply.code(402).send({ error: "out_of_credits", message: error.message });
+    }
+    if (error instanceof BillingNotConfigured) {
+      return reply.code(503).send({ error: "billing_not_configured", message: error.message });
+    }
+    if (error instanceof GatewayUnavailable) {
+      return reply.code(502).send({ error: "payment_gateway_unavailable", message: "Razorpay could not take the order just now. Try again in a moment." });
     }
     if (error instanceof SpendCapReached) {
       return reply.code(402).send({ error: "spend_cap_reached", message: error.message });
@@ -891,6 +911,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
     registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
+    registerBillingRoutes(routes, { billing: options.billing, staff });
 
     registerAccountRoutes(routes, {
       service,

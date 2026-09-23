@@ -75,6 +75,42 @@ const results: Results = {
   },
 };
 
+const billingSummary = {
+  account: {
+    mode: "prepaid",
+    pricePaise: 5000,
+    credits: 12,
+    legalName: "Acme Technologies Pvt Ltd",
+    gstin: "27AAACR5055K1Z7",
+    stateCode: "27",
+    address: "1 MG Road, Pune",
+    billingEmail: "accounts@acme.test",
+    updatedAt: "2026-10-01T00:00:00.000Z",
+  },
+  history: [{ id: "m1", delta: 12, reason: "grant", attemptId: null, paymentId: null, note: "trial", at: "2026-10-01T00:00:00.000Z" }],
+  invoices: [{ id: "inv1", number: "PKS/2627/000001", kind: "credits", paymentId: "p1", period: null, totalPaise: 590_000, issuedAt: "2026-10-01T06:00:00.000Z" }],
+  checkout: { available: true, keyId: "rzp_test_x" },
+  supplier: { legalName: "Parikshaa Assessments Pvt Ltd", stateCode: "29" },
+};
+
+const taxInvoice = {
+  ...billingSummary.invoices[0]!,
+  document: {
+    title: "Tax Invoice",
+    number: "PKS/2627/000001",
+    date: "1 Oct 2026",
+    supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "Bengaluru", state: "Karnataka", stateCode: "29" },
+    buyer: { legalName: "Acme Technologies Pvt Ltd", gstin: "27AAACR5055K1Z7", address: "Pune", state: "Maharashtra", stateCode: "27" },
+    placeOfSupply: { code: "27", state: "Maharashtra" },
+    reverseCharge: false,
+    lines: [{ description: "Assessment attempt credits (prepaid)", sac: "998399", quantity: 100, ratePaise: 5000, amountPaise: 500_000 }],
+    taxablePaise: 500_000,
+    taxes: [{ name: "IGST", ratePercent: 18, amountPaise: 90_000 }],
+    totalPaise: 590_000,
+    totalInWords: "Rupees Five Thousand Nine Hundred Only",
+  },
+};
+
 const notice = {
   version: 1,
   hash: "ab".repeat(32),
@@ -296,6 +332,20 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     privacy: vi.fn(async () => ({ settings: null, notice: null })),
     savePrivacy: vi.fn(async (draft: object) => ({ settings: { ...draft, noticeVersion: 1, updatedAt: "" }, notice })),
     eraseAttempt: vi.fn(async () => ({ erased: true })),
+    billing: vi.fn(async () => billingSummary),
+    saveBillingDetails: vi.fn(async (d: object) => ({ ...billingSummary.account, ...d })),
+    createOrder: vi.fn(async (credits: number) => ({
+      orderId: "order_1",
+      keyId: "rzp_test_x",
+      currency: "INR",
+      credits,
+      taxablePaise: credits * 5000,
+      taxPaise: credits * 900,
+      amountPaise: credits * 5900,
+      supplierName: "Parikshaa Assessments Pvt Ltd",
+    })),
+    verifyPayment: vi.fn(async () => ({ credits: 112, invoice: taxInvoice })),
+    invoice: vi.fn(async () => taxInvoice),
     ...overrides,
   } as unknown as ConsoleClient;
 }
@@ -1169,5 +1219,64 @@ describe("privacy (ROADMAP §11)", () => {
     expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Erase personal data…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
+  });
+});
+
+describe("billing (ROADMAP §12)", () => {
+  afterEach(() => {
+    delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  const openBilling = async (client = stubClient()) => {
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Billing" }));
+    await screen.findByRole("region", { name: "Plan and balance" });
+    return client;
+  };
+
+  it("shows the balance and prices a purchase with the GST it will carry", async () => {
+    await openBilling();
+    expect(within(screen.getByRole("region", { name: "Plan and balance" })).getByText("12")).toBeInTheDocument();
+    const buy = screen.getByRole("region", { name: "Buy credits" });
+    // Pune to a Karnataka supplier: IGST.
+    expect(buy).toHaveTextContent("100 × ₹50.00 = ₹5,000.00 + IGST 18% ₹900.00 = ₹5,900.00");
+  });
+
+  it("pays through Razorpay Checkout, and has the server check the payment before saying it is paid", async () => {
+    const opened: Record<string, unknown>[] = [];
+    (window as { Razorpay?: unknown }).Razorpay = class {
+      constructor(readonly options: Record<string, unknown>) {
+        opened.push(options);
+      }
+      on() {}
+      open() {
+        (this.options["handler"] as (r: object) => void)({ razorpay_payment_id: "pay_1", razorpay_order_id: "order_1", razorpay_signature: "sig" });
+      }
+    };
+    const client = await openBilling();
+    await userEvent.click(screen.getByRole("button", { name: /^Pay ₹5,900.00 with Razorpay$/ }));
+
+    expect(await screen.findByText(/Paid\. 100 credits added; tax invoice PKS\/2627\/000001/)).toBeInTheDocument();
+    expect(client.createOrder).toHaveBeenCalledWith(100);
+    expect(opened[0]).toMatchObject({ key: "rzp_test_x", order_id: "order_1", amount: 590_000, currency: "INR" });
+    expect(client.verifyPayment).toHaveBeenCalledWith("order_1", "pay_1", "sig");
+  });
+
+  it("keeps the details a tax invoice carries", async () => {
+    const client = await openBilling();
+    await userEvent.clear(screen.getByLabelText("GSTIN (if registered)"));
+    await userEvent.selectOptions(screen.getByLabelText("State"), "29");
+    await userEvent.click(screen.getByRole("button", { name: "Save details" }));
+    expect(client.saveBillingDetails).toHaveBeenCalledWith(expect.objectContaining({ gstin: null, stateCode: "29", legalName: "Acme Technologies Pvt Ltd" }));
+  });
+
+  it("shows a tax invoice as issued, ready to print", async () => {
+    await openBilling();
+    await userEvent.click(screen.getByRole("button", { name: "View PKS/2627/000001" }));
+    const invoice = await screen.findByRole("article", { name: "Tax invoice PKS/2627/000001" });
+    expect(invoice).toHaveTextContent("Place of supply: Maharashtra (27)");
+    expect(invoice).toHaveTextContent("IGST @ 18%");
+    expect(invoice).toHaveTextContent("Rupees Five Thousand Nine Hundred Only");
+    expect(within(invoice).getByRole("button", { name: "Print or save as PDF" })).toBeInTheDocument();
   });
 });

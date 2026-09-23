@@ -71,6 +71,7 @@ export class AttemptError extends Error {
       | "reason_required"
       | "invalid_extension"
       | "invalid_privacy"
+      | "invalid_billing"
       | "not_code"
       | "language_not_offered"
       | "too_many_runs",
@@ -119,6 +120,17 @@ export interface ServiceOptions {
   readonly newId?: () => string;
   /** Runs candidate code. Without one, code questions can be answered but not run or tested. */
   readonly runner?: CodeRunner;
+  /**
+   * Meters attempts as they start (ROADMAP §12): spends a prepaid credit, or
+   * refuses the start by throwing. Without one, nothing is metered.
+   */
+  readonly meter?: Meter;
+}
+
+/** What starting an attempt costs. `consume` is idempotent per attempt; `refund` undoes it for a start that failed. */
+export interface Meter {
+  consume(orgId: OrgId, attemptId: AttemptId): Promise<void>;
+  refund(orgId: OrgId, attemptId: AttemptId): Promise<void>;
 }
 
 /** Most times a candidate may press Run on one question in one attempt. */
@@ -147,7 +159,10 @@ export class ExamService {
    */
   readonly #runs = new Map<string, number>();
 
+  readonly #meter: Meter | null;
+
   constructor(options: ServiceOptions) {
+    this.#meter = options.meter ?? null;
     this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
@@ -502,14 +517,20 @@ export class ExamService {
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
 
     const id = this.#newId() as AttemptId;
-    await this.#store.createAttempt(scope, id, examId, candidateId);
-    await this.#store.append(scope, id, {
-      type: "attempt_started",
-      attemptId: id,
-      examId,
-      candidateId,
-      questionIds: resolvePaper(exam, id),
-    });
+    await this.#meter?.consume(actor.orgId, id);
+    try {
+      await this.#store.createAttempt(scope, id, examId, candidateId);
+      await this.#store.append(scope, id, {
+        type: "attempt_started",
+        attemptId: id,
+        examId,
+        candidateId,
+        questionIds: resolvePaper(exam, id),
+      });
+    } catch (error) {
+      await this.#meter?.refund(actor.orgId, id);
+      throw error;
+    }
     await this.#audit(actor, "attempt.started", id, { examId });
     return id;
   }
@@ -538,6 +559,9 @@ export class ExamService {
     const exam = loaded ?? (await this.#store.loadExam(scope, examId));
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
 
+    // Metered first, and idempotently: a start that is finished by a later
+    // redemption spends the credit the first one spent, and no more.
+    await this.#meter?.consume(orgId, attemptId);
     // Idempotent, so that a redemption can finish a start an earlier one began
     // and did not complete: the invitation already names this attempt.
     await this.#store.ensureAttempt(scope, attemptId, examId, candidateId);

@@ -1,0 +1,245 @@
+import type {
+  FastifyBaseLogger,
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  RawReplyDefaultExpression,
+  RawRequestDefaultExpression,
+  RawServerDefault,
+} from "fastify";
+import type { ZodTypeProvider } from "fastify-type-provider-zod";
+import { z } from "zod";
+import { WebhookRejected, type BillingService } from "./billing.js";
+import * as S from "./schemas.js";
+import type { Actor, Permission } from "./staff-auth.js";
+
+type Routes = FastifyInstance<
+  RawServerDefault,
+  RawRequestDefaultExpression,
+  RawReplyDefaultExpression,
+  FastifyBaseLogger,
+  ZodTypeProvider
+>;
+
+export interface BillingRouteDeps {
+  readonly billing: BillingService;
+  readonly staff: (request: FastifyRequest, reply: FastifyReply, permission: Permission | null) => Promise<Actor | null>;
+}
+
+const TAG = ["Billing"];
+const SECURED = [{ staffAuth: [] }];
+const refusals = {
+  401: S.errorResponse,
+  403: S.errorResponse,
+  404: S.errorResponse,
+  409: S.errorResponse,
+  422: S.errorResponse,
+  502: S.errorResponse,
+  503: S.errorResponse,
+} as const;
+
+const account = z.object({
+  mode: z.enum(["prepaid", "invoiced"]),
+  pricePaise: z.number().describe("Per attempt, excluding GST."),
+  credits: z.number(),
+  legalName: z.string(),
+  gstin: z.string().nullable(),
+  stateCode: z.string().nullable(),
+  address: z.string(),
+  billingEmail: z.string().nullable(),
+  updatedAt: z.string(),
+});
+
+const invoiceSummary = z.object({
+  id: z.string(),
+  number: z.string(),
+  kind: z.enum(["credits", "usage"]),
+  paymentId: z.string().nullable(),
+  period: z.string().nullable(),
+  totalPaise: z.number(),
+  issuedAt: z.string(),
+});
+
+export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): void {
+  const { billing, staff } = deps;
+
+  routes.get(
+    "/billing",
+    {
+      schema: {
+        tags: TAG,
+        summary: "The organisation's plan, balance, payments and invoices",
+        security: SECURED,
+        response: {
+          200: z.object({
+            account: account.nullable().describe("Null: this organisation is not billed, and nothing is metered."),
+            history: z
+              .array(
+                z.object({
+                  id: z.string(),
+                  delta: z.number(),
+                  reason: z.enum(["purchase", "attempt", "grant", "refund"]),
+                  attemptId: z.string().nullable(),
+                  paymentId: z.string().nullable(),
+                  note: z.string().nullable(),
+                  at: z.string(),
+                }),
+              )
+              .readonly(),
+            payments: z
+              .array(
+                z.object({
+                  id: z.string(),
+                  orderId: z.string(),
+                  paymentId: z.string().nullable(),
+                  credits: z.number(),
+                  taxablePaise: z.number(),
+                  taxPaise: z.number(),
+                  amountPaise: z.number(),
+                  buyerState: z.string().nullable(),
+                  status: z.enum(["created", "paid"]),
+                  createdAt: z.string(),
+                  paidAt: z.string().nullable(),
+                }),
+              )
+              .readonly(),
+            invoices: z.array(invoiceSummary).readonly(),
+            checkout: z.object({ available: z.boolean(), keyId: z.string().nullable() }),
+            supplier: z.object({ legalName: z.string(), stateCode: z.string() }).nullable(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.send(await billing.summary(actor));
+    },
+  );
+
+  routes.put(
+    "/billing/details",
+    {
+      schema: {
+        tags: TAG,
+        summary: "The organisation's details, as its tax invoices carry them",
+        description: "A GSTIN is checked, check digit included, and fixes the state: CGST and SGST within Parikshaa's state, IGST outside it. Audited.",
+        security: SECURED,
+        body: z.object({
+          legalName: z.string().min(1).max(300),
+          gstin: z.string().max(15).nullable(),
+          stateCode: z.string().max(2).nullable(),
+          address: z.string().max(1000),
+          billingEmail: z.string().max(320).nullable(),
+        }),
+        response: { 200: account, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.send(await billing.updateBuyer(actor, request.body));
+    },
+  );
+
+  routes.post(
+    "/billing/orders",
+    {
+      schema: {
+        tags: TAG,
+        summary: "Start buying credits: a Razorpay order",
+        description:
+          "Priced at the organisation's rate plus GST. Open Razorpay Checkout with the order id and key; then confirm with `POST /billing/payments/verify`. A signed-in person only.",
+        security: SECURED,
+        body: z.object({ credits: z.number().int().min(1).max(100_000) }),
+        response: {
+          201: z.object({
+            orderId: z.string(),
+            keyId: z.string(),
+            currency: z.literal("INR"),
+            credits: z.number(),
+            taxablePaise: z.number(),
+            taxPaise: z.number(),
+            amountPaise: z.number(),
+            supplierName: z.string(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.code(201).send(await billing.createOrder(actor, request.body.credits));
+    },
+  );
+
+  routes.post(
+    "/billing/payments/verify",
+    {
+      schema: {
+        tags: TAG,
+        summary: "Confirm a payment Checkout reported",
+        description:
+          "Credited only if `signature` is Razorpay's HMAC-SHA256 of `orderId|paymentId`. Once: confirming again, or Razorpay's webhook arriving too, changes nothing. Returns the tax invoice.",
+        security: SECURED,
+        body: z.object({ orderId: z.string().min(1), paymentId: z.string().min(1), signature: z.string().min(1) }),
+        response: { 200: z.object({ credits: z.number(), invoice: invoiceSummary.extend({ document: z.record(z.string(), z.unknown()) }) }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      const { orderId, paymentId, signature } = request.body;
+      return reply.send(await billing.confirm(actor, orderId, paymentId, signature));
+    },
+  );
+
+  routes.get(
+    "/billing/invoices/:invoiceId",
+    {
+      schema: {
+        tags: TAG,
+        summary: "One tax invoice, as issued",
+        security: SECURED,
+        params: z.object({ invoiceId: z.string().min(1) }),
+        response: { 200: invoiceSummary.extend({ document: z.record(z.string(), z.unknown()) }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.send(await billing.invoice(actor, request.params.invoiceId));
+    },
+  );
+
+  // Razorpay's webhook signs the body exactly as sent, so this route reads it
+  // as a string: parsed and re-serialized, it would no longer match.
+  void routes.register(async (raw) => {
+    raw.addContentTypeParser("application/json", { parseAs: "string" }, (_request, body, done) => done(null, body));
+    raw.withTypeProvider<ZodTypeProvider>().post(
+      "/billing/razorpay/webhook",
+      {
+        schema: {
+          tags: TAG,
+          summary: "Razorpay's webhook",
+          description:
+            "Set in the Razorpay dashboard for `order.paid` (and optionally `payment.captured`), with the webhook secret in RAZORPAY_WEBHOOK_SECRET. Verified by `X-Razorpay-Signature`; credits a payment whose browser never came back.",
+          security: [{ razorpaySignature: [] }],
+          response: { 200: z.object({ handled: z.boolean() }), 401: S.errorResponse, 503: S.errorResponse },
+        },
+      },
+      async (request, reply) => {
+        const header = request.headers["x-razorpay-signature"];
+        const signature = typeof header === "string" ? header : "";
+        try {
+          return reply.send(await billing.webhook(String(request.body ?? ""), signature));
+        } catch (error) {
+          if (error instanceof WebhookRejected) return reply.code(401).send({ error: "invalid_signature", message: error.message });
+          throw error;
+        }
+      },
+    );
+  });
+}

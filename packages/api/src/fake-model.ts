@@ -54,3 +54,4 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
   } as unknown as Anthropic;
   return { client, script };
 }
+export { FakeRazorpay } from "./razorpay.js";

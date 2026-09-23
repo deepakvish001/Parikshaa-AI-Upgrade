@@ -448,6 +448,38 @@ Data residency, CI secret scanning and the evidence pack are still to do.
 - A hard per-organisation cost ceiling, so one customer's traffic cannot run up
   an unbounded model bill.
 
+**Status — built.** An organisation is either on **prepaid credits** or
+**invoiced monthly**, at a price per attempt — the operator's decision, set
+with `npm run billing -w @parikshaa/api -- plan <org> prepaid|invoiced
+<rupees>` (which also grants trial credits and issues monthly invoices); an
+organisation with no plan is not metered. A prepaid attempt starts only
+against a credit, taken under the account's row lock in the same transaction
+that records why: concurrent starts cannot spend the last credit twice, and an
+attempt spends one however often its start is retried or its link reopened. A
+candidate whose organisation has run out is told the test cannot start yet —
+not why — and loses no time.
+
+The owner buys credits on the console's *Billing* page through Razorpay
+Checkout. Nothing is credited on the browser's word: the server checks
+Razorpay's signature (HMAC-SHA256 of `order_id|payment_id`), and Razorpay's
+webhook (`X-Razorpay-Signature` over the raw body) credits a payment whose tab
+was closed before Checkout returned. Either may arrive first; the second
+changes nothing. Each payment issues a **GST tax invoice** in the same
+transaction: supplier and buyer with GSTINs (checked, check digit included),
+place of supply, SAC, taxable value, CGST+SGST within the supplier's state or
+IGST outside it, the total in figures and in Indian-system words — numbered in
+one consecutive series per financial year (`PKS/2627/000123`, within GST's 16
+characters), with no gaps because the serial is taken in the transaction that
+stores the invoice. Invoiced organisations get a monthly invoice for the
+attempts their ledgers record as started in that IST month. Invoices are
+printable from the console.
+
+The model-spend ceiling of §0 still applies on top, per organisation.
+
+Not in it: e-invoicing (IRN from the GST portal, needed above ₹5 crore
+turnover), credit notes and refunds of payments, TDS, and automatic monthly
+invoicing (the operator runs `invoice-all` — a cron line).
+
 ## 13. Real-browser testing and hardening
 
 - Playwright across both clients, on Chrome, Firefox and Safari, including a

@@ -637,6 +637,27 @@ export class ConsoleClient {
     return this.#request(`/exams/${encodeURIComponent(examId)}/live?idleMinutes=${idleMinutes}`);
   }
 
+  billing(): Promise<BillingSummary> {
+    return this.#request("/billing");
+  }
+
+  saveBillingDetails(details: BuyerDetails): Promise<BillingAccount> {
+    return this.#request("/billing/details", { method: "PUT", body: JSON.stringify(details) });
+  }
+
+  createOrder(credits: number): Promise<BillingOrder> {
+    return this.#request("/billing/orders", { method: "POST", body: JSON.stringify({ credits }) });
+  }
+
+  /** Checkout's result: credited only if the server finds Razorpay's signature good. */
+  verifyPayment(orderId: string, paymentId: string, signature: string): Promise<{ credits: number; invoice: TaxInvoice }> {
+    return this.#request("/billing/payments/verify", { method: "POST", body: JSON.stringify({ orderId, paymentId, signature }) });
+  }
+
+  invoice(id: string): Promise<TaxInvoice> {
+    return this.#request(`/billing/invoices/${encodeURIComponent(id)}`);
+  }
+
   privacy(): Promise<{ settings: PrivacySettings | null; notice: Notice | null }> {
     return this.#request("/privacy");
   }
@@ -700,4 +721,76 @@ export interface Notice {
   readonly grievance: { readonly name: string; readonly email: string };
   readonly collected: readonly string[];
   readonly rights: readonly string[];
+}
+
+/** Billing (ROADMAP §12). Amounts are paise. */
+export interface BillingAccount {
+  readonly mode: "prepaid" | "invoiced";
+  readonly pricePaise: number;
+  readonly credits: number;
+  readonly legalName: string;
+  readonly gstin: string | null;
+  readonly stateCode: string | null;
+  readonly address: string;
+  readonly billingEmail: string | null;
+  readonly updatedAt: string;
+}
+
+export type BuyerDetails = Pick<BillingAccount, "legalName" | "gstin" | "stateCode" | "address" | "billingEmail">;
+
+export interface InvoiceSummary {
+  readonly id: string;
+  readonly number: string;
+  readonly kind: "credits" | "usage";
+  readonly paymentId: string | null;
+  readonly period: string | null;
+  readonly totalPaise: number;
+  readonly issuedAt: string;
+}
+
+export interface TaxInvoice extends InvoiceSummary {
+  readonly document: InvoiceDocument;
+}
+
+export interface InvoiceDocument {
+  readonly title: string;
+  readonly number: string;
+  readonly date: string;
+  readonly supplier: { readonly legalName: string; readonly gstin: string; readonly address: string; readonly state: string; readonly stateCode: string };
+  readonly buyer: { readonly legalName: string; readonly gstin: string | null; readonly address: string; readonly state: string | null; readonly stateCode: string | null };
+  readonly placeOfSupply: { readonly code: string; readonly state: string };
+  readonly reverseCharge: boolean;
+  readonly lines: readonly { readonly description: string; readonly sac: string; readonly quantity: number; readonly ratePaise: number; readonly amountPaise: number }[];
+  readonly taxablePaise: number;
+  readonly taxes: readonly { readonly name: string; readonly ratePercent: number; readonly amountPaise: number }[];
+  readonly totalPaise: number;
+  readonly totalInWords: string;
+  readonly note?: string;
+}
+
+export interface BillingSummary {
+  readonly account: BillingAccount | null;
+  readonly history: readonly {
+    readonly id: string;
+    readonly delta: number;
+    readonly reason: "purchase" | "attempt" | "grant" | "refund";
+    readonly attemptId: string | null;
+    readonly paymentId: string | null;
+    readonly note: string | null;
+    readonly at: string;
+  }[];
+  readonly invoices: readonly InvoiceSummary[];
+  readonly checkout: { readonly available: boolean; readonly keyId: string | null };
+  readonly supplier: { readonly legalName: string; readonly stateCode: string } | null;
+}
+
+export interface BillingOrder {
+  readonly orderId: string;
+  readonly keyId: string;
+  readonly currency: "INR";
+  readonly credits: number;
+  readonly taxablePaise: number;
+  readonly taxPaise: number;
+  readonly amountPaise: number;
+  readonly supplierName: string;
 }

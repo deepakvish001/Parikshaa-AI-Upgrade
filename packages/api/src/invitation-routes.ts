@@ -266,6 +266,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         }),
         response: {
           200: z.object({ token: z.string(), attemptId: z.string(), resumed: z.boolean() }),
+          402: S.errorResponse.describe("out_of_credits: the organisation's prepaid credits have run out."),
           428: z.object({ error: z.literal("consent_required"), notice: noticeSchema }),
           403: z.object({ error: z.literal("not_open_yet"), opensAt: z.string(), closesAt: z.string() }),
           404: S.errorResponse,

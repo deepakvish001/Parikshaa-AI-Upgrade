@@ -24,6 +24,7 @@
     "test": "vitest run",
     "openapi": "node dist/generate-openapi.js",
     "admin": "node dist/admin-cli.js",
+    "billing": "node dist/billing-cli.js",
     "verify-all": "node dist/verify-all-cli.js"
   },
   "dependencies": {

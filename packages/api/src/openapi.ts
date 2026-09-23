@@ -1,9 +1,10 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { IdentityStore, InvigilationStore, InvitationStore, LedgerStore, PrivacyStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, IdentityStore, InvigilationStore, InvitationStore, LedgerStore, PrivacyStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
 import { PrivacyService } from "./privacy.js";
+import { BillingService } from "./billing.js";
 import { InvitationService } from "./invitation-service.js";
 import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
@@ -56,6 +57,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     greenhouse,
     invigilation: new InvigilationService({ store, invitations: invitationStore, invigilation: new InvigilationStore(unusable), exams: service }),
     privacy: new PrivacyService({ store, privacy: new PrivacyStore(unusable), invitations: invitationStore, identity, exams: service }),
+    billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

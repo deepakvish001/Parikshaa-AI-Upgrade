@@ -8,6 +8,7 @@ import {
   InvitationStore,
   LedgerStore,
   PrivacyStore,
+  BillingStore,
   QuestionBank,
   DataKeys,
   migrate,
@@ -21,6 +22,9 @@ import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
 import { InvitationService } from "../invitation-service.js";
 import { PrivacyService } from "../privacy.js";
+import { BillingService } from "../billing.js";
+import type { Supplier } from "../gst.js";
+import { FakeRazorpay } from "../razorpay.js";
 import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
@@ -41,6 +45,13 @@ export const TOKEN_SECRET = "a".repeat(40);
 export const PUBLIC_URL = "https://exam.test";
 /** Every API test seals, as production does. */
 export const DATA_KEY = Buffer.alloc(32, 9).toString("base64");
+/** Parikshaa as the tests' supplier: registered in Karnataka. */
+export const SUPPLIER: Supplier = {
+  legalName: "Parikshaa Assessments Pvt Ltd",
+  gstin: "29AAGCP4401A1ZW",
+  address: "12 Residency Road, Bengaluru 560025",
+  sac: "998399",
+};
 
 /**
  * A migrated, empty database.
@@ -72,6 +83,8 @@ export interface Wiring {
   readonly identity: IdentityStore;
   readonly service: ExamService;
   readonly privacy: PrivacyService;
+  readonly billing: BillingService;
+  readonly razorpay: FakeRazorpay;
   readonly app: FastifyInstance;
 }
 
@@ -90,13 +103,25 @@ export async function wire(
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
   const identity = new IdentityStore(sql);
+  let billing: BillingService | undefined;
   const service = new ExamService({
     store,
     identity,
+    meter: { consume: (org, attempt) => billing!.consume(org, attempt), refund: (org, attempt) => billing!.refund(org, attempt) },
     client: options.client,
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.newId === undefined ? {} : { newId: options.newId }),
     ...(options.runner === undefined ? {} : { runner: options.runner }),
+  });
+  const razorpay = new FakeRazorpay();
+  billing = new BillingService({
+    store,
+    billing: new BillingStore(sql),
+    identity,
+    exams: service,
+    gateway: razorpay,
+    supplier: SUPPLIER,
+    ...(options.now === undefined ? {} : { now: options.now }),
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);
   const invitationStore = new InvitationStore(sql);
@@ -144,6 +169,7 @@ export async function wire(
       ...(options.now === undefined ? {} : { now: options.now }),
     }),
     privacy,
+    billing,
     tokens,
     auth: new StaffAuth(identity),
     identity,
@@ -151,7 +177,7 @@ export async function wire(
     ...options.server,
   });
   await app.ready();
-  return { store, identity, service, privacy, app, handlers: integrations.handlers };
+  return { store, identity, service, privacy, billing, razorpay, app, handlers: integrations.handlers };
 }
 
 export async function addOrganisation(identity: IdentityStore, id: string, name = id): Promise<OrgId> {

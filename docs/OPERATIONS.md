@@ -175,6 +175,46 @@ older than the organisation's retention period are erased. Set
 `RETENTION_WORKER=off` on API-only nodes, as with the delivery worker.
 Nothing is erased for an organisation that has not set its privacy notice.
 
+## Billing
+
+Plans are set by the operator, not the customer:
+
+```bash
+export DATABASE_URL=postgres://parikshaa_app:…@db/parikshaa   # the runtime role is enough
+npm run billing -w @parikshaa/api -- plan acme prepaid 50        # ₹50 an attempt + GST
+npm run billing -w @parikshaa/api -- grant acme 25 "pilot drive"
+npm run billing -w @parikshaa/api -- show acme
+```
+
+An organisation with no plan is not metered. A prepaid one starts no attempt
+without a credit; its owner buys more on the console's Billing page.
+
+**Selling credits** needs Razorpay and the supplier the invoices name:
+
+| Variable | |
+|---|---|
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | From the Razorpay dashboard (API keys). Test keys start `rzp_test_`. |
+| `RAZORPAY_WEBHOOK_SECRET` | The secret set on the webhook below. |
+| `PARIKSHAA_SUPPLIER_NAME`, `_GSTIN`, `_ADDRESS` | The registered legal name, GSTIN and address. The GSTIN is checked at boot. |
+| `PARIKSHAA_SUPPLIER_SAC` | Default `998399`; confirm with your accountant. |
+
+In the Razorpay dashboard, add a webhook to
+`https://<your host>/api/billing/razorpay/webhook` for `order.paid`, with the
+same secret. It credits a payment whose buyer closed the tab before Checkout
+returned; without it, such a payment is credited only when they come back.
+Payments must be captured automatically (the dashboard's default for Checkout).
+
+**Invoiced organisations** are billed monthly, in arrears, for the attempts
+their ledgers show as started in that month (IST). Run it on the 1st:
+
+```bash
+npm run billing -w @parikshaa/api -- invoice-all 2026-10
+```
+
+It issues each invoiced organisation's invoice once; running it again changes
+nothing. Invoices are numbered in one series per financial year and appear on
+each owner's Billing page to print.
+
 ## The hardening suites
 
 `packages/e2e` holds three runs against a real Postgres, each also in CI

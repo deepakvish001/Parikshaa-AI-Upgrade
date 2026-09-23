@@ -8,6 +8,7 @@ import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { IntegrationsPanel } from "./components/Integrations.tsx";
 import { PrivacyPanel } from "./components/Privacy.tsx";
+import { BillingPanel } from "./components/Billing.tsx";
 import { LivePanel } from "./components/Live.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
@@ -30,6 +31,7 @@ type View =
   | { readonly name: "audit" }
   | { readonly name: "integrations" }
   | { readonly name: "privacy" }
+  | { readonly name: "billing" }
   | { readonly name: "account" };
 
 /**
@@ -258,6 +260,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
     { view: { name: "integrations" }, label: "Integrations", permission: "org:manage" },
     { view: { name: "privacy" }, label: "Privacy", permission: "org:manage" },
+    { view: { name: "billing" }, label: "Billing", permission: "org:manage" },
   ];
 
   return (
@@ -431,6 +434,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "audit" ? <AuditPanel client={client} /> : null}
       {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
       {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
+      {view.name === "billing" ? <BillingPanel client={client} /> : null}
       {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
     </main>
   );

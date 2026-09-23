@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { assemble, hashPassword } from "@parikshaa/api";
-import { fakeModel } from "@parikshaa/api/testing";
+import { FakeRazorpay, fakeModel } from "@parikshaa/api/testing";
 import { connect } from "@parikshaa/store";
 import { appUrl, DATA_KEY, resetDatabase, SECRET } from "./database.js";
 
@@ -23,6 +23,9 @@ const { app } = assemble({
   client: fakeModel({ latencyMs: Number.parseInt(process.env["E2E_MODEL_LATENCY_MS"] ?? "300", 10) }).client,
   secret: SECRET,
   dataKey: DATA_KEY,
+  // Razorpay without Razorpay: the browser suite's Checkout signs with the fake's key secret.
+  gateway: new FakeRazorpay(),
+  supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru", sac: "998399" },
   publicUrl: process.env["PUBLIC_URL"] ?? `http://localhost:${port}`,
   server: {
     clients: {
