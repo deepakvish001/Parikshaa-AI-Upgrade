@@ -59,3 +59,65 @@ jobs:
           push: false
           cache-from: type=gha,scope=runner
           cache-to: type=gha,mode=max,scope=runner
+
+  # ROADMAP §13: the product in real browsers against a real Postgres, then
+  # killed mid-write, then under load. Slower than `check`, so its own job.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The roles the harnesses expect. The owner may terminate the runtime
+      # role's connections, which the chaos run does on purpose.
+      - name: Database and roles
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE parikshaa_owner LOGIN PASSWORD 'owner-e2e'" \
+            -c "CREATE ROLE parikshaa_app LOGIN PASSWORD 'app-e2e'" \
+            -c "GRANT pg_signal_backend TO parikshaa_owner" \
+            -c "CREATE DATABASE parikshaa_e2e OWNER parikshaa_owner"
+
+      - run: npm run build && npm run build:clients && npm run build -w @parikshaa/e2e
+
+      - run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: packages/e2e
+
+      - run: npx playwright test
+        working-directory: packages/e2e
+
+      - run: npm run chaos -w @parikshaa/e2e -- 60 3
+
+      # A smaller cohort than the documented 1,000-candidate run, to fit a CI
+      # runner's two cores; fails on any error or broken chain.
+      - run: npm run load -w @parikshaa/e2e -- 300 1 500 8
+
+      - name: Restore drill
+        run: |
+          SOURCE_URL=postgres://parikshaa_owner:owner-e2e@localhost:5432/parikshaa_e2e \
+          ADMIN_URL=postgres://postgres:postgres@localhost:5432/postgres \
+          ./scripts/restore-drill.sh
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: packages/e2e/playwright-report
+          retention-days: 7

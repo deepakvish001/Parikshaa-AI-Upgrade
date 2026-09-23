@@ -257,16 +257,17 @@ export class InvitationService {
     if (exam === null) throw new InvalidInvitation();
 
     const claim = await this.#o.invitations.claimAttempt(scope, invitation.id, this.#newId());
-    if (claim.claimed) {
-      await this.#o.exams.startInvited(
-        orgId,
-        invitation.id,
-        exam.id as ExamId,
-        candidateId(invitation.candidateRef),
-        claim.attemptId as AttemptId,
-        invitation.hardClose ? closes : null,
-      );
-    }
+    // Every redemption makes sure the attempt is started, not only the first:
+    // if the first died between claiming the id and starting the attempt, this
+    // one finishes the job instead of leaving the candidate locked out.
+    await this.#o.exams.startInvited(
+      orgId,
+      invitation.id,
+      exam.id as ExamId,
+      candidateId(invitation.candidateRef),
+      claim.attemptId as AttemptId,
+      invitation.hardClose ? closes : null,
+    );
 
     // Long enough for the attempt, however late it started; the link issues
     // another whenever this one runs out.

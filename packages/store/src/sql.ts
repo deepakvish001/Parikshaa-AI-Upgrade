@@ -1,3 +1,4 @@
+import pg from "pg";
 /**
  * A minimal SQL surface.
  *
@@ -22,7 +23,7 @@ export interface SqlExecutor {
 }
 
 // --- adapters --------------------------------------------------------------
-// Typed structurally so this package does not depend on either driver.
+// PGlite is typed structurally, so only the tests depend on it.
 
 interface PGliteQueryable {
   query<Row>(query: string, params?: unknown[]): Promise<{ rows: Row[] }>;
@@ -81,55 +82,100 @@ function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
   };
 }
 
-interface PostgresJsQueryable {
-  unsafe(query: string, params?: unknown[]): PromiseLike<unknown>;
-}
-
-interface PostgresJsRoot extends PostgresJsQueryable {
-  begin<T>(cb: (tx: PostgresJsTransaction) => T | Promise<T>): PromiseLike<unknown>;
-}
-
-interface PostgresJsTransaction extends PostgresJsQueryable {
-  savepoint<T>(cb: (tx: PostgresJsTransaction) => T | Promise<T>): PromiseLike<unknown>;
-}
-
-async function unsafeRows<Row>(
-  sql: PostgresJsQueryable,
-  text: string,
-  params: readonly unknown[],
-): Promise<Row[]> {
-  return (await sql.unsafe(text, [...params])) as Row[];
+/**
+ * A pool of connections to a real Postgres, with the production driver,
+ * node-postgres. `end` closes it.
+ */
+export interface Database extends SqlExecutor {
+  end(): Promise<void>;
 }
 
 /**
- * Adapter for `postgres` (porsager), the production driver.
+ * Open a pool with node-postgres.
  *
- * A nested transaction becomes a savepoint, which is how that driver models
- * one — so a store method that opens a transaction stays correct when it is
- * called from inside another.
+ * Chosen over postgres.js, which this code used first, after the chaos run
+ * (ROADMAP §13) terminated the database's connections under a running server:
+ * postgres.js 3.4.9 threw from inside its socket handling, outside any promise,
+ * and took the whole process down with it — so a failover would have taken
+ * every API instance down at once. It also serialized jsonb parameters a second
+ * time, storing every exam as a JSON string. node-postgres sends JSON text as
+ * it is, as PGlite does, and reports a lost connection as a failed query.
+ *
+ * A connection lost while idle, or while checked out for a transaction, is an
+ * `error` event rather than a rejected promise; unhandled, Node treats it as
+ * fatal. Both are handled here, and passed to `onError` to be logged.
  */
-export function postgresJsExecutor(sql: PostgresJsRoot): SqlExecutor {
+export function connect(
+  url: string,
+  options: {
+    readonly max?: number;
+    readonly idleTimeoutMs?: number;
+    readonly connectTimeoutMs?: number;
+    readonly onError?: (error: Error) => void;
+  } = {},
+): Database {
+  const pool = new pg.Pool({
+    connectionString: url,
+    max: options.max ?? 10,
+    idleTimeoutMillis: options.idleTimeoutMs ?? 30_000,
+    connectionTimeoutMillis: options.connectTimeoutMs ?? 10_000,
+  });
+  const onError = options.onError ?? (() => undefined);
+  pool.on("error", onError);
+
   return {
-    query: (text, params = []) => unsafeRows(sql, text, params),
+    async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
+      return (await pool.query(text, [...params])).rows as Row[];
+    },
     async exec(text: string): Promise<void> {
-      // No parameters, so this runs on the simple protocol and may contain
-      // several statements.
-      await sql.unsafe(text);
+      // No parameters: the simple protocol, which accepts several statements.
+      await pool.query(text);
     },
     async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-      return (await sql.begin((tx) => fn(postgresJsTransactionExecutor(tx)))) as T;
+      const client = await pool.connect();
+      client.on("error", onError);
+      let broken: Error | undefined;
+      try {
+        await client.query("BEGIN");
+        const result = await fn(pgTransactionExecutor(client));
+        await client.query("COMMIT");
+        return result;
+      } catch (error) {
+        try {
+          await client.query("ROLLBACK");
+        } catch (rollbackFailed) {
+          // The connection itself is gone: do not return it to the pool.
+          broken = rollbackFailed instanceof Error ? rollbackFailed : new Error(String(rollbackFailed));
+        }
+        throw error;
+      } finally {
+        client.removeListener("error", onError);
+        client.release(broken);
+      }
     },
+    end: () => pool.end(),
   };
 }
 
-function postgresJsTransactionExecutor(tx: PostgresJsTransaction): SqlExecutor {
+function pgTransactionExecutor(client: pg.PoolClient): SqlExecutor {
   return {
-    query: (text, params = []) => unsafeRows(tx, text, params),
+    async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
+      return (await client.query(text, [...params])).rows as Row[];
+    },
     async exec(text: string): Promise<void> {
-      await tx.unsafe(text);
+      await client.query(text);
     },
     async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>): Promise<T> {
-      return (await tx.savepoint((inner) => fn(postgresJsTransactionExecutor(inner)))) as T;
+      const name = `parikshaa_sp_${++savepointCounter}`;
+      await client.query(`SAVEPOINT ${name}`);
+      try {
+        const result = await fn(pgTransactionExecutor(client));
+        await client.query(`RELEASE SAVEPOINT ${name}`);
+        return result;
+      } catch (error) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+        throw error;
+      }
     },
   };
 }

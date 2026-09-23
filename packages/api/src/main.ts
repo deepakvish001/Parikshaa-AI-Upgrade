@@ -1,18 +1,10 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
-import postgres from "postgres";
 import { HttpCodeRunner } from "@parikshaa/runner";
-import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, QuestionBank, postgresJsExecutor } from "@parikshaa/store";
-import { DeliveryWorker, Msg91Sender, SmtpMailer } from "./delivery.js";
-import { AttemptTokens } from "./auth.js";
-import { InviteCodes } from "./invite-codes.js";
-import { InvitationService } from "./invitation-service.js";
-import { buildIntegrations } from "./integrations.js";
-import { ResultsService } from "./results.js";
-import { buildServer } from "./server.js";
-import { ExamService } from "./service.js";
-import { StaffAuth } from "./staff-auth.js";
+import { connect } from "@parikshaa/store";
+import { assemble } from "./assemble.js";
+import { Msg91Sender, SmtpMailer } from "./delivery.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
 function required(name: string): string {
@@ -26,26 +18,24 @@ function required(name: string): string {
 async function main(): Promise<void> {
   // Connect as the runtime role (parikshaa_app in docker-compose), not the
   // schema owner: row-level security binds the runtime role, and the owner
-  // would bypass it.
-  const sql = postgres(required("DATABASE_URL"));
-  const executor = postgresJsExecutor(sql);
-  const store = new LedgerStore(executor);
-  const identity = new IdentityStore(executor);
+  // would bypass it. One pool per instance: size it so instances ×
+  // DATABASE_POOL_MAX stays under the server's max_connections, with room for
+  // migrations and a psql session.
+  // A connection the database drops is replaced on the next query; it is
+  // logged, by type only, and never takes the process down.
+  let connectionLost: (error: Error) => void = () => undefined;
+  const sql = connect(required("DATABASE_URL"), {
+    max: Number.parseInt(process.env["DATABASE_POOL_MAX"] ?? "20", 10),
+    idleTimeoutMs: 60_000,
+    connectTimeoutMs: 10_000,
+    onError: (error) => connectionLost(error),
+  });
 
   // Code questions need the runner service; without it they can be answered
   // but not run, and grading them waits until it is configured.
   const runnerUrl = process.env["RUNNER_URL"];
   const runner =
     runnerUrl === undefined || runnerUrl === "" ? undefined : new HttpCodeRunner(runnerUrl, required("RUNNER_TOKEN"));
-
-  const service = new ExamService({
-    store,
-    identity,
-    ...(runner === undefined ? {} : { runner }),
-    // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
-    // profile from the environment.
-    client: new Anthropic(),
-  });
 
   // Built client bundles, when they are present beside the server. In
   // development the Vite dev servers proxy to this process instead.
@@ -54,61 +44,37 @@ async function main(): Promise<void> {
     process.env["CONSOLE_ROOT"] ?? fileURLToPath(new URL("../../console/dist", import.meta.url));
   const clients = existsSync(web) && existsSync(consoleRoot) ? { web, console: consoleRoot } : undefined;
 
-  const tokenSecret = required("ATTEMPT_TOKEN_SECRET");
-  const tokens = new AttemptTokens(tokenSecret);
-  const invitationStore = new InvitationStore(executor);
-  const invitations = new InvitationService({
-    exams: service,
-    store,
-    invitations: invitationStore,
-    codes: new InviteCodes(tokenSecret),
-    tokens,
-    // Where candidates open their links. Required: a link to the wrong host
-    // reaches nobody, and one to localhost reaches everybody's own machine.
-    publicUrl: required("PUBLIC_URL"),
-  });
-
-  // Webhooks and Greenhouse. Their secrets are derived from ATTEMPT_TOKEN_SECRET,
-  // so rotating that secret rotates every webhook secret and Greenhouse key too.
-  const integrations = buildIntegrations({
-    sql: executor,
-    store,
-    invitationStore,
-    invitations,
-    exams: service,
-    secret: tokenSecret,
-    publicUrl: required("PUBLIC_URL"),
-  });
-
-  const app = buildServer({
-    service,
-    invitations,
-    results: new ResultsService({ store, invitations: invitationStore, exams: service }),
-    webhooks: integrations.webhooks,
-    greenhouse: integrations.greenhouse,
-    tokens,
-    auth: new StaffAuth(identity),
-    identity,
-    bank: new QuestionBank(executor),
-    trustProxy: process.env["TRUST_PROXY"] === "true",
-    ...(clients === undefined ? {} : { clients }),
-  });
-
   // Delivery: email over SMTP and SMS through MSG91, each optional. Without
   // one, messages for that channel are recorded as skipped, with the reason,
   // and links can still be exported and handed out.
   const smtpUrl = process.env["SMTP_URL"];
   const msg91Key = process.env["MSG91_AUTH_KEY"];
-  const worker = new DeliveryWorker({
-    outbox: new OutboxStore(executor),
-    invitations: invitationStore,
-    store,
-    identity,
-    link: (orgId, invitationId) => invitations.link(orgId, invitationId),
+
+  const { app, worker } = assemble({
+    sql,
+    ...(runner === undefined ? {} : { runner }),
+    // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
+    // profile from the environment.
+    client: new Anthropic(),
+    // Attempt tokens, invitation codes, webhook secrets and Greenhouse keys all
+    // derive from this, so rotating it rotates every one of them.
+    secret: required("ATTEMPT_TOKEN_SECRET"),
+    // Where candidates open their links. Required: a link to the wrong host
+    // reaches nobody, and one to localhost reaches everybody's own machine.
+    publicUrl: required("PUBLIC_URL"),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
-    handlers: integrations.handlers,
+    server: {
+      trustProxy: process.env["TRUST_PROXY"] === "true",
+      // JSON lines on stdout, one per request; LOG_LEVEL=silent turns them off.
+      log: { level: process.env["LOG_LEVEL"] ?? "info" },
+      ...(clients === undefined ? {} : { clients }),
+    },
   });
+
+  connectionLost = (error) =>
+    app.log.warn({ err: { type: error.name, code: (error as { code?: unknown }).code } }, "database connection lost");
+
   // Every instance runs a worker; the outbox's SKIP LOCKED claims keep them
   // from sending anything twice. Set DELIVERY_WORKER=off to run API-only nodes.
   let delivering: ReturnType<typeof setInterval> | undefined;
@@ -119,14 +85,15 @@ async function main(): Promise<void> {
       busy = true;
       worker
         .tick()
-        .catch((error: unknown) => process.stderr.write(`delivery: ${error instanceof Error ? error.message : String(error)}\n`))
+        // By type only: a failed claim's message can quote a row.
+        .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "delivery tick failed"))
         .finally(() => (busy = false));
     }, 5_000);
   }
 
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);
   await app.listen({ port, host: "0.0.0.0" });
-  process.stdout.write(`parikshaa listening on :${port}\n`);
+  app.log.info({ port }, "listening");
 
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, () => {

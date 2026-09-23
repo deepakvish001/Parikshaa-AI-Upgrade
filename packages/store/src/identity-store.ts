@@ -85,6 +85,12 @@ export class IdentityStore {
     return { id, name, monthlySpendCapMicroUsd: null };
   }
 
+  /** Every organisation's id, for tooling that walks the whole database. */
+  async organisationIds(): Promise<readonly OrgId[]> {
+    const rows = await this.#sql.query<{ id: string }>(`SELECT id FROM organisations ORDER BY id`);
+    return rows.map((r) => r.id as OrgId);
+  }
+
   async getOrganisation(id: OrgId): Promise<Organisation | null> {
     const rows = await this.#sql.query<{ id: string; name: string; monthly_spend_cap_micro_usd: number | string | null }>(
       `SELECT id, name, monthly_spend_cap_micro_usd FROM organisations WHERE id = $1`,

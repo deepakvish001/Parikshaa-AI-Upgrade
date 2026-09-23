@@ -1,6 +1,7 @@
+import { randomUUID } from "node:crypto";
 import fastifyStatic from "@fastify/static";
 import fastifySwagger from "@fastify/swagger";
-import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
+import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
@@ -23,6 +24,7 @@ import { registerIntegrationRoutes } from "./integration-routes.js";
 import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
+import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
 import { LoginThrottle, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
@@ -52,6 +54,22 @@ export interface ServerOptions {
    * across origins to get wrong.
    */
   readonly clients?: { readonly web: string; readonly console: string };
+  /**
+   * Structured request logs. Off unless given. Each line names the route
+   * pattern, status, duration and organisation — never a body, a query string,
+   * a header or an error message, since any of those can carry an answer, a
+   * token or someone's email address (see `observability.test.ts`).
+   */
+  readonly log?: { readonly level?: string; readonly stream?: { write(line: string): void } };
+  /** Per-organisation and per-attempt request rates; `false` turns limiting off. */
+  readonly rateLimits?: { readonly organisation: RateLimit; readonly attempt: RateLimit } | false;
+}
+
+declare module "fastify" {
+  interface FastifyRequest {
+    /** The organisation a request acted for, once authenticated: for the log line. */
+    orgId?: string;
+  }
 }
 
 const INSTITUTION = ["Institution"];
@@ -84,7 +102,21 @@ export const errors = {
  */
 export function buildServer(options: ServerOptions): FastifyInstance {
   const app = Fastify({
-    logger: false,
+    logger:
+      options.log === undefined
+        ? false
+        : {
+            level: options.log.level ?? "info",
+            ...(options.log.stream === undefined ? {} : { stream: options.log.stream }),
+            // Belt and braces: nothing below logs these, and if a future line does, they are masked.
+            redact: {
+              paths: ["req.headers", "req.body", "req.query", "*.authorization", "*.password", "*.token", "*.answer", "*.reply", "*.email"],
+              censor: "[redacted]",
+            },
+          },
+    // One line per request, written below, instead of Fastify's own pair, which include the URL.
+    logController: new LogController({ disableRequestLogging: true }),
+    genReqId: () => randomUUID(),
     // Both clients call the API under `/api`, which the Vite dev servers strip
     // before proxying. Served from this process there is no proxy, so the
     // prefix is stripped here instead; without it every client request in a
@@ -147,6 +179,38 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     transform: jsonSchemaTransform,
   });
 
+  const limits = options.rateLimits ?? DEFAULT_LIMITS;
+  const limiters =
+    limits === false ? null : { organisation: new RateLimiter(limits.organisation), attempt: new RateLimiter(limits.attempt) };
+
+  /** Refuse with 429 when `key` has spent its bucket. */
+  const limited = async (reply: FastifyReply, kind: "organisation" | "attempt", key: string): Promise<boolean> => {
+    const verdict = limiters?.[kind].take(key) ?? { ok: true as const };
+    if (verdict.ok) return false;
+    await reply
+      .code(429)
+      .header("retry-after", String(verdict.retryAfterSeconds))
+      .send({ error: "rate_limited", message: `Too many requests; try again in ${verdict.retryAfterSeconds}s` });
+    return true;
+  };
+
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("x-request-id", request.id);
+  });
+  // The route *pattern*, never the URL: a URL can carry a token or an invitation code.
+  app.addHook("onResponse", async (request, reply) => {
+    request.log.info(
+      {
+        method: request.method,
+        route: request.routeOptions.url ?? "(no route)",
+        status: reply.statusCode,
+        ms: Math.round(reply.elapsedTime),
+        ...(request.orgId === undefined ? {} : { org: request.orgId }),
+      },
+      "request",
+    );
+  });
+
   const bearer = (request: FastifyRequest): string | null => {
     const header = request.headers.authorization;
     if (typeof header !== "string" || !header.startsWith("Bearer ")) return null;
@@ -171,10 +235,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       await reply.code(401).send({ error: "staff_auth_required" });
       return null;
     }
+    request.orgId = actor.orgId;
     if (permission !== null && !can(actor, permission)) {
       await reply.code(403).send({ error: "forbidden", message: `This account does not have ${permission}` });
       return null;
     }
+    if (await limited(reply, "organisation", actor.orgId)) return null;
     return actor;
   };
 
@@ -187,15 +253,19 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       await reply.code(401).send({ error: "attempt_token_required" });
       return null;
     }
+    let claims: AttemptClaims;
     try {
-      return await tokens.verify(token);
+      claims = await tokens.verify(token);
     } catch {
       await reply.code(401).send({ error: "invalid_attempt_token" });
       return null;
     }
+    request.orgId = claims.orgId;
+    if (await limited(reply, "attempt", claims.attemptId)) return null;
+    return claims;
   };
 
-  app.setErrorHandler(async (error, _request, reply) => {
+  app.setErrorHandler(async (error, request, reply) => {
     if (error instanceof AttemptError) {
       // 410 for an expired attempt: the window is gone, not merely a bad
       // request against the current state.
@@ -251,6 +321,20 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         .code(status)
         .send({ error: typeof code === "string" ? code : "bad_request", message: (error as Error).message });
     }
+    // The message is left out: a database error quotes the row it tripped on,
+    // which can be a roll number or an email. The type, code and call stack
+    // are enough to find the fault.
+    const failure = error as Error & { code?: unknown };
+    request.log.error(
+      {
+        err: {
+          type: failure.name,
+          ...(typeof failure.code === "string" ? { code: failure.code } : {}),
+          stack: (failure.stack ?? "").split("\n").slice(1, 12).join("\n"),
+        },
+      },
+      "unhandled error",
+    );
     return reply.code(500).send({ error: "internal_error" });
   });
 

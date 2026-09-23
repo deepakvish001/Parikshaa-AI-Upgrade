@@ -221,6 +221,20 @@ export class LedgerStore {
     );
   }
 
+  /**
+   * Create the attempt if it does not exist yet. For starts that may be retried
+   * after a failure part-way — an invitation claims its attempt id before the
+   * attempt exists, so a crash between the two must be finishable.
+   */
+  async ensureAttempt(scope: Scope, id: AttemptId, examId: ExamId, candidateId: CandidateId): Promise<void> {
+    await this.#scoped(scope, (tx) =>
+      tx.query(
+        `INSERT INTO attempts (org_id, id, exam_id, candidate_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
+        [scope.orgId, id, examId, candidateId],
+      ),
+    );
+  }
+
   /** Record that the candidate's page checked in. Operational state, not evidence. */
   async touch(scope: Scope, attemptId: AttemptId, at: Timestamp): Promise<void> {
     await this.#scoped(scope, (tx) =>
@@ -396,6 +410,15 @@ export class LedgerStore {
       );
       return rows[0]?.hash ?? GENESIS_HASH;
     });
+  }
+
+  /** Every attempt in the organisation, oldest first: for walking all of its chains. */
+  async attemptIds(scope: Scope): Promise<readonly AttemptId[]> {
+    return this.#scoped(scope, async (tx) =>
+      (await tx.query<{ id: string }>(`SELECT id FROM attempts WHERE org_id = $1 ORDER BY created_at, id`, [scope.orgId])).map(
+        (r) => r.id as AttemptId,
+      ),
+    );
   }
 
   /**

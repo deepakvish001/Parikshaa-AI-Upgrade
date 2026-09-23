@@ -514,15 +514,27 @@ export class ExamService {
     const exam = await this.#store.loadExam(scope, examId);
     if (exam === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
 
-    await this.#store.createAttempt(scope, attemptId, examId, candidateId);
-    await this.#store.append(scope, attemptId, {
-      type: "attempt_started",
-      attemptId,
-      examId,
-      candidateId,
-      questionIds: resolvePaper(exam, attemptId),
-      ...(closesAt === null ? {} : { closesAt }),
-    });
+    // Idempotent, so that a redemption can finish a start an earlier one began
+    // and did not complete: the invitation already names this attempt.
+    await this.#store.ensureAttempt(scope, attemptId, examId, candidateId);
+    try {
+      await this.#store.append(
+        scope,
+        attemptId,
+        {
+          type: "attempt_started",
+          attemptId,
+          examId,
+          candidateId,
+          questionIds: resolvePaper(exam, attemptId),
+          ...(closesAt === null ? {} : { closesAt }),
+        },
+        { guard: (events) => (events.length === 0 ? null : "already started") },
+      );
+    } catch (error) {
+      if (error instanceof AppendRefused) return;
+      throw error;
+    }
     await this.#store.appendAudit(scope, {
       actorKind: "system",
       actorId: null,
