@@ -50,7 +50,7 @@ async function main(): Promise<void> {
   const smtpUrl = process.env["SMTP_URL"];
   const msg91Key = process.env["MSG91_AUTH_KEY"];
 
-  const { app, worker } = assemble({
+  const { app, worker, privacy } = assemble({
     sql,
     ...(runner === undefined ? {} : { runner }),
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
@@ -62,6 +62,9 @@ async function main(): Promise<void> {
     // Where candidates open their links. Required: a link to the wrong host
     // reaches nobody, and one to localhost reaches everybody's own machine.
     publicUrl: required("PUBLIC_URL"),
+    // Wraps every attempt's data key (ROADMAP §11). Keep it outside the
+    // database and its backups, and never lose it: `openssl rand -base64 32`.
+    dataKey: required("PARIKSHAA_DATA_KEY"),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
     server: {
@@ -91,6 +94,19 @@ async function main(): Promise<void> {
     }, 5_000);
   }
 
+  // Retention (ROADMAP §11): hourly, erase closed attempts past their
+  // organisation's retention period. Idempotent across instances.
+  let retaining: ReturnType<typeof setInterval> | undefined;
+  if (process.env["RETENTION_WORKER"] !== "off") {
+    const sweep = () =>
+      privacy
+        .sweep()
+        .then((erased) => (erased > 0 ? app.log.info({ erased }, "retention sweep") : undefined))
+        .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "retention sweep failed"));
+    retaining = setInterval(sweep, 60 * 60 * 1000);
+    setTimeout(sweep, 60_000).unref();
+  }
+
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info({ port }, "listening");
@@ -98,6 +114,7 @@ async function main(): Promise<void> {
   for (const signal of ["SIGINT", "SIGTERM"] as const) {
     process.once(signal, () => {
       clearInterval(delivering);
+      clearInterval(retaining);
       void app.close().then(() => sql.end()).then(() => process.exit(0));
     });
   }

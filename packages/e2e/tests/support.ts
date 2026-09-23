@@ -4,8 +4,11 @@ import { expect, type APIRequestContext } from "@playwright/test";
 
 export const OWNER = { email: "owner@e2e.test", password: "e2e owner password, long enough" };
 
-export async function ownerToken(request: APIRequestContext): Promise<string> {
-  const res = await request.post("/api/auth/login", { data: OWNER });
+/** The owner of the second organisation, which has a privacy notice (ROADMAP §11). */
+export const PRIVATE_OWNER = { email: "owner@private.e2e.test", password: OWNER.password };
+
+export async function ownerToken(request: APIRequestContext, account: { email: string; password: string } = OWNER): Promise<string> {
+  const res = await request.post("/api/auth/login", { data: account });
   expect(res.status(), await res.text()).toBe(200);
   return (await res.json()).token as string;
 }
@@ -31,9 +34,9 @@ export const SHORT = {
 /** An exam open now, with `refs` invited to it. Each test gets its own, so tests can run side by side. */
 export async function seedSitting(
   request: APIRequestContext,
-  options: { refs?: readonly string[]; questions?: readonly object[]; vivaTriggerRatio?: number } = {},
+  options: { refs?: readonly string[]; questions?: readonly object[]; vivaTriggerRatio?: number; owner?: typeof OWNER } = {},
 ): Promise<Sitting> {
-  const token = await ownerToken(request);
+  const token = await ownerToken(request, options.owner);
   const headers = { authorization: `Bearer ${token}` };
   const examId = `e2e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const title = `Campus drive ${examId.slice(-6)}`;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, redeemInvitation } from "../api.ts";
+import { ApiError, redeemInvitation, type Notice } from "../api.ts";
 
 interface Props {
   readonly code: string;
@@ -10,6 +10,7 @@ interface Props {
 
 type Stage =
   | { readonly kind: "opening" }
+  | { readonly kind: "notice"; readonly notice: Notice }
   | { readonly kind: "early"; readonly opensAt: string }
   | { readonly kind: "closed"; readonly closesAt: string }
   | { readonly kind: "invalid" }
@@ -29,12 +30,13 @@ const ist = (iso: string) =>
 export function InviteGate({ code, onOpened, onForget }: Props) {
   const [stage, setStage] = useState<Stage>({ kind: "opening" });
 
-  const open = useCallback(async () => {
+  const open = useCallback(async (consent?: { noticeVersion: number }) => {
     setStage({ kind: "opening" });
     try {
-      onOpened((await redeemInvitation(code)).token);
+      onOpened((await redeemInvitation(code, "/api", consent)).token);
     } catch (error) {
       if (!(error instanceof ApiError)) return setStage({ kind: "offline" });
+      if (error.code === "consent_required") return setStage({ kind: "notice", notice: error.detail["notice"] as Notice });
       if (error.code === "not_open_yet") return setStage({ kind: "early", opensAt: String(error.detail["opensAt"]) });
       if (error.code === "window_closed") return setStage({ kind: "closed", closesAt: String(error.detail["closesAt"]) });
       setStage({ kind: "invalid" });
@@ -57,6 +59,7 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
     <main className="gate">
       <h1>Parikshaa</h1>
       {stage.kind === "opening" ? <p className="notice">Opening your test…</p> : null}
+      {stage.kind === "notice" ? <PrivacyNotice notice={stage.notice} onAgree={() => void open({ noticeVersion: stage.notice.version })} /> : null}
       {stage.kind === "early" ? (
         <section className="card" aria-label="Not open yet">
           <p style={{ marginTop: 0 }}>Your test opens on</p>
@@ -91,5 +94,56 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
         </section>
       ) : null}
     </main>
+  );
+}
+
+/**
+ * The organisation's privacy notice, before anything starts (DPDP Act, s.5–6).
+ * Reading it costs no test time: the clock starts only once it is agreed to.
+ */
+function PrivacyNotice({ notice, onAgree }: { notice: Notice; onAgree: () => void }) {
+  const [agreed, setAgreed] = useState(false);
+  return (
+    <section className="card notice-card" aria-labelledby="privacy-heading">
+      <h2 id="privacy-heading" style={{ marginTop: 0 }}>
+        Before you start: your data
+      </h2>
+      <p>
+        <strong>{notice.controllerName}</strong> is responsible for the data collected while you take this test. Your
+        time has not started yet.
+      </p>
+      <h3>Why</h3>
+      <p>{notice.purpose}</p>
+      <h3>What is collected</h3>
+      <ul>
+        {notice.collected.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <h3>How long it is kept</h3>
+      <p>
+        {notice.retentionDays} days after you finish. After that it is erased: your answers and your details can no
+        longer be read by anyone.
+      </p>
+      <h3>Your rights</h3>
+      <ul>
+        {notice.rights.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p>
+        Grievance officer: {notice.grievance.name}, <a href={`mailto:${notice.grievance.email}`}>{notice.grievance.email}</a>
+      </p>
+      <label className="inline">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} /> I have read this and
+        agree to my data being used as it describes
+      </label>
+      <div className="row">
+        <button type="button" disabled={!agreed} onClick={onAgree}>
+          Agree and start the test
+        </button>
+      </div>
+      <p className="notice">Notice version {notice.version}</p>
+    </section>
   );
 }

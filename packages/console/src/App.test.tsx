@@ -75,6 +75,17 @@ const results: Results = {
   },
 };
 
+const notice = {
+  version: 1,
+  hash: "ab".repeat(32),
+  controllerName: "Acme Technologies Pvt Ltd",
+  purpose: "To assess candidates for engineering roles.",
+  retentionDays: 90,
+  grievance: { name: "Priya Menon", email: "privacy@acme.test" },
+  collected: ["Your answers."],
+  rights: ["Have it erased."],
+};
+
 const report: CandidateReport = {
   exam: { id: "exam-1", title: "Algorithms" },
   candidate: { ref: "CS001", name: "Ananya Iyer", email: "ananya@college.test" },
@@ -282,6 +293,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     voidAttempt: vi.fn(async () => ({})),
     grade: vi.fn(async () => ({ total: 11 })),
     assess: vi.fn(async () => ({})),
+    privacy: vi.fn(async () => ({ settings: null, notice: null })),
+    savePrivacy: vi.fn(async (draft: object) => ({ settings: { ...draft, noticeVersion: 1, updatedAt: "" }, notice })),
+    eraseAttempt: vi.fn(async () => ({ erased: true })),
     ...overrides,
   } as unknown as ConsoleClient;
 }
@@ -1076,5 +1090,64 @@ describe("the live sitting", () => {
     expect(screen.queryByRole("region", { name: "Tell the room" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reopen…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Extend…" })).toBeNull();
+  });
+});
+
+describe("privacy (ROADMAP §11)", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("lets an owner set the notice and retention, and shows what candidates will see", async () => {
+    let saved = false;
+    const client = stubClient({
+      privacy: vi.fn(async () => (saved ? { settings: { ...notice, grievanceName: "Priya Menon", grievanceEmail: "privacy@acme.test", noticeVersion: 1, updatedAt: "" }, notice } : { settings: null, notice: null })),
+    });
+    vi.mocked(client.savePrivacy).mockImplementation(async () => {
+      saved = true;
+      return { settings: { controllerName: "", grievanceName: "", grievanceEmail: "", purpose: "", retentionDays: 90, noticeVersion: 1, updatedAt: "" }, notice };
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Privacy" }));
+
+    expect(await screen.findByText(/Not set yet/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Organisation responsible for the data"), "Acme Technologies Pvt Ltd");
+    await userEvent.type(screen.getByLabelText("Grievance officer"), "Priya Menon");
+    await userEvent.type(screen.getByLabelText("Grievance officer's email"), "privacy@acme.test");
+    await userEvent.type(screen.getByLabelText("Why the data is collected"), "To assess candidates for engineering roles.");
+    await userEvent.clear(screen.getByLabelText("Erase personal data after (days)"));
+    await userEvent.type(screen.getByLabelText("Erase personal data after (days)"), "90");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(client.savePrivacy).toHaveBeenCalledWith({
+      controllerName: "Acme Technologies Pvt Ltd",
+      grievanceName: "Priya Menon",
+      grievanceEmail: "privacy@acme.test",
+      purpose: "To assess candidates for engineering roles.",
+      retentionDays: 90,
+    });
+    const preview = await screen.findByRole("region", { name: "What candidates see" });
+    expect(preview).toHaveTextContent("Kept for 90 days after the attempt closes, then erased.");
+  });
+
+  it("erases a candidate's data only once their reference is typed back", async () => {
+    window.history.replaceState(null, "", "/console/?report=a2");
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Erase personal data…" }));
+
+    const erase = screen.getByRole("button", { name: "Erase permanently" });
+    await userEvent.type(screen.getByLabelText("Type CS001 to confirm"), "CS00");
+    expect(erase).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Type CS001 to confirm"), "1");
+    await userEvent.click(erase);
+
+    expect(client.eraseAttempt).toHaveBeenCalledWith("a2");
+  });
+
+  it("is not offered to someone who does not manage the organisation", async () => {
+    window.history.replaceState(null, "", "/console/?report=a2");
+    renderApp(<App client={stubClient({ me: vi.fn(async () => who("reviewer", ["exam:read", "attempt:read", "attempt:review"])) })} />);
+    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Erase personal data…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
   });
 });

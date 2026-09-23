@@ -543,7 +543,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           <span className="notice">You cannot change your answers after this.</span>
         </div>
       ) : ledger.data !== undefined ? (
-        <Receipt ledger={ledger.data} />
+        <Receipt ledger={ledger.data} myData={() => client.myData()} />
       ) : null}
     </main>
   );

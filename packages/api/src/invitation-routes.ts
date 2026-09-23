@@ -10,6 +10,8 @@ import type {
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { ImportRejected, InvalidInvitation, OutsideWindow, type InvitationService } from "./invitation-service.js";
+import { ConsentRequired } from "./privacy.js";
+import { noticeSchema } from "./privacy-routes.js";
 import * as S from "./schemas.js";
 import type { Actor, LoginThrottle, Permission } from "./staff-auth.js";
 
@@ -254,10 +256,17 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         tags: ["Candidate"],
         summary: "Open an invitation link",
         description:
-          "Starts the candidate's attempt the first time, inside their window, and resumes it every time after — from any device — until the window closes. Answers 403 not_open_yet before the window, 410 window_closed after it.",
-        body: z.object({ code: z.string().min(1).max(512) }),
+          "Starts the candidate's attempt the first time, inside their window, and resumes it every time after — from any device — until the window closes. Answers 403 not_open_yet before the window, 410 window_closed after it, and 428 consent_required with the privacy notice when the organisation has one and this first opening did not agree to its current version.",
+        body: z.object({
+          code: z.string().min(1).max(512),
+          consent: z
+            .object({ noticeVersion: z.number().int().min(1) })
+            .optional()
+            .describe("Agreement to the organisation's privacy notice, by version. Needed on the first opening when the organisation has one."),
+        }),
         response: {
           200: z.object({ token: z.string(), attemptId: z.string(), resumed: z.boolean() }),
+          428: z.object({ error: z.literal("consent_required"), notice: noticeSchema }),
           403: z.object({ error: z.literal("not_open_yet"), opensAt: z.string(), closesAt: z.string() }),
           404: S.errorResponse,
           410: z.object({ error: z.literal("window_closed"), opensAt: z.string(), closesAt: z.string() }),
@@ -270,9 +279,10 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
       }
       try {
-        const opened = await invitations.redeem(request.body.code);
+        const opened = await invitations.redeem(request.body.code, request.body.consent);
         return reply.send(opened);
       } catch (error) {
+        if (error instanceof ConsentRequired) return reply.code(428).send({ error: "consent_required", notice: error.notice });
         if (error instanceof InvalidInvitation) {
           throttle.failed(request.ip, "invitation");
           return reply.code(404).send({ error: "invalid_invitation", message: error.message });

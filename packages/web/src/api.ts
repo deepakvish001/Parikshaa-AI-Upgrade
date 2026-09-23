@@ -52,15 +52,45 @@ export interface Opened {
   readonly resumed: boolean;
 }
 
+/** An organisation's privacy notice (DPDP Act), agreed to before the clock starts. */
+export interface Notice {
+  readonly version: number;
+  readonly hash: string;
+  readonly controllerName: string;
+  readonly purpose: string;
+  readonly retentionDays: number;
+  readonly grievance: { readonly name: string; readonly email: string };
+  readonly collected: readonly string[];
+  readonly rights: readonly string[];
+}
+
+/** Everything held about the candidate for this attempt, as they may download it. */
+export interface CandidateData {
+  readonly generatedAt: string;
+  readonly organisation: string;
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly you: { readonly reference: string; readonly name: string; readonly email: string | null; readonly phone: string | null } | null;
+  readonly consent: { readonly noticeVersion: number; readonly noticeHash: string; readonly at: number } | null;
+  readonly erased: boolean;
+  readonly answers: readonly { readonly questionId: string; readonly answer: string; readonly at: number }[];
+  readonly followUps: readonly { readonly questionId: string; readonly question: string; readonly reply: string | null; readonly at: number }[];
+  readonly timeline: readonly { readonly at: number; readonly event: string }[];
+}
+
 /**
  * Open an invitation link. Throws an {@link ApiError}: `not_open_yet` (403) and
- * `window_closed` (410) carry `opensAt` and `closesAt` in `detail`.
+ * `window_closed` (410) carry `opensAt` and `closesAt` in `detail`;
+ * `consent_required` (428) carries the privacy notice as `detail.notice`.
  */
-export async function redeemInvitation(code: string, baseUrl = "/api"): Promise<Opened> {
+export async function redeemInvitation(
+  code: string,
+  baseUrl = "/api",
+  consent?: { readonly noticeVersion: number },
+): Promise<Opened> {
   const response = await fetch(`${baseUrl.replace(/\/$/, "")}/invitations/redeem`, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ code }),
+    body: JSON.stringify(consent === undefined ? { code } : { code, consent }),
   });
   const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
   if (!response.ok) throw new ApiError(response.status, typeof body["error"] === "string" ? body["error"] : "request_failed", body);
@@ -106,6 +136,11 @@ export class ParikshaaClient {
 
   ledger(): Promise<CandidateLedger> {
     return this.#request<CandidateLedger>("/attempts/me/ledger");
+  }
+
+  /** Everything held about the candidate: details, consent, answers and replies. */
+  myData(): Promise<CandidateData> {
+    return this.#request<CandidateData>("/attempts/me/data");
   }
 
   async saveAnswer(questionId: string, answer: string): Promise<void> {

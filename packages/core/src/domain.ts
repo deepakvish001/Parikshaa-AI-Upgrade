@@ -289,6 +289,31 @@ export type ExamEvent =
       readonly extraMs: number;
       readonly reason: string;
       readonly decidedBy: StaffAttribution;
+    }
+  | {
+      /**
+       * The candidate read the organisation's privacy notice and agreed to it
+       * before their clock started (DPDP Act, s.6). `noticeHash` is the SHA-256
+       * of the notice exactly as shown, so what they agreed to can be proved
+       * later even after the notice has changed.
+       */
+      readonly type: "consent_given";
+      readonly attemptId: AttemptId;
+      readonly noticeVersion: number;
+      readonly noticeHash: string;
+    }
+  | {
+      /**
+       * The attempt's personal data was erased: its data key destroyed, so the
+       * sealed answers, replies and identity in this chain can no longer be
+       * read. The chain itself — and the scores — stay, and still verify.
+       * `request` is the candidate asking; `retention` is the organisation's
+       * retention period running out.
+       */
+      readonly type: "data_erased";
+      readonly attemptId: AttemptId;
+      readonly reason: "request" | "retention";
+      readonly decidedBy?: StaffAttribution;
     };
 
 export type ExamEventType = ExamEvent["type"];

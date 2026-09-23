@@ -15,6 +15,7 @@ import {
   type Timestamp,
 } from "@parikshaa/core";
 import { enqueue } from "./outbox-store.js";
+import { isPersonal, openEvent, sealEvent, type DataKeys } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
@@ -114,14 +115,53 @@ export class LedgerStore {
   readonly #sql: SqlExecutor;
   readonly #clock: () => Timestamp;
   readonly #newId: () => string;
+  readonly #keys: DataKeys | null;
 
+  /**
+   * With `keys`, every new attempt gets its own data key and the personal
+   * fields of its ledger are sealed under it (see `sealing.ts`). Without, they
+   * are stored in the clear, as before sealing existed.
+   */
   constructor(
     sql: SqlExecutor,
-    options: { readonly clock?: () => Timestamp; readonly newId?: () => string } = {},
+    options: { readonly clock?: () => Timestamp; readonly newId?: () => string; readonly keys?: DataKeys } = {},
   ) {
     this.#sql = sql;
     this.#clock = options.clock ?? (() => Date.now());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
+    this.#keys = options.keys ?? null;
+  }
+
+  /** Give a new attempt its data key, in the transaction that creates it. */
+  async #newKey(tx: SqlExecutor, scope: Scope, id: AttemptId): Promise<void> {
+    if (this.#keys === null) return;
+    await tx.query(`INSERT INTO attempt_keys (org_id, attempt_id, wrapped_key) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [
+      scope.orgId,
+      id,
+      this.#keys.newWrapped(scope.orgId, id),
+    ]);
+  }
+
+  /**
+   * The attempt's data key: a Buffer, `null` if it was erased, `undefined` if
+   * it never had one (created before sealing, or without keys configured).
+   */
+  async #key(tx: SqlExecutor, scope: Scope, id: AttemptId): Promise<Buffer | null | undefined> {
+    const rows = await tx.query<{ wrapped_key: string | null }>(
+      `SELECT wrapped_key FROM attempt_keys WHERE org_id = $1 AND attempt_id = $2`,
+      [scope.orgId, id],
+    );
+    const row = rows[0];
+    if (row === undefined) return undefined;
+    if (row.wrapped_key === null) return null;
+    if (this.#keys === null) throw new Error("This ledger is sealed and no data key (PARIKSHAA_DATA_KEY) is configured");
+    return this.#keys.unwrap(scope.orgId, id, row.wrapped_key);
+  }
+
+  /** An entry as the application reads it: personal fields opened, or `[erased]`. */
+  #open(entry: LedgerEntry, key: Buffer | null | undefined): LedgerEntry {
+    if (key === undefined) return entry;
+    return Object.freeze({ ...entry, event: openEvent(entry.event, key) });
   }
 
   /** Run `fn` in a transaction that carries the scope into the database. */
@@ -224,14 +264,15 @@ export class LedgerStore {
   }
 
   async createAttempt(scope: Scope, id: AttemptId, examId: ExamId, candidateId: CandidateId): Promise<void> {
-    await this.#scoped(scope, (tx) =>
-      tx.query(`INSERT INTO attempts (org_id, id, exam_id, candidate_id) VALUES ($1, $2, $3, $4)`, [
+    await this.#scoped(scope, async (tx) => {
+      await tx.query(`INSERT INTO attempts (org_id, id, exam_id, candidate_id) VALUES ($1, $2, $3, $4)`, [
         scope.orgId,
         id,
         examId,
         candidateId,
-      ]),
-    );
+      ]);
+      await this.#newKey(tx, scope, id);
+    });
   }
 
   /**
@@ -240,12 +281,13 @@ export class LedgerStore {
    * attempt exists, so a crash between the two must be finishable.
    */
   async ensureAttempt(scope: Scope, id: AttemptId, examId: ExamId, candidateId: CandidateId): Promise<void> {
-    await this.#scoped(scope, (tx) =>
-      tx.query(
+    await this.#scoped(scope, async (tx) => {
+      await tx.query(
         `INSERT INTO attempts (org_id, id, exam_id, candidate_id) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
         [scope.orgId, id, examId, candidateId],
-      ),
-    );
+      );
+      await this.#newKey(tx, scope, id);
+    });
   }
 
   /** Record that the candidate's page checked in. Operational state, not evidence. */
@@ -316,71 +358,186 @@ export class LedgerStore {
     event: ExamEvent,
     options: { readonly guard?: (events: readonly ExamEvent[]) => string | null } = {},
   ): Promise<LedgerEntry> {
+    return this.#scoped(scope, (tx) => this.#appendIn(tx, scope, attemptId, event, options.guard));
+  }
+
+  async #appendIn(
+    tx: SqlExecutor,
+    scope: Scope,
+    attemptId: AttemptId,
+    event: ExamEvent,
+    guard?: (events: readonly ExamEvent[]) => string | null,
+  ): Promise<LedgerEntry> {
+    const locked = await tx.query<{ id: string }>(
+      `SELECT id FROM attempts WHERE org_id = $1 AND id = $2 FOR UPDATE`,
+      [scope.orgId, attemptId],
+    );
+    if (locked.length === 0) {
+      throw new Error(`No such attempt: ${attemptId}`);
+    }
+
+    // Fetched lazily: only a guard or a personal event needs it.
+    let key: Buffer | null | undefined | "unread" = "unread";
+    const keyOf = async () => (key === "unread" ? (key = await this.#key(tx, scope, attemptId)) : key);
+
+    if (guard !== undefined) {
+      const rows = await tx.query<{ preimage: string }>(
+        `SELECT preimage FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
+        [scope.orgId, attemptId],
+      );
+      // A guard judges what the events say, so it reads them opened.
+      const sealed = rows.map((row) => (JSON.parse(row.preimage) as { event: ExamEvent }).event);
+      const opening = await keyOf();
+      const events = opening === undefined ? sealed : sealed.map((e) => openEvent(e, opening));
+      const refusal = guard(events);
+      if (refusal !== null) throw new AppendRefused(refusal);
+    }
+
+    const head = await tx.query<{ seq: number; hash: string }>(
+      `SELECT seq, hash FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq DESC LIMIT 1`,
+      [scope.orgId, attemptId],
+    );
+
+    // Personal fields are sealed before hashing, so the chain commits to the
+    // ciphertext and survives the key's erasure.
+    let recorded = event;
+    if (isPersonal(event)) {
+      const sealing = await keyOf();
+      if (sealing === null) throw new AppendRefused("This attempt's personal data has been erased");
+      if (sealing !== undefined) recorded = sealEvent(event, sealing);
+    }
+
+    const previous = head[0];
+    const draft = {
+      seq: previous === undefined ? 0 : Number(previous.seq) + 1,
+      timestamp: this.#clock(),
+      event: recorded,
+      prevHash: previous?.hash ?? GENESIS_HASH,
+    } as const;
+
+    const preimage = entryPreimage(draft);
+    const hash = hashPreimage(preimage);
+
+    await tx.query(
+      `INSERT INTO exam_ledger (org_id, attempt_id, seq, ts, event_type, event, preimage, prev_hash, hash)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        scope.orgId,
+        attemptId,
+        draft.seq,
+        draft.timestamp,
+        event.type,
+        // The queryable copy holds what was hashed: sealed, like the preimage.
+        JSON.stringify(recorded),
+        preimage,
+        draft.prevHash,
+        hash,
+      ],
+    );
+
+    // Announced in the same transaction: an integration hears of every
+    // start, submission, grade and voiding that happened, and of none that
+    // did not. The worker fans it out to webhooks and connectors (§7).
+    const announced = ANNOUNCED[event.type];
+    if (announced !== undefined) {
+      await enqueue(tx, scope.orgId, [{ kind: "webhook", purpose: "event", subject: { event: announced, attemptId, seq: draft.seq } }], this.#newId);
+    }
+
+    return Object.freeze({ ...draft, hash });
+  }
+
+  /**
+   * Erase an attempt's personal data (ROADMAP §11), in one transaction:
+   * destroy its data key, so the sealed fields of its ledger can never be read
+   * again; delete its unsent drafts; strip the invitation of name, email,
+   * phone and reference; stop anything still queued to reach the candidate;
+   * and record `data_erased` in the chain, which goes on verifying.
+   *
+   * Returns false if it was already erased. `guard` refuses, as for
+   * {@link append}, when the attempt is in a state that may not be erased.
+   */
+  async erase(
+    scope: Scope,
+    attemptId: AttemptId,
+    reason: "request" | "retention",
+    options: { readonly decidedBy?: { userId: string; name: string }; readonly guard?: (events: readonly ExamEvent[]) => string | null } = {},
+  ): Promise<boolean> {
     return this.#scoped(scope, async (tx) => {
-      const locked = await tx.query<{ id: string }>(
-        `SELECT id FROM attempts WHERE org_id = $1 AND id = $2 FOR UPDATE`,
+      const current = await tx.query<{ erased_at: unknown }>(
+        `SELECT erased_at FROM attempts WHERE org_id = $1 AND id = $2 FOR UPDATE`,
         [scope.orgId, attemptId],
       );
-      if (locked.length === 0) {
-        throw new Error(`No such attempt: ${attemptId}`);
-      }
+      if (current[0] === undefined) throw new Error(`No such attempt: ${attemptId}`);
+      if (current[0].erased_at !== null) return false;
 
-      if (options.guard !== undefined) {
-        const rows = await tx.query<{ preimage: string }>(
-          `SELECT preimage FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
-          [scope.orgId, attemptId],
-        );
-        const events = rows.map((row) => (JSON.parse(row.preimage) as { event: ExamEvent }).event);
-        const refusal = options.guard(events);
-        if (refusal !== null) throw new AppendRefused(refusal);
-      }
-
-      const head = await tx.query<{ seq: number; hash: string }>(
-        `SELECT seq, hash FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq DESC LIMIT 1`,
-        [scope.orgId, attemptId],
+      await this.#appendIn(
+        tx,
+        scope,
+        attemptId,
+        { type: "data_erased", attemptId, reason, ...(options.decidedBy === undefined ? {} : { decidedBy: options.decidedBy }) },
+        options.guard,
       );
-
-      const previous = head[0];
-      const draft = {
-        seq: previous === undefined ? 0 : Number(previous.seq) + 1,
-        timestamp: this.#clock(),
-        event,
-        prevHash: previous?.hash ?? GENESIS_HASH,
-      } as const;
-
-      const preimage = entryPreimage(draft);
-      const hash = hashPreimage(preimage);
-
+      const at = new Date(this.#clock()).toISOString();
+      // An attempt from before sealing has no key row: its ledger was never
+      // sealed, which is what the erased marker on the attempt records.
       await tx.query(
-        `INSERT INTO exam_ledger (org_id, attempt_id, seq, ts, event_type, event, preimage, prev_hash, hash)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [
-          scope.orgId,
-          attemptId,
-          draft.seq,
-          draft.timestamp,
-          event.type,
-          JSON.stringify(event),
-          preimage,
-          draft.prevHash,
-          hash,
-        ],
+        `INSERT INTO attempt_keys (org_id, attempt_id, wrapped_key, erased_at) VALUES ($1, $2, NULL, $3)
+         ON CONFLICT (org_id, attempt_id) DO UPDATE SET wrapped_key = NULL, erased_at = EXCLUDED.erased_at`,
+        [scope.orgId, attemptId, at],
       );
-
-      // Announced in the same transaction: an integration hears of every
-      // start, submission, grade and voiding that happened, and of none that
-      // did not. The worker fans it out to webhooks and connectors (§7).
-      const announced = ANNOUNCED[event.type];
-      if (announced !== undefined) {
-        await enqueue(tx, scope.orgId, [{ kind: "webhook", purpose: "event", subject: { event: announced, attemptId, seq: draft.seq } }], this.#newId);
+      await tx.query(`DELETE FROM answer_drafts WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      await tx.query(
+        `UPDATE attempts SET candidate_id = 'erased', erased_at = $3, erasure_reason = $4 WHERE org_id = $1 AND id = $2`,
+        [scope.orgId, attemptId, at, reason],
+      );
+      const invitations = await tx.query<{ id: string }>(
+        `UPDATE invitations SET name = '', email = NULL, phone = NULL, source = NULL, candidate_ref = 'erased-' || id
+          WHERE org_id = $1 AND attempt_id = $2 RETURNING id`,
+        [scope.orgId, attemptId],
+      );
+      for (const { id } of invitations) {
+        await tx.query(`UPDATE greenhouse_interviews SET profile_url = NULL WHERE org_id = $1 AND invitation_id = $2`, [scope.orgId, id]);
+        await tx.query(
+          `UPDATE outbox SET status = 'skipped', last_error = 'personal data erased'
+            WHERE org_id = $1 AND kind IN ('email', 'sms') AND status = 'pending' AND subject->>'invitationId' = $2`,
+          [scope.orgId, id],
+        );
       }
+      return true;
+    });
+  }
 
-      return Object.freeze({ ...draft, hash });
+  /**
+   * Attempts whose retention period has run out: nothing written to them for
+   * the organisation's `retention_days`, not yet erased. Only for an
+   * organisation that has set its privacy settings. `open` marks one never
+   * submitted — abandoned — which has to be closed before it can be erased.
+   */
+  async dueForErasure(scope: Scope, now: Timestamp, limit = 100): Promise<readonly { readonly attemptId: AttemptId; readonly open: boolean }[]> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ id: string; lifecycle: string | null }>(
+        `SELECT a.id, ${lifecycleSql("a.org_id", "a.id")} AS lifecycle
+           FROM attempts a JOIN privacy_settings p ON p.org_id = a.org_id
+          WHERE a.org_id = $1 AND a.erased_at IS NULL
+            AND (SELECT max(l.ts) FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id) < $2 - p.retention_days::bigint * 86400000
+          ORDER BY a.created_at LIMIT $3`,
+        [scope.orgId, now, limit],
+      );
+      return rows.map((r) => ({ attemptId: r.id as AttemptId, open: lifecycleState(r.lifecycle) === "in_progress" }));
     });
   }
 
   /** Load an attempt's chain, rebuilt from the stored preimages. */
   async load(scope: Scope, attemptId: AttemptId): Promise<readonly LedgerEntry[]> {
+    return (await this.loadBoth(scope, attemptId)).opened;
+  }
+
+  /**
+   * The chain exactly as hashed, personal fields still sealed: what a receipt
+   * carries and a verifier checks. Needs no key, so an auditor or a restore
+   * drill can check every chain without being able to read one.
+   */
+  async loadRecord(scope: Scope, attemptId: AttemptId): Promise<readonly LedgerEntry[]> {
     return this.#scoped(scope, async (tx) => {
       const rows = await tx.query<StoredRow>(
         `SELECT seq, ts, event, preimage, prev_hash, hash
@@ -388,6 +545,25 @@ export class LedgerStore {
         [scope.orgId, attemptId],
       );
       return rows.map(entryFromRow);
+    });
+  }
+
+  /**
+   * An attempt's chain both ways: `record`, exactly as hashed — what a receipt
+   * carries and a verifier checks — and `opened`, with personal fields
+   * decrypted for the application to use (or `[erased]`). Only `record`
+   * verifies against its hashes once anything in it was sealed.
+   */
+  async loadBoth(scope: Scope, attemptId: AttemptId): Promise<{ record: readonly LedgerEntry[]; opened: readonly LedgerEntry[] }> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<StoredRow>(
+        `SELECT seq, ts, event, preimage, prev_hash, hash
+           FROM exam_ledger WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
+        [scope.orgId, attemptId],
+      );
+      const record = rows.map(entryFromRow);
+      const key = await this.#key(tx, scope, attemptId);
+      return { record, opened: key === undefined ? record : record.map((e) => this.#open(e, key)) };
     });
   }
 
@@ -404,11 +580,22 @@ export class LedgerStore {
           ORDER BY a.created_at, l.attempt_id, l.seq`,
         [scope.orgId, examId],
       );
+      const wrapped = await tx.query<{ attempt_id: string; wrapped_key: string | null }>(
+        `SELECT k.attempt_id, k.wrapped_key FROM attempt_keys k JOIN attempts a ON a.org_id = k.org_id AND a.id = k.attempt_id
+          WHERE k.org_id = $1 AND a.exam_id = $2`,
+        [scope.orgId, examId],
+      );
+      const keys = new Map<string, Buffer | null>();
+      for (const k of wrapped) {
+        if (k.wrapped_key === null) keys.set(k.attempt_id, null);
+        else if (this.#keys === null) throw new Error("This ledger is sealed and no data key (PARIKSHAA_DATA_KEY) is configured");
+        else keys.set(k.attempt_id, this.#keys.unwrap(scope.orgId, k.attempt_id, k.wrapped_key));
+      }
       const chains = new Map<AttemptId, LedgerEntry[]>();
       for (const row of rows) {
         const id = row.attempt_id as AttemptId;
         const chain = chains.get(id) ?? [];
-        chain.push(entryFromRow(row));
+        chain.push(this.#open(entryFromRow(row), keys.has(id) ? keys.get(id)! : undefined));
         chains.set(id, chain);
       }
       return chains;

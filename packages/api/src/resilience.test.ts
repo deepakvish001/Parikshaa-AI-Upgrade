@@ -8,13 +8,14 @@ import {
   foldAttempt,
   orgId,
   questionId,
+  verifyChain,
   type Exam,
   type LedgerEntry,
 } from "@parikshaa/core";
-import { IdentityStore as StoreIdentity, LedgerStore, pgliteExecutor, type IdentityStore } from "@parikshaa/store";
+import { DataKeys, IdentityStore as StoreIdentity, LedgerStore, pgliteExecutor, staffScope, type IdentityStore } from "@parikshaa/store";
 import { parseReceipt, verifyReceipt, type Receipt } from "@parikshaa/verify";
 import { ExamService } from "./service.js";
-import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
+import { addOrganisation, addStaff, bearer, DATA_KEY, freshDatabase, signIn, wire } from "./testing/harness.js";
 
 /**
  * ROADMAP §2: nothing a candidate does is ever lost.
@@ -41,6 +42,7 @@ const exam = (id: string, allowRevision: boolean): Exam => ({
 let db: PGlite;
 let app: FastifyInstance;
 let identity: IdentityStore;
+let store: LedgerStore;
 let clock: number;
 let owner: string;
 let invigilator: string;
@@ -52,7 +54,7 @@ beforeEach(async () => {
     client: {} as unknown as Anthropic,
     now: () => clock,
   });
-  ({ app, identity } = wiring);
+  ({ app, identity, store } = wiring);
   const org = await addOrganisation(identity, "org-a", "Acme");
   await addStaff(identity, org, "owner@acme.test", "owner", "Asha");
   await addStaff(identity, org, "inv@acme.test", "invigilator", "Imran");
@@ -88,17 +90,24 @@ const commit = (token: string, question: string, answer: string) =>
   call("POST", token, "/attempts/me/answers", { questionId: question, answer });
 const state = async (token: string) => (await call("GET", token, "/attempts/me")).json();
 
-/** The sealed chain, as the candidate receives it once the attempt closes. */
-async function chain(token: string): Promise<LedgerEntry[]> {
+/**
+ * The chain, once the attempt closes: the candidate's receipt must verify,
+ * and what it records is read back opened, since answers are sealed in it.
+ */
+async function chain(token: string): Promise<readonly LedgerEntry[]> {
   const body = (await call("GET", token, "/attempts/me/ledger")).json();
   expect(body.sealed).toBe(true);
-  return body.entries.map((e: LedgerEntry & { type: string }) => ({
+  const record = body.entries.map((e: LedgerEntry & { type: string }) => ({
     seq: e.seq,
     timestamp: e.timestamp,
     event: e.event,
     prevHash: e.prevHash,
     hash: e.hash,
   }));
+  expect(verifyChain(record)).toEqual({ ok: true });
+  const opened = await store.load(staffScope(orgId("org-a")), (await state(token)).attemptId);
+  expect(opened.map((e) => e.hash)).toEqual(record.map((e: LedgerEntry) => e.hash));
+  return opened;
 }
 
 const answers = (entries: readonly LedgerEntry[]) =>
@@ -228,7 +237,7 @@ describe("closing an attempt commits what was typed", () => {
     }
     const sql = pgliteExecutor(db);
     const racing = new ExamService({
-      store: new HeldStore(sql, { clock: () => clock }),
+      store: new HeldStore(sql, { clock: () => clock, keys: new DataKeys(DATA_KEY) }),
       identity: new StoreIdentity(sql),
       client: {} as unknown as Anthropic,
       now: () => clock,

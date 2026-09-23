@@ -73,7 +73,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 525 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 559 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients
@@ -92,6 +92,7 @@ With Docker — one image serves the API and both clients:
 ```bash
 export POSTGRES_PASSWORD=... ANTHROPIC_API_KEY=... \
        ATTEMPT_TOKEN_SECRET=...   # at least 32 characters
+export PARIKSHAA_DATA_KEY=$(openssl rand -base64 32)  # seals answers; keep it apart from backups
 export PARIKSHAA_APP_PASSWORD=... # the API's database role; RLS binds it
 export RUNNER_TOKEN=...           # 32+ characters; the API's key to the code runner
 export PUBLIC_URL=https://exam.example.ac.in   # where candidates open their links
@@ -115,7 +116,7 @@ Without Docker:
 export DATABASE_URL=...            # Postgres 16+
 export ANTHROPIC_API_KEY=...       # or an `ant auth login` profile
 export ATTEMPT_TOKEN_SECRET=...
-
+export PARIKSHAA_DATA_KEY=...       # 32 bytes, base64: seals candidates' answers
 npm run build && npm run build:clients
 npm run migrate                    # as the schema owner
 PARIKSHAA_OWNER_PASSWORD=... npm run admin -w @parikshaa/api -- \

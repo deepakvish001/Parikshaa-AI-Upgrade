@@ -7,7 +7,9 @@ import {
   InvigilationStore,
   InvitationStore,
   LedgerStore,
+  PrivacyStore,
   QuestionBank,
+  DataKeys,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -18,6 +20,7 @@ import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
 import { InvitationService } from "../invitation-service.js";
+import { PrivacyService } from "../privacy.js";
 import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
@@ -36,6 +39,8 @@ import { StaffAuth, hashPassword } from "../staff-auth.js";
 export const PASSWORD = "correct horse battery staple";
 export const TOKEN_SECRET = "a".repeat(40);
 export const PUBLIC_URL = "https://exam.test";
+/** Every API test seals, as production does. */
+export const DATA_KEY = Buffer.alloc(32, 9).toString("base64");
 
 /**
  * A migrated, empty database.
@@ -66,6 +71,7 @@ export interface Wiring {
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
+  readonly privacy: PrivacyService;
   readonly app: FastifyInstance;
 }
 
@@ -82,7 +88,7 @@ export async function wire(
     readonly greenhouseHosts?: readonly string[];
   },
 ): Promise<Wiring> {
-  const store = new LedgerStore(sql, options.now === undefined ? {} : { clock: options.now });
+  const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
   const identity = new IdentityStore(sql);
   const service = new ExamService({
     store,
@@ -94,7 +100,16 @@ export async function wire(
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);
   const invitationStore = new InvitationStore(sql);
+  const privacy = new PrivacyService({
+    store,
+    privacy: new PrivacyStore(sql),
+    invitations: invitationStore,
+    identity,
+    exams: service,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const invitations = new InvitationService({
+    notice: (orgId) => privacy.noticeFor(orgId),
     exams: service,
     store,
     invitations: invitationStore,
@@ -128,6 +143,7 @@ export async function wire(
       exams: service,
       ...(options.now === undefined ? {} : { now: options.now }),
     }),
+    privacy,
     tokens,
     auth: new StaffAuth(identity),
     identity,
@@ -135,7 +151,7 @@ export async function wire(
     ...options.server,
   });
   await app.ready();
-  return { store, identity, service, app, handlers: integrations.handlers };
+  return { store, identity, service, privacy, app, handlers: integrations.handlers };
 }
 
 export async function addOrganisation(identity: IdentityStore, id: string, name = id): Promise<OrgId> {

@@ -156,6 +156,25 @@ under a second, 1,000 chains and 10,196 entries verified in 0.9 s, every
 table's row count matching. The first attempt at it is also how the backup-
 role requirement above was found.
 
+## The data key and retention (DPDP)
+
+`PARIKSHAA_DATA_KEY` — 32 random bytes, base64 (`openssl rand -base64 32`) —
+wraps every attempt's own data key. Candidates' answers, replies and
+references are sealed under those keys, so:
+
+- **Keep it out of the database and its backups.** A backup is only
+  erasure-proof if the key that opens it is held elsewhere: a secrets manager,
+  not an environment file next to the dump.
+- **Never lose it.** Without it no sealed ledger can be read again. The chains
+  still verify (`verify-all` needs no key), but the answers in them are gone.
+- It cannot be rotated in place yet: rotating means re-wrapping every
+  `attempt_keys` row, which is a migration to write when it is needed.
+
+Retention runs in every instance, hourly: closed attempts whose last entry is
+older than the organisation's retention period are erased. Set
+`RETENTION_WORKER=off` on API-only nodes, as with the delivery worker.
+Nothing is erased for an organisation that has not set its privacy notice.
+
 ## The hardening suites
 
 `packages/e2e` holds three runs against a real Postgres, each also in CI

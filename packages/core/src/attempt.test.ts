@@ -302,4 +302,32 @@ describe("foldAttempt", () => {
       expect(foldAttempt(chain(started, submitted, voided, reopened(5)))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
     });
   });
+
+  describe("consent and erasure (ROADMAP §11)", () => {
+    const consent: ExamEvent = { type: "consent_given", attemptId: A, noticeVersion: 2, noticeHash: "ab".repeat(32) };
+    const erased: ExamEvent = { type: "data_erased", attemptId: A, reason: "request" };
+    const graded: ExamEvent = { type: "attempt_graded", attemptId: A, total: 3 };
+
+    it("records the notice agreed to, before anything the candidate does", () => {
+      expect(project(chain(started, consent, answered())).consent).toEqual({ noticeVersion: 2, noticeHash: "ab".repeat(32) });
+      expect(project(chain(started)).consent).toBeNull();
+      expect(foldAttempt(chain(started, answered(), consent))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+      expect(foldAttempt(chain(started, consent, consent))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+    });
+
+    it("erases a closed attempt — graded or set aside too — and keeps its scores", () => {
+      const projection = project(chain(started, answered(), submitted, graded, erased));
+      expect(projection.erasedAt).not.toBeNull();
+      expect(projection.total).toBe(3);
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Sat by someone else, it turned out." };
+      expect(project(chain(started, submitted, voided, erased)).erasedAt).not.toBeNull();
+    });
+
+    it("never erases an open attempt, and nothing but a void follows erasure", () => {
+      expect(foldAttempt(chain(started, erased))).toMatchObject({ ok: false, reason: "not_submitted", seq: 1 });
+      expect(foldAttempt(chain(started, submitted, erased, graded))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Erased before it could be graded." };
+      expect(project(chain(started, submitted, erased, voided)).attempt.state).toBe("void");
+    });
+  });
 });

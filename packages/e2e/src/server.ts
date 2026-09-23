@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { assemble, hashPassword } from "@parikshaa/api";
 import { fakeModel } from "@parikshaa/api/testing";
 import { connect } from "@parikshaa/store";
-import { appUrl, resetDatabase, SECRET } from "./database.js";
+import { appUrl, DATA_KEY, resetDatabase, SECRET } from "./database.js";
 
 /**
  * The service as production runs it — `assemble`, a real Postgres as the
@@ -22,6 +22,7 @@ const { app } = assemble({
   sql,
   client: fakeModel({ latencyMs: Number.parseInt(process.env["E2E_MODEL_LATENCY_MS"] ?? "300", 10) }).client,
   secret: SECRET,
+  dataKey: DATA_KEY,
   publicUrl: process.env["PUBLIC_URL"] ?? `http://localhost:${port}`,
   server: {
     clients: {

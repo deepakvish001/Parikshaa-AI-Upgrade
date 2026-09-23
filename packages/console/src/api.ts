@@ -637,6 +637,19 @@ export class ConsoleClient {
     return this.#request(`/exams/${encodeURIComponent(examId)}/live?idleMinutes=${idleMinutes}`);
   }
 
+  privacy(): Promise<{ settings: PrivacySettings | null; notice: Notice | null }> {
+    return this.#request("/privacy");
+  }
+
+  savePrivacy(settings: PrivacyDraft): Promise<{ settings: PrivacySettings; notice: Notice }> {
+    return this.#request("/privacy", { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  /** Irreversible: destroys the attempt's data key. */
+  eraseAttempt(attemptId: string): Promise<{ erased: boolean }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/erase`, { method: "POST" });
+  }
+
   announce(examId: string, message: string): Promise<Announcement> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/announcements`, { method: "POST", body: JSON.stringify({ message }) });
   }
@@ -662,4 +675,29 @@ export class ConsoleClient {
       { method: "POST" },
     );
   }
+}
+
+/** What candidates are told before they start, and how long their data is kept (ROADMAP §11). */
+export interface PrivacyDraft {
+  readonly controllerName: string;
+  readonly grievanceName: string;
+  readonly grievanceEmail: string;
+  readonly purpose: string;
+  readonly retentionDays: number;
+}
+
+export interface PrivacySettings extends PrivacyDraft {
+  readonly noticeVersion: number;
+  readonly updatedAt: string;
+}
+
+export interface Notice {
+  readonly version: number;
+  readonly hash: string;
+  readonly controllerName: string;
+  readonly purpose: string;
+  readonly retentionDays: number;
+  readonly grievance: { readonly name: string; readonly email: string };
+  readonly collected: readonly string[];
+  readonly rights: readonly string[];
 }

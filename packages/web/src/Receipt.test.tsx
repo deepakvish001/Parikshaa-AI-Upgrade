@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { GENESIS_HASH, entryPreimage, webcryptoSha256, type LedgerEntry } from "@parikshaa/core/browser";
 import { Receipt } from "./components/Receipt.tsx";
 import type { CandidateLedger } from "./api.ts";
@@ -61,5 +61,29 @@ describe("Receipt", () => {
     // The head is still shown: pinning it now is what makes checking later mean
     // anything.
     expect(screen.getByTestId("head-hash")).toHaveTextContent("a".repeat(64));
+  });
+
+  it("offers the candidate a readable copy of their data once the attempt has closed", async () => {
+    const myData = vi.fn(async () => ({ answers: [] }) as never);
+    const saved: string[] = [];
+    // jsdom has no object URLs.
+    const created = vi.fn(() => "blob:x");
+    vi.stubGlobal("URL", Object.assign(URL, { createObjectURL: created, revokeObjectURL: () => undefined }));
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      saved.push(this.download);
+    });
+
+    render(<Receipt ledger={sealed(await chain(2))} myData={myData} />);
+    await userEvent.click(screen.getByRole("button", { name: "Download my data" }));
+
+    expect(myData).toHaveBeenCalledOnce();
+    expect(saved).toEqual(["parikshaa-my-data.json"]);
+    expect(created).toHaveBeenCalled();
+    vi.restoreAllMocks();
+  });
+
+  it("does not offer it while the attempt is open", () => {
+    render(<Receipt ledger={{ head: "a".repeat(64), length: 2, sealed: false, entries: null }} myData={async () => ({}) as never} />);
+    expect(screen.queryByRole("button", { name: "Download my data" })).toBeNull();
   });
 });

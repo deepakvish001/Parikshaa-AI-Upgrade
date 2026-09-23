@@ -379,6 +379,39 @@ and what to turn on.
 *Requires people and money, not code:* a penetration test, an ISO 27001 or SOC
 2 audit, and legal review of the DPA.
 
+**Status — DPDP built; the rest is not.** An owner sets the organisation's
+privacy notice — who is responsible, why the data is collected, the grievance
+officer, and a retention period — on the console's *Privacy* page. From then
+on a candidate opening their link reads the notice and agrees to it **before
+their clock starts**; the agreement goes into the ledger as `consent_given`
+with the notice's version and SHA-256, so what they agreed to stays provable
+after the wording changes. Changing the wording issues a new version.
+
+Erasure is crypto-shredding. Each attempt gets its own data key, wrapped by a
+key held outside the database (`PARIKSHAA_DATA_KEY`); what a candidate wrote,
+their replies to follow-ups, the follow-up questions about their answers and
+their reference are stored — in the ledger and in its queryable copy — only
+as AES-256-GCM ciphertext under it, bound to the attempt and field. The chain
+hashes the ciphertext. Erasing destroys the key: the chain still verifies,
+the scores stay, and nobody, including whoever holds a later backup, can read
+what was sealed. It also clears the invitation's name, email, phone and
+reference, deletes unsent drafts, stops queued messages, and records
+`data_erased` in the chain. An owner erases on request (typing the reference
+back to confirm); an hourly sweep erases closed attempts once the retention
+period has run out. The audit log, which cannot be erased, no longer records
+candidates' references. A candidate can download everything held about them —
+details, the notice they agreed to, their answers and replies, the timeline,
+no scores — from their receipt.
+
+What is deliberately not in it: a candidate cannot erase their own data from
+the page (they ask the grievance officer, as the notice says), and the
+receipt carries the sealed record, so it verifies but does not show their
+answers — "Download my data" does. Answers are sealed from here on. A ledger
+written before this change holds its answers in the clear and cannot be
+shredded: erasing it clears everything around it — invitation, drafts,
+queued messages — and records `data_erased`, but its entries stay readable.
+Data residency, CI secret scanning and the evidence pack are still to do.
+
 ## 12. Billing
 
 - Per-organisation metering of attempts and model spend.

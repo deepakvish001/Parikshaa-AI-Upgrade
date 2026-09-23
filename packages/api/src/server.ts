@@ -25,6 +25,8 @@ import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
 import type { InvigilationService } from "./invigilation.js";
 import { registerInvigilationRoutes } from "./invigilation-routes.js";
+import type { PrivacyService } from "./privacy.js";
+import { registerPrivacyRoutes } from "./privacy-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
@@ -44,6 +46,7 @@ export interface ServerOptions {
   readonly webhooks: WebhookService;
   readonly greenhouse: GreenhouseService;
   readonly invigilation: InvigilationService;
+  readonly privacy: PrivacyService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -159,6 +162,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
+        { name: "Privacy", description: "The DPDP Act: the notice candidates agree to, retention, and erasure." },
         {
           name: "Greenhouse",
           description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
@@ -278,7 +282,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -870,6 +874,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
     registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
+    registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
 
     registerAccountRoutes(routes, {
       service,

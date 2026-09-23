@@ -116,4 +116,44 @@ describe("an invitation link", () => {
 
     expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
   });
+
+  it("shows the privacy notice first, and starts only once it is agreed to", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const notice = {
+      version: 3,
+      hash: "ab".repeat(32),
+      controllerName: "Acme Technologies Pvt Ltd",
+      purpose: "To assess candidates for engineering roles.",
+      retentionDays: 90,
+      grievance: { name: "Priya Menon", email: "privacy@acme.test" },
+      collected: ["Your answers."],
+      rights: ["Have it erased."],
+    };
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (!url.endsWith("/invitations/redeem")) return json(state);
+      const body = JSON.parse(String(init?.body)) as { consent?: { noticeVersion: number } };
+      return body.consent?.noticeVersion === 3
+        ? json({ token: "eyJ.token", attemptId: "a1", resumed: false })
+        : json({ error: "consent_required", notice }, 428);
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Before you start: your data" })).toBeInTheDocument();
+    expect(screen.getByText("Acme Technologies Pvt Ltd")).toBeInTheDocument();
+    expect(screen.getByText(/90 days after you finish/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "privacy@acme.test" })).toHaveAttribute("href", "mailto:privacy@acme.test");
+    const start = screen.getByRole("button", { name: "Agree and start the test" });
+    expect(start).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /agree to my data being used/ }));
+    await userEvent.click(start);
+
+    expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/invitations/redeem",
+      expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC", consent: { noticeVersion: 3 } }) }),
+    );
+  });
 });

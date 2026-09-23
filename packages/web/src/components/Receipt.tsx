@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { checkChainAsync, webcryptoSha256 } from "@parikshaa/core/browser";
-import type { CandidateLedger } from "../api.ts";
+import type { CandidateData, CandidateLedger } from "../api.ts";
 
 interface Props {
   readonly ledger: CandidateLedger;
+  /** Everything held about the candidate, readable (DPDP Act, s.11). Offered once the attempt has closed. */
+  readonly myData?: () => Promise<CandidateData>;
 }
 
 /**
@@ -20,8 +22,31 @@ type CheckState =
   | { readonly status: "verified"; readonly count: number }
   | { readonly status: "failed"; readonly seq: number; readonly reason: string };
 
-export function Receipt({ ledger }: Props) {
+/** Offer `value` as a JSON file to save. */
+function save(value: unknown, name: string): void {
+  const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export function Receipt({ ledger, myData }: Props) {
   const [check, setCheck] = useState<CheckState>({ status: "idle" });
+  const [fetching, setFetching] = useState<"idle" | "busy" | "failed">("idle");
+
+  const downloadMyData = async () => {
+    if (myData === undefined) return;
+    setFetching("busy");
+    try {
+      save(await myData(), "parikshaa-my-data.json");
+      setFetching("idle");
+    } catch {
+      setFetching("failed");
+    }
+  };
 
   /**
    * Verify the record here, in the candidate's own browser.
@@ -44,15 +69,7 @@ export function Receipt({ ledger }: Props) {
     );
   };
 
-  const download = () => {
-    const blob = new Blob([JSON.stringify(ledger, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `parikshaa-receipt-${ledger.head?.slice(0, 12) ?? "attempt"}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  const download = () => save(ledger, `parikshaa-receipt-${ledger.head?.slice(0, 12) ?? "attempt"}.json`);
 
   return (
     <section className="card receipt" aria-label="Your record">
@@ -81,8 +98,24 @@ export function Receipt({ ledger }: Props) {
             {check.status === "checking" ? "Checking…" : "Check this record"}
           </button>
         )}
+        {myData !== undefined && ledger.entries !== null ? (
+          <button type="button" className="secondary" onClick={() => void downloadMyData()} disabled={fetching === "busy"}>
+            Download my data
+          </button>
+        ) : null}
         <span className="notice">{ledger.length} entries</span>
       </div>
+      {ledger.entries !== null ? (
+        <p className="notice">
+          What you wrote is sealed in this record, so that it can be erased without breaking it. &ldquo;Download my
+          data&rdquo; gives you a readable copy of everything held about you.
+        </p>
+      ) : null}
+      {fetching === "failed" ? (
+        <p className="error" role="status">
+          Could not fetch your data just now. Try again in a moment.
+        </p>
+      ) : null}
 
       {check.status === "verified" ? (
         <p className="saved" role="status">

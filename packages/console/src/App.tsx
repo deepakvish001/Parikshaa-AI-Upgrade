@@ -7,6 +7,7 @@ import { BankPanel } from "./components/Bank.tsx";
 import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { IntegrationsPanel } from "./components/Integrations.tsx";
+import { PrivacyPanel } from "./components/Privacy.tsx";
 import { LivePanel } from "./components/Live.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
@@ -28,6 +29,7 @@ type View =
   | { readonly name: "usage" }
   | { readonly name: "audit" }
   | { readonly name: "integrations" }
+  | { readonly name: "privacy" }
   | { readonly name: "account" };
 
 /**
@@ -255,6 +257,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
     { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
     { view: { name: "integrations" }, label: "Integrations", permission: "org:manage" },
+    { view: { name: "privacy" }, label: "Privacy", permission: "org:manage" },
   ];
 
   return (
@@ -383,7 +386,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
         />
       ) : null}
-      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} /> : null}
+      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} /> : null}
       {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
 
       {view.name === "attempts" && attempts.data !== undefined ? (
@@ -427,6 +430,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
       {view.name === "audit" ? <AuditPanel client={client} /> : null}
       {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
+      {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
       {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
     </main>
   );

@@ -70,6 +70,12 @@ function describe(event: ExamEvent): string {
       return `Time extended by ${Math.round(event.extraMs / 60_000)} min by ${event.decidedBy.name} — ${event.reason}`;
     case "attempt_reopened":
       return `Reopened by ${event.decidedBy.name}, with ${Math.round(event.extraMs / 60_000)} min more — ${event.reason}`;
+    case "consent_given":
+      return `Agreed to the privacy notice (version ${event.noticeVersion})`;
+    case "data_erased":
+      return event.reason === "request"
+        ? `Personal data erased at the candidate's request${event.decidedBy === undefined ? "" : `, by ${event.decidedBy.name}`}`
+        : "Personal data erased: the retention period ended";
     case "attempt_voided":
       return `Voided${event.decidedBy === undefined ? "" : ` by ${event.decidedBy.name}`} — ${event.reason}`;
   }
