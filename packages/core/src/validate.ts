@@ -194,6 +194,9 @@ export function validateExam(exam: Exam): ExamValidation {
       });
     }
     section.pool.forEach((question, j) => problems.push(...validateQuestion(question, `${at}.pool.${j}`)));
+    if (section.durationMs !== undefined && (!Number.isFinite(section.durationMs) || section.durationMs < 60_000)) {
+      problems.push({ path: `${at}.durationMs`, message: "A section's own time must be at least a minute." });
+    }
   });
 
   const { durationMs, vivaTriggerRatio } = exam.policy;

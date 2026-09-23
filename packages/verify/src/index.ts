@@ -70,6 +70,10 @@ function describe(event: ExamEvent): string {
       return `Time extended by ${Math.round(event.extraMs / 60_000)} min by ${event.decidedBy.name} — ${event.reason}`;
     case "attempt_reopened":
       return `Reopened by ${event.decidedBy.name}, with ${Math.round(event.extraMs / 60_000)} min more — ${event.reason}`;
+    case "section_started":
+      return `Section ${event.sectionId} started`;
+    case "section_closed":
+      return `Section ${event.sectionId} ${event.reason === "time_up" ? "closed: its time was up" : "left"}`;
     case "identity_captured":
       return "Photos of the candidate and their ID taken";
     case "identity_reviewed":

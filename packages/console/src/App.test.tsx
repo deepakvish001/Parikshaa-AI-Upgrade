@@ -850,6 +850,31 @@ describe("exams drawn from the bank", () => {
     ]);
   });
 
+  it("gives a section its own time, which makes the test go section by section", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Aptitude");
+    await userEvent.type(screen.getByLabelText("Question"), "Fixed question");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Add a section drawn per candidate" }));
+    const section = screen.getByRole("region", { name: "Section 1" });
+    await userEvent.type(within(section).getByLabelText("Section title"), "Quant");
+    await userEvent.click(within(section).getByRole("button", { name: "Add from bank" }));
+    const picker = await screen.findByRole("dialog", { name: "Add from the question bank" });
+    await userEvent.click(await within(picker).findByRole("button", { name: "Select all 2" }));
+    await userEvent.click(within(picker).getByRole("button", { name: "Add 2 questions" }));
+
+    await userEvent.type(within(section).getByLabelText("Own time (minutes)"), "15");
+    expect(within(section).getByText(/locked once left, and closes when its 15 minutes are up/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ sections: { durationMs?: number }[] }][] } }).mock.calls[0]![0];
+    expect(saved.sections[0]!.durationMs).toBe(15 * 60_000);
+  });
+
   it("copies an exam, which is how a sat exam is changed", async () => {
     const client = stubClient();
     renderApp(<App client={client} />);

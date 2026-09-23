@@ -780,6 +780,26 @@ export function buildServer(options: ServerOptions): FastifyInstance {
      * timestamp, not anything the client reports, is what reply latency is
      * measured from.
      */
+    routes.post(
+      "/attempts/me/sections/next",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Leave the current part and enter the next section",
+          description:
+            "For an exam whose sections have their own time. The part left is locked; the next section's clock starts now. A section whose time is up keeps only the drafts saved in time.",
+          security: [{ attemptToken: [] }],
+          response: { 200: z.object({ ok: z.literal(true) }), ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        await service.nextSection(claims);
+        return reply.send({ ok: true });
+      },
+    );
+
     routes.get(
       "/attempts/me/probe",
       {

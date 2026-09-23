@@ -119,6 +119,10 @@ export const examSchema = z.object({
         title: z.string(),
         pick: z.number().describe("How many of the pool each candidate draws."),
         pool: z.array(questionSchema).readonly(),
+        durationMs: z
+          .number()
+          .optional()
+          .describe("The section's own time. When any section has one, sections are taken in order and locked once left."),
       }),
     )
     .readonly()
@@ -298,6 +302,20 @@ export const candidateStateResponse = z.object({
   }),
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
   identityCaptured: z.boolean().describe("A proctored exam's identity photos have been taken; until then its questions wait."),
+  parts: z
+    .array(
+      z.object({
+        sectionId: z.string().nullable().describe("Null: the exam's fixed questions, taken first."),
+        title: z.string(),
+        durationMs: z.number().nullable(),
+        questionIds: z.array(z.string()).readonly(),
+        state: z.enum(["done", "current", "upcoming"]),
+        endsAt: z.number().nullable().describe("When the current part's own time is up."),
+      }),
+    )
+    .readonly()
+    .nullable()
+    .describe("A sectioned exam's parts, in order. Null: every question is open at once."),
   voidReason: z.string().nullable(),
   startedAt: z.number(),
   expiresAt: z.number().describe("When this attempt's window closes. Exam time, not a probe timer."),

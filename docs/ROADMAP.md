@@ -137,7 +137,7 @@ sections, sittings and years.
   edited — otherwise the ledger records answers to a question that no longer
   exists.
 
-**Status — built, with two pieces deferred.** Each organisation has a question
+**Status — built, with one piece deferred.** Each organisation has a question
 bank, filed by topic, difficulty and tags, searchable, and importable from CSV
 (what every spreadsheet exports), all or nothing with every bad row reported by
 its number. An exam can carry sections, each a pool of questions of which every
@@ -148,10 +148,17 @@ worth the same. Questions are *copied* from the bank into an exam, so editing
 the bank never changes an exam; a sat exam is frozen and is changed by cloning
 it.
 
-Deferred: **per-section timing** (a section with its own clock, locked once
-left) needs its own ledger event and a sequential candidate flow, and
-**Word import**, which needs a document parser and a convention for marking
-answers in prose. Neither blocks a campus hiring round.
+**Per-section timing** is built too. A section can carry its own time; the
+test is then taken in parts, in order — the fixed questions, then each section.
+Entering a section records `section_started` and starts its clock; leaving it
+or running out of time records `section_closed`, and it is locked from then
+on. Drafts saved before a section's time ran out are kept, as they are for the
+exam's own window. The candidate sees only the current part, its clock to the
+second, a warning before leaving a part for good, and a card to start the next
+section when they are ready.
+
+Deferred: **Word import**, which needs a document parser and a convention for
+marking answers in prose. It does not block a campus hiring round.
 
 ## 4. Coding assessment
 

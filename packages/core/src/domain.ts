@@ -166,6 +166,12 @@ export interface ExamSection {
   readonly title: string;
   readonly pick: number;
   readonly pool: readonly Question[];
+  /**
+   * The section's own clock (ROADMAP §3). When any section has one, the exam
+   * is taken in order: its fixed questions first, then each section, each
+   * locked once left or once its time is up.
+   */
+  readonly durationMs?: number;
 }
 
 export interface Exam {
@@ -328,6 +334,19 @@ export type ExamEvent =
       readonly extraMs: number;
       readonly reason: string;
       readonly decidedBy: StaffAttribution;
+    }
+  | {
+      /** The candidate entered a section of a sectioned exam: its clock starts now. */
+      readonly type: "section_started";
+      readonly attemptId: AttemptId;
+      readonly sectionId: string;
+    }
+  | {
+      /** The candidate left a section, or its time ran out: it is locked from here on. */
+      readonly type: "section_closed";
+      readonly attemptId: AttemptId;
+      readonly sectionId: string;
+      readonly reason: "left" | "time_up";
     }
   | {
       /**

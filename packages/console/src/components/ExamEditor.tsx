@@ -213,10 +213,27 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                 onChange={(e) => patchSection(index, { ...section, pick: Number(e.target.value) })}
               />
             </div>
+            <div className="field">
+              <label htmlFor={`section-time-${section.id}`}>Own time (minutes)</label>
+              <input
+                id={`section-time-${section.id}`}
+                type="number"
+                min={1}
+                placeholder="None"
+                value={section.durationMs === undefined ? "" : section.durationMs / 60_000}
+                onChange={(e) => {
+                  const { durationMs: _, ...rest } = section;
+                  patchSection(index, e.target.value === "" ? rest : { ...rest, durationMs: Number(e.target.value) * 60_000 });
+                }}
+              />
+            </div>
           </div>
           <p className="notice">
             Each candidate draws {section.pick} of these {section.pool.length}. Every question in the pool must carry the
             same marks, so every paper is worth the same.
+            {section.durationMs === undefined
+              ? null
+              : ` Once any section has its own time, the test is taken section by section, in order: each is locked once left, and closes when its ${section.durationMs / 60_000} minutes are up.`}
           </p>
           <ul className="pool">
             {section.pool.map((question) => (

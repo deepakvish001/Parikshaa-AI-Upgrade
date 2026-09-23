@@ -355,4 +355,24 @@ describe("foldAttempt", () => {
       expect(foldAttempt(chain(started, captured, submitted, graded, reviewed("verified")))).toMatchObject({ ok: false, reason: "closed", seq: 4 });
     });
   });
+
+  describe("sections with their own time (ROADMAP §3)", () => {
+    const enter = (id: string): ExamEvent => ({ type: "section_started", attemptId: A, sectionId: id });
+    const leave = (id: string, reason: "left" | "time_up" = "left"): ExamEvent => ({ type: "section_closed", attemptId: A, sectionId: id, reason });
+
+    it("records each section entered, in order, and when it was left", () => {
+      const projection = project(chain(started, enter("s1"), answered(), leave("s1"), enter("s2"), leave("s2", "time_up")));
+      expect(projection.sections.map((s) => [s.id, s.closedAt !== null])).toEqual([
+        ["s1", true],
+        ["s2", true],
+      ]);
+    });
+
+    it("never enters a section twice, nor two at once, nor leaves one not entered", () => {
+      expect(foldAttempt(chain(started, enter("s1"), leave("s1"), enter("s1")))).toMatchObject({ ok: false, reason: "section_order", seq: 3 });
+      expect(foldAttempt(chain(started, enter("s1"), enter("s2")))).toMatchObject({ ok: false, reason: "section_order", seq: 2 });
+      expect(foldAttempt(chain(started, leave("s1")))).toMatchObject({ ok: false, reason: "section_order", seq: 1 });
+      expect(foldAttempt(chain(started, submitted, enter("s1")))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+    });
+  });
 });

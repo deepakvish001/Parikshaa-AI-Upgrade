@@ -8,6 +8,7 @@ export interface Announcement {
 }
 
 export type { CandidateLedger, CandidateState };
+export type CandidatePart = NonNullable<CandidateState["parts"]>[number];
 
 export interface ProbeHandlers {
   /** A fragment of the probe as it is written. */
@@ -191,6 +192,11 @@ export class ParikshaaClient {
       method: "POST",
       body: JSON.stringify(input === undefined ? { questionId, language, source } : { questionId, language, source, input }),
     });
+  }
+
+  /** Leave the current part of a sectioned test and start the next section's clock (ROADMAP §3). */
+  async nextSection(): Promise<void> {
+    await this.#request("/attempts/me/sections/next", { method: "POST" });
   }
 
   async submit(): Promise<void> {

@@ -76,7 +76,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 627 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 639 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients

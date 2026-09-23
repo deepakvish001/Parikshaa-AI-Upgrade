@@ -412,3 +412,88 @@ describe("announcements from the invigilators", () => {
     expect(announcements).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("a test taken section by section", () => {
+  const sectioned = (overrides: object = {}) => {
+    const now = Date.now();
+    const parts = (current: "fixed" | "apt" | "none", endsAt: number | null = null) => [
+      { sectionId: null, title: "General", durationMs: null, questionIds: ["q-mcq"], state: current === "fixed" ? "current" : "done", endsAt: null },
+      {
+        sectionId: "apt",
+        title: "Aptitude",
+        durationMs: 600_000,
+        questionIds: ["q-short"],
+        state: current === "apt" ? "current" : current === "fixed" ? "upcoming" : "done",
+        endsAt: current === "apt" ? endsAt : null,
+      },
+    ];
+    const stub = stubClient({
+      nextSection: vi.fn(async () => stub.setState({ parts: parts("apt", now + 600_000) })),
+      ...overrides,
+    });
+    stub.setState({ parts: parts("fixed") });
+    return { ...stub, parts, now };
+  };
+
+  it("shows only the current part, and warns before leaving it for good", async () => {
+    const { client } = sectioned();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    const steps = screen.getByRole("navigation", { name: "Sections" });
+    expect(within(steps).getByText("General").closest("li")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText(/Which sort is stable\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/Why does it terminate\?/)).not.toBeInTheDocument();
+    // Not the last part: no submitting yet, only moving on.
+    expect(screen.queryByRole("button", { name: "Submit attempt" })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Finish General and go on" }));
+    expect(screen.getByText("You cannot come back to General once you leave it.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Stay" }));
+    expect(client.nextSection).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Finish General and go on" }));
+    await userEvent.click(screen.getByRole("button", { name: "Leave General" }));
+    await waitFor(() => expect(client.nextSection).toHaveBeenCalledTimes(1));
+
+    expect(await screen.findByText(/Why does it terminate\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/Which sort is stable\?/)).not.toBeInTheDocument();
+    expect(screen.getByRole("timer")).toHaveTextContent(/(9:5\d|10:00) left in this section/);
+    // The last part: now it can be submitted.
+    expect(screen.getByRole("button", { name: "Submit attempt" })).toBeInTheDocument();
+  });
+
+  it("sends what is still waiting to autosave before leaving a part", async () => {
+    const { client } = sectioned();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.click(screen.getByLabelText("mergesort"));
+    await userEvent.click(screen.getByRole("button", { name: "Finish General and go on" }));
+    await userEvent.click(screen.getByRole("button", { name: "Leave General" }));
+
+    await waitFor(() => expect(client.nextSection).toHaveBeenCalled());
+    expect(client.saveDraft).toHaveBeenCalledWith("q-mcq", "1");
+    expect(vi.mocked(client.saveDraft).mock.invocationCallOrder[0]!).toBeLessThan(vi.mocked(client.nextSection).mock.invocationCallOrder[0]!);
+  });
+
+  it("stops at a section's time, and lets the candidate start the next when ready", async () => {
+    const { client, setState, parts, now } = sectioned();
+    setState({
+      parts: [
+        { ...parts("apt", now - 1000)[0], state: "done" },
+        { ...parts("apt", now - 1000)[1], state: "current", sectionId: "apt" },
+        { sectionId: "code", title: "Coding", durationMs: null, questionIds: [], state: "upcoming", endsAt: null },
+      ],
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    expect(screen.getByText("The time for Aptitude is up. What you had saved is kept.")).toBeInTheDocument();
+    expect(screen.queryByText(/Why does it terminate\?/)).not.toBeInTheDocument();
+    const intro = screen.getByRole("region", { name: "Coding" });
+    expect(within(intro).getByText("No time of its own: the test's time applies")).toBeInTheDocument();
+    await userEvent.click(within(intro).getByRole("button", { name: "Start Coding" }));
+    await waitFor(() => expect(client.nextSection).toHaveBeenCalled());
+  });
+});

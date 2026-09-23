@@ -61,6 +61,16 @@ candidate is shown only those questions, answers to any other are refused, and
 scoring and probing see nothing else. An exam that has been sat is frozen; it
 is changed by cloning it.
 
+**Sections with their own time.** When any section carries `durationMs`, the
+paper is taken in parts, in order: the fixed questions first, then each section
+(`partsOf` in `packages/core/src/paper.ts`). Entering a section appends
+`section_started`, which starts its clock; leaving it, or its time running out,
+appends `section_closed` (reason `left` or `time_up`). Only the current part's
+questions can be answered or drafted, and a part once left is locked. A section
+whose time ran out keeps the drafts saved in time, committed with the time they
+were saved, exactly as the exam's own window does. The exam's own deadline still
+applies over all of it.
+
 **Code.** A code question is scored by running the candidate's code against its
 tests: visible ones, shown as examples, and hidden ones, which decide the score
 and never reach the candidate's client. When a code answer is committed it is
@@ -272,6 +282,7 @@ sitting is over.
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
 | Question bank, sections, per-candidate papers | implemented — `packages/store/src/question-bank.ts`, `packages/core/src/paper.ts`; CSV import; exam cloning |
+| Sections with their own time | implemented — `section_started` / `section_closed` events, `POST /attempts/me/sections/next`; candidate page shows one part at a time |
 | Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |

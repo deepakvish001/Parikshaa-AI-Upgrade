@@ -49,6 +49,8 @@ export interface AttemptProjection {
   readonly extraTimeMs: number;
   /** When the attempt's personal data was erased, if it was (`data_erased`). */
   readonly erasedAt: Timestamp | null;
+  /** A sectioned exam's progress: each section entered, in order, and when it was left. */
+  readonly sections: readonly { readonly id: string; readonly startedAt: Timestamp; readonly closedAt: Timestamp | null }[];
   /** The identity check (ROADMAP §14): the photos' hashes, and a person's decision on them. */
   readonly identity: {
     readonly selfieSha256: string;
@@ -77,7 +79,9 @@ export type FoldFailure =
   /** A second answer to a question, under a policy that forbids revision. */
   | "revision_not_allowed"
   /** A reply or assessment for a probe that was never recorded. */
-  | "unknown_probe";
+  | "unknown_probe"
+  /** A section entered twice, entered before the last was left, or left without being entered. */
+  | "section_order";
 
 export type FoldResult =
   | { readonly ok: true; readonly projection: AttemptProjection }
@@ -121,6 +125,7 @@ export function foldAttempt(
   let erasedAt: Timestamp | null = null;
   let consent: { noticeVersion: number; noticeHash: string } | null = null;
   let identity: AttemptProjection["identity"] = null;
+  const sections: { id: string; startedAt: Timestamp; closedAt: Timestamp | null }[] = [];
   const codeScores = new Map<QuestionId, { score: number; passed: number; total: number }>();
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
@@ -138,6 +143,7 @@ export function foldAttempt(
       closesAt,
       extraTimeMs,
       erasedAt,
+      sections: sections.map((s) => ({ ...s })),
       identity,
       consent,
       codeScores,
@@ -245,6 +251,22 @@ export function foldAttempt(
         state = "in_progress";
         extraTimeMs += event.extraMs;
         scores.clear();
+        break;
+      }
+
+      // In order, once each, while the attempt is open; the one before must be left first.
+      case "section_started": {
+        if (state !== "in_progress") return fail("not_in_progress");
+        if (sections.some((s) => s.id === event.sectionId)) return fail("section_order");
+        if (sections.some((s) => s.closedAt === null)) return fail("section_order");
+        sections.push({ id: event.sectionId, startedAt: entry.timestamp, closedAt: null });
+        break;
+      }
+
+      case "section_closed": {
+        const open = sections.find((s) => s.id === event.sectionId && s.closedAt === null);
+        if (open === undefined) return fail("section_order");
+        open.closedAt = entry.timestamp;
         break;
       }
 

@@ -8,7 +8,9 @@ import {
   type CodeAnswer,
   type CodeQuestion,
   paperOf,
+  partsOf,
   resolvePaper,
+  type PaperPart,
   validateExam,
   scoreDeterministic,
   selectProbeTargets,
@@ -73,6 +75,7 @@ export class AttemptError extends Error {
       | "invalid_privacy"
       | "invalid_billing"
       | "invalid_proctoring"
+      | "section_closed"
       | "not_code"
       | "language_not_offered"
       | "too_many_runs",
@@ -143,7 +146,20 @@ interface AttemptContext {
   /** The chain exactly as hashed: what a receipt carries and a verifier checks. */
   readonly record: readonly LedgerEntry[];
   readonly exam: Exam;
+  /** The exam as written, sections and all: `exam` is this attempt's paper. */
+  readonly definition: Exam;
   readonly projection: AttemptProjection;
+}
+
+/** A sectioned attempt's parts as the candidate sees them (ROADMAP §3). */
+export interface CandidatePart {
+  readonly sectionId: string | null;
+  readonly title: string;
+  readonly durationMs: number | null;
+  readonly questionIds: readonly QuestionId[];
+  readonly state: "done" | "current" | "upcoming";
+  /** When the current part's own time is up; null for an untimed part. */
+  readonly endsAt: Timestamp | null;
 }
 
 export class ExamService {
@@ -238,7 +254,8 @@ export class ExamService {
    */
   async candidateState(access: CandidateAccess): Promise<CandidateState> {
     const scope = candidateOf(access);
-    const { projection, exam } = await this.#context(scope, access.attemptId);
+    const context = await this.#context(scope, access.attemptId);
+    const { projection, exam } = context;
     const open = projection.vivas.find((v) => v.exchange === null);
     const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
 
@@ -259,6 +276,7 @@ export class ExamService {
       openProbe: open === undefined ? null : { id: open.probe.id, prompt: open.probe.prompt },
       answeredProbeCount: projection.vivas.filter((v) => v.exchange !== null).length,
       identityCaptured: projection.identity !== null,
+      parts: this.#partsFor(context),
       // Only drafts that say something the ledger does not: resuming on another
       // device restores unsent work, not a stale copy of what was committed.
       drafts:
@@ -378,7 +396,7 @@ export class ExamService {
         `Attempt ${id} does not fold: ${result.reason} at seq ${result.seq}`,
       );
     }
-    return { entries, record, exam, projection: result.projection };
+    return { entries, record, exam, definition, projection: result.projection };
   }
 
   /**
@@ -472,6 +490,131 @@ export class ExamService {
     return true;
   }
 
+  /** Commit the drafts for `questions` that say something new and were saved by `cutoff`. */
+  async #commitDrafts(scope: Scope, id: AttemptId, context: AttemptContext, cutoff: Timestamp, questions: ReadonlySet<QuestionId>): Promise<void> {
+    const { projection, exam } = context;
+    const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
+    for (const draft of await this.#store.loadDrafts(scope, id)) {
+      if (!questions.has(draft.questionId) || draft.savedAt > cutoff) continue;
+      if (draft.answer.trim() === "" || draft.answer === committed.get(draft.questionId)) continue;
+      if (!exam.policy.allowRevision && committed.has(draft.questionId)) continue;
+      await this.#store.append(
+        scope,
+        id,
+        {
+          type: "answer_submitted",
+          attemptId: id,
+          response: { questionId: draft.questionId, answer: draft.answer, submittedAt: draft.savedAt },
+        },
+        { guard: whileOpen },
+      );
+    }
+  }
+
+  // --- sections with their own time (ROADMAP §3) ------------------------------
+
+  /** Where a sectioned attempt stands: its parts, the current one, and when that one's time is up. */
+  #position(context: AttemptContext): { parts: readonly PaperPart[]; current: number | null; next: number | null; endsAt: Timestamp | null } | null {
+    const parts = partsOf(context.definition, context.exam.questions.map((q) => q.id));
+    if (parts === null) return null;
+    const entered = context.projection.sections;
+    const open = entered.find((s) => s.closedAt === null);
+    const sectionIndex = (id: string) => parts.findIndex((p) => p.sectionId === id);
+    if (open !== undefined) {
+      const current = sectionIndex(open.id);
+      const duration = parts[current]?.durationMs ?? null;
+      const next = parts.findIndex((p, i) => i > current && p.sectionId !== null);
+      return { parts, current, next: next === -1 ? null : next, endsAt: duration === null ? null : open.startedAt + duration };
+    }
+    // Nothing open: the fixed part, if no section has been entered yet; otherwise between sections.
+    const done = new Set(entered.map((s) => s.id));
+    const next = parts.findIndex((p) => p.sectionId !== null && !done.has(p.sectionId));
+    const current = entered.length === 0 && parts[0]?.sectionId === null ? 0 : null;
+    return { parts, current, next: next === -1 ? null : next, endsAt: null };
+  }
+
+  #partsFor(context: AttemptContext): readonly CandidatePart[] | null {
+    const position = this.#position(context);
+    if (position === null) return null;
+    const { parts, current, endsAt } = position;
+    const doneUpTo = current ?? (position.next ?? parts.length);
+    return parts.map((p, i) => ({
+      ...p,
+      state: i === current ? "current" : i < doneUpTo ? "done" : "upcoming",
+      endsAt: i === current ? endsAt : null,
+    }));
+  }
+
+  /**
+   * In a sectioned exam, a question can be answered only while its part is the
+   * current one and that part's time is not up. A section whose time ran out
+   * is closed here — its drafts saved in time committed — before refusing.
+   */
+  async #refuseOutsidePart(scope: Scope, id: AttemptId, context: AttemptContext, questionId: QuestionId): Promise<void> {
+    const position = this.#position(context);
+    if (position === null) return;
+    const part = position.current === null ? undefined : position.parts[position.current];
+    if (part === undefined || !part.questionIds.includes(questionId)) {
+      throw new AttemptError("section_closed", "That question's section is not open: sections are taken in order, and locked once left");
+    }
+    if (position.endsAt !== null && this.#now() > position.endsAt) {
+      await this.#closeSection(scope, id, context, part, "time_up", position.endsAt);
+      throw new AttemptError("section_closed", `The time for ${part.title} is up`);
+    }
+  }
+
+  async #closeSection(scope: Scope, id: AttemptId, context: AttemptContext, part: PaperPart, reason: "left" | "time_up", cutoff: Timestamp): Promise<void> {
+    if (part.sectionId === null) return;
+    const sectionId = part.sectionId;
+    try {
+      await this.#commitDrafts(scope, id, context, cutoff, new Set(part.questionIds));
+      await this.#store.append(
+        scope,
+        id,
+        { type: "section_closed", attemptId: id, sectionId, reason },
+        { guard: (events) => (sectionIsOpen(events, sectionId) ? whileOpen(events) : "already closed") },
+      );
+    } catch (error) {
+      // Closed by another request first: closed is closed.
+      if (!(error instanceof AppendRefused)) throw error;
+    }
+  }
+
+  /**
+   * Leave the current part and enter the next section, whose clock starts
+   * now. A section left early or late is locked either way; one whose time
+   * ran out keeps only the drafts saved in time.
+   */
+  async nextSection(access: CandidateAccess): Promise<void> {
+    const scope = candidateOf(access);
+    const id = access.attemptId;
+    const context = await this.#context(scope, id);
+    if (context.projection.attempt.state !== "in_progress") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${context.projection.attempt.state}`);
+    }
+    await this.#refuseIfExpired(scope, id, context);
+    const position = this.#position(context);
+    if (position === null) throw new AttemptError("invalid_state", "This exam is not taken section by section");
+    if (position.next === null) throw new AttemptError("invalid_state", "This is the last section: submit the attempt instead");
+    const current = position.current === null ? undefined : position.parts[position.current];
+    if (current !== undefined) {
+      const late = position.endsAt !== null && this.#now() > position.endsAt;
+      await this.#closeSection(scope, id, context, current, late ? "time_up" : "left", late ? position.endsAt! : this.#now());
+    }
+    const sectionId = position.parts[position.next]!.sectionId!;
+    try {
+      await this.#store.append(
+        scope,
+        id,
+        { type: "section_started", attemptId: id, sectionId },
+        { guard: (events) => (events.some((e) => e.type === "section_started" && e.sectionId === sectionId) ? "already started" : whileOpen(events)) },
+      );
+    } catch (error) {
+      // Entered by another request first (a double click): that is where they are.
+      if (!(error instanceof AppendRefused)) throw error;
+    }
+  }
+
   /**
    * Commit outstanding drafts, then submit.
    *
@@ -485,27 +628,8 @@ export class ExamService {
    * requests that find the window over at once close it once.
    */
   async #close(scope: Scope, id: AttemptId, context: AttemptContext, cutoff: Timestamp): Promise<void> {
-    const { projection, exam } = context;
-    const committed = new Map(projection.attempt.responses.map((r) => [r.questionId, r.answer]));
-    const onExam = new Set(exam.questions.map((q) => q.id));
-
     try {
-      for (const draft of await this.#store.loadDrafts(scope, id)) {
-        if (!onExam.has(draft.questionId) || draft.savedAt > cutoff) continue;
-        if (draft.answer.trim() === "" || draft.answer === committed.get(draft.questionId)) continue;
-        if (!exam.policy.allowRevision && committed.has(draft.questionId)) continue;
-
-        await this.#store.append(
-          scope,
-          id,
-          {
-            type: "answer_submitted",
-            attemptId: id,
-            response: { questionId: draft.questionId, answer: draft.answer, submittedAt: draft.savedAt },
-          },
-          { guard: whileOpen },
-        );
-      }
+      await this.#commitDrafts(scope, id, context, cutoff, new Set(context.exam.questions.map((q) => q.id)));
       await this.#store.append(scope, id, { type: "attempt_submitted", attemptId: id }, { guard: whileOpen });
     } catch (error) {
       // Another request closed it first. Closed is closed.
@@ -622,6 +746,7 @@ export class ExamService {
       throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
     }
     await this.#refuseIfExpired(scope, id, context);
+    await this.#refuseOutsidePart(scope, id, context, questionId);
 
     const submittedAt = this.#now();
     await this.#appendWhileOpen(scope, id, {
@@ -777,6 +902,7 @@ export class ExamService {
       throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
     }
     await this.#refuseIfExpired(scope, id, context);
+    await this.#refuseOutsidePart(scope, id, context, questionId);
     await this.#store.saveDraft(scope, id, questionId, answer, this.#now());
   }
 
@@ -1257,6 +1383,8 @@ export interface CandidateState {
   readonly drafts: readonly Draft[];
   /** A proctored exam's identity photos have been taken (ROADMAP §14). */
   readonly identityCaptured: boolean;
+  /** A sectioned exam's parts, in order, with where the candidate is (ROADMAP §3). Null: not sectioned. */
+  readonly parts: readonly CandidatePart[] | null;
 }
 
 export interface CandidateLedger {
@@ -1284,4 +1412,14 @@ export function deadlineOf(projection: AttemptProjection, exam: Exam): Timestamp
   // started. Extra time a person granted still applies on top of either.
   const base = projection.closesAt === null ? byDuration : Math.min(byDuration, projection.closesAt);
   return base + projection.extraTimeMs;
+}
+
+/** Whether `sectionId` has been entered and not yet left. */
+function sectionIsOpen(events: readonly ExamEvent[], sectionId: string): boolean {
+  let open = false;
+  for (const e of events) {
+    if (e.type === "section_started" && e.sectionId === sectionId) open = true;
+    else if (e.type === "section_closed" && e.sectionId === sectionId) open = false;
+  }
+  return open;
 }

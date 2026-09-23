@@ -35,7 +35,14 @@ export const SHORT = {
 /** An exam open now, with `refs` invited to it. Each test gets its own, so tests can run side by side. */
 export async function seedSitting(
   request: APIRequestContext,
-  options: { refs?: readonly string[]; questions?: readonly object[]; vivaTriggerRatio?: number; owner?: typeof OWNER; proctoring?: object } = {},
+  options: {
+    refs?: readonly string[];
+    questions?: readonly object[];
+    sections?: readonly object[];
+    vivaTriggerRatio?: number;
+    owner?: typeof OWNER;
+    proctoring?: object;
+  } = {},
 ): Promise<Sitting> {
   const token = await ownerToken(request, options.owner);
   const headers = { authorization: `Bearer ${token}` };
@@ -49,6 +56,7 @@ export async function seedSitting(
       id: examId,
       title,
       questions: options.questions ?? [MCQ, SHORT],
+      ...(options.sections === undefined ? {} : { sections: options.sections }),
       policy: {
         durationMs: 3_600_000,
         allowRevision: true,

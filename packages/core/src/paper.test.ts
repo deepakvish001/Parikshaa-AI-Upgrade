@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { attemptId, examId, questionId, type Exam, type Question } from "./domain.js";
-import { allQuestions, paperOf, resolvePaper } from "./paper.js";
+import { allQuestions, isSequential, paperOf, partsOf, resolvePaper } from "./paper.js";
 import { validateExam } from "./validate.js";
 
 const mcq = (id: string, maxScore = 2): Question => ({
@@ -108,5 +108,36 @@ describe("validating sections", () => {
     expect(paths(withSection({ pool: [{ ...mcq("p1"), stem: "" } as Question, mcq("p2")] }))).toContain(
       "sections.0.pool.0.stem",
     );
+  });
+});
+
+describe("parts of a sectioned exam", () => {
+  const q = (id: string) => ({ id: questionId(id), kind: "short" as const, stem: id, maxScore: 1, rubric: [], expectedPoints: [] });
+  const exam = {
+    id: examId("e"),
+    title: "E",
+    questions: [q("f1")],
+    sections: [
+      { id: "apt", title: "Aptitude", pick: 2, pool: [q("a1"), q("a2"), q("a3")], durationMs: 600_000 },
+      { id: "code", title: "Coding", pick: 1, pool: [q("c1")] },
+    ],
+    policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 0.5 },
+  };
+
+  it("takes the fixed questions first, then each section with what this attempt drew from it", () => {
+    const paper = resolvePaper(exam, attemptId("x"));
+    const parts = partsOf(exam, paper)!;
+    expect(parts.map((p) => [p.sectionId, p.durationMs, p.questionIds.length])).toEqual([
+      [null, null, 1],
+      ["apt", 600_000, 2],
+      ["code", null, 1],
+    ]);
+    expect(parts.flatMap((p) => p.questionIds)).toEqual(paper);
+  });
+
+  it("is not sectioned when no section has its own time", () => {
+    const untimed = { ...exam, sections: exam.sections.map(({ durationMs: _, ...s }) => s) };
+    expect(isSequential(untimed)).toBe(false);
+    expect(partsOf(untimed, resolvePaper(untimed, attemptId("x")))).toBeNull();
   });
 });
