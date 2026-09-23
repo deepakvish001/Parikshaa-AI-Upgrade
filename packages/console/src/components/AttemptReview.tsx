@@ -62,7 +62,7 @@ export function AttemptReview({
         <p className="notice">Grade</p>
         <p className="grade">{review.total ?? "—"}</p>
         <div className="row">
-          <span className="pill">{review.state.replace(/_/g, " ")}</span>
+          <span className="pill" data-state={review.state}>{review.state.replace(/_/g, " ")}</span>
           {gradable ? (
             <button type="button" onClick={onGrade} disabled={grading}>
               {grading ? "Grading…" : "Grade attempt"}

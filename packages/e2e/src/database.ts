@@ -62,18 +62,21 @@ export async function resetDatabase(hashPassword: (password: string) => Promise<
  * operator's tool does; each run gets its own, since the browsers run side by
  * side and one buying credits must not change what another sees.
  */
-export async function seedBilledOrganisation(hashPassword: (password: string) => Promise<string>): Promise<{ email: string; password: string }> {
+export async function seedBilledOrganisation(
+  hashPassword: (password: string) => Promise<string>,
+  name = "E2E Billed Ltd",
+): Promise<{ email: string; password: string }> {
   const id = `e2e-billed-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const sql = connect(ownerUrl, { max: 1 });
   try {
     const identity = new IdentityStore(sql);
-    await identity.createOrganisation(orgId(id), "E2E Billed Ltd");
+    await identity.createOrganisation(orgId(id), name);
     const email = `owner@${id}.test`;
     await identity.createUser({ orgId: orgId(id), email, name: "Ravi Kumar", role: "owner", passwordHash: await hashPassword(OWNER_PASSWORD) });
     const billing = new BillingStore(sql);
     await billing.setPlan(staffScope(orgId(id)), "prepaid", 5000);
     await billing.updateBuyer(staffScope(orgId(id)), {
-      legalName: "E2E Billed Ltd",
+      legalName: name,
       gstin: null,
       stateCode: "27",
       address: "1 FC Road, Pune",

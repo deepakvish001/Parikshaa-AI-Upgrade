@@ -1,4 +1,24 @@
 import { useEffect, useState } from "react";
+import {
+  Building2,
+  ChevronRight,
+  ClipboardList,
+  Gauge,
+  KeyRound,
+  KeySquare,
+  Languages,
+  Library,
+  LogOut,
+  MessageCircleQuestion,
+  Plug,
+  Receipt,
+  ScrollText,
+  Shield,
+  ShieldCheck,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import { Avatar, Wordmark } from "@parikshaa/brand/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Exam } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError } from "./api.ts";
@@ -97,44 +117,70 @@ function SignIn({ onSignedIn }: { onSignedIn: (token: string) => void }) {
         : "Could not reach the server.";
 
   return (
-    <main className="gate">
-      <h1>Parikshaa console</h1>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          signIn.mutate();
-        }}
-      >
-        <div className="field">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            type="email"
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+    <div className="signin">
+      <aside className="signin-brand" aria-hidden="true">
+        <Wordmark size={34} product="Console" />
+        <div className="signin-pitch">
+          <p className="signin-headline">Assessment you can prove.</p>
+          <ul>
+            <li>
+              <ShieldCheck /> Every answer sealed in a hash-chained ledger, checkable by anyone.
+            </li>
+            <li>
+              <MessageCircleQuestion /> A short follow-up on answers that need one — asked, never accused.
+            </li>
+            <li>
+              <Languages /> Hindi and ten Indian languages, on a phone or a lab machine.
+            </li>
+          </ul>
         </div>
-        <div className="field">
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+        <p className="signin-foot">परीक्षा · Built for Indian institutions</p>
+      </aside>
+      <main className="signin-form">
+        <div className="signin-card">
+          <span className="signin-mark">
+            <Wordmark size={28} />
+          </span>
+          <h1>Sign in to the console</h1>
+          <p className="notice">For examiners, invigilators and administrators.</p>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              signIn.mutate();
+            }}
+          >
+            <div className="field">
+              <label htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            {refused === null ? null : (
+              <p className="error" role="alert">
+                {refused}
+              </p>
+            )}
+            <button type="submit" className="block large" disabled={signIn.isPending || email.trim() === "" || password === ""}>
+              {signIn.isPending ? "Signing in…" : "Sign in"}
+            </button>
+          </form>
         </div>
-        {refused === null ? null : (
-          <p className="error" role="alert">
-            {refused}
-          </p>
-        )}
-        <button type="submit" disabled={signIn.isPending || email.trim() === "" || password === ""}>
-          {signIn.isPending ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
-    </main>
+      </main>
+    </div>
   );
 }
 
@@ -252,81 +298,133 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const examTitle = (id: string) => exams.data?.find((e) => e.id === id)?.title ?? id;
   const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
 
-  const tabs: readonly { readonly view: View; readonly label: string; readonly permission: string }[] = [
-    { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key" },
-    { view: { name: "staff" }, label: "Staff", permission: "staff:manage" },
-    { view: { name: "keys" }, label: "API keys", permission: "apikey:manage" },
-    { view: { name: "usage" }, label: "Spend", permission: "usage:read" },
-    { view: { name: "audit" }, label: "Audit log", permission: "audit:read" },
-    { view: { name: "integrations" }, label: "Integrations", permission: "org:manage" },
-    { view: { name: "privacy" }, label: "Privacy", permission: "org:manage" },
-    { view: { name: "billing" }, label: "Billing", permission: "org:manage" },
+  const tabs: readonly {
+    readonly view: View;
+    readonly label: string;
+    readonly permission: string;
+    readonly group: "assess" | "org";
+    readonly icon: LucideIcon;
+  }[] = [
+    { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key", group: "assess", icon: Library },
+    { view: { name: "staff" }, label: "Staff", permission: "staff:manage", group: "org", icon: Users },
+    { view: { name: "keys" }, label: "API keys", permission: "apikey:manage", group: "org", icon: KeySquare },
+    { view: { name: "usage" }, label: "Spend", permission: "usage:read", group: "org", icon: Gauge },
+    { view: { name: "audit" }, label: "Audit log", permission: "audit:read", group: "org", icon: ScrollText },
+    { view: { name: "integrations" }, label: "Integrations", permission: "org:manage", group: "org", icon: Plug },
+    { view: { name: "privacy" }, label: "Privacy", permission: "org:manage", group: "org", icon: Shield },
+    { view: { name: "billing" }, label: "Billing", permission: "org:manage", group: "org", icon: Receipt },
   ];
 
-  return (
-    <main className="page">
-      <nav className="bar account" aria-label="Account">
-        <span className="notice">
-          {me.data === undefined ? "" : `${me.data.name} · ${me.data.role} · ${me.data.organisation.name}`}
-        </span>
-        <span className="spacer" />
-        <button type="button" className="crumb" onClick={() => setView({ name: "exams" })}>
-          Exams
-        </button>
-        {tabs
-          .filter((tab) => can(tab.permission))
-          .map((tab) => (
-            <button key={tab.label} type="button" className="crumb" onClick={() => setView(tab.view)}>
-              {tab.label}
-            </button>
-          ))}
-        {me.data?.kind === "user" ? (
-          <button type="button" className="crumb" onClick={() => setView({ name: "account" })}>
-            Password
-          </button>
-        ) : null}
-        <button type="button" className="quiet" onClick={() => signOut.mutate()}>
-          Sign out
-        </button>
-      </nav>
+  const section = SECTION_OF[view.name];
+  const go = (next: View) => {
+    setView(next);
+    window.scrollTo?.({ top: 0 });
+  };
+  const navItem = (target: View, label: string, Icon: LucideIcon) => (
+    <button
+      key={label}
+      type="button"
+      className={`nav-item${section === target.name ? " active" : ""}`}
+      aria-current={section === target.name ? "page" : undefined}
+      onClick={() => go(target)}
+    >
+      <Icon aria-hidden="true" />
+      {label}
+    </button>
+  );
+  const visible = tabs.filter((tab) => can(tab.permission));
+  const onExam =
+    (view.name === "attempts" ||
+      view.name === "review" ||
+      view.name === "candidates" ||
+      view.name === "results" ||
+      view.name === "live" ||
+      view.name === "report") &&
+    view.examId !== "";
 
-      <div className="bar crumbs">
-        <h1>
-          {view.name === "exams" ? (
-            "Parikshaa console"
-          ) : (
-            <button type="button" className="crumb" onClick={() => setView({ name: "exams" })}>
-              Exams
-            </button>
+  return (
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="sidebar-inner">
+          <div className="sidebar-brand">
+            <Wordmark size={30} product="Console" />
+          </div>
+          {me.data === undefined ? null : (
+            <div className="org">
+              <span className="org-badge" aria-hidden="true">
+                <Building2 />
+              </span>
+              <span className="org-name">{me.data.organisation.name}</span>
+            </div>
           )}
-        </h1>
-        {(view.name === "attempts" ||
-          view.name === "review" ||
-          view.name === "candidates" ||
-          view.name === "results" ||
-          view.name === "live" ||
-          view.name === "report") &&
-        view.examId !== "" ? (
-          <>
-            <span className="notice">/</span>
-            <button
-              type="button"
-              className="crumb"
-              onClick={() => setView({ name: "attempts", examId: view.examId })}
-            >
-              {examTitle(view.examId)}
-            </button>
-            {view.name === "report" ? (
-              <>
-                <span className="notice">/</span>
-                <button type="button" className="crumb" onClick={() => setView({ name: "results", examId: view.examId })}>
-                  Results
+          <nav className="side-nav account" aria-label="Account">
+            <p className="nav-group">Assess</p>
+            {navItem({ name: "exams" }, "Exams", ClipboardList)}
+            {visible.filter((tab) => tab.group === "assess").map((tab) => navItem(tab.view, tab.label, tab.icon))}
+            {visible.some((tab) => tab.group === "org") ? <p className="nav-group">Organisation</p> : null}
+            {visible.filter((tab) => tab.group === "org").map((tab) => navItem(tab.view, tab.label, tab.icon))}
+            <div className="sidebar-foot">
+              {me.data === undefined ? null : (
+                <div className="me">
+                  <Avatar name={me.data.name} size={34} />
+                  <span className="me-text">
+                    <span className="me-name">{me.data.name}</span>
+                    <span className="me-role">{me.data.role}</span>
+                  </span>
+                </div>
+              )}
+              <div className="me-actions">
+                {me.data?.kind === "user" ? navItem({ name: "account" }, "Password", KeyRound) : null}
+                <button type="button" className="nav-item" onClick={() => signOut.mutate()}>
+                  <LogOut aria-hidden="true" />
+                  Sign out
                 </button>
+              </div>
+            </div>
+          </nav>
+        </div>
+      </aside>
+
+      <div className="main">
+        <header className="topbar crumbs">
+          <nav className="breadcrumbs" aria-label="Breadcrumb">
+            {view.name === "exams" ? (
+              <span>Exams</span>
+            ) : section === "exams" ? (
+              <button type="button" className="crumb" onClick={() => go({ name: "exams" })}>
+                Exams
+              </button>
+            ) : (
+              <span>{visible.find((tab) => tab.view.name === section)?.label ?? (section === "account" ? "Password" : "")}</span>
+            )}
+            {onExam ? (
+              <>
+                <ChevronRight aria-hidden="true" />
+                {view.name === "attempts" ? (
+                  <span>{examTitle(view.examId)}</span>
+                ) : (
+                  <button type="button" className="crumb" onClick={() => go({ name: "attempts", examId: view.examId })}>
+                    {examTitle(view.examId)}
+                  </button>
+                )}
+                {view.name === "report" ? (
+                  <>
+                    <ChevronRight aria-hidden="true" />
+                    <button type="button" className="crumb" onClick={() => go({ name: "results", examId: view.examId })}>
+                      Results
+                    </button>
+                  </>
+                ) : null}
               </>
             ) : null}
-          </>
-        ) : null}
-      </div>
+          </nav>
+        </header>
+
+        <main className="content">
+          <header className="page-head">
+            <h1>{pageTitle(view, examTitle)}</h1>
+            <p className="notice">{PAGE_NOTE[view.name]}</p>
+          </header>
 
       {view.name === "exams" ? (
         exams.isPending ? (
@@ -436,6 +534,89 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
       {view.name === "billing" ? <BillingPanel client={client} /> : null}
       {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
-    </main>
+        </main>
+      </div>
+    </div>
   );
 }
+
+/** Which sidebar entry a view belongs under. */
+const SECTION_OF: Record<View["name"], View["name"]> = {
+  exams: "exams",
+  editor: "exams",
+  attempts: "exams",
+  review: "exams",
+  candidates: "exams",
+  results: "exams",
+  live: "exams",
+  report: "exams",
+  bank: "bank",
+  staff: "staff",
+  keys: "keys",
+  usage: "usage",
+  audit: "audit",
+  integrations: "integrations",
+  privacy: "privacy",
+  billing: "billing",
+  account: "account",
+};
+
+function pageTitle(view: View, examTitle: (id: string) => string): string {
+  switch (view.name) {
+    case "exams":
+      return "Exams";
+    case "editor":
+      return view.examId === null ? "New exam" : "Edit exam";
+    case "attempts":
+      return examTitle(view.examId);
+    case "review":
+      return "Review an attempt";
+    case "candidates":
+      return "Schedule and invite";
+    case "results":
+      return "Results and exports";
+    case "live":
+      return "Live sitting";
+    case "report":
+      return "Candidate report";
+    case "bank":
+      return "Question bank";
+    case "staff":
+      return "Staff";
+    case "keys":
+      return "API keys";
+    case "usage":
+      return "Spend";
+    case "audit":
+      return "Audit log";
+    case "integrations":
+      return "Integrations";
+    case "privacy":
+      return "Privacy";
+    case "billing":
+      return "Billing";
+    case "account":
+      return "Password";
+  }
+}
+
+/** One line under each page's title: what the page is for. */
+const PAGE_NOTE: Record<View["name"], string> = {
+  exams: "Every assessment your organisation runs. Open one to invite candidates, watch a sitting or read results.",
+  editor: "Questions, sections drawn per candidate, timing, and what the camera does. A sat exam is frozen; copy it to change it.",
+  attempts: "Everyone who has started this exam, whether they are here now, and what is left to grade.",
+  review: "The grade, and beside it the evidence — kept apart, and decided by a person.",
+  candidates: "The window the test is open, and who is invited to it.",
+  results: "Scores, the spread, and what the follow-ups found. Download for your own records.",
+  live: "Who is here, who has gone quiet, and anything that needs an invigilator.",
+  report: "One candidate's answers, grades and record, ready to print.",
+  bank: "Questions filed by topic and difficulty, to draw exams from. Import from a spreadsheet or a Word paper.",
+  staff: "Who can sign in to this console, and what each can do.",
+  keys: "Keys for your own systems to call Parikshaa.",
+  usage: "What the AI model has cost this month, and the cap on it.",
+  audit: "Every action taken in this organisation, by whom and when.",
+  integrations: "Webhooks and applicant-tracking systems that hear about results.",
+  privacy: "The notice candidates agree to, how long their data is kept, and erasure.",
+  billing: "Attempt credits, payments and GST invoices.",
+  account: "Change the password you sign in with.",
+};

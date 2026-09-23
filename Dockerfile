@@ -14,6 +14,7 @@ COPY packages/verify/package.json   packages/verify/
 COPY packages/web/package.json      packages/web/
 COPY packages/console/package.json  packages/console/
 COPY packages/runner/package.json   packages/runner/
+COPY packages/brand/package.json    packages/brand/
 RUN npm ci
 
 COPY . .

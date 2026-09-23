@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { PreferencesBar, usePreferences } from "../i18n.tsx";
+import { usePreferences } from "../i18n.tsx";
+import { Assurance, GateShell } from "./Chrome.tsx";
 
 interface Props {
   readonly onToken: (token: string) => void;
@@ -18,30 +19,25 @@ export function TokenGate({ onToken }: Props) {
   const [value, setValue] = useState("");
 
   return (
-    <main className="gate">
-      <PreferencesBar />
-      <h1>Parikshaa</h1>
-      <p className="notice">{t("gate.prompt")}</p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (value.trim() !== "") onToken(value.trim());
-        }}
-      >
-        <textarea
-          aria-label={t("gate.code")}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-        />
-        <div className="row">
-          <button type="submit" disabled={value.trim() === ""}>
-            {t("gate.begin")}
-          </button>
-        </div>
-      </form>
-      <p className="notice" style={{ marginTop: "2rem" }}>
-        {t("gate.noSurveillance")}
-      </p>
-    </main>
+    <GateShell>
+      <div className="gate-card">
+        <p className="notice">{t("gate.prompt")}</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (value.trim() !== "") onToken(value.trim());
+          }}
+        >
+          <label htmlFor="access-code">{t("gate.code")}</label>
+          <textarea id="access-code" value={value} onChange={(e) => setValue(e.target.value)} />
+          <div className="row">
+            <button type="submit" disabled={value.trim() === ""}>
+              {t("gate.begin")}
+            </button>
+          </div>
+        </form>
+      </div>
+      <Assurance>{t("gate.noSurveillance")}</Assurance>
+    </GateShell>
   );
 }

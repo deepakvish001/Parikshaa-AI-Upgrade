@@ -1,0 +1,206 @@
+/*
+ * Parikshaa design tokens.
+ *
+ * One source for colour, type, space, shape and depth, shared by the
+ * candidate app and the console. Components never name a hex value; they
+ * name a token, so dark mode and any later re-theme change here only.
+ *
+ * The palette: an ink indigo that reads as trustworthy and institutional
+ * (the ledger, the record), and saffron used sparingly as the accent — the
+ * bindu in the mark, a highlight, never a warning. Status colours are kept
+ * apart from both, so "failed" never looks like "brand".
+ */
+
+:root {
+  /* --- brand ------------------------------------------------------------ */
+  --brand-950: #0b1033;
+  --brand-900: #141b4d;
+  --brand-800: #1d2770;
+  --brand-700: #26338f;
+  --brand-600: #3346c4;
+  --brand-500: #4a5ce0;
+  --brand-400: #7482ee;
+  --brand-200: #c9cffa;
+  --brand-100: #e3e7fd;
+  --brand-50: #f1f3fe;
+  --saffron-600: #d9730f;
+  --saffron-500: #f28c28;
+  --saffron-100: #fdebd4;
+
+  /* --- neutrals: a cool grey, tinted toward the brand ------------------- */
+  --gray-0: #ffffff;
+  --gray-25: #fbfbfd;
+  --gray-50: #f6f7fb;
+  --gray-100: #eef0f6;
+  --gray-200: #e2e6ef;
+  --gray-300: #cdd3df;
+  --gray-400: #9aa3b5;
+  --gray-500: #5f687c; /* muted text: at least 4.5:1 on every light surface, WCAG AA */
+  --gray-600: #4f586c;
+  --gray-700: #373f52;
+  --gray-800: #222938;
+  --gray-900: #131a2e;
+
+  /* --- semantic: surfaces and text -------------------------------------- */
+  --bg: var(--gray-50);
+  --surface: var(--gray-0);
+  --surface-2: var(--gray-25);
+  --surface-sunken: var(--gray-100);
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --text: var(--gray-900);
+  --text-muted: var(--gray-500);
+  --text-subtle: var(--gray-400);
+  --text-on-primary: #ffffff;
+
+  --primary: var(--brand-600);
+  --primary-hover: var(--brand-700);
+  --primary-active: var(--brand-800);
+  --primary-soft: var(--brand-50);
+  --primary-soft-border: var(--brand-200);
+  --accent: var(--saffron-500);
+  --accent-soft: var(--saffron-100);
+
+  --success: #12805c;
+  --success-soft: #e7f6ef;
+  --success-border: #b9e2cf;
+  --warning: #9a5800;
+  --warning-soft: #fff5e3;
+  --warning-border: #f3d59f;
+  --danger: #c23a2b;
+  --danger-soft: #fdeeec;
+  --danger-border: #f3c5bf;
+
+  --focus-ring: 0 0 0 3px rgb(51 70 196 / 0.28);
+
+  /* --- the sidebar: always ink, in both themes --------------------------- */
+  --chrome: var(--brand-950);
+  --chrome-2: #121946;
+  --chrome-text: #c9cff0;
+  --chrome-text-strong: #ffffff;
+  --chrome-hover: rgb(255 255 255 / 0.06);
+  --chrome-active: rgb(116 130 238 / 0.18);
+  --chrome-border: rgb(255 255 255 / 0.08);
+
+  /* --- type ------------------------------------------------------------- */
+  --font-sans: "Inter Variable", "Inter", "Noto Sans Devanagari", "Segoe UI", system-ui, -apple-system, Roboto, "Nirmala UI", "Mangal", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-3xl: 2.25rem;
+  --leading: 1.55;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* --- space (4px grid), shape, depth, motion ----------------------------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 999px;
+  --shadow-xs: 0 1px 2px rgb(19 26 46 / 0.05);
+  --shadow-sm: 0 1px 3px rgb(19 26 46 / 0.07), 0 1px 2px rgb(19 26 46 / 0.04);
+  --shadow-md: 0 6px 16px rgb(19 26 46 / 0.08), 0 2px 4px rgb(19 26 46 / 0.04);
+  --shadow-lg: 0 20px 48px rgb(19 26 46 / 0.14), 0 4px 12px rgb(19 26 46 / 0.06);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration: 140ms;
+
+  color-scheme: light;
+}
+
+/* Dark: the same roles, re-valued. Chosen by the system unless the page says otherwise. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c1020;
+    --surface: #141a2c;
+    --surface-2: #171e32;
+    --surface-sunken: #10152a;
+    --border: #252d45;
+    --border-strong: #343d58;
+    --text: #e8ebf5;
+    --text-muted: #a1a9bf;
+    --text-subtle: #737c95;
+    --text-on-primary: #0c1020;
+    --primary: #8b98fa;
+    --primary-hover: #a3adfb;
+    --primary-active: #b9c1fc;
+    --primary-soft: #1b2248;
+    --primary-soft-border: #2f3a78;
+    --accent: #f7a04a;
+    --accent-soft: #3a2712;
+    --success: #53c794;
+    --success-soft: #11291f;
+    --success-border: #1f4a37;
+    --warning: #f1b65c;
+    --warning-soft: #2a2011;
+    --warning-border: #4d3a17;
+    --danger: #f2806f;
+    --danger-soft: #2e1715;
+    --danger-border: #5a2923;
+    --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
+    --chrome: #080b19;
+    --chrome-2: #0d1127;
+    --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
+    --shadow-md: 0 6px 16px rgb(0 0 0 / 0.4);
+    --shadow-lg: 0 20px 48px rgb(0 0 0 / 0.5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c1020;
+  --surface: #141a2c;
+  --surface-2: #171e32;
+  --surface-sunken: #10152a;
+  --border: #252d45;
+  --border-strong: #343d58;
+  --text: #e8ebf5;
+  --text-muted: #a1a9bf;
+  --text-subtle: #737c95;
+  --text-on-primary: #0c1020;
+  --primary: #8b98fa;
+  --primary-hover: #a3adfb;
+  --primary-active: #b9c1fc;
+  --primary-soft: #1b2248;
+  --primary-soft-border: #2f3a78;
+  --accent: #f7a04a;
+  --accent-soft: #3a2712;
+  --success: #53c794;
+  --success-soft: #11291f;
+  --success-border: #1f4a37;
+  --warning: #f1b65c;
+  --warning-soft: #2a2011;
+  --warning-border: #4d3a17;
+  --danger: #f2806f;
+  --danger-soft: #2e1715;
+  --danger-border: #5a2923;
+  --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
+  --chrome: #080b19;
+  --chrome-2: #0d1127;
+  --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
+  --shadow-md: 0 6px 16px rgb(0 0 0 / 0.4);
+  --shadow-lg: 0 20px 48px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 0ms;
+  }
+}

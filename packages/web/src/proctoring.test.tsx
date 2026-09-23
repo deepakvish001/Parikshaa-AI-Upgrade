@@ -125,7 +125,7 @@ describe("the identity step", () => {
     await userEvent.click(screen.getByRole("button", { name: "Send and start answering" }));
 
     expect(client.captureIdentity).toHaveBeenCalledWith(expect.stringMatching(/^c2hvdC/), expect.stringMatching(/^c2hvdC/));
-    expect(await screen.findByText(/1\. Why\?/)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^1\. Why\?/ })).toBeInTheDocument();
   });
 });
 

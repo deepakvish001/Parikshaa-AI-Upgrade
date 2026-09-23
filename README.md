@@ -26,6 +26,13 @@ candidate before they start and never an input to the grade. See
 [`docs/SPEC.md`](docs/SPEC.md) for the design and its commitments, and
 [`docs/STACK.md`](docs/STACK.md) for the stack and the reasoning behind it.
 
+| The candidate's side | The institution's console |
+| --- | --- |
+| ![Answering, with a follow-up question](docs/screenshots/candidate-08-follow-up.png) | ![Results for a campus drive](docs/screenshots/console-06-results.png) |
+
+Every page is in [`docs/screenshots`](docs/screenshots/); the design system
+behind them is in [`docs/DESIGN.md`](docs/DESIGN.md).
+
 ## Layout
 
 ```
@@ -35,11 +42,13 @@ packages/store/   PostgreSQL persistence and the schema's integrity constraints
 packages/api/     HTTP API: attempts, micro-viva delivery, ledger access
 packages/web/     candidate interface: sitting an exam, answering a probe, taking a receipt
 packages/console/ institution console: authoring exams, issuing access codes, reviewing evidence
+packages/brand/   design system: tokens, base components, the mark, the bundled typefaces
 packages/verify/  offline receipt verification — no server, no database, no network
 docs/SPEC.md      specification
 docs/STACK.md     tech stack
 docs/openapi.json the HTTP contract, generated from the route schemas
 docs/ROADMAP.md   what stands between the engine and a sellable product
+docs/DESIGN.md    the design system, and screenshots of every page
 ```
 
 ## How an attempt runs

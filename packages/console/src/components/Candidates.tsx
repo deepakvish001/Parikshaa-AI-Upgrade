@@ -107,7 +107,7 @@ export function Candidates({ client, examId, canInvite }: { client: ConsoleClien
                     {deliveryLabel(row)}
                   </td>
                   <td>
-                    <span className="pill">{row.revoked ? "revoked" : STATE[row.attemptState]}</span>
+                    <span className="pill" data-state={row.revoked ? "revoked" : row.attemptState}>{row.revoked ? "revoked" : STATE[row.attemptState]}</span>
                   </td>
                   <td>
                     {canInvite && !row.revoked && row.attemptState === "not_started" ? (

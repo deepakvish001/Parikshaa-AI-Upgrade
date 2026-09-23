@@ -3,13 +3,14 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Real-browser, chaos and load tests against a real Postgres (ROADMAP §10, §13).",
+  "description": "Real-browser, chaos and load tests against a real Postgres (ROADMAP \u00a710, \u00a713).",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
     "e2e": "playwright test",
     "chaos": "node dist/chaos.js",
-    "load": "node dist/load.js"
+    "load": "node dist/load.js",
+    "screenshots": "playwright test -c playwright.screenshots.config.ts"
   },
   "dependencies": {
     "@parikshaa/api": "*",
