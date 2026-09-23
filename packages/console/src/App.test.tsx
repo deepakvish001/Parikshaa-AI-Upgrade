@@ -280,6 +280,13 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     editQuestion: vi.fn(async () => bankEntries[0]),
     archiveQuestion: vi.fn(async () => undefined),
     importBank: vi.fn(async () => 2),
+    importDocx: vi.fn(async (_file: string, dryRun: boolean) => ({
+      imported: dryRun ? 0 : 2,
+      preview: [
+        { question: 1, kind: "mcq", stem: "Which is stable?", marks: 2, note: null },
+        { question: 2, kind: "short", stem: "What does the diagram show?", marks: 5, note: "Had a picture or equation, which was not imported; add it in the console." },
+      ],
+    })),
     cloneExam: vi.fn(async () => undefined),
     getWindow: vi.fn(async () => ({ opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true })),
     setWindow: vi.fn(async () => undefined),
@@ -798,6 +805,33 @@ describe("the question bank", () => {
     const problems = await screen.findByRole("list", { name: "Problems with this file" });
     expect(problems).toHaveTextContent("row 3");
     expect(client.importBank).toHaveBeenCalledWith("kind,question\nmcq,x");
+  });
+
+  it("reads a Word paper first, shows every question found, and adds them only when asked", async () => {
+    const client = await openBank();
+    const file = new File(["PK fake docx"], "paper.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
+    await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), file);
+
+    const found = await screen.findByRole("table", { name: "Questions found" });
+    expect(within(found).getByText("Which is stable?")).toBeInTheDocument();
+    expect(within(found).getByText(/picture or equation, which was not imported/)).toBeInTheDocument();
+    expect(client.importDocx).toHaveBeenCalledWith(btoa("PK fake docx"), true);
+    expect(client.importDocx).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByRole("button", { name: "Add 2 questions to the bank" }));
+    expect(await screen.findByText("Imported 2 questions from the document.")).toBeInTheDocument();
+    expect(client.importDocx).toHaveBeenLastCalledWith(btoa("PK fake docx"), false);
+  });
+
+  it("lists a Word paper's problems by question", async () => {
+    const client = await openBank();
+    (client.importDocx as unknown as { mockRejectedValueOnce: (e: unknown) => void }).mockRejectedValueOnce(
+      new ConsoleError(422, "invalid_import", [{ path: "question 4 (numbered 2)", message: 'No answer: add an "Answer:" line.' }]),
+    );
+    await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), new File(["x"], "paper.docx"));
+    const problems = await screen.findByRole("list", { name: "Problems with this document" });
+    expect(problems).toHaveTextContent("question 4 (numbered 2)");
+    expect(screen.queryByRole("table", { name: "Questions found" })).not.toBeInTheDocument();
   });
 
   it("files a new question with its topic and tags", async () => {

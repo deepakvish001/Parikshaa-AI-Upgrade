@@ -137,7 +137,7 @@ sections, sittings and years.
   edited — otherwise the ledger records answers to a question that no longer
   exists.
 
-**Status — built, with one piece deferred.** Each organisation has a question
+**Status — built.** Each organisation has a question
 bank, filed by topic, difficulty and tags, searchable, and importable from CSV
 (what every spreadsheet exports), all or nothing with every bad row reported by
 its number. An exam can carry sections, each a pool of questions of which every
@@ -157,8 +157,16 @@ exam's own window. The candidate sees only the current part, its clock to the
 second, a warning before leaving a part for good, and a card to start the next
 section when they are ready.
 
-Deferred: **Word import**, which needs a document parser and a convention for
-marking answers in prose. It does not block a campus hiring round.
+**Word import** is built as well. A question paper typed in Word the usual way
+— numbered questions (typed, or Word's numbered list), lettered options, then
+an `Answer:` line, or the right option marked with `*`, and optional `Marks:`,
+`Topic:`, `Difficulty:`, `Tags:`, `Type:` lines — is read straight from the
+.docx. Options make a question mcq; otherwise a numeric answer makes it numeric
+and anything else short answer. A title, instructions and "Section B" headings
+are skipped. The console reads the file first and shows every question found,
+naming any picture or equation it left out, before anything is added; like the
+CSV import it is all or nothing, with each problem named by its question.
+`docs/samples/question-paper.docx` is a paper to copy.
 
 ## 4. Coding assessment
 

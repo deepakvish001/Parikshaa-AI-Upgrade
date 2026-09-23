@@ -136,7 +136,7 @@ export class ProctorStore {
   async events(scope: Scope, attemptId: string, limit = 1000): Promise<readonly ProctorEvent[]> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<{ kind: ProctorEventKind; at: string | Date }>(
-        `SELECT kind, at FROM proctor_events WHERE org_id = $1 AND attempt_id = $2 ORDER BY at ASC, id ASC LIMIT $3`,
+        `SELECT kind, at FROM proctor_events WHERE org_id = $1 AND attempt_id = $2 ORDER BY at ASC, seq ASC LIMIT $3`,
         [scope.orgId, attemptId, limit],
       );
       return rows.map((r) => ({ kind: r.kind, at: new Date(r.at).toISOString() }));

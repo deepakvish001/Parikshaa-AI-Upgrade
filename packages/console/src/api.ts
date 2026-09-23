@@ -347,6 +347,21 @@ export interface LiveView {
   readonly announcements: readonly Announcement[];
 }
 
+export interface DocxImport {
+  readonly imported: number;
+  readonly preview: readonly { readonly question: number; readonly kind: string; readonly stem: string; readonly marks: number; readonly note: string | null }[];
+}
+
+/** A file's bytes as base64, for a JSON body. */
+export function base64Of(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ""));
+    reader.onerror = () => reject(reader.error ?? new Error("The file could not be read"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
@@ -404,13 +419,22 @@ export class ConsoleClient {
       const body = (await response.json().catch(() => ({}))) as {
         error?: string;
         message?: string;
-        problems?: (ExamProblem | { row: number; message: string })[];
+        problems?: (ExamProblem | { row: number; message: string } | { question: number; written: number | null; message: string })[];
       };
       const problems = body.problems ?? [];
       throw new ConsoleError(
         response.status,
         body.error ?? "request_failed",
-        problems.filter((p): p is ExamProblem => "path" in p),
+        [
+          ...problems.filter((p): p is ExamProblem => "path" in p),
+          // A Word import's problems, by which question from the top and the number written on it.
+          ...problems
+            .filter((p): p is { question: number; written: number | null; message: string } => "question" in p)
+            .map((p) => ({
+              path: p.question === 0 ? "the file" : `question ${p.question}${p.written === null || p.written === p.question ? "" : ` (numbered ${p.written})`}`,
+              message: p.message,
+            })),
+        ],
         body.message,
         problems.filter((p): p is { row: number; message: string } => "row" in p),
       );
@@ -513,6 +537,15 @@ export class ConsoleClient {
       }
       throw error;
     }
+  }
+
+  /**
+   * Read a Word (.docx) question paper. With `dryRun` nothing is added and
+   * the preview shows what would be; a rejected file throws a
+   * {@link ConsoleError} whose problems name the questions.
+   */
+  importDocx(file: string, dryRun: boolean): Promise<DocxImport> {
+    return this.#request<DocxImport>("/bank/import/docx", { method: "POST", body: JSON.stringify({ file, dryRun }) });
   }
 
   async cloneExam(examId: string, id: string, title?: string): Promise<void> {

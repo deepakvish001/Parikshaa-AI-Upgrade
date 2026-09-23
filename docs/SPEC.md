@@ -282,6 +282,7 @@ sitting is over.
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
 | Question bank, sections, per-candidate papers | implemented — `packages/store/src/question-bank.ts`, `packages/core/src/paper.ts`; CSV import; exam cloning |
+| Word question papers | implemented — `packages/api/src/docx-import.ts`, `POST /bank/import/docx` (dry run to preview); sample at `docs/samples/question-paper.docx` |
 | Sections with their own time | implemented — `section_started` / `section_closed` events, `POST /attempts/me/sections/next`; candidate page shows one part at a time |
 | Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |

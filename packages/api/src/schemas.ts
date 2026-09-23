@@ -183,6 +183,39 @@ export const bankImportProblems = z.object({
   problems: z.array(z.object({ row: z.number(), message: z.string() })).readonly(),
 });
 
+export const bankDocxBody = z.object({
+  file: z.string().max(14_000_000).describe("The .docx file, base64-encoded. At most 10 MB."),
+  dryRun: z.boolean().default(false).describe("Check and preview the questions without adding them to the bank."),
+});
+
+export const bankDocxResponse = z.object({
+  imported: z.number().describe("Questions added to the bank; 0 on a dry run."),
+  preview: z
+    .array(
+      z.object({
+        question: z.number().describe("Which question, counting from the top of the document"),
+        kind: z.string(),
+        stem: z.string(),
+        marks: z.number(),
+        note: z.string().nullable().describe("Something in the question that was not imported, such as a picture"),
+      }),
+    )
+    .readonly(),
+});
+
+export const bankDocxProblems = z.object({
+  error: z.literal("invalid_import"),
+  problems: z
+    .array(
+      z.object({
+        question: z.number().describe("Which question, counting from the top of the document; 0 for the file as a whole"),
+        written: z.number().nullable().describe("The number written on it, which may restart in each section of a paper"),
+        message: z.string(),
+      }),
+    )
+    .readonly(),
+});
+
 export const examListResponse = z.object({
   exams: z.array(z.object({ id: z.string(), title: z.string(), questionCount: z.number() })).readonly(),
 });

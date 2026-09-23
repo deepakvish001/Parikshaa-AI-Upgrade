@@ -11640,6 +11640,307 @@
         }
       }
     },
+    "/bank/import/docx": {
+      "post": {
+        "summary": "Import questions from a Word (.docx) document",
+        "tags": [
+          "Question bank"
+        ],
+        "description": "A question paper as it is usually typed: each question numbered (\"1.\", \"Q1.\", or Word's own numbered list), mcq options lettered (\"a)\", \"(a)\"), then \"Answer:\", and optionally \"Marks:\", \"Topic:\", \"Difficulty:\", \"Tags:\", \"Type:\", \"Tolerance:\", \"Rubric:\" lines. The right option can instead be marked with a leading \"*\". Options make a question mcq; otherwise a numeric answer makes it numeric and anything else short (expected points separated by | or ;). Text before the first question is skipped; pictures and equations are not imported and are noted in the preview. All or nothing, like the CSV import. Send with dryRun first to preview.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "maxLength": 14000000,
+                    "description": "The .docx file, base64-encoded. At most 10 MB."
+                  },
+                  "dryRun": {
+                    "default": false,
+                    "description": "Check and preview the questions without adding them to the bank.",
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imported": {
+                      "type": "number",
+                      "description": "Questions added to the bank; 0 on a dry run."
+                    },
+                    "preview": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "number",
+                            "description": "Which question, counting from the top of the document"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "stem": {
+                            "type": "string"
+                          },
+                          "marks": {
+                            "type": "number"
+                          },
+                          "note": {
+                            "description": "Something in the question that was not imported, such as a picture",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "kind",
+                          "stem",
+                          "marks",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "imported",
+                    "preview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imported": {
+                      "type": "number",
+                      "description": "Questions added to the bank; 0 on a dry run."
+                    },
+                    "preview": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "number",
+                            "description": "Which question, counting from the top of the document"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "stem": {
+                            "type": "string"
+                          },
+                          "marks": {
+                            "type": "number"
+                          },
+                          "note": {
+                            "description": "Something in the question that was not imported, such as a picture",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "kind",
+                          "stem",
+                          "marks",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "imported",
+                    "preview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "enum": [
+                        "invalid_import"
+                      ]
+                    },
+                    "problems": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "question": {
+                            "type": "number",
+                            "description": "Which question, counting from the top of the document; 0 for the file as a whole"
+                          },
+                          "written": {
+                            "description": "The number written on it, which may restart in each section of a paper",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "question",
+                          "written",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exams/{examId}/window": {
       "put": {
         "summary": "Schedule an exam",

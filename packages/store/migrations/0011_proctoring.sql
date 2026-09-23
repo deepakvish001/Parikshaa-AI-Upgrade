@@ -26,10 +26,12 @@ CREATE TABLE proctor_events (
   id          text        NOT NULL,
   kind        text        NOT NULL CHECK (kind IN ('tab_hidden', 'fullscreen_exit', 'copy', 'paste', 'camera_off', 'camera_on')),
   at          timestamptz NOT NULL,
+  -- Arrival order: events sent together share a time, and keep the order they were sent in.
+  seq         bigint      GENERATED ALWAYS AS IDENTITY,
   PRIMARY KEY (org_id, id),
   FOREIGN KEY (org_id, attempt_id) REFERENCES attempts (org_id, id)
 );
-CREATE INDEX proctor_events_attempt_idx ON proctor_events (org_id, attempt_id, at);
+CREATE INDEX proctor_events_attempt_idx ON proctor_events (org_id, attempt_id, at, seq);
 
 ALTER TABLE proctor_media  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE proctor_events ENABLE ROW LEVEL SECURITY;
