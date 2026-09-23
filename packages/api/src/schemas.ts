@@ -305,6 +305,7 @@ export const draftBody = z
 export const heartbeatResponse = z.object({
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
   expiresAt: z.number().describe("The deadline as it now stands, extensions included."),
+  announcements: z.number().describe("How many announcements this sitting has had; fetch them when it goes up."),
 });
 
 export const extendBody = z.object({

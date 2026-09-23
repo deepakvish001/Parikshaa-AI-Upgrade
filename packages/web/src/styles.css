@@ -149,3 +149,7 @@ button:disabled { opacity: .5; cursor: default; }
 
 /* Opening an invitation. */
 .when { font-size: 1.15rem; font-weight: 600; margin: .2rem 0 .8rem; }
+
+/* Announcements from the invigilators (ROADMAP §8): hard to miss, easy to dismiss. */
+.announcement { border-left: 3px solid var(--accent); }
+.announcement .eyebrow { margin: 0; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }

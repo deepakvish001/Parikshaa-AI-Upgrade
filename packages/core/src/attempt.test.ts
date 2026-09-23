@@ -272,4 +272,34 @@ describe("foldAttempt", () => {
       expect(result).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
     });
   });
+
+  describe("reopening", () => {
+    const reopened = (minutes: number): ExamEvent => ({
+      type: "attempt_reopened",
+      attemptId: A,
+      extraMs: minutes * 60_000,
+      reason: "The laptop crashed and submitted on its own.",
+      decidedBy: { userId: "u1", name: "Invigilator" },
+    });
+    const graded: ExamEvent = { type: "attempt_graded", attemptId: A, total: 3 };
+
+    it("opens a submitted attempt again, with the time granted, and takes answers again", () => {
+      const projection = project(chain(started, answered(Q1, "1"), submitted, reopened(20), answered(Q1, "2"), submitted));
+      expect(projection.attempt.state).toBe("submitted");
+      expect(projection.extraTimeMs).toBe(20 * 60_000);
+      expect(projection.attempt.responses).toEqual([expect.objectContaining({ questionId: Q1, answer: "2" })]);
+    });
+
+    it("forgets scores from a grading that had begun on the old submission", () => {
+      const scored: ExamEvent = { type: "question_scored", attemptId: A, questionId: Q1, score: 1 };
+      expect(project(chain(started, answered(), submitted, scored, reopened(5))).scores.size).toBe(0);
+    });
+
+    it("never reopens an attempt that is open, graded or set aside", () => {
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Sat by someone else, it turned out." };
+      expect(foldAttempt(chain(started, reopened(5)))).toMatchObject({ ok: false, reason: "not_submitted", seq: 1 });
+      expect(foldAttempt(chain(started, submitted, graded, reopened(5)))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
+      expect(foldAttempt(chain(started, submitted, voided, reopened(5)))).toMatchObject({ ok: false, reason: "closed", seq: 3 });
+    });
+  });
 });

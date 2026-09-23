@@ -1,7 +1,8 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { IdentityStore, InvitationStore, LedgerStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
+import { IdentityStore, InvigilationStore, InvitationStore, LedgerStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
+import { InvigilationService } from "./invigilation.js";
 import { InvitationService } from "./invitation-service.js";
 import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
@@ -52,6 +53,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     webhooks,
     greenhouse,
+    invigilation: new InvigilationService({ store, invitations: invitationStore, invigilation: new InvigilationStore(unusable), exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

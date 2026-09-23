@@ -318,6 +318,20 @@ their customers can use webhooks and the API.
   ledger with a reason, because an invigilator's action is exactly the kind of
   thing an appeal asks about.
 
+**Status — built.** The console's *Live sitting* page, refreshed every five
+seconds, shows who has not started, who is taking it, how far each candidate
+has got, when their page last checked in, and how long they have left — and
+never an answer. Two flags are kept apart because they mean different things:
+*away* (the page has stopped checking in: closed, or offline) and *idle* (the
+page is open but nothing has been typed for a threshold the invigilator sets).
+An invigilator can tell the whole room something at once; it reaches every
+candidate's open page at their next check-in, is read out by screen readers,
+and is audited. A submitted attempt can be **reopened** — a crash, a power cut,
+submit pressed by mistake — with minutes and a reason, as an
+`attempt_reopened` entry in the ledger with the person's name, shown on the
+candidate's receipt; never once graded or set aside. The candidate's page
+opens again by itself. Extending time (§2) sits beside it.
+
 ## 9. Language, accessibility, low bandwidth
 
 - Interface translation, Hindi first, then the regional languages the buyer

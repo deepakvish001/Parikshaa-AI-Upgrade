@@ -1,5 +1,12 @@
 import type { CandidateLedger, CandidateState } from "@parikshaa/api";
 
+/** Something an invigilator told everyone in the sitting. */
+export interface Announcement {
+  readonly id: string;
+  readonly message: string;
+  readonly at: string;
+}
+
 export type { CandidateLedger, CandidateState };
 
 export interface ProbeHandlers {
@@ -117,8 +124,13 @@ export class ParikshaaClient {
   }
 
   /** Check in: the attempt's state and deadline as they now stand. */
-  heartbeat(): Promise<{ state: string; expiresAt: number }> {
+  heartbeat(): Promise<{ state: string; expiresAt: number; announcements: number }> {
     return this.#request("/attempts/me/heartbeat", { method: "POST" });
+  }
+
+  /** What the invigilators have told this sitting, oldest first. */
+  async announcements(): Promise<readonly Announcement[]> {
+    return (await this.#request<{ announcements: Announcement[] }>("/attempts/me/announcements")).announcements;
   }
 
   /** Run code against the examples, or on the candidate's own input. Records nothing. */

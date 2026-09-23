@@ -68,6 +68,8 @@ function describe(event: ExamEvent): string {
       return `Code for ${event.questionId} passed ${event.passed} of ${event.total} tests`;
     case "time_extended":
       return `Time extended by ${Math.round(event.extraMs / 60_000)} min by ${event.decidedBy.name} — ${event.reason}`;
+    case "attempt_reopened":
+      return `Reopened by ${event.decidedBy.name}, with ${Math.round(event.extraMs / 60_000)} min more — ${event.reason}`;
     case "attempt_voided":
       return `Voided${event.decidedBy === undefined ? "" : ` by ${event.decidedBy.name}`} — ${event.reason}`;
   }

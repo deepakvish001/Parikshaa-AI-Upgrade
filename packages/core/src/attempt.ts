@@ -212,6 +212,17 @@ export function foldAttempt(
         break;
       }
 
+      // Only a submitted attempt, not yet graded: grading and voiding are the
+      // guard above. Scores from a partial grading belong to the old
+      // submission, so they go; test results belong to the answers, so they stay.
+      case "attempt_reopened": {
+        if (state !== "submitted") return fail("not_submitted");
+        state = "in_progress";
+        extraTimeMs += event.extraMs;
+        scores.clear();
+        break;
+      }
+
       case "attempt_voided": {
         state = "void";
         voidReason = event.reason;

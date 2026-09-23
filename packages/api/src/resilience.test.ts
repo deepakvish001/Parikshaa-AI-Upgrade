@@ -258,7 +258,7 @@ describe("presence", () => {
     expect((await list()).lastSeenAt).toBeNull();
 
     const beat = await call("POST", token, "/attempts/me/heartbeat");
-    expect(beat.json()).toEqual({ state: "in_progress", expiresAt: clock + HOUR });
+    expect(beat.json()).toEqual({ state: "in_progress", expiresAt: clock + HOUR, announcements: 0 });
     expect((await list()).lastSeenAt).toBe(new Date(clock).toISOString());
   });
 

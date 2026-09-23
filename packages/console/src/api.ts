@@ -273,6 +273,39 @@ export interface WebhookDelivery {
 
 export const WEBHOOK_EVENTS = ["attempt.started", "attempt.submitted", "attempt.graded", "attempt.voided"] as const;
 
+export interface LiveRow {
+  readonly invitationId: string | null;
+  readonly attemptId: string | null;
+  readonly ref: string;
+  readonly name: string;
+  readonly state: "not_started" | "in_progress" | "submitted" | "graded" | "void";
+  readonly answered: number;
+  readonly questions: number;
+  readonly startedAt: number | null;
+  readonly lastSeenAt: number | null;
+  readonly lastActivityAt: number | null;
+  readonly expiresAt: number | null;
+  readonly extraMinutes: number;
+  readonly reopened: number;
+  readonly awaitingReply: boolean;
+  readonly flags: { readonly away: boolean; readonly idle: boolean; readonly overdue: boolean };
+}
+
+export interface Announcement {
+  readonly id: string;
+  readonly message: string;
+  readonly authorName: string;
+  readonly at: string;
+}
+
+export interface LiveView {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly at: number;
+  readonly counts: Readonly<Record<"invited" | "notStarted" | "inProgress" | "away" | "idle" | "submitted" | "graded" | "void", number>>;
+  readonly rows: readonly LiveRow[];
+  readonly announcements: readonly Announcement[];
+}
+
 export class ConsoleError extends Error {
   constructor(
     readonly status: number,
@@ -600,6 +633,18 @@ export class ConsoleClient {
   }
 
   /** More time for an open attempt, with a reason that goes into its ledger. */
+  live(examId: string, idleMinutes = 5): Promise<LiveView> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/live?idleMinutes=${idleMinutes}`);
+  }
+
+  announce(examId: string, message: string): Promise<Announcement> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/announcements`, { method: "POST", body: JSON.stringify({ message }) });
+  }
+
+  reopen(attemptId: string, minutes: number, reason: string): Promise<{ expiresAt: number }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/reopen`, { method: "POST", body: JSON.stringify({ minutes, reason }) });
+  }
+
   extendTime(attemptId: string, minutes: number, reason: string): Promise<{ expiresAt: number }> {
     return this.#request(`/attempts/${encodeURIComponent(attemptId)}/extend`, {
       method: "POST",

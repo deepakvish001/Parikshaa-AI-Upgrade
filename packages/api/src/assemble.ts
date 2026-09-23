@@ -1,10 +1,11 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
+import { IdentityStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
+import { InvigilationService } from "./invigilation.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
 import { ResultsService } from "./results.js";
@@ -61,6 +62,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
+    invigilation: new InvigilationService({ store, invitations: invitationStore, invigilation: new InvigilationStore(o.sql), exams: service }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

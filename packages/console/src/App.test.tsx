@@ -10,6 +10,8 @@ import {
   type AttemptReview,
   type CandidateReport,
   type ExamSummary,
+  type LiveRow,
+  type LiveView,
   type ResultRow,
   type Results,
   type WhoAmI,
@@ -97,6 +99,38 @@ const report: CandidateReport = {
   ledger: { head: "ab".repeat(32), length: 9 },
 };
 
+const liveRow = (ref: string, patch: Partial<LiveRow> = {}): LiveRow => ({
+  invitationId: `inv-${ref}`,
+  attemptId: `att-${ref}`,
+  ref,
+  name: `Candidate ${ref}`,
+  state: "in_progress",
+  answered: 3,
+  questions: 10,
+  startedAt: 1_000,
+  lastSeenAt: 1_790_000_000_000,
+  lastActivityAt: 1_790_000_000_000,
+  expiresAt: 1_790_000_000_000 + 30 * 60_000,
+  extraMinutes: 0,
+  reopened: 0,
+  awaitingReply: false,
+  flags: { away: false, idle: false, overdue: false },
+  ...patch,
+});
+
+const liveView: LiveView = {
+  exam: { id: "exam-1", title: "Algorithms" },
+  at: 1_790_000_000_000,
+  counts: { invited: 4, notStarted: 1, inProgress: 2, away: 1, idle: 0, submitted: 1, graded: 0, void: 0 },
+  rows: [
+    liveRow("R1"),
+    liveRow("R2", { lastSeenAt: 1_790_000_000_000 - 10 * 60_000, flags: { away: true, idle: false, overdue: false } }),
+    liveRow("R3", { state: "submitted", answered: 10 }),
+    liveRow("R4", { state: "not_started", attemptId: null, answered: 0, startedAt: null, lastSeenAt: null }),
+  ],
+  announcements: [{ id: "n1", message: "Question 2: assume sorted input.", authorName: "Meera", at: "2026-10-01T05:00:00.000Z" }],
+};
+
 const bankQuestion = (id: string, stem: string) => ({
   id,
   kind: "mcq" as const,
@@ -121,6 +155,7 @@ const OWNER_PERMISSIONS = [
   "attempt:grade",
   "attempt:assess",
   "attempt:void",
+  "attempt:extend",
   "usage:read",
   "audit:read",
   "staff:manage",
@@ -236,6 +271,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     greenhouse: vi.fn(async () => ({ enabled: false, endpoints: { list_tests: "https://exam.test/api/integrations/greenhouse/list_tests" } })),
     issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
     disableGreenhouse: vi.fn(async () => undefined),
+    live: vi.fn(async () => liveView),
+    announce: vi.fn(async () => ({ id: "n2", message: "x", authorName: "Asha", at: "2026-10-01T05:00:00.000Z" })),
+    reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
     resultsFile: vi.fn(async () => new Blob(["x"])),
     report: vi.fn(async () => report),
@@ -981,5 +1019,62 @@ describe("integrations", () => {
     expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
     expect(client.report).toHaveBeenCalledWith("a2");
     expect(window.location.search).toBe("");
+  });
+});
+
+describe("the live sitting", () => {
+  const open = async (client = stubClient()) => {
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Live sitting" }));
+    return client;
+  };
+
+  it("shows the room at a glance, and who has gone away", async () => {
+    await open();
+    const summary = await screen.findByRole("region", { name: "The sitting now" });
+    expect(summary).toHaveTextContent("Away1");
+    const table = screen.getByRole("region", { name: "Candidates now" });
+    const r2 = within(table).getByText("R2").closest("tr")!;
+    expect(r2).toHaveTextContent("10 min ago");
+    expect(within(r2).getByText("away")).toBeInTheDocument();
+    expect(within(table).getByText("R1").closest("tr")).toHaveTextContent("here now");
+    expect(within(within(table).getByText("R1").closest("tr")!).getByLabelText("3 of 10 answered")).toBeInTheDocument();
+  });
+
+  it("narrows to the candidates who need attention", async () => {
+    await open();
+    const table = await screen.findByRole("region", { name: "Candidates now" });
+    await userEvent.selectOptions(within(table).getByLabelText("Show"), "attention");
+    expect(within(table).queryByText("R1")).toBeNull();
+    expect(within(table).getByText("R2")).toBeInTheDocument();
+  });
+
+  it("tells the room something, and shows what it was told", async () => {
+    const client = await open();
+    expect(await screen.findByRole("region", { name: "Told to the room" })).toHaveTextContent("assume sorted input");
+    await userEvent.type(screen.getByLabelText("Tell everyone sitting this exam"), "Ten minutes left.");
+    await userEvent.click(screen.getByRole("button", { name: "Send to everyone" }));
+    await waitFor(() => expect(client.announce).toHaveBeenCalledWith("exam-1", "Ten minutes left."));
+  });
+
+  it("reopens a submitted attempt with minutes and a reason", async () => {
+    const client = await open();
+    const table = await screen.findByRole("region", { name: "Candidates now" });
+    await userEvent.click(within(within(table).getByText("R3").closest("tr")!).getByRole("button", { name: "Reopen…" }));
+    const form = screen.getByRole("form", { name: "Reopen R3" });
+    await userEvent.clear(within(form).getByLabelText("Minutes from now"));
+    await userEvent.type(within(form).getByLabelText("Minutes from now"), "20");
+    await userEvent.type(within(form).getByLabelText(/Reason/), "Laptop crashed and submitted.");
+    await userEvent.click(within(form).getByRole("button", { name: "Reopen" }));
+    await waitFor(() => expect(client.reopen).toHaveBeenCalledWith("att-R3", 20, "Laptop crashed and submitted."));
+  });
+
+  it("offers no interventions to someone who can only watch", async () => {
+    await open(stubClient({ me: vi.fn(async () => who("viewer", ["exam:read", "attempt:read", "attempt:review"])) }));
+    await screen.findByRole("region", { name: "Candidates now" });
+    expect(screen.queryByRole("region", { name: "Tell the room" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reopen…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Extend…" })).toBeNull();
   });
 });

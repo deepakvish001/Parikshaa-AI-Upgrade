@@ -1,5 +1,5 @@
 import type { OrgId } from "@parikshaa/core";
-import { withScope, type Scope } from "./ledger-store.js";
+import { lifecycleSql, lifecycleState, withScope, type Scope } from "./ledger-store.js";
 import { enqueue, type OutboxDraft } from "./outbox-store.js";
 import type { SqlExecutor } from "./sql.js";
 
@@ -193,13 +193,11 @@ export class InvitationStore {
   async list(scope: Scope, examId: string): Promise<readonly InvitationStatus[]> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<
-        Row & { submitted: boolean; graded: boolean; voided: boolean; email_delivery: DeliveryRow | null; sms_delivery: DeliveryRow | null }
+        Row & { lifecycle: string | null; email_delivery: DeliveryRow | null; sms_delivery: DeliveryRow | null }
       >(
         `SELECT i.org_id, i.id, i.exam_id, i.candidate_ref, i.name, i.email, i.phone, i.opens_at, i.closes_at, i.hard_close,
                 i.attempt_id, i.source, i.created_at, i.revoked_at,
-                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = i.org_id AND l.attempt_id = i.attempt_id AND l.event_type = 'attempt_submitted') AS submitted,
-                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = i.org_id AND l.attempt_id = i.attempt_id AND l.event_type = 'attempt_graded') AS graded,
-                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = i.org_id AND l.attempt_id = i.attempt_id AND l.event_type = 'attempt_voided') AS voided,
+                ${lifecycleSql("i.org_id", "i.attempt_id")} AS lifecycle,
                 (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
                    FROM outbox WHERE org_id = i.org_id AND kind = 'email' AND subject ->> 'invitationId' = i.id
                    ORDER BY created_at DESC LIMIT 1) o) AS email_delivery,
@@ -213,16 +211,7 @@ export class InvitationStore {
       );
       return rows.map((row) => ({
         ...toInvitation(row),
-        attemptState:
-          row.attempt_id === null
-            ? "not_started"
-            : row.voided
-              ? "void"
-              : row.graded
-                ? "graded"
-                : row.submitted
-                  ? "submitted"
-                  : "in_progress",
+        attemptState: row.attempt_id === null ? "not_started" : lifecycleState(row.lifecycle),
         delivery: { email: toDelivery(row.email_delivery), sms: toDelivery(row.sms_delivery) },
       }));
     });

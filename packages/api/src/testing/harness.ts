@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
 import {
   IdentityStore,
+  InvigilationStore,
   InvitationStore,
   LedgerStore,
   QuestionBank,
@@ -15,6 +16,7 @@ import {
 import type { CodeRunner } from "@parikshaa/runner";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
+import { InvigilationService } from "../invigilation.js";
 import { InvitationService } from "../invitation-service.js";
 import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
@@ -119,6 +121,13 @@ export async function wire(
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
+    invigilation: new InvigilationService({
+      store,
+      invitations: invitationStore,
+      invigilation: new InvigilationStore(sql),
+      exams: service,
+      ...(options.now === undefined ? {} : { now: options.now }),
+    }),
     tokens,
     auth: new StaffAuth(identity),
     identity,

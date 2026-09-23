@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, ParikshaaClient } from "./api.ts";
+import { ApiError, ParikshaaClient, type Announcement } from "./api.ts";
 import { AnswerInput } from "./components/AnswerInput.tsx";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
@@ -161,6 +161,19 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const expiresAt = state.data?.expiresAt ?? 0;
   const inProgress = state.data?.state === "in_progress";
 
+  const announcements = useQuery({ queryKey: ["announcements"], queryFn: () => client.announcements(), enabled: inProgress });
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const announcementCount = useRef(0);
+  announcementCount.current = announcements.data?.length ?? 0;
+
+  // A submitted attempt can be reopened by an invigilator (a crash, a power
+  // cut); look now and then, so the page opens again without a reload.
+  useEffect(() => {
+    if (state.data?.state !== "submitted") return;
+    const id = setInterval(() => void queryClient.invalidateQueries({ queryKey: ["state"] }), HEARTBEAT_MS);
+    return () => clearInterval(id);
+  }, [state.data?.state, queryClient]);
+
   // Kept in refs so timers and event handlers always see the latest values
   // without being torn down and re-armed on every keystroke.
   const latest = useRef({ drafts, status, attemptId, expiresAt, inProgress });
@@ -284,6 +297,9 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         const known = latest.current;
         if (now.expiresAt !== known.expiresAt || now.state !== "in_progress") {
           await queryClient.invalidateQueries({ queryKey: ["state"] });
+        }
+        if (now.announcements !== announcementCount.current) {
+          await queryClient.invalidateQueries({ queryKey: ["announcements"] });
         }
       } catch {
         // Offline; the banner says so, and the next beat will try again.
@@ -438,6 +454,13 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         </section>
       ) : null}
 
+      {open ? (
+        <Announcements
+          items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
+          onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
+        />
+      ) : null}
+
       {probe !== null && open ? (
         <ProbePanel
           prompt={probe.prompt}
@@ -548,5 +571,28 @@ function TimeLeft({ expiresAt }: { expiresAt: number }) {
   const hours = Math.floor(minutes / 60);
   return (
     <> · {hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m`} left</>
+  );
+}
+
+/**
+ * What the invigilators have told the room, newest first. Announced to screen
+ * readers as it arrives, and dismissed one by one; dismissing only hides it here.
+ */
+function Announcements({ items, onDismiss }: { items: readonly Announcement[]; onDismiss: (id: string) => void }) {
+  return (
+    <section aria-label="Announcements" aria-live="assertive">
+      {[...items].reverse().map((a) => (
+        <div className="card announcement" key={a.id}>
+          <p className="eyebrow">
+            From the invigilators ·{" "}
+            {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", timeStyle: "short" }).format(new Date(a.at))}
+          </p>
+          <p style={{ margin: ".2rem 0 .5rem" }}>{a.message}</p>
+          <button type="button" className="secondary" onClick={() => onDismiss(a.id)}>
+            Got it
+          </button>
+        </div>
+      ))}
+    </section>
   );
 }

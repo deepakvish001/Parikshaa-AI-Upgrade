@@ -52,6 +52,27 @@ export function withScope<T>(sql: SqlExecutor, scope: Scope, fn: (tx: SqlExecuto
   });
 }
 
+/**
+ * The latest event that changed where an attempt stands, as a SQL expression
+ * over an attempts row. The latest, not any: an attempt that was submitted and
+ * then reopened is open again.
+ */
+export const lifecycleSql = (org: string, attempt: string) =>
+  `(SELECT l.event_type FROM exam_ledger l WHERE l.org_id = ${org} AND l.attempt_id = ${attempt}
+       AND l.event_type IN ('attempt_submitted', 'attempt_reopened', 'attempt_graded', 'attempt_voided')
+     ORDER BY l.seq DESC LIMIT 1)`;
+
+/** Where an attempt stands, from the event {@link lifecycleSql} found. */
+export function lifecycleState(eventType: string | null): "in_progress" | "submitted" | "graded" | "void" {
+  return eventType === "attempt_voided"
+    ? "void"
+    : eventType === "attempt_graded"
+      ? "graded"
+      : eventType === "attempt_submitted"
+        ? "submitted"
+        : "in_progress";
+}
+
 /** Ledger events that integrations are told about, by the name they are told. */
 export const ANNOUNCED: Partial<Record<ExamEvent["type"], string>> = {
   attempt_started: "attempt.started",
@@ -179,17 +200,13 @@ export class LedgerStore {
         candidate_id: string;
         last_seen_at: string | Date | null;
         entries: number | string;
-        submitted: boolean;
-        graded: boolean;
-        voided: boolean;
+        lifecycle: string | null;
       }>(
         `SELECT a.id,
                 a.candidate_id,
                 a.last_seen_at,
                 (SELECT count(*) FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id) AS entries,
-                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_submitted') AS submitted,
-                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_graded') AS graded,
-                EXISTS (SELECT 1 FROM exam_ledger l WHERE l.org_id = a.org_id AND l.attempt_id = a.id AND l.event_type = 'attempt_voided') AS voided
+                ${lifecycleSql("a.org_id", "a.id")} AS lifecycle
            FROM attempts a
           WHERE a.org_id = $1 AND a.exam_id = $2
           ORDER BY a.created_at DESC`,
@@ -201,7 +218,7 @@ export class LedgerStore {
         candidateId: row.candidate_id as CandidateId,
         lastSeenAt: row.last_seen_at === null ? null : new Date(row.last_seen_at).toISOString(),
         entries: Number(row.entries),
-        state: row.voided ? "void" : row.graded ? "graded" : row.submitted ? "submitted" : "in_progress",
+        state: lifecycleState(row.lifecycle),
       }));
     });
   }

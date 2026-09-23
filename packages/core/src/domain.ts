@@ -273,6 +273,22 @@ export type ExamEvent =
       readonly extraMs: number;
       readonly reason: string;
       readonly decidedBy: StaffAttribution;
+    }
+  | {
+      /**
+       * A submitted attempt opened again by a person, with a reason and more
+       * time: the machine crashed and submitted, the candidate pressed submit
+       * by mistake, the power went. Never once graded or set aside.
+       *
+       * `extraMs` is added to the deadline like an extension, and is enough to
+       * cover the time since the attempt closed plus what was granted, so the
+       * record shows exactly how long the candidate was given.
+       */
+      readonly type: "attempt_reopened";
+      readonly attemptId: AttemptId;
+      readonly extraMs: number;
+      readonly reason: string;
+      readonly decidedBy: StaffAttribution;
     };
 
 export type ExamEventType = ExamEvent["type"];

@@ -23,6 +23,8 @@ import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
+import type { InvigilationService } from "./invigilation.js";
+import { registerInvigilationRoutes } from "./invigilation-routes.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
@@ -41,6 +43,7 @@ export interface ServerOptions {
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
   readonly greenhouse: GreenhouseService;
+  readonly invigilation: InvigilationService;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -155,6 +158,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
+        { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
         {
           name: "Greenhouse",
           description: "Greenhouse's Assessment Partner API, called by Greenhouse with the organisation's key as the Basic-auth username.",
@@ -707,7 +711,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (request, reply) => {
         const claims = await requireAttempt(request, reply);
         if (claims === null) return;
-        return reply.send(await service.heartbeat(claims));
+        const beat = await service.heartbeat(claims);
+        const announcements = (await options.invigilation.forCandidate(claims)).length;
+        return reply.send({ ...beat, announcements });
       },
     );
 
@@ -863,6 +869,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
+    registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
 
     registerAccountRoutes(routes, {
       service,

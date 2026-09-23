@@ -971,6 +971,50 @@ export class ExamService {
     return deadlineOf(projection, exam) + extraMs;
   }
 
+  /**
+   * Open a submitted attempt again (ROADMAP §8): the laptop crashed and
+   * submitted, the power went, submit was pressed by mistake.
+   *
+   * A person's decision, with a reason, in the ledger — like voiding and
+   * extending, and for the same reason: it is exactly what an appeal asks
+   * about. The candidate gets `minutes` from now; the event records the whole
+   * addition to the deadline, including the time since it passed. Never after
+   * grading or setting aside: a mark or a decision already made is not undone
+   * by giving the paper back.
+   */
+  async reopen(actor: Actor, id: AttemptId, minutes: number, reason: string): Promise<Timestamp> {
+    const scope = this.#require(actor, "attempt:extend");
+    if (actor.kind !== "user") throw new Forbidden("attempt:extend");
+    const trimmed = reason.trim();
+    if (trimmed.length < MIN_VOID_REASON) {
+      throw new AttemptError("reason_required", `Reopening needs a reason of at least ${MIN_VOID_REASON} characters; it is recorded in the attempt's ledger`);
+    }
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > MAX_EXTENSION_MINUTES) {
+      throw new AttemptError("invalid_extension", `Reopen for 1 to ${MAX_EXTENSION_MINUTES} whole minutes`);
+    }
+
+    const { projection, exam } = await this.#context(scope, id);
+    if (projection.attempt.state !== "submitted") {
+      throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}; only a submitted attempt, not yet graded, can be reopened`);
+    }
+    const deadline = deadlineOf(projection, exam);
+    const until = this.#now() + minutes * 60_000;
+    const extraMs = Math.max(0, until - deadline);
+    try {
+      await this.#store.append(
+        scope,
+        id,
+        { type: "attempt_reopened", attemptId: id, extraMs, reason: trimmed, decidedBy: { userId: actor.id, name: actor.name } },
+        { guard: whileSubmitted },
+      );
+    } catch (error) {
+      if (error instanceof AppendRefused) throw new AttemptError("invalid_state", `Attempt ${id} changed while this was being recorded`);
+      throw error;
+    }
+    await this.#audit(actor, "attempt.reopened", id, { minutes, reason: trimmed });
+    return deadline + extraMs;
+  }
+
   // --- grading --------------------------------------------------------------
 
   /**
@@ -1074,9 +1118,24 @@ export class ExamService {
 
 const candidateOf = (access: CandidateAccess): Scope => candidateScope(access.orgId, access.attemptId);
 
-/** An append guard: refuse once the attempt has been submitted or set aside. */
-const whileOpen = (events: readonly ExamEvent[]): string | null =>
-  events.some((e) => e.type === "attempt_submitted" || e.type === "attempt_voided") ? "The attempt has closed" : null;
+/** Where the latest event that opened or closed the attempt left it. */
+const isOpen = (events: readonly ExamEvent[]): boolean => {
+  let open = true;
+  for (const e of events) {
+    if (e.type === "attempt_submitted" || e.type === "attempt_graded" || e.type === "attempt_voided") open = false;
+    else if (e.type === "attempt_reopened") open = true;
+  }
+  return open;
+};
+
+/** An append guard: refuse once the attempt has been submitted or set aside — unless it was reopened since. */
+const whileOpen = (events: readonly ExamEvent[]): string | null => (isOpen(events) ? null : "The attempt has closed");
+
+/** An append guard for reopening: only a submitted attempt, not graded, not set aside, not already open. */
+const whileSubmitted = (events: readonly ExamEvent[]): string | null => {
+  if (events.some((e) => e.type === "attempt_graded" || e.type === "attempt_voided")) return "The attempt is graded or set aside";
+  return isOpen(events) ? "The attempt is already open" : null;
+};
 
 /** The first instant of the calendar month (UTC) containing `now`. */
 export function monthStart(now: Timestamp): Date {
