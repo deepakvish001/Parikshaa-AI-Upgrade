@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 import base from "./playwright.config.js";
 
+const port = Number.parseInt(process.env["E2E_PORT"] ?? "4173", 10);
+
 /**
  * Screenshots of every page, for docs/screenshots — not a test suite.
  *
@@ -29,4 +31,13 @@ export default defineConfig({
     permissions: ["camera"],
   },
   projects: [{ name: "screenshots" }],
+  // Code questions run for real here, in-process: see E2E_RUNNER in src/server.ts.
+  webServer: {
+    command: "node dist/server.js",
+    url: `http://localhost:${port}/api/health`,
+    env: { PORT: String(port), E2E_RUNNER: "local" },
+    reuseExistingServer: false,
+    timeout: 60_000,
+    stdout: "pipe",
+  },
 });

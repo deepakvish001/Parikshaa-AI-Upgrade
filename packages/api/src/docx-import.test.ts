@@ -143,10 +143,82 @@ describe("importing a Word document", () => {
     ]);
   });
 
-  it("imports the text of a question with a picture, and says the picture was left out", () => {
+  it("imports the text of a question with a drawing it cannot take, and says what was left out", () => {
     const result = importDocx(docxOf([{ text: "1. What does the diagram show?", picture: true }, "Answer: a tree"]));
     if (!result.ok) throw new Error(JSON.stringify(result.problems));
-    expect(result.preview[0]!.note).toMatch(/picture or equation, which was not imported/);
+    expect(result.preview[0]!.note).toMatch(/equation, a chart or a picture that is not PNG, JPEG, GIF or WebP, which was not imported/);
+  });
+
+  it("takes the pictures pasted into a question, with Word's alt text, ready to be stored by their hash", () => {
+    const figure = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("figure series")]);
+    const result = importDocx(
+      docxOf([
+        "1. Which figure comes next in the series?",
+        { text: "", picture: figure, alt: "Four squares, each with one more dot" },
+        "a) Five dots",
+        "b) Six dots",
+        "Answer: a",
+      ]),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.problems));
+    const [image] = result.drafts[0]!.question.images!;
+    expect(image!.alt).toBe("Four squares, each with one more dot");
+    expect(Buffer.compare(Buffer.from(result.pictures.get(image!.media)!), figure)).toBe(0);
+    expect(result.preview[0]).toMatchObject({ pictures: 1, note: null });
+  });
+
+  it("reads a passage and gives it to each question after it, until the passage ends", () => {
+    const result = importDocx(
+      docxOf([
+        "Passage 1: The monsoon",
+        "The south-west monsoon reaches Kerala in early June and covers the country by mid-July.",
+        "It brings most of India's rain.",
+        "1. When does the monsoon reach Kerala?",
+        "a) Early June",
+        "b) Mid-July",
+        "Answer: a",
+        "2. By when does it cover the country?",
+        "Answer: mid-July",
+        "End of passage",
+        "3. What is 2 + 2?",
+        "Answer: 4",
+      ]),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.problems));
+    const [first, second, third] = result.drafts.map((d) => d.question);
+    expect(first!.passage).toEqual({
+      id: "docx-passage-1",
+      title: "The monsoon",
+      text: "The south-west monsoon reaches Kerala in early June and covers the country by mid-July.\nIt brings most of India's rain.",
+    });
+    expect(second!.passage).toEqual(first!.passage);
+    expect(third!.passage).toBeUndefined();
+    expect(result.preview.map((p) => p.passage)).toEqual(["The monsoon", "The monsoon", null]);
+  });
+
+  it("reads negative marks, and several right answers written out or marked with *", () => {
+    const result = importDocx(
+      docxOf([
+        "1. Which of these are prime?",
+        "a) 2",
+        "b) 4",
+        "c) 5",
+        "Answer: a, c",
+        "Negative: 1",
+        "Partial: yes",
+        "2. Which are even?",
+        "*a) 2",
+        "*b) 4",
+        "c) 5",
+        "3. What is 7 × 8?",
+        "Answer: 56",
+        "Negative marks: 0.25",
+      ]),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.problems));
+    expect(result.drafts[0]!.question).toMatchObject({ correctIndex: 0, correctIndices: [0, 2], partialCredit: true, negativeMarks: 1 });
+    expect(result.drafts[1]!.question).toMatchObject({ correctIndices: [0, 1] });
+    expect(result.drafts[2]!.question).toMatchObject({ kind: "numeric", negativeMarks: 0.25 });
   });
 
   it("explains a file that is not a .docx, or that has no questions in it", () => {

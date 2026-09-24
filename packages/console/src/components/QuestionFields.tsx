@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { CONTENT_LOCALES, type ContentLocale, type Question, type QuestionKind, type QuestionTranslation, type RubricCriterion } from "@parikshaa/core/browser";
+import {
+  CONTENT_LOCALES,
+  type ContentLocale,
+  type Passage,
+  type Question,
+  type QuestionImage,
+  type QuestionKind,
+  type QuestionTranslation,
+  type RubricCriterion,
+} from "@parikshaa/core/browser";
 import { CodeFields } from "./CodeFields.tsx";
 
 /** Swap a question's kind, replacing the fields that do not carry across. */
@@ -8,7 +17,16 @@ export function changeKind(question: Question, kind: QuestionKind): Question {
   const translations = Object.fromEntries(
     Object.entries(question.translations ?? {}).map(([locale, t]) => [locale, kind === "mcq" ? { stem: t.stem, options: ["", ""] } : { stem: t.stem }]),
   );
-  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, rubric: question.rubric, translations };
+  // Pictures and the passage belong to the question whatever its kind.
+  const base = {
+    id: question.id,
+    stem: question.stem,
+    maxScore: question.maxScore,
+    rubric: question.rubric,
+    translations,
+    ...(question.images === undefined ? {} : { images: question.images }),
+    ...(question.passage === undefined ? {} : { passage: question.passage }),
+  };
   switch (kind) {
     case "mcq":
       return { ...base, kind, options: ["", ""], correctIndex: 0 };
@@ -46,7 +64,27 @@ export const blankQuestion = (id: string): Question => ({
  * Shared by the exam editor and the question bank, so a question is written
  * the same way wherever it is written.
  */
-export function QuestionFields({ question, onChange }: { question: Question; onChange: (next: Question) => void }) {
+/** Upload a picture and get back its hash; absent where pictures cannot be added. */
+export type ImageUploader = (file: File) => Promise<string>;
+
+/** A copy of a question without one optional field (exactOptionalPropertyTypes forbids setting it to undefined). */
+function without<K extends "correctIndices" | "partialCredit" | "negativeMarks" | "images" | "passage">(question: Question, key: K): Question {
+  const { [key]: _, ...rest } = question as Question & Record<K, unknown>;
+  return rest as Question;
+}
+
+export function QuestionFields({
+  question,
+  onChange,
+  upload,
+  previousPassage,
+}: {
+  question: Question;
+  onChange: (next: Question) => void;
+  upload?: ImageUploader;
+  /** The passage of the question before this one, offered for reuse. */
+  previousPassage?: Passage;
+}) {
   const setRubric = (rubric: readonly RubricCriterion[]) => onChange({ ...question, rubric } as Question);
 
   return (
@@ -87,19 +125,43 @@ export function QuestionFields({ question, onChange }: { question: Question; onC
         </div>
       </div>
 
+      {upload === undefined ? null : (
+        <PictureFields
+          label="Pictures with the question"
+          id={`pictures-${question.id}`}
+          images={question.images ?? []}
+          upload={upload}
+          onChange={(images) => onChange(images.length === 0 ? without(question, "images") : ({ ...question, images } as Question))}
+        />
+      )}
+
       {question.kind === "mcq" ? (
         <div className="field">
-          <label>Options — select the correct one</label>
+          <label>{question.correctIndices === undefined ? "Options — select the correct one" : "Options — tick every correct one"}</label>
           {question.options.map((option, optionIndex) => (
             <div className="row" key={optionIndex} style={{ marginTop: ".35rem" }}>
-              <input
-                type="radio"
-                name={`correct-${question.id}`}
-                aria-label={`Option ${optionIndex + 1} is correct`}
-                checked={question.correctIndex === optionIndex}
-                onChange={() => onChange({ ...question, correctIndex: optionIndex })}
-                style={{ width: "auto" }}
-              />
+              {question.correctIndices === undefined ? (
+                <input
+                  type="radio"
+                  name={`correct-${question.id}`}
+                  aria-label={`Option ${optionIndex + 1} is correct`}
+                  checked={question.correctIndex === optionIndex}
+                  onChange={() => onChange({ ...question, correctIndex: optionIndex })}
+                  style={{ width: "auto" }}
+                />
+              ) : (
+                <input
+                  type="checkbox"
+                  aria-label={`Option ${optionIndex + 1} is correct`}
+                  checked={question.correctIndices.includes(optionIndex)}
+                  onChange={(e) => {
+                    const all = e.target.checked
+                      ? [...question.correctIndices!, optionIndex].sort((a, b) => a - b)
+                      : question.correctIndices!.filter((i) => i !== optionIndex);
+                    onChange({ ...question, correctIndices: all, correctIndex: all[0] ?? 0 });
+                  }}
+                />
+              )}
               <input
                 aria-label={`Option ${optionIndex + 1}`}
                 value={option}
@@ -121,6 +183,50 @@ export function QuestionFields({ question, onChange }: { question: Question; onC
               Add option
             </button>
           </div>
+          <div className="row">
+            <label className="inline">
+              <input
+                type="checkbox"
+                checked={question.correctIndices !== undefined}
+                onChange={(e) =>
+                  onChange(
+                    e.target.checked
+                      ? { ...question, correctIndices: [question.correctIndex] }
+                      : without(without(question, "correctIndices"), "partialCredit"),
+                  )
+                }
+              />
+              More than one option is right
+            </label>
+            {question.correctIndices === undefined ? null : (
+              <label className="inline">
+                <input
+                  type="checkbox"
+                  checked={question.partialCredit === true}
+                  onChange={(e) => onChange(e.target.checked ? { ...question, partialCredit: true } : without(question, "partialCredit"))}
+                />
+                Partial credit for each right option chosen
+              </label>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {question.kind === "mcq" || question.kind === "numeric" ? (
+        <div className="field">
+          <label htmlFor={`neg-${question.id}`}>Negative marks for a wrong answer</label>
+          <input
+            id={`neg-${question.id}`}
+            type="number"
+            min={0}
+            step="any"
+            placeholder="0 — none"
+            value={question.negativeMarks ?? ""}
+            onChange={(e) =>
+              onChange(e.target.value === "" || Number(e.target.value) === 0 ? without(question, "negativeMarks") : ({ ...question, negativeMarks: Number(e.target.value) } as Question))
+            }
+            style={{ maxWidth: "12rem" }}
+          />
         </div>
       ) : null}
 
@@ -151,6 +257,8 @@ export function QuestionFields({ question, onChange }: { question: Question; onC
       ) : null}
 
       {question.kind === "code" ? <CodeFields question={question} onChange={onChange} /> : null}
+
+      <PassageFields question={question} onChange={onChange} {...(upload === undefined ? {} : { upload })} {...(previousPassage === undefined ? {} : { previousPassage })} />
 
       <Translations question={question} onChange={onChange} />
 
@@ -286,6 +394,137 @@ function Translations({ question, onChange }: { question: Question; onChange: (n
           </button>
         </div>
       ) : null}
+    </details>
+  );
+}
+
+/** Pictures for a stem or a passage: uploaded, described, removed. */
+function PictureFields({
+  label,
+  id,
+  images,
+  upload,
+  onChange,
+}: {
+  label: string;
+  id: string;
+  images: readonly QuestionImage[];
+  upload: ImageUploader;
+  onChange: (images: readonly QuestionImage[]) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      {images.length === 0 ? null : (
+        <ul className="picture-list">
+          {images.map((image, i) => (
+            <li key={image.media}>
+              <img src={`/api/media/${image.media}`} alt="" />
+              <input
+                aria-label={`What picture ${i + 1} shows`}
+                value={image.alt}
+                placeholder="What the picture shows"
+                onChange={(e) => onChange(images.map((x, j) => (j === i ? { ...x, alt: e.target.value } : x)))}
+              />
+              <button type="button" className="quiet" onClick={() => onChange(images.filter((_, j) => j !== i))}>
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <input
+        id={id}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp"
+        disabled={busy}
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file === undefined) return;
+          setBusy(true);
+          setError(null);
+          try {
+            const media = await upload(file);
+            onChange([...images, { media, alt: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ") }]);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "The picture could not be uploaded.");
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+      <p className="notice">PNG, JPEG, GIF or WebP, up to 2 MB. Describe each one for candidates who cannot see it.</p>
+      {error === null ? null : <p className="error">{error}</p>}
+    </div>
+  );
+}
+
+/** The passage a question is about: comprehension, a data set, a case. */
+function PassageFields({
+  question,
+  onChange,
+  upload,
+  previousPassage,
+}: {
+  question: Question;
+  onChange: (next: Question) => void;
+  upload?: ImageUploader;
+  previousPassage?: Passage;
+}) {
+  const passage = question.passage;
+  const set = (next: Passage) => onChange({ ...question, passage: next } as Question);
+  return (
+    <details className="field passage-fields" open={passage !== undefined}>
+      <summary>Passage {passage === undefined ? "(none)" : `— ${passage.title ?? "untitled"}`}</summary>
+      {passage === undefined ? (
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => set({ id: `p-${Date.now().toString(36)}`, text: "" })}>
+            Add a passage
+          </button>
+          {previousPassage === undefined ? null : (
+            <button type="button" className="secondary" onClick={() => set(previousPassage)}>
+              Use the passage of the question above
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="field">
+            <label htmlFor={`passage-title-${question.id}`}>Passage title</label>
+            <input
+              id={`passage-title-${question.id}`}
+              value={passage.title ?? ""}
+              onChange={(e) => {
+                const { title: _, ...rest } = passage;
+                set(e.target.value === "" ? rest : { ...rest, title: e.target.value });
+              }}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor={`passage-text-${question.id}`}>Passage</label>
+            <textarea id={`passage-text-${question.id}`} value={passage.text} onChange={(e) => set({ ...passage, text: e.target.value })} />
+          </div>
+          {upload === undefined ? null : (
+            <PictureFields
+              label="Pictures with the passage"
+              id={`passage-pictures-${question.id}`}
+              images={passage.images ?? []}
+              upload={upload}
+              onChange={(images) => {
+                const { images: _, ...rest } = passage;
+                set(images.length === 0 ? rest : { ...rest, images });
+              }}
+            />
+          )}
+          <p className="notice">Questions next to each other with the same passage are shown under one copy of it.</p>
+          <button type="button" className="quiet" onClick={() => onChange(without(question, "passage"))}>
+            Remove the passage
+          </button>
+        </>
+      )}
     </details>
   );
 }

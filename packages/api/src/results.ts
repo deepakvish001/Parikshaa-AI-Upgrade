@@ -5,7 +5,9 @@ import {
   foldAttempt,
   paperOf,
   resultOf,
+  similarPairs,
   type AttemptId,
+  type CodeSubmission,
   type AttemptProjection,
   type AttemptResult,
   type Exam,
@@ -51,6 +53,8 @@ export interface CandidateReport {
     readonly score: number | null;
     readonly answer: string | null;
     readonly language: string | null;
+    /** A code answer's tests, as counted on the record; null when none ran. */
+    readonly tests: { readonly passed: number; readonly total: number } | null;
   }[];
   readonly vivas: readonly {
     readonly questionId: string;
@@ -73,6 +77,8 @@ export interface CandidateReport {
     readonly events: Readonly<Record<string, number>>;
   } | null;
 }
+
+const testsOf = (run: { readonly passed: number; readonly total: number } | undefined) => (run === undefined ? null : { passed: run.passed, total: run.total });
 
 /** "2026-10-01 10:05" in India Standard Time: what a spreadsheet column should say. */
 export function istStamp(ms: number): string {
@@ -180,6 +186,63 @@ export class ResultsService {
     return { title: exam.title, rows: [header, ...body] };
   }
 
+  /**
+   * Code answers to the same question that are alike enough to be worth a
+   * look (ROADMAP §4): evidence for a person, never a finding, and never a
+   * change to anyone's marks.
+   */
+  async similarity(actor: Actor, examId: ExamId): Promise<SimilarityReport> {
+    if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
+    const scope = staffScope(actor.orgId);
+    const definition = await this.#store.loadExam(scope, examId);
+    if (definition === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
+    const [chains, invited] = await Promise.all([this.#store.loadExamLedgers(scope, examId), this.#invitations.list(scope, examId)]);
+    const byAttempt = new Map<string, Invitation>(invited.filter((i) => i.attemptId !== null).map((i) => [i.attemptId!, i]));
+
+    const code = allQuestions(definition).filter((q) => q.kind === "code");
+    // Per code question: every candidate's answer, as they last committed it.
+    const answers = new Map<string, Map<string, { language: string; source: string; ref: string; name: string }>>();
+    for (const [attemptId, entries] of chains) {
+      const first = entries[0];
+      if (first === undefined || first.event.type !== "attempt_started") continue;
+      const folded = foldAttempt(entries, { exam: paperOf(definition, first.event.questionIds) });
+      if (!folded.ok) continue;
+      const invitation = byAttempt.get(attemptId);
+      for (const response of folded.projection.attempt.responses) {
+        const question = code.find((q) => q.id === response.questionId);
+        if (question === undefined || question.kind !== "code") continue;
+        const decoded = decodeCodeAnswer(response.answer, question);
+        const forQuestion = answers.get(question.id) ?? new Map();
+        forQuestion.set(attemptId, {
+          ...decoded,
+          ref: invitation?.candidateRef ?? folded.projection.attempt.candidateId,
+          name: invitation?.name ?? "",
+        });
+        answers.set(question.id, forQuestion);
+      }
+    }
+
+    return {
+      exam: { id: definition.id, title: definition.title },
+      questions: code.map((question) => {
+        const given = answers.get(question.id) ?? new Map();
+        const submissions: CodeSubmission[] = [...given].map(([key, a]) => ({ key, language: a.language, source: a.source }));
+        const side = (attemptId: string) => ({ attemptId, ...given.get(attemptId)! });
+        return {
+          id: question.id,
+          stem: question.stem,
+          answered: submissions.length,
+          pairs: similarPairs(submissions, question.kind === "code" ? (question.starter ?? null) : null).map((p) => ({
+            a: side(p.a),
+            b: side(p.b),
+            similarity: p.similarity,
+            shared: p.shared,
+          })),
+        };
+      }),
+    };
+  }
+
   /** One candidate's report: grade, answers, and — separately — the follow-ups. */
   async report(actor: Actor, attemptId: AttemptId): Promise<CandidateReport> {
     if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
@@ -215,8 +278,9 @@ export class ResultsService {
           kind: q.kind,
           maxScore: q.maxScore,
           score: result.scores[q.id]?.score ?? null,
-          answer: code === null ? (q.kind === "mcq" && raw !== null ? (q.options[Number(raw)] ?? raw) : raw) : code.source,
+          answer: code === null ? (q.kind === "mcq" && raw !== null ? optionsChosen(q.options, raw) : raw) : code.source,
           language: code?.language ?? null,
+          tests: testsOf(projection.codeScores.get(q.id)),
         };
       }),
       vivas: projection.vivas.map((v) => ({
@@ -249,4 +313,34 @@ export class ResultsService {
       events: counts,
     };
   }
+}
+
+/** An mcq answer as the options' own words: "Merge sort", or "2; 5" for several. */
+function optionsChosen(options: readonly string[], raw: string): string {
+  const positions = raw.split(",").map((p) => p.trim());
+  if (positions.some((p) => !/^\d+$/.test(p))) return raw;
+  return positions.map((p) => options[Number(p)] ?? p).join("; ");
+}
+
+export interface SimilarityReport {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly questions: readonly {
+    readonly id: string;
+    readonly stem: string;
+    readonly answered: number;
+    readonly pairs: readonly {
+      readonly a: SimilaritySide;
+      readonly b: SimilaritySide;
+      readonly similarity: number;
+      readonly shared: number;
+    }[];
+  }[];
+}
+
+interface SimilaritySide {
+  readonly attemptId: string;
+  readonly ref: string;
+  readonly name: string;
+  readonly language: string;
+  readonly source: string;
 }

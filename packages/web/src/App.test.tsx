@@ -497,3 +497,97 @@ describe("a test taken section by section", () => {
     await waitFor(() => expect(client.nextSection).toHaveBeenCalled());
   });
 });
+
+describe("aptitude papers", () => {
+  const paper = {
+    ...exam,
+    questions: [
+      {
+        id: "q-primes",
+        kind: "mcq",
+        stem: "Which of these are prime?",
+        maxScore: 4,
+        options: ["2", "4", "5", "9"],
+        multiple: true,
+        negativeMarks: 1,
+        translations: {},
+        images: [{ media: "a".repeat(64), alt: "A number line from 1 to 10" }],
+        passage: null,
+      },
+      {
+        id: "q-rain",
+        kind: "mcq",
+        stem: "When does the monsoon reach Kerala?",
+        maxScore: 2,
+        options: ["Early June", "Mid-July"],
+        multiple: false,
+        negativeMarks: 0,
+        translations: {},
+        images: [],
+        passage: { id: "p1", title: "The monsoon", text: "The monsoon reaches Kerala in early June.", images: [] },
+      },
+      {
+        id: "q-cover",
+        kind: "short",
+        stem: "By when does it cover the country?",
+        maxScore: 2,
+        translations: {},
+        images: [],
+        passage: { id: "p1", title: "The monsoon", text: "The monsoon reaches Kerala in early June.", images: [] },
+      },
+    ],
+  };
+
+  it("lets a candidate choose several options, and says what a wrong answer costs", async () => {
+    const { client, setState } = stubClient();
+    setState({ exam: paper });
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    const primes = screen.getByRole("group", { name: "Which of these are prime?" });
+    expect(screen.getByText("Choose every option that is right.")).toBeInTheDocument();
+    expect(screen.getByText("−1 if wrong")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "A number line from 1 to 10" })).toHaveAttribute("src", `/api/media/${"a".repeat(64)}`);
+
+    await userEvent.click(within(primes).getByLabelText("5"));
+    await userEvent.click(within(primes).getByLabelText("2"));
+    const card = primes.closest("section")!;
+    await userEvent.click(within(card as HTMLElement).getByRole("button", { name: "Save answer" }));
+    await waitFor(() => expect(client.saveAnswer).toHaveBeenCalledWith("q-primes", "0,2"));
+  });
+
+  it("shows a passage once, above the questions about it", async () => {
+    const { client, setState } = stubClient();
+    setState({ exam: paper });
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    const passage = screen.getByRole("region", { name: "The monsoon" });
+    expect(passage).toHaveTextContent("Passage · Questions 2–3");
+    expect(screen.getAllByText("The monsoon reaches Kerala in early June.")).toHaveLength(1);
+  });
+
+  it("keeps a palette of every question, and remembers what is marked for review", async () => {
+    localStorage.clear();
+    const { client, setState } = stubClient();
+    setState({ exam: paper, answers: [{ questionId: "q-rain", answer: "0", submittedAt: 1 }] });
+    const { unmount } = renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    const palette = screen.getByRole("navigation", { name: "Questions" });
+    expect(within(palette).getByRole("button", { name: "Question 1: Not answered" })).toBeInTheDocument();
+    expect(within(palette).getByRole("button", { name: "Question 2: Answered" })).toHaveClass("answered");
+
+    const cover = screen.getByRole("region", { name: /By when does it cover the country\?/ });
+    await userEvent.click(within(cover).getByRole("button", { name: "Mark for review" }));
+    expect(within(cover).getByRole("button", { name: "Marked for review" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(palette).getByRole("button", { name: "Question 3: Not answered, Marked for review" })).toHaveClass("marked");
+    expect(within(palette).getByText("Done 1/3 · For review 1", { selector: ".palette-body .palette-summary" })).toBeInTheDocument();
+
+    // Back after a reload: the mark is still there, on this device.
+    unmount();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+    expect(screen.getByRole("button", { name: "Question 3: Not answered, Marked for review" })).toBeInTheDocument();
+  });
+});

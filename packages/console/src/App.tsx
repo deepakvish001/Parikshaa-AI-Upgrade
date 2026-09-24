@@ -457,6 +457,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           onSave={(exam) => saveExam.mutate(exam)}
           onCancel={() => setView({ name: "exams" })}
           {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
+          {...(can("exam:write") ? { uploadImage: (file: File) => client.uploadImage(file) } : {})}
         />
       ) : null}
 

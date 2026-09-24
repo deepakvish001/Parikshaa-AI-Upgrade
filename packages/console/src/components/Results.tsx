@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CandidateReport, ConsoleClient, QuestionStats, ResultRow, Results, Verdict } from "../api.ts";
+import type { CandidateReport, ConsoleClient, QuestionStats, ResultRow, Results, Similarity, Verdict } from "../api.ts";
 import { EraseCard } from "./Privacy.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
@@ -76,6 +76,7 @@ export function ResultsPanel({ client, examId, onReport }: { client: ConsoleClie
       <CandidateTable rows={rows} onReport={onReport} />
       <QuestionTable questions={analytics.questions} graded={analytics.graded} />
       <Integrity integrity={analytics.integrity} />
+      <CodeSimilarity client={client} examId={examId} />
     </>
   );
 }
@@ -362,9 +363,12 @@ export function Report({ report }: { report: CandidateReport }) {
             {q.answer === null ? (
               <p className="notice">Not answered.</p>
             ) : q.kind === "code" ? (
-              <pre className="code" aria-label={`Code in ${q.language ?? "an unknown language"}`}>
-                {q.answer}
-              </pre>
+              <>
+                <pre className="code" aria-label={`Code in ${q.language ?? "an unknown language"}`}>
+                  {q.answer}
+                </pre>
+                <TestsLine tests={q.tests} />
+              </>
             ) : (
               <p className="given">{q.answer}</p>
             )}
@@ -405,5 +409,112 @@ export function Report({ report }: { report: CandidateReport }) {
         Record: {report.ledger.length} entries, head {report.ledger.head.slice(0, 16)}…
       </p>
     </article>
+  );
+}
+
+/** How a code answer did against its question's tests, hidden ones included: counts only, as the record keeps them. */
+function TestsLine({ tests }: { tests: CandidateReport["questions"][number]["tests"] }) {
+  if (tests === null) return <p className="notice">No tests were run on this answer; it is graded against the rubric.</p>;
+  const tone = tests.passed === tests.total ? "ok" : tests.passed === 0 ? "bad" : "warn";
+  return (
+    <p className="tests-line">
+      <span className={`pill ${tone}`}>
+        Tests passed {tests.passed} of {tests.total}
+      </span>{" "}
+      <span className="notice">Including the tests hidden from candidates.</span>
+    </p>
+  );
+}
+
+/**
+ * Code answers alike enough to be worth a look (ROADMAP §4): two candidates'
+ * code, in the same language, sharing most of their fingerprints once names,
+ * comments, layout and the starter code are set aside. Evidence for a person,
+ * who reads the two side by side; it changes no marks.
+ */
+function CodeSimilarity({ client, examId }: { client: ConsoleClient; examId: string }) {
+  const similarity = useQuery({ queryKey: ["similarity", examId], queryFn: () => client.similarity(examId) });
+  const [open, setOpen] = useState<string | null>(null);
+  if (similarity.data === undefined || similarity.data.questions.length === 0) return null;
+  return (
+    <section className="card evidence" aria-label="Code similarity">
+      <h2>Code similarity</h2>
+      <p className="notice">
+        Pairs of candidates whose code for the same question is alike once names, comments, layout and the starter code are set aside.
+        Two short answers to a narrow question can honestly match: read them side by side before deciding anything. Nothing here changes a mark.
+      </p>
+      {similarity.data.questions.map((question, qi) => (
+        <div className="similarity-question" key={question.id}>
+          <h3>
+            {qi + 1}. {question.stem}
+          </h3>
+          <p className="notice">
+            {question.answered} answer{question.answered === 1 ? "" : "s"} compared ·{" "}
+            {question.pairs.length === 0 ? "no two alike enough to look at" : `${question.pairs.length} pair${question.pairs.length === 1 ? "" : "s"} to look at`}
+          </p>
+          {question.pairs.length === 0 ? null : (
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Candidates</th>
+                    <th scope="col">Alike</th>
+                    <th scope="col">Language</th>
+                    <th scope="col" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {question.pairs.map((pair) => {
+                    const key = `${question.id}:${pair.a.attemptId}:${pair.b.attemptId}`;
+                    return (
+                      <SimilarRow key={key} pair={pair} open={open === key} onToggle={() => setOpen(open === key ? null : key)} />
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+type Pair = Similarity["questions"][number]["pairs"][number];
+
+function SimilarRow({ pair, open, onToggle }: { pair: Pair; open: boolean; onToggle: () => void }) {
+  const who = (side: Pair["a"]) => `${side.ref}${side.name === "" ? "" : ` · ${side.name}`}`;
+  const percent = Math.round(pair.similarity * 100);
+  return (
+    <>
+      <tr>
+        <td>
+          {who(pair.a)} <span className="notice">and</span> {who(pair.b)}
+        </td>
+        <td>
+          <span className={`pill ${percent >= 90 ? "bad" : "attention"}`}>{percent}%</span>
+        </td>
+        <td>{pair.a.language}</td>
+        <td>
+          <button type="button" className="quiet" aria-expanded={open} onClick={onToggle}>
+            {open ? "Close" : "Compare"}
+          </button>
+        </td>
+      </tr>
+      {open ? (
+        <tr className="compare-row">
+          <td colSpan={4}>
+            <div className="compare" aria-label={`${pair.a.ref} and ${pair.b.ref}, side by side`} role="group">
+              {[pair.a, pair.b].map((side) => (
+                <figure key={side.attemptId}>
+                  <figcaption>{who(side)}</figcaption>
+                  <pre className="code">{side.source}</pre>
+                </figure>
+              ))}
+            </div>
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }

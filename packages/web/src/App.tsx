@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart } from "./api.ts";
@@ -12,7 +12,9 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { Clock } from "lucide-react";
+import { Clock, Flag } from "lucide-react";
+import { loadReview, saveReview } from "./review.ts";
+import { Figures, Palette, PassageCard } from "./components/Paper.tsx";
 
 interface OpenProbe {
   readonly id: string;
@@ -175,6 +177,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const autosaveMs = lite ? LITE_AUTOSAVE_DELAY_MS : AUTOSAVE_DELAY_MS;
   // Per question: the candidate asked to read the original rather than the translation.
   const [original, setOriginal] = useState<ReadonlySet<string>>(new Set());
+  // Questions the candidate means to come back to: their own note, kept on this device.
+  const [review, setReview] = useState<ReadonlySet<string>>(new Set());
 
   const state = useQuery({ queryKey: ["state"], queryFn: () => client.state() });
   const ledger = useQuery({
@@ -184,6 +188,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   });
 
   const attemptId = state.data?.attemptId ?? null;
+  useEffect(() => {
+    if (attemptId !== null) setReview(loadReview(attemptId));
+  }, [attemptId]);
+  const toggleReview = (questionId: string) => {
+    const next = new Set(review);
+    if (next.has(questionId)) next.delete(questionId);
+    else next.add(questionId);
+    setReview(next);
+    if (attemptId !== null) saveReview(attemptId, next);
+  };
   const expiresAt = state.data?.expiresAt ?? 0;
   const inProgress = state.data?.state === "in_progress";
   // Proctored (ROADMAP §14): photos and browser events once the identity step, if any, is done.
@@ -610,8 +624,33 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           </section>
         ) : null}
 
-        {shown.map((original_) => {
+        {open && shown.length > 1 ? (
+          <Palette
+            questions={shown.map((q) => {
+              const committed = answered.get(q.id) ?? "";
+              const typed = drafts[q.id];
+              return {
+                id: q.id,
+                number: exam.questions.indexOf(q) + 1,
+                answered: committed !== "",
+                draft: typed !== undefined && typed.trim() !== "" && typed !== committed,
+                marked: review.has(q.id),
+              };
+            })}
+          />
+        ) : null}
+
+        {shown.map((original_, at) => {
           const index = exam.questions.indexOf(original_);
+          // A passage is shown once, above the first of the questions next to each other that share it.
+          // Read defensively: a server from before pictures and passages sends neither.
+          const passage = original_.passage ?? null;
+          const opensPassage = passage !== null && shown[at - 1]?.passage?.id !== passage.id;
+          const passageRun = opensPassage
+            ? shown.slice(at).findIndex((q) => q.passage?.id !== passage!.id) === -1
+              ? shown.length - at
+              : shown.slice(at).findIndex((q) => q.passage?.id !== passage!.id)
+            : 0;
           // The question as this candidate reads it: in their language when it
           // has been translated, unless they asked for the original.
           const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
@@ -621,70 +660,92 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           const value = drafts[question.id] ?? committed;
           const dirty = value !== committed;
           const draftStatus = status[question.id];
+          const marked = review.has(question.id);
           return (
-            <section
-              className="card question"
-              key={question.id}
-              onBlur={(e) => {
-                // Only when focus leaves the question, not when it moves within it.
-                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) leave(question.id);
-              }}
-            >
-              <div className="q-head">
-                <h2 lang={shownIn}>
-                  <span className="q-num">{index + 1}.</span> {question.stem}
-                </h2>
-                <span className="marks">{t("exam.marks", { n: question.maxScore })}</span>
-              </div>
-              {language !== "en" && original_.translations?.[language] !== undefined ? (
-                <button
-                  type="button"
-                  className="quiet"
-                  onClick={() => {
-                    const next = new Set(original);
-                    if (next.has(original_.id)) next.delete(original_.id);
-                    else next.add(original_.id);
-                    setOriginal(next);
-                  }}
-                >
-                  {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
-                </button>
+            <Fragment key={question.id}>
+              {opensPassage ? (
+                <PassageCard
+                  passage={passage}
+                  from={index + 1}
+                  to={exam.questions.indexOf(shown[at + passageRun - 1]!) + 1}
+                />
               ) : null}
-
-              <AnswerInput
-                question={question}
-                value={value}
-                disabled={!open}
-                onChange={(next) => edit(question.id, next)}
-                onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
-              />
-
-              {open ? (
-                <div className="row">
-                  <button
-                    type="button"
-                    className="secondary"
-                    disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
-                    onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
-                  >
-                    {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
-                  </button>
-                  <span className="saved" aria-live="polite">
-                    {!dirty
-                      ? savedAt[question.id] !== undefined || committed !== ""
-                        ? t("exam.saved")
-                        : ""
-                      : draftStatus === "offline"
-                        ? t("exam.keptOffline")
-                        : draftStatus === "synced"
-                          ? t("exam.draftSaved")
-                          : draftStatus === "saving"
-                            ? t("exam.saving")
-                            : ""}
+              <section
+                className={`card question${marked ? " marked" : ""}${passage !== null ? " in-passage" : ""}`}
+                id={`q-${question.id}`}
+                aria-labelledby={`q-${question.id}-stem`}
+                onBlur={(e) => {
+                  // Only when focus leaves the question, not when it moves within it.
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) leave(question.id);
+                }}
+              >
+                <div className="q-head">
+                  <h2 lang={shownIn} id={`q-${question.id}-stem`} tabIndex={-1}>
+                    <span className="q-num">{index + 1}.</span> {question.stem}
+                  </h2>
+                  <span className="q-badges">
+                    <span className="marks">{question.maxScore === 1 ? t("exam.mark") : t("exam.marks", { n: question.maxScore })}</span>
+                    {(question.kind === "mcq" || question.kind === "numeric") && (question.negativeMarks ?? 0) > 0 ? (
+                      <span className="marks negative">{t("exam.negative", { n: question.negativeMarks })}</span>
+                    ) : null}
                   </span>
                 </div>
-              ) : null}
-            </section>
+                <Figures images={question.images ?? []} />
+                {question.kind === "mcq" && question.multiple ? <p className="notice choose-all">{t("exam.chooseAll")}</p> : null}
+                {language !== "en" && original_.translations?.[language] !== undefined ? (
+                  <button
+                    type="button"
+                    className="quiet"
+                    onClick={() => {
+                      const next = new Set(original);
+                      if (next.has(original_.id)) next.delete(original_.id);
+                      else next.add(original_.id);
+                      setOriginal(next);
+                    }}
+                  >
+                    {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
+                  </button>
+                ) : null}
+
+                <AnswerInput
+                  question={question}
+                  value={value}
+                  disabled={!open}
+                  onChange={(next) => edit(question.id, next)}
+                  onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
+                />
+
+                {open ? (
+                  <div className="row">
+                    <button
+                      type="button"
+                      className="secondary"
+                      disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
+                      onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
+                    >
+                      {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
+                    </button>
+                    <button type="button" className={`quiet review-toggle${marked ? " on" : ""}`} aria-pressed={marked} onClick={() => toggleReview(question.id)}>
+                      <Flag aria-hidden="true" />
+                      {marked ? t("exam.marked") : t("exam.markReview")}
+                    </button>
+                    <span className="saved" aria-live="polite">
+                      {!dirty
+                        ? savedAt[question.id] !== undefined || committed !== ""
+                          ? t("exam.saved")
+                          : ""
+                        : draftStatus === "offline"
+                          ? t("exam.keptOffline")
+                          : draftStatus === "synced"
+                            ? t("exam.draftSaved")
+                            : draftStatus === "saving"
+                              ? t("exam.saving")
+                              : ""}
+                    </span>
+                  </div>
+                ) : null}
+              </section>
+            </Fragment>
           );
         })}
 

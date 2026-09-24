@@ -100,12 +100,14 @@ Each app adds its own layout on top:
 | 11 | [A section's own clock](screenshots/candidate-11-section-timer.png) | 11 | [Question bank, Word import](screenshots/console-11-question-bank.png) |
 | 12 | [The receipt, verified](screenshots/candidate-12-receipt.png) | 12 | [Staff](screenshots/console-12-staff.png) |
 | 13 | [On a phone](screenshots/candidate-13-phone.png) | 13 | [API keys](screenshots/console-13-api-keys.png) |
-| | | 14 | [Spend](screenshots/console-14-spend.png) |
-| | | 15 | [Audit log](screenshots/console-15-audit-log.png) |
+| 14 | [An aptitude paper: pictures, a passage, negative marks, the palette](screenshots/candidate-14-aptitude.png) | 14 | [Spend](screenshots/console-14-spend.png) |
+| 15 | [A coding question, run on the real runner](screenshots/candidate-15-coding.png) | 15 | [Audit log](screenshots/console-15-audit-log.png) |
 | | | 16 | [Integrations](screenshots/console-16-integrations.png) |
 | | | 17 | [Privacy](screenshots/console-17-privacy.png) |
 | | | 18 | [Billing](screenshots/console-18-billing.png) · [GST invoice](screenshots/console-18b-gst-invoice.png) |
 | | | 19 | [Password](screenshots/console-19-password.png) |
+| | | 21 | [Aptitude exam editor](screenshots/console-21-aptitude-editor.png) |
+| | | 22 | [Code similarity](screenshots/console-22-code-similarity.png) |
 
 The green camera images are Chromium's fake camera, which stands in for a
 webcam when the screenshots are taken.
@@ -121,4 +123,6 @@ npm run screenshots -w @parikshaa/e2e      # needs Postgres, as the e2e tests do
 fictitious institution with candidates, graded attempts, a live sitting, a
 proctored candidate, staff, keys and a paid invoice — and capture it in
 Chromium at 1440×900 (and 390×844 for the phone). They are not part of the e2e
-suite.
+suite. Code is run in-process by the real runner (`E2E_RUNNER=local`), so the
+coding screens show real output from real compilers; that needs `python3`,
+`node`, `gcc`, `g++` and a JDK on the machine.

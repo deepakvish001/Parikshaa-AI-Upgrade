@@ -21,6 +21,23 @@ export type ExamValidation =
   | { readonly ok: true }
   | { readonly ok: false; readonly problems: readonly ExamProblem[] };
 
+const SHA256 = /^[0-9a-f]{64}$/;
+/** At most this many pictures with one stem or passage. */
+export const MAX_IMAGES = 6;
+
+function validateImages(images: readonly { readonly media: string; readonly alt: string }[] | undefined, at: string): ExamProblem[] {
+  if (images === undefined) return [];
+  const problems: ExamProblem[] = [];
+  if (images.length > MAX_IMAGES) problems.push({ path: at, message: `At most ${MAX_IMAGES} pictures.` });
+  images.forEach((image, i) => {
+    if (!SHA256.test(image.media)) problems.push({ path: `${at}.${i}.media`, message: "A picture is named by the SHA-256 it was uploaded under." });
+    if (image.alt.trim() === "") {
+      problems.push({ path: `${at}.${i}.alt`, message: "Say what the picture shows, for a candidate who cannot see it." });
+    }
+  });
+  return problems;
+}
+
 /** Problems with one question, reported under `at` (e.g. `questions.2`). */
 export function validateQuestion(question: Question, at: string): ExamProblem[] {
   const problems: ExamProblem[] = [];
@@ -66,10 +83,35 @@ export function validateQuestion(question: Question, at: string): ExamProblem[] 
     }
   }
 
+  problems.push(...validateImages(question.images, `${at}.images`));
+  if (question.passage !== undefined) {
+    if (question.passage.id.trim() === "") problems.push({ path: `${at}.passage.id`, message: "A passage needs an id, shared by its questions." });
+    if (question.passage.text.trim() === "") problems.push({ path: `${at}.passage.text`, message: "A passage needs its text." });
+    problems.push(...validateImages(question.passage.images, `${at}.passage.images`));
+  }
+  if ((question.kind === "mcq" || question.kind === "numeric") && question.negativeMarks !== undefined) {
+    if (!Number.isFinite(question.negativeMarks) || question.negativeMarks < 0 || question.negativeMarks > question.maxScore) {
+      problems.push({
+        path: `${at}.negativeMarks`,
+        message: "Negative marks are what a wrong answer loses: zero or more, and no more than the question is worth.",
+      });
+    }
+  }
+
   switch (question.kind) {
     case "mcq": {
       if (question.options.length < 2) {
         problems.push({ path: `${at}.options`, message: "An mcq needs at least two options." });
+      }
+      if (question.correctIndices !== undefined && question.correctIndices.length > 0) {
+        const all = question.correctIndices;
+        if (all.some((i) => !Number.isInteger(i) || i < 0 || i >= question.options.length) || new Set(all).size !== all.length) {
+          problems.push({ path: `${at}.correctIndices`, message: "Every right option must be one of the options, named once." });
+        } else if (!all.includes(question.correctIndex)) {
+          problems.push({ path: `${at}.correctIndex`, message: "With several right options, the correct index must be one of them." });
+        }
+      } else if (question.partialCredit === true) {
+        problems.push({ path: `${at}.partialCredit`, message: "Partial credit needs more than one right option." });
       }
       if (
         !Number.isInteger(question.correctIndex) ||

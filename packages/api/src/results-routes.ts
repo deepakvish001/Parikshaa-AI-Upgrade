@@ -52,6 +52,30 @@ const result = z.object({
   probes: z.object({ asked: z.number(), replied: z.number(), verdicts }),
   voidReason: z.string().nullable(),
 });
+const similaritySide = z.object({ attemptId: z.string(), ref: z.string(), name: z.string(), language: z.string(), source: z.string() });
+const similarityResponse = z.object({
+  exam: z.object({ id: z.string(), title: z.string() }),
+  questions: z
+    .array(
+      z.object({
+        id: z.string(),
+        stem: z.string(),
+        answered: z.number(),
+        pairs: z
+          .array(
+            z.object({
+              a: similaritySide,
+              b: similaritySide,
+              similarity: z.number().describe("Shared fingerprints over the shorter answer's, 0–1."),
+              shared: z.number(),
+            }),
+          )
+          .readonly(),
+      }),
+    )
+    .readonly(),
+});
+
 const resultsResponse = z.object({
   exam: z.object({ id: z.string(), title: z.string() }),
   rows: z.array(result.extend({ ref: z.string(), name: z.string(), email: z.string().nullable() })).readonly(),
@@ -104,6 +128,10 @@ const reportResponse = z.object({
         score: z.number().nullable(),
         answer: z.string().nullable(),
         language: z.string().nullable(),
+        tests: z
+          .object({ passed: z.number().int(), total: z.number().int() })
+          .nullable()
+          .describe("For a code answer run against its question's tests: how many passed. Counts only, as the record keeps them."),
       }),
     )
     .readonly(),
@@ -164,6 +192,26 @@ export function registerResultsRoutes(routes: Routes, deps: ResultsRouteDeps): v
       const actor = await staff(request, reply, "attempt:review");
       if (actor === null) return;
       return reply.send(await results.results(actor, examId(request.params.examId)));
+    },
+  );
+
+  routes.get(
+    "/exams/:examId/similarity",
+    {
+      schema: {
+        tags: RESULTS,
+        summary: "Code answers alike enough to be worth a look",
+        description:
+          "For each code question, pairs of candidates whose answers in the same language share most of their fingerprints (winnowing, as MOSS does), with the starter code taken out. Evidence for a person to read side by side; it changes no marks.",
+        security: SECURED,
+        params: S.examParams,
+        response: { 200: similarityResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.send(await results.similarity(actor, examId(request.params.examId)));
     },
   );
 

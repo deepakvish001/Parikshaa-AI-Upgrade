@@ -15,3 +15,10 @@ export async function shoot(page: Page, name: string, options: { fullPage?: bool
   await page.waitForTimeout(150);
   await page.screenshot({ path: new URL(`${name}.png`, OUT).pathname, fullPage: options.fullPage ?? true });
 }
+
+/** Capture one part of the page, such as a card. */
+export async function shootPart(locator: import("@playwright/test").Locator, name: string): Promise<void> {
+  await locator.page().evaluate(() => document.fonts.ready);
+  await locator.page().mouse.move(0, 0);
+  await locator.screenshot({ path: new URL(`${name}.png`, OUT).pathname, animations: "disabled", caret: "hide" });
+}

@@ -59,11 +59,39 @@ export interface QuestionTranslation {
   readonly options?: readonly string[];
 }
 
+/**
+ * A picture shown with a question or passage: a diagram, a figure series, a
+ * chart to read from. Stored once by the SHA-256 of its bytes and served at
+ * `/api/media/<sha256>`, so an exam carries only the hash.
+ */
+export interface QuestionImage {
+  /** SHA-256 of the image's bytes, hex. */
+  readonly media: string;
+  /** What the picture shows, for a screen reader and for anyone it fails to load for. */
+  readonly alt: string;
+}
+
+/**
+ * A passage several questions are about: reading comprehension, a data set,
+ * a case. Carried on each of its questions, so a question drawn on its own
+ * still has it; questions next to each other with the same passage `id` are
+ * shown under one copy of it.
+ */
+export interface Passage {
+  readonly id: string;
+  readonly title?: string;
+  readonly text: string;
+  readonly images?: readonly QuestionImage[];
+}
+
 interface QuestionBase {
   readonly id: QuestionId;
   readonly kind: QuestionKind;
   readonly stem: string;
   readonly maxScore: number;
+  /** Pictures shown with the stem. */
+  readonly images?: readonly QuestionImage[];
+  readonly passage?: Passage;
   /** Criteria a grader (human or model) must justify itself against. */
   readonly rubric: readonly RubricCriterion[];
   /** The question in other languages, by locale. The grader always reads the original. */
@@ -73,7 +101,21 @@ interface QuestionBase {
 export interface McqQuestion extends QuestionBase {
   readonly kind: "mcq";
   readonly options: readonly string[];
+  /** The right option; with `correctIndices`, the first of them. */
   readonly correctIndex: number;
+  /**
+   * More than one right option: the candidate chooses every one of them. The
+   * answer is then the chosen positions, comma-separated ("0,2").
+   */
+  readonly correctIndices?: readonly number[];
+  /**
+   * With several right options: a share of the marks for each right option
+   * chosen, provided no wrong one is — as JEE Advanced scores them. Without
+   * it, all of them or nothing.
+   */
+  readonly partialCredit?: boolean;
+  /** Marks taken away for a wrong answer. Leaving it unanswered costs nothing. */
+  readonly negativeMarks?: number;
 }
 
 export interface ShortQuestion extends QuestionBase {
@@ -85,6 +127,8 @@ export interface NumericQuestion extends QuestionBase {
   readonly kind: "numeric";
   readonly expected: number;
   readonly tolerance: number;
+  /** Marks taken away for a wrong answer. Leaving it unanswered costs nothing. */
+  readonly negativeMarks?: number;
 }
 
 /**

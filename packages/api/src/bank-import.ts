@@ -1,4 +1,4 @@
-import { questionId, validateQuestion, type Question } from "@parikshaa/core";
+import { questionId, validateQuestion, type Passage, type Question, type QuestionImage } from "@parikshaa/core";
 import type { BankDraft, Difficulty } from "@parikshaa/store";
 
 /**
@@ -11,10 +11,13 @@ import type { BankDraft, Difficulty } from "@parikshaa/store";
  *   kind       mcq | numeric | short               (required)
  *   question   the stem                            (required)
  *   options    mcq choices, separated by |          (mcq)
- *   answer     mcq: a letter (B), a number (2) or the option's text;
+ *   answer     mcq: a letter (B), a number (2) or the option's text — or
+ *              several, "A, C", when more than one is right;
  *              numeric: the value; short: expected points, separated by |
  *   tolerance  numeric only; defaults to 0
  *   marks      defaults to 1
+ *   negative   marks taken away for a wrong answer (mcq, numeric); defaults to 0
+ *   partial    "yes" for a share of the marks per right option chosen
  *   rubric     short: criteria separated by |; defaults to the expected points
  *   topic, difficulty (easy | medium | hard), tags (separated by | or ,)
  *
@@ -127,6 +130,8 @@ export function importQuestions(csv: string): ImportResult {
         topic: cell("topic"),
         difficulty: cell("difficulty"),
         tags: cell("tags"),
+        negative: cell("negative"),
+        partial: cell("partial"),
       },
       `row-${rowNumber}`,
     );
@@ -152,6 +157,12 @@ export interface QuestionFields {
   readonly difficulty: string;
   /** separated by | or , */
   readonly tags: string;
+  /** Marks taken away for a wrong answer. */
+  readonly negative?: string;
+  /** "yes": partial credit on an mcq with several right options. */
+  readonly partial?: string;
+  readonly images?: readonly QuestionImage[];
+  readonly passage?: Passage;
 }
 
 /** A bank draft from one question's fields, or every reason it cannot be one. */
@@ -166,6 +177,14 @@ export function draftFrom(fields: QuestionFields, idHint: string): { readonly dr
 
   if (!DIFFICULTIES.includes(difficulty)) return fail(`Difficulty must be easy, medium or hard, not "${fields.difficulty}".`);
   if (!Number.isFinite(maxScore)) return fail(`Marks must be a number, not "${marksText}".`);
+  const negativeText = (fields.negative ?? "").trim().replace(/^-/, "");
+  const negativeMarks = negativeText === "" ? 0 : Number(negativeText);
+  if (!Number.isFinite(negativeMarks)) return fail(`Negative marks must be a number, not "${fields.negative}".`);
+  const negative = negativeMarks > 0 ? { negativeMarks } : {};
+  const shown = {
+    ...(fields.images !== undefined && fields.images.length > 0 ? { images: fields.images } : {}),
+    ...(fields.passage === undefined ? {} : { passage: fields.passage }),
+  };
 
   let question: Question;
   const id = questionId(idHint);
@@ -173,11 +192,14 @@ export function draftFrom(fields: QuestionFields, idHint: string): { readonly dr
   switch (kind) {
     case "mcq": {
       const options = fields.options.map((o) => o.trim()).filter((o) => o !== "");
-      const correctIndex = mcqAnswer(answer, options);
-      if (correctIndex === null) {
-        return fail(`The answer "${answer}" is not one of the options; use a letter (B), a number (2) or the option's text.`);
+      const right = mcqAnswers(answer, options);
+      if (right === null) {
+        return fail(
+          `The answer "${answer}" is not one of the options; use a letter (B), a number (2) or the option's text — or "A, C" for several.`,
+        );
       }
-      question = { id, kind: "mcq", stem, maxScore, rubric: [], options, correctIndex };
+      const several = right.length > 1 ? { correctIndices: right, ...(/^(y|yes|true|1)$/i.test((fields.partial ?? "").trim()) ? { partialCredit: true } : {}) } : {};
+      question = { id, kind: "mcq", stem, maxScore, rubric: [], options, correctIndex: right[0]!, ...several, ...negative, ...shown };
       break;
     }
     case "numeric": {
@@ -186,7 +208,7 @@ export function draftFrom(fields: QuestionFields, idHint: string): { readonly dr
       const tolerance = toleranceText === "" ? 0 : Number(toleranceText);
       if (answer === "" || !Number.isFinite(expected)) return fail(`A numeric question's answer must be a number, not "${answer}".`);
       if (!Number.isFinite(tolerance)) return fail(`Tolerance must be a number, not "${toleranceText}".`);
-      question = { id, kind: "numeric", stem, maxScore, rubric: [], expected, tolerance };
+      question = { id, kind: "numeric", stem, maxScore, rubric: [], expected, tolerance, ...negative, ...shown };
       break;
     }
     case "short": {
@@ -197,7 +219,7 @@ export function draftFrom(fields: QuestionFields, idHint: string): { readonly dr
         description,
         weight: 1,
       }));
-      question = { id, kind: "short", stem, maxScore, rubric, expectedPoints };
+      question = { id, kind: "short", stem, maxScore, rubric, expectedPoints, ...shown };
       break;
     }
     case "code":
@@ -211,6 +233,22 @@ export function draftFrom(fields: QuestionFields, idHint: string): { readonly dr
 
   const { id: _, ...withoutId } = question;
   return { draft: { question: withoutId, topic: fields.topic.trim(), difficulty, tags: split(fields.tags, /[|,]/) } };
+}
+
+/**
+ * The right options of an mcq: one ("B", "2", or its text), or several
+ * ("A, C", "1 and 3"). An option's own text wins over reading it as a list, so
+ * an option containing a comma is still found.
+ */
+function mcqAnswers(answer: string, options: readonly string[]): number[] | null {
+  const whole = mcqAnswer(answer, options);
+  if (whole !== null) return [whole];
+  const parts = answer.split(/\s*(?:,|;|&|\band\b)\s*/i).filter((p) => p !== "");
+  if (parts.length < 2) return null;
+  const found = parts.map((p) => mcqAnswer(p, options));
+  if (found.some((f) => f === null)) return null;
+  const unique = [...new Set(found as number[])];
+  return unique.length === found.length ? unique.sort((a, b) => a - b) : null;
 }
 
 /** An mcq answer as a letter, a 1-based number, or the option's own text. */

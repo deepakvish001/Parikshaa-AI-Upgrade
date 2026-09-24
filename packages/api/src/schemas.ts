@@ -51,18 +51,48 @@ const translations = z
   .partialRecord(z.enum(CONTENT_LOCALES), z.object({ stem: z.string(), options: z.array(z.string()).readonly().optional() }))
   .describe("The question in other languages. An mcq's options come in the original's order: the answer is recorded by position.");
 
+/** A picture with a question or passage, named by the SHA-256 it was uploaded under (`POST /media`). */
+const questionImage = z.object({
+  media: z.string().describe("SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."),
+  alt: z.string().describe("What the picture shows, for a screen reader."),
+});
+
+const passage = z
+  .object({
+    id: z.string().describe("Shared by every question about this passage."),
+    title: z.string().optional(),
+    text: z.string(),
+    images: z.array(questionImage).readonly().optional(),
+  })
+  .describe("A passage several questions are about: comprehension, a data set, a case.");
+
 const questionBase = {
   id: z.string().min(1),
   stem: z.string(),
   maxScore: z.number(),
   rubric: z.array(rubricCriterion).readonly(),
   translations: translations.optional(),
+  images: z.array(questionImage).readonly().optional().describe("Pictures shown with the stem."),
+  passage: passage.optional(),
 };
 
+const negativeMarks = z.number().optional().describe("Marks taken away for a wrong answer. Leaving it unanswered costs nothing.");
+
 const kinds = {
-  mcq: { kind: z.literal("mcq"), options: z.array(z.string()).readonly(), correctIndex: z.number() },
+  mcq: {
+    kind: z.literal("mcq"),
+    options: z.array(z.string()).readonly(),
+    correctIndex: z.number().describe("The right option; with correctIndices, the first of them."),
+    correctIndices: z
+      .array(z.number())
+      .readonly()
+      .optional()
+      .describe("Several right options: the candidate chooses every one, and answers with their positions, comma-separated."),
+    partialCredit: z.boolean().optional().describe("With several right options: a share for each right one chosen, if no wrong one is."),
+    negativeMarks,
+  },
   short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
-  numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number() },
+  numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number(), negativeMarks },
   code: {
     kind: z.literal("code"),
     language: z.string().describe("The default language: python, javascript, c, cpp or java."),
@@ -197,7 +227,9 @@ export const bankDocxResponse = z.object({
         kind: z.string(),
         stem: z.string(),
         marks: z.number(),
-        note: z.string().nullable().describe("Something in the question that was not imported, such as a picture"),
+        pictures: z.number().describe("Pictures taken with it, from the question and its passage"),
+        passage: z.string().nullable().describe("The passage it is about, by title or first words"),
+        note: z.string().nullable().describe("Something in the question that was not imported, such as an equation"),
       }),
     )
     .readonly(),
@@ -296,6 +328,10 @@ export const reviewResponse = z
  * `vivaTriggerRatio`. Serialization strips unknown keys, so this schema is a
  * second lock on the same door `candidateView` closes.
  */
+const shown = {
+  images: z.array(questionImage).readonly(),
+  passage: passage.nullable(),
+};
 const candidateQuestion = z.discriminatedUnion("kind", [
   z.object({
     id: z.string(),
@@ -303,16 +339,28 @@ const candidateQuestion = z.discriminatedUnion("kind", [
     stem: z.string(),
     maxScore: z.number(),
     options: z.array(z.string()).readonly(),
+    multiple: z.boolean().describe("Choose every right option rather than one; answer with their positions, comma-separated."),
+    negativeMarks: z.number().describe("Marks lost for a wrong answer; 0 for none."),
     translations,
+    ...shown,
   }),
-  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations }),
-  z.object({ id: z.string(), kind: z.literal("numeric"), stem: z.string(), maxScore: z.number(), translations }),
+  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations, ...shown }),
+  z.object({
+    id: z.string(),
+    kind: z.literal("numeric"),
+    stem: z.string(),
+    maxScore: z.number(),
+    negativeMarks: z.number().describe("Marks lost for a wrong answer; 0 for none."),
+    translations,
+    ...shown,
+  }),
   z.object({
     id: z.string(),
     kind: z.literal("code"),
     stem: z.string(),
     maxScore: z.number(),
     translations,
+    ...shown,
     language: z.string(),
     languages: z.array(z.string()).readonly(),
     starter: z.string().nullable(),
@@ -589,3 +637,14 @@ export const auditResponse = z.object({
     )
     .readonly(),
 });
+
+export const mediaUploadBody = z.object({
+  image: z.string().max(2_800_000).describe("The picture, base64: PNG, JPEG, GIF or WebP, at most 2 MB."),
+});
+
+export const mediaUploadResponse = z.object({
+  media: z.string().describe("Its SHA-256: name it in a question's images."),
+  url: z.string().describe("Where it is served, to anyone with the hash."),
+});
+
+export const mediaParams = z.object({ sha256: z.string() });

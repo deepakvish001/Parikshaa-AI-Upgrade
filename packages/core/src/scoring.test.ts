@@ -94,6 +94,39 @@ describe("scoreDeterministic", () => {
   });
 });
 
+describe("negative marking and several right options", () => {
+  const negative: McqQuestion = { ...mcq, negativeMarks: 1 };
+  const several: McqQuestion = { ...mcq, options: ["a", "b", "c", "d"], correctIndex: 0, correctIndices: [0, 2], negativeMarks: 2 };
+
+  it("takes marks away for a wrong answer, never for none", () => {
+    expect(scoreOf(negative, "1").score).toBe(4);
+    expect(scoreOf(negative, "2").score).toBe(-1);
+    expect(scoreOf(negative, "").score).toBe(0);
+    expect(scoreOf(negative, "b").score).toBe(-1); // not an option: wrong, not blank
+    expect(scoreOf({ ...numeric, negativeMarks: 1.25 }, "9.6").score).toBe(-1.25);
+    expect(scoreOf({ ...numeric, negativeMarks: 1.25 }, " ").score).toBe(0);
+  });
+
+  it("wants every right option and nothing else", () => {
+    expect(scoreOf(several, "0,2").score).toBe(4);
+    expect(scoreOf(several, "2, 0").score).toBe(4);
+    expect(scoreOf(several, "0").score).toBe(-2);
+    expect(scoreOf(several, "0,1,2").score).toBe(-2);
+  });
+
+  it("gives a share for each right option chosen with partial credit, but nothing once a wrong one is chosen", () => {
+    const partial: McqQuestion = { ...several, partialCredit: true };
+    expect(scoreOf(partial, "0,2").score).toBe(4);
+    expect(scoreOf(partial, "2").score).toBe(2);
+    expect(scoreOf(partial, "0,3").score).toBe(-2);
+    expect(scoreOf(partial, "").score).toBe(0);
+  });
+
+  it("can take a total below zero", () => {
+    expect(totalScore([scoreOf(negative, "0"), scoreOf({ ...numeric, negativeMarks: 1 }, "1")])).toBe(-2);
+  });
+});
+
 describe("shouldProbe", () => {
   const policy = { durationMs: 1, allowRevision: true, vivaTriggerRatio: 0.5 };
 

@@ -48,6 +48,24 @@ describe("importQuestions", () => {
     });
   });
 
+  it("reads negative marks, several right options and partial credit", () => {
+    const result = importQuestions(
+      [
+        "kind,question,options,answer,marks,negative,partial",
+        'mcq,Which are prime?,2|4|5|9,"A, C",4,1,yes',
+        "mcq,Capital of India?,Mumbai|New Delhi,New Delhi,2,-0.5,",
+        "numeric,7 × 8?,,56,1,0.25,",
+      ].join("\n"),
+    );
+    if (!result.ok) throw new Error(JSON.stringify(result.problems));
+    expect(result.drafts.map((d) => d.question)).toMatchObject([
+      { correctIndex: 0, correctIndices: [0, 2], partialCredit: true, negativeMarks: 1 },
+      { correctIndex: 1, negativeMarks: 0.5 },
+      { kind: "numeric", negativeMarks: 0.25 },
+    ]);
+    expect(result.drafts[1]!.question).not.toHaveProperty("correctIndices");
+  });
+
   it("uses the expected points as the rubric when none is given", () => {
     const result = importQuestions("kind,question,answer\nshort,Why?,Because A | Because B");
     if (!result.ok) throw new Error("expected ok");

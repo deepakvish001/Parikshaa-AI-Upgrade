@@ -70,6 +70,27 @@ describe("validateExam", () => {
       .toContain("questions.0.options");
   });
 
+  it("checks several right options, partial credit and negative marks", () => {
+    const m = mcq as Extract<Question, { kind: "mcq" }>;
+    const three = { ...m, options: ["a", "b", "c"] };
+    expect(problemsOf(exam({ questions: [{ ...three, correctIndex: 0, correctIndices: [0, 2] }] }))).toEqual([]);
+    expect(problemsOf(exam({ questions: [{ ...three, correctIndex: 0, correctIndices: [0, 7] }] }))).toContain("questions.0.correctIndices");
+    expect(problemsOf(exam({ questions: [{ ...three, correctIndex: 0, correctIndices: [0, 0] }] }))).toContain("questions.0.correctIndices");
+    expect(problemsOf(exam({ questions: [{ ...three, correctIndex: 1, correctIndices: [0, 2] }] }))).toContain("questions.0.correctIndex");
+    expect(problemsOf(exam({ questions: [{ ...m, partialCredit: true }] }))).toContain("questions.0.partialCredit");
+    expect(problemsOf(exam({ questions: [{ ...m, negativeMarks: 1 }] }))).toEqual([]);
+    expect(problemsOf(exam({ questions: [{ ...m, negativeMarks: -1 }] }))).toContain("questions.0.negativeMarks");
+    expect(problemsOf(exam({ questions: [{ ...m, negativeMarks: 5 }] }))).toContain("questions.0.negativeMarks");
+  });
+
+  it("checks pictures and passages", () => {
+    const hash = "0".repeat(64);
+    expect(problemsOf(exam({ questions: [{ ...mcq, images: [{ media: hash, alt: "A bar chart of sales" }] }] }))).toEqual([]);
+    expect(problemsOf(exam({ questions: [{ ...mcq, images: [{ media: "nope", alt: "x" }] }] }))).toContain("questions.0.images.0.media");
+    expect(problemsOf(exam({ questions: [{ ...mcq, images: [{ media: hash, alt: " " }] }] }))).toContain("questions.0.images.0.alt");
+    expect(problemsOf(exam({ questions: [{ ...mcq, passage: { id: "p", text: "" } }] }))).toContain("questions.0.passage.text");
+  });
+
   it("checks numeric expectations and tolerance", () => {
     const bad = { ...mcq, kind: "numeric", expected: Number.NaN, tolerance: -1 } as unknown as Question;
     expect(problemsOf(exam({ questions: [bad] }))).toEqual(

@@ -15,6 +15,7 @@
   "dependencies": {
     "@parikshaa/api": "*",
     "@parikshaa/core": "*",
+    "@parikshaa/runner": "*",
     "@parikshaa/store": "*",
     "@parikshaa/verify": "*"
   },

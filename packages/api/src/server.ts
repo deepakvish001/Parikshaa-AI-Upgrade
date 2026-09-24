@@ -14,7 +14,7 @@ import {
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
 import { RunnerUnavailable } from "@parikshaa/runner";
-import { ExamFrozen, type IdentityStore, type QuestionBank } from "@parikshaa/store";
+import { ExamFrozen, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import type { InvitationService } from "./invitation-service.js";
@@ -48,6 +48,8 @@ export interface ServerOptions {
   /** Staff accounts and API keys, for the account-management routes. */
   readonly identity: IdentityStore;
   readonly bank: QuestionBank;
+  /** Pictures in questions and passages. */
+  readonly media: QuestionMedia;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -927,7 +929,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       async (_request, reply) => reply.send({ ok: true }),
     );
 
-    registerBankRoutes(routes, { service, bank: options.bank, staff });
+    registerBankRoutes(routes, { service, bank: options.bank, media: options.media, staff });
 
     const throttle = options.loginThrottle ?? new LoginThrottle();
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });

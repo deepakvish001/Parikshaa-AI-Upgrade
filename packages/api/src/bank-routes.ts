@@ -9,7 +9,7 @@ import type {
 } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { questionId, validateQuestion, type Question } from "@parikshaa/core";
-import { staffScope, type BankDraft, type QuestionBank } from "@parikshaa/store";
+import { NotAnImage, staffScope, type BankDraft, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { importDocx } from "./docx-import.js";
 import { importQuestions } from "./bank-import.js";
 import * as S from "./schemas.js";
@@ -27,6 +27,7 @@ type Routes = FastifyInstance<
 export interface BankRouteDeps {
   readonly service: ExamService;
   readonly bank: QuestionBank;
+  readonly media: QuestionMedia;
   readonly staff: (request: FastifyRequest, reply: FastifyReply, permission: Permission | null) => Promise<Actor | null>;
 }
 
@@ -47,7 +48,7 @@ const refusals = {
  * reference — see migration 0005.
  */
 export function registerBankRoutes(routes: Routes, deps: BankRouteDeps): void {
-  const { service, bank, staff } = deps;
+  const { service, bank, media, staff } = deps;
 
   /** Check a question the way an exam would, before it is filed. */
   const problemsWith = (draft: BankDraft) =>
@@ -203,9 +204,65 @@ export function registerBankRoutes(routes: Routes, deps: BankRouteDeps): void {
       if (!result.ok) return reply.code(422).send({ error: "invalid_import", problems: result.problems });
       if (request.body.dryRun) return reply.code(200).send({ imported: 0, preview: result.preview });
 
+      // The pictures first, so no question ever names one that is not there.
+      for (const bytes of result.pictures.values()) await media.add(staffScope(actor.orgId), bytes);
       const added = await bank.add(staffScope(actor.orgId), result.drafts);
-      await service.recordAudit(actor, "bank.imported", actor.orgId, { questions: added.length, from: "docx" });
+      await service.recordAudit(actor, "bank.imported", actor.orgId, { questions: added.length, pictures: result.pictures.size, from: "docx" });
       return reply.code(201).send({ imported: added.length, preview: result.preview });
+    },
+  );
+
+  // --- pictures in questions ----------------------------------------------------
+
+  routes.post(
+    "/media",
+    {
+      bodyLimit: 3_000_000,
+      schema: {
+        tags: BANK,
+        summary: "Upload a picture for a question or passage",
+        description:
+          "PNG, JPEG, GIF or WebP, at most 2 MB, recognised by its bytes. Returns its SHA-256, which a question names in `images`; the same picture uploaded twice is kept once.",
+        security: SECURED,
+        body: S.mediaUploadBody,
+        response: { 201: S.mediaUploadResponse, 422: S.errorResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      try {
+        const saved = await media.add(staffScope(actor.orgId), Buffer.from(request.body.image, "base64"));
+        return reply.code(201).send({ media: saved.media, url: `/api/media/${saved.media}` });
+      } catch (error) {
+        if (error instanceof NotAnImage) return reply.code(422).send({ error: "not_an_image", message: error.message });
+        throw error;
+      }
+    },
+  );
+
+  routes.get(
+    "/media/:sha256",
+    {
+      schema: {
+        tags: BANK,
+        summary: "A picture in a question, by its SHA-256",
+        description:
+          "No session: an <img> cannot send one. The hash can only be known by someone who has the picture or the exam that names it. Cached for good, since the bytes behind a hash never change.",
+        params: S.mediaParams,
+        response: { 404: S.errorResponse },
+      },
+    },
+    async (request, reply) => {
+      const found = await media.byHash(request.params.sha256);
+      if (found === null) return reply.code(404).send({ error: "not_found" });
+      return reply
+        .header("content-type", found.mime)
+        .header("cache-control", "public, max-age=31536000, immutable")
+        .header("x-content-type-options", "nosniff")
+        .header("content-security-policy", "default-src 'none'")
+        // A Buffer goes out as it is: Fastify serialises only objects.
+        .send(found.bytes as never);
     },
   );
 }

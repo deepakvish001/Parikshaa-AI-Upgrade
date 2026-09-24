@@ -221,8 +221,8 @@ describe("importing a Word document into the bank", () => {
     expect(dry.json()).toEqual({
       imported: 0,
       preview: [
-        { question: 1, kind: "mcq", stem: "Which is stable?", marks: 1, note: null },
-        { question: 2, kind: "numeric", stem: "What is 6 * 7?", marks: 1, note: null },
+        { question: 1, kind: "mcq", stem: "Which is stable?", marks: 1, pictures: 0, passage: null, note: null },
+        { question: 2, kind: "numeric", stem: "What is 6 * 7?", marks: 1, pictures: 0, passage: null, note: null },
       ],
     });
     expect((await call("GET", owner, "/bank")).json().questions).toHaveLength(0);
@@ -245,5 +245,43 @@ describe("importing a Word document into the bank", () => {
   it("is for those who write exams", async () => {
     const invigilator = await signIn(app, "inv@acme.test");
     expect((await call("POST", invigilator, "/bank/import/docx", { file: paper })).statusCode).toBe(403);
+  });
+});
+
+describe("pictures in questions", () => {
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.from("a bar chart")]);
+
+  it("are uploaded by an author and served by their hash to anyone, cached for good", async () => {
+    const res = await call("POST", owner, "/media", { image: PNG.toString("base64") });
+    expect(res.statusCode, res.payload).toBe(201);
+    const { media, url } = res.json();
+    expect(url).toBe(`/api/media/${media}`);
+
+    const served = await app.inject({ method: "GET", url: `/media/${media}` });
+    expect(served.statusCode).toBe(200);
+    expect(served.headers["content-type"]).toBe("image/png");
+    expect(served.headers["cache-control"]).toContain("immutable");
+    expect(Buffer.compare(served.rawPayload, PNG)).toBe(0);
+    expect((await app.inject({ method: "GET", url: `/media/${"0".repeat(64)}` })).statusCode).toBe(404);
+  });
+
+  it("refuse what is not a picture, and anyone who cannot write exams", async () => {
+    const svg = await call("POST", owner, "/media", { image: Buffer.from("<svg onload=alert(1)/>").toString("base64") });
+    expect(svg.statusCode).toBe(422);
+    expect(svg.json().error).toBe("not_an_image");
+    const invigilator = await signIn(app, "inv@acme.test");
+    expect((await call("POST", invigilator, "/media", { image: PNG.toString("base64") })).statusCode).toBe(403);
+  });
+
+  it("pasted into a Word paper are stored with the questions that show them", async () => {
+    const paper = Buffer.from(
+      docxOf(["1. What does the chart show?", { text: "", picture: PNG, alt: "Sales by month" }, "Answer: growth"]),
+    ).toString("base64");
+    const res = await call("POST", owner, "/bank/import/docx", { file: paper });
+    expect(res.statusCode, res.payload).toBe(201);
+    const [entry] = (await call("GET", owner, "/bank")).json().questions;
+    const [image] = entry.question.images;
+    expect(image.alt).toBe("Sales by month");
+    expect((await app.inject({ method: "GET", url: `/media/${image.media}` })).statusCode).toBe(200);
   });
 });
