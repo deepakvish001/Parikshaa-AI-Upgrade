@@ -209,7 +209,7 @@ function HookRow({
                       <td className="notice">{when(d.createdAt)}</td>
                       <td className="mono">{d.event}</td>
                       <td>
-                        <span className="pill">{d.status}</span>
+                        <span className="pill" data-state={d.status}>{d.status}</span>
                         {d.attempts > 1 ? <span className="notice"> after {d.attempts} tries</span> : null}
                       </td>
                       <td className="notice">{d.error ?? ""}</td>

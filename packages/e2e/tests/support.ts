@@ -42,12 +42,19 @@ export async function seedSitting(
     vivaTriggerRatio?: number;
     owner?: typeof OWNER;
     proctoring?: object;
+    /** A title to show; otherwise one made unique per test. */
+    title?: string;
+    /** Each candidate's name, by position in `refs`. */
+    names?: readonly string[];
+    durationMs?: number;
+    /** When the window opens; now, if not given. It stays open three hours from then. */
+    opensAt?: Date;
   } = {},
 ): Promise<Sitting> {
   const token = await ownerToken(request, options.owner);
   const headers = { authorization: `Bearer ${token}` };
   const examId = `e2e-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const title = `Campus drive ${examId.slice(-6)}`;
+  const title = options.title ?? `Campus drive ${examId.slice(-6)}`;
   const refs = options.refs ?? ["CS001"];
 
   const created = await request.post("/api/exams", {
@@ -58,7 +65,7 @@ export async function seedSitting(
       questions: options.questions ?? [MCQ, SHORT],
       ...(options.sections === undefined ? {} : { sections: options.sections }),
       policy: {
-        durationMs: 3_600_000,
+        durationMs: options.durationMs ?? 3_600_000,
         allowRevision: true,
         vivaTriggerRatio: options.vivaTriggerRatio ?? 0.5,
         ...(options.proctoring === undefined ? {} : { proctoring: options.proctoring }),
@@ -69,10 +76,13 @@ export async function seedSitting(
   const now = Date.now();
   const window = await request.put(`/api/exams/${examId}/window`, {
     headers,
-    data: { opensAt: new Date(now - 5 * 60_000).toISOString(), closesAt: new Date(now + 2 * 3_600_000).toISOString() },
+    data:
+      options.opensAt === undefined
+        ? { opensAt: new Date(now - 5 * 60_000).toISOString(), closesAt: new Date(now + 2 * 3_600_000).toISOString() }
+        : { opensAt: options.opensAt.toISOString(), closesAt: new Date(options.opensAt.getTime() + 3 * 3_600_000).toISOString() },
   });
   expect(window.status()).toBe(200);
-  const csv = ["ref,name,email", ...refs.map((r, i) => `${r},Candidate ${i + 1},${r.toLowerCase()}@college.test`)].join("\n");
+  const csv = ["ref,name,email", ...refs.map((r, i) => `${r},${options.names?.[i] ?? `Candidate ${i + 1}`},${r.toLowerCase()}@college.test`)].join("\n");
   const imported = await request.post(`/api/exams/${examId}/invitations/import`, { headers, data: { csv, dryRun: false, channels: [] } });
   expect(imported.status(), await imported.text()).toBe(201);
 

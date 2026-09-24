@@ -1,0 +1,20 @@
+{
+  "name": "@parikshaa/brand",
+  "version": "0.0.0",
+  "description": "Parikshaa's design system: tokens, base components, the logo and icons, and the typefaces, served from the app itself.",
+  "type": "module",
+  "private": true,
+  "exports": {
+    "./tokens.css": "./src/tokens.css",
+    "./base.css": "./src/base.css",
+    "./fonts.css": "./src/fonts.css",
+    "./react": "./src/react.tsx"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "dependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource/noto-sans-devanagari": "^5.3.0"
+  }
+}

@@ -175,7 +175,7 @@ export function AttemptList({
                 <tr>
                   <td>{attempt.candidateId}</td>
                   <td>
-                    <span className="pill">{attempt.state.replace(/_/g, " ")}</span>
+                    <span className="pill" data-state={attempt.state}>{attempt.state.replace(/_/g, " ")}</span>
                   </td>
                   <td className="notice">{attempt.state === "in_progress" ? presence(attempt.lastSeenAt, now) : ""}</td>
                   <td>{attempt.entries}</td>

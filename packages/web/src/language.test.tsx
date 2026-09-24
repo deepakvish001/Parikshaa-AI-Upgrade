@@ -75,7 +75,8 @@ describe("the page in Hindi", () => {
 
     expect(document.documentElement.lang).toBe("hi");
     expect(localStorage.getItem("parikshaa.language")).toBe("hi");
-    expect(screen.getByText(/3 में से 0 के उत्तर दिए · \d+m बाकी/)).toBeInTheDocument();
+    expect(screen.getByText("3 में से 0 के उत्तर दिए")).toBeInTheDocument();
+    expect(screen.getByText(/^\d+m बाकी$/)).toBeInTheDocument();
     const heading = screen.getByRole("heading", { name: /कौन सा सॉर्ट स्थिर है\?/ });
     expect(heading).toHaveAttribute("lang", "hi");
     expect(screen.getByRole("radio", { name: "मर्जसॉर्ट" })).toBeInTheDocument();

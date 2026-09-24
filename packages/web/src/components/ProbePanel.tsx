@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { MessageCircleQuestion } from "lucide-react";
 import { usePreferences } from "../i18n.tsx";
 
 interface Props {
@@ -39,7 +40,10 @@ export function ProbePanel({ prompt, streaming, onReply }: Props) {
 
   return (
     <section className="card probe" aria-label={t("probe.region")}>
-      <p className="eyebrow">{t("probe.eyebrow")}</p>
+      <p className="eyebrow">
+        <MessageCircleQuestion aria-hidden="true" />
+        {t("probe.eyebrow")}
+      </p>
       <p className="prompt">
         {prompt}
         {streaming ? <span className="cursor" aria-hidden="true" /> : null}

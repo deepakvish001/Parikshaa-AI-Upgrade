@@ -188,7 +188,7 @@ function Row({ row, now, client, canIntervene, examId }: { row: LiveRow; now: nu
         <td className="notice">{row.state === "in_progress" ? ago(now, row.lastSeenAt) : "—"}</td>
         <td>{row.state === "in_progress" ? left(now, row.expiresAt) : "—"}</td>
         <td>
-          <span className="pill">{STATE[row.state]}</span>{" "}
+          <span className="pill" data-state={row.state}>{STATE[row.state]}</span>{" "}
           {flags.map((f) => (
             <span
               key={f}

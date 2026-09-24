@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { checkChainAsync, webcryptoSha256 } from "@parikshaa/core/browser";
 import type { CandidateData, CandidateLedger } from "../api.ts";
 import { usePreferences } from "../i18n.tsx";
@@ -75,7 +76,12 @@ export function Receipt({ ledger, myData }: Props) {
 
   return (
     <section className="card receipt" aria-label={t("receipt.region")}>
-      <h2>{t("receipt.region")}</h2>
+      <div className="receipt-head">
+        <span className="seal" aria-hidden="true">
+          <ShieldCheck />
+        </span>
+        <h2>{t("receipt.region")}</h2>
+      </div>
       <p className="notice">{t("receipt.fingerprint")}</p>
 
       <p className="hash" data-testid="head-hash">
@@ -128,7 +134,7 @@ export function Receipt({ ledger, myData }: Props) {
           {t("receipt.opensLater")}
         </p>
       ) : (
-        <table className="ledger" style={{ marginTop: "1.5rem" }}>
+        <table className="ledger">
           <thead>
             <tr>
               <th scope="col">#</th>

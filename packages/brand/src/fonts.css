@@ -1,0 +1,11 @@
+/*
+ * Typefaces, served by the app itself: no font is fetched from a third party
+ * at runtime, so the page observes nothing it does not say it does.
+ *
+ * Inter for Latin script, one variable file for every weight. Noto Sans
+ * Devanagari for Hindi and Marathi; each face declares its unicode-range, so
+ * a browser downloads only the scripts a page actually shows.
+ */
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource/noto-sans-devanagari/devanagari-400.css";
+@import "@fontsource/noto-sans-devanagari/devanagari-600.css";

@@ -184,7 +184,7 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
                   <td>{r.total === null ? "—" : `${r.total} / ${r.maxTotal} (${r.percent}%)`}</td>
                   <td>{minutes(r.durationMs)}</td>
                   <td>
-                    <span className="pill">{STATE[r.state]}</span>
+                    <span className="pill" data-state={r.state}>{STATE[r.state]}</span>
                   </td>
                   <td>
                     <button type="button" className="quiet" onClick={() => onReport(r.attemptId)}>

@@ -1,0 +1,17 @@
+import { mkdirSync } from "node:fs";
+import type { Page } from "@playwright/test";
+
+/** Where the pictures go: docs/screenshots, in the repository. */
+export const OUT = new URL("../../../docs/screenshots/", import.meta.url);
+mkdirSync(OUT, { recursive: true });
+
+/** Settle the page — fonts loaded, nothing animating, the caret hidden — and capture it. */
+export async function shoot(page: Page, name: string, options: { fullPage?: boolean } = {}): Promise<void> {
+  await page.evaluate(() => document.fonts.ready);
+  await page.addStyleTag({ content: "*, *::before, *::after { transition: none !important; animation: none !important; caret-color: transparent !important; }" });
+  await page.mouse.move(0, 0);
+  // From the top, so sticky bars sit where they belong in a full-page capture.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: new URL(`${name}.png`, OUT).pathname, fullPage: options.fullPage ?? true });
+}

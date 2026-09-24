@@ -73,8 +73,8 @@ describe("App", () => {
     renderApp(<App client={client} />);
 
     expect(await screen.findByRole("heading", { name: "Algorithms" })).toBeInTheDocument();
-    expect(screen.getByText(/1\. Which sort is stable\?/)).toBeInTheDocument();
-    expect(screen.getByText(/2\. Why does it terminate\?/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^1\. Which sort is stable\?/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^2\. Why does it terminate\?/ })).toBeInTheDocument();
     expect(screen.getByText(/0 of 2 answered/)).toBeInTheDocument();
   });
 

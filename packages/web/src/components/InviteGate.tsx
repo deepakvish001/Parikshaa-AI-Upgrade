@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, redeemInvitation, type Notice } from "../api.ts";
-import { PreferencesBar, uiLocaleOf, usePreferences } from "../i18n.tsx";
+import { uiLocaleOf, usePreferences } from "../i18n.tsx";
+import { GateShell } from "./Chrome.tsx";
 import type { ProctoringPolicy } from "@parikshaa/core/browser";
 import { CameraCheck } from "./CameraCheck.tsx";
 
@@ -66,10 +67,14 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
   }, [stage, open]);
 
   return (
-    <main className="gate">
-      <PreferencesBar />
-      <h1>Parikshaa</h1>
-      {stage.kind === "opening" ? <p className="notice">{t("invite.opening")}</p> : null}
+    <GateShell wide={stage.kind === "notice"}>
+      {stage.kind === "opening" ? (
+        <div className="gate-card">
+          <p className="notice" style={{ margin: 0, textAlign: "center" }}>
+            {t("invite.opening")}
+          </p>
+        </div>
+      ) : null}
       {stage.kind === "notice" ? <PrivacyNotice notice={stage.notice} onAgree={() => void open({ noticeVersion: stage.notice.version })} /> : null}
       {stage.kind === "camera" ? <CameraCheck policy={stage.policy} onReady={() => void open(stage.consent, true)} /> : null}
       {stage.kind === "early" ? (
@@ -111,7 +116,7 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
           </button>
         </section>
       ) : null}
-    </main>
+    </GateShell>
   );
 }
 

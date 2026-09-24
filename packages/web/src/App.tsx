@@ -10,7 +10,9 @@ import { TokenGate } from "./components/TokenGate.tsx";
 import { IdentityCapture } from "./components/IdentityCapture.tsx";
 import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
-import { LANGUAGE_NAMES, PreferencesBar, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
+import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
+import { TopBar } from "./components/Chrome.tsx";
+import { Clock } from "lucide-react";
 
 interface OpenProbe {
   readonly id: string;
@@ -443,7 +445,13 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     if (expired) onExpired?.();
   }, [expired, onExpired]);
 
-  if (state.isPending) return <main className="page"><p className="notice">{t("exam.loading")}</p></main>;
+  if (state.isPending) {
+    return (
+      <main className="page">
+        <p className="notice">{t("exam.loading")}</p>
+      </main>
+    );
+  }
   if (state.error !== null) {
     return (
       <main className="page">
@@ -456,18 +464,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
 
   if (identityDue) {
     return (
-      <main className="page">
-        <PreferencesBar />
-        <header className="exam">
-          <h1>{exam.title}</h1>
-        </header>
-        <IdentityCapture
-          onSubmit={async (selfie, id) => {
-            await client.captureIdentity(selfie, id);
-            await queryClient.invalidateQueries({ queryKey: ["state"] });
-          }}
-        />
-      </main>
+      <>
+        <TopBar title={exam.title} />
+        <main className="page">
+          <header className="exam">
+            <h1>{exam.title}</h1>
+          </header>
+          <IdentityCapture
+            onSubmit={async (selfie, id) => {
+              await client.captureIdentity(selfie, id);
+              await queryClient.invalidateQueries({ queryKey: ["state"] });
+            }}
+          />
+        </main>
+      </>
     );
   }
   const answered = new Map<string, string>(answers.map((a) => [a.questionId, a.answer]));
@@ -499,216 +509,225 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   };
 
   return (
-    <main className="page">
-      <PreferencesBar offered={offered} />
-      <header className="exam">
-        <h1>{exam.title}</h1>
-        <p className="sub">
-          {open ? (
-            <>
-              {t("exam.answeredOf", { answered: answered.size, total: exam.questions.length })}
-              <TimeLeft expiresAt={state.data.expiresAt} />
-              {cameraOn === true ? (
-                <span className="camera-pill" role="status">
-                  {t("camera.on")}
-                </span>
-              ) : null}
-            </>
-          ) : (
-            t(`exam.state.${attemptState}`)
-          )}
-        </p>
-      </header>
-
-      {open && cameraOn === false ? (
-        <p className="card offline" role="alert">
-          {t("camera.offBanner")}
-        </p>
-      ) : null}
-
-      {open && !online ? (
-        <p className="card offline" role="status">
-          {t("exam.offline")}
-        </p>
-      ) : null}
-
-      {attemptState === "void" ? (
-        /*
-         * SPEC §6.2: being set aside without being told why is the situation
-         * this design objects to. The reason a person recorded is shown as they
-         * wrote it, not summarized and not softened.
-         */
-        <section className="card" aria-label={t("exam.voidTitle")}>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>{t("exam.voidTitle")}</h2>
-          <p style={{ margin: 0 }}>{voidReason}</p>
-          <p className="notice" style={{ marginTop: ".75rem" }}>
-            {t("exam.voidNote")}
-          </p>
-        </section>
-      ) : null}
-
-      {open ? (
-        <Announcements
-          items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
-          onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
-        />
-      ) : null}
-
-      {probe !== null && open ? (
-        <ProbePanel
-          prompt={probe.prompt}
-          streaming={probe.streaming}
-          onReply={async (reply) => {
-            await client.replyToProbe(probe.id, reply);
-            setProbe(null);
-            await queryClient.invalidateQueries({ queryKey: ["state"] });
-          }}
-        />
-      ) : null}
-
-      {parts !== null && open ? <SectionSteps parts={parts} now={now} /> : null}
-
-      {open && currentPart !== null && partTimeUp ? (
-        <p className="card notice-card" role="status">
-          {t("section.timeUp", { title: currentPart.title })}
-        </p>
-      ) : null}
-
-      {open && parts !== null && (currentPart === null || partTimeUp) && nextPart !== null ? (
-        <section className="card section-intro" aria-labelledby="section-intro-title">
-          <p className="eyebrow">{t("section.introEyebrow")}</p>
-          <h2 id="section-intro-title">{nextPart.title}</h2>
-          <ul className="facts">
-            <li>{t("section.questions", { n: nextPart.questionIds.length })}</li>
-            <li>
-              {nextPart.durationMs === null
-                ? t("section.untimed")
-                : t("section.timed", { minutes: Math.round(nextPart.durationMs / 60_000) })}
-            </li>
-          </ul>
-          <p className="notice">{t("section.lockNote")}</p>
-          <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
-            {advance.isPending ? t("section.starting") : t("section.start", { title: nextPart.title })}
-          </button>
-        </section>
-      ) : null}
-
-      {shown.map((original_) => {
-        const index = exam.questions.indexOf(original_);
-        // The question as this candidate reads it: in their language when it
-        // has been translated, unless they asked for the original.
-        const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
-        const question = translation === undefined ? original_ : localised(original_, translation);
-        const shownIn: Language = translation === undefined ? "en" : language;
-        const committed = answered.get(question.id) ?? "";
-        const value = drafts[question.id] ?? committed;
-        const dirty = value !== committed;
-        const draftStatus = status[question.id];
-        return (
-          <section
-            className="card"
-            key={question.id}
-            onBlur={(e) => {
-              // Only when focus leaves the question, not when it moves within it.
-              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) leave(question.id);
-            }}
-          >
-            <div className="q-head">
-              <h2 lang={shownIn}>
-                {index + 1}. {question.stem}
-              </h2>
-              <span className="marks">{t("exam.marks", { n: question.maxScore })}</span>
-            </div>
-            {language !== "en" && original_.translations?.[language] !== undefined ? (
-              <button
-                type="button"
-                className="quiet"
-                onClick={() => {
-                  const next = new Set(original);
-                  if (next.has(original_.id)) next.delete(original_.id);
-                  else next.add(original_.id);
-                  setOriginal(next);
-                }}
-              >
-                {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
-              </button>
-            ) : null}
-
-            <AnswerInput
-              question={question}
-              value={value}
-              disabled={!open}
-              onChange={(next) => edit(question.id, next)}
-              onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
-            />
-
+    <>
+      <TopBar title={exam.title} offered={offered}>
+        {open ? <TimeLeft expiresAt={state.data.expiresAt} /> : null}
+      </TopBar>
+      <main className="page">
+        <header className="exam">
+          <h1>{exam.title}</h1>
+          <p className="sub">
             {open ? (
-              <div className="row">
+              <>
+                {t("exam.answeredOf", { answered: answered.size, total: exam.questions.length })}
+                {cameraOn === true ? (
+                  <span className="camera-pill" role="status">
+                    {t("camera.on")}
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              t(`exam.state.${attemptState}`)
+            )}
+          </p>
+          {open ? (
+            <div className="progress" aria-hidden="true">
+              <span style={{ width: `${Math.round((answered.size / Math.max(1, exam.questions.length)) * 100)}%` }} />
+            </div>
+          ) : null}
+        </header>
+
+        {open && cameraOn === false ? (
+          <p className="offline" role="alert">
+            {t("camera.offBanner")}
+          </p>
+        ) : null}
+
+        {open && !online ? (
+          <p className="offline" role="status">
+            {t("exam.offline")}
+          </p>
+        ) : null}
+
+        {attemptState === "void" ? (
+          /*
+           * SPEC §6.2: being set aside without being told why is the situation
+           * this design objects to. The reason a person recorded is shown as they
+           * wrote it, not summarized and not softened.
+           */
+          <section className="card" aria-label={t("exam.voidTitle")}>
+            <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>{t("exam.voidTitle")}</h2>
+            <p style={{ margin: 0 }}>{voidReason}</p>
+            <p className="notice" style={{ marginTop: ".75rem" }}>
+              {t("exam.voidNote")}
+            </p>
+          </section>
+        ) : null}
+
+        {open ? (
+          <Announcements
+            items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
+            onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
+          />
+        ) : null}
+
+        {probe !== null && open ? (
+          <ProbePanel
+            prompt={probe.prompt}
+            streaming={probe.streaming}
+            onReply={async (reply) => {
+              await client.replyToProbe(probe.id, reply);
+              setProbe(null);
+              await queryClient.invalidateQueries({ queryKey: ["state"] });
+            }}
+          />
+        ) : null}
+
+        {parts !== null && open ? <SectionSteps parts={parts} now={now} /> : null}
+
+        {open && currentPart !== null && partTimeUp ? (
+          <p className="card notice-card" role="status">
+            {t("section.timeUp", { title: currentPart.title })}
+          </p>
+        ) : null}
+
+        {open && parts !== null && (currentPart === null || partTimeUp) && nextPart !== null ? (
+          <section className="card section-intro" aria-labelledby="section-intro-title">
+            <p className="eyebrow">{t("section.introEyebrow")}</p>
+            <h2 id="section-intro-title">{nextPart.title}</h2>
+            <ul className="facts">
+              <li>{t("section.questions", { n: nextPart.questionIds.length })}</li>
+              <li>
+                {nextPart.durationMs === null
+                  ? t("section.untimed")
+                  : t("section.timed", { minutes: Math.round(nextPart.durationMs / 60_000) })}
+              </li>
+            </ul>
+            <p className="notice">{t("section.lockNote")}</p>
+            <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
+              {advance.isPending ? t("section.starting") : t("section.start", { title: nextPart.title })}
+            </button>
+          </section>
+        ) : null}
+
+        {shown.map((original_) => {
+          const index = exam.questions.indexOf(original_);
+          // The question as this candidate reads it: in their language when it
+          // has been translated, unless they asked for the original.
+          const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
+          const question = translation === undefined ? original_ : localised(original_, translation);
+          const shownIn: Language = translation === undefined ? "en" : language;
+          const committed = answered.get(question.id) ?? "";
+          const value = drafts[question.id] ?? committed;
+          const dirty = value !== committed;
+          const draftStatus = status[question.id];
+          return (
+            <section
+              className="card question"
+              key={question.id}
+              onBlur={(e) => {
+                // Only when focus leaves the question, not when it moves within it.
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) leave(question.id);
+              }}
+            >
+              <div className="q-head">
+                <h2 lang={shownIn}>
+                  <span className="q-num">{index + 1}.</span> {question.stem}
+                </h2>
+                <span className="marks">{t("exam.marks", { n: question.maxScore })}</span>
+              </div>
+              {language !== "en" && original_.translations?.[language] !== undefined ? (
                 <button
                   type="button"
-                  className="secondary"
-                  disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
-                  onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
+                  className="quiet"
+                  onClick={() => {
+                    const next = new Set(original);
+                    if (next.has(original_.id)) next.delete(original_.id);
+                    else next.add(original_.id);
+                    setOriginal(next);
+                  }}
                 >
-                  {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
+                  {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
                 </button>
-                <span className="saved" aria-live="polite">
-                  {!dirty
-                    ? savedAt[question.id] !== undefined || committed !== ""
-                      ? t("exam.saved")
-                      : ""
-                    : draftStatus === "offline"
-                      ? t("exam.keptOffline")
-                      : draftStatus === "synced"
-                        ? t("exam.draftSaved")
-                        : draftStatus === "saving"
-                          ? t("exam.saving")
-                          : ""}
-                </span>
-              </div>
-            ) : null}
-          </section>
-        );
-      })}
+              ) : null}
 
-      {open && currentPart !== null && !partTimeUp && nextPart !== null ? (
-        leaving ? (
-          <div className="card confirm" role="alertdialog" aria-labelledby="leave-section">
-            <p id="leave-section" style={{ margin: "0 0 .75rem" }}>
-              {t("section.confirm", { title: currentPart.title })}
-            </p>
-            <div className="row" style={{ marginTop: 0 }}>
-              <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
-                {t("section.confirmYes", { title: currentPart.title })}
-              </button>
-              <button type="button" className="secondary" onClick={() => setLeaving(false)}>
-                {t("section.stay")}
-              </button>
+              <AnswerInput
+                question={question}
+                value={value}
+                disabled={!open}
+                onChange={(next) => edit(question.id, next)}
+                onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
+              />
+
+              {open ? (
+                <div className="row">
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
+                    onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
+                  >
+                    {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
+                  </button>
+                  <span className="saved" aria-live="polite">
+                    {!dirty
+                      ? savedAt[question.id] !== undefined || committed !== ""
+                        ? t("exam.saved")
+                        : ""
+                      : draftStatus === "offline"
+                        ? t("exam.keptOffline")
+                        : draftStatus === "synced"
+                          ? t("exam.draftSaved")
+                          : draftStatus === "saving"
+                            ? t("exam.saving")
+                            : ""}
+                  </span>
+                </div>
+              ) : null}
+            </section>
+          );
+        })}
+
+        {open && currentPart !== null && !partTimeUp && nextPart !== null ? (
+          leaving ? (
+            <div className="card confirm" role="alertdialog" aria-labelledby="leave-section">
+              <p id="leave-section" style={{ margin: "0 0 .75rem" }}>
+                {t("section.confirm", { title: currentPart.title })}
+              </p>
+              <div className="row" style={{ marginTop: 0 }}>
+                <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
+                  {t("section.confirmYes", { title: currentPart.title })}
+                </button>
+                <button type="button" className="secondary" onClick={() => setLeaving(false)}>
+                  {t("section.stay")}
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="row">
-            <button type="button" onClick={() => setLeaving(true)}>
-              {t("section.next", { title: currentPart.title })}
+          ) : (
+            <div className="row">
+              <button type="button" onClick={() => setLeaving(true)}>
+                {t("section.next", { title: currentPart.title })}
+              </button>
+              <span className="notice">{t("section.lockNote")}</span>
+            </div>
+          )
+        ) : open && (parts === null || nextPart === null) ? (
+          <div className="finish">
+            <button
+              type="button"
+              className="large"
+              onClick={() => submit.mutate()}
+              disabled={submit.isPending || (answered.size === 0 && Object.keys(drafts).length === 0)}
+            >
+              {submit.isPending ? t("exam.submitting") : t("exam.submit")}
             </button>
-            <span className="notice">{t("section.lockNote")}</span>
+            <span className="notice">{t("exam.submitNote")}</span>
           </div>
-        )
-      ) : open && (parts === null || nextPart === null) ? (
-        <div className="row">
-          <button
-            type="button"
-            onClick={() => submit.mutate()}
-            disabled={submit.isPending || (answered.size === 0 && Object.keys(drafts).length === 0)}
-          >
-            {submit.isPending ? t("exam.submitting") : t("exam.submit")}
-          </button>
-          <span className="notice">{t("exam.submitNote")}</span>
-        </div>
-      ) : ledger.data !== undefined ? (
-        <Receipt ledger={ledger.data} myData={() => client.myData()} />
-      ) : null}
-    </main>
+        ) : ledger.data !== undefined ? (
+          <Receipt ledger={ledger.data} myData={() => client.myData()} />
+        ) : null}
+      </main>
+    </>
   );
 }
 
@@ -729,11 +748,14 @@ function TimeLeft({ expiresAt }: { expiresAt: number }) {
   }, []);
 
   const remaining = Math.max(0, expiresAt - now);
-  if (remaining === 0) return <>{t("exam.timeUp")}</>;
-
   const minutes = Math.floor(remaining / 60_000);
   const hours = Math.floor(minutes / 60);
-  return <>{t("exam.timeLeft", { time: hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m` })}</>;
+  return (
+    <span className={`clock${remaining < 5 * 60_000 ? " urgent" : ""}`}>
+      <Clock aria-hidden="true" />
+      {remaining === 0 ? t("exam.timeUp") : t("exam.timeLeft", { time: hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m` })}
+    </span>
+  );
 }
 
 /** The time now, ticking each second while `running`. */
