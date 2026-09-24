@@ -250,6 +250,39 @@ a pair and reads the two side by side. It is evidence for a person, in the same
 amber as the follow-up: it never changes a mark, because two short answers to a
 narrow question can honestly match.
 
+**A LeetCode-style workspace** is built too:
+
+- *Function questions.* The author states a function once: a name, typed
+  parameters and a return type, from whole numbers, 64-bit numbers, doubles,
+  booleans and strings, and lists and grids of them. From that, Parikshaa
+  writes every language's starter code in LeetCode's own conventions (C passes
+  sizes in and returns them through `returnSize`), and the program that calls
+  the candidate's function. That program reads one JSON value per parameter,
+  calls the function, and prints what it returned after a marker, so the
+  candidate's own `print`s are shown apart from the answer. Returned values are
+  compared as values, within a tolerance for doubles, and in any order at the
+  top level or all the way down when the author allows it. Compiler errors
+  point at the candidate's own line numbers. A suite builds and runs every type
+  in all five languages on the real compilers.
+- *Judging a whole program's output* exactly, word by word, numbers within a
+  tolerance, lines in any order, or by the author's own checker program for
+  problems with many right answers. The checker runs in the sandbox, in a
+  directory the candidate's program never saw, so nothing it leaves behind can
+  stand in for the checker.
+- *Statements* in Markdown, with input and output format, constraints (with
+  `10^5` written as a power) and an explanation under each worked example.
+- *Run and Submit.* Run tries the code on the examples or a custom case and
+  records nothing. Submit commits the answer and runs every test: the candidate
+  sees each test's verdict, time and memory, with a hidden test reduced to its
+  verdict, never its input or anything the program printed on it. An exam can
+  instead report only the visible tests. Verdicts include memory limit exceeded,
+  measured per test.
+- *The workspace.* It sits in the question's card, and opens full screen with
+  the problem beside the editor, on resizable panes that also move from the
+  keyboard. It offers Testcase and Result tabs, a dark editor, text size, reset
+  to the starter, Ctrl+Enter to run and Ctrl+' to submit, and closing brackets.
+  Completion is the exam's choice and off by default.
+
 ## 5. Bulk operations and delivery
 
 Nobody clicks "Start" two thousand times.

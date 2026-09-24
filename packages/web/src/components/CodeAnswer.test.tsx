@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
+import type { SubmitOutcome } from "../api.ts";
 import { CodeAnswer, readCodeAnswer } from "./CodeAnswer.tsx";
 
 const question = {
@@ -12,98 +13,239 @@ const question = {
   language: "python",
   languages: ["python", "cpp"],
   starter: "# read two numbers\n",
-  samples: [{ input: "2 3", output: "5" }],
+  starters: { python: "# read two numbers\n", cpp: "#include <iostream>\nint main() {}\n" },
+  function: null,
+  inputFormat: "Two integers `a` and `b` on one line.",
+  outputFormat: null,
+  constraints: "- `-10^9 <= a, b <= 10^9`",
+  samples: [{ input: "2 3", output: "5", explanation: "`2 + 3 = 5`" }],
 } as unknown as CandidateCodeQuestion;
 
-describe("CodeAnswer", () => {
-  it("opens with the starter code in a highlighted editor, and shows the examples", async () => {
+const twoSum = {
+  id: "two-sum",
+  kind: "code",
+  stem: "Return the indices of the two numbers that add up to `target`.",
+  maxScore: 10,
+  language: "python",
+  languages: ["python"],
+  starter: "class Solution:\n    def twoSum(self, nums, target):\n        pass\n",
+  starters: { python: "class Solution:\n    def twoSum(self, nums, target):\n        pass\n" },
+  function: {
+    name: "twoSum",
+    params: [
+      { name: "nums", type: "int[]" },
+      { name: "target", type: "int" },
+    ],
+    returns: "int[]",
+  },
+  inputFormat: null,
+  outputFormat: null,
+  constraints: null,
+  samples: [
+    { input: "[2,7,11,15]\n9", output: "[0,1]", explanation: null },
+    { input: "[3,2,4]\n6", output: "[1,2]", explanation: null },
+  ],
+} as unknown as CandidateCodeQuestion;
+
+const answer = (source: string, language = "python") => JSON.stringify({ language, source });
+
+beforeEach(() => localStorage.clear());
+
+describe("the coding workspace", () => {
+  it("opens with the starter code, the statement's sections and the worked examples", async () => {
     render(<CodeAnswer question={question} value="" disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
 
     // The highlighted editor arrives a moment later; the plain one stands in.
     await waitFor(() => expect(document.querySelector(".cm-content")).not.toBeNull());
-    expect(screen.getByRole("textbox", { name: question.stem })).toHaveTextContent("# read two numbers");
-    const examples = screen.getByText("Examples").closest("details")!;
+    expect(screen.getByRole("textbox", { name: "Code for question 1" })).toHaveTextContent("# read two numbers");
+    expect(screen.getByRole("heading", { name: "Input format" })).toBeInTheDocument();
+    const constraints = screen.getByRole("heading", { name: "Constraints" }).parentElement!;
+    expect(constraints.innerHTML).toContain("<code>-10<sup>9</sup> &lt;= a, b &lt;= 10<sup>9</sup></code>");
+    const examples = screen.getByRole("region", { name: "Examples" });
     expect(within(examples).getByText("2 3")).toBeInTheDocument();
-    expect(within(examples).getByText("5")).toBeInTheDocument();
+    expect(within(examples).getByText("Explanation")).toBeInTheDocument();
   });
 
-  it("keeps the language with the answer", async () => {
+  it("keeps the language with the answer, and moves untouched starter code to the new language", async () => {
     const onChange = vi.fn();
-    render(
-      <CodeAnswer
-        question={question}
-        value={JSON.stringify({ language: "python", source: "print(1)" })}
-        disabled={false}
-        onChange={onChange}
-        onRun={vi.fn()}
-      />,
-    );
-
+    const { rerender } = render(<CodeAnswer question={question} value={answer("print(1)")} disabled={false} onChange={onChange} onRun={vi.fn()} />);
     await userEvent.selectOptions(screen.getByLabelText("Language"), "cpp");
+    expect(onChange).toHaveBeenLastCalledWith(answer("print(1)", "cpp"));
 
-    expect(onChange).toHaveBeenCalledWith(JSON.stringify({ language: "cpp", source: "print(1)" }));
+    rerender(<CodeAnswer question={question} value={answer("# read two numbers\n")} disabled={false} onChange={onChange} onRun={vi.fn()} />);
+    await userEvent.selectOptions(screen.getByLabelText("Language"), "cpp");
+    expect(onChange).toHaveBeenLastCalledWith(answer("#include <iostream>\nint main() {}\n", "cpp"));
   });
 
-  it("runs the examples and shows what came out, and what was expected when it differs", async () => {
+  it("runs the examples and shows the verdict, what came out, and what was expected", async () => {
     const onRun = vi.fn(async () => ({
       compiled: true as const,
-      results: [{ input: "2 3", expectedOutput: "5", status: "wrong_answer", stdout: "6", stderr: "", timeMs: 12 }],
+      results: [{ input: "2 3", expectedOutput: "5", status: "wrong_answer", stdout: "6", stderr: "", timeMs: 12, memoryKb: 9216 }],
     }));
-    render(
-      <CodeAnswer
-        question={question}
-        value={JSON.stringify({ language: "python", source: "print(6)" })}
-        disabled={false}
-        onChange={vi.fn()}
-        onRun={onRun}
-      />,
-    );
+    render(<CodeAnswer question={question} value={answer("print(6)")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
 
-    await userEvent.click(screen.getByRole("button", { name: "Run examples" }));
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
 
     const results = await screen.findByRole("region", { name: "Run results" });
     expect(onRun).toHaveBeenCalledWith("python", "print(6)", undefined);
-    expect(results).toHaveTextContent("Different output");
-    expect(results).toHaveTextContent("6");
-    expect(results).toHaveTextContent("Expected");
+    expect(results).toHaveTextContent("Wrong answer");
+    expect(results).toHaveTextContent("0/1 examples pass");
+    expect(within(results).getByLabelText("Output")).toHaveTextContent("6");
+    expect(within(results).getByLabelText("Expected")).toHaveTextContent("5");
+    expect(results).toHaveTextContent("Memory: 9.0 MB");
+    expect(screen.getByRole("tab", { name: "Test result" })).toHaveAttribute("aria-selected", "true");
   });
 
-  it("runs on the candidate's own input", async () => {
+  it("runs a custom case on the candidate's own input", async () => {
     const onRun = vi.fn(async () => ({
       compiled: true as const,
       results: [{ input: "40 2", expectedOutput: null, status: "ran", stdout: "42", stderr: "", timeMs: 9 }],
     }));
-    render(
-      <CodeAnswer question={question} value={JSON.stringify({ language: "python", source: "x" })} disabled={false} onChange={vi.fn()} onRun={onRun} />,
-    );
+    render(<CodeAnswer question={question} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
 
-    await userEvent.type(screen.getByLabelText("Your own input"), "40 2");
-    await userEvent.click(screen.getByRole("button", { name: "Run on my input" }));
+    await userEvent.click(screen.getByRole("button", { name: "Custom" }));
+    const box = screen.getByLabelText(/standard input/);
+    await userEvent.clear(box);
+    await userEvent.type(box, "40 2");
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
 
     await waitFor(() => expect(onRun).toHaveBeenCalledWith("python", "x", "40 2"));
     expect(await screen.findByRole("region", { name: "Run results" })).toHaveTextContent("42");
   });
 
+  it("shows a function question's arguments by name, and what the function returned apart from what it printed", async () => {
+    const onRun = vi.fn(async () => ({
+      compiled: true as const,
+      results: [
+        { input: "[2,7,11,15]\n9", expectedOutput: "[0,1]", status: "passed", stdout: "debug\n", result: "[0,1]", stderr: "", timeMs: 20, memoryKb: 8000 },
+        { input: "[3,2,4]\n6", expectedOutput: "[1,2]", status: "passed", stdout: "", result: "[1,2]", stderr: "", timeMs: 18, memoryKb: 8000 },
+      ],
+    }));
+    render(<CodeAnswer question={twoSum} value={answer("class Solution: ...")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
+
+    expect(screen.getAllByText("nums =")[0]).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
+    const results = await screen.findByRole("region", { name: "Run results" });
+    expect(results).toHaveTextContent("Accepted");
+    expect(results).toHaveTextContent("2/2 examples pass");
+    expect(within(results).getByLabelText("Output")).toHaveTextContent("[0,1]");
+    expect(within(results).getByLabelText("Printed")).toHaveTextContent("debug");
+  });
+
+  it("takes a custom case for a function one argument at a time", async () => {
+    const onRun = vi.fn(async () => ({ compiled: true as const, results: [] }));
+    render(<CodeAnswer question={twoSum} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
+    await userEvent.click(screen.getByRole("button", { name: "Custom" }));
+    const target = screen.getByRole("textbox", { name: "target =" });
+    await userEvent.clear(target);
+    await userEvent.type(target, "18");
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
+    expect(onRun).toHaveBeenCalledWith("python", "x", "[2,7,11,15]\n18");
+  });
+
+  it("submits, and reports every test, hidden ones by verdict alone", async () => {
+    const outcome: SubmitOutcome = {
+      tested: true,
+      compiled: true,
+      passed: 2,
+      total: 3,
+      cases: [
+        { number: 1, visible: true, status: "passed", timeMs: 20, memoryKb: 9000, input: "[2,7,11,15]\n9", expectedOutput: "[0,1]", stdout: "", result: "[0,1]", stderr: "" },
+        { number: 2, visible: false, status: "passed", timeMs: 25, memoryKb: 9100, input: null, expectedOutput: null, stdout: null, result: null, stderr: null },
+        { number: 3, visible: false, status: "time_limit", timeMs: 2000, memoryKb: 9100, input: null, expectedOutput: null, stdout: null, result: null, stderr: null },
+      ],
+    };
+    const onSubmit = vi.fn(async () => outcome);
+    render(<CodeAnswer question={twoSum} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} onSubmit={onSubmit} />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    const results = await screen.findByRole("region", { name: "Submission results" });
+    expect(onSubmit).toHaveBeenCalledWith("python", "x");
+    expect(results).toHaveTextContent("Time limit exceeded");
+    expect(results).toHaveTextContent("2/3 tests passed");
+    await userEvent.click(within(results).getByRole("button", { name: /Hidden test 3/ }));
+    expect(results).toHaveTextContent("only whether it passed is shown");
+  });
+
+  it("says when the exam keeps hidden results until afterwards", async () => {
+    const outcome: SubmitOutcome = {
+      tested: true,
+      compiled: true,
+      passed: null,
+      total: null,
+      cases: [{ number: 1, visible: true, status: "passed", timeMs: 20, memoryKb: null, input: "1", expectedOutput: "1", stdout: "1", result: null, stderr: "" }],
+    };
+    render(<CodeAnswer question={question} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} onSubmit={async () => outcome} />);
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByRole("region", { name: "Submission results" })).toHaveTextContent("Hidden tests are checked after the test ends");
+  });
+
   it("shows the compiler's words when it does not compile", async () => {
     const onRun = vi.fn(async () => ({ compiled: false as const, compileOutput: "main.cpp:1: error: expected ';'" }));
-    render(
-      <CodeAnswer question={question} value={JSON.stringify({ language: "cpp", source: "x" })} disabled={false} onChange={vi.fn()} onRun={onRun} />,
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Run examples" }));
+    render(<CodeAnswer question={question} value={answer("x", "cpp")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
 
-    expect(await screen.findByRole("region", { name: "Compiler output" })).toHaveTextContent("expected ';'");
+    const output = await screen.findByRole("region", { name: "Compiler output" });
+    expect(output).toHaveTextContent("Compile error");
+    expect(output).toHaveTextContent("expected ';'");
   });
 
   it("says plainly when code cannot be run, and that the answer is safe", async () => {
     const onRun = vi.fn(async () => {
       throw new Error("runner_unavailable (503)");
     });
-    render(
-      <CodeAnswer question={question} value={JSON.stringify({ language: "python", source: "x" })} disabled={false} onChange={vi.fn()} onRun={onRun} />,
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Run examples" }));
+    render(<CodeAnswer question={question} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
 
     expect(await screen.findByText(/cannot be run just now.*still saved/)).toBeInTheDocument();
+  });
+
+  it("resets to the starter code only when the candidate confirms", async () => {
+    const onChange = vi.fn();
+    render(<CodeAnswer question={question} value={answer("print(99)")} disabled={false} onChange={onChange} onRun={vi.fn()} />);
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(onChange).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(onChange).toHaveBeenCalledWith(answer("# read two numbers\n"));
+    confirm.mockRestore();
+  });
+
+  it("remembers the dark editor and the text size on this device", async () => {
+    const { unmount } = render(<CodeAnswer question={question} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Dark editor" }));
+    await userEvent.click(screen.getByRole("button", { name: "Larger text" }));
+    expect(JSON.parse(localStorage.getItem("parikshaa.editor")!)).toEqual({ dark: true, fontSize: 15 });
+    unmount();
+    render(<CodeAnswer question={question} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Dark editor" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("opens full screen with the problem beside the editor, and returns", async () => {
+    render(<CodeAnswer question={twoSum} number={3} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Full screen" }));
+
+    const dialog = screen.getByRole("dialog", { name: /3\. Return the indices/ });
+    expect(within(dialog).getAllByRole("separator")).toHaveLength(2);
+    expect(document.body).toHaveClass("workspace-open");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Back to the paper" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.body).not.toHaveClass("workspace-open");
+  });
+
+  it("lets a divider be moved with the keyboard", async () => {
+    render(<CodeAnswer question={twoSum} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    const [divider] = screen.getAllByRole("separator");
+    divider!.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    expect(divider).toHaveAttribute("aria-valuenow", "47");
+  });
+
+  it("offers no Run or Submit once the attempt is closed", () => {
+    render(<CodeAnswer question={question} value={answer("x")} disabled onChange={vi.fn()} onRun={vi.fn()} onSubmit={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Run" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Submit" })).toBeNull();
   });
 
   it("reads an answer from before languages could be chosen", () => {

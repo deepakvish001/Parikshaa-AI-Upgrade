@@ -1,5 +1,5 @@
 import type { CandidateQuestion } from "@parikshaa/core/browser";
-import type { RunOutcome } from "../api.ts";
+import type { RunOutcome, SubmitOutcome } from "../api.ts";
 import { CodeAnswer } from "./CodeAnswer.tsx";
 
 interface Props {
@@ -9,10 +9,17 @@ interface Props {
   readonly onChange: (value: string) => void;
   /** Runs a code answer; only code questions use it. */
   readonly onRun?: (language: string, source: string, input?: string) => Promise<RunOutcome>;
+  /** Commits and tests a code answer; only code questions use it. */
+  readonly onSubmit?: (language: string, source: string) => Promise<SubmitOutcome>;
+  readonly submitLabel?: string;
+  /** The question's number on the paper. */
+  readonly number?: number;
+  /** Whether the exam allows completion in the code editor. */
+  readonly completion?: boolean;
 }
 
 /** The input for one question, chosen by its kind. */
-export function AnswerInput({ question, value, disabled, onChange, onRun }: Props) {
+export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion }: Props) {
   switch (question.kind) {
     case "mcq": {
       // The letter is drawn by CSS (a counter), so it is in neither the label's text nor its name.
@@ -78,6 +85,10 @@ export function AnswerInput({ question, value, disabled, onChange, onRun }: Prop
           disabled={disabled}
           onChange={onChange}
           onRun={onRun ?? (() => Promise.reject(new Error("Running is not available here")))}
+          {...(onSubmit === undefined ? {} : { onSubmit })}
+          {...(submitLabel === undefined ? {} : { submitLabel })}
+          {...(number === undefined ? {} : { number })}
+          {...(completion === undefined ? {} : { completion })}
         />
       );
 

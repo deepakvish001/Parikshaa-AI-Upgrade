@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { local, MCQ, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
-import { aptitudePaper, CODE_QUESTION, RUN_ORIGINAL } from "./fixtures.js";
+import { aptitudePaper, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED } from "./fixtures.js";
 import { shoot } from "./shoot.js";
 
 /** The candidate's side, page by page. */
@@ -138,20 +138,44 @@ test("an aptitude paper: pictures, a passage, several right options, negative ma
   await shoot(page, "candidate-14-aptitude");
 });
 
-test("a coding question: the editor, running the examples, and the results", async ({ page, request }) => {
+test("a coding question, as on LeetCode: the workspace, Run, full screen, and Submit", async ({ page, request }) => {
   const sitting = await seedSitting(request, {
-    questions: [CODE_QUESTION],
+    questions: [MERGE_INTERVALS],
     title: "Coding Round — Campus Drive 2026",
     vivaTriggerRatio: 0.99,
   });
   await page.goto(local(sitting.links["CS001"]!));
   const editor = page.locator(".cm-content");
   await expect(editor).toBeVisible();
-  await editor.click();
-  await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.insertText(RUN_ORIGINAL);
-  await page.getByRole("button", { name: "Run examples" }).click();
-  await expect(page.getByRole("region", { name: "Run results" })).toBeVisible({ timeout: 30_000 });
-  await page.waitForTimeout(800);
+  const write = async (source: string) => {
+    await editor.click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await page.keyboard.insertText(source);
+  };
+
+  // In the paper: the statement, the editor, and Run on the examples.
+  await write(MERGE_SOLUTION);
+  await page.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Run results" })).toContainText("2/2 examples pass", { timeout: 30_000 });
+  await page.waitForTimeout(500);
   await shoot(page, "candidate-15-coding");
+
+  // Full screen: the problem beside the editor, and Submit against every test.
+  await page.getByRole("button", { name: "Full screen" }).click();
+  const workspace = page.getByRole("dialog");
+  await expect(workspace).toBeVisible();
+  await workspace.getByRole("button", { name: "Submit" }).click();
+  await expect(workspace.getByRole("region", { name: "Submission results" })).toContainText("5/5 tests passed", { timeout: 30_000 });
+  await page.waitForTimeout(500);
+  await shoot(page, "candidate-16-workspace", { fullPage: false });
+
+  // In the dark editor, a submission that forgot to sort: right on the examples, wrong on a hidden test.
+  await workspace.getByRole("button", { name: "Dark editor" }).click();
+  await write(MERGE_UNSORTED);
+  await workspace.getByRole("button", { name: "Submit" }).click();
+  const verdict = workspace.getByRole("region", { name: "Submission results" });
+  await expect(verdict).toContainText("Wrong answer", { timeout: 30_000 });
+  await verdict.getByRole("button", { name: /Hidden test 3/ }).click();
+  await page.waitForTimeout(500);
+  await shoot(page, "candidate-17-wrong-answer", { fullPage: false });
 });

@@ -1,3 +1,5 @@
+import type { Signature } from "./signature.js";
+
 /**
  * Parikshaa core domain model.
  *
@@ -141,12 +143,31 @@ export interface NumericQuestion extends QuestionBase {
  */
 export interface CodeTest {
   readonly id: string;
+  /** Standard input; for a function question, one JSON value per parameter, a line each. */
   readonly input: string;
+  /** Standard output; for a function question, the JSON value the function returns. */
   readonly expected: string;
   readonly hidden: boolean;
   /** Share of the question's marks, relative to the other tests' weights. */
   readonly weight: number;
+  /** Why the output is what it is, shown under a visible test as a worked example. Markdown. */
+  readonly explanation?: string;
 }
+
+/**
+ * How a program's output is judged, when not exactly. A function question is
+ * judged by value (see `Signature`) unless it brings its own checker.
+ */
+export type CodeChecker =
+  | { readonly kind: "exact" }
+  /** The same words in the same order, however they are spaced. */
+  | { readonly kind: "tokens" }
+  /** Word by word, numbers equal within `tolerance`, absolute or relative. */
+  | { readonly kind: "numbers"; readonly tolerance: number }
+  /** The same lines in any order. */
+  | { readonly kind: "unordered" }
+  /** A Python 3 program, run as `checker.py input expected output`: exit 0 accepts, 1 rejects. For problems with many right answers. */
+  | { readonly kind: "custom"; readonly source: string };
 
 export interface CodeQuestion extends QuestionBase {
   readonly kind: "code";
@@ -154,7 +175,22 @@ export interface CodeQuestion extends QuestionBase {
   readonly language: string;
   /** Languages the candidate may choose between. */
   readonly languages?: readonly string[];
+  /** Starter code for every language, unless `starters` has one for it. */
   readonly starter?: string;
+  /** Starter code by language. A function question's starters are written from its signature instead. */
+  readonly starters?: Readonly<Record<string, string>>;
+  /**
+   * Present for a function question, LeetCode's kind: the candidate writes this
+   * function and Parikshaa calls it. Absent, the candidate writes a whole
+   * program that reads standard input.
+   */
+  readonly signature?: Signature;
+  /** How output is judged; exactly, when absent. */
+  readonly checker?: CodeChecker;
+  /** The statement's further sections, in Markdown: the input's shape, the output's, and the limits on both. */
+  readonly inputFormat?: string;
+  readonly outputFormat?: string;
+  readonly constraints?: string;
   /** When present, the answer is scored by running these, not by a rubric grader. */
   readonly tests?: readonly CodeTest[];
   readonly limits?: { readonly timeMs?: number; readonly memoryMb?: number };
@@ -179,6 +215,15 @@ export interface ExamPolicy {
   readonly vivaTriggerRatio: number;
   /** Camera proctoring (ROADMAP §14). Absent: none — the default, and Parikshaa's own position. */
   readonly proctoring?: ProctoringPolicy;
+  /**
+   * What Submit tells a candidate about their code: every test's verdict,
+   * hidden tests without their content ("all", the default, as on LeetCode and
+   * HackerRank), or only the visible tests' ("visible"), leaving the hidden
+   * ones to be found out after the attempt.
+   */
+  readonly testFeedback?: "all" | "visible";
+  /** Offer completion in the code editor. Off by default: most hiring tests are taken without it. */
+  readonly codeCompletion?: boolean;
 }
 
 /**

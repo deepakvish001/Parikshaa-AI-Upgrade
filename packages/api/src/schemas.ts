@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CONTENT_LOCALES } from "@parikshaa/core";
+import { CONTENT_LOCALES, VALUE_TYPES } from "@parikshaa/core";
 
 /**
  * The HTTP contract, as schemas.
@@ -66,6 +66,28 @@ const passage = z
   })
   .describe("A passage several questions are about: comprehension, a data set, a case.");
 
+const valueType = z.enum(VALUE_TYPES);
+
+const signature = z
+  .object({
+    name: z.string(),
+    params: z.array(z.object({ name: z.string(), type: valueType })).readonly(),
+    returns: valueType,
+    anyOrder: z.enum(["none", "top", "deep"]).optional().describe("Whether a returned array may be in any order: not at all, at the top level, or at every level."),
+    tolerance: z.number().optional().describe("How far a returned number may be from the expected one."),
+  })
+  .describe("The function a candidate writes. Starters and the program that calls it are generated for every language.");
+
+const codeChecker = z
+  .discriminatedUnion("kind", [
+    z.object({ kind: z.literal("exact") }),
+    z.object({ kind: z.literal("tokens") }),
+    z.object({ kind: z.literal("numbers"), tolerance: z.number() }),
+    z.object({ kind: z.literal("unordered") }),
+    z.object({ kind: z.literal("custom"), source: z.string().describe("Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects.") }),
+  ])
+  .describe("How a program's output is judged, when not exactly.");
+
 const questionBase = {
   id: z.string().min(1),
   stem: z.string(),
@@ -97,15 +119,22 @@ const kinds = {
     kind: z.literal("code"),
     language: z.string().describe("The default language: python, javascript, c, cpp or java."),
     languages: z.array(z.string()).readonly().optional().describe("Languages the candidate may choose between."),
-    starter: z.string().optional(),
+    starter: z.string().optional().describe("Starter code for every language without one in `starters`."),
+    starters: z.record(z.string(), z.string()).optional().describe("Starter code by language. A function question's are written from its signature."),
+    signature: signature.optional().describe("A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input."),
+    checker: codeChecker.optional().describe("How output is judged; exactly, when absent."),
+    inputFormat: z.string().optional().describe("Markdown."),
+    outputFormat: z.string().optional().describe("Markdown."),
+    constraints: z.string().optional().describe("Markdown."),
     tests: z
       .array(
         z.object({
           id: z.string().min(1),
-          input: z.string().describe("Standard input."),
-          expected: z.string().describe("Standard output, compared ignoring line endings and trailing space."),
+          input: z.string().describe("Standard input; for a function question, one JSON value per parameter, a line each."),
+          expected: z.string().describe("Standard output; for a function question, the JSON value returned."),
           hidden: z.boolean().describe("Hidden tests decide the score and never reach the candidate."),
           weight: z.number(),
+          explanation: z.string().optional().describe("Why, under a visible test shown as a worked example. Markdown."),
         }),
       )
       .readonly()
@@ -140,6 +169,11 @@ export const examSchema = z.object({
     allowRevision: z.boolean(),
     vivaTriggerRatio: z.number(),
     proctoring: proctoringPolicy.optional().describe("Camera proctoring. Absent: none."),
+    testFeedback: z
+      .enum(["all", "visible"])
+      .optional()
+      .describe("What Submit tells a candidate about their code: every test's verdict, hidden ones without their content (all, the default), or the visible tests' only."),
+    codeCompletion: z.boolean().optional().describe("Offer completion in the code editor. Off by default."),
   }),
   questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
   sections: z
@@ -364,8 +398,16 @@ const candidateQuestion = z.discriminatedUnion("kind", [
     language: z.string(),
     languages: z.array(z.string()).readonly(),
     starter: z.string().nullable(),
+    starters: z.record(z.string(), z.string()).describe("Starter code by language."),
+    function: z
+      .object({ name: z.string(), params: z.array(z.object({ name: z.string(), type: valueType })).readonly(), returns: valueType })
+      .nullable()
+      .describe("The function to write, for a function question. Null: write a whole program that reads standard input."),
+    inputFormat: z.string().nullable(),
+    outputFormat: z.string().nullable(),
+    constraints: z.string().nullable(),
     samples: z
-      .array(z.object({ input: z.string(), output: z.string() }))
+      .array(z.object({ input: z.string(), output: z.string(), explanation: z.string().nullable() }))
       .readonly()
       .describe("The visible tests, as worked examples."),
   }),
@@ -380,6 +422,8 @@ export const candidateStateResponse = z.object({
     allowRevision: z.boolean(),
     questions: z.array(candidateQuestion).readonly(),
     proctoring: proctoringPolicy.nullable().describe("What the camera and browser are asked for. Null: nothing."),
+    testFeedback: z.enum(["all", "visible"]).describe("What Submit reports about hidden tests."),
+    codeCompletion: z.boolean().describe("Whether the code editor offers completion."),
   }),
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
   identityCaptured: z.boolean().describe("A proctored exam's identity photos have been taken; until then its questions wait."),
@@ -446,6 +490,8 @@ export const runBody = z.object({
     .describe("Run on this input instead of the question's examples."),
 });
 
+const testStatus = z.enum(["passed", "wrong_answer", "time_limit", "memory_limit", "runtime_error", "output_limit", "checker_error"]);
+
 export const runResponse = z
   .discriminatedUnion("compiled", [
     z.object({ compiled: z.literal(false), compileOutput: z.string() }),
@@ -456,16 +502,52 @@ export const runResponse = z
           z.object({
             input: z.string(),
             expectedOutput: z.string().nullable(),
-            status: z.enum(["passed", "wrong_answer", "time_limit", "runtime_error", "output_limit", "ran"]),
-            stdout: z.string(),
+            status: z.union([testStatus, z.literal("ran")]),
+            stdout: z.string().describe("What the program printed. For a function question, what the candidate's code printed along the way."),
+            result: z.string().nullable().describe("For a function question: what the function returned, as JSON. Null otherwise, or when it returned nothing."),
             stderr: z.string(),
             timeMs: z.number(),
+            memoryKb: z.number().nullable().describe("Peak memory; null when it could not be measured."),
+            checkerMessage: z.string().nullable().describe("What the question's own checker said, if it has one."),
           }),
         )
         .readonly(),
     }),
   ])
   .describe("The examples only. Hidden tests are never run on request.");
+
+export const submitCodeBody = z.object({
+  questionId: z.string().min(1),
+  language: z.string().min(1),
+  source: z.string().max(256 * 1024),
+});
+
+const submittedTest = z.object({
+  number: z.number().describe("The test's position among the question's tests, from 1."),
+  visible: z.boolean().describe("A visible test, shown in full; otherwise hidden, and reduced to its verdict."),
+  status: testStatus,
+  timeMs: z.number(),
+  memoryKb: z.number().nullable(),
+  input: z.string().nullable().describe("A visible test's input. Null for a hidden test, whose content never reaches the candidate."),
+  expectedOutput: z.string().nullable(),
+  stdout: z.string().nullable(),
+  result: z.string().nullable(),
+  stderr: z.string().nullable(),
+});
+
+export const submitCodeResponse = z
+  .union([
+    z.object({ tested: z.literal(false), reason: z.enum(["no_tests", "runner_unavailable"]) }),
+    z.object({ tested: z.literal(true), compiled: z.literal(false), compileOutput: z.string() }),
+    z.object({
+      tested: z.literal(true),
+      compiled: z.literal(true),
+      passed: z.number().nullable().describe("Tests passed, hidden included; null when the exam reports only the visible ones."),
+      total: z.number().nullable(),
+      cases: z.array(submittedTest).readonly(),
+    }),
+  ])
+  .describe("The answer is committed either way. What was found running it against the question's tests, as much as the exam tells.");
 
 export const replyBody = z
   .object({ reply: z.string().min(1) })

@@ -1,4 +1,5 @@
-import { languagesOf } from "./code.js";
+import { languagesOf, starterOf } from "./code.js";
+import type { Parameter, ValueType } from "./signature.js";
 import type { ContentLocale, Exam, ExamId, ProctoringPolicy, Question, QuestionId, QuestionImage, QuestionKind, QuestionTranslation } from "./domain.js";
 import { choosesSeveral } from "./scoring.js";
 
@@ -57,12 +58,24 @@ export interface CandidateCodeQuestion extends CandidateQuestionBase {
   readonly kind: "code";
   readonly language: string;
   readonly languages: readonly string[];
+  /** The starter in the default language. */
   readonly starter: string | null;
+  /** The starter in each language that has one. */
+  readonly starters: Readonly<Record<string, string>>;
+  /**
+   * For a function question, the function to write: its name, parameters and
+   * return type. Null for a question answered with a whole program.
+   */
+  readonly function: { readonly name: string; readonly params: readonly Parameter[]; readonly returns: ValueType } | null;
+  /** The statement's further sections, in Markdown. */
+  readonly inputFormat: string | null;
+  readonly outputFormat: string | null;
+  readonly constraints: string | null;
   /**
    * The visible tests, as worked examples. Hidden tests have no field here and
    * so cannot reach a candidate by any route.
    */
-  readonly samples: readonly { readonly input: string; readonly output: string }[];
+  readonly samples: readonly { readonly input: string; readonly output: string; readonly explanation: string | null }[];
 }
 
 export type CandidateQuestion =
@@ -79,6 +92,10 @@ export interface CandidateExam {
   readonly questions: readonly CandidateQuestion[];
   /** What the camera and browser are asked for: the candidate is told before they start. Null: nothing. */
   readonly proctoring: ProctoringPolicy | null;
+  /** What Submit reports about hidden tests: their verdicts ("all") or nothing ("visible"). */
+  readonly testFeedback: "all" | "visible";
+  /** Whether the code editor offers completion. */
+  readonly codeCompletion: boolean;
 }
 
 export function candidateQuestion(question: Question): CandidateQuestion {
@@ -106,19 +123,36 @@ export function candidateQuestion(question: Question): CandidateQuestion {
       return { ...base, kind: "short" };
     case "numeric":
       return { ...base, kind: "numeric", negativeMarks: question.negativeMarks ?? 0 };
-    case "code":
+    case "code": {
+      const starters: Record<string, string> = {};
+      for (const language of languagesOf(question)) {
+        const starter = starterOf(question, language);
+        if (starter !== null) starters[language] = starter;
+      }
+      const signature = question.signature;
       return {
         ...base,
         kind: "code",
         language: question.language,
         languages: languagesOf(question),
-        starter: question.starter ?? null,
+        starter: starterOf(question, question.language),
+        starters,
+        // The signature is the question, not its answer; the checker, which may
+        // hold one, never leaves the server.
+        function:
+          signature === undefined
+            ? null
+            : { name: signature.name, params: signature.params.map((p) => ({ name: p.name, type: p.type })), returns: signature.returns },
+        inputFormat: question.inputFormat ?? null,
+        outputFormat: question.outputFormat ?? null,
+        constraints: question.constraints ?? null,
         samples: (question.tests ?? [])
           .filter((t) => !t.hidden)
           // `output`, not `expected`: `expected` is the numeric answer key's
           // name, and the contract test forbids it anywhere a candidate sees.
-          .map((t) => ({ input: t.input, output: t.expected })),
+          .map((t) => ({ input: t.input, output: t.expected, explanation: t.explanation ?? null })),
       };
+    }
   }
 }
 
@@ -137,5 +171,7 @@ export function candidateView(exam: Exam): CandidateExam {
     allowRevision: exam.policy.allowRevision,
     questions: exam.questions.map(candidateQuestion),
     proctoring: exam.policy.proctoring ?? null,
+    testFeedback: exam.policy.testFeedback ?? "all",
+    codeCompletion: exam.policy.codeCompletion ?? false,
   };
 }

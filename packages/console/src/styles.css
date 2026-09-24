@@ -752,3 +752,82 @@ article.report {
     border-color: #ccc;
   }
 }
+
+/* --- code questions: function, starters, statement ------------------------- */
+
+.signature {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.signature .param {
+  margin-top: var(--space-2);
+}
+.signature .param input,
+.signature .param select {
+  margin: 0;
+}
+.starter-preview,
+.statement-fields {
+  margin-top: var(--space-3);
+}
+.starter-preview summary,
+.statement-fields summary {
+  cursor: pointer;
+  font-weight: var(--weight-semibold);
+}
+.starter-preview pre {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-3);
+  overflow-x: auto;
+  font-size: var(--text-xs);
+  white-space: pre;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.chip {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  box-shadow: none;
+}
+.chip[aria-selected="true"] {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+.md-preview {
+  margin-top: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.md-preview .markdown code {
+  padding: 0.05em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--surface-sunken);
+  border-radius: 4px;
+}
+.test-case .problems,
+.signature .problems {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.25rem;
+  font-size: var(--text-sm);
+  color: var(--danger);
+}
+.code-policy {
+  margin: var(--space-4) 0 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.code-policy legend {
+  padding: 0 var(--space-1);
+  font-weight: var(--weight-semibold);
+}

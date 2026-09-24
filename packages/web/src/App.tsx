@@ -2,7 +2,9 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart } from "./api.ts";
+import { inline } from "@parikshaa/brand/markdown";
 import { AnswerInput } from "./components/AnswerInput.tsx";
+import { splitStem } from "./components/code-meta.ts";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
 import { InviteGate } from "./components/InviteGate.tsx";
@@ -404,20 +406,30 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     }
   }, [state.data?.openProbe, probe]);
 
+  /** Once an answer is committed: it is saved here too, the state is fetched again, and a follow-up may be due. */
+  const afterCommit = async (questionId: string, answer: string) => {
+    setSavedAt((prior) => ({ ...prior, [questionId]: Date.now() }));
+    if (attemptId !== null) saveLocalDraft(attemptId, expiresAt, questionId, { answer, synced: true });
+    setStatus((prior) => ({ ...prior, [questionId]: "synced" }));
+    await queryClient.invalidateQueries({ queryKey: ["state"] });
+    if (probe === null) {
+      setProbe({ id: "", prompt: "", streaming: true });
+      void checkForProbe();
+    }
+  };
+
   const saveAnswer = useMutation({
     mutationFn: ({ questionId, answer }: { questionId: string; answer: string }) =>
       client.saveAnswer(questionId, answer),
-    onSuccess: async (_result, { questionId, answer }) => {
-      setSavedAt((prior) => ({ ...prior, [questionId]: Date.now() }));
-      if (attemptId !== null) saveLocalDraft(attemptId, expiresAt, questionId, { answer, synced: true });
-      setStatus((prior) => ({ ...prior, [questionId]: "synced" }));
-      await queryClient.invalidateQueries({ queryKey: ["state"] });
-      if (probe === null) {
-        setProbe({ id: "", prompt: "", streaming: true });
-        void checkForProbe();
-      }
-    },
+    onSuccess: async (_result, { questionId, answer }) => afterCommit(questionId, answer),
   });
+
+  /** Submit a code answer: committed, then tested against every test, as the exam allows it to report. */
+  const submitCode = async (questionId: string, language: string, source: string) => {
+    const outcome = await client.submitCode(questionId, language, source);
+    await afterCommit(questionId, JSON.stringify({ language, source }));
+    return outcome;
+  };
 
   /** Send anything still waiting on the debounce, so the server commits it. */
   const flushPending = async () => {
@@ -681,7 +693,9 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               >
                 <div className="q-head">
                   <h2 lang={shownIn} id={`q-${question.id}-stem`} tabIndex={-1}>
-                    <span className="q-num">{index + 1}.</span> {question.stem}
+                    <span className="q-num">{index + 1}.</span>{" "}
+                    {/* A code question's statement is Markdown: its first paragraph heads it, the rest is below. */}
+                    {question.kind === "code" ? <span className="q-title">{inline(splitStem(question.stem).title || t("code.problem"))}</span> : question.stem}
                   </h2>
                   <span className="q-badges">
                     <span className="marks">{question.maxScore === 1 ? t("exam.mark") : t("exam.marks", { n: question.maxScore })}</span>
@@ -713,18 +727,25 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
                   disabled={!open}
                   onChange={(next) => edit(question.id, next)}
                   onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
+                  onSubmit={(language, source) => submitCode(question.id, language, source)}
+                  submitLabel={exam.allowRevision ? t("code.submit") : t("code.submitFinal")}
+                  number={index + 1}
+                  completion={exam.codeCompletion ?? false}
                 />
 
                 {open ? (
                   <div className="row">
-                    <button
-                      type="button"
-                      className="secondary"
-                      disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
-                      onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
-                    >
-                      {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
-                    </button>
+                    {/* A code answer is committed by the workspace's Submit, which tests it too. */}
+                    {question.kind === "code" ? null : (
+                      <button
+                        type="button"
+                        className="secondary"
+                        disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
+                        onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
+                      >
+                        {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
+                      </button>
+                    )}
                     <button type="button" className={`quiet review-toggle${marked ? " on" : ""}`} aria-pressed={marked} onClick={() => toggleReview(question.id)}>
                       <Flag aria-hidden="true" />
                       {marked ? t("exam.marked") : t("exam.markReview")}

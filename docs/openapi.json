@@ -110,6 +110,18 @@
                           "snapshotEverySeconds",
                           "browserEvents"
                         ]
+                      },
+                      "testFeedback": {
+                        "description": "What Submit tells a candidate about their code: every test's verdict, hidden ones without their content (all, the default), or the visible tests' only.",
+                        "type": "string",
+                        "enum": [
+                          "all",
+                          "visible"
+                        ]
+                      },
+                      "codeCompletion": {
+                        "description": "Offer completion in the code editor. Off by default.",
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -785,6 +797,190 @@
                               }
                             },
                             "starter": {
+                              "description": "Starter code for every language without one in `starters`.",
+                              "type": "string"
+                            },
+                            "starters": {
+                              "description": "Starter code by language. A function question's are written from its signature.",
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            "signature": {
+                              "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "params": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "int",
+                                          "long",
+                                          "double",
+                                          "boolean",
+                                          "string",
+                                          "int[]",
+                                          "long[]",
+                                          "double[]",
+                                          "boolean[]",
+                                          "string[]",
+                                          "int[][]",
+                                          "string[][]"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "type"
+                                    ]
+                                  }
+                                },
+                                "returns": {
+                                  "type": "string",
+                                  "enum": [
+                                    "int",
+                                    "long",
+                                    "double",
+                                    "boolean",
+                                    "string",
+                                    "int[]",
+                                    "long[]",
+                                    "double[]",
+                                    "boolean[]",
+                                    "string[]",
+                                    "int[][]",
+                                    "string[][]"
+                                  ]
+                                },
+                                "anyOrder": {
+                                  "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "top",
+                                    "deep"
+                                  ]
+                                },
+                                "tolerance": {
+                                  "description": "How far a returned number may be from the expected one.",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "params",
+                                "returns"
+                              ]
+                            },
+                            "checker": {
+                              "description": "How output is judged; exactly, when absent.",
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "exact"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "tokens"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "numbers"
+                                      ]
+                                    },
+                                    "tolerance": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "tolerance"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unordered"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "custom"
+                                      ]
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "source"
+                                  ]
+                                }
+                              ]
+                            },
+                            "inputFormat": {
+                              "description": "Markdown.",
+                              "type": "string"
+                            },
+                            "outputFormat": {
+                              "description": "Markdown.",
+                              "type": "string"
+                            },
+                            "constraints": {
+                              "description": "Markdown.",
                               "type": "string"
                             },
                             "tests": {
@@ -800,11 +996,11 @@
                                   },
                                   "input": {
                                     "type": "string",
-                                    "description": "Standard input."
+                                    "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                   },
                                   "expected": {
                                     "type": "string",
-                                    "description": "Standard output, compared ignoring line endings and trailing space."
+                                    "description": "Standard output; for a function question, the JSON value returned."
                                   },
                                   "hidden": {
                                     "type": "boolean",
@@ -812,6 +1008,10 @@
                                   },
                                   "weight": {
                                     "type": "number"
+                                  },
+                                  "explanation": {
+                                    "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
@@ -1531,6 +1731,190 @@
                                     }
                                   },
                                   "starter": {
+                                    "description": "Starter code for every language without one in `starters`.",
+                                    "type": "string"
+                                  },
+                                  "starters": {
+                                    "description": "Starter code by language. A function question's are written from its signature.",
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "signature": {
+                                    "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "params": {
+                                        "readOnly": true,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "type": {
+                                              "type": "string",
+                                              "enum": [
+                                                "int",
+                                                "long",
+                                                "double",
+                                                "boolean",
+                                                "string",
+                                                "int[]",
+                                                "long[]",
+                                                "double[]",
+                                                "boolean[]",
+                                                "string[]",
+                                                "int[][]",
+                                                "string[][]"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "name",
+                                            "type"
+                                          ]
+                                        }
+                                      },
+                                      "returns": {
+                                        "type": "string",
+                                        "enum": [
+                                          "int",
+                                          "long",
+                                          "double",
+                                          "boolean",
+                                          "string",
+                                          "int[]",
+                                          "long[]",
+                                          "double[]",
+                                          "boolean[]",
+                                          "string[]",
+                                          "int[][]",
+                                          "string[][]"
+                                        ]
+                                      },
+                                      "anyOrder": {
+                                        "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                        "type": "string",
+                                        "enum": [
+                                          "none",
+                                          "top",
+                                          "deep"
+                                        ]
+                                      },
+                                      "tolerance": {
+                                        "description": "How far a returned number may be from the expected one.",
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "params",
+                                      "returns"
+                                    ]
+                                  },
+                                  "checker": {
+                                    "description": "How output is judged; exactly, when absent.",
+                                    "oneOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "exact"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "kind"
+                                        ]
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "tokens"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "kind"
+                                        ]
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "numbers"
+                                            ]
+                                          },
+                                          "tolerance": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "tolerance"
+                                        ]
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "unordered"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "kind"
+                                        ]
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "custom"
+                                            ]
+                                          },
+                                          "source": {
+                                            "type": "string",
+                                            "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "source"
+                                        ]
+                                      }
+                                    ]
+                                  },
+                                  "inputFormat": {
+                                    "description": "Markdown.",
+                                    "type": "string"
+                                  },
+                                  "outputFormat": {
+                                    "description": "Markdown.",
+                                    "type": "string"
+                                  },
+                                  "constraints": {
+                                    "description": "Markdown.",
                                     "type": "string"
                                   },
                                   "tests": {
@@ -1546,11 +1930,11 @@
                                         },
                                         "input": {
                                           "type": "string",
-                                          "description": "Standard input."
+                                          "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                         },
                                         "expected": {
                                           "type": "string",
-                                          "description": "Standard output, compared ignoring line endings and trailing space."
+                                          "description": "Standard output; for a function question, the JSON value returned."
                                         },
                                         "hidden": {
                                           "type": "boolean",
@@ -1558,6 +1942,10 @@
                                         },
                                         "weight": {
                                           "type": "number"
+                                        },
+                                        "explanation": {
+                                          "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
@@ -2557,6 +2945,18 @@
                             "browserEvents"
                           ],
                           "additionalProperties": false
+                        },
+                        "testFeedback": {
+                          "description": "What Submit tells a candidate about their code: every test's verdict, hidden ones without their content (all, the default), or the visible tests' only.",
+                          "type": "string",
+                          "enum": [
+                            "all",
+                            "visible"
+                          ]
+                        },
+                        "codeCompletion": {
+                          "description": "Offer completion in the code editor. Off by default.",
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -3256,6 +3656,197 @@
                                 }
                               },
                               "starter": {
+                                "description": "Starter code for every language without one in `starters`.",
+                                "type": "string"
+                              },
+                              "starters": {
+                                "description": "Starter code by language. A function question's are written from its signature.",
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "type": "string"
+                                }
+                              },
+                              "signature": {
+                                "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "params": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "int",
+                                            "long",
+                                            "double",
+                                            "boolean",
+                                            "string",
+                                            "int[]",
+                                            "long[]",
+                                            "double[]",
+                                            "boolean[]",
+                                            "string[]",
+                                            "int[][]",
+                                            "string[][]"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "type"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "returns": {
+                                    "type": "string",
+                                    "enum": [
+                                      "int",
+                                      "long",
+                                      "double",
+                                      "boolean",
+                                      "string",
+                                      "int[]",
+                                      "long[]",
+                                      "double[]",
+                                      "boolean[]",
+                                      "string[]",
+                                      "int[][]",
+                                      "string[][]"
+                                    ]
+                                  },
+                                  "anyOrder": {
+                                    "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                    "type": "string",
+                                    "enum": [
+                                      "none",
+                                      "top",
+                                      "deep"
+                                    ]
+                                  },
+                                  "tolerance": {
+                                    "description": "How far a returned number may be from the expected one.",
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "params",
+                                  "returns"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "checker": {
+                                "description": "How output is judged; exactly, when absent.",
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "exact"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "tokens"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "numbers"
+                                        ]
+                                      },
+                                      "tolerance": {
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "tolerance"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "unordered"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "kind"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "custom"
+                                        ]
+                                      },
+                                      "source": {
+                                        "type": "string",
+                                        "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "source"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                ]
+                              },
+                              "inputFormat": {
+                                "description": "Markdown.",
+                                "type": "string"
+                              },
+                              "outputFormat": {
+                                "description": "Markdown.",
+                                "type": "string"
+                              },
+                              "constraints": {
+                                "description": "Markdown.",
                                 "type": "string"
                               },
                               "tests": {
@@ -3271,11 +3862,11 @@
                                     },
                                     "input": {
                                       "type": "string",
-                                      "description": "Standard input."
+                                      "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                     },
                                     "expected": {
                                       "type": "string",
-                                      "description": "Standard output, compared ignoring line endings and trailing space."
+                                      "description": "Standard output; for a function question, the JSON value returned."
                                     },
                                     "hidden": {
                                       "type": "boolean",
@@ -3283,6 +3874,10 @@
                                     },
                                     "weight": {
                                       "type": "number"
+                                    },
+                                    "explanation": {
+                                      "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                      "type": "string"
                                     }
                                   },
                                   "required": [
@@ -4028,6 +4623,197 @@
                                       }
                                     },
                                     "starter": {
+                                      "description": "Starter code for every language without one in `starters`.",
+                                      "type": "string"
+                                    },
+                                    "starters": {
+                                      "description": "Starter code by language. A function question's are written from its signature.",
+                                      "type": "object",
+                                      "propertyNames": {
+                                        "type": "string"
+                                      },
+                                      "additionalProperties": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "signature": {
+                                      "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "params": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "name": {
+                                                "type": "string"
+                                              },
+                                              "type": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "int",
+                                                  "long",
+                                                  "double",
+                                                  "boolean",
+                                                  "string",
+                                                  "int[]",
+                                                  "long[]",
+                                                  "double[]",
+                                                  "boolean[]",
+                                                  "string[]",
+                                                  "int[][]",
+                                                  "string[][]"
+                                                ]
+                                              }
+                                            },
+                                            "required": [
+                                              "name",
+                                              "type"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "returns": {
+                                          "type": "string",
+                                          "enum": [
+                                            "int",
+                                            "long",
+                                            "double",
+                                            "boolean",
+                                            "string",
+                                            "int[]",
+                                            "long[]",
+                                            "double[]",
+                                            "boolean[]",
+                                            "string[]",
+                                            "int[][]",
+                                            "string[][]"
+                                          ]
+                                        },
+                                        "anyOrder": {
+                                          "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                          "type": "string",
+                                          "enum": [
+                                            "none",
+                                            "top",
+                                            "deep"
+                                          ]
+                                        },
+                                        "tolerance": {
+                                          "description": "How far a returned number may be from the expected one.",
+                                          "type": "number"
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "params",
+                                        "returns"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "checker": {
+                                      "description": "How output is judged; exactly, when absent.",
+                                      "oneOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "exact"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "tokens"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "numbers"
+                                              ]
+                                            },
+                                            "tolerance": {
+                                              "type": "number"
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "tolerance"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "unordered"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "kind"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "custom"
+                                              ]
+                                            },
+                                            "source": {
+                                              "type": "string",
+                                              "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                            }
+                                          },
+                                          "required": [
+                                            "kind",
+                                            "source"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      ]
+                                    },
+                                    "inputFormat": {
+                                      "description": "Markdown.",
+                                      "type": "string"
+                                    },
+                                    "outputFormat": {
+                                      "description": "Markdown.",
+                                      "type": "string"
+                                    },
+                                    "constraints": {
+                                      "description": "Markdown.",
                                       "type": "string"
                                     },
                                     "tests": {
@@ -4043,11 +4829,11 @@
                                           },
                                           "input": {
                                             "type": "string",
-                                            "description": "Standard input."
+                                            "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                           },
                                           "expected": {
                                             "type": "string",
-                                            "description": "Standard output, compared ignoring line endings and trailing space."
+                                            "description": "Standard output; for a function question, the JSON value returned."
                                           },
                                           "hidden": {
                                             "type": "boolean",
@@ -4055,6 +4841,10 @@
                                           },
                                           "weight": {
                                             "type": "number"
+                                          },
+                                          "explanation": {
+                                            "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                            "type": "string"
                                           }
                                         },
                                         "required": [
@@ -7024,6 +7814,107 @@
                                       "null"
                                     ]
                                   },
+                                  "starters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    },
+                                    "description": "Starter code by language."
+                                  },
+                                  "function": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "params": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "name": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "int",
+                                                    "long",
+                                                    "double",
+                                                    "boolean",
+                                                    "string",
+                                                    "int[]",
+                                                    "long[]",
+                                                    "double[]",
+                                                    "boolean[]",
+                                                    "string[]",
+                                                    "int[][]",
+                                                    "string[][]"
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "name",
+                                                "type"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "returns": {
+                                            "type": "string",
+                                            "enum": [
+                                              "int",
+                                              "long",
+                                              "double",
+                                              "boolean",
+                                              "string",
+                                              "int[]",
+                                              "long[]",
+                                              "double[]",
+                                              "boolean[]",
+                                              "string[]",
+                                              "int[][]",
+                                              "string[][]"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "name",
+                                          "params",
+                                          "returns"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The function to write, for a function question. Null: write a whole program that reads standard input."
+                                  },
+                                  "inputFormat": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "outputFormat": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "constraints": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
                                   "samples": {
                                     "readOnly": true,
                                     "description": "The visible tests, as worked examples.",
@@ -7036,11 +7927,18 @@
                                         },
                                         "output": {
                                           "type": "string"
+                                        },
+                                        "explanation": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
                                         }
                                       },
                                       "required": [
                                         "input",
-                                        "output"
+                                        "output",
+                                        "explanation"
                                       ],
                                       "additionalProperties": false
                                     }
@@ -7057,6 +7955,11 @@
                                   "language",
                                   "languages",
                                   "starter",
+                                  "starters",
+                                  "function",
+                                  "inputFormat",
+                                  "outputFormat",
+                                  "constraints",
                                   "samples"
                                 ],
                                 "additionalProperties": false
@@ -7103,6 +8006,18 @@
                             }
                           ],
                           "description": "What the camera and browser are asked for. Null: nothing."
+                        },
+                        "testFeedback": {
+                          "type": "string",
+                          "enum": [
+                            "all",
+                            "visible"
+                          ],
+                          "description": "What Submit reports about hidden tests."
+                        },
+                        "codeCompletion": {
+                          "type": "boolean",
+                          "description": "Whether the code editor offers completion."
                         }
                       },
                       "required": [
@@ -7111,7 +8026,9 @@
                         "durationMs",
                         "allowRevision",
                         "questions",
-                        "proctoring"
+                        "proctoring",
+                        "testFeedback",
+                        "codeCompletion"
                       ],
                       "additionalProperties": false
                     },
@@ -7873,24 +8790,57 @@
                                 ]
                               },
                               "status": {
-                                "type": "string",
-                                "enum": [
-                                  "passed",
-                                  "wrong_answer",
-                                  "time_limit",
-                                  "runtime_error",
-                                  "output_limit",
-                                  "ran"
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "passed",
+                                      "wrong_answer",
+                                      "time_limit",
+                                      "memory_limit",
+                                      "runtime_error",
+                                      "output_limit",
+                                      "checker_error"
+                                    ]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "ran"
+                                    ]
+                                  }
                                 ]
                               },
                               "stdout": {
-                                "type": "string"
+                                "type": "string",
+                                "description": "What the program printed. For a function question, what the candidate's code printed along the way."
+                              },
+                              "result": {
+                                "description": "For a function question: what the function returned, as JSON. Null otherwise, or when it returned nothing.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               },
                               "stderr": {
                                 "type": "string"
                               },
                               "timeMs": {
                                 "type": "number"
+                              },
+                              "memoryKb": {
+                                "description": "Peak memory; null when it could not be measured.",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "checkerMessage": {
+                                "description": "What the question's own checker said, if it has one.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
                               }
                             },
                             "required": [
@@ -7898,8 +8848,11 @@
                               "expectedOutput",
                               "status",
                               "stdout",
+                              "result",
                               "stderr",
-                              "timeMs"
+                              "timeMs",
+                              "memoryKb",
+                              "checkerMessage"
                             ],
                             "additionalProperties": false
                           }
@@ -7913,6 +8866,439 @@
                     }
                   ],
                   "description": "The examples only. Hidden tests are never run on request."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/attempts/me/code/submit": {
+      "post": {
+        "summary": "Commit a code answer and test it against every test",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "The answer is committed first, as with any answer, and stands whatever the tests find. What comes back is as much as the exam tells: every test's verdict, a hidden test's without its content — or the visible tests' only.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "language": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "source": {
+                    "type": "string",
+                    "maxLength": 262144
+                  }
+                },
+                "required": [
+                  "questionId",
+                  "language",
+                  "source"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The answer is committed either way. What was found running it against the question's tests, as much as the exam tells.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tested": {
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "no_tests",
+                            "runner_unavailable"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "tested",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tested": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "compiled": {
+                          "type": "boolean",
+                          "enum": [
+                            false
+                          ]
+                        },
+                        "compileOutput": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "tested",
+                        "compiled",
+                        "compileOutput"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "tested": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "compiled": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        },
+                        "passed": {
+                          "description": "Tests passed, hidden included; null when the exam reports only the visible ones.",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "total": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "cases": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "number": {
+                                "type": "number",
+                                "description": "The test's position among the question's tests, from 1."
+                              },
+                              "visible": {
+                                "type": "boolean",
+                                "description": "A visible test, shown in full; otherwise hidden, and reduced to its verdict."
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "passed",
+                                  "wrong_answer",
+                                  "time_limit",
+                                  "memory_limit",
+                                  "runtime_error",
+                                  "output_limit",
+                                  "checker_error"
+                                ]
+                              },
+                              "timeMs": {
+                                "type": "number"
+                              },
+                              "memoryKb": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "input": {
+                                "description": "A visible test's input. Null for a hidden test, whose content never reaches the candidate.",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "expectedOutput": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "stdout": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "result": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "stderr": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "number",
+                              "visible",
+                              "status",
+                              "timeMs",
+                              "memoryKb",
+                              "input",
+                              "expectedOutput",
+                              "stdout",
+                              "result",
+                              "stderr"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "tested",
+                        "compiled",
+                        "passed",
+                        "total",
+                        "cases"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ],
+                  "description": "The answer is committed either way. What was found running it against the question's tests, as much as the exam tells."
                 }
               }
             }
@@ -10543,6 +11929,197 @@
                                     }
                                   },
                                   "starter": {
+                                    "description": "Starter code for every language without one in `starters`.",
+                                    "type": "string"
+                                  },
+                                  "starters": {
+                                    "description": "Starter code by language. A function question's are written from its signature.",
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "signature": {
+                                    "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "params": {
+                                        "readOnly": true,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "type": {
+                                              "type": "string",
+                                              "enum": [
+                                                "int",
+                                                "long",
+                                                "double",
+                                                "boolean",
+                                                "string",
+                                                "int[]",
+                                                "long[]",
+                                                "double[]",
+                                                "boolean[]",
+                                                "string[]",
+                                                "int[][]",
+                                                "string[][]"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "name",
+                                            "type"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "returns": {
+                                        "type": "string",
+                                        "enum": [
+                                          "int",
+                                          "long",
+                                          "double",
+                                          "boolean",
+                                          "string",
+                                          "int[]",
+                                          "long[]",
+                                          "double[]",
+                                          "boolean[]",
+                                          "string[]",
+                                          "int[][]",
+                                          "string[][]"
+                                        ]
+                                      },
+                                      "anyOrder": {
+                                        "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                        "type": "string",
+                                        "enum": [
+                                          "none",
+                                          "top",
+                                          "deep"
+                                        ]
+                                      },
+                                      "tolerance": {
+                                        "description": "How far a returned number may be from the expected one.",
+                                        "type": "number"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "params",
+                                      "returns"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "checker": {
+                                    "description": "How output is judged; exactly, when absent.",
+                                    "oneOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "exact"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "kind"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "tokens"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "kind"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "numbers"
+                                            ]
+                                          },
+                                          "tolerance": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "tolerance"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "unordered"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "kind"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "type": "string",
+                                            "enum": [
+                                              "custom"
+                                            ]
+                                          },
+                                          "source": {
+                                            "type": "string",
+                                            "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "source"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  },
+                                  "inputFormat": {
+                                    "description": "Markdown.",
+                                    "type": "string"
+                                  },
+                                  "outputFormat": {
+                                    "description": "Markdown.",
+                                    "type": "string"
+                                  },
+                                  "constraints": {
+                                    "description": "Markdown.",
                                     "type": "string"
                                   },
                                   "tests": {
@@ -10558,11 +12135,11 @@
                                         },
                                         "input": {
                                           "type": "string",
-                                          "description": "Standard input."
+                                          "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                         },
                                         "expected": {
                                           "type": "string",
-                                          "description": "Standard output, compared ignoring line endings and trailing space."
+                                          "description": "Standard output; for a function question, the JSON value returned."
                                         },
                                         "hidden": {
                                           "type": "boolean",
@@ -10570,6 +12147,10 @@
                                         },
                                         "weight": {
                                           "type": "number"
+                                        },
+                                        "explanation": {
+                                          "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                          "type": "string"
                                         }
                                       },
                                       "required": [
@@ -11411,6 +12992,190 @@
                             }
                           },
                           "starter": {
+                            "description": "Starter code for every language without one in `starters`.",
+                            "type": "string"
+                          },
+                          "starters": {
+                            "description": "Starter code by language. A function question's are written from its signature.",
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "signature": {
+                            "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "params": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "int",
+                                        "long",
+                                        "double",
+                                        "boolean",
+                                        "string",
+                                        "int[]",
+                                        "long[]",
+                                        "double[]",
+                                        "boolean[]",
+                                        "string[]",
+                                        "int[][]",
+                                        "string[][]"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type"
+                                  ]
+                                }
+                              },
+                              "returns": {
+                                "type": "string",
+                                "enum": [
+                                  "int",
+                                  "long",
+                                  "double",
+                                  "boolean",
+                                  "string",
+                                  "int[]",
+                                  "long[]",
+                                  "double[]",
+                                  "boolean[]",
+                                  "string[]",
+                                  "int[][]",
+                                  "string[][]"
+                                ]
+                              },
+                              "anyOrder": {
+                                "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                "type": "string",
+                                "enum": [
+                                  "none",
+                                  "top",
+                                  "deep"
+                                ]
+                              },
+                              "tolerance": {
+                                "description": "How far a returned number may be from the expected one.",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "params",
+                              "returns"
+                            ]
+                          },
+                          "checker": {
+                            "description": "How output is judged; exactly, when absent.",
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exact"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "tokens"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "numbers"
+                                    ]
+                                  },
+                                  "tolerance": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "tolerance"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "unordered"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "custom"
+                                    ]
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "source"
+                                ]
+                              }
+                            ]
+                          },
+                          "inputFormat": {
+                            "description": "Markdown.",
+                            "type": "string"
+                          },
+                          "outputFormat": {
+                            "description": "Markdown.",
+                            "type": "string"
+                          },
+                          "constraints": {
+                            "description": "Markdown.",
                             "type": "string"
                           },
                           "tests": {
@@ -11426,11 +13191,11 @@
                                 },
                                 "input": {
                                   "type": "string",
-                                  "description": "Standard input."
+                                  "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                 },
                                 "expected": {
                                   "type": "string",
-                                  "description": "Standard output, compared ignoring line endings and trailing space."
+                                  "description": "Standard output; for a function question, the JSON value returned."
                                 },
                                 "hidden": {
                                   "type": "boolean",
@@ -11438,6 +13203,10 @@
                                 },
                                 "weight": {
                                   "type": "number"
+                                },
+                                "explanation": {
+                                  "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -12202,6 +13971,197 @@
                               }
                             },
                             "starter": {
+                              "description": "Starter code for every language without one in `starters`.",
+                              "type": "string"
+                            },
+                            "starters": {
+                              "description": "Starter code by language. A function question's are written from its signature.",
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            "signature": {
+                              "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "params": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "int",
+                                          "long",
+                                          "double",
+                                          "boolean",
+                                          "string",
+                                          "int[]",
+                                          "long[]",
+                                          "double[]",
+                                          "boolean[]",
+                                          "string[]",
+                                          "int[][]",
+                                          "string[][]"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "type"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "returns": {
+                                  "type": "string",
+                                  "enum": [
+                                    "int",
+                                    "long",
+                                    "double",
+                                    "boolean",
+                                    "string",
+                                    "int[]",
+                                    "long[]",
+                                    "double[]",
+                                    "boolean[]",
+                                    "string[]",
+                                    "int[][]",
+                                    "string[][]"
+                                  ]
+                                },
+                                "anyOrder": {
+                                  "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "top",
+                                    "deep"
+                                  ]
+                                },
+                                "tolerance": {
+                                  "description": "How far a returned number may be from the expected one.",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "params",
+                                "returns"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "checker": {
+                              "description": "How output is judged; exactly, when absent.",
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "exact"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "tokens"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "numbers"
+                                      ]
+                                    },
+                                    "tolerance": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "tolerance"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unordered"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "custom"
+                                      ]
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "source"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "inputFormat": {
+                              "description": "Markdown.",
+                              "type": "string"
+                            },
+                            "outputFormat": {
+                              "description": "Markdown.",
+                              "type": "string"
+                            },
+                            "constraints": {
+                              "description": "Markdown.",
                               "type": "string"
                             },
                             "tests": {
@@ -12217,11 +14177,11 @@
                                   },
                                   "input": {
                                     "type": "string",
-                                    "description": "Standard input."
+                                    "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                   },
                                   "expected": {
                                     "type": "string",
-                                    "description": "Standard output, compared ignoring line endings and trailing space."
+                                    "description": "Standard output; for a function question, the JSON value returned."
                                   },
                                   "hidden": {
                                     "type": "boolean",
@@ -12229,6 +14189,10 @@
                                   },
                                   "weight": {
                                     "type": "number"
+                                  },
+                                  "explanation": {
+                                    "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
@@ -13100,6 +15064,190 @@
                             }
                           },
                           "starter": {
+                            "description": "Starter code for every language without one in `starters`.",
+                            "type": "string"
+                          },
+                          "starters": {
+                            "description": "Starter code by language. A function question's are written from its signature.",
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "signature": {
+                            "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "params": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "int",
+                                        "long",
+                                        "double",
+                                        "boolean",
+                                        "string",
+                                        "int[]",
+                                        "long[]",
+                                        "double[]",
+                                        "boolean[]",
+                                        "string[]",
+                                        "int[][]",
+                                        "string[][]"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type"
+                                  ]
+                                }
+                              },
+                              "returns": {
+                                "type": "string",
+                                "enum": [
+                                  "int",
+                                  "long",
+                                  "double",
+                                  "boolean",
+                                  "string",
+                                  "int[]",
+                                  "long[]",
+                                  "double[]",
+                                  "boolean[]",
+                                  "string[]",
+                                  "int[][]",
+                                  "string[][]"
+                                ]
+                              },
+                              "anyOrder": {
+                                "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                "type": "string",
+                                "enum": [
+                                  "none",
+                                  "top",
+                                  "deep"
+                                ]
+                              },
+                              "tolerance": {
+                                "description": "How far a returned number may be from the expected one.",
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "params",
+                              "returns"
+                            ]
+                          },
+                          "checker": {
+                            "description": "How output is judged; exactly, when absent.",
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exact"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "tokens"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "numbers"
+                                    ]
+                                  },
+                                  "tolerance": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "tolerance"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "unordered"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "custom"
+                                    ]
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "source"
+                                ]
+                              }
+                            ]
+                          },
+                          "inputFormat": {
+                            "description": "Markdown.",
+                            "type": "string"
+                          },
+                          "outputFormat": {
+                            "description": "Markdown.",
+                            "type": "string"
+                          },
+                          "constraints": {
+                            "description": "Markdown.",
                             "type": "string"
                           },
                           "tests": {
@@ -13115,11 +15263,11 @@
                                 },
                                 "input": {
                                   "type": "string",
-                                  "description": "Standard input."
+                                  "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                 },
                                 "expected": {
                                   "type": "string",
-                                  "description": "Standard output, compared ignoring line endings and trailing space."
+                                  "description": "Standard output; for a function question, the JSON value returned."
                                 },
                                 "hidden": {
                                   "type": "boolean",
@@ -13127,6 +15275,10 @@
                                 },
                                 "weight": {
                                   "type": "number"
+                                },
+                                "explanation": {
+                                  "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                  "type": "string"
                                 }
                               },
                               "required": [
@@ -13902,6 +16054,197 @@
                               }
                             },
                             "starter": {
+                              "description": "Starter code for every language without one in `starters`.",
+                              "type": "string"
+                            },
+                            "starters": {
+                              "description": "Starter code by language. A function question's are written from its signature.",
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": "string"
+                              }
+                            },
+                            "signature": {
+                              "description": "A function question: the candidate writes this function, and Parikshaa calls it. Absent: a whole program reading standard input.",
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "params": {
+                                  "readOnly": true,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "int",
+                                          "long",
+                                          "double",
+                                          "boolean",
+                                          "string",
+                                          "int[]",
+                                          "long[]",
+                                          "double[]",
+                                          "boolean[]",
+                                          "string[]",
+                                          "int[][]",
+                                          "string[][]"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "type"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "returns": {
+                                  "type": "string",
+                                  "enum": [
+                                    "int",
+                                    "long",
+                                    "double",
+                                    "boolean",
+                                    "string",
+                                    "int[]",
+                                    "long[]",
+                                    "double[]",
+                                    "boolean[]",
+                                    "string[]",
+                                    "int[][]",
+                                    "string[][]"
+                                  ]
+                                },
+                                "anyOrder": {
+                                  "description": "Whether a returned array may be in any order: not at all, at the top level, or at every level.",
+                                  "type": "string",
+                                  "enum": [
+                                    "none",
+                                    "top",
+                                    "deep"
+                                  ]
+                                },
+                                "tolerance": {
+                                  "description": "How far a returned number may be from the expected one.",
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "params",
+                                "returns"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "checker": {
+                              "description": "How output is judged; exactly, when absent.",
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "exact"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "tokens"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "numbers"
+                                      ]
+                                    },
+                                    "tolerance": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "tolerance"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "unordered"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "custom"
+                                      ]
+                                    },
+                                    "source": {
+                                      "type": "string",
+                                      "description": "Python 3, run as checker.py input expected output; exit 0 accepts, 1 rejects."
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "source"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            },
+                            "inputFormat": {
+                              "description": "Markdown.",
+                              "type": "string"
+                            },
+                            "outputFormat": {
+                              "description": "Markdown.",
+                              "type": "string"
+                            },
+                            "constraints": {
+                              "description": "Markdown.",
                               "type": "string"
                             },
                             "tests": {
@@ -13917,11 +16260,11 @@
                                   },
                                   "input": {
                                     "type": "string",
-                                    "description": "Standard input."
+                                    "description": "Standard input; for a function question, one JSON value per parameter, a line each."
                                   },
                                   "expected": {
                                     "type": "string",
-                                    "description": "Standard output, compared ignoring line endings and trailing space."
+                                    "description": "Standard output; for a function question, the JSON value returned."
                                   },
                                   "hidden": {
                                     "type": "boolean",
@@ -13929,6 +16272,10 @@
                                   },
                                   "weight": {
                                     "type": "number"
+                                  },
+                                  "explanation": {
+                                    "description": "Why, under a visible test shown as a worked example. Markdown.",
+                                    "type": "string"
                                   }
                                 },
                                 "required": [

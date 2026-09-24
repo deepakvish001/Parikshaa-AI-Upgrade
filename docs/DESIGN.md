@@ -101,13 +101,14 @@ Each app adds its own layout on top:
 | 12 | [The receipt, verified](screenshots/candidate-12-receipt.png) | 12 | [Staff](screenshots/console-12-staff.png) |
 | 13 | [On a phone](screenshots/candidate-13-phone.png) | 13 | [API keys](screenshots/console-13-api-keys.png) |
 | 14 | [An aptitude paper: pictures, a passage, negative marks, the palette](screenshots/candidate-14-aptitude.png) | 14 | [Spend](screenshots/console-14-spend.png) |
-| 15 | [A coding question, run on the real runner](screenshots/candidate-15-coding.png) | 15 | [Audit log](screenshots/console-15-audit-log.png) |
-| | | 16 | [Integrations](screenshots/console-16-integrations.png) |
-| | | 17 | [Privacy](screenshots/console-17-privacy.png) |
+| 15 | [A coding question: the workspace and Run](screenshots/candidate-15-coding.png) | 15 | [Audit log](screenshots/console-15-audit-log.png) |
+| 16 | [Full screen, after Submit](screenshots/candidate-16-workspace.png) | 16 | [Integrations](screenshots/console-16-integrations.png) |
+| 17 | [A wrong answer on a hidden test, dark editor](screenshots/candidate-17-wrong-answer.png) | 17 | [Privacy](screenshots/console-17-privacy.png) |
 | | | 18 | [Billing](screenshots/console-18-billing.png) · [GST invoice](screenshots/console-18b-gst-invoice.png) |
 | | | 19 | [Password](screenshots/console-19-password.png) |
 | | | 21 | [Aptitude exam editor](screenshots/console-21-aptitude-editor.png) |
 | | | 22 | [Code similarity](screenshots/console-22-code-similarity.png) |
+| | | 23 | [A function question in the editor](screenshots/console-23-function-question.png) |
 
 The green camera images are Chromium's fake camera, which stands in for a
 webcam when the screenshots are taken.

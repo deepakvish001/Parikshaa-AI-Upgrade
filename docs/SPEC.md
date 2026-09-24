@@ -286,6 +286,7 @@ sitting is over.
 | Sections with their own time | implemented — `section_started` / `section_closed` events, `POST /attempts/me/sections/next`; candidate page shows one part at a time |
 | Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
 | Pictures, passages, negative marking, several right options | implemented — `POST /media`, `GET /media/:sha256` (content-addressed); `passage`, `negativeMarks`, `correctIndices`, `partialCredit` on a question; question palette and mark for review on the candidate page |
+| Function questions, checkers, Run and Submit | implemented: `packages/core/src/signature.ts` (starters and callers for five languages), `packages/runner/src/judge.ts`, `POST /attempts/me/code/submit`; a hidden test reaches the candidate as its verdict alone |
 | Code similarity | implemented — `packages/core/src/similarity.ts` (winnowing), `GET /exams/:id/similarity`; evidence for a person, never a mark |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |

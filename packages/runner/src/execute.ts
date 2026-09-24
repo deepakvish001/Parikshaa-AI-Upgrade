@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { chmod, chown, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { accepts, EXACT, splitResult, type Checker } from "./judge.js";
 import { SPECS, type Language } from "./languages.js";
 
 /**
@@ -54,17 +55,39 @@ export interface RunRequest {
   readonly source: string;
   readonly tests: readonly TestCase[];
   readonly limits?: Partial<Limits>;
+  /** How an output is judged. Exact, forgiving line endings and trailing space, when absent. */
+  readonly checker?: Checker;
+  /**
+   * Set for a function question: the program prints this, then the function's
+   * result. Only what follows it is judged; what precedes it is the program's
+   * own output. See `splitResult`.
+   */
+  readonly resultMarker?: string;
 }
 
-export type TestStatus = "passed" | "wrong_answer" | "time_limit" | "runtime_error" | "output_limit";
+export type TestStatus =
+  | "passed"
+  | "wrong_answer"
+  | "time_limit"
+  | "memory_limit"
+  | "runtime_error"
+  | "output_limit"
+  /** The question's own checker program failed: the question's fault, not the candidate's. */
+  | "checker_error";
 
 export interface TestResult {
   readonly id: string;
   readonly status: TestStatus;
   readonly timeMs: number;
+  /** Peak resident memory, in kilobytes; null when it could not be measured. */
+  readonly memoryKb: number | null;
   /** Truncated to a few kilobytes: enough to show a candidate what went wrong. */
   readonly stdout: string;
   readonly stderr: string;
+  /** For a function question: what the function returned, as JSON; null when it returned nothing. */
+  readonly result?: string | null;
+  /** What a custom checker said about the output, if it said anything. */
+  readonly checkerMessage?: string;
 }
 
 export type RunResult =
@@ -88,6 +111,7 @@ export const DEFAULT_LIMITS: Limits = { timeMs: 2000, memoryMb: 256 };
 export const MAX_LIMITS: Limits = { timeMs: 10_000, memoryMb: 1024 };
 
 const COMPILE_LIMITS: Limits = { timeMs: 30_000, memoryMb: 1024 };
+const CHECKER_LIMITS: Limits = { timeMs: 5_000, memoryMb: 512 };
 /** Most a single stream may produce before the run is stopped. */
 const OUTPUT_CAP = 1024 * 1024;
 /** Most of a stream kept for the report. */
@@ -101,15 +125,6 @@ export const clampLimits = (limits: Partial<Limits> | undefined): Limits => ({
   memoryMb: Math.min(Math.max(limits?.memoryMb ?? DEFAULT_LIMITS.memoryMb, 32), MAX_LIMITS.memoryMb),
 });
 
-/** Output as a judge compares it: LF endings, no trailing space on a line, no trailing blank lines. */
-export const normalise = (text: string): string =>
-  text
-    .replace(/\r\n?/g, "\n")
-    .split("\n")
-    .map((line) => line.trimEnd())
-    .join("\n")
-    .replace(/\n+$/, "");
-
 const truncate = (text: string, cap = REPORT_CAP): string =>
   text.length <= cap ? text : `${text.slice(0, cap)}\n… (${text.length - cap} more characters)`;
 
@@ -119,9 +134,44 @@ interface Outcome {
   readonly stdout: string;
   readonly stderr: string;
   readonly timeMs: number;
+  readonly memoryKb: number | null;
   readonly timedOut: boolean;
   readonly outputExceeded: boolean;
 }
+
+/**
+ * The meter: the innermost wrapper of a test run. It starts the program as its
+ * child, waits for it, and reports the child's peak resident memory and the
+ * time it ran on descriptor 3, which the program itself never gets. A program
+ * killed by a signal is reported the same way, and the meter then dies of the
+ * same signal so the outcome reads exactly as it would without it.
+ */
+const METER = [
+  "import os, sys, time, resource, signal",
+  "resource.setrlimit(resource.RLIMIT_CORE, (0, 0))",
+  "argv = sys.argv[1:]",
+  "t0 = time.monotonic()",
+  "pid = os.fork()",
+  "if pid == 0:",
+  "    os.close(3)",
+  "    try:",
+  "        os.execvp(argv[0], argv)",
+  "    except OSError as e:",
+  "        os.write(2, (str(e) + '\\n').encode())",
+  "        os._exit(127)",
+  "_, status, usage = os.wait4(pid, 0)",
+  "elapsed = int((time.monotonic() - t0) * 1000)",
+  "os.write(3, ('%d %d\\n' % (usage.ru_maxrss, elapsed)).encode())",
+  "if os.WIFSIGNALED(status):",
+  "    sig = os.WTERMSIG(status)",
+  "    signal.signal(sig, signal.SIG_DFL)",
+  "    os.kill(os.getpid(), sig)",
+  "os._exit(os.WEXITSTATUS(status))",
+].join("\n");
+
+let meterAvailable: boolean | undefined;
+/** Whether the meter can run here: it needs python3, which every runner image has. */
+const canMeasure = (): boolean => (meterAvailable ??= spawnSync("python3", ["-c", ""]).status === 0);
 
 /** Run one command inside every layer the options allow. */
 function contained(
@@ -132,9 +182,12 @@ function contained(
     readonly limits: Limits;
     readonly addressSpace: boolean;
     readonly slot: Slot | null;
+    /** Report peak memory and run time through the meter. */
+    readonly measure?: boolean;
   },
 ): Promise<Outcome> {
   const { limits, slot } = options;
+  const measure = options.measure === true && canMeasure();
   const cpuSeconds = Math.ceil(limits.timeMs / 1000) + 1;
 
   const wrapper = [
@@ -143,12 +196,14 @@ function contained(
     `--cpu=${cpuSeconds}`,
     `--fsize=${MAX_FILE_BYTES}`,
     `--nofile=${MAX_OPEN_FILES}`,
+    "--core=0",
     ...(slot === null ? [] : [`--nproc=${MAX_PROCESSES}`]),
     ...(options.addressSpace ? [`--as=${limits.memoryMb * 1024 * 1024}`] : []),
     "--",
     ...(slot === null
       ? []
       : ["setpriv", `--reuid=${slot.uid}`, `--regid=${slot.gid}`, "--clear-groups", "--no-new-privs", "--"]),
+    ...(measure ? ["python3", "-I", "-S", "-c", METER] : []),
     ...argv,
   ];
 
@@ -160,8 +215,11 @@ function contained(
       // no JAVA_TOOL_OPTIONS — reaches candidate code.
       env: { PATH: process.env["PATH"] ?? "/usr/local/bin:/usr/bin:/bin", HOME: options.cwd, TMPDIR: options.cwd, LANG: "C.UTF-8" },
       detached: true,
-      stdio: ["pipe", "pipe", "pipe"],
+      stdio: measure ? ["pipe", "pipe", "pipe", "pipe"] : ["pipe", "pipe", "pipe"],
     });
+
+    let metered = "";
+    if (measure) child.stdio[3]?.on("data", (chunk: Buffer) => (metered += chunk.toString("utf8")));
 
     let stdout = "";
     let stderr = "";
@@ -201,12 +259,16 @@ function contained(
     });
     child.on("close", (exitCode, signal) => {
       clearTimeout(timer);
+      const wall = Number((process.hrtime.bigint() - started) / 1_000_000n);
+      const [maxRssKb, ranMs] = /^(\d+) (\d+)$/.exec(metered.trim())?.slice(1).map(Number) ?? [];
       resolve({
         exitCode,
         signal,
         stdout,
         stderr,
-        timeMs: Number((process.hrtime.bigint() - started) / 1_000_000n),
+        // The meter's own clock leaves out the wrappers' start-up.
+        timeMs: ranMs ?? wall,
+        memoryKb: maxRssKb ?? null,
         timedOut,
         outputExceeded,
       });
@@ -214,11 +276,16 @@ function contained(
   });
 }
 
-function classify(outcome: Outcome, expected: string): TestStatus {
+/** What each language says when it runs out of memory. */
+const OUT_OF_MEMORY = /MemoryError|std::bad_alloc|OutOfMemoryError|heap out of memory|Cannot allocate memory/;
+
+/** How a run ended, before its output is judged; null when it ended normally. */
+function failure(outcome: Outcome, limits: Limits): TestStatus | null {
   if (outcome.outputExceeded) return "output_limit";
   if (outcome.timedOut || outcome.signal === "SIGXCPU") return "time_limit";
-  if (outcome.exitCode !== 0 || outcome.signal !== null) return "runtime_error";
-  return normalise(outcome.stdout) === normalise(expected) ? "passed" : "wrong_answer";
+  if (outcome.exitCode === 0 && outcome.signal === null) return null;
+  const nearCap = outcome.memoryKb !== null && outcome.memoryKb >= limits.memoryMb * 1024 * 0.9;
+  return OUT_OF_MEMORY.test(outcome.stderr) || nearCap ? "memory_limit" : "runtime_error";
 }
 
 /**
@@ -241,6 +308,49 @@ async function sweep(slot: Slot | null): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 10));
   }
   throw new Error(`Processes of uid ${uid} survived cleanup; this slot must not be reused`);
+}
+
+/**
+ * Run a question's own checker on one output.
+ *
+ * In a directory of its own that the program never saw, holding only what is
+ * written here, readable but not writable by the slot's uid — so nothing the
+ * candidate's program left behind can stand in for the checker or the files it
+ * reads. Python runs isolated (-I), so it imports nothing from that directory
+ * either.
+ */
+async function check(
+  source: string,
+  test: TestCase,
+  output: string,
+  options: SandboxOptions,
+): Promise<{ status: TestStatus; message: string }> {
+  const dir = await mkdtemp(join(options.workRoot, "check-"));
+  try {
+    await chmod(dir, 0o755);
+    const files: [string, string][] = [
+      ["checker.py", source],
+      ["input.txt", test.input],
+      ["expected.txt", test.expected],
+      ["output.txt", output],
+    ];
+    for (const [name, content] of files) await writeFile(join(dir, name), content, { mode: 0o644 });
+    const outcome = await contained(["python3", "-I", "-S", "checker.py", "input.txt", "expected.txt", "output.txt"], {
+      cwd: dir,
+      stdin: "",
+      limits: CHECKER_LIMITS,
+      addressSpace: true,
+      slot: options.slot,
+    });
+    await sweep(options.slot);
+    const message = `${outcome.stdout}${outcome.stderr}`.trim();
+    if (outcome.timedOut || outcome.outputExceeded || outcome.signal !== null) return { status: "checker_error", message };
+    if (outcome.exitCode === 0) return { status: "passed", message };
+    if (outcome.exitCode === 1) return { status: "wrong_answer", message };
+    return { status: "checker_error", message };
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 }
 
 /** Build the program, then run it against each test in turn. */
@@ -277,6 +387,8 @@ export async function execute(request: RunRequest, options: SandboxOptions): Pro
       }
     }
 
+    const checker = request.checker ?? EXACT;
+    const marker = request.resultMarker;
     const tests: TestResult[] = [];
     for (const test of request.tests) {
       const outcome = await contained(spec.run(limits.memoryMb), {
@@ -285,14 +397,31 @@ export async function execute(request: RunRequest, options: SandboxOptions): Pro
         limits,
         addressSpace: spec.addressSpaceLimit,
         slot: options.slot,
+        measure: true,
       });
       await sweep(options.slot);
+
+      const { printed, result } = marker === undefined ? { printed: outcome.stdout, result: null } : splitResult(outcome.stdout, marker);
+      const judged = marker === undefined ? outcome.stdout : result;
+      let status = failure(outcome, limits);
+      let checkerMessage: string | undefined;
+      if (status === null) {
+        if (judged === null) status = "wrong_answer";
+        else if (checker.kind === "custom") {
+          const verdict = await check(checker.source, test, judged, options);
+          status = verdict.status;
+          checkerMessage = verdict.message;
+        } else status = accepts(checker, test.expected, judged) ? "passed" : "wrong_answer";
+      }
       tests.push({
         id: test.id,
-        status: classify(outcome, test.expected),
+        status,
         timeMs: outcome.timeMs,
-        stdout: truncate(outcome.stdout),
+        memoryKb: outcome.memoryKb,
+        stdout: truncate(printed),
         stderr: truncate(outcome.stderr, 2048),
+        ...(marker === undefined ? {} : { result: result === null ? null : truncate(result) }),
+        ...(checkerMessage === undefined || checkerMessage === "" ? {} : { checkerMessage: truncate(checkerMessage, 1024) }),
       });
     }
     return { compiled: true, tests };

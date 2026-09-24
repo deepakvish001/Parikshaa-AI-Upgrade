@@ -712,6 +712,27 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       },
     );
 
+    routes.post(
+      "/attempts/me/code/submit",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Commit a code answer and test it against every test",
+          description:
+            "The answer is committed first, as with any answer, and stands whatever the tests find. What comes back is as much as the exam tells: every test's verdict, a hidden test's without its content — or the visible tests' only.",
+          security: [{ attemptToken: [] }],
+          body: S.submitCodeBody,
+          response: { 200: S.submitCodeResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        const { questionId: q, language, source } = request.body;
+        return reply.send(await service.submitCode(claims, questionId(q), { language, source }));
+      },
+    );
+
     routes.put(
       "/attempts/me/drafts/:questionId",
       {

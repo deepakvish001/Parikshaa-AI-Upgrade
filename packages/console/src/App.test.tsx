@@ -1043,6 +1043,79 @@ describe("writing a code question", () => {
     });
   });
 
+  it("writes a LeetCode-style function question: the signature, checked tests, and the exam's coding settings", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "LeetCode round");
+    await userEvent.type(screen.getByLabelText("Question"), "Return the indices of the two numbers that add up to `target`.");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "code");
+    await userEvent.click(screen.getByLabelText(/A function, as on LeetCode/));
+
+    const fn = screen.getByRole("group", { name: "The function" });
+    await userEvent.clear(within(fn).getByLabelText("Function name"));
+    await userEvent.type(within(fn).getByLabelText("Function name"), "twoSum");
+    await userEvent.selectOptions(within(fn).getByLabelText("Returns"), "int[]");
+    await userEvent.selectOptions(within(fn).getByLabelText("A returned list may come"), "top");
+    await userEvent.click(within(fn).getByRole("button", { name: "Add parameter" }));
+    const second = within(fn).getByRole("group", { name: "Parameter 2" });
+    await userEvent.clear(within(second).getByLabelText("Name"));
+    await userEvent.type(within(second).getByLabelText("Name"), "target");
+
+    // The starter is written from the signature, for each language offered.
+    await userEvent.click(within(fn).getByText("What candidates start from"));
+    expect(within(fn).getByText(/def twoSum\(self, nums: List\[int\], target: int\) -> List\[int\]:/)).toBeInTheDocument();
+
+    const [example, hidden] = screen.getAllByRole("group", { name: /^Test \d$/ });
+    await userEvent.type(within(example!).getByLabelText("Arguments"), "[[2,7,11,15]{enter}9");
+    await userEvent.type(within(example!).getByLabelText("Expected return value"), "[[0,1]");
+    await userEvent.type(within(example!).getByLabelText(/Explanation shown/), "2 + 7 = 9");
+    // A test that does not fit the function is named as it is typed.
+    await userEvent.type(within(hidden!).getByLabelText("Arguments"), "[[3,3]");
+    expect(within(hidden!).getByRole("list", { name: "Problems with test 2" })).toHaveTextContent(/one line per parameter \(nums, target\)/);
+    await userEvent.type(within(hidden!).getByLabelText("Arguments"), "{enter}6");
+    await userEvent.type(within(hidden!).getByLabelText("Expected return value"), "[[0,1]");
+    expect(within(hidden!).queryByRole("list", { name: "Problems with test 2" })).toBeNull();
+
+    await userEvent.selectOptions(screen.getByLabelText("Submit shows the candidate"), "visible");
+    await userEvent.click(screen.getByLabelText("Offer completion in the code editor"));
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: unknown[]; policy: unknown }][] } }).mock.calls[0]![0];
+    expect(saved.policy).toMatchObject({ testFeedback: "visible", codeCompletion: true });
+    expect(saved.questions[0]).toMatchObject({
+      kind: "code",
+      signature: {
+        name: "twoSum",
+        params: [
+          { name: "nums", type: "int[]" },
+          { name: "target", type: "int" },
+        ],
+        returns: "int[]",
+        anyOrder: "top",
+      },
+      tests: [
+        { input: "[2,7,11,15]\n9", expected: "[0,1]", hidden: false, explanation: "2 + 7 = 9" },
+        { input: "[3,3]\n6", expected: "[0,1]", hidden: true },
+      ],
+    });
+    expect(saved.questions[0]).not.toHaveProperty("starter");
+  });
+
+  it("gives a whole-program question a checker for many right answers", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Coding round");
+    await userEvent.type(screen.getByLabelText("Question"), "Print any two numbers that sum to n.");
+    await userEvent.selectOptions(screen.getByLabelText("Type"), "code");
+    await userEvent.selectOptions(screen.getByLabelText("Output is judged"), "custom");
+    expect((screen.getByLabelText("Checker program (Python 3)") as HTMLTextAreaElement).value).toContain("sys.exit(0)");
+    await userEvent.selectOptions(screen.getByLabelText("Output is judged"), "numbers");
+    expect(screen.getByLabelText("Tolerance")).toHaveValue(0.000001);
+  });
+
   it("will not save a question whose every test is visible", async () => {
     const client = stubClient();
     renderApp(<App client={client} />);
