@@ -294,7 +294,8 @@ sitting is over.
 | Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
 | Identity check and camera proctoring | implemented, per exam and off by default — photo + photo ID reviewed by a person (`identity_reviewed` in the ledger), webcam photos, browser events |
-| Candidate accounts / enrolment | out of scope (§2) |
+| Practice sites | implemented — `/practice/<site>` for learners with accounts of their own (`packages/api/src/practice.ts`, migration 0013): problems published from the bank, Run and Submit, editorials, progress and streaks, a leaderboard, ICPC-scored contests, moderated discussion; the console's Practice page. Separate from exams and from the ledger (ROADMAP §15) |
+| Candidate accounts / enrolment | out of scope (§2); a practice learner's account is not a candidate's |
 
 Complete end to end and deployable, for more than one institution at once: an
 institution's staff sign in with their own accounts and roles, author an exam,

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { CircleCheck, CircleX, Lock, Maximize2, Minimize2, Minus, Moon, Play, Plus, RotateCcw, Send } from "lucide-react";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome, SubmitOutcome } from "../api.ts";
@@ -31,6 +31,13 @@ interface Props {
   readonly submitLabel?: string;
   /** Whether the exam allows completion in the editor. */
   readonly completion?: boolean;
+  /**
+   * A page of its own, as on a practice site: this beside the editor, always,
+   * in place of the statement — which it then includes, with whatever else.
+   */
+  readonly aside?: ReactNode;
+  /** Shown in place of Run and Submit: a visitor asked to sign in first. */
+  readonly blocked?: ReactNode;
 }
 
 // --- editor preferences --------------------------------------------------------
@@ -77,7 +84,7 @@ type Shown = { readonly kind: "run"; readonly outcome: RunOutcome; readonly cust
  * reporting as much as the exam allows. It sits in the question's card, and
  * opens full screen with the problem beside the editor.
  */
-export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false }: Props) {
+export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked }: Props) {
   const { t, lite } = usePreferences();
   const { language, source } = readCodeAnswer(value, question);
   const functionMode = question.function !== null && question.function !== undefined;
@@ -244,20 +251,24 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
         <RotateCcw aria-hidden="true" />
         <span className="visually-hidden">{t("code.reset")}</span>
       </button>
-      <button
-        ref={toggle}
-        type="button"
-        className="icon-button"
-        title={full ? t("code.exitFullscreen") : t("code.fullscreen")}
-        onClick={() => (full ? closeFull() : setFull(true))}
-      >
-        {full ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
-        <span className="visually-hidden">{full ? t("code.exitFullscreen") : t("code.fullscreen")}</span>
-      </button>
+      {aside === undefined ? (
+        <button
+          ref={toggle}
+          type="button"
+          className="icon-button"
+          title={full ? t("code.exitFullscreen") : t("code.fullscreen")}
+          onClick={() => (full ? closeFull() : setFull(true))}
+        >
+          {full ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+          <span className="visually-hidden">{full ? t("code.exitFullscreen") : t("code.fullscreen")}</span>
+        </button>
+      ) : null}
     </div>
   );
 
-  const actions = disabled ? null : (
+  const actions = disabled ? null : blocked !== undefined ? (
+    <div className="ws-actions">{blocked}</div>
+  ) : (
     <div className="ws-actions">
       <span className="notice shortcuts">{t("code.shortcuts")}</span>
       <span className="spacer" />
@@ -347,6 +358,35 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
       </div>
     </div>
   );
+
+  if (aside !== undefined) {
+    return (
+      <div className="workspace standalone">
+        <SplitPane
+          direction="row"
+          initial={44}
+          label={t("code.problem")}
+          className="ws-main"
+          first={<div className="ws-statement">{aside}</div>}
+          second={
+            <SplitPane
+              direction="column"
+              initial={62}
+              label={t("code.result")}
+              first={
+                <div className="ws-code">
+                  {toolbar}
+                  {editor}
+                </div>
+              }
+              second={console_}
+            />
+          }
+        />
+        {actions}
+      </div>
+    );
+  }
 
   if (full) {
     return (

@@ -37,6 +37,14 @@ run in a sandbox and graded by hidden tests; mcq with one or several right optio
 short-answer and comprehension questions; charts and figures; sections with
 their own time; and a question palette with mark for review.
 
+Between drives, an institution can open a **practice site** at
+`/practice/<site>`: its learners sign up, solve problems published from the
+question bank in the same workspace, read editorials once they have solved
+them, keep a streak, climb a leaderboard and take timed contests with an ICPC
+scoreboard (ROADMAP §15).
+
+![A practice problem, solved in the workspace](docs/screenshots/practice-02-workspace.png)
+
 Every page is in [`docs/screenshots`](docs/screenshots/); the design system
 behind them is in [`docs/DESIGN.md`](docs/DESIGN.md).
 
@@ -92,7 +100,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 748 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 797 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients

@@ -624,6 +624,52 @@ Not in it: a lockdown browser, screen recording, audio, and a second-device
 camera. Webcam photos are stored in Postgres; at very large volumes an object
 store would be the better home.
 
+## 15. Practice sites
+
+Campus hiring starts long before the drive. A college wants its students
+practising on the same kind of problem, in the same workspace, all term; a
+company wants a public place for candidates to warm up. That is a practice
+site: LeetCode-style, run by the institution, and not an exam.
+
+**Status — built.** An organisation opens a site at `/practice/<address>`.
+Learners sign up there with an account of their own (email and a password of
+at least 12 characters; one account per email per site), distinct from staff
+and from candidates, who have none.
+
+- **Problems** are published from the question bank as copies, as an exam's
+  questions are: editing the bank later changes nothing published. Code with
+  tests, multiple choice and numeric questions can be practised; a short
+  answer cannot, because nothing marks it by machine. Each has a difficulty,
+  tags and a Markdown editorial, and can be hidden from the problem set.
+- **Solving** uses the exam's coding workspace, as a page of its own: the
+  statement, editorial, the learner's submissions and the discussion in tabs
+  beside the editor. Run tries the examples or the learner's own input and
+  records nothing; Submit judges every test and records the submission. A
+  hidden test comes back as its verdict, time and memory only — the same
+  problem may be set in an exam. Code in progress is kept on the device.
+- **Editorials** open once the learner has solved the problem or failed three
+  times, and stay shut for a problem while a contest that includes it runs.
+- **Progress:** solved counts by difficulty, a streak and an activity heatmap
+  counted in India Standard Time days, recent solves, and a rank. A
+  **leaderboard** ranks learners by problems solved, by name only.
+- **Contests** have a start, an end and up to 26 problems, named only once
+  they start (a hidden problem can be set in one and seen there first). The
+  scoreboard is ICPC's: problems solved, then minutes to each solve plus 20
+  for every wrong try before it.
+- **Discussion** under each problem; staff reply, marked as staff, and hide a
+  comment that gives an answer away (it is kept, and can be shown again).
+- **Deleting an account** removes the name and email and ends every session;
+  submissions stay, attributed to no one, so a problem's numbers do not change.
+
+Row-level security has a third actor, the learner: a learner's transaction
+reads only published problems, unhidden comments and their own submissions,
+and can write submissions and comments only in their own name (migration
+0013). Nothing on a practice site reaches the integrity ledger, an exam, or a
+candidate's record. The console's **Practice** page runs it all.
+
+Not in it: plagiarism checks across learners, badges, premium problems, and
+sign-in with Google. Learner email addresses are not verified.
+
 ## Sequencing
 
 §0 and §1 come first and are not negotiable: the cost number decides pricing,

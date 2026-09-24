@@ -1,0 +1,1320 @@
+import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleCheck, CircleDashed, Flame, Lock, LogIn, MessageSquare, Search, ShieldCheck, Trophy } from "lucide-react";
+import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
+import { Markdown } from "@parikshaa/brand/markdown";
+import { Wordmark } from "@parikshaa/brand/react";
+import { ApiError } from "../api.ts";
+import { AnswerInput } from "../components/AnswerInput.tsx";
+import { CodeAnswer } from "../components/CodeAnswer.tsx";
+import { LANGUAGE_NAMES, memory } from "../components/code-meta.ts";
+import { ProblemStatement } from "../components/ProblemStatement.tsx";
+import { PreferencesBar, PreferencesProvider, usePreferences, type MessageKey } from "../i18n.tsx";
+import {
+  asSubmitOutcome,
+  loadToken,
+  PracticeClient,
+  saveToken,
+  type Contest,
+  type ContestSummary,
+  type Difficulty,
+  type Learner,
+  type Problem,
+  type ProblemSummary,
+  type Progress,
+  type Standing,
+  type Submission,
+  type Verdict,
+} from "./client.ts";
+import "./practice.css";
+
+/**
+ * A practice site (ROADMAP §15): an institution's problems at
+ * `/practice/<site>`, solved by learners with accounts of their own — alone,
+ * or in timed contests. Learning, not assessment: nothing here is proctored,
+ * and nothing goes into anyone's exam record.
+ */
+
+// --- routes --------------------------------------------------------------------------
+
+export type Route =
+  | { readonly page: "problems" }
+  | { readonly page: "problem"; readonly slug: string; readonly contest: string | undefined }
+  | { readonly page: "contests" }
+  | { readonly page: "contest"; readonly slug: string }
+  | { readonly page: "leaderboard" }
+  | { readonly page: "progress" }
+  | { readonly page: "signin"; readonly next: string | undefined }
+  | { readonly page: "signup"; readonly next: string | undefined };
+
+/** The site's address from a path, or null for a path that is not a practice site's. */
+export function siteOf(pathname: string): string | null {
+  const match = /^\/practice\/([a-z0-9][a-z0-9-]*)(?:\/|$)/.exec(pathname);
+  return match === null ? null : match[1]!;
+}
+
+export function parseRoute(pathname: string, search: string): Route {
+  const rest = pathname.replace(/^\/practice\/[^/]+/, "").replace(/\/+$/, "");
+  const query = new URLSearchParams(search);
+  const [, first, second] = rest.split("/").map(decodeURIComponent);
+  const next = query.get("next") ?? undefined;
+  switch (first) {
+    case "problems":
+      return second === undefined ? { page: "problems" } : { page: "problem", slug: second, contest: query.get("contest") ?? undefined };
+    case "contests":
+      return second === undefined ? { page: "contests" } : { page: "contest", slug: second };
+    case "leaderboard":
+      return { page: "leaderboard" };
+    case "progress":
+      return { page: "progress" };
+    case "signin":
+      return { page: "signin", next };
+    case "signup":
+      return { page: "signup", next };
+    default:
+      return { page: "problems" };
+  }
+}
+
+interface Nav {
+  readonly site: string;
+  readonly href: (path: string) => string;
+  readonly go: (path: string) => void;
+}
+
+function Link({ nav, to, children, className, current }: { readonly nav: Nav; readonly to: string; readonly children: ReactNode; readonly className?: string; readonly current?: boolean }) {
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    nav.go(to);
+  };
+  return (
+    <a href={nav.href(to)} onClick={onClick} {...(className === undefined ? {} : { className })} {...(current ? { "aria-current": "page" as const } : {})}>
+      {children}
+    </a>
+  );
+}
+
+// --- the app -----------------------------------------------------------------------------
+
+export function PracticeApp({ site, baseUrl = "/api" }: { readonly site: string; readonly baseUrl?: string }) {
+  return (
+    <PreferencesProvider>
+      <Shell site={site} baseUrl={baseUrl} />
+    </PreferencesProvider>
+  );
+}
+
+function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: string }) {
+  const { t } = usePreferences();
+  const queryClient = useQueryClient();
+  const [token, setToken] = useState<string | null>(() => loadToken(site));
+  const client = useMemo(() => new PracticeClient(site, token, baseUrl), [site, token, baseUrl]);
+  const [location, setLocation] = useState(() => ({ path: window.location.pathname, search: window.location.search }));
+  const route = parseRoute(location.path, location.search);
+
+  const nav: Nav = useMemo(
+    () => ({
+      site,
+      href: (path) => `/practice/${site}${path}`,
+      go: (path) => {
+        const url = `/practice/${site}${path}`;
+        window.history.pushState(null, "", url);
+        const [p, s] = url.split("?");
+        setLocation({ path: p!, search: s === undefined ? "" : `?${s}` });
+        window.scrollTo(0, 0);
+      },
+    }),
+    [site],
+  );
+  useEffect(() => {
+    const back = () => setLocation({ path: window.location.pathname, search: window.location.search });
+    window.addEventListener("popstate", back);
+    return () => window.removeEventListener("popstate", back);
+  }, []);
+
+  const info = useQuery({ queryKey: ["practice", site, "site"], queryFn: () => client.site() });
+  const me = useQuery({ queryKey: ["practice", site, "me", token], queryFn: () => client.me() });
+  const learner = me.data ?? null;
+
+  // A session that ended elsewhere is forgotten here too.
+  useEffect(() => {
+    if (token !== null && me.isSuccess && me.data === null) {
+      saveToken(site, null);
+      setToken(null);
+    }
+  }, [token, me.isSuccess, me.data, site]);
+
+  const signedIn = useCallback(
+    (next: string, then: string | undefined) => {
+      saveToken(site, next);
+      setToken(next);
+      void queryClient.invalidateQueries({ queryKey: ["practice", site] });
+      nav.go(then ?? "/problems");
+    },
+    [site, queryClient, nav],
+  );
+  const signOut = async () => {
+    await client.signOut().catch(() => undefined);
+    saveToken(site, null);
+    setToken(null);
+    await queryClient.invalidateQueries({ queryKey: ["practice", site] });
+    nav.go("/problems");
+  };
+
+  useEffect(() => {
+    if (info.data !== undefined) document.title = `${info.data.title} · Parikshaa`;
+  }, [info.data]);
+
+  if (info.isPending) {
+    return (
+      <main className="page">
+        <p className="notice">{t("practice.loading")}</p>
+      </main>
+    );
+  }
+  if (info.isError) {
+    return (
+      <div className="gate-screen">
+        <main className="gate">
+          <h1 className="gate-title">
+            <Wordmark size={36} />
+          </h1>
+          <div className="card gate-card">
+            <h2>{t("practice.noSite")}</h2>
+            <p className="notice">{t("practice.noSiteHint")}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const here = (path: string) => location.path === nav.href(path) || location.path.startsWith(`${nav.href(path)}/`);
+  const context = { client, nav, learner, site };
+  const wide = route.page === "problem";
+
+  return (
+    <div className={`practice${wide ? " wide" : ""}`}>
+      <header className="topbar practice-bar">
+        <div className="topbar-inner">
+          <Link nav={nav} to="/problems" className="home">
+            <Wordmark size={24} />
+          </Link>
+          <span className="divider" aria-hidden="true" />
+          <span className="exam-name">{info.data.title}</span>
+          <nav aria-label={t("practice.nav")} className="practice-nav">
+            <Link nav={nav} to="/problems" current={here("/problems") || location.path === nav.href("")}>
+              {t("practice.problems")}
+            </Link>
+            <Link nav={nav} to="/contests" current={here("/contests")}>
+              {t("practice.contests")}
+            </Link>
+            <Link nav={nav} to="/leaderboard" current={here("/leaderboard")}>
+              {t("practice.leaderboard")}
+            </Link>
+          </nav>
+          <span className="spacer" />
+          {learner !== null ? (
+            <Link nav={nav} to="/progress" className="me" current={here("/progress")}>
+              <span className="avatar-dot" aria-hidden="true">
+                {learner.name.slice(0, 1).toUpperCase()}
+              </span>
+              {learner.name}
+            </Link>
+          ) : route.page === "signin" || route.page === "signup" ? null : (
+            <Link nav={nav} to="/signin" className="button quiet">
+              <LogIn aria-hidden="true" /> {t("practice.signIn")}
+            </Link>
+          )}
+          <PreferencesBar />
+        </div>
+      </header>
+      <main className={wide ? "practice-main wide" : "practice-main"}>
+        {route.page === "problems" ? (
+          <ProblemsPage {...context} welcome={info.data.welcome} />
+        ) : route.page === "problem" ? (
+          <ProblemPage {...context} slug={route.slug} contest={route.contest} />
+        ) : route.page === "contests" ? (
+          <ContestsPage {...context} />
+        ) : route.page === "contest" ? (
+          <ContestPage {...context} slug={route.slug} />
+        ) : route.page === "leaderboard" ? (
+          <LeaderboardPage {...context} />
+        ) : route.page === "progress" ? (
+          learner === null ? (
+            <SignInNeeded nav={nav} next="/progress" />
+          ) : (
+            <ProgressPage {...context} learner={learner} onSignOut={() => void signOut()} onDeleted={() => void signOut()} />
+          )
+        ) : (
+          <AccountForm {...context} mode={route.page} next={route.next} onSignedIn={signedIn} />
+        )}
+      </main>
+    </div>
+  );
+}
+
+interface Context {
+  readonly client: PracticeClient;
+  readonly nav: Nav;
+  readonly learner: Learner | null;
+  readonly site: string;
+}
+
+// --- small parts ----------------------------------------------------------------------------
+
+function DifficultyPill({ difficulty }: { readonly difficulty: Difficulty }) {
+  const { t } = usePreferences();
+  return <span className={`difficulty ${difficulty}`}>{t(`practice.difficulty.${difficulty}` as MessageKey)}</span>;
+}
+
+function StandingIcon({ status }: { readonly status: Standing }) {
+  const { t } = usePreferences();
+  const label = status === "solved" ? t("practice.solved") : status === "attempted" ? t("practice.attempted") : t("practice.todo");
+  return (
+    <span role="img" aria-label={label} className="standing-wrap">
+      {status === "solved" ? (
+        <CircleCheck className="standing solved" aria-hidden="true" />
+      ) : status === "attempted" ? (
+        <CircleDashed className="standing attempted" aria-hidden="true" />
+      ) : (
+        <span className="standing none" />
+      )}
+    </span>
+  );
+}
+
+const percent = (share: number | null) => (share === null ? "—" : `${(share * 100).toFixed(1)}%`);
+
+/** Now, every second: for countdowns. */
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+function span(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const d = Math.floor(s / 86_400);
+  const h = Math.floor((s % 86_400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return d > 0 ? `${d}d ${hms}` : hms;
+}
+
+function useWhen() {
+  const { language } = usePreferences();
+  return useCallback(
+    (iso: string, withTime = true) =>
+      new Intl.DateTimeFormat(language === "hi" ? "hi-IN" : "en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+      }).format(new Date(iso)),
+    [language],
+  );
+}
+
+function SignInNeeded({ nav, next }: { readonly nav: Nav; readonly next: string }) {
+  const { t } = usePreferences();
+  return (
+    <div className="card sign-in-needed">
+      <p>{t("practice.signInToSee")}</p>
+      <div className="row">
+        <Link nav={nav} to={`/signin?next=${encodeURIComponent(next)}`} className="button">
+          {t("practice.signIn")}
+        </Link>
+        <Link nav={nav} to={`/signup?next=${encodeURIComponent(next)}`} className="button secondary">
+          {t("practice.signUp")}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+const messageOf = (error: unknown, fallback: string): string =>
+  error instanceof ApiError && typeof error.detail["message"] === "string" ? error.detail["message"] : fallback;
+
+// --- the problem set ---------------------------------------------------------------------------
+
+type StatusFilter = "all" | "todo" | "attempted" | "solved";
+
+function ProblemsPage({ client, nav, learner, site, welcome }: Context & { readonly welcome: string }) {
+  const { t } = usePreferences();
+  const problems = useQuery({ queryKey: ["practice", site, "problems", learner?.id ?? null], queryFn: () => client.problems() });
+  const progress = useQuery({ queryKey: ["practice", site, "progress", learner?.id], queryFn: () => client.progress(), enabled: learner !== null });
+  const [text, setText] = useState("");
+  const [difficulty, setDifficulty] = useState<"all" | Difficulty>("all");
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [tag, setTag] = useState<string | null>(null);
+
+  const all = problems.data ?? [];
+  const tags = [...new Set(all.flatMap((p) => p.tags))].sort();
+  const shown = all.filter(
+    (p) =>
+      (text.trim() === "" || p.title.toLowerCase().includes(text.trim().toLowerCase())) &&
+      (difficulty === "all" || p.difficulty === difficulty) &&
+      (status === "all" || (status === "todo" ? p.status === null : p.status === status)) &&
+      (tag === null || p.tags.includes(tag)),
+  );
+
+  return (
+    <div className="problems-page">
+      <section className="practice-hero">
+        <div>
+          <h1>{t("practice.problems")}</h1>
+          {welcome.trim() === "" ? <p className="notice">{t("practice.tagline")}</p> : <Markdown source={welcome} />}
+        </div>
+        {learner === null ? (
+          <div className="hero-cta">
+            <p className="notice">{t("practice.joinHint")}</p>
+            <Link nav={nav} to="/signup" className="button">
+              {t("practice.signUp")}
+            </Link>
+          </div>
+        ) : progress.data === undefined ? null : (
+          <SolvedSummary progress={progress.data} compact />
+        )}
+      </section>
+
+      <div className="card problem-table">
+        <div className="filters" role="search">
+          <label className="search">
+            <Search aria-hidden="true" />
+            <span className="visually-hidden">{t("practice.search")}</span>
+            <input type="search" placeholder={t("practice.search")} value={text} onChange={(e) => setText(e.target.value)} />
+          </label>
+          <label>
+            <span className="visually-hidden">{t("practice.difficulty")}</span>
+            <select aria-label={t("practice.difficulty")} value={difficulty} onChange={(e) => setDifficulty(e.target.value as typeof difficulty)}>
+              <option value="all">{t("practice.allDifficulties")}</option>
+              {(["easy", "medium", "hard"] as const).map((d) => (
+                <option key={d} value={d}>
+                  {t(`practice.difficulty.${d}` as MessageKey)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {learner === null ? null : (
+            <label>
+              <span className="visually-hidden">{t("practice.status")}</span>
+              <select aria-label={t("practice.status")} value={status} onChange={(e) => setStatus(e.target.value as StatusFilter)}>
+                <option value="all">{t("practice.allStatuses")}</option>
+                <option value="todo">{t("practice.todo")}</option>
+                <option value="attempted">{t("practice.attempted")}</option>
+                <option value="solved">{t("practice.solved")}</option>
+              </select>
+            </label>
+          )}
+        </div>
+        {tags.length === 0 ? null : (
+          <div className="tag-row" role="group" aria-label={t("practice.topics")}>
+            {tags.map((name) => (
+              <button key={name} type="button" className="chip" aria-pressed={tag === name} onClick={() => setTag(tag === name ? null : name)}>
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
+        {problems.isPending ? (
+          <p className="notice">{t("practice.loading")}</p>
+        ) : all.length === 0 ? (
+          <p className="notice empty">{t("practice.noProblems")}</p>
+        ) : (
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col" className="status-col">
+                    <span className="visually-hidden">{t("practice.status")}</span>
+                  </th>
+                  <th scope="col">{t("practice.title")}</th>
+                  <th scope="col">{t("practice.difficulty")}</th>
+                  <th scope="col" className="num">
+                    {t("practice.acceptance")}
+                  </th>
+                  <th scope="col" className="num">
+                    {t("practice.solvedBy")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((p, i) => (
+                  <ProblemRow key={p.slug} problem={p} index={all.indexOf(p) + 1} nav={nav} striped={i % 2 === 1} />
+                ))}
+              </tbody>
+            </table>
+            {shown.length === 0 ? <p className="notice empty">{t("practice.noMatch")}</p> : null}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ProblemRow({ problem, index, nav, striped }: { readonly problem: ProblemSummary; readonly index: number; readonly nav: Nav; readonly striped: boolean }) {
+  return (
+    <tr className={striped ? "striped" : undefined}>
+      <td className="status-col">
+        <StandingIcon status={problem.status} />
+      </td>
+      <td>
+        <Link nav={nav} to={`/problems/${problem.slug}`} className="problem-link">
+          {index}. {problem.title}
+        </Link>
+        {problem.tags.length === 0 ? null : <span className="tags">{problem.tags.join(" · ")}</span>}
+      </td>
+      <td>
+        <DifficultyPill difficulty={problem.difficulty} />
+      </td>
+      <td className="num">{percent(problem.acceptance)}</td>
+      <td className="num">{problem.solvedBy}</td>
+    </tr>
+  );
+}
+
+// --- one problem ------------------------------------------------------------------------------
+
+type Tab = "description" | "editorial" | "submissions" | "discussion";
+
+const draftKey = (site: string, slug: string) => `parikshaa.practice.${site}.draft.${slug}`;
+function loadDraft(site: string, slug: string): string {
+  try {
+    return localStorage.getItem(draftKey(site, slug)) ?? "";
+  } catch {
+    return "";
+  }
+}
+function saveDraft(site: string, slug: string, value: string): void {
+  try {
+    localStorage.setItem(draftKey(site, slug), value);
+  } catch {
+    // A private window: the draft lasts this page.
+  }
+}
+
+function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { readonly slug: string; readonly contest: string | undefined }) {
+  const { t } = usePreferences();
+  const queryClient = useQueryClient();
+  const problem = useQuery({ queryKey: ["practice", site, "problem", slug, contest ?? null, learner?.id ?? null], queryFn: () => client.problem(slug, contest) });
+  const [value, setValue] = useState(() => loadDraft(site, slug));
+  const [tab, setTab] = useState<Tab>("description");
+  const [solvedNow, setSolvedNow] = useState(false);
+  const here = `/problems/${slug}${contest === undefined ? "" : `?contest=${encodeURIComponent(contest)}`}`;
+
+  const change = (next: string) => {
+    setValue(next);
+    saveDraft(site, slug, next);
+  };
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["practice", site] });
+  const judged = (verdict: Verdict) => {
+    if (verdict.firstSolve) setSolvedNow(true);
+    void refresh();
+  };
+
+  if (problem.isPending) return <p className="notice">{t("practice.loading")}</p>;
+  if (problem.isError) {
+    return (
+      <div className="card">
+        <p className="error">{problem.error instanceof ApiError && problem.error.code === "contest_not_started" ? t("practice.notStarted") : t("practice.noProblem")}</p>
+        <Link nav={nav} to="/problems">
+          {t("practice.backToProblems")}
+        </Link>
+      </div>
+    );
+  }
+  const p = problem.data;
+  const blocked =
+    learner === null ? (
+      <p className="notice blocked">
+        <Lock aria-hidden="true" /> {t("practice.signInToSubmit")}{" "}
+        <Link nav={nav} to={`/signin?next=${encodeURIComponent(here)}`}>
+          {t("practice.signIn")}
+        </Link>
+      </p>
+    ) : undefined;
+
+  const tabs = (
+    <div className="problem-tabs" role="tablist" aria-label={p.title}>
+      {(["description", "editorial", "submissions", "discussion"] as const).map((name) => (
+        <button
+          key={name}
+          type="button"
+          role="tab"
+          id={`tab-${name}`}
+          aria-selected={tab === name}
+          aria-controls={`panel-${name}`}
+          className={tab === name ? "on" : ""}
+          onClick={() => setTab(name)}
+        >
+          {t(`practice.tab.${name}` as MessageKey)}
+        </button>
+      ))}
+    </div>
+  );
+
+  const panel = (
+    <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="problem-panel">
+      {tab === "description" ? (
+        <>
+          <div className="problem-head">
+            <h1>{p.title}</h1>
+            <div className="problem-meta">
+              <DifficultyPill difficulty={p.difficulty} />
+              {p.status === "solved" ? (
+                <span className="pill ok">{t("practice.solved")}</span>
+              ) : p.status === "attempted" ? (
+                <span className="pill warn">{t("practice.attempted")}</span>
+              ) : null}
+              <span className="notice">
+                {t("practice.acceptance")}: {percent(p.acceptance)} · {t("practice.solvedByN", { n: p.solvedBy })}
+              </span>
+            </div>
+            {p.tags.length === 0 ? null : (
+              <div className="tag-row">
+                {p.tags.map((name) => (
+                  <span key={name} className="chip static">
+                    {name}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          {p.question.kind === "code" ? <ProblemStatement question={p.question} number={1} withTitle={false} /> : <Markdown source={p.question.stem} />}
+        </>
+      ) : tab === "editorial" ? (
+        <Editorial problem={p} />
+      ) : tab === "submissions" ? (
+        learner === null ? (
+          <SignInNeeded nav={nav} next={here} />
+        ) : (
+          <Submissions client={client} site={site} slug={slug} contest={contest} onLoad={p.question.kind === "code" ? (s) => change(JSON.stringify({ language: s.language, source: s.answer })) : undefined} />
+        )
+      ) : (
+        <Discussion client={client} nav={nav} learner={learner} site={site} slug={slug} here={here} />
+      )}
+    </div>
+  );
+
+  const aside = (
+    <>
+      {tabs}
+      {panel}
+    </>
+  );
+
+  return (
+    <div className="problem-page">
+      <div className="crumbs">
+        {p.contest === null ? (
+          <Link nav={nav} to="/problems">
+            ← {t("practice.problems")}
+          </Link>
+        ) : (
+          <ContestBanner nav={nav} contest={p.contest} />
+        )}
+      </div>
+      {solvedNow ? (
+        <p className="alert ok solved-banner" role="status">
+          <Trophy aria-hidden="true" /> {p.contest === null ? t("practice.solvedNow") : t("practice.solvedInContest")}
+        </p>
+      ) : null}
+      {p.question.kind === "code" ? (
+        <CodeAnswer
+          question={p.question as CandidateCodeQuestion}
+          value={value}
+          disabled={false}
+          onChange={change}
+          onRun={(language, source, input) => client.run(slug, language, source, input, contest)}
+          onSubmit={async (language, source) => {
+            const verdict = await client.submit(slug, source, language, contest);
+            judged(verdict);
+            return asSubmitOutcome(verdict);
+          }}
+          aside={aside}
+          {...(blocked === undefined ? {} : { blocked })}
+          completion
+        />
+      ) : (
+        <div className="choice-layout">
+          <div className="card">{aside}</div>
+          <ChoiceAnswer client={client} slug={slug} contest={contest} problem={p} value={value} onChange={change} blocked={blocked} onJudged={judged} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ContestBanner({ nav, contest }: { readonly nav: Nav; readonly contest: NonNullable<Problem["contest"]> }) {
+  const { t } = usePreferences();
+  const now = useNow(true);
+  return (
+    <p className="contest-banner">
+      <Trophy aria-hidden="true" />
+      <Link nav={nav} to={`/contests/${contest.slug}`}>
+        {contest.title}
+      </Link>
+      <span className="notice"> · {t("practice.endsIn", { time: span(Date.parse(contest.endsAt) - now) })}</span>
+    </p>
+  );
+}
+
+function Editorial({ problem }: { readonly problem: Problem }) {
+  const { t } = usePreferences();
+  if (problem.editorial !== null) return <Markdown source={problem.editorial} />;
+  if (!problem.editorialLocked) return <p className="notice">{t("practice.noEditorial")}</p>;
+  return (
+    <div className="locked">
+      <Lock aria-hidden="true" />
+      <p>{problem.contest !== null ? t("practice.editorialContest") : t("practice.editorialLocked")}</p>
+    </div>
+  );
+}
+
+function Submissions({
+  client,
+  site,
+  slug,
+  contest,
+  onLoad,
+}: {
+  readonly client: PracticeClient;
+  readonly site: string;
+  readonly slug: string;
+  readonly contest: string | undefined;
+  readonly onLoad: ((s: Submission) => void) | undefined;
+}) {
+  const { t } = usePreferences();
+  const when = useWhen();
+  const list = useQuery({ queryKey: ["practice", site, "submissions", slug, contest ?? null], queryFn: () => client.submissions(slug, contest) });
+  const [open, setOpen] = useState<string | null>(null);
+  if (list.isPending) return <p className="notice">{t("practice.loading")}</p>;
+  if ((list.data ?? []).length === 0) return <p className="notice">{t("practice.noSubmissions")}</p>;
+  return (
+    <ul className="submissions">
+      {list.data!.map((s) => (
+        <li key={s.id} data-status={s.status}>
+          <button type="button" className="submission-row" aria-expanded={open === s.id} onClick={() => setOpen(open === s.id ? null : s.id)}>
+            <span className={`verdict ${s.status === "passed" ? "ok" : "bad"}`}>{t(`code.status.${s.status}` as MessageKey)}</span>
+            <span className="notice">
+              {s.language === null ? null : `${LANGUAGE_NAMES[s.language] ?? s.language} · `}
+              {s.total > 0 ? `${s.passed}/${s.total} · ` : null}
+              {s.timeMs === null ? null : `${s.timeMs} ms · `}
+              {memory(s.memoryKb) === null ? null : `${memory(s.memoryKb)} · `}
+              {when(s.createdAt)}
+            </span>
+            {s.inContest ? <span className="pill brand">{t("practice.inContest")}</span> : null}
+          </button>
+          {open === s.id ? (
+            <div className="submission-code">
+              <pre>{s.answer}</pre>
+              {onLoad === undefined ? null : (
+                <button type="button" className="secondary" onClick={() => onLoad(s)}>
+                  {t("practice.loadCode")}
+                </button>
+              )}
+            </div>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Discussion({ client, nav, learner, site, slug, here }: Context & { readonly slug: string; readonly here: string }) {
+  const { t } = usePreferences();
+  const when = useWhen();
+  const queryClient = useQueryClient();
+  const comments = useQuery({ queryKey: ["practice", site, "comments", slug], queryFn: () => client.comments(slug) });
+  const [text, setText] = useState("");
+  const post = useMutation({
+    mutationFn: () => client.comment(slug, text),
+    onSuccess: async () => {
+      setText("");
+      await queryClient.invalidateQueries({ queryKey: ["practice", site, "comments", slug] });
+    },
+  });
+  return (
+    <div className="discussion">
+      <p className="notice">{t("practice.discussionHint")}</p>
+      {learner === null ? (
+        <SignInNeeded nav={nav} next={here} />
+      ) : (
+        <form
+          className="comment-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (text.trim() !== "") post.mutate();
+          }}
+        >
+          <label className="field">
+            <span className="visually-hidden">{t("practice.yourComment")}</span>
+            <textarea placeholder={t("practice.yourComment")} value={text} maxLength={4000} onChange={(e) => setText(e.target.value)} />
+          </label>
+          {post.isError ? <p className="error">{messageOf(post.error, t("practice.commentFailed"))}</p> : null}
+          <button type="submit" disabled={text.trim() === "" || post.isPending}>
+            <MessageSquare aria-hidden="true" /> {t("practice.post")}
+          </button>
+        </form>
+      )}
+      {(comments.data ?? []).length === 0 ? (
+        <p className="notice">{t("practice.noComments")}</p>
+      ) : (
+        <ul className="comments">
+          {comments.data!.map((c) => (
+            <li key={c.id} className={c.fromStaff ? "staff" : undefined}>
+              <p className="comment-by">
+                <strong>{c.authorName}</strong>
+                {c.fromStaff ? (
+                  <span className="pill brand">
+                    <ShieldCheck aria-hidden="true" /> {t("practice.staff")}
+                  </span>
+                ) : null}
+                <span className="notice">{when(c.createdAt)}</span>
+              </p>
+              <Markdown source={c.body} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ChoiceAnswer({
+  client,
+  slug,
+  contest,
+  problem,
+  value,
+  onChange,
+  blocked,
+  onJudged,
+}: {
+  readonly client: PracticeClient;
+  readonly slug: string;
+  readonly contest: string | undefined;
+  readonly problem: Problem;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+  readonly blocked: ReactNode;
+  readonly onJudged: (verdict: Verdict) => void;
+}) {
+  const { t } = usePreferences();
+  const submit = useMutation({
+    mutationFn: () => client.submit(slug, value, undefined, contest),
+    onSuccess: onJudged,
+  });
+  return (
+    <section className="card choice-answer" aria-label={t("practice.yourAnswer")}>
+      <h2>{t("practice.yourAnswer")}</h2>
+      <AnswerInput question={problem.question} value={value} disabled={false} onChange={onChange} />
+      {blocked ?? (
+        <div className="row">
+          <button type="button" className="submit" disabled={value.trim() === "" || submit.isPending} onClick={() => submit.mutate()}>
+            {submit.isPending ? t("code.submitting") : t("code.submit")}
+          </button>
+        </div>
+      )}
+      {submit.data === undefined ? null : (
+        <p className={`verdict ${submit.data.status === "passed" ? "ok" : "bad"}`} role="status">
+          {submit.data.status === "passed" ? t("practice.correct") : t("practice.incorrect")}
+        </p>
+      )}
+      {submit.isError ? <p className="error">{messageOf(submit.error, t("code.runFailed"))}</p> : null}
+    </section>
+  );
+}
+
+// --- progress -----------------------------------------------------------------------------------
+
+function SolvedSummary({ progress, compact = false }: { readonly progress: Progress; readonly compact?: boolean }) {
+  const { t } = usePreferences();
+  return (
+    <div className={`solved-summary${compact ? " compact" : ""}`}>
+      <div className="solved-total">
+        <strong className="num">{progress.solved.total}</strong>
+        <span className="notice">/ {progress.available.total}</span>
+        <span className="eyebrow">{t("practice.solved")}</span>
+      </div>
+      <dl className="by-difficulty">
+        {(["easy", "medium", "hard"] as const).map((d) => (
+          <div key={d} className={d}>
+            <dt>{t(`practice.difficulty.${d}` as MessageKey)}</dt>
+            <dd>
+              <span className="num">
+                {progress.solved[d]}/{progress.available[d]}
+              </span>
+              <span className="meter" aria-hidden="true">
+                <span style={{ width: `${progress.available[d] === 0 ? 0 : (100 * progress.solved[d]) / progress.available[d]}%` }} />
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="streak">
+        <Flame aria-hidden="true" /> {t("practice.streakN", { n: progress.streak })}
+      </p>
+    </div>
+  );
+}
+
+/** Today in India Standard Time, as the server counts days. */
+const istDay = (ms: number) => new Date(ms + 5.5 * 3_600_000).toISOString().slice(0, 10);
+/** A year, as a column per week. */
+const WEEKS = 53;
+
+function Heatmap({ days }: { readonly days: Progress["days"] }) {
+  const { t } = usePreferences();
+  const byDay = new Map(days.map((d) => [d.day, d]));
+  const today = Date.parse(`${istDay(Date.now())}T00:00:00Z`);
+  // Columns are weeks ending with this one; rows are Monday to Sunday.
+  const weekday = (new Date(today).getUTCDay() + 6) % 7;
+  const start = today - (weekday + (WEEKS - 1) * 7) * 86_400_000;
+  const cells = Array.from({ length: WEEKS * 7 }, (_x, i) => {
+    const at = start + i * 86_400_000;
+    const day = new Date(at).toISOString().slice(0, 10);
+    const d = byDay.get(day);
+    return { day, future: at > today, submitted: d?.submitted ?? 0, accepted: d?.accepted ?? 0 };
+  });
+  const level = (n: number) => (n === 0 ? 0 : n < 2 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
+  return (
+    <figure className="heatmap" aria-label={t("practice.activity")}>
+      <div className="heatmap-grid" style={{ gridTemplateColumns: `repeat(${WEEKS}, var(--cell))` }}>
+        {cells.map((c) =>
+          c.future ? (
+            <span key={c.day} className="cell future" />
+          ) : (
+            <span key={c.day} className={`cell l${level(c.submitted)}`} title={t("practice.dayTitle", { day: c.day, n: c.submitted, accepted: c.accepted })} />
+          ),
+        )}
+      </div>
+      <figcaption className="notice">
+        {t("practice.less")}
+        {[0, 1, 2, 3, 4].map((l) => (
+          <span key={l} className={`cell l${l}`} aria-hidden="true" />
+        ))}
+        {t("practice.more")}
+      </figcaption>
+    </figure>
+  );
+}
+
+function ProgressPage({
+  client,
+  nav,
+  site,
+  learner,
+  onSignOut,
+  onDeleted,
+}: Context & { readonly learner: Learner; readonly onSignOut: () => void; readonly onDeleted: () => void }) {
+  const { t } = usePreferences();
+  const when = useWhen();
+  const progress = useQuery({ queryKey: ["practice", site, "progress", learner.id], queryFn: () => client.progress() });
+  const remove = useMutation({ mutationFn: () => client.deleteAccount(), onSuccess: onDeleted });
+  if (progress.data === undefined) return <p className="notice">{t("practice.loading")}</p>;
+  const p = progress.data;
+  const days = (n: number) => (n === 1 ? t("practice.oneDay") : t("practice.days", { n }));
+  return (
+    <div className="progress-page">
+      <header className="progress-head">
+        <span className="avatar-dot big" aria-hidden="true">
+          {learner.name.slice(0, 1).toUpperCase()}
+        </span>
+        <div>
+          <h1>{learner.name}</h1>
+          <p className="notice">{learner.email}</p>
+        </div>
+        <span className="spacer" />
+        <button type="button" className="secondary" onClick={onSignOut}>
+          {t("practice.signOut")}
+        </button>
+      </header>
+      <div className="progress-grid">
+        <section className="card">
+          <h2>{t("practice.solvedProblems")}</h2>
+          <SolvedSummary progress={p} />
+        </section>
+        <section className="card figures-card">
+          <dl className="figures">
+            <div>
+              <dt>{t("practice.rank")}</dt>
+              <dd>{p.rank === null ? "—" : `#${p.rank}`}</dd>
+            </div>
+            <div>
+              <dt>{t("practice.currentStreak")}</dt>
+              <dd>{days(p.streak)}</dd>
+            </div>
+            <div>
+              <dt>{t("practice.longestStreak")}</dt>
+              <dd>{days(p.longestStreak)}</dd>
+            </div>
+            <div>
+              <dt>{t("practice.activeDays")}</dt>
+              <dd>{p.activeDays}</dd>
+            </div>
+          </dl>
+        </section>
+      </div>
+      <section className="card">
+        <h2>{t("practice.activity")}</h2>
+        <Heatmap days={p.days} />
+      </section>
+      <section className="card">
+        <h2>{t("practice.recent")}</h2>
+        {p.recent.length === 0 ? (
+          <p className="notice">
+            {t("practice.nothingSolved")}{" "}
+            <Link nav={nav} to="/problems">
+              {t("practice.startSolving")}
+            </Link>
+          </p>
+        ) : (
+          <ul className="recent">
+            {p.recent.map((r) => (
+              <li key={r.slug}>
+                <CircleCheck aria-hidden="true" className="standing solved" />
+                <Link nav={nav} to={`/problems/${r.slug}`}>
+                  {r.title}
+                </Link>
+                <span className="notice">{when(r.at, false)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="card danger-zone">
+        <h2>{t("practice.deleteAccount")}</h2>
+        <p className="notice">{t("practice.deleteHint")}</p>
+        <button
+          type="button"
+          className="danger"
+          disabled={remove.isPending}
+          onClick={() => {
+            if (window.confirm(t("practice.deleteConfirm"))) remove.mutate();
+          }}
+        >
+          {t("practice.deleteAccount")}
+        </button>
+      </section>
+    </div>
+  );
+}
+
+// --- the leaderboard -------------------------------------------------------------------------------
+
+function LeaderboardPage({ client, learner, site }: Context) {
+  const { t } = usePreferences();
+  const leaders = useQuery({ queryKey: ["practice", site, "leaderboard", learner?.id ?? null], queryFn: () => client.leaderboard() });
+  return (
+    <div className="leaderboard-page">
+      <h1>{t("practice.leaderboard")}</h1>
+      <p className="notice">{t("practice.leaderboardHint")}</p>
+      <div className="card">
+        {(leaders.data ?? []).length === 0 ? (
+          <p className="notice empty">{leaders.isPending ? t("practice.loading") : t("practice.noLeaders")}</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" className="num">
+                  {t("practice.rank")}
+                </th>
+                <th scope="col">{t("practice.name")}</th>
+                <th scope="col" className="num">
+                  {t("practice.solved")}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaders.data!.map((l) => (
+                <tr key={`${l.rank}-${l.name}`} className={l.you ? "you" : undefined}>
+                  <td className="num">{l.rank <= 3 ? <span className={`medal m${l.rank}`}>{l.rank}</span> : l.rank}</td>
+                  <td>
+                    {l.name}
+                    {l.you ? <span className="pill brand">{t("practice.you")}</span> : null}
+                  </td>
+                  <td className="num">{l.solved}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// --- contests -----------------------------------------------------------------------------------------
+
+function ContestsPage({ client, nav, site }: Context) {
+  const { t } = usePreferences();
+  const when = useWhen();
+  const contests = useQuery({ queryKey: ["practice", site, "contests"], queryFn: () => client.contests() });
+  const now = useNow((contests.data ?? []).some((c) => c.state !== "ended"));
+  const groups: [ContestSummary["state"], MessageKey][] = [
+    ["running", "practice.running"],
+    ["upcoming", "practice.upcoming"],
+    ["ended", "practice.past"],
+  ];
+  const all = contests.data ?? [];
+  return (
+    <div className="contests-page">
+      <h1>{t("practice.contests")}</h1>
+      <p className="notice">{t("practice.contestsHint")}</p>
+      {all.length === 0 ? <p className="card notice empty">{contests.isPending ? t("practice.loading") : t("practice.noContests")}</p> : null}
+      {groups.map(([state, label]) => {
+        const list = all.filter((c) => c.state === state);
+        if (list.length === 0) return null;
+        return (
+          <section key={state} className="contest-group">
+            <h2>{t(label)}</h2>
+            <ul className="contest-cards">
+              {list.map((c) => (
+                <li key={c.slug} className={`card contest-card ${c.state}`}>
+                  <Link nav={nav} to={`/contests/${c.slug}`} className="contest-title">
+                    {c.title}
+                  </Link>
+                  <p className="notice">
+                    {when(c.startsAt)} · {t("practice.minutes", { n: Math.round((Date.parse(c.endsAt) - Date.parse(c.startsAt)) / 60_000) })} ·{" "}
+                    {t("practice.problemsN", { n: c.problems })}
+                  </p>
+                  {c.state === "upcoming" ? (
+                    <p className="countdown">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
+                  ) : c.state === "running" ? (
+                    <p className="countdown live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function ContestPage({ client, nav, learner, site, slug }: Context & { readonly slug: string }) {
+  const { t } = usePreferences();
+  const when = useWhen();
+  const queryClient = useQueryClient();
+  const contest = useQuery({
+    queryKey: ["practice", site, "contest", slug, learner?.id ?? null],
+    queryFn: () => client.contest(slug),
+    refetchInterval: (query) => ((query.state.data as Contest | undefined)?.state === "running" ? 30_000 : false),
+  });
+  const now = useNow(contest.data !== undefined && contest.data.state !== "ended");
+  // The moment it starts or ends, fetch it again: the problems appear, or the board is final.
+  const boundary = contest.data === undefined ? null : contest.data.state === "upcoming" ? Date.parse(contest.data.startsAt) : contest.data.state === "running" ? Date.parse(contest.data.endsAt) : null;
+  useEffect(() => {
+    if (boundary !== null && now >= boundary) void queryClient.invalidateQueries({ queryKey: ["practice", site, "contest", slug] });
+  }, [boundary, now, queryClient, site, slug]);
+
+  if (contest.isPending) return <p className="notice">{t("practice.loading")}</p>;
+  if (contest.isError) return <p className="card error">{t("practice.noContest")}</p>;
+  const c = contest.data;
+  return (
+    <div className="contest-page">
+      <div className="crumbs">
+        <Link nav={nav} to="/contests">
+          ← {t("practice.contests")}
+        </Link>
+      </div>
+      <header className="contest-head">
+        <div>
+          <h1>{c.title}</h1>
+          <p className="notice">
+            {when(c.startsAt)} – {when(c.endsAt)}
+          </p>
+        </div>
+        <span className="spacer" />
+        {c.state === "upcoming" ? (
+          <p className="countdown big">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
+        ) : c.state === "running" ? (
+          <p className="countdown big live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
+        ) : (
+          <span className="pill">{t("practice.ended")}</span>
+        )}
+      </header>
+      {c.description.trim() === "" ? null : (
+        <div className="card">
+          <Markdown source={c.description} />
+        </div>
+      )}
+      <section className="card">
+        <h2>{t("practice.problems")}</h2>
+        {c.state === "upcoming" ? (
+          <p className="notice">{t("practice.problemsAtStart")}</p>
+        ) : (
+          <table>
+            <tbody>
+              {c.problems.map((p) => (
+                <tr key={p.slug}>
+                  <td className="label-col">
+                    <strong>{p.label}</strong>
+                  </td>
+                  <td>
+                    <Link nav={nav} to={`/problems/${p.slug}${c.state === "running" ? `?contest=${encodeURIComponent(c.slug)}` : ""}`} className="problem-link">
+                      {p.title}
+                    </Link>
+                  </td>
+                  <td>
+                    <DifficultyPill difficulty={p.difficulty} />
+                  </td>
+                  <td className="status-col">
+                    <StandingIcon status={p.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {c.state === "running" && learner === null ? <SignInNeeded nav={nav} next={`/contests/${c.slug}`} /> : null}
+      </section>
+      {c.state === "upcoming" ? null : (
+        <section className="card scoreboard" aria-label={t("practice.scoreboard")}>
+          <h2>{t("practice.scoreboard")}</h2>
+          <p className="notice">{t("practice.scoreboardHint")}</p>
+          {c.scoreboard.length === 0 ? (
+            <p className="notice empty">{t("practice.noEntries")}</p>
+          ) : (
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col" className="num">
+                      {t("practice.rank")}
+                    </th>
+                    <th scope="col">{t("practice.name")}</th>
+                    <th scope="col" className="num">
+                      {t("practice.solved")}
+                    </th>
+                    <th scope="col" className="num">
+                      {t("practice.penalty")}
+                    </th>
+                    {c.problems.map((p) => (
+                      <th key={p.slug} scope="col" className="num">
+                        {p.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.scoreboard.map((row) => (
+                    <tr key={`${row.rank}-${row.name}`} className={row.you ? "you" : undefined}>
+                      <td className="num">{row.rank}</td>
+                      <td>
+                        {row.name}
+                        {row.you ? <span className="pill brand">{t("practice.you")}</span> : null}
+                      </td>
+                      <td className="num">{row.solved}</td>
+                      <td className="num">{row.penalty}</td>
+                      {row.problems.map((cell, i) => (
+                        <td key={i} className={`num cell-${cell.minutes !== null ? "ok" : cell.wrong > 0 ? "bad" : "none"}`}>
+                          {cell.minutes !== null ? (
+                            <>
+                              <strong>{cell.wrong === 0 ? "+" : `+${cell.wrong}`}</strong>
+                              <span className="notice"> {cell.minutes}′</span>
+                            </>
+                          ) : cell.wrong > 0 ? (
+                            `−${cell.wrong}`
+                          ) : (
+                            ""
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}
+
+// --- accounts ---------------------------------------------------------------------------------------
+
+function AccountForm({
+  client,
+  nav,
+  mode,
+  next,
+  onSignedIn,
+}: Context & { readonly mode: "signin" | "signup"; readonly next: string | undefined; readonly onSignedIn: (token: string, next: string | undefined) => void }) {
+  const { t } = usePreferences();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const send = useMutation({
+    mutationFn: () => (mode === "signup" ? client.signUp(name, email, password) : client.signIn(email, password)),
+    onSuccess: (session) => onSignedIn(session.token, next),
+  });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    send.mutate();
+  };
+  const error =
+    send.error instanceof ApiError
+      ? send.error.code === "sign_in_failed"
+        ? t("practice.signInFailed")
+        : send.error.code === "email_taken"
+          ? t("practice.emailTaken")
+          : messageOf(send.error, t("practice.tryAgain"))
+      : send.isError
+        ? t("practice.tryAgain")
+        : null;
+  const other = mode === "signup" ? "/signin" : "/signup";
+  return (
+    <div className="account-page">
+      <form className="card account-form" onSubmit={submit} aria-labelledby="account-title">
+        <h1 id="account-title">{mode === "signup" ? t("practice.createAccount") : t("practice.welcomeBack")}</h1>
+        <p className="notice">{mode === "signup" ? t("practice.signUpHint") : t("practice.signInHint")}</p>
+        {mode === "signup" ? (
+          <label className="field">
+            <span>{t("practice.name")}</span>
+            <input autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+        ) : null}
+        <label className="field">
+          <span>{t("practice.email")}</span>
+          <input type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>{t("practice.password")}</span>
+          <input
+            type="password"
+            autoComplete={mode === "signup" ? "new-password" : "current-password"}
+            required
+            minLength={mode === "signup" ? 12 : 1}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {mode === "signup" ? <span className="notice hint">{t("practice.passwordHint")}</span> : null}
+        </label>
+        {error === null ? null : (
+          <p className="error" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={send.isPending}>
+          {mode === "signup" ? t("practice.signUp") : t("practice.signIn")}
+        </button>
+        <p className="notice switch">
+          {mode === "signup" ? t("practice.haveAccount") : t("practice.newHere")}{" "}
+          <Link nav={nav} to={next === undefined ? other : `${other}?next=${encodeURIComponent(next)}`}>
+            {mode === "signup" ? t("practice.signIn") : t("practice.signUp")}
+          </Link>
+        </p>
+      </form>
+    </div>
+  );
+}

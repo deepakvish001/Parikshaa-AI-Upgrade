@@ -109,6 +109,23 @@ Each app adds its own layout on top:
 | | | 21 | [Aptitude exam editor](screenshots/console-21-aptitude-editor.png) |
 | | | 22 | [Code similarity](screenshots/console-22-code-similarity.png) |
 | | | 23 | [A function question in the editor](screenshots/console-23-function-question.png) |
+| | | 24 | [Practice site settings](screenshots/console-24-practice-site.png) |
+| | | 25 | [Practice problems, published from the bank](screenshots/console-25-practice-problems.png) |
+| | | 26 | [Moderating the discussion](screenshots/console-26-practice-discussion.png) |
+
+A practice site (ROADMAP §15), as a learner sees it at `/practice/<site>`:
+
+| | Page |
+| --- | --- |
+| 01 | [The problem set, with the learner's progress](screenshots/practice-01-problems.png) |
+| 02 | [A problem in the workspace, just solved](screenshots/practice-02-workspace.png) |
+| 03 | [The editorial, open after solving](screenshots/practice-03-editorial.png) |
+| 04 | [Discussion, with a reply from staff](screenshots/practice-04-discussion.png) |
+| 05 | [Contests: running and upcoming](screenshots/practice-05-contests.png) |
+| 06 | [A contest's ICPC scoreboard](screenshots/practice-06-scoreboard.png) |
+| 07 | [Progress: solved, streak, a year's activity](screenshots/practice-07-progress.png) |
+| 08 | [The leaderboard](screenshots/practice-08-leaderboard.png) |
+| 09 | [Signing up](screenshots/practice-09-sign-up.png) |
 
 The green camera images are Chromium's fake camera, which stands in for a
 webcam when the screenshots are taken.

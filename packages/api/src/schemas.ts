@@ -366,7 +366,7 @@ const shown = {
   images: z.array(questionImage).readonly(),
   passage: passage.nullable(),
 };
-const candidateQuestion = z.discriminatedUnion("kind", [
+export const candidateQuestion = z.discriminatedUnion("kind", [
   z.object({
     id: z.string(),
     kind: z.literal("mcq"),

@@ -12,3 +12,4 @@ export * from "./sealing.js";
 export * from "./billing-store.js";
 export * from "./proctor-store.js";
 export * from "./question-media.js";
+export * from "./practice-store.js";

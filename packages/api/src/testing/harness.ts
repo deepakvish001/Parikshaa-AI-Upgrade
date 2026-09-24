@@ -10,6 +10,7 @@ import {
   PrivacyStore,
   BillingStore,
   ProctorStore,
+  PracticeStore,
   QuestionBank,
   QuestionMedia,
   DataKeys,
@@ -31,6 +32,7 @@ import { FakeRazorpay } from "../razorpay.js";
 import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
+import { PracticeService } from "../practice.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
@@ -186,6 +188,12 @@ export async function wire(
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
+    practice: new PracticeService({
+      store: new PracticeStore(sql),
+      bank: new QuestionBank(sql),
+      ...(options.runner === undefined ? {} : { runner: options.runner }),
+      ...(options.now === undefined ? {} : { now: options.now }),
+    }),
     ...options.server,
   });
   await app.ready();
