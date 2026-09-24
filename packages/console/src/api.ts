@@ -235,6 +235,7 @@ export interface CandidateReport {
     readonly score: number | null;
     readonly answer: string | null;
     readonly language: string | null;
+    readonly tests: { readonly passed: number; readonly total: number } | null;
   }[];
   readonly vivas: readonly {
     readonly questionId: string;
@@ -347,9 +348,35 @@ export interface LiveView {
   readonly announcements: readonly Announcement[];
 }
 
+export interface SimilarSide {
+  readonly attemptId: string;
+  readonly ref: string;
+  readonly name: string;
+  readonly language: string;
+  readonly source: string;
+}
+
+export interface Similarity {
+  readonly exam: { readonly id: string; readonly title: string };
+  readonly questions: readonly {
+    readonly id: string;
+    readonly stem: string;
+    readonly answered: number;
+    readonly pairs: readonly { readonly a: SimilarSide; readonly b: SimilarSide; readonly similarity: number; readonly shared: number }[];
+  }[];
+}
+
 export interface DocxImport {
   readonly imported: number;
-  readonly preview: readonly { readonly question: number; readonly kind: string; readonly stem: string; readonly marks: number; readonly note: string | null }[];
+  readonly preview: readonly {
+    readonly question: number;
+    readonly kind: string;
+    readonly stem: string;
+    readonly marks: number;
+    readonly pictures: number;
+    readonly passage: string | null;
+    readonly note: string | null;
+  }[];
 }
 
 /** A file's bytes as base64, for a JSON body. */
@@ -546,6 +573,22 @@ export class ConsoleClient {
    */
   importDocx(file: string, dryRun: boolean): Promise<DocxImport> {
     return this.#request<DocxImport>("/bank/import/docx", { method: "POST", body: JSON.stringify({ file, dryRun }) });
+  }
+
+  /** Upload a picture for a question or passage; returns its SHA-256, which the question names. */
+  async uploadImage(file: Blob): Promise<string> {
+    const image = await base64Of(file);
+    try {
+      return (await this.#request<{ media: string }>("/media", { method: "POST", body: JSON.stringify({ image }) })).media;
+    } catch (error) {
+      if (error instanceof ConsoleError && error.code === "not_an_image") throw new Error("Only PNG, JPEG, GIF or WebP pictures, up to 2 MB.");
+      throw error;
+    }
+  }
+
+  /** Code answers alike enough to be worth a look (ROADMAP §4). */
+  similarity(examId: string): Promise<Similarity> {
+    return this.#request<Similarity>(`/exams/${encodeURIComponent(examId)}/similarity`);
   }
 
   async cloneExam(examId: string, id: string, title?: string): Promise<void> {

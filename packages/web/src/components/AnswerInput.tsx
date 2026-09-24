@@ -14,7 +14,30 @@ interface Props {
 /** The input for one question, chosen by its kind. */
 export function AnswerInput({ question, value, disabled, onChange, onRun }: Props) {
   switch (question.kind) {
-    case "mcq":
+    case "mcq": {
+      // The letter is drawn by CSS (a counter), so it is in neither the label's text nor its name.
+      const letter = (_index: number) => <span className="opt-key" aria-hidden="true" />;
+      if (question.multiple) {
+        // Several right options: the answer is the chosen positions, in order ("0,2").
+        const chosen = new Set(value === "" ? [] : value.split(",").map(Number));
+        const toggle = (index: number) => {
+          const next = new Set(chosen);
+          if (next.has(index)) next.delete(index);
+          else next.add(index);
+          onChange([...next].sort((a, b) => a - b).join(","));
+        };
+        return (
+          <div role="group" aria-label={question.stem}>
+            {question.options.map((option, index) => (
+              <label className="option" key={option}>
+                <input type="checkbox" checked={chosen.has(index)} disabled={disabled} onChange={() => toggle(index)} />
+                {letter(index)}
+                <span>{option}</span>
+              </label>
+            ))}
+          </div>
+        );
+      }
       return (
         <div role="radiogroup" aria-label={question.stem}>
           {question.options.map((option, index) => (
@@ -27,11 +50,13 @@ export function AnswerInput({ question, value, disabled, onChange, onRun }: Prop
                 disabled={disabled}
                 onChange={() => onChange(String(index))}
               />
+              {letter(index)}
               <span>{option}</span>
             </label>
           ))}
         </div>
       );
+    }
 
     case "numeric":
       return (

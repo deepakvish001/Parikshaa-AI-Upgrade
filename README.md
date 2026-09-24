@@ -29,6 +29,13 @@ candidate before they start and never an input to the grade. See
 | The candidate's side | The institution's console |
 | --- | --- |
 | ![Answering, with a follow-up question](docs/screenshots/candidate-08-follow-up.png) | ![Results for a campus drive](docs/screenshots/console-06-results.png) |
+| ![A coding question, run against its examples](docs/screenshots/candidate-15-coding.png) | ![Code similarity: two answers side by side](docs/screenshots/console-22-code-similarity.png) |
+
+It sets the papers campus hiring and entrance tests use: coding questions in
+Python, JavaScript, C, C++ and Java, run in a sandbox and graded by hidden
+tests; mcq with one or several right options and negative marking; numeric,
+short-answer and comprehension questions; charts and figures; sections with
+their own time; and a question palette with mark for review.
 
 Every page is in [`docs/screenshots`](docs/screenshots/); the design system
 behind them is in [`docs/DESIGN.md`](docs/DESIGN.md).
@@ -85,7 +92,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 652 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 681 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients

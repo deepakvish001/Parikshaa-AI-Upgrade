@@ -168,6 +168,32 @@ naming any picture or equation it left out, before anything is added; like the
 CSV import it is all or nothing, with each problem named by its question.
 `docs/samples/question-paper.docx` is a paper to copy.
 
+**Aptitude and reasoning papers** are built on the same questions, with what
+Indian entrance and placement tests use:
+
+- *Pictures.* A question, or a passage, can carry up to six pictures (PNG,
+  JPEG, GIF or WebP, up to 2 MB, with alt text for a candidate who cannot see
+  them): a chart to read, a figure series. They are stored once per
+  organisation by their SHA-256 and served by that hash with an immutable cache,
+  so an exam refers to a picture that can never change under it. SVG is refused
+  because it can carry script. A Word paper's pictures now come in with its
+  questions, each with the description typed in Word as its alt text.
+- *Passages.* A comprehension passage is set on each question about it. The
+  candidate reads it once, above the first of them, labelled with the questions
+  it serves. In Word, `PASSAGE` … `PASSAGE_END` wraps it.
+- *Negative marking.* Any mcq or numeric question can take marks away for a
+  wrong answer, shown to the candidate on the question, never for a blank one.
+  A total can go below zero, as it does in the tests this imitates.
+- *More than one right option.* An mcq can have several right options; the
+  candidate is told to choose all that apply and ticks boxes. With partial
+  credit, choosing only right ones earns their share; any wrong one earns
+  nothing, or the negative marks. In CSV `A, C` and in Word several `*`s mark
+  them.
+- *Question palette.* Beside the paper on a wide screen, folded above it on a
+  phone: every question numbered and coloured answered, typed but not saved, or
+  not answered, and any the candidate marked for review. Marks for review are the
+  candidate's own note, kept on their device, and never reach the record.
+
 ## 4. Coding assessment
 
 This is the campus-hiring wedge, and the place where the micro-viva is at its
@@ -210,6 +236,19 @@ their own heap flag, with the container's cgroup limit as the backstop. And
 gVisor is a deployment requirement this code checks but cannot supply: the
 runner refuses to start unless it finds itself inside gVisor, or is told
 explicitly that isolation is off for development.
+
+The candidate report shows each code answer as written and how many of its
+tests it passed, hidden ones included — counts only, as the record keeps them.
+
+**Code similarity** is built as well. For each code question, the results page
+lists pairs of candidates whose answers are alike once names, comments, layout,
+strings and numbers are set aside, and the starter code everyone was given is
+taken out. The method is winnowing, the idea behind MOSS: a rename or a comment
+does not hide a copied stretch. Only answers in the same language are compared,
+and both must be long enough for the measure to mean anything. An examiner opens
+a pair and reads the two side by side. It is evidence for a person, in the same
+amber as the follow-up: it never changes a mark, because two short answers to a
+narrow question can honestly match.
 
 ## 5. Bulk operations and delivery
 

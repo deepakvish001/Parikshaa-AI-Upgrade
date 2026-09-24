@@ -203,7 +203,7 @@ between the probe's recorded `askedAt` and the arrival of the reply. The client
 has no timing field to report, correctly or otherwise.
 
 **The exam reaches the client stripped.** An `Exam` carries its own answer key —
-`correctIndex`, `expected`, `expectedPoints`, and rubric criteria that read as
+`correctIndex`, `correctIndices`, `expected`, `expectedPoints`, and rubric criteria that read as
 hints. `candidateView` projects it into types that have nowhere for those to
 live, so a field added to `Question` later cannot leak by being forgotten. The
 `vivaTriggerRatio` is withheld for the same reason: knowing the threshold tells
@@ -285,6 +285,8 @@ sitting is over.
 | Word question papers | implemented — `packages/api/src/docx-import.ts`, `POST /bank/import/docx` (dry run to preview); sample at `docs/samples/question-paper.docx` |
 | Sections with their own time | implemented — `section_started` / `section_closed` events, `POST /attempts/me/sections/next`; candidate page shows one part at a time |
 | Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
+| Pictures, passages, negative marking, several right options | implemented — `POST /media`, `GET /media/:sha256` (content-addressed); `passage`, `negativeMarks`, `correctIndices`, `partialCredit` on a question; question palette and mark for review on the candidate page |
+| Code similarity | implemented — `packages/core/src/similarity.ts` (winnowing), `GET /exams/:id/similarity`; evidence for a person, never a mark |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
 | Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |

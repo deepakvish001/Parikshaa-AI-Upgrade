@@ -1,5 +1,6 @@
 import { languagesOf } from "./code.js";
-import type { ContentLocale, Exam, ExamId, ProctoringPolicy, Question, QuestionId, QuestionKind, QuestionTranslation } from "./domain.js";
+import type { ContentLocale, Exam, ExamId, ProctoringPolicy, Question, QuestionId, QuestionImage, QuestionKind, QuestionTranslation } from "./domain.js";
+import { choosesSeveral } from "./scoring.js";
 
 /**
  * What a candidate is allowed to see while sitting an exam.
@@ -22,11 +23,25 @@ interface CandidateQuestionBase {
   readonly maxScore: number;
   /** The question in other languages: stems and options only, like the original. */
   readonly translations: Readonly<Partial<Record<ContentLocale, QuestionTranslation>>>;
+  readonly images: readonly QuestionImage[];
+  readonly passage: CandidatePassage | null;
+}
+
+/** A passage as the candidate reads it: its pictures always listed, if only as none. */
+export interface CandidatePassage {
+  readonly id: string;
+  readonly title?: string;
+  readonly text: string;
+  readonly images: readonly QuestionImage[];
 }
 
 export interface CandidateMcqQuestion extends CandidateQuestionBase {
   readonly kind: "mcq";
   readonly options: readonly string[];
+  /** Choose every right option, rather than one. Which, or how many, is not said. */
+  readonly multiple: boolean;
+  /** Marks lost for a wrong answer, which the candidate is told before answering. 0: none. */
+  readonly negativeMarks: number;
 }
 
 export interface CandidateShortQuestion extends CandidateQuestionBase {
@@ -35,6 +50,7 @@ export interface CandidateShortQuestion extends CandidateQuestionBase {
 
 export interface CandidateNumericQuestion extends CandidateQuestionBase {
   readonly kind: "numeric";
+  readonly negativeMarks: number;
 }
 
 export interface CandidateCodeQuestion extends CandidateQuestionBase {
@@ -71,15 +87,25 @@ export function candidateQuestion(question: Question): CandidateQuestion {
   for (const [locale, t] of Object.entries(question.translations ?? {}) as [ContentLocale, QuestionTranslation][]) {
     translations[locale] = question.kind === "mcq" && t.options !== undefined ? { stem: t.stem, options: t.options } : { stem: t.stem };
   }
-  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, translations } as const;
+  const images = (question.images ?? []).map((i) => ({ media: i.media, alt: i.alt }));
+  const passage =
+    question.passage === undefined
+      ? null
+      : {
+          id: question.passage.id,
+          ...(question.passage.title === undefined ? {} : { title: question.passage.title }),
+          text: question.passage.text,
+          images: (question.passage.images ?? []).map((i) => ({ media: i.media, alt: i.alt })),
+        };
+  const base = { id: question.id, stem: question.stem, maxScore: question.maxScore, translations, images, passage } as const;
 
   switch (question.kind) {
     case "mcq":
-      return { ...base, kind: "mcq", options: question.options };
+      return { ...base, kind: "mcq", options: question.options, multiple: choosesSeveral(question), negativeMarks: question.negativeMarks ?? 0 };
     case "short":
       return { ...base, kind: "short" };
     case "numeric":
-      return { ...base, kind: "numeric" };
+      return { ...base, kind: "numeric", negativeMarks: question.negativeMarks ?? 0 };
     case "code":
       return {
         ...base,

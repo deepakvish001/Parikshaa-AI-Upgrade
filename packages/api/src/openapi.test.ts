@@ -67,8 +67,9 @@ describe("the OpenAPI document", () => {
     // The only routes open to anyone: liveness, the contract itself, and the
     // two that turn something a person holds into a credential — a staff
     // sign-in, and a candidate opening their invitation link (whose code is
-    // itself the proof).
-    const open = new Set(["get /health", "get /openapi.json", "post /auth/login", "post /invitations/redeem"]);
+    // itself the proof) — and a question's picture by its SHA-256, which an
+    // <img> fetches with no session and only a holder of the picture can name.
+    const open = new Set(["get /health", "get /openapi.json", "post /auth/login", "post /invitations/redeem", "get /media/{sha256}"]);
 
     expect(all.length).toBeGreaterThanOrEqual(30);
     for (const { path, method, operation } of all) {

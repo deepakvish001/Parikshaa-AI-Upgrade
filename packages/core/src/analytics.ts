@@ -135,7 +135,8 @@ export function cohortAnalytics(results: readonly AttemptResult[], definition: E
   const percents = graded.map((r) => r.percent!).sort((a, b) => a - b);
 
   const distribution = Array.from({ length: 10 }, () => 0);
-  for (const p of percents) distribution[Math.min(9, Math.floor(p / 10))]! += 1;
+  // Negative marking can take a total below zero; it falls in the lowest band.
+  for (const p of percents) distribution[Math.max(0, Math.min(9, Math.floor(p / 10)))]! += 1;
 
   // Kelley's 27%: large enough groups to be stable, far enough apart to show a difference.
   const byTotal = [...graded].sort((a, b) => b.percent! - a.percent!);

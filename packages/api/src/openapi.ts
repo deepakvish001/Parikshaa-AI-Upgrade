@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PrivacyStore, QuestionBank, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -64,6 +64,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     auth: new StaffAuth(identity),
     identity,
     bank: new QuestionBank(unusable),
+    media: new QuestionMedia(unusable),
   });
 
   await app.ready();

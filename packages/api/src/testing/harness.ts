@@ -11,6 +11,7 @@ import {
   BillingStore,
   ProctorStore,
   QuestionBank,
+  QuestionMedia,
   DataKeys,
   migrate,
   pgliteExecutor,
@@ -184,6 +185,7 @@ export async function wire(
     auth: new StaffAuth(identity),
     identity,
     bank: new QuestionBank(sql),
+    media: new QuestionMedia(sql),
     ...options.server,
   });
   await app.ready();

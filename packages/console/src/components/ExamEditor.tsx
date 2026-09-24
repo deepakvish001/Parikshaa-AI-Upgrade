@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { validateExam, type Exam, type ExamProblem, type ProctoringPolicy, type Question } from "@parikshaa/core/browser";
 import { BankPicker, type BankLoader } from "./Bank.tsx";
-import { QuestionFields, blankQuestion } from "./QuestionFields.tsx";
+import { QuestionFields, blankQuestion, type ImageUploader } from "./QuestionFields.tsx";
 
 interface Props {
   readonly initial?: Exam;
@@ -11,11 +11,13 @@ interface Props {
   readonly onCancel: () => void;
   /** Present when the account may read the bank, to add questions from it. */
   readonly loadBank?: BankLoader;
+  /** Uploads a picture for a question or passage. */
+  readonly uploadImage?: ImageUploader;
 }
 
 type Picking = { readonly into: "fixed" } | { readonly into: "section"; readonly index: number } | null;
 
-export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, loadBank }: Props) {
+export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, loadBank, uploadImage }: Props) {
   const [picking, setPicking] = useState<Picking>(null);
   const [exam, setExam] = useState<Exam>(
     initial ?? {
@@ -151,7 +153,12 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
             </button>
           </div>
 
-          <QuestionFields question={question} onChange={(next) => patchQuestion(index, next)} />
+          <QuestionFields
+            question={question}
+            onChange={(next) => patchQuestion(index, next)}
+            {...(uploadImage === undefined ? {} : { upload: uploadImage })}
+            {...(exam.questions[index - 1]?.passage === undefined ? {} : { previousPassage: exam.questions[index - 1]!.passage! })}
+          />
         </section>
       ))}
 

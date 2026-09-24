@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { local, MCQ, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
+import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
+import { aptitudePaper, CODE_QUESTION, RUN_ORIGINAL } from "./fixtures.js";
 import { shoot } from "./shoot.js";
 
 /** The candidate's side, page by page. */
@@ -110,4 +112,46 @@ test("on a phone", async ({ browser, request }) => {
   await expect(phone.getByRole("heading", { name: TITLE })).toBeVisible();
   await question(phone, 1).getByRole("radio", { name: "Merge sort" }).check();
   await shoot(phone, "candidate-13-phone", { fullPage: false });
+});
+
+test("an aptitude paper: pictures, a passage, several right options, negative marking and the palette", async ({ page, browser, request }) => {
+  const seeded = await seedSitting(request, { questions: [MCQ], title: "Placeholder" });
+  const chart = await uploadPicture(browser, request, seeded.token, SALES_CHART);
+  const series = await uploadPicture(browser, request, seeded.token, FIGURE_SERIES);
+  const sitting = await seedSitting(request, {
+    questions: aptitudePaper(chart, series),
+    title: "Aptitude Mock Test — Quantitative and Reasoning",
+    vivaTriggerRatio: 0.99,
+  });
+  await page.goto(local(sitting.links["CS001"]!));
+  const card = (n: number) => page.locator("section.question").nth(n - 1);
+  await expect(page.getByRole("navigation", { name: "Questions" })).toBeVisible();
+  await card(1).getByRole("textbox").fill("100");
+  await card(1).getByRole("button", { name: "Save answer" }).click();
+  await card(2).getByRole("radio", { name: "5" }).check();
+  await card(2).getByRole("button", { name: "Save answer" }).click();
+  await card(3).getByRole("checkbox", { name: "23" }).check();
+  await card(3).getByRole("checkbox", { name: "29" }).check();
+  await card(4).getByRole("button", { name: "Mark for review" }).click();
+  await expect(card(1)).toContainText("Saved");
+  await page.waitForTimeout(1600);
+  await shoot(page, "candidate-14-aptitude");
+});
+
+test("a coding question: the editor, running the examples, and the results", async ({ page, request }) => {
+  const sitting = await seedSitting(request, {
+    questions: [CODE_QUESTION],
+    title: "Coding Round — Campus Drive 2026",
+    vivaTriggerRatio: 0.99,
+  });
+  await page.goto(local(sitting.links["CS001"]!));
+  const editor = page.locator(".cm-content");
+  await expect(editor).toBeVisible();
+  await editor.click();
+  await page.keyboard.press("ControlOrMeta+a");
+  await page.keyboard.insertText(RUN_ORIGINAL);
+  await page.getByRole("button", { name: "Run examples" }).click();
+  await expect(page.getByRole("region", { name: "Run results" })).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(800);
+  await shoot(page, "candidate-15-coding");
 });

@@ -3,7 +3,9 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { hashPassword } from "@parikshaa/api";
 import { seedBilledOrganisation } from "../src/database.js";
 import { local, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
-import { shoot } from "./shoot.js";
+import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
+import { aptitudePaper, CODE_QUESTION, codeAnswer, RUN_COPIED, RUN_GROUPBY, RUN_OFF_BY_ONE, RUN_ORIGINAL, RUN_WHILE } from "./fixtures.js";
+import { shoot, shootPart } from "./shoot.js";
 
 /** The console, page by page, over an organisation seeded the way a real one fills up. */
 
@@ -13,12 +15,12 @@ const TITLE = "Campus Drive 2026 — Aptitude and Reasoning";
 const PEOPLE = ["Aarav Sharma", "Diya Patel", "Ishaan Reddy", "Ananya Iyer", "Kabir Singh", "Meera Nair", "Rohan Gupta", "Sneha Kulkarni"];
 const REFS = PEOPLE.map((_, i) => `CS${String(i + 1).padStart(3, "0")}`);
 
-const ANSWERS: readonly { mcq: string; short: string; numeric: string; reply?: string }[] = [
-  { mcq: "1", short: "Each step halves the interval that can hold the target, so it must become empty after about log n steps.", numeric: "72", reply: "Merge only takes from the right half when its element is strictly smaller, so equal keys keep their order." },
-  { mcq: "1", short: "Because the range shrinks every time and cannot shrink forever.", numeric: "72", reply: "I think merge sort keeps things in order because it is recursive." },
-  { mcq: "0", short: "It stops when low passes high.", numeric: "70" },
-  { mcq: "1", short: "The interval halves each step; an empty interval ends the loop.", numeric: "72" },
-  { mcq: "1", short: "Binary search compares with the middle and discards half, so the interval halves until it is empty.", numeric: "72" },
+const ANSWERS: readonly { mcq: string; short: string; numeric: string; reply?: string; code?: string }[] = [
+  { mcq: "1", short: "Each step halves the interval that can hold the target, so it must become empty after about log n steps.", numeric: "72", reply: "Merge only takes from the right half when its element is strictly smaller, so equal keys keep their order.", code: RUN_ORIGINAL },
+  { mcq: "1", short: "Because the range shrinks every time and cannot shrink forever.", numeric: "72", reply: "I think merge sort keeps things in order because it is recursive.", code: RUN_COPIED },
+  { mcq: "0", short: "It stops when low passes high.", numeric: "70", code: RUN_OFF_BY_ONE },
+  { mcq: "1", short: "The interval halves each step; an empty interval ends the loop.", numeric: "72", code: RUN_GROUPBY },
+  { mcq: "1", short: "Binary search compares with the middle and discards half, so the interval halves until it is empty.", numeric: "72", code: RUN_WHILE },
   { mcq: "0", short: "It searches the whole array.", numeric: "65" },
 ];
 
@@ -33,7 +35,7 @@ async function signIn(page: Page, account: { email: string; password: string }) 
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "Account" }).getByRole("button", { name, exact: true }).click();
 
 /** A candidate sits the paper through the API; some reply to a follow-up. */
-async function sit(request: APIRequestContext, sitting: Sitting, ref: string, a: (typeof ANSWERS)[number], submit = true) {
+async function sit(request: APIRequestContext, sitting: Sitting, ref: string, a: (typeof ANSWERS)[number], submit = true, withCode = true) {
   const code = decodeURIComponent(new URL(sitting.links[ref]!).searchParams.get("invite")!);
   const opened = await request.post("/api/invitations/redeem", { data: { code } });
   expect(opened.status(), await opened.text()).toBe(200);
@@ -47,6 +49,7 @@ async function sit(request: APIRequestContext, sitting: Sitting, ref: string, a:
   }
   expect((await answer("q2", a.short)).status()).toBe(202);
   expect((await answer("q3", a.numeric)).status()).toBe(202);
+  if (withCode && a.code !== undefined) expect((await answer("q4", codeAnswer(a.code))).status()).toBe(202);
   if (submit) expect((await request.post("/api/attempts/me/submit", { headers })).status()).toBe(200);
   return { attemptId: attemptId as string, token: token as string };
 }
@@ -86,7 +89,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   }
 
   // --- an organisation's worth of exams and candidates ---------------------
-  const drive = await seedSitting(request, { owner: org, questions: [MCQ, SHORT, NUMERIC], title: TITLE, refs: REFS, names: PEOPLE, vivaTriggerRatio: 0.5 });
+  const drive = await seedSitting(request, { owner: org, questions: [MCQ, SHORT, NUMERIC, CODE_QUESTION], title: TITLE, refs: REFS, names: PEOPLE, vivaTriggerRatio: 0.5 });
   const staffHeaders = { authorization: `Bearer ${drive.token}` };
   for (const [i, a] of ANSWERS.entries()) {
     const { attemptId } = await sit(request, drive, REFS[i]!, a);
@@ -102,8 +105,23 @@ test("every page of the console", async ({ page, browser, request }) => {
     names: ["Vikram Joshi", "Pooja Bansal", "Arjun Menon", "Kavya Rao", "Nikhil Verma"],
     vivaTriggerRatio: 0.99,
   });
-  for (const [i, ref] of ["DS101", "DS102", "DS103"].entries()) await sit(request, midterm, ref, ANSWERS[i + 2]!, false);
-  await seedSitting(request, { owner: org, questions: [MCQ, SHORT], title: "Java Developer Screening — Round 1", refs: ["JV01"], names: ["Farhan Qureshi"] });
+  for (const [i, ref] of ["DS101", "DS102", "DS103"].entries()) await sit(request, midterm, ref, ANSWERS[i + 2]!, false, false);
+  await seedSitting(request, {
+    owner: org,
+    questions: [CODE_QUESTION, MCQ],
+    title: "Java Developer Screening — Round 1",
+    refs: ["JV01"],
+    names: ["Farhan Qureshi"],
+  });
+  const chart = await uploadPicture(browser, request, drive.token, SALES_CHART);
+  const series = await uploadPicture(browser, request, drive.token, FIGURE_SERIES);
+  await seedSitting(request, {
+    owner: org,
+    questions: aptitudePaper(chart, series),
+    title: "Aptitude Mock Test — Quantitative and Reasoning",
+    refs: ["AP01"],
+    names: ["Harsh Vardhan"],
+  });
 
   const proctored = await seedSitting(request, { owner: org,
     questions: [SHORT],
@@ -139,6 +157,12 @@ test("every page of the console", async ({ page, browser, request }) => {
   await shoot(page, "console-03-exam-editor");
 
   await nav(page, "Exams");
+  await page.getByRole("row").filter({ hasText: "Aptitude Mock Test" }).getByRole("button", { name: "Edit" }).click();
+  await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
+  await page.getByText("Passage — The monsoon").first().scrollIntoViewIfNeeded();
+  await shoot(page, "console-21-aptitude-editor");
+
+  await nav(page, "Exams");
   await page.getByRole("button", { name: TITLE }).click();
   await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
   await shoot(page, "console-04-exam-attempts");
@@ -150,7 +174,12 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.getByRole("button", { name: TITLE }).click();
   await page.getByRole("button", { name: "Results and exports" }).click();
   await expect(page.getByRole("region", { name: "Candidates" })).toBeVisible();
+  const similar = page.getByRole("region", { name: "Code similarity" });
+  await expect(similar.getByRole("button", { name: "Compare" }).first()).toBeVisible();
   await shoot(page, "console-06-results");
+  await similar.getByRole("button", { name: "Compare" }).first().click();
+  await expect(similar.getByRole("group", { name: /side by side$/ })).toBeVisible();
+  await shootPart(similar, "console-22-code-similarity");
 
   await page.getByRole("region", { name: "Candidates" }).getByRole("row").filter({ hasText: "Aarav Sharma" }).getByRole("button", { name: "Report" }).click();
   await page.waitForTimeout(800);

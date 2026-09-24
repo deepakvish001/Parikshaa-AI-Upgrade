@@ -1,11 +1,12 @@
 import type { AttemptProjection } from "./attempt.js";
-import type { Exam, ExamPolicy, Question, QuestionId, Response } from "./domain.js";
+import type { Exam, ExamPolicy, McqQuestion, Question, QuestionId, Response } from "./domain.js";
 
 /**
  * Scoring, and the decision of which answers are worth a micro-viva.
  *
- * Two kinds of question can be scored with no model at all: an mcq has a
- * correct index and a numeric question has an expected value and a tolerance.
+ * Two kinds of question can be scored with no model at all: an mcq has its
+ * right option (or options) and a numeric question has an expected value and a
+ * tolerance. Either may take marks away for a wrong answer — never for none.
  * Short and code answers need a rubric grader, which lives in `@parikshaa/viva`
  * because it calls a model. Keeping the deterministic half here means the
  * majority of scoring stays cheap, offline and exactly reproducible.
@@ -34,28 +35,59 @@ export function needsRubricGrading(question: Question): boolean {
  * expected to route those to `@parikshaa/viva`, not to treat null as zero.
  */
 export function scoreDeterministic(question: Question, answer: string): QuestionScore | null {
-  const award = (correct: boolean): QuestionScore => ({
+  const scored = (score: number): QuestionScore => ({
     questionId: question.id,
-    score: correct ? question.maxScore : 0,
+    score,
     maxScore: question.maxScore,
     method: "deterministic",
     reasoning: null,
   });
+  // A blank answer is no answer: it neither earns nor loses anything.
+  const blank = answer.trim() === "";
+  const penalty = (negativeMarks: number | undefined) => (blank || !negativeMarks ? 0 : -negativeMarks);
 
   switch (question.kind) {
     case "mcq": {
-      const chosen = Number.parseInt(answer.trim(), 10);
-      return award(Number.isInteger(chosen) && chosen === question.correctIndex);
+      const correct = correctOptions(question);
+      const chosen = chosenOptions(answer);
+      if (chosen === null) return scored(penalty(question.negativeMarks));
+      if (sameSet(chosen, correct)) return scored(question.maxScore);
+      const anyWrong = [...chosen].some((i) => !correct.has(i));
+      if (question.partialCredit === true && correct.size > 1 && chosen.size > 0 && !anyWrong) {
+        return scored((question.maxScore * chosen.size) / correct.size);
+      }
+      return scored(chosen.size === 0 ? 0 : penalty(question.negativeMarks));
     }
     case "numeric": {
       const value = Number.parseFloat(answer.trim());
-      return award(Number.isFinite(value) && Math.abs(value - question.expected) <= question.tolerance);
+      return Number.isFinite(value) && Math.abs(value - question.expected) <= question.tolerance
+        ? scored(question.maxScore)
+        : scored(penalty(question.negativeMarks));
     }
     case "short":
     case "code":
       return null;
   }
 }
+
+/** The positions of an mcq's right options. */
+export function correctOptions(question: McqQuestion): ReadonlySet<number> {
+  return new Set(question.correctIndices !== undefined && question.correctIndices.length > 0 ? question.correctIndices : [question.correctIndex]);
+}
+
+/** Whether a candidate chooses several options for this question, rather than one. */
+export const choosesSeveral = (question: McqQuestion): boolean => (question.correctIndices?.length ?? 0) > 0;
+
+/** The options an answer chooses ("2", or "0,2" for several); null when it is not a list of positions. */
+export function chosenOptions(answer: string): ReadonlySet<number> | null {
+  const text = answer.trim();
+  if (text === "") return new Set();
+  const parts = text.split(",").map((p) => p.trim());
+  if (parts.some((p) => !/^\d+$/.test(p))) return null;
+  return new Set(parts.map(Number));
+}
+
+const sameSet = (a: ReadonlySet<number>, b: ReadonlySet<number>) => a.size === b.size && [...a].every((x) => b.has(x));
 
 export function totalScore(scores: Iterable<QuestionScore>): number {
   let total = 0;

@@ -252,8 +252,10 @@ function WordImport({ client, onImported }: { client: ConsoleClient; onImported:
         options (<span className="mono">a)</span>), then an <span className="mono">Answer:</span> line — or mark the right
         option with <span className="mono">*</span>. Optional lines: <span className="mono">Marks:</span>,{" "}
         <span className="mono">Topic:</span>, <span className="mono">Difficulty:</span>, <span className="mono">Tags:</span>,{" "}
-        <span className="mono">Type:</span>. Questions without options become numeric or short answer. You will see every
-        question before anything is added.
+        <span className="mono">Type:</span>, <span className="mono">Negative:</span>. Several right options:{" "}
+        <span className="mono">Answer: a, c</span>. Pictures pasted into the paper come with their question, and a{" "}
+        <span className="mono">Passage:</span> line starts a passage for the questions after it. You will see every question
+        before anything is added.
       </p>
       <div className="field">
         <label htmlFor="bank-import-docx">Word file (.docx)</label>
@@ -304,6 +306,13 @@ function WordImport({ client, onImported }: { client: ConsoleClient; onImported:
                   <td>{q.question}</td>
                   <td>
                     {q.stem}
+                    {q.passage === null && q.pictures === 0 ? null : (
+                      <div className="notice">
+                        {[q.passage === null ? null : `Passage: ${q.passage}`, q.pictures === 0 ? null : `${q.pictures} picture${q.pictures === 1 ? "" : "s"}`]
+                          .filter((x) => x !== null)
+                          .join(" · ")}
+                      </div>
+                    )}
                     {q.note === null ? null : <div className="notice">{q.note}</div>}
                   </td>
                   <td>{q.kind}</td>
@@ -380,7 +389,7 @@ function BankEditor({
       }}
     >
       <section className="card">
-        <QuestionFields question={question} onChange={setQuestion} />
+        <QuestionFields question={question} onChange={setQuestion} upload={(file) => client.uploadImage(file)} />
         <div className="grid">
           <div className="field">
             <label htmlFor="q-topic">Topic</label>

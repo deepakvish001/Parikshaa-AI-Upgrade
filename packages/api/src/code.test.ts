@@ -195,6 +195,11 @@ describe("committing and grading code", () => {
     });
     // The receipt names the counts, never the tests.
     expect(JSON.stringify(ledger)).not.toContain("8000000000");
+
+    // So does the candidate's report, for the examiner.
+    const report = (await call("GET", owner, `/attempts/${attemptId}/report`)).json();
+    expect(report.questions.find((q: { id: string }) => q.id === "sum")).toMatchObject({ language: "python", tests: { passed: 1, total: 3 } });
+    expect(report.questions.find((q: { id: string }) => q.id === "mcq").tests).toBeNull();
   });
 
   it("follows up a strong solution about the candidate's own code", async () => {

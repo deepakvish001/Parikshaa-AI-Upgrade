@@ -58,7 +58,11 @@ describe("candidateView", () => {
       stem: "Which sort is stable?",
       maxScore: 4,
       options: ["quicksort", "mergesort"],
+      multiple: false,
+      negativeMarks: 0,
       translations: {},
+      images: [],
+      passage: null,
     });
     expect(view.questions[3]).toMatchObject({ language: "python", starter: "def solve():" });
   });
@@ -71,6 +75,37 @@ describe("candidateView", () => {
     for (const leak of ["correctIndex", "expected", "tolerance", "expectedPoints", "rubric", "secret criterion", "9.8", "the measure decreases"]) {
       expect(serialized).not.toContain(leak);
     }
+  });
+
+  it("says an mcq wants several options and what a wrong answer costs, but never which options are right", () => {
+    const several = {
+      ...exam,
+      questions: [
+        {
+          id: "m",
+          kind: "mcq",
+          stem: "Which are primes?",
+          maxScore: 4,
+          rubric: [],
+          options: ["2", "4", "5", "9"],
+          correctIndex: 0,
+          correctIndices: [0, 2],
+          partialCredit: true,
+          negativeMarks: 1,
+          images: [{ media: "a".repeat(64), alt: "A number line" }],
+          passage: { id: "p1", title: "Primes", text: "A prime has exactly two divisors." },
+        },
+      ],
+    } as unknown as typeof exam;
+    const view = candidateView(several);
+    expect(view.questions[0]).toMatchObject({
+      multiple: true,
+      negativeMarks: 1,
+      images: [{ media: "a".repeat(64), alt: "A number line" }],
+      passage: { id: "p1", title: "Primes", text: "A prime has exactly two divisors.", images: [] },
+    });
+    const serialized = JSON.stringify(view);
+    for (const leak of ["correctIndices", "correctIndex", "partialCredit"]) expect(serialized).not.toContain(leak);
   });
 
   it("does not disclose the viva trigger ratio", () => {

@@ -8,3 +8,4 @@ export * from "./validate.js";
 export * from "./paper.js";
 export * from "./code.js";
 export * from "./analytics.js";
+export * from "./similarity.js";

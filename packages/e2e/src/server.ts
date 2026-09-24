@@ -1,6 +1,10 @@
 import { fileURLToPath } from "node:url";
 import { assemble, hashPassword } from "@parikshaa/api";
 import { FakeRazorpay, fakeModel } from "@parikshaa/api/testing";
+import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { execute, type CodeRunner } from "@parikshaa/runner";
 import { connect } from "@parikshaa/store";
 import { appUrl, DATA_KEY, resetDatabase, SECRET } from "./database.js";
 
@@ -13,9 +17,22 @@ import { appUrl, DATA_KEY, resetDatabase, SECRET } from "./database.js";
  *   E2E_RESET=0            keep the database instead of starting from nothing
  *   E2E_MODEL_LATENCY_MS   how long the fake model takes, default 300
  *   DATABASE_POOL_MAX      default 20
+ *   E2E_RUNNER=local       run code questions in-process with no isolation —
+ *                          for this machine's own tests and screenshots only
  */
 const port = Number.parseInt(process.env["PORT"] ?? "4173", 10);
 if (process.env["E2E_RESET"] !== "0") await resetDatabase(hashPassword);
+
+// Code runs the way the runner service runs it, minus the kernel boundary:
+// never with anyone else's code.
+const runner: CodeRunner | undefined =
+  process.env["E2E_RUNNER"] === "local"
+    ? (() => {
+        const workRoot = join(tmpdir(), "parikshaa-e2e-runs");
+        mkdirSync(workRoot, { recursive: true });
+        return { run: (request) => execute(request, { workRoot, slot: null }) };
+      })()
+    : undefined;
 
 const sql = connect(appUrl, { max: Number.parseInt(process.env["DATABASE_POOL_MAX"] ?? "20", 10) });
 const { app } = assemble({
@@ -25,6 +42,7 @@ const { app } = assemble({
   dataKey: DATA_KEY,
   // Razorpay without Razorpay: the browser suite's Checkout signs with the fake's key secret.
   gateway: new FakeRazorpay(),
+  ...(runner === undefined ? {} : { runner }),
   supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru", sac: "998399" },
   publicUrl: process.env["PUBLIC_URL"] ?? `http://localhost:${port}`,
   server: {

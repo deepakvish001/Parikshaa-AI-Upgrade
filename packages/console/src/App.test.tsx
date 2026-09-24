@@ -140,8 +140,8 @@ const report: CandidateReport = {
   candidate: { ref: "CS001", name: "Ananya Iyer", email: "ananya@college.test" },
   result: { ...resultRow("a2", "CS001", "Ananya Iyer", 9) },
   questions: [
-    { id: "q1", stem: "Which sort is stable?", kind: "mcq", maxScore: 5, score: 5, answer: "Merge sort", language: null },
-    { id: "q2", stem: "Sum two numbers", kind: "code", maxScore: 5, score: 4, answer: "print(sum(map(int, input().split())))", language: "python" },
+    { id: "q1", stem: "Which sort is stable?", kind: "mcq", maxScore: 5, score: 5, answer: "Merge sort", language: null, tests: null },
+    { id: "q2", stem: "Sum two numbers", kind: "code", maxScore: 5, score: 4, answer: "print(sum(map(int, input().split())))", language: "python", tests: { passed: 3, total: 4 } },
   ],
   vivas: [
     {
@@ -343,6 +343,25 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     announce: vi.fn(async () => ({ id: "n2", message: "x", authorName: "Asha", at: "2026-10-01T05:00:00.000Z" })),
     reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
+    similarity: vi.fn(async () => ({
+      exam: { id: "exam-1", title: "Algorithms" },
+      questions: [
+        {
+          id: "q-code",
+          stem: "Print the longest run.",
+          answered: 3,
+          pairs: [
+            {
+              a: { attemptId: "a1", ref: "CS001", name: "Aarav Sharma", language: "python", source: "def longest_run(values):\n    return 1" },
+              b: { attemptId: "a2", ref: "CS002", name: "Diya Patel", language: "python", source: "def f(a):\n    return 1" },
+              similarity: 0.94,
+              shared: 31,
+            },
+          ],
+        },
+      ],
+    })),
+    uploadImage: vi.fn(async () => "b".repeat(64)),
     resultsFile: vi.fn(async () => new Blob(["x"])),
     report: vi.fn(async () => report),
     startAttempt: vi.fn(async () => ({ attemptId: "attempt-2", token: "issued-token" })),
@@ -458,6 +477,56 @@ describe("exam editor", () => {
     };
     expect(saved.title).toBe("Mechanics");
     expect(saved.questions[0]?.options).toEqual(["quicksort", "mergesort"]);
+  });
+
+  it("saves an mcq with several right options, partial credit, negative marks and a picture", async () => {
+    const client = await openEditor();
+    await userEvent.type(screen.getByLabelText("Title"), "Aptitude");
+    await userEvent.type(screen.getByLabelText("Question"), "Which are prime?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "2");
+    await userEvent.type(screen.getByLabelText("Option 2"), "4");
+    await userEvent.click(screen.getByRole("button", { name: "Add option" }));
+    await userEvent.type(screen.getByLabelText("Option 3"), "5");
+    await userEvent.click(screen.getByLabelText("More than one option is right"));
+    await userEvent.click(screen.getByLabelText("Option 3 is correct"));
+    await userEvent.click(screen.getByLabelText("Partial credit for each right option chosen"));
+    await userEvent.type(screen.getByLabelText("Negative marks for a wrong answer"), "1");
+    await userEvent.upload(screen.getByLabelText("Pictures with the question"), new File(["png"], "number-line.png", { type: "image/png" }));
+    expect(await screen.findByLabelText("What picture 1 shows")).toHaveValue("number line");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: unknown[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions[0]).toMatchObject({
+      correctIndex: 0,
+      correctIndices: [0, 2],
+      partialCredit: true,
+      negativeMarks: 1,
+      images: [{ media: "b".repeat(64), alt: "number line" }],
+    });
+  });
+
+  it("gives a question a passage, and the next one the same passage", async () => {
+    const client = await openEditor();
+    await userEvent.type(screen.getByLabelText("Title"), "Reading");
+    await userEvent.type(screen.getByLabelText("Question"), "When does it arrive?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "June");
+    await userEvent.type(screen.getByLabelText("Option 2"), "July");
+    await userEvent.click(screen.getByRole("button", { name: "Add a passage" }));
+    await userEvent.type(screen.getByLabelText("Passage title"), "The monsoon");
+    await userEvent.type(screen.getByLabelText("Passage"), "The monsoon reaches Kerala in early June.");
+    await userEvent.click(screen.getByRole("button", { name: "Add question" }));
+    const second = screen.getByRole("region", { name: "Question 2" });
+    await userEvent.type(within(second).getByLabelText("Question"), "Where does it arrive first?");
+    await userEvent.type(within(second).getByLabelText("Option 1"), "Kerala");
+    await userEvent.type(within(second).getByLabelText("Option 2"), "Delhi");
+    await userEvent.click(within(second).getByRole("button", { name: "Use the passage of the question above" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: { passage?: unknown }[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions[0]!.passage).toMatchObject({ title: "The monsoon", text: "The monsoon reaches Kerala in early June." });
+    expect(saved.questions[1]!.passage).toEqual(saved.questions[0]!.passage);
   });
 
   it("saves a question's Hindi translation, options in the original's order", async () => {
@@ -1046,6 +1115,19 @@ describe("results and exports", () => {
   };
   const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
 
+  it("shows code answers alike enough to look at, as evidence, side by side on request", async () => {
+    await open();
+    const card = await screen.findByRole("region", { name: "Code similarity" });
+    expect(card).toHaveClass("evidence");
+    expect(card).toHaveTextContent("Nothing here changes a mark.");
+    const row = within(card).getByRole("row", { name: /CS001 · Aarav Sharma and CS002 · Diya Patel/ });
+    expect(row).toHaveTextContent("94%");
+    await userEvent.click(within(row).getByRole("button", { name: "Compare" }));
+    const compare = within(card).getByRole("group", { name: "CS001 and CS002, side by side" });
+    expect(compare).toHaveTextContent("def longest_run(values):");
+    expect(compare).toHaveTextContent("def f(a):");
+  });
+
   it("lists candidates best first, and sorts and filters them", async () => {
     await open();
     const table = await screen.findByRole("region", { name: "Candidates" });
@@ -1101,6 +1183,7 @@ describe("results and exports", () => {
     expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
     expect(screen.getByLabelText("Code in python")).toHaveTextContent("print(sum(map(int, input().split())))");
     const answers = screen.getByRole("region", { name: "Answers" });
+    expect(answers).toHaveTextContent("Tests passed 3 of 4");
     expect(answers).not.toHaveTextContent("Why map before sum?");
     const evidence = screen.getByRole("region", { name: "Follow-up evidence" });
     expect(evidence).toHaveTextContent("About question 2");
