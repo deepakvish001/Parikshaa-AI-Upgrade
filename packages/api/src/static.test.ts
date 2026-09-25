@@ -75,6 +75,17 @@ describe("serving the clients", () => {
     expect(staff.payload).toContain("console");
   });
 
+  it("gives a browser the web app at a practice site's address, and the app its JSON under /api", async () => {
+    // /practice/<site> is both a page and an API route (ROADMAP §15).
+    const page = await app.inject({ method: "GET", url: "/practice/nit-practice/problems/two-sum", headers: html });
+    expect(page.statusCode).toBe(200);
+    expect(page.payload).toContain("candidate");
+
+    const api = await app.inject({ method: "GET", url: "/api/practice/nit-practice", headers: html });
+    expect(api.statusCode).toBe(404);
+    expect(api.json().error).toBe("not_found");
+  });
+
   it("still answers API routes rather than the shell", async () => {
     const health = await app.inject({ method: "GET", url: "/health" });
     expect(health.json()).toEqual({ ok: true });

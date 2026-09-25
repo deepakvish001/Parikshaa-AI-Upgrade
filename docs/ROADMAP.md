@@ -250,6 +250,39 @@ a pair and reads the two side by side. It is evidence for a person, in the same
 amber as the follow-up: it never changes a mark, because two short answers to a
 narrow question can honestly match.
 
+**A LeetCode-style workspace** is built too:
+
+- *Function questions.* The author states a function once: a name, typed
+  parameters and a return type, from whole numbers, 64-bit numbers, doubles,
+  booleans and strings, and lists and grids of them. From that, Parikshaa
+  writes every language's starter code in LeetCode's own conventions (C passes
+  sizes in and returns them through `returnSize`), and the program that calls
+  the candidate's function. That program reads one JSON value per parameter,
+  calls the function, and prints what it returned after a marker, so the
+  candidate's own `print`s are shown apart from the answer. Returned values are
+  compared as values, within a tolerance for doubles, and in any order at the
+  top level or all the way down when the author allows it. Compiler errors
+  point at the candidate's own line numbers. A suite builds and runs every type
+  in all five languages on the real compilers.
+- *Judging a whole program's output* exactly, word by word, numbers within a
+  tolerance, lines in any order, or by the author's own checker program for
+  problems with many right answers. The checker runs in the sandbox, in a
+  directory the candidate's program never saw, so nothing it leaves behind can
+  stand in for the checker.
+- *Statements* in Markdown, with input and output format, constraints (with
+  `10^5` written as a power) and an explanation under each worked example.
+- *Run and Submit.* Run tries the code on the examples or a custom case and
+  records nothing. Submit commits the answer and runs every test: the candidate
+  sees each test's verdict, time and memory, with a hidden test reduced to its
+  verdict, never its input or anything the program printed on it. An exam can
+  instead report only the visible tests. Verdicts include memory limit exceeded,
+  measured per test.
+- *The workspace.* It sits in the question's card, and opens full screen with
+  the problem beside the editor, on resizable panes that also move from the
+  keyboard. It offers Testcase and Result tabs, a dark editor, text size, reset
+  to the starter, Ctrl+Enter to run and Ctrl+' to submit, and closing brackets.
+  Completion is the exam's choice and off by default.
+
 ## 5. Bulk operations and delivery
 
 Nobody clicks "Start" two thousand times.
@@ -590,6 +623,52 @@ or at the end of the retention period. The privacy notice says so.
 Not in it: a lockdown browser, screen recording, audio, and a second-device
 camera. Webcam photos are stored in Postgres; at very large volumes an object
 store would be the better home.
+
+## 15. Practice sites
+
+Campus hiring starts long before the drive. A college wants its students
+practising on the same kind of problem, in the same workspace, all term; a
+company wants a public place for candidates to warm up. That is a practice
+site: LeetCode-style, run by the institution, and not an exam.
+
+**Status — built.** An organisation opens a site at `/practice/<address>`.
+Learners sign up there with an account of their own (email and a password of
+at least 12 characters; one account per email per site), distinct from staff
+and from candidates, who have none.
+
+- **Problems** are published from the question bank as copies, as an exam's
+  questions are: editing the bank later changes nothing published. Code with
+  tests, multiple choice and numeric questions can be practised; a short
+  answer cannot, because nothing marks it by machine. Each has a difficulty,
+  tags and a Markdown editorial, and can be hidden from the problem set.
+- **Solving** uses the exam's coding workspace, as a page of its own: the
+  statement, editorial, the learner's submissions and the discussion in tabs
+  beside the editor. Run tries the examples or the learner's own input and
+  records nothing; Submit judges every test and records the submission. A
+  hidden test comes back as its verdict, time and memory only — the same
+  problem may be set in an exam. Code in progress is kept on the device.
+- **Editorials** open once the learner has solved the problem or failed three
+  times, and stay shut for a problem while a contest that includes it runs.
+- **Progress:** solved counts by difficulty, a streak and an activity heatmap
+  counted in India Standard Time days, recent solves, and a rank. A
+  **leaderboard** ranks learners by problems solved, by name only.
+- **Contests** have a start, an end and up to 26 problems, named only once
+  they start (a hidden problem can be set in one and seen there first). The
+  scoreboard is ICPC's: problems solved, then minutes to each solve plus 20
+  for every wrong try before it.
+- **Discussion** under each problem; staff reply, marked as staff, and hide a
+  comment that gives an answer away (it is kept, and can be shown again).
+- **Deleting an account** removes the name and email and ends every session;
+  submissions stay, attributed to no one, so a problem's numbers do not change.
+
+Row-level security has a third actor, the learner: a learner's transaction
+reads only published problems, unhidden comments and their own submissions,
+and can write submissions and comments only in their own name (migration
+0013). Nothing on a practice site reaches the integrity ledger, an exam, or a
+candidate's record. The console's **Practice** page runs it all.
+
+Not in it: plagiarism checks across learners, badges, premium problems, and
+sign-in with Google. Learner email addresses are not verified.
 
 ## Sequencing
 

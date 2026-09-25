@@ -4,6 +4,7 @@ import {
   ChevronRight,
   ClipboardList,
   Gauge,
+  GraduationCap,
   KeyRound,
   KeySquare,
   Languages,
@@ -28,6 +29,7 @@ import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { IntegrationsPanel } from "./components/Integrations.tsx";
 import { PrivacyPanel } from "./components/Privacy.tsx";
+import { PracticePanel } from "./components/Practice.tsx";
 import { BillingPanel } from "./components/Billing.tsx";
 import { LivePanel } from "./components/Live.tsx";
 import { AttemptList } from "./components/AttemptList.tsx";
@@ -41,6 +43,7 @@ type View =
   | { readonly name: "attempts"; readonly examId: string }
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "bank" }
+  | { readonly name: "practice" }
   | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "results"; readonly examId: string }
   | { readonly name: "live"; readonly examId: string }
@@ -306,6 +309,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     readonly icon: LucideIcon;
   }[] = [
     { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key", group: "assess", icon: Library },
+    { view: { name: "practice" }, label: "Practice", permission: "exam:read_key", group: "assess", icon: GraduationCap },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage", group: "org", icon: Users },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage", group: "org", icon: KeySquare },
     { view: { name: "usage" }, label: "Spend", permission: "usage:read", group: "org", icon: Gauge },
@@ -527,6 +531,9 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       ) : null}
 
       {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
+      {view.name === "practice" ? (
+        <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read") }} />
+      ) : null}
       {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
       {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
       {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
@@ -552,6 +559,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   live: "exams",
   report: "exams",
   bank: "bank",
+  practice: "practice",
   staff: "staff",
   keys: "keys",
   usage: "usage",
@@ -582,6 +590,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Candidate report";
     case "bank":
       return "Question bank";
+    case "practice":
+      return "Practice";
     case "staff":
       return "Staff";
     case "keys":
@@ -612,6 +622,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   live: "Who is here, who has gone quiet, and anything that needs an invigilator.",
   report: "One candidate's answers, grades and record, ready to print.",
   bank: "Questions filed by topic and difficulty, to draw exams from. Import from a spreadsheet or a Word paper.",
+  practice: "A practice site for your learners: problems from the bank, contests, and their progress. Nothing there is an exam.",
   staff: "Who can sign in to this console, and what each can do.",
   keys: "Keys for your own systems to call Parikshaa.",
   usage: "What the AI model has cost this month, and the cap on it.",

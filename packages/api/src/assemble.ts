@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -14,6 +14,7 @@ import { ProctorService } from "./proctoring.js";
 import type { Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
+import { PracticeService } from "./practice.js";
 import { buildServer, type ServerOptions } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -91,6 +92,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     publicUrl: o.publicUrl,
   });
 
+  const bank = new QuestionBank(o.sql);
   const app = buildServer({
     service,
     invitations,
@@ -110,8 +112,9 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     tokens,
     auth: new StaffAuth(identity),
     identity,
-    bank: new QuestionBank(o.sql),
+    bank,
     media: new QuestionMedia(o.sql),
+    practice: new PracticeService({ store: new PracticeStore(o.sql), bank, ...(o.runner === undefined ? {} : { runner: o.runner }) }),
     ...o.server,
   });
 

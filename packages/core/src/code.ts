@@ -1,4 +1,5 @@
-import type { CodeQuestion, CodeTest } from "./domain.js";
+import type { CodeChecker, CodeQuestion, CodeTest } from "./domain.js";
+import { functionChecker, programFor, RESULT_MARKER, starterFor } from "./signature.js";
 
 /**
  * Code answers (ROADMAP §4).
@@ -57,4 +58,32 @@ export function scoreTests(question: CodeQuestion, passedIds: ReadonlySet<string
   if (total === 0) return 0;
   const earned = tests.filter((t) => passedIds.has(t.id)).reduce((sum, t) => sum + t.weight, 0);
   return Math.round((question.maxScore * earned * 100) / total) / 100;
+}
+
+/** The code a candidate starts from in a language: written from the signature for a function question. */
+export function starterOf(question: CodeQuestion, language: string): string | null {
+  if (question.signature !== undefined) return starterFor(question.signature, language);
+  return question.starters?.[language] ?? question.starter ?? null;
+}
+
+/** The runner's checker, as the runner's request spells it. */
+export type RunnerChecker = CodeChecker | ReturnType<typeof functionChecker>;
+
+/**
+ * What the runner is given for an answer: the program to build, and how to
+ * judge it. A function question's program is the candidate's function inside
+ * the generated one that calls it.
+ */
+export function runnable(
+  question: CodeQuestion,
+  answer: CodeAnswer,
+): { readonly source: string; readonly checker: RunnerChecker; readonly resultMarker?: string } {
+  if (question.signature === undefined) {
+    return { source: answer.source, checker: question.checker ?? { kind: "exact" } };
+  }
+  return {
+    source: programFor(question.signature, answer.language, answer.source),
+    checker: question.checker?.kind === "custom" ? question.checker : functionChecker(question.signature),
+    resultMarker: RESULT_MARKER,
+  };
 }

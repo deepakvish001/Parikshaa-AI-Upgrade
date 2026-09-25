@@ -8,7 +8,8 @@
     "./tokens.css": "./src/tokens.css",
     "./base.css": "./src/base.css",
     "./fonts.css": "./src/fonts.css",
-    "./react": "./src/react.tsx"
+    "./react": "./src/react.tsx",
+    "./markdown": "./src/markdown.tsx"
   },
   "peerDependencies": {
     "react": "^18.3.1"

@@ -591,3 +591,68 @@ describe("aptitude papers", () => {
     expect(screen.getByRole("button", { name: "Question 3: Not answered, Marked for review" })).toBeInTheDocument();
   });
 });
+
+describe("a coding question", () => {
+  const codeExam = {
+    ...exam,
+    codeCompletion: false,
+    testFeedback: "all",
+    questions: [
+      {
+        id: "q-sum",
+        kind: "code",
+        stem: "Return the sum of `a` and `b`.\n\nBoth fit in 32 bits.",
+        maxScore: 10,
+        language: "python",
+        languages: ["python"],
+        starter: "class Solution:\n    def add(self, a, b):\n        pass\n",
+        starters: { python: "class Solution:\n    def add(self, a, b):\n        pass\n" },
+        function: {
+          name: "add",
+          params: [
+            { name: "a", type: "int" },
+            { name: "b", type: "int" },
+          ],
+          returns: "int",
+        },
+        inputFormat: null,
+        outputFormat: null,
+        constraints: null,
+        samples: [{ input: "2\n3", output: "5", explanation: null }],
+        translations: {},
+      },
+    ],
+  };
+
+  it("heads the card with the statement's first paragraph, and submits through the workspace instead of Save", async () => {
+    let committed: { questionId: string; answer: string; submittedAt: number }[] = [];
+    const { client, setState } = stubClient({
+      submitCode: vi.fn(async (questionId: string, language: string, source: string) => {
+        committed = [{ questionId, answer: JSON.stringify({ language, source }), submittedAt: 1 }];
+        setState({ answers: committed });
+        return {
+          tested: true,
+          compiled: true,
+          passed: 2,
+          total: 2,
+          cases: [
+            { number: 1, visible: true, status: "passed", timeMs: 5, memoryKb: 8000, input: "2\n3", expectedOutput: "5", stdout: "", result: "5", stderr: "" },
+            { number: 2, visible: false, status: "passed", timeMs: 5, memoryKb: 8000, input: null, expectedOutput: null, stdout: null, result: null, stderr: null },
+          ],
+        };
+      }),
+    });
+    setState({ exam: codeExam });
+    renderApp(<App client={client} />);
+
+    const heading = await screen.findByRole("heading", { name: /Return the sum of a\s*and\s*b/ });
+    const card = heading.closest("section")!;
+    expect(within(card).getByText("Both fit in 32 bits.")).toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Save answer" })).toBeNull();
+
+    await userEvent.click(within(card).getByRole("button", { name: "Submit" }));
+    expect(client.submitCode).toHaveBeenCalledWith("q-sum", "python", codeExam.questions[0]!.starter);
+    expect(await within(card).findByRole("region", { name: "Submission results" })).toHaveTextContent("2/2 tests passed");
+    await waitFor(() => expect(within(card).getByText("Saved")).toBeInTheDocument());
+  });
+});

@@ -91,10 +91,15 @@ describe("the OpenAPI document", () => {
     // except opening the invitation that gives them one.
     expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me") || p === "/invitations/redeem")).toBe(true);
     expect(tagged("Institution").some((p) => p === "/exams")).toBe(true);
+    // A practice learner reaches only their site's pages; staff run it from /practice-admin.
+    expect(tagged("Practice").length).toBeGreaterThan(10);
+    expect(tagged("Practice").every((p) => p.startsWith("/practice/{site}"))).toBe(true);
+    expect(tagged("Practice (staff)").every((p) => p.startsWith("/practice-admin/"))).toBe(true);
   });
 
-  it("puts no answer key anywhere in a candidate-facing response", () => {
-    const candidate = operations().filter(({ operation }) => operation.tags?.includes("Candidate") === true);
+  it("puts no answer key anywhere in a candidate-facing or learner-facing response", () => {
+    // A practice learner is served the same projection of a question a candidate is.
+    const candidate = operations().filter(({ operation }) => operation.tags?.some((t) => t === "Candidate" || t === "Practice") === true);
     expect(candidate.length).toBeGreaterThan(0);
 
     const names = propertyNames(candidate);

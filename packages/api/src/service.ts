@@ -2,6 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import {
   candidateView,
   decodeCodeAnswer,
+  encodeCodeAnswer,
+  runnable,
   foldAttempt,
   languagesOf,
   scoreTests,
@@ -139,6 +141,8 @@ export interface Meter {
 
 /** Most times a candidate may press Run on one question in one attempt. */
 export const MAX_RUNS_PER_QUESTION = 100;
+/** Submissions per question per attempt: every one runs every test, and a verdict per hidden test is information. */
+export const MAX_SUBMITS_PER_QUESTION = 30;
 
 interface AttemptContext {
   /** Personal fields opened (or `[erased]`): what the application reads. */
@@ -175,6 +179,7 @@ export class ExamService {
    * costs nothing that matters.
    */
   readonly #runs = new Map<string, number>();
+  readonly #submits = new Map<string, number>();
 
   readonly #meter: Meter | null;
 
@@ -736,6 +741,13 @@ export class ExamService {
   // --- candidate: writing ---------------------------------------------------
 
   async submitAnswer(access: CandidateAccess, questionId: QuestionId, answer: string): Promise<void> {
+    const { scope, id, context } = await this.#commit(access, questionId, answer);
+    const question = context.exam.questions.find((q) => q.id === questionId);
+    if (question?.kind === "code") await this.#testOnCommit(scope, id, question, answer);
+  }
+
+  /** Record an answer, once every rule about when and where it may be given allows it. */
+  async #commit(access: CandidateAccess, questionId: QuestionId, answer: string): Promise<{ scope: Scope; id: AttemptId; context: AttemptContext }> {
     const scope = candidateOf(access);
     const id = access.attemptId;
     const context = await this.#context(scope, id);
@@ -757,9 +769,7 @@ export class ExamService {
     // The committed text is now also the latest draft, so an older autosave
     // still in flight cannot resurface as "unsent" on another device.
     await this.#store.saveDraft(scope, id, questionId, answer, submittedAt);
-
-    const question = context.exam.questions.find((q) => q.id === questionId);
-    if (question?.kind === "code") await this.#testOnCommit(scope, id, question, answer);
+    return { scope, id, context };
   }
 
   // --- code (ROADMAP §4) ----------------------------------------------------
@@ -799,7 +809,8 @@ export class ExamService {
       input !== undefined
         ? [{ id: "custom", input, expected: "" }]
         : samples.map((t, i) => ({ id: `sample-${i + 1}`, input: t.input, expected: t.expected }));
-    const result = await this.#run(question, answer, tests);
+    // A checker program judges against an expected output; own input has none.
+    const result = await this.#run(question, answer, tests, input !== undefined);
 
     if (!result.compiled) return { compiled: false, compileOutput: result.compileOutput };
     return {
@@ -808,10 +819,78 @@ export class ExamService {
         input: tests[i]!.input,
         // Custom input has no expected output, so no verdict either.
         expectedOutput: input !== undefined ? null : tests[i]!.expected,
-        status: input !== undefined ? (r.status === "passed" || r.status === "wrong_answer" ? "ran" : r.status) : r.status,
+        status: input !== undefined ? (r.status === "passed" || r.status === "wrong_answer" || r.status === "checker_error" ? "ran" : r.status) : r.status,
         stdout: r.stdout,
+        result: r.result ?? null,
         stderr: r.stderr,
         timeMs: r.timeMs,
+        memoryKb: r.memoryKb,
+        checkerMessage: input !== undefined ? null : (r.checkerMessage ?? null),
+      })),
+    };
+  }
+
+  /**
+   * Commit a code answer and test it against every test at once, reporting
+   * what was found — the Submit a candidate expects of a coding test.
+   *
+   * The answer is committed first and stands whatever the tests say, exactly as
+   * a committed answer does elsewhere. How much comes back is the exam's
+   * choice: every test's verdict, hidden ones reduced to verdict, time and
+   * memory, or the visible tests' only. A hidden test's input, output and
+   * anything the program printed on it never come back: a program can print
+   * its input, and that would publish the test.
+   */
+  async submitCode(access: CandidateAccess, questionId: QuestionId, answer: CodeAnswer): Promise<CodeVerdict> {
+    const scope = candidateOf(access);
+    const id = access.attemptId;
+    const context = await this.#context(scope, id);
+    const question = this.#codeQuestion(context.exam, questionId, answer.language);
+
+    const key = `${id}\u0000${questionId}`;
+    const submits = (this.#submits.get(key) ?? 0) + 1;
+    if (submits > MAX_SUBMITS_PER_QUESTION) {
+      throw new AttemptError("too_many_runs", `At most ${MAX_SUBMITS_PER_QUESTION} submissions per question`);
+    }
+
+    const encoded = encodeCodeAnswer(answer);
+    await this.#commit(access, questionId, encoded);
+    this.#submits.set(key, submits);
+
+    const tests = question.tests ?? [];
+    if (tests.length === 0) return { tested: false, reason: "no_tests" };
+    if (this.#runner === null) return { tested: false, reason: "runner_unavailable" };
+    let result: RunResult;
+    try {
+      result = await this.#run(question, answer, tests);
+    } catch (error) {
+      if (error instanceof RunnerUnavailable) return { tested: false, reason: "runner_unavailable" };
+      throw error;
+    }
+    await this.#recordTested(scope, id, question, encoded, this.#summarise(question, result));
+    if (!result.compiled) return { tested: true, compiled: false, compileOutput: result.compileOutput };
+
+    const everything = (context.exam.policy.testFeedback ?? "all") === "all";
+    const byId = new Map(result.tests.map((r) => [r.id, r]));
+    const reported = tests
+      .map((test, i) => ({ test, number: i + 1, outcome: byId.get(test.id) }))
+      .filter((t) => everything || !t.test.hidden);
+    return {
+      tested: true,
+      compiled: true,
+      passed: everything ? result.tests.filter((r) => r.status === "passed").length : null,
+      total: everything ? tests.length : null,
+      cases: reported.map(({ test, number, outcome }) => ({
+        number,
+        visible: !test.hidden,
+        status: outcome?.status ?? "runtime_error",
+        timeMs: outcome?.timeMs ?? 0,
+        memoryKb: outcome?.memoryKb ?? null,
+        input: test.hidden ? null : test.input,
+        expectedOutput: test.hidden ? null : test.expected,
+        stdout: test.hidden ? null : (outcome?.stdout ?? ""),
+        result: test.hidden ? null : (outcome?.result ?? null),
+        stderr: test.hidden ? null : (outcome?.stderr ?? ""),
       })),
     };
   }
@@ -826,26 +905,39 @@ export class ExamService {
     return question;
   }
 
+  /**
+   * Run an answer: a function question's inside the program generated around
+   * it, judged by value; any other as it is, judged as the question says.
+   * `ownInput`: no expected output to judge against, so no checker program.
+   */
   async #run(
     question: CodeQuestion,
     answer: CodeAnswer,
     tests: readonly { id: string; input: string; expected: string }[],
+    ownInput = false,
   ): Promise<RunResult> {
     if (this.#runner === null) throw new RunnerUnavailable("No code runner is configured");
+    const prepared = runnable(question, answer);
+    const checker = ownInput && prepared.checker.kind === "custom" ? { kind: "exact" as const } : prepared.checker;
     return this.#runner.run({
       language: answer.language as never,
-      source: answer.source,
+      source: prepared.source,
       tests,
+      checker,
+      ...(prepared.resultMarker === undefined ? {} : { resultMarker: prepared.resultMarker }),
       ...(question.limits === undefined ? {} : { limits: question.limits }),
     });
   }
 
+  #summarise(question: CodeQuestion, result: RunResult): { score: number; passed: number; total: number } {
+    const passed = new Set(result.compiled ? result.tests.filter((r) => r.status === "passed").map((r) => r.id) : []);
+    return { score: scoreTests(question, passed), passed: passed.size, total: (question.tests ?? []).length };
+  }
+
   /** Every test of a code question, scored. */
   async #runAllTests(question: CodeQuestion, answer: string): Promise<{ score: number; passed: number; total: number }> {
-    const tests = question.tests ?? [];
-    const result = await this.#run(question, decodeCodeAnswer(answer, question), tests);
-    const passed = new Set(result.compiled ? result.tests.filter((r) => r.status === "passed").map((r) => r.id) : []);
-    return { score: scoreTests(question, passed), passed: passed.size, total: tests.length };
+    const result = await this.#run(question, decodeCodeAnswer(answer, question), question.tests ?? []);
+    return this.#summarise(question, result);
   }
 
   /**
@@ -864,6 +956,21 @@ export class ExamService {
     } catch {
       return;
     }
+    await this.#recordTested(scope, id, question, answer, result);
+  }
+
+  /**
+   * Record what testing an answer found, if that answer is still the latest
+   * for its question and the attempt has not closed, both checked under the
+   * attempt's lock.
+   */
+  async #recordTested(
+    scope: Scope,
+    id: AttemptId,
+    question: CodeQuestion,
+    answer: string,
+    result: { score: number; passed: number; total: number },
+  ): Promise<void> {
     try {
       await this.#store.append(
         scope,
@@ -1356,8 +1463,38 @@ export type CandidateRun =
         readonly expectedOutput: string | null;
         readonly status: TestResult["status"] | "ran";
         readonly stdout: string;
+        /** A function question's return value, as JSON. */
+        readonly result: string | null;
         readonly stderr: string;
         readonly timeMs: number;
+        readonly memoryKb: number | null;
+        readonly checkerMessage: string | null;
+      }[];
+    };
+
+/** What Submit reports: the answer is committed either way. */
+export type CodeVerdict =
+  | { readonly tested: false; readonly reason: "no_tests" | "runner_unavailable" }
+  | { readonly tested: true; readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly tested: true;
+      readonly compiled: true;
+      /** Null when the exam reports only the visible tests. */
+      readonly passed: number | null;
+      readonly total: number | null;
+      readonly cases: readonly {
+        readonly number: number;
+        /** False for a hidden test, reported by its verdict alone. */
+        readonly visible: boolean;
+        readonly status: TestResult["status"];
+        readonly timeMs: number;
+        readonly memoryKb: number | null;
+        /** Null for a hidden test: its content never reaches the candidate. */
+        readonly input: string | null;
+        readonly expectedOutput: string | null;
+        readonly stdout: string | null;
+        readonly result: string | null;
+        readonly stderr: string | null;
       }[];
     };
 

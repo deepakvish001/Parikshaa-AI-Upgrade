@@ -29,8 +29,36 @@ export type RunOutcome =
         readonly expectedOutput: string | null;
         readonly status: string;
         readonly stdout: string;
+        /** A function question's return value, as JSON. Absent from a server that predates them. */
+        readonly result?: string | null;
         readonly stderr: string;
         readonly timeMs: number;
+        readonly memoryKb?: number | null;
+        readonly checkerMessage?: string | null;
+      }[];
+    };
+
+/** What Submit found. The answer is committed either way. */
+export type SubmitOutcome =
+  | { readonly tested: false; readonly reason: "no_tests" | "runner_unavailable" }
+  | { readonly tested: true; readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly tested: true;
+      readonly compiled: true;
+      /** Null when the exam reports only the visible tests. */
+      readonly passed: number | null;
+      readonly total: number | null;
+      readonly cases: readonly {
+        readonly number: number;
+        readonly visible: boolean;
+        readonly status: string;
+        readonly timeMs: number;
+        readonly memoryKb: number | null;
+        readonly input: string | null;
+        readonly expectedOutput: string | null;
+        readonly stdout: string | null;
+        readonly result: string | null;
+        readonly stderr: string | null;
       }[];
     };
 
@@ -166,6 +194,11 @@ export class ParikshaaClient {
       method: "POST",
       body: JSON.stringify({ questionId, answer }),
     });
+  }
+
+  /** Commit a code answer and test it against every test: the Submit of a coding test. */
+  submitCode(questionId: string, language: string, source: string): Promise<SubmitOutcome> {
+    return this.#request("/attempts/me/code/submit", { method: "POST", body: JSON.stringify({ questionId, language, source }) });
   }
 
   /** Autosave the text so far. Not an answer until committed; see the server's drafts route. */

@@ -139,3 +139,45 @@ export function aptitudePaper(chart: string, series: string) {
     },
   ];
 }
+
+/** A LeetCode-style question: the candidate writes a function; Parikshaa calls it. */
+export const MERGE_INTERVALS = {
+  id: "merge",
+  kind: "code",
+  stem: [
+    "Given an array of `intervals` where `intervals[i] = [start, end]`, merge all overlapping intervals, and return the intervals that cover every one of them.",
+    "",
+    "Two intervals overlap when one starts at or before the other ends.",
+  ].join("\n"),
+  maxScore: 10,
+  rubric: [],
+  language: "python",
+  languages: ["python", "java", "cpp", "c", "javascript"],
+  signature: { name: "merge", params: [{ name: "intervals", type: "int[][]" }], returns: "int[][]", anyOrder: "top" },
+  constraints: ["- `1 <= intervals.length <= 10^4`", "- `intervals[i].length == 2`", "- `0 <= start <= end <= 10^4`"].join("\n"),
+  outputFormat: "The merged intervals, in any order.",
+  tests: [
+    { id: "s1", input: "[[1,3],[2,6],[8,10],[15,18]]", expected: "[[1,6],[8,10],[15,18]]", hidden: false, weight: 1, explanation: "`[1,3]` and `[2,6]` overlap, so they merge into `[1,6]`." },
+    { id: "s2", input: "[[1,4],[4,5]]", expected: "[[1,5]]", hidden: false, weight: 1, explanation: "`[1,4]` and `[4,5]` touch at 4, which counts as overlapping." },
+    { id: "h1", input: "[[5,7],[1,2],[3,4]]", expected: "[[1,2],[3,4],[5,7]]", hidden: true, weight: 2 },
+    { id: "h2", input: "[[1,10],[2,3],[4,5],[6,7]]", expected: "[[1,10]]", hidden: true, weight: 2 },
+    { id: "h3", input: "[[0,0]]", expected: "[[0,0]]", hidden: true, weight: 1 },
+  ],
+  limits: { timeMs: 2000 },
+} as const;
+
+/** A right answer, as a candidate would write it on LeetCode. */
+export const MERGE_SOLUTION = `class Solution:
+    def merge(self, intervals: List[List[int]]) -> List[List[int]]:
+        intervals.sort(key=lambda it: it[0])
+        merged = []
+        for start, end in intervals:
+            if merged and start <= merged[-1][1]:
+                merged[-1][1] = max(merged[-1][1], end)
+            else:
+                merged.append([start, end])
+        return merged
+`;
+
+/** Forgets to sort: right on the examples, wrong on a hidden test that comes out of order. */
+export const MERGE_UNSORTED = MERGE_SOLUTION.replace("        intervals.sort(key=lambda it: it[0])\n", "");

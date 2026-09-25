@@ -127,6 +127,31 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
             </select>
           </div>
         </div>
+        {[...exam.questions, ...sections.flatMap((s) => s.pool)].some((q) => q.kind === "code") ? (
+          <fieldset className="grid code-policy">
+            <legend>Coding questions</legend>
+            <div className="field">
+              <label htmlFor="test-feedback">Submit shows the candidate</label>
+              <select
+                id="test-feedback"
+                value={exam.policy.testFeedback ?? "all"}
+                onChange={(e) => setExam({ ...exam, policy: { ...exam.policy, testFeedback: e.target.value as "all" | "visible" } })}
+              >
+                <option value="all">Every test's verdict, hidden ones without their content</option>
+                <option value="visible">Only the visible tests; hidden ones after the test</option>
+              </select>
+            </div>
+            <label className="inline" style={{ alignSelf: "end" }}>
+              <input
+                type="checkbox"
+                checked={exam.policy.codeCompletion === true}
+                onChange={(e) => setExam({ ...exam, policy: { ...exam.policy, codeCompletion: e.target.checked } })}
+                style={{ width: "auto" }}
+              />{" "}
+              Offer completion in the code editor
+            </label>
+          </fieldset>
+        ) : null}
         <ProctoringFields
           value={exam.policy.proctoring}
           onChange={(proctoring) => {

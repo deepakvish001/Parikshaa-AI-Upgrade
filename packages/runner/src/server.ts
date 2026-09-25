@@ -32,6 +32,17 @@ const runBody = z.object({
       memoryMb: z.number().int().positive().max(MAX_LIMITS.memoryMb).optional(),
     })
     .optional(),
+  checker: z
+    .discriminatedUnion("kind", [
+      z.object({ kind: z.literal("exact") }),
+      z.object({ kind: z.literal("tokens") }),
+      z.object({ kind: z.literal("numbers"), tolerance: z.number().min(0).max(1) }),
+      z.object({ kind: z.literal("unordered") }),
+      z.object({ kind: z.literal("json"), tolerance: z.number().min(0).max(1), unordered: z.enum(["none", "top", "deep"]) }),
+      z.object({ kind: z.literal("custom"), source: z.string().min(1).max(64 * 1024) }),
+    ])
+    .optional(),
+  resultMarker: z.string().min(4).max(64).optional(),
 });
 
 export interface RunnerServerOptions {

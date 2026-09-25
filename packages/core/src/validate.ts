@@ -1,5 +1,6 @@
 import { CONTENT_LOCALES, type Exam, type Question } from "./domain.js";
 import { CODE_LANGUAGES, languagesOf } from "./code.js";
+import { functionTestProblems, signatureProblems } from "./signature.js";
 import { allQuestions } from "./paper.js";
 
 /**
@@ -177,6 +178,39 @@ export function validateQuestion(question: Question, at: string): ExamProblem[] 
           path: `${at}.tests`,
           message: "At least one test must be hidden; a candidate who has seen every test can print the answers.",
         });
+      }
+      if (question.signature !== undefined) {
+        for (const message of signatureProblems(question.signature)) problems.push({ path: `${at}.signature`, message });
+        if (signatureProblems(question.signature).length === 0) {
+          tests.forEach((test, j) => {
+            for (const message of functionTestProblems(question.signature!, test.input, test.expected)) {
+              problems.push({ path: `${at}.tests.${j}`, message: `Test ${j + 1}: ${message}` });
+            }
+          });
+        }
+        if (question.checker !== undefined && question.checker.kind !== "custom") {
+          problems.push({
+            path: `${at}.checker`,
+            message: "A function question's answers are compared as values; set its tolerance and order on the function, or give it a checker program.",
+          });
+        }
+      }
+      const checker = question.checker;
+      if (checker?.kind === "numbers" && !(checker.tolerance > 0 && checker.tolerance <= 1)) {
+        problems.push({ path: `${at}.checker.tolerance`, message: "A tolerance is more than 0 and at most 1, such as 0.000001." });
+      }
+      if (checker?.kind === "custom" && (checker.source.trim() === "" || checker.source.length > 64 * 1024)) {
+        problems.push({ path: `${at}.checker.source`, message: "A checker program is Python 3, up to 64 KB." });
+      }
+      for (const [language, starter] of Object.entries(question.starters ?? {})) {
+        if (!(CODE_LANGUAGES as readonly string[]).includes(language)) {
+          problems.push({ path: `${at}.starters.${language}`, message: `"${language}" is not a language a question can offer.` });
+        } else if (starter.length > 64 * 1024) {
+          problems.push({ path: `${at}.starters.${language}`, message: "Starter code is at most 64 KB." });
+        }
+      }
+      for (const field of ["inputFormat", "outputFormat", "constraints"] as const) {
+        if ((question[field] ?? "").length > 20_000) problems.push({ path: `${at}.${field}`, message: "Keep each part of the statement under 20,000 characters." });
       }
       const { timeMs, memoryMb } = question.limits ?? {};
       if (timeMs !== undefined && (!Number.isInteger(timeMs) || timeMs < 100 || timeMs > 10_000)) {

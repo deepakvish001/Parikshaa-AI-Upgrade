@@ -2,7 +2,8 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
-import { execute, normalise, type RunRequest, type SandboxOptions } from "./execute.js";
+import { execute, type RunRequest, type SandboxOptions } from "./execute.js";
+import { normalise } from "./judge.js";
 
 /**
  * These run real compilers and real hostile programs. The isolation cases need
@@ -68,6 +69,95 @@ describe("judging", () => {
   });
 });
 
+describe("measuring", () => {
+  const one = [{ id: "t", input: "", expected: "" }];
+
+  it("reports each test's time and peak memory", async () => {
+    const result = await run("python", "x = bytearray(40 * 1024 * 1024)\nprint(len(x))", [{ id: "t", input: "", expected: String(40 * 1024 * 1024) }]);
+    if (!result.compiled) throw new Error("expected to run");
+    const [test] = result.tests;
+    expect(test!.status).toBe("passed");
+    // At least the 40 MB it asked for, and nowhere near the limit.
+    expect(test!.memoryKb).toBeGreaterThan(40 * 1024);
+    expect(test!.memoryKb).toBeLessThan(200 * 1024);
+    expect(test!.timeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("does not hand the meter's descriptor to the program", async () => {
+    const result = await run("python", "import os\ntry:\n    os.write(3, b'x'); print('open')\nexcept OSError: print('closed')", one);
+    if (!result.compiled) throw new Error("expected to run");
+    expect(result.tests[0]!.stdout.trim()).toBe("closed");
+  });
+});
+
+describe("checkers", () => {
+  const withChecker = (source: string, tests: RunRequest["tests"], checker: RunRequest["checker"]) =>
+    execute({ language: "python", source, tests, ...(checker === undefined ? {} : { checker }) }, options);
+
+  it("accepts a float within tolerance", async () => {
+    const tests = [{ id: "t", input: "", expected: "0.3333333333\n" }];
+    const printed = "print(1 / 3)";
+    expect(statuses(await withChecker(printed, tests, undefined))).toEqual(["wrong_answer"]);
+    expect(statuses(await withChecker(printed, tests, { kind: "numbers", tolerance: 1e-6 }))).toEqual(["passed"]);
+  });
+
+  it("accepts lines in any order when the question says so", async () => {
+    const tests = [{ id: "t", input: "", expected: "a\nb\nc\n" }];
+    expect(statuses(await withChecker("print('c'); print('a'); print('b')", tests, { kind: "unordered" }))).toEqual(["passed"]);
+    expect(statuses(await withChecker("print('c'); print('a')", tests, { kind: "unordered" }))).toEqual(["wrong_answer"]);
+  });
+
+  it("runs a question's own checker, and passes on its reason", async () => {
+    // Any pair of numbers that sums to the target is right.
+    const checker = [
+      "import sys",
+      "target = int(open(sys.argv[1]).read())",
+      "a, b = map(int, open(sys.argv[3]).read().split())",
+      "if a + b == target: sys.exit(0)",
+      "print(f'{a} + {b} is not {target}'); sys.exit(1)",
+    ].join("\n");
+    const tests = [{ id: "t", input: "10\n", expected: "5 5\n" }];
+    expect(statuses(await withChecker("print(3, 7)", tests, { kind: "custom", source: checker }))).toEqual(["passed"]);
+    const wrong = await withChecker("print(3, 8)", tests, { kind: "custom", source: checker });
+    expect(statuses(wrong)).toEqual(["wrong_answer"]);
+    if (wrong.compiled) expect(wrong.tests[0]!.checkerMessage).toBe("3 + 8 is not 10");
+  });
+
+  it("calls a broken checker the question's fault, not the candidate's", async () => {
+    const tests = [{ id: "t", input: "", expected: "" }];
+    expect(statuses(await withChecker("print(1)", tests, { kind: "custom", source: "raise SystemExit(3)" }))).toEqual(["checker_error"]);
+  });
+
+  it("cannot be fooled by files the program leaves for the checker", async () => {
+    // The program plants a json.py and a checker.py of its own in its working
+    // directory; the checker runs elsewhere, and isolated, so neither is used.
+    const program = [
+      "open('json.py', 'w').write('import sys; sys.exit(0)')",
+      "open('checker.py', 'w').write('import sys; sys.exit(0)')",
+      "print('wrong')",
+    ].join("\n");
+    const checker = "import sys, json\nsys.exit(0 if open(sys.argv[3]).read().strip() == 'right' else 1)";
+    const tests = [{ id: "t", input: "", expected: "right" }];
+    expect(statuses(await withChecker(program, tests, { kind: "custom", source: checker }))).toEqual(["wrong_answer"]);
+  });
+
+  it("judges only what follows the result marker, and keeps what the program printed", async () => {
+    const source = "print('debugging')\nprint('\\x1eRESULT' + '[1, 2]')";
+    const result = await execute(
+      {
+        language: "python",
+        source,
+        tests: [{ id: "t", input: "", expected: "[1,2]" }],
+        checker: { kind: "json", tolerance: 0, unordered: "none" },
+        resultMarker: "\x1eRESULT",
+      },
+      options,
+    );
+    if (!result.compiled) throw new Error("expected to run");
+    expect(result.tests[0]).toMatchObject({ status: "passed", stdout: "debugging", result: "[1, 2]" });
+  });
+});
+
 describe("hostile code", () => {
   const one = [{ id: "t", input: "", expected: "" }];
 
@@ -81,9 +171,9 @@ describe("hostile code", () => {
     expect(statuses(await run("python", "while True: print('x' * 1000)", one, { timeMs: 5000 }))).toEqual(["output_limit"]);
   });
 
-  it("refuses memory past the limit", async () => {
+  it("refuses memory past the limit, and says that is why", async () => {
     const result = await run("python", "x = bytearray(512 * 1024 * 1024)\nprint('allocated')", one, { memoryMb: 64 });
-    expect(statuses(result)).toEqual(["runtime_error"]);
+    expect(statuses(result)).toEqual(["memory_limit"]);
     if (result.compiled) expect(result.tests[0]!.stdout).not.toMatch(/allocated/);
   });
 

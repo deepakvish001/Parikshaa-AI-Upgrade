@@ -29,13 +29,21 @@ candidate before they start and never an input to the grade. See
 | The candidate's side | The institution's console |
 | --- | --- |
 | ![Answering, with a follow-up question](docs/screenshots/candidate-08-follow-up.png) | ![Results for a campus drive](docs/screenshots/console-06-results.png) |
-| ![A coding question, run against its examples](docs/screenshots/candidate-15-coding.png) | ![Code similarity: two answers side by side](docs/screenshots/console-22-code-similarity.png) |
+| ![The coding workspace, full screen, after Submit](docs/screenshots/candidate-16-workspace.png) | ![Code similarity: two answers side by side](docs/screenshots/console-22-code-similarity.png) |
 
 It sets the papers campus hiring and entrance tests use: coding questions in
-Python, JavaScript, C, C++ and Java, run in a sandbox and graded by hidden
-tests; mcq with one or several right options and negative marking; numeric,
+Python, JavaScript, C, C++ and Java, LeetCode-style functions or whole programs,
+run in a sandbox and graded by hidden tests; mcq with one or several right options and negative marking; numeric,
 short-answer and comprehension questions; charts and figures; sections with
 their own time; and a question palette with mark for review.
+
+Between drives, an institution can open a **practice site** at
+`/practice/<site>`: its learners sign up, solve problems published from the
+question bank in the same workspace, read editorials once they have solved
+them, keep a streak, climb a leaderboard and take timed contests with an ICPC
+scoreboard (ROADMAP §15).
+
+![A practice problem, solved in the workspace](docs/screenshots/practice-02-workspace.png)
 
 Every page is in [`docs/screenshots`](docs/screenshots/); the design system
 behind them is in [`docs/DESIGN.md`](docs/DESIGN.md).
@@ -92,7 +100,7 @@ Requires Node 20+.
 
 ```bash
 npm install
-npm test          # 681 tests; store and api run against a real Postgres (PGlite, in-process)
+npm test          # 797 tests; store and api run against a real Postgres (PGlite, in-process)
 npm run typecheck # tsc across all packages, test files included
 npm run build     # engine
 npm run build:clients

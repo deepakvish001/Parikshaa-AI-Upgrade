@@ -78,6 +78,50 @@ const exam: Exam = {
   policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 0.8 },
 };
 
+/** A LeetCode-style round: one function question, judged by value. */
+const functionQuestion = {
+  id: "two-sum",
+  kind: "code",
+  stem: "Given `nums` and `target`, return the indices of the two numbers that add up to `target`.",
+  maxScore: 10,
+  rubric: [],
+  language: "python",
+  languages: ["python", "java", "cpp"],
+  signature: {
+    name: "twoSum",
+    params: [
+      { name: "nums", type: "int[]" },
+      { name: "target", type: "int" },
+    ],
+    returns: "int[]",
+    anyOrder: "top",
+  },
+  constraints: "- `2 <= nums.length <= 10^4`\n- Exactly one answer exists.",
+  tests: [
+    { id: "s1", input: "[2,7,11,15]\n9", expected: "[0,1]", hidden: false, weight: 1, explanation: "`nums[0] + nums[1] == 9`" },
+    { id: "h1", input: "[3,2,4]\n6", expected: "[1,2]", hidden: true, weight: 1 },
+    { id: "h2", input: "[31337,5,31336]\n62673", expected: "[0,2]", hidden: true, weight: 2 },
+  ],
+} as const;
+
+const functionExam = (id: string, policy: object) => ({
+  id,
+  title: "LeetCode round",
+  questions: [functionQuestion],
+  policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 1, ...policy },
+});
+
+const TWO_SUM = [
+  "class Solution:",
+  "    def twoSum(self, nums: List[int], target: int) -> List[int]:",
+  "        print('looking at', nums)",
+  "        seen = {}",
+  "        for i, n in enumerate(nums):",
+  "            if target - n in seen:",
+  "                return [i, seen[target - n]]",
+  "            seen[n] = i",
+].join("\n");
+
 const PYTHON_SUM = "a, b = map(int, input().split())\nprint(a + b)\n";
 /** Right on the example, wrong on anything else: the classic hard-coded answer. */
 const HARDCODED = "print(5)\n";
@@ -97,8 +141,10 @@ beforeEach(async () => {
   await addStaff(identity, org, "owner@acme.test", "owner");
   await db.exec(`SET ROLE parikshaa_app`);
   owner = await signIn(app, "owner@acme.test");
-  const saved = await app.inject({ method: "POST", url: "/exams", headers: bearer(owner), payload: exam });
-  expect(saved.statusCode, saved.payload).toBe(201);
+  for (const payload of [exam, functionExam("leetcode-round", {}), functionExam("visible-only", { testFeedback: "visible" })]) {
+    const saved = await app.inject({ method: "POST", url: "/exams", headers: bearer(owner), payload });
+    expect(saved.statusCode, saved.payload).toBe(201);
+  }
 });
 
 afterEach(async () => {
@@ -241,6 +287,109 @@ describe("committing and grading code", () => {
 
     expect((await call("POST", owner, `/attempts/${attemptId}/grade`)).json()).toEqual({ total: 10 });
   }, 30_000);
+});
+
+describe("function questions, as on LeetCode", () => {
+  async function startIn(examId: string) {
+    const res = await call("POST", owner, `/exams/${examId}/attempts`, { candidateId: "cand-1" });
+    return res.json() as { attemptId: string; token: string };
+  }
+
+  it("shows the function to write, a starter per language, the statement and its examples", async () => {
+    const { token } = await startIn("leetcode-round");
+    const res = await call("GET", token, "/attempts/me");
+    const question = res.json().exam.questions[0];
+    expect(question.function).toEqual({ name: "twoSum", params: functionQuestion.signature.params, returns: "int[]" });
+    expect(question.starters.java).toContain("public int[] twoSum(int[] nums, int target)");
+    expect(question.starters.cpp).toContain("vector<int> twoSum(vector<int>& nums, int target)");
+    expect(question.constraints).toContain("Exactly one answer exists.");
+    expect(question.samples).toEqual([{ input: "[2,7,11,15]\n9", output: "[0,1]", explanation: "`nums[0] + nums[1] == 9`" }]);
+    expect(res.json().exam).toMatchObject({ testFeedback: "all", codeCompletion: false });
+    for (const leak of ["31337", "[3,2,4]", "anyOrder", "pk_"]) expect(res.payload).not.toContain(leak);
+  });
+
+  it("runs the function on the examples, showing what it returned apart from what it printed", async () => {
+    const { token } = await startIn("leetcode-round");
+    const res = await call("POST", token, "/attempts/me/run", { questionId: "two-sum", language: "python", source: TWO_SUM });
+    expect(res.statusCode, res.payload).toBe(200);
+    const [result] = res.json().results;
+    // [1,0] is accepted: the question allows any order.
+    expect(result).toMatchObject({ status: "passed", result: "[1,0]", stdout: "looking at [2, 7, 11, 15]\n" });
+    expect(result.memoryKb).toBeGreaterThan(0);
+  });
+
+  it("runs on the candidate's own arguments, one per line", async () => {
+    const { token } = await startIn("leetcode-round");
+    const res = await call("POST", token, "/attempts/me/run", { questionId: "two-sum", language: "python", source: TWO_SUM, input: "[1,4]\n5\n" });
+    expect(res.json().results[0]).toMatchObject({ status: "ran", result: "[1,0]", expectedOutput: null });
+  });
+
+  it("submits: commits the answer, runs every test, and reports hidden tests without their content", async () => {
+    const { token } = await startIn("leetcode-round");
+    // Prints its input on every test, which must not publish the hidden ones.
+    const res = await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: TWO_SUM });
+    expect(res.statusCode, res.payload).toBe(200);
+    const verdict = res.json();
+    expect(verdict).toMatchObject({ tested: true, compiled: true, passed: 3, total: 3 });
+    expect(verdict.cases.map((t: { visible: boolean; status: string }) => [t.visible, t.status])).toEqual([
+      [true, "passed"],
+      [false, "passed"],
+      [false, "passed"],
+    ]);
+    expect(verdict.cases[0]).toMatchObject({ input: "[2,7,11,15]\n9", expectedOutput: "[0,1]", result: "[1,0]" });
+    expect(verdict.cases[1]).toMatchObject({ input: null, expectedOutput: null, stdout: null, result: null, stderr: null });
+    expect(res.payload).not.toContain("31337");
+
+    // The receipt opens once the attempt closes.
+    await call("POST", token, "/attempts/me/submit");
+    const ledger = (await call("GET", token, "/attempts/me/ledger")).json();
+    const types = ledger.entries.map((e: { type: string }) => e.type);
+    expect(types).toContain("answer_submitted");
+    expect(ledger.entries.find((e: { type: string }) => e.type === "code_tested").event).toMatchObject({ passed: 3, total: 3, score: 10 });
+  });
+
+  it("reports only the visible tests when the exam says so", async () => {
+    const { token } = await startIn("visible-only");
+    const wrong = TWO_SUM.replace("return [i, seen[target - n]]", "return [0, 1]");
+    const verdict = (await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: wrong })).json();
+    expect(verdict).toMatchObject({ tested: true, compiled: true, passed: null, total: null });
+    expect(verdict.cases).toHaveLength(1);
+    expect(verdict.cases[0]).toMatchObject({ visible: true, status: "passed" });
+  });
+
+  it("scores a Java solution by the same tests", async () => {
+    const { attemptId, token } = await startIn("leetcode-round");
+    const java = [
+      "class Solution {",
+      "    public int[] twoSum(int[] nums, int target) {",
+      "        for (int i = 0; i < nums.length; i++)",
+      "            for (int j = i + 1; j < nums.length; j++)",
+      "                if (nums[i] + nums[j] == target) return new int[] {i, j};",
+      "        return new int[0];",
+      "    }",
+      "}",
+    ].join("\n");
+    const verdict = (await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "java", source: java })).json();
+    expect(verdict).toMatchObject({ passed: 3, total: 3 });
+    await call("POST", token, "/attempts/me/submit");
+    expect((await call("POST", owner, `/attempts/${attemptId}/grade`)).json()).toEqual({ total: 10 });
+  }, 30_000);
+
+  it("commits the answer even when the runner is down, and says it was not tested", async () => {
+    const { token } = await startIn("leetcode-round");
+    runnerDown = true;
+    const res = await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: TWO_SUM });
+    expect(res.json()).toEqual({ tested: false, reason: "runner_unavailable" });
+    const state = (await call("GET", token, "/attempts/me")).json();
+    expect(state.answers.map((a: { questionId: string }) => a.questionId)).toEqual(["two-sum"]);
+  });
+
+  it("refuses a language the question does not offer, before committing anything", async () => {
+    const { token } = await startIn("leetcode-round");
+    const res = await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "c", source: "int x;" });
+    expect(res.statusCode).toBe(409);
+    expect((await call("GET", token, "/attempts/me")).json().answers).toEqual([]);
+  });
 });
 
 describe("the two language lists", () => {

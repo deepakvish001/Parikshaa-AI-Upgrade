@@ -286,6 +286,7 @@ sitting is over.
 | Sections with their own time | implemented — `section_started` / `section_closed` events, `POST /attempts/me/sections/next`; candidate page shows one part at a time |
 | Coding questions and sandboxed execution | implemented — `packages/runner`; `POST /attempts/me/run`; tested on commit, graded by tests |
 | Pictures, passages, negative marking, several right options | implemented — `POST /media`, `GET /media/:sha256` (content-addressed); `passage`, `negativeMarks`, `correctIndices`, `partialCredit` on a question; question palette and mark for review on the candidate page |
+| Function questions, checkers, Run and Submit | implemented: `packages/core/src/signature.ts` (starters and callers for five languages), `packages/runner/src/judge.ts`, `POST /attempts/me/code/submit`; a hidden test reaches the candidate as its verdict alone |
 | Code similarity | implemented — `packages/core/src/similarity.ts` (winnowing), `GET /exams/:id/similarity`; evidence for a person, never a mark |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
@@ -293,7 +294,8 @@ sitting is over.
 | Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
 | Identity check and camera proctoring | implemented, per exam and off by default — photo + photo ID reviewed by a person (`identity_reviewed` in the ledger), webcam photos, browser events |
-| Candidate accounts / enrolment | out of scope (§2) |
+| Practice sites | implemented — `/practice/<site>` for learners with accounts of their own (`packages/api/src/practice.ts`, migration 0013): problems published from the bank, Run and Submit, editorials, progress and streaks, a leaderboard, ICPC-scored contests, moderated discussion; the console's Practice page. Separate from exams and from the ledger (ROADMAP §15) |
+| Candidate accounts / enrolment | out of scope (§2); a practice learner's account is not a candidate's |
 
 Complete end to end and deployable, for more than one institution at once: an
 institution's staff sign in with their own accounts and roles, author an exam,

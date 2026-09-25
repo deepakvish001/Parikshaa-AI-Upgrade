@@ -129,7 +129,7 @@ describe("low-bandwidth mode", () => {
   it("answers code in a plain text area, never downloading the editor", async () => {
     localStorage.setItem("parikshaa.lite", "1");
     renderApp(<App client={stubClient()} />);
-    const box = await screen.findByRole("textbox", { name: "Add two numbers" });
+    const box = await screen.findByRole("textbox", { name: /^Code for question \d+$/ });
     expect(box.tagName).toBe("TEXTAREA");
     expect(document.querySelector(".cm-editor")).toBeNull();
   });

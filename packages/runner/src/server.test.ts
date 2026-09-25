@@ -4,7 +4,7 @@ import { buildRunnerServer } from "./server.js";
 
 const TOKEN = "t".repeat(40);
 const request: RunRequest = { language: "python", source: "print(1)", tests: [{ id: "t", input: "", expected: "1" }] };
-const ok: RunResult = { compiled: true, tests: [{ id: "t", status: "passed", timeMs: 1, stdout: "1", stderr: "" }] };
+const ok: RunResult = { compiled: true, tests: [{ id: "t", status: "passed", timeMs: 1, memoryKb: 1024, stdout: "1", stderr: "" }] };
 
 describe("the runner service", () => {
   it("refuses a request without its token", async () => {
@@ -20,6 +20,17 @@ describe("the runner service", () => {
     expect(
       (await app.inject({ method: "POST", url: "/run", headers, payload: { ...request, limits: { timeMs: 60_000 } } })).statusCode,
     ).toBe(400);
+  });
+
+  it("takes a checker and a result marker, and refuses a checker it does not know", async () => {
+    let seen: RunRequest | undefined;
+    const app = buildRunnerServer({ token: TOKEN, workRoot: "/tmp", slots: [], run: async (r) => ((seen = r), ok) });
+    const headers = { authorization: `Bearer ${TOKEN}` };
+    const payload = { ...request, checker: { kind: "json", tolerance: 1e-6, unordered: "top" }, resultMarker: "\u001eRESULT" };
+    expect((await app.inject({ method: "POST", url: "/run", headers, payload })).statusCode).toBe(200);
+    expect(seen).toMatchObject({ checker: { kind: "json", unordered: "top" }, resultMarker: "\u001eRESULT" });
+    const unknown = { ...request, checker: { kind: "regex", pattern: ".*" } };
+    expect((await app.inject({ method: "POST", url: "/run", headers, payload: unknown })).statusCode).toBe(400);
   });
 
   it("gives each concurrent run its own slot, never two at once", async () => {

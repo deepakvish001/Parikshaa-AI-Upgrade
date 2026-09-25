@@ -598,6 +598,54 @@ export class ConsoleClient {
     });
   }
 
+  // --- practice sites (ROADMAP §15) --------------------------------------------
+
+  async practiceSite(): Promise<PracticeSiteSettings | null> {
+    return (await this.#request<{ site: PracticeSiteSettings | null }>("/practice-admin/site")).site;
+  }
+
+  savePracticeSite(site: PracticeSiteSettings): Promise<PracticeSiteSettings> {
+    return this.#request("/practice-admin/site", { method: "PUT", body: JSON.stringify(site) });
+  }
+
+  async practiceProblems(): Promise<readonly PracticeProblem[]> {
+    return (await this.#request<{ problems: PracticeProblem[] }>("/practice-admin/problems")).problems;
+  }
+
+  publishProblem(input: { bankQuestionId: string; editorial?: string; difficulty?: Difficulty; title?: string }): Promise<PracticeProblem> {
+    return this.#request("/practice-admin/problems", { method: "POST", body: JSON.stringify(input) });
+  }
+
+  updateProblem(id: string, patch: PracticeProblemPatch): Promise<PracticeProblem> {
+    return this.#request(`/practice-admin/problems/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) });
+  }
+
+  async practiceContests(): Promise<readonly PracticeContest[]> {
+    return (await this.#request<{ contests: PracticeContest[] }>("/practice-admin/contests")).contests;
+  }
+
+  saveContest(id: string | null, draft: PracticeContestDraft): Promise<PracticeContest> {
+    return id === null
+      ? this.#request("/practice-admin/contests", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/contests/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async practiceLearners(): Promise<readonly PracticeLearner[]> {
+    return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
+  }
+
+  async practiceComments(): Promise<readonly PracticeComment[]> {
+    return (await this.#request<{ comments: PracticeComment[] }>("/practice-admin/comments")).comments;
+  }
+
+  async replyInPractice(problemSlug: string, body: string): Promise<void> {
+    await this.#request("/practice-admin/comments", { method: "POST", body: JSON.stringify({ problemSlug, body }) });
+  }
+
+  async hideComment(id: string, hidden: boolean): Promise<void> {
+    await this.#request(`/practice-admin/comments/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify({ hidden }) });
+  }
+
   // --- scheduling and inviting -------------------------------------------------
 
   getWindow(examId: string): Promise<ExamWindow | null> {
@@ -933,4 +981,79 @@ export interface BillingOrder {
   readonly taxPaise: number;
   readonly amountPaise: number;
   readonly supplierName: string;
+}
+
+// --- practice sites (ROADMAP §15) ---------------------------------------------------
+
+export interface PracticeSiteSettings {
+  readonly slug: string;
+  readonly title: string;
+  readonly welcome: string;
+  readonly open: boolean;
+}
+
+export interface PracticeProblem {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly question: Question;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+  readonly editorial: string;
+  readonly fromBank: string | null;
+  readonly position: number;
+  readonly published: boolean;
+  readonly updatedAt: string;
+  readonly submissions: number;
+  readonly solvedBy: number;
+}
+
+export interface PracticeProblemPatch {
+  readonly title?: string;
+  readonly slug?: string;
+  readonly difficulty?: Difficulty;
+  readonly tags?: readonly string[];
+  readonly editorial?: string;
+  readonly published?: boolean;
+}
+
+export interface PracticeContest {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly problemIds: readonly string[];
+  readonly state: "upcoming" | "running" | "ended";
+}
+
+export interface PracticeContestDraft {
+  readonly title: string;
+  readonly description: string;
+  readonly startsAt: string;
+  readonly endsAt: string;
+  readonly problemIds: readonly string[];
+}
+
+export interface PracticeLearner {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+  readonly joinedAt: string;
+  readonly solved: number;
+  readonly submissions: number;
+  readonly lastActiveAt: string | null;
+}
+
+export interface PracticeComment {
+  readonly id: string;
+  readonly problemId: string;
+  readonly problemTitle: string;
+  readonly problemSlug: string;
+  readonly authorName: string;
+  readonly fromStaff: boolean;
+  readonly body: string;
+  readonly createdAt: string;
+  readonly hidden: boolean;
 }

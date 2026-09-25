@@ -1,0 +1,814 @@
+/*
+ * A practice site (ROADMAP §15). Wider than an exam page — a problem list and a
+ * coding workspace want the room — and calmer than a scoreboard usually is:
+ * difficulty is told by a word as well as a colour, and nothing flashes.
+ */
+
+.practice {
+  --practice-width: 72rem;
+  min-height: 100vh;
+  background: var(--bg);
+}
+.practice .topbar-inner {
+  max-width: var(--practice-width);
+}
+.practice.wide .topbar-inner {
+  max-width: none;
+}
+.practice-bar .home {
+  display: inline-flex;
+  color: inherit;
+  text-decoration: none;
+}
+.practice-nav {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+}
+.practice-nav a {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.practice-nav a:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+.practice-nav a[aria-current="page"] {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.practice-bar .me {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  text-decoration: none;
+}
+.practice-bar .button svg {
+  width: 1rem;
+  height: 1rem;
+  vertical-align: -3px;
+}
+.avatar-dot {
+  display: inline-grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--text-on-primary);
+  background: var(--primary);
+  border-radius: var(--radius-full);
+}
+.avatar-dot.big {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--text-xl);
+}
+
+.practice-main {
+  max-width: var(--practice-width);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5) var(--space-10);
+}
+.practice-main.wide {
+  max-width: none;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+.practice-main h1 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-2xl);
+}
+.practice-main .card {
+  margin-bottom: var(--space-4);
+}
+.practice .empty {
+  padding: var(--space-6) 0;
+  text-align: center;
+}
+.crumbs {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+}
+.crumbs a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+/* --- the problem set ------------------------------------------------------ */
+
+.practice-hero {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+.practice-hero > div:first-child {
+  flex: 1 1 24rem;
+}
+.hero-cta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: 18rem;
+}
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.filters .search {
+  position: relative;
+  flex: 1 1 16rem;
+}
+.filters .search svg {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  width: 1rem;
+  height: 1rem;
+  color: var(--text-subtle);
+  transform: translateY(-50%);
+}
+.filters .search input {
+  width: 100%;
+  padding-left: 2.25rem;
+}
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-bottom: var(--space-3);
+}
+.chip.static {
+  cursor: default;
+}
+.problem-table table td {
+  vertical-align: middle;
+}
+.problem-table tr.striped td {
+  background: var(--surface-2);
+}
+.status-col {
+  width: 2.5rem;
+  text-align: center;
+}
+.problem-link {
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  text-decoration: none;
+}
+.problem-link:hover {
+  color: var(--primary);
+}
+.problem-table .tags {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.standing {
+  width: 1.1rem;
+  height: 1.1rem;
+  vertical-align: middle;
+}
+.standing.solved {
+  color: var(--success);
+}
+.standing.attempted {
+  color: var(--warning);
+}
+.standing.none {
+  display: inline-block;
+}
+
+.difficulty {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.difficulty.easy {
+  color: var(--success);
+}
+.difficulty.medium {
+  color: var(--warning);
+}
+.difficulty.hard {
+  color: var(--danger);
+}
+
+/* --- solved counts, streak, heatmap --------------------------------------- */
+
+.solved-summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-5);
+  align-items: center;
+}
+.solved-summary.compact {
+  min-width: 20rem;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.solved-total {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0 var(--space-1);
+}
+.solved-total strong {
+  font-size: var(--text-3xl);
+  line-height: 1;
+}
+.solved-total .eyebrow {
+  grid-column: 1 / -1;
+}
+.by-difficulty {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+.by-difficulty > div {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+.by-difficulty dt {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.by-difficulty .easy dt {
+  color: var(--success);
+}
+.by-difficulty .medium dt {
+  color: var(--warning);
+}
+.by-difficulty .hard dt {
+  color: var(--danger);
+}
+.by-difficulty dd {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.meter {
+  height: 0.4rem;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-full);
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  background: currentColor;
+  border-radius: inherit;
+}
+.by-difficulty .easy .meter {
+  color: var(--success);
+}
+.by-difficulty .medium .meter {
+  color: var(--warning);
+}
+.by-difficulty .hard .meter {
+  color: var(--danger);
+}
+.streak {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--text);
+}
+.streak svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--saffron-600);
+}
+
+.progress-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+.progress-head h1 {
+  margin: 0;
+}
+.progress-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+}
+.figures-card .figures {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.heatmap {
+  --cell: 0.8rem;
+  margin: 0;
+  overflow-x: auto;
+}
+.heatmap-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, var(--cell));
+  gap: 3px;
+  width: max-content;
+}
+.heatmap .cell {
+  display: inline-block;
+  width: var(--cell);
+  height: var(--cell);
+  background: var(--surface-sunken);
+  border-radius: 2px;
+}
+.heatmap .cell.future {
+  visibility: hidden;
+}
+.heatmap .cell.l1 {
+  background: color-mix(in srgb, var(--success) 30%, var(--surface));
+}
+.heatmap .cell.l2 {
+  background: color-mix(in srgb, var(--success) 55%, var(--surface));
+}
+.heatmap .cell.l3 {
+  background: color-mix(in srgb, var(--success) 78%, var(--surface));
+}
+.heatmap .cell.l4 {
+  background: var(--success);
+}
+.heatmap figcaption {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+}
+.heatmap figcaption .cell {
+  --cell: 0.7rem;
+}
+.recent {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recent li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.recent li:last-child {
+  border-bottom: 0;
+}
+.recent .notice {
+  margin-left: auto;
+  font-size: var(--text-sm);
+}
+.danger-zone button.danger {
+  color: var(--danger);
+  background: var(--surface);
+  border-color: var(--danger-border);
+}
+.danger-zone button.danger:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+/* --- one problem ------------------------------------------------------------ */
+
+.problem-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 3.75rem - var(--space-3) - var(--space-4));
+  min-height: 34rem;
+}
+.problem-page .crumbs {
+  flex: none;
+}
+.problem-page > .workspace.standalone,
+.problem-page > .choice-layout {
+  flex: 1;
+  min-height: 0;
+}
+.workspace.standalone {
+  gap: var(--space-2);
+}
+.workspace.standalone .ws-main {
+  flex: 1;
+  min-height: 0;
+}
+.workspace.standalone .ws-statement {
+  padding: 0;
+}
+.workspace.standalone .ws-code {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: var(--space-2);
+}
+.workspace.standalone .ws-code .ws-bar {
+  margin: 0;
+}
+.workspace.standalone .ws-editor {
+  flex: 1;
+  min-height: 0;
+}
+.workspace.standalone .code-editor .cm-editor {
+  max-height: none;
+}
+.workspace.standalone .ws-console {
+  height: 100%;
+  overflow: auto;
+}
+.ws-actions .blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+}
+.ws-actions .blocked svg {
+  width: 1rem;
+  height: 1rem;
+}
+.problem-tabs {
+  overflow-x: auto;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3) 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.problem-tabs button {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+/* Plain tabs and rows, not the brand's filled buttons: hover tints them rather than filling them. */
+.problem-tabs button:hover:not(:disabled),
+.submission-row:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.problem-tabs button.on:hover:not(:disabled) {
+  border-bottom-color: var(--primary);
+}
+.problem-tabs button.on {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  border-bottom-color: var(--primary);
+}
+.problem-panel {
+  padding: var(--space-4) var(--space-5);
+}
+.problem-head h1 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xl);
+}
+.problem-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-sm);
+}
+.solved-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.solved-banner svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--success);
+}
+.alert.ok {
+  color: var(--text);
+  background: var(--success-soft);
+  border-color: var(--success-border);
+}
+.contest-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: var(--weight-medium);
+}
+.contest-banner svg {
+  width: 1rem;
+  height: 1rem;
+  color: var(--saffron-600);
+}
+.locked {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-5);
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+.locked svg {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+}
+.locked p {
+  margin: 0;
+}
+.submissions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.submissions li {
+  border-bottom: 1px solid var(--border);
+}
+.submission-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  width: 100%;
+  padding: var(--space-2) 0;
+  text-align: left;
+  color: inherit;
+  background: none;
+  border: 0;
+}
+.submission-row .notice {
+  font-size: var(--text-sm);
+}
+.verdict {
+  font-weight: var(--weight-semibold);
+}
+.verdict.ok {
+  color: var(--success);
+}
+.verdict.bad {
+  color: var(--danger);
+}
+.submission-code {
+  padding-bottom: var(--space-3);
+}
+.submission-code pre {
+  max-height: 18rem;
+  overflow: auto;
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}
+.discussion .comment-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+.discussion .comment-form button {
+  justify-self: start;
+}
+.discussion textarea {
+  min-height: 5rem;
+}
+.comments {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.comments li {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.comments li.staff {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--primary);
+}
+.comment-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+}
+.comment-by svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  vertical-align: -1px;
+}
+.choice-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+  overflow: auto;
+}
+.choice-layout > .card:first-child {
+  padding: 0;
+  overflow: hidden;
+}
+.choice-answer h2 {
+  margin-top: 0;
+  font-size: var(--text-lg);
+}
+.choice-answer .submit {
+  background: var(--success);
+  border-color: var(--success);
+}
+.sign-in-needed {
+  margin: var(--space-3) 0;
+}
+.sign-in-needed p {
+  margin-top: 0;
+}
+
+/* --- contests and the leaderboard -------------------------------------------- */
+
+.contest-group h2 {
+  margin: var(--space-5) 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+.contest-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contest-card {
+  margin: 0 !important;
+  border-top: 3px solid var(--border-strong);
+}
+.contest-card.running {
+  border-top-color: var(--success);
+}
+.contest-card.upcoming {
+  border-top-color: var(--primary);
+}
+.contest-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  color: var(--text);
+  text-decoration: none;
+}
+.countdown {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  color: var(--primary);
+}
+.countdown.live {
+  color: var(--success);
+}
+.countdown.big {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.contest-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.contest-head h1 {
+  margin: 0;
+}
+.label-col {
+  width: 2.5rem;
+}
+.scoreboard td.cell-ok {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.scoreboard td.cell-bad {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+tr.you td {
+  background: var(--primary-soft);
+}
+tr.you .pill,
+td .pill {
+  margin-left: var(--space-2);
+}
+.medal {
+  display: inline-grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  font-weight: var(--weight-bold);
+  border-radius: var(--radius-full);
+}
+.medal.m1 {
+  background: #f6d365;
+  color: #5b4200;
+}
+.medal.m2 {
+  background: #dfe3ea;
+  color: #37404d;
+}
+.medal.m3 {
+  background: #efc39c;
+  color: #5a3314;
+}
+
+/* --- accounts ------------------------------------------------------------------ */
+
+.account-page {
+  display: grid;
+  place-items: start center;
+  padding-top: var(--space-6);
+}
+.account-form {
+  display: grid;
+  gap: var(--space-3);
+  width: min(26rem, 100%);
+}
+.account-form h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.account-form .field {
+  display: grid;
+  gap: var(--space-1);
+}
+.account-form .hint {
+  font-size: var(--text-xs);
+}
+.account-form .switch {
+  margin: 0;
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+@media (max-width: 52rem) {
+  .practice-nav {
+    order: 10;
+    width: 100%;
+    margin: 0;
+  }
+  .practice-bar .topbar-inner {
+    flex-wrap: wrap;
+  }
+  .practice-bar .exam-name,
+  .practice-bar .divider {
+    display: none;
+  }
+  .progress-grid,
+  .choice-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* On a phone the problem stacks above the editor, and the page scrolls. */
+  .problem-page {
+    height: auto;
+  }
+  .workspace.standalone .split {
+    flex-direction: column;
+    height: auto;
+  }
+  .workspace.standalone .split-pane {
+    flex-basis: auto !important;
+  }
+  .workspace.standalone .split-divider {
+    display: none;
+  }
+  .workspace.standalone .ws-statement {
+    height: auto;
+  }
+  .workspace.standalone .ws-editor {
+    min-height: 18rem;
+  }
+  .workspace.standalone .ws-console {
+    min-height: 16rem;
+  }
+}

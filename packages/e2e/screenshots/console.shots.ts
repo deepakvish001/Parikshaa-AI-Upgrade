@@ -4,7 +4,7 @@ import { hashPassword } from "@parikshaa/api";
 import { seedBilledOrganisation } from "../src/database.js";
 import { local, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
-import { aptitudePaper, CODE_QUESTION, codeAnswer, RUN_COPIED, RUN_GROUPBY, RUN_OFF_BY_ONE, RUN_ORIGINAL, RUN_WHILE } from "./fixtures.js";
+import { aptitudePaper, CODE_QUESTION, codeAnswer, MERGE_INTERVALS, RUN_COPIED, RUN_GROUPBY, RUN_OFF_BY_ONE, RUN_ORIGINAL, RUN_WHILE } from "./fixtures.js";
 import { shoot, shootPart } from "./shoot.js";
 
 /** The console, page by page, over an organisation seeded the way a real one fills up. */
@@ -123,6 +123,13 @@ test("every page of the console", async ({ page, browser, request }) => {
     names: ["Harsh Vardhan"],
   });
 
+  await seedSitting(request, { owner: org,
+    questions: [MERGE_INTERVALS],
+    title: "LeetCode Round — SDE Intern 2026",
+    refs: ["LC01"],
+    names: ["Ishaan Malhotra"],
+  });
+
   const proctored = await seedSitting(request, { owner: org,
     questions: [SHORT],
     title: "Scholarship Test 2026 (proctored)",
@@ -161,6 +168,13 @@ test("every page of the console", async ({ page, browser, request }) => {
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
   await page.getByText("Passage — The monsoon").first().scrollIntoViewIfNeeded();
   await shoot(page, "console-21-aptitude-editor");
+
+  await nav(page, "Exams");
+  await page.getByRole("row").filter({ hasText: "LeetCode Round" }).getByRole("button", { name: "Edit" }).click();
+  await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
+  await page.getByText("What candidates start from").click();
+  await page.getByText("Input and output format, constraints (Markdown)").click();
+  await shoot(page, "console-23-function-question");
 
   await nav(page, "Exams");
   await page.getByRole("button", { name: TITLE }).click();

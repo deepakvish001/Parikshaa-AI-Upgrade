@@ -17,6 +17,8 @@ import { RunnerUnavailable } from "@parikshaa/runner";
 import { ExamFrozen, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
+import { PracticeError, type PracticeService } from "./practice.js";
+import { registerPracticeRoutes } from "./practice-routes.js";
 import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
@@ -50,6 +52,8 @@ export interface ServerOptions {
   readonly bank: QuestionBank;
   /** Pictures in questions and passages. */
   readonly media: QuestionMedia;
+  /** Practice sites (ROADMAP §15). Absent: no practice routes. */
+  readonly practice?: PracticeService;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -181,6 +185,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
         { name: "Privacy", description: "The DPDP Act: the notice candidates agree to, retention, and erasure." },
         { name: "Billing", description: "Prepaid attempt credits, Razorpay payments and GST tax invoices." },
+        { name: "Practice", description: "An institution's practice site, as its learners use it: problems, Run and Submit, progress, contests and discussion. No answer key reaches it." },
+        { name: "Practice (staff)", description: "Running a practice site: publishing problems from the bank, editorials, contests, learners and moderation." },
         { name: "Proctoring", description: "Camera proctoring an exam's author turns on: identity photos, webcam photos, browser events. Observations, never verdicts." },
         {
           name: "Greenhouse",
@@ -195,6 +201,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
             description: "A staff session token (`pks_…`) or an API key (`pkk_…`).",
           },
           attemptToken: { type: "http", scheme: "bearer", description: "A candidate's attempt-scoped token." },
+          learnerAuth: { type: "http", scheme: "bearer", description: "A practice learner's session token (`pl_…`), for one site." },
           greenhouseKey: {
             type: "http",
             scheme: "basic",
@@ -299,6 +306,21 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   };
 
   app.setErrorHandler(async (error, request, reply) => {
+    if (error instanceof PracticeError) {
+      const status = {
+        not_found: 404,
+        closed: 404,
+        invalid: 422,
+        not_practicable: 422,
+        email_taken: 409,
+        slug_taken: 409,
+        language_not_offered: 409,
+        sign_in_failed: 401,
+        too_many_runs: 429,
+        contest_not_started: 403,
+      }[error.code];
+      return reply.code(status).send({ error: error.code, message: error.message });
+    }
     if (error instanceof AttemptError) {
       // 410 for an expired attempt: the window is gone, not merely a bad
       // request against the current state.
@@ -712,6 +734,27 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       },
     );
 
+    routes.post(
+      "/attempts/me/code/submit",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Commit a code answer and test it against every test",
+          description:
+            "The answer is committed first, as with any answer, and stands whatever the tests find. What comes back is as much as the exam tells: every test's verdict, a hidden test's without its content — or the visible tests' only.",
+          security: [{ attemptToken: [] }],
+          body: S.submitCodeBody,
+          response: { 200: S.submitCodeResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        const { questionId: q, language, source } = request.body;
+        return reply.send(await service.submitCode(claims, questionId(q), { language, source }));
+      },
+    );
+
     routes.put(
       "/attempts/me/drafts/:questionId",
       {
@@ -930,8 +973,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     );
 
     registerBankRoutes(routes, { service, bank: options.bank, media: options.media, staff });
-
     const throttle = options.loginThrottle ?? new LoginThrottle();
+    if (options.practice !== undefined) registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle });
+
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
@@ -956,6 +1000,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
     void app.register(fastifyStatic, { root: consoleRoot, prefix: "/console/" });
     void app.register(fastifyStatic, { root: web, prefix: "/", decorateReply: false });
+
+    // A practice site's pages share their addresses with its API: /practice/<site>
+    // is a page to a browser and JSON to the app, which calls it under /api.
+    // A browser's navigation there gets the web client's shell.
+    app.addHook("onRequest", async (request, reply) => {
+      if (request.method !== "GET" || !request.originalUrl.startsWith("/practice/")) return;
+      if (request.headers.accept?.includes("text/html") !== true) return;
+      return reply.sendFile("index.html", web);
+    });
 
     // Both clients hold their own view state, so a deep link or a reload must
     // return the shell rather than a 404. API routes are matched first, and
