@@ -33,6 +33,7 @@ import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
 import { PracticeService } from "../practice.js";
+import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
@@ -86,7 +87,7 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
-  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler };
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler };
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
@@ -115,6 +116,8 @@ export async function wire(
      * expire when a test moves `now` on by days; a second-factor test needs it.
      */
     readonly staffClock?: boolean;
+    /** Stands in for Google in a test of signing in with it. */
+    readonly googleIssuer?: string;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -186,6 +189,23 @@ export async function wire(
     ...(options.http === undefined ? {} : { http: options.http }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const practice = new PracticeService({
+    store: new PracticeStore(sql),
+    bank: new QuestionBank(sql),
+    ...(options.runner === undefined ? {} : { runner: options.runner }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const practiceIdentity = new PracticeIdentity({
+    store: new PracticeStore(sql),
+    practice,
+    secrets,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    mailer: options.mailer ?? null,
+    ...(options.http === undefined ? {} : { http: options.http }),
+    ...(options.googleIssuer === undefined ? {} : { issuer: options.googleIssuer }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -214,12 +234,8 @@ export async function wire(
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
-    practice: new PracticeService({
-      store: new PracticeStore(sql),
-      bank: new QuestionBank(sql),
-      ...(options.runner === undefined ? {} : { runner: options.runner }),
-      ...(options.now === undefined ? {} : { now: options.now }),
-    }),
+    practice,
+    practiceIdentity,
     ...options.server,
   });
   await app.ready();
@@ -232,7 +248,7 @@ export async function wire(
     razorpay,
     security,
     app,
-    handlers: { ...integrations.handlers, staff_email: security.resetMail },
+    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
   };
 }
 

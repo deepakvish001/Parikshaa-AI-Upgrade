@@ -15,6 +15,7 @@ import type { Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
+import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer, type ServerOptions } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -99,6 +100,16 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
   const security = new StaffSecurity({ identity, auth, secrets, publicUrl: o.publicUrl, mailer: o.mailer ?? null });
 
   const bank = new QuestionBank(o.sql);
+  const practiceStore = new PracticeStore(o.sql);
+  const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }) });
+  const practiceIdentity = new PracticeIdentity({
+    store: practiceStore,
+    practice,
+    secrets,
+    secret: o.secret,
+    publicUrl: o.publicUrl,
+    mailer: o.mailer ?? null,
+  });
   const app = buildServer({
     service,
     invitations,
@@ -122,7 +133,8 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     identity,
     bank,
     media: new QuestionMedia(o.sql),
-    practice: new PracticeService({ store: new PracticeStore(o.sql), bank, ...(o.runner === undefined ? {} : { runner: o.runner }) }),
+    practice,
+    practiceIdentity,
     ...o.server,
   });
 
@@ -134,7 +146,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
-    handlers: { ...integrations.handlers, staff_email: security.resetMail },
+    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
   });
 
   return { app, worker, privacy, billing };

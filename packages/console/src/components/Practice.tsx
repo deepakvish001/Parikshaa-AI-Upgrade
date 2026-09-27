@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, EyeOff, Eye } from "lucide-react";
 import {
@@ -8,6 +8,7 @@ import {
   type PracticeContest,
   type PracticeProblem,
   type PracticeSiteSettings,
+  type PracticeSimilarity,
 } from "../api.ts";
 
 /**
@@ -23,6 +24,8 @@ export interface PracticeCan {
   readonly manage: boolean;
   readonly write: boolean;
   readonly readLearners: boolean;
+  /** Read learners' code side by side, to compare it. */
+  readonly review?: boolean;
 }
 
 const failure = (error: unknown, fallback: string) =>
@@ -46,8 +49,13 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
           </button>
         ))}
       </div>
-      {tab === "site" ? <SiteSettings client={client} canManage={can.manage} /> : null}
-      {tab === "problems" ? <Problems client={client} canWrite={can.write} /> : null}
+      {tab === "site" ? (
+        <>
+          <SiteSettings client={client} canManage={can.manage} />
+          {can.manage ? <SignInSettings client={client} /> : null}
+        </>
+      ) : null}
+      {tab === "problems" ? <Problems client={client} canWrite={can.write} canReview={can.review === true} /> : null}
       {tab === "contests" ? <Contests client={client} canWrite={can.write} /> : null}
       {tab === "learners" ? <Learners client={client} /> : null}
       {tab === "discussion" ? <Discussion client={client} canWrite={can.write} /> : null}
@@ -139,14 +147,185 @@ function SiteSettings({ client, canManage }: { client: ConsoleClient; canManage:
   );
 }
 
+// --- how learners sign in -------------------------------------------------------------
+
+function SignInSettings({ client }: { client: ConsoleClient }) {
+  const queryClient = useQueryClient();
+  const current = useQuery({ queryKey: ["practice", "sign-in"], queryFn: () => client.practiceSignIn() });
+  const [draft, setDraft] = useState({ requireVerified: false, googleEnabled: false, clientId: "", clientSecret: "" });
+  useEffect(() => {
+    const c = current.data;
+    if (c !== undefined) setDraft((d) => ({ ...d, requireVerified: c.requireVerified, googleEnabled: c.google.enabled, clientId: c.google.clientId ?? "" }));
+  }, [current.data]);
+  const save = useMutation({
+    mutationFn: () =>
+      client.savePracticeSignIn({
+        requireVerified: draft.requireVerified,
+        google: {
+          enabled: draft.googleEnabled,
+          clientId: draft.clientId.trim() === "" ? null : draft.clientId.trim(),
+          ...(draft.clientSecret === "" ? {} : { clientSecret: draft.clientSecret }),
+        },
+      }),
+    onSuccess: async () => {
+      setDraft((d) => ({ ...d, clientSecret: "" }));
+      await queryClient.invalidateQueries({ queryKey: ["practice", "sign-in"] });
+    },
+  });
+  if (current.data === undefined) return null;
+  return (
+    <section className="card" aria-label="How learners sign in">
+      <strong>How learners sign in</strong>
+      <p className="notice">
+        Every learner is sent a link to confirm their email address. You can keep submitting and discussing for those who have — reading problems stays open to
+        everyone — and let learners sign in with their Google account, which confirms the address by itself.
+      </p>
+      <form
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          save.mutate();
+        }}
+      >
+        <label className="inline">
+          <input type="checkbox" checked={draft.requireVerified} onChange={(e) => setDraft({ ...draft, requireVerified: e.target.checked })} /> Only confirmed
+          addresses can submit and comment
+        </label>
+        <label className="inline">
+          <input type="checkbox" checked={draft.googleEnabled} onChange={(e) => setDraft({ ...draft, googleEnabled: e.target.checked })} /> Offer “Continue with
+          Google”
+        </label>
+        {draft.googleEnabled ? (
+          <>
+            <div className="grid">
+              <div className="field">
+                <label htmlFor="google-client">Google OAuth client ID</label>
+                <input id="google-client" value={draft.clientId} onChange={(e) => setDraft({ ...draft, clientId: e.target.value })} />
+              </div>
+              <div className="field">
+                <label htmlFor="google-secret">Client secret</label>
+                <input
+                  id="google-secret"
+                  type="password"
+                  autoComplete="off"
+                  placeholder={current.data.google.secretSet ? "Unchanged" : ""}
+                  value={draft.clientSecret}
+                  onChange={(e) => setDraft({ ...draft, clientSecret: e.target.value })}
+                />
+              </div>
+            </div>
+            {current.data.redirectUri === null ? (
+              <p className="notice">Give the site an address first: Google needs it.</p>
+            ) : (
+              <p className="notice">
+                In Google Cloud Console, create an OAuth client (Web application) and add this authorised redirect URI: <code>{current.data.redirectUri}</code>
+              </p>
+            )}
+          </>
+        ) : null}
+        {save.isError ? <p className="error">{failure(save.error, "Not saved.")}</p> : null}
+        {save.isSuccess ? (
+          <p className="notice" role="status">
+            Saved.
+          </p>
+        ) : null}
+        <div className="row">
+          <button type="submit" disabled={save.isPending}>
+            Save
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+}
+
+// --- similar code between learners ----------------------------------------------------
+
+function LearnerSimilarity({ client, problemId, onClose }: { client: ConsoleClient; problemId: string; onClose: () => void }) {
+  const report = useQuery({ queryKey: ["practice", "similarity", problemId], queryFn: () => client.practiceSimilarity(problemId) });
+  const [open, setOpen] = useState<number | null>(null);
+  const data: PracticeSimilarity | undefined = report.data;
+  return (
+    <div className="evidence similarity-question" aria-label="Similar code">
+      <div className="bar">
+        <strong>Similar code{data === undefined ? "" : ` · ${data.problem.title}`}</strong>
+        <button type="button" className="quiet" onClick={onClose}>
+          Close
+        </button>
+      </div>
+      <p className="notice">
+        Each learner's latest accepted answer, compared once names, comments, layout and the starter code are set aside. Two short answers to a narrow problem can
+        honestly match; this changes nothing a learner sees.
+      </p>
+      {report.isPending ? <p className="notice">Comparing…</p> : null}
+      {report.isError ? <p className="error">{failure(report.error, "Could not compare.")}</p> : null}
+      {data === undefined ? null : data.pairs.length === 0 ? (
+        <p className="notice">
+          {data.compared} answer{data.compared === 1 ? "" : "s"} compared · no two alike enough to look at.
+        </p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Learners</th>
+              <th scope="col">Alike</th>
+              <th scope="col">Language</th>
+              <th scope="col" />
+            </tr>
+          </thead>
+          <tbody>
+            {data.pairs.map((pair, i) => {
+              const percent = Math.round(pair.similarity * 100);
+              return (
+                <Fragment key={`${pair.a.learnerId}:${pair.b.learnerId}`}>
+                  <tr>
+                    <td>
+                      {pair.a.name} <span className="notice">and</span> {pair.b.name}
+                    </td>
+                    <td>
+                      <span className={`pill ${percent >= 90 ? "bad" : "attention"}`}>{percent}%</span>
+                    </td>
+                    <td>{pair.a.language}</td>
+                    <td>
+                      <button type="button" className="quiet" aria-expanded={open === i} onClick={() => setOpen(open === i ? null : i)}>
+                        {open === i ? "Close" : "Compare"}
+                      </button>
+                    </td>
+                  </tr>
+                  {open === i ? (
+                    <tr className="compare-row">
+                      <td colSpan={4}>
+                        <div className="compare" role="group" aria-label={`${pair.a.name} and ${pair.b.name}, side by side`}>
+                          {[pair.a, pair.b].map((side) => (
+                            <figure key={side.learnerId}>
+                              <figcaption>
+                                {side.name} · {side.status === "passed" ? "accepted" : side.status.replace(/_/g, " ")}
+                              </figcaption>
+                              <pre className="code">{side.source}</pre>
+                            </figure>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : null}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 // --- problems ------------------------------------------------------------------------
 
 const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
 
-function Problems({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
+function Problems({ client, canWrite, canReview }: { client: ConsoleClient; canWrite: boolean; canReview: boolean }) {
   const problems = useQuery({ queryKey: ["practice", "problems"], queryFn: () => client.practiceProblems() });
   const site = useQuery({ queryKey: ["practice", "site"], queryFn: () => client.practiceSite() });
   const [editing, setEditing] = useState<string | null>(null);
+  const [comparing, setComparing] = useState<string | null>(null);
   const list = problems.data ?? [];
   return (
     <>
@@ -186,6 +365,12 @@ function Problems({ client, canWrite }: { client: ConsoleClient; canWrite: boole
                       <ProblemEditor client={client} problem={p} onDone={() => setEditing(null)} />
                     </td>
                   </tr>
+                ) : comparing === p.id ? (
+                  <tr key={p.id}>
+                    <td colSpan={6}>
+                      <LearnerSimilarity client={client} problemId={p.id} onClose={() => setComparing(null)} />
+                    </td>
+                  </tr>
                 ) : (
                   <tr key={p.id}>
                     <td>
@@ -209,10 +394,15 @@ function Problems({ client, canWrite }: { client: ConsoleClient; canWrite: boole
                     <td>{p.published ? <span className="pill ok">Published</span> : <span className="pill">Hidden</span>}</td>
                     <td className="num">{p.submissions}</td>
                     <td className="num">{p.solvedBy}</td>
-                    <td>
+                    <td className="actions">
                       {canWrite ? (
                         <button type="button" className="secondary" onClick={() => setEditing(p.id)} aria-label={`Edit ${p.title}`}>
                           Edit
+                        </button>
+                      ) : null}
+                      {canReview && p.question.kind === "code" ? (
+                        <button type="button" className="quiet" onClick={() => setComparing(p.id)} aria-label={`Similar code for ${p.title}`}>
+                          Similar code
                         </button>
                       ) : null}
                     </td>

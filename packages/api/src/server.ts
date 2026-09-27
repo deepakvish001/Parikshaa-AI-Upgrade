@@ -19,6 +19,8 @@ import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import { registerPracticeRoutes } from "./practice-routes.js";
+import type { PracticeIdentity } from "./practice-identity.js";
+import { registerPracticeIdentityRoutes } from "./practice-identity-routes.js";
 import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
@@ -56,6 +58,8 @@ export interface ServerOptions {
   readonly media: QuestionMedia;
   /** Practice sites (ROADMAP §15). Absent: no practice routes. */
   readonly practice?: PracticeService;
+  /** Practice learners' email verification and Google sign-in. */
+  readonly practiceIdentity?: PracticeIdentity;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -375,6 +379,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         sign_in_failed: 401,
         too_many_runs: 429,
         contest_not_started: 403,
+        email_not_verified: 403,
       }[error.code];
       return reply.code(status).send({ error: error.code, message: error.message });
     }
@@ -1031,7 +1036,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
     registerBankRoutes(routes, { service, bank: options.bank, media: options.media, staff });
     const throttle = options.loginThrottle ?? new LoginThrottle();
-    if (options.practice !== undefined) registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle });
+    if (options.practice !== undefined) {
+      const identity = options.practiceIdentity;
+      registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }) });
+      if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
+    }
 
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });

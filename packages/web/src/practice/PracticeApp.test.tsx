@@ -43,7 +43,7 @@ beforeEach(() => {
     "GET /practice/nit-practice/problems/stable-sort/comments": () => ({ body: { comments: [] } }),
     "GET /practice/nit-practice/me": (init) =>
       new Headers(init.headers).get("authorization") === "Bearer pl_good"
-        ? { body: { id: "l1", name: "Asha", email: "asha@example.com" } }
+        ? { body: { id: "l1", name: "Asha", email: "asha@example.com", emailVerified: true } }
         : { status: 401, body: { error: "sign_in_required" } },
   };
   vi.stubGlobal(
@@ -342,5 +342,40 @@ describe("progress", () => {
     await userEvent.click(screen.getByRole("button", { name: "Delete my account" }));
     await waitFor(() => expect(deleted).toBe(true));
     await waitFor(() => expect(localStorage.getItem("parikshaa.practice.nit-practice.session")).toBeNull());
+  });
+});
+
+describe("who a learner is (ROADMAP §15)", () => {
+  it("offers Google on the sign-in page when the site has it", async () => {
+    routes["GET /practice/nit-practice/sign-in-options"] = () => ({ body: { google: true, requireVerified: false } });
+    open("/practice/nit-practice/signin");
+    const google = await screen.findByRole("link", { name: "Continue with Google" });
+    expect(google).toHaveAttribute("href", "/api/practice/nit-practice/auth/google");
+  });
+
+  it("keeps the session Google sent back, and forgets it from the address", async () => {
+    open("/practice/nit-practice#session=pl_good");
+    expect(window.location.hash).toBe("");
+    expect(await screen.findByText("Asha")).toBeInTheDocument();
+    expect(calls.some((c) => c.path === "/practice/nit-practice/me" && c.auth === "Bearer pl_good")).toBe(true);
+  });
+
+  it("follows a confirmation link once, and says so", async () => {
+    routes["POST /practice/nit-practice/verify"] = () => ({ body: { ok: true } });
+    open("/practice/nit-practice?verify=l1.abc");
+    expect(await screen.findByRole("status")).toHaveTextContent("Your email address is confirmed.");
+    expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/verify")?.body).toEqual({ token: "l1.abc" });
+    expect(window.location.search).toBe("");
+  });
+
+  it("asks an unconfirmed learner to confirm, and sends the link again", async () => {
+    localStorage.setItem("parikshaa.practice.nit-practice.session", "pl_new");
+    routes["GET /practice/nit-practice/me"] = () => ({ body: { id: "l2", name: "Ravi", email: "ravi@example.com", emailVerified: false } });
+    routes["GET /practice/nit-practice/sign-in-options"] = () => ({ body: { google: false, requireVerified: true } });
+    routes["POST /practice/nit-practice/verify/resend"] = () => ({ status: 202, body: { ok: true } });
+    open("/practice/nit-practice");
+    expect(await screen.findByText(/Confirm your email address to submit/)).toHaveTextContent("ravi@example.com");
+    await userEvent.click(screen.getByRole("button", { name: "Send the link again" }));
+    expect(await screen.findByText(/Sent. Check your inbox/)).toBeInTheDocument();
   });
 });

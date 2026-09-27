@@ -10,6 +10,7 @@ import { InvitationService } from "./invitation-service.js";
 import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
+import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
@@ -54,6 +55,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     publicUrl: "https://example.invalid",
   });
   const secrets = new StaffSecrets("x".repeat(40));
+  const practice = new PracticeService({ store: new PracticeStore(unusable), bank: new QuestionBank(unusable) });
   const auth = new StaffAuth(identity, { secrets });
   const app = buildServer({
     service,
@@ -71,7 +73,8 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     identity,
     bank: new QuestionBank(unusable),
     media: new QuestionMedia(unusable),
-    practice: new PracticeService({ store: new PracticeStore(unusable), bank: new QuestionBank(unusable) }),
+    practice,
+    practiceIdentity: new PracticeIdentity({ store: new PracticeStore(unusable), practice, secrets, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
   });
 
   await app.ready();

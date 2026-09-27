@@ -812,3 +812,53 @@ td .pill {
     min-height: 16rem;
   }
 }
+
+/* --- who a learner is: confirming an email, signing in with Google (ROADMAP §15) --- */
+
+.practice-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.practice-notice.ok {
+  border-left-color: var(--success);
+}
+
+.practice-notice.error {
+  border-left-color: var(--danger);
+}
+
+.practice-notice.verify {
+  border-left-color: var(--warning);
+}
+
+.account-form a.google {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  text-decoration: none;
+}
+
+.account-form .or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.account-form .or::before,
+.account-form .or::after {
+  content: "";
+  flex: 1;
+  border-top: 1px solid var(--border);
+}

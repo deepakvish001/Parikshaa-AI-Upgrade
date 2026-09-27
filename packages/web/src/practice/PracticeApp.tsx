@@ -105,9 +105,29 @@ export function PracticeApp({ site, baseUrl = "/api" }: { readonly site: string;
   );
 }
 
+/**
+ * What the address brought, taken once and cleared: a session from signing in
+ * with Google (in the fragment, which no server logs), a confirmation link,
+ * or a failed Google sign-in.
+ */
+function arrival(site: string): { session: string | null; verify: string | null; signinError: string | null } {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const found = { session: hash.get("session"), verify: query.get("verify"), signinError: query.get("signin_error") };
+  if (found.session !== null || found.verify !== null || found.signinError !== null) {
+    query.delete("verify");
+    query.delete("signin_error");
+    const rest = query.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${rest === "" ? "" : `?${rest}`}`);
+  }
+  if (found.session !== null) saveToken(site, found.session);
+  return found;
+}
+
 function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: string }) {
   const { t } = usePreferences();
   const queryClient = useQueryClient();
+  const [arrived] = useState(() => arrival(site));
   const [token, setToken] = useState<string | null>(() => loadToken(site));
   const client = useMemo(() => new PracticeClient(site, token, baseUrl), [site, token, baseUrl]);
   const [location, setLocation] = useState(() => ({ path: window.location.pathname, search: window.location.search }));
@@ -136,6 +156,25 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
   const info = useQuery({ queryKey: ["practice", site, "site"], queryFn: () => client.site() });
   const me = useQuery({ queryKey: ["practice", site, "me", token], queryFn: () => client.me() });
   const learner = me.data ?? null;
+  const options = useQuery({ queryKey: ["practice", site, "sign-in-options"], queryFn: () => client.signInOptions(), retry: false });
+
+  // A confirmation link: follow it once, and say how it went.
+  const [notice, setNotice] = useState<{ readonly tone: "ok" | "error"; readonly text: string } | null>(
+    arrived.signinError === null ? null : { tone: "error", text: t("practice.googleFailed") },
+  );
+  useEffect(() => {
+    if (arrived.verify === null) return;
+    client
+      .verify(arrived.verify)
+      .then(() => {
+        setNotice({ tone: "ok", text: t("practice.verified") });
+        void queryClient.invalidateQueries({ queryKey: ["practice", site, "me"] });
+      })
+      .catch(() => setNotice({ tone: "error", text: t("practice.verifyFailed") }));
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const resend = useMutation({ mutationFn: () => client.resendVerification() });
 
   // A session that ended elsewhere is forgotten here too.
   useEffect(() => {
@@ -230,6 +269,23 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
         </div>
       </header>
       <main className={wide ? "practice-main wide" : "practice-main"}>
+        {notice === null ? null : (
+          <p className={`practice-notice ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
+            {notice.text}
+          </p>
+        )}
+        {learner === null || learner.emailVerified ? null : (
+          <div className="practice-notice verify" role="status">
+            <span>{t(options.data?.requireVerified === true ? "practice.verifyRequired" : "practice.verifyBanner", { email: learner.email })}</span>
+            {resend.isSuccess ? (
+              <span>{t("practice.resent")}</span>
+            ) : (
+              <button type="button" className="quiet" disabled={resend.isPending} onClick={() => resend.mutate()}>
+                {t("practice.resend")}
+              </button>
+            )}
+          </div>
+        )}
         {route.page === "problems" ? (
           <ProblemsPage {...context} welcome={info.data.welcome} />
         ) : route.page === "problem" ? (
@@ -247,7 +303,7 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
             <ProgressPage {...context} learner={learner} onSignOut={() => void signOut()} onDeleted={() => void signOut()} />
           )
         ) : (
-          <AccountForm {...context} mode={route.page} next={route.next} onSignedIn={signedIn} />
+          <AccountForm {...context} mode={route.page} next={route.next} onSignedIn={signedIn} google={options.data?.google === true} />
         )}
       </main>
     </div>
@@ -1249,7 +1305,13 @@ function AccountForm({
   mode,
   next,
   onSignedIn,
-}: Context & { readonly mode: "signin" | "signup"; readonly next: string | undefined; readonly onSignedIn: (token: string, next: string | undefined) => void }) {
+  google,
+}: Context & {
+  readonly mode: "signin" | "signup";
+  readonly next: string | undefined;
+  readonly onSignedIn: (token: string, next: string | undefined) => void;
+  readonly google: boolean;
+}) {
   const { t } = usePreferences();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -1278,6 +1340,16 @@ function AccountForm({
       <form className="card account-form" onSubmit={submit} aria-labelledby="account-title">
         <h1 id="account-title">{mode === "signup" ? t("practice.createAccount") : t("practice.welcomeBack")}</h1>
         <p className="notice">{mode === "signup" ? t("practice.signUpHint") : t("practice.signInHint")}</p>
+        {google ? (
+          <>
+            <a className="button secondary google" href={client.googleUrl}>
+              {t("practice.withGoogle")}
+            </a>
+            <p className="or" aria-hidden="true">
+              <span>{t("practice.or")}</span>
+            </p>
+          </>
+        ) : null}
         {mode === "signup" ? (
           <label className="field">
             <span>{t("practice.name")}</span>

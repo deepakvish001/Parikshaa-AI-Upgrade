@@ -19,6 +19,13 @@ export interface Learner {
   readonly id: string;
   readonly name: string;
   readonly email: string;
+  /** Proved by the emailed link, or by signing in with Google. */
+  readonly emailVerified: boolean;
+}
+
+export interface SignInOptions {
+  readonly google: boolean;
+  readonly requireVerified: boolean;
 }
 
 export interface Session {
@@ -195,6 +202,23 @@ export class PracticeClient {
 
   site(): Promise<Site> {
     return this.#request("");
+  }
+
+  signInOptions(): Promise<SignInOptions> {
+    return this.#request("/sign-in-options");
+  }
+
+  /** Where the browser goes to sign in with Google: a navigation, not a fetch. */
+  get googleUrl(): string {
+    return `${this.#base}/auth/google`;
+  }
+
+  async verify(token: string): Promise<void> {
+    await this.#post("/verify", { token });
+  }
+
+  async resendVerification(): Promise<void> {
+    await this.#post("/verify/resend");
   }
 
   signUp(name: string, email: string, password: string): Promise<Session> {

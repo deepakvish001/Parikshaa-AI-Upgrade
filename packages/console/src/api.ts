@@ -715,6 +715,21 @@ export class ConsoleClient {
       : this.#request(`/practice-admin/contests/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
   }
 
+  practiceSignIn(): Promise<PracticeSignIn> {
+    return this.#request<PracticeSignIn>("/practice-admin/sign-in");
+  }
+
+  savePracticeSignIn(settings: {
+    readonly requireVerified: boolean;
+    readonly google: { readonly enabled: boolean; readonly clientId: string | null; readonly clientSecret?: string };
+  }): Promise<PracticeSignIn> {
+    return this.#request<PracticeSignIn>("/practice-admin/sign-in", { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  practiceSimilarity(problemId: string): Promise<PracticeSimilarity> {
+    return this.#request<PracticeSimilarity>(`/practice-admin/problems/${encodeURIComponent(problemId)}/similarity`);
+  }
+
   async practiceLearners(): Promise<readonly PracticeLearner[]> {
     return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
   }
@@ -1141,4 +1156,26 @@ export interface PracticeComment {
   readonly body: string;
   readonly createdAt: string;
   readonly hidden: boolean;
+}
+
+export interface PracticeSignIn {
+  readonly requireVerified: boolean;
+  readonly google: { readonly enabled: boolean; readonly clientId: string | null; readonly secretSet: boolean };
+  /** Register this with Google; null until the site has an address. */
+  readonly redirectUri: string | null;
+}
+
+export interface PracticeSimilarSide {
+  readonly learnerId: string;
+  readonly name: string;
+  readonly language: string;
+  readonly source: string;
+  readonly status: string;
+  readonly submittedAt: string;
+}
+
+export interface PracticeSimilarity {
+  readonly problem: { readonly id: string; readonly title: string };
+  readonly compared: number;
+  readonly pairs: readonly { readonly a: PracticeSimilarSide; readonly b: PracticeSimilarSide; readonly similarity: number; readonly shared: number }[];
 }

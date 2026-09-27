@@ -710,8 +710,23 @@ and can write submissions and comments only in their own name (migration
 0013). Nothing on a practice site reaches the integrity ledger, an exam, or a
 candidate's record. The console's **Practice** page runs it all.
 
-Not in it: plagiarism checks across learners, badges, premium problems, and
-sign-in with Google. Learner email addresses are not verified.
+**Finished since:**
+
+- *Confirmed addresses.* Every new learner is emailed a link to confirm their
+  address — derived, not stored: an HMAC over the learner and the address, so
+  it stops working if the address changes — resendable three times an hour.
+  A site can keep submitting and discussing for confirmed learners; reading
+  stays open to all.
+- *Continue with Google.* An owner pastes a Google OAuth client into the
+  Practice page; learners then sign in with Google (the same OpenID Connect
+  code as staff single sign-on, with PKCE and a nonce). The first time makes
+  their account, already confirmed; an existing account with the same address
+  is signed in and confirmed. Such an account has no password.
+- *Similar code between learners.* For each code problem, a reviewer sees
+  pairs of learners whose latest accepted answers are alike by the exam's
+  winnowing measure, side by side. It changes nothing a learner sees.
+
+Not in it: badges and premium problems.
 
 ## Sequencing
 

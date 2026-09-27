@@ -7,6 +7,7 @@ import {
   languagesOf,
   runnable,
   scoreDeterministic,
+  similarPairs,
   type CandidateQuestion,
   type CodeAnswer,
   type CodeQuestion,
@@ -60,7 +61,8 @@ export class PracticeError extends Error {
       | "not_practicable"
       | "language_not_offered"
       | "too_many_runs"
-      | "contest_not_started",
+      | "contest_not_started"
+      | "email_not_verified",
     message: string,
   ) {
     super(message);
@@ -288,6 +290,11 @@ export class PracticeService {
     if (!(await argon2Verify(learner.passwordHash, password).catch(() => false))) return null;
     const { passwordHash: _, ...safe } = learner;
     return this.#session(safe);
+  }
+
+  /** A session for a learner already proven to be who they are, by a password or a provider. */
+  sessionFor(learner: Learner): Promise<LearnerSession> {
+    return this.#session(learner);
   }
 
   async #session(learner: Learner): Promise<LearnerSession> {
@@ -633,6 +640,52 @@ export class PracticeService {
   }
 
   // --- staff -----------------------------------------------------------------------------------------
+
+  /**
+   * Learners whose latest code for a problem is alike, once names, comments,
+   * layout and literals are set aside and the starter code taken out: the
+   * exam's winnowing measure (ROADMAP §4), for a person to look at. A match
+   * is never a finding — two short answers to a narrow problem can honestly
+   * agree — and it changes nothing a learner sees.
+   */
+  async similarity(orgId: OrgId, problemId: string) {
+    const scope = practiceStaff(orgId);
+    const problem = (await this.#store.problems(scope)).find((p) => p.id === problemId);
+    if (problem === undefined) throw new PracticeError("not_found", "No such problem");
+    if (problem.question.kind !== "code") throw new PracticeError("not_practicable", "Only code is compared");
+    const [submissions, learners] = await Promise.all([
+      this.#store.submissions(scope, { problemId, limit: 500 }),
+      this.#store.learners(orgId),
+    ]);
+    const nameOf = new Map(learners.map((l) => [l.id, l.name]));
+    // Each learner's latest accepted answer, or their latest if none was.
+    const latest = new Map<string, Submission>();
+    for (const sub of submissions) {
+      const held = latest.get(sub.learnerId);
+      if (held === undefined || (held.status !== "passed" && sub.status === "passed")) latest.set(sub.learnerId, sub);
+    }
+    const given = [...latest.values()].filter((sub) => sub.language !== null);
+    const byLearner = new Map(given.map((sub) => [sub.learnerId, sub]));
+    const side = (learnerId: string) => {
+      const sub = byLearner.get(learnerId)!;
+      return {
+        learnerId,
+        name: nameOf.get(learnerId) ?? "Deleted account",
+        language: sub.language!,
+        source: sub.answer,
+        status: sub.status,
+        submittedAt: sub.createdAt,
+      };
+    };
+    return {
+      problem: { id: problem.id, title: problem.title },
+      compared: given.length,
+      pairs: similarPairs(
+        given.map((sub) => ({ key: sub.learnerId, language: sub.language!, source: sub.answer })),
+        problem.question.starter ?? null,
+      ).map((p) => ({ a: side(p.a), b: side(p.b), similarity: p.similarity, shared: p.shared })),
+    };
+  }
 
   async siteFor(orgId: OrgId): Promise<PracticeSite | null> {
     return this.#store.siteOf(orgId);

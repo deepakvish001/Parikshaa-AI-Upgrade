@@ -494,7 +494,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
 
       {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
       {view.name === "practice" ? (
-        <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read") }} />
+        <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
       ) : null}
       {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
       {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
