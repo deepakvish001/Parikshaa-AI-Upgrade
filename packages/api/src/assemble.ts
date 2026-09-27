@@ -118,6 +118,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     tokens,
     auth,
     security,
+    hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,
     media: new QuestionMedia(o.sql),

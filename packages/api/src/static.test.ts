@@ -86,6 +86,26 @@ describe("serving the clients", () => {
     expect(api.json().error).toBe("not_found");
   });
 
+  it("sends every page with a policy that runs only this origin's scripts, and never in a frame (ROADMAP §11)", async () => {
+    const candidate = await app.inject({ method: "GET", url: "/", headers: html });
+    const csp = String(candidate.headers["content-security-policy"]);
+    expect(csp).toContain("script-src 'self';");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(csp).not.toContain("razorpay");
+    expect(candidate.headers["x-frame-options"]).toBe("DENY");
+    expect(candidate.headers["referrer-policy"]).toBe("no-referrer");
+    expect(candidate.headers["x-content-type-options"]).toBe("nosniff");
+
+    // The console's Billing page opens Razorpay Checkout; the candidate's page never can.
+    const staff = await app.inject({ method: "GET", url: "/console/", headers: html });
+    expect(String(staff.headers["content-security-policy"])).toContain("script-src 'self' https://*.razorpay.com");
+
+    // JSON carries the plain headers, not a page's policy.
+    const api = await app.inject({ method: "GET", url: "/health" });
+    expect(api.headers["content-security-policy"]).toBeUndefined();
+    expect(api.headers["referrer-policy"]).toBe("no-referrer");
+  });
+
   it("still answers API routes rather than the shell", async () => {
     const health = await app.inject({ method: "GET", url: "/health" });
     expect(health.json()).toEqual({ ok: true });

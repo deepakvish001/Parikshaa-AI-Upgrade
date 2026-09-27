@@ -523,7 +523,7 @@ and what to turn on.
 *Requires people and money, not code:* a penetration test, an ISO 27001 or SOC
 2 audit, and legal review of the DPA.
 
-**Status — DPDP built; the rest is not.** An owner sets the organisation's
+**Status — built, except what needs people and money.** An owner sets the organisation's
 privacy notice — who is responsible, why the data is collected, the grievance
 officer, and a retention period — on the console's *Privacy* page. From then
 on a candidate opening their link reads the notice and agrees to it **before
@@ -554,7 +554,22 @@ answers — "Download my data" does. Answers are sealed from here on. A ledger
 written before this change holds its answers in the clear and cannot be
 shredded: erasing it clears everything around it — invitation, drafts,
 queued messages — and records `data_erased`, but its entries stay readable.
-Data residency, CI secret scanning and the evidence pack are still to do.
+
+**Also built since:** CI scans the whole git history for secrets (gitleaks,
+pinned by checksum), fails on any high or critical advisory in what ships
+(`npm audit --omit=dev`), runs GitHub's dependency review on pull requests and
+CodeQL's security queries on every change; Dependabot proposes updates. Every
+page is served with a Content-Security-Policy that runs only its own origin's
+scripts, is never framed, sends no Referer, and gets HSTS over HTTPS. The
+**evidence pack** a security review asks for is
+[`docs/SECURITY.md`](SECURITY.md): what is held and how, isolation,
+authentication, outbound requests, the sandbox, the model's inputs, logging,
+DPDP, supply chain and recovery — each with the file that shows it — and a
+disclosure policy in `.github/SECURITY.md`.
+
+Data residency is a deployment choice the code already allows — the runbook
+names the Indian regions — with one question left that code cannot answer:
+whether Anthropic offers an Indian inference region.
 
 ## 12. Billing
 

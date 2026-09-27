@@ -67,6 +67,11 @@ export interface ServerOptions {
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
+  /**
+   * Send Strict-Transport-Security: browsers then refuse plain HTTP to this
+   * host. On when the deployment is served over HTTPS (`PUBLIC_URL`).
+   */
+  readonly hsts?: boolean;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
   /** Lifetime of an issued attempt token. Defaults to three hours. */
@@ -240,6 +245,45 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    // ROADMAP §11. Every response: nothing sniffed into a script, never
+    // framed (a framed exam page is a clickjacking target), and no Referer —
+    // an invitation code or a reset link in the address must not follow a
+    // click to another site.
+    reply.header("x-content-type-options", "nosniff");
+    reply.header("x-frame-options", "DENY");
+    reply.header("referrer-policy", "no-referrer");
+    reply.header("cross-origin-opener-policy", "same-origin");
+    reply.header("permissions-policy", "camera=(self), microphone=(), geolocation=(), payment=(self)");
+    if (options.hsts === true) reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
+  });
+  // The pages themselves: scripts only from this origin, so an injected
+  // <script> or inline handler does not run. The console alone may load
+  // Razorpay's Checkout, which the Billing page opens to buy credits.
+  app.addHook("onSend", async (request, reply, payload) => {
+    const type = reply.getHeader("content-type");
+    if (typeof type !== "string" || !type.startsWith("text/html")) return payload;
+    const console = request.originalUrl.startsWith("/console");
+    const razorpay = console ? " https://*.razorpay.com" : "";
+    reply.header(
+      "content-security-policy",
+      [
+        "default-src 'self'",
+        `script-src 'self'${razorpay}`,
+        // React sets style attributes; no stylesheet is fetched from elsewhere.
+        "style-src 'self' 'unsafe-inline'",
+        `img-src 'self' data: blob:${razorpay}`,
+        "font-src 'self' data:",
+        `connect-src 'self'${razorpay}`,
+        `frame-src ${console ? "https://*.razorpay.com" : "'none'"}`,
+        "media-src 'self' blob:",
+        "worker-src 'self' blob:",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+      ].join("; "),
+    );
+    return payload;
   });
   // The route *pattern*, never the URL: a URL can carry a token or an invitation code.
   app.addHook("onResponse", async (request, reply) => {
