@@ -7,15 +7,13 @@ import {
   GraduationCap,
   KeyRound,
   KeySquare,
-  Languages,
+  LockKeyhole,
   Library,
   LogOut,
-  MessageCircleQuestion,
   Plug,
   Receipt,
   ScrollText,
   Shield,
-  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -36,6 +34,8 @@ import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
 import { ExamList } from "./components/ExamList.tsx";
+import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
+import { SignIn } from "./components/SignIn.tsx";
 
 type View =
   | { readonly name: "exams" }
@@ -55,6 +55,7 @@ type View =
   | { readonly name: "integrations" }
   | { readonly name: "privacy" }
   | { readonly name: "billing" }
+  | { readonly name: "signin" }
   | { readonly name: "account" };
 
 /**
@@ -83,9 +84,33 @@ const stored = {
   },
 };
 
+/**
+ * What the address bar brought: a session from the organisation's sign-in
+ * provider (in the fragment, which no server logs), a provider's refusal, or a
+ * password reset link. Each is taken once and cleared from the address bar.
+ */
+function arrival(): { sso: string | null; ssoError: string | null; reset: string | null } {
+  if (typeof window === "undefined") return { sso: null, ssoError: null, reset: null };
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const found = { sso: hash.get("sso"), ssoError: query.get("sso_error"), reset: query.get("reset") };
+  if (found.sso !== null || found.ssoError !== null || found.reset !== null) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  return found;
+}
+
 export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState<string | null>(() => (injected === undefined ? stored.get() : null));
+  const [arrived] = useState(arrival);
+  const [token, setToken] = useState<string | null>(() => {
+    if (injected !== undefined) return null;
+    if (arrived.sso !== null) {
+      stored.set(arrived.sso);
+      return arrived.sso;
+    }
+    return stored.get();
+  });
   const client = injected ?? (token === null ? null : new ConsoleClient(token));
 
   const signIn = (next: string) => {
@@ -99,92 +124,8 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
     queryClient.clear();
   };
 
-  if (client === null) return <SignIn onSignedIn={signIn} />;
+  if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
   return <Console client={client} onSignedOut={signOut} />;
-}
-
-function SignIn({ onSignedIn }: { onSignedIn: (token: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const signIn = useMutation({
-    mutationFn: () => ConsoleClient.signIn(email.trim(), password),
-    onSuccess: ({ token }) => onSignedIn(token),
-  });
-  const refused =
-    signIn.error instanceof ConsoleError
-      ? signIn.error.status === 429
-        ? "Too many attempts. Wait a few minutes and try again."
-        : "That email and password were not accepted."
-      : signIn.error === null
-        ? null
-        : "Could not reach the server.";
-
-  return (
-    <div className="signin">
-      <aside className="signin-brand" aria-hidden="true">
-        <Wordmark size={34} product="Console" />
-        <div className="signin-pitch">
-          <p className="signin-headline">Assessment you can prove.</p>
-          <ul>
-            <li>
-              <ShieldCheck /> Every answer sealed in a hash-chained ledger, checkable by anyone.
-            </li>
-            <li>
-              <MessageCircleQuestion /> A short follow-up on answers that need one — asked, never accused.
-            </li>
-            <li>
-              <Languages /> Hindi and ten Indian languages, on a phone or a lab machine.
-            </li>
-          </ul>
-        </div>
-        <p className="signin-foot">परीक्षा · Built for Indian institutions</p>
-      </aside>
-      <main className="signin-form">
-        <div className="signin-card">
-          <span className="signin-mark">
-            <Wordmark size={28} />
-          </span>
-          <h1>Sign in to the console</h1>
-          <p className="notice">For examiners, invigilators and administrators.</p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              signIn.mutate();
-            }}
-          >
-            <div className="field">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {refused === null ? null : (
-              <p className="error" role="alert">
-                {refused}
-              </p>
-            )}
-            <button type="submit" className="block large" disabled={signIn.isPending || email.trim() === "" || password === ""}>
-              {signIn.isPending ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
-        </div>
-      </main>
-    </div>
-  );
 }
 
 function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
@@ -317,6 +258,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     { view: { name: "integrations" }, label: "Integrations", permission: "org:manage", group: "org", icon: Plug },
     { view: { name: "privacy" }, label: "Privacy", permission: "org:manage", group: "org", icon: Shield },
     { view: { name: "billing" }, label: "Billing", permission: "org:manage", group: "org", icon: Receipt },
+    { view: { name: "signin" }, label: "Sign-in", permission: "org:manage", group: "org", icon: LockKeyhole },
   ];
 
   const section = SECTION_OF[view.name];
@@ -345,6 +287,26 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       view.name === "live" ||
       view.name === "report") &&
     view.examId !== "";
+
+  // An owner their organisation requires to use two-step sign-in, who has not
+  // set it up, can do only that: the server refuses everything else anyway.
+  if (me.data?.mustEnrol2fa === true) {
+    return (
+      <main className="content enrol">
+        <header className="page-head">
+          <Wordmark size={28} product="Console" />
+          <h1>Set up two-step sign-in</h1>
+          <p className="notice">{me.data.organisation.name} requires owners to use it before continuing.</p>
+        </header>
+        <TwoFactorPanel client={client} onSignedOut={onSignedOut} onEnrolled={() => void queryClient.invalidateQueries({ queryKey: ["me"] })} />
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => signOut.mutate()}>
+            Sign out
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="shell">
@@ -378,7 +340,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
                 </div>
               )}
               <div className="me-actions">
-                {me.data?.kind === "user" ? navItem({ name: "account" }, "Password", KeyRound) : null}
+                {me.data?.kind === "user" ? navItem({ name: "account" }, "Account", KeyRound) : null}
                 <button type="button" className="nav-item" onClick={() => signOut.mutate()}>
                   <LogOut aria-hidden="true" />
                   Sign out
@@ -399,7 +361,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
                 Exams
               </button>
             ) : (
-              <span>{visible.find((tab) => tab.view.name === section)?.label ?? (section === "account" ? "Password" : "")}</span>
+              <span>{visible.find((tab) => tab.view.name === section)?.label ?? (section === "account" ? "Account" : "")}</span>
             )}
             {onExam ? (
               <>
@@ -541,7 +503,13 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
       {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
       {view.name === "billing" ? <BillingPanel client={client} /> : null}
-      {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
+      {view.name === "signin" && me.data !== undefined ? <OrgSignInPanel client={client} orgId={me.data.organisation.id} /> : null}
+      {view.name === "account" ? (
+        <>
+          <AccountPanel client={client} onSignedOut={onSignedOut} />
+          <TwoFactorPanel client={client} onSignedOut={onSignedOut} />
+        </>
+      ) : null}
         </main>
       </div>
     </div>
@@ -567,6 +535,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   integrations: "integrations",
   privacy: "privacy",
   billing: "billing",
+  signin: "signin",
   account: "account",
 };
 
@@ -606,8 +575,10 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Privacy";
     case "billing":
       return "Billing";
+    case "signin":
+      return "Sign-in";
     case "account":
-      return "Password";
+      return "Account";
   }
 }
 
@@ -630,5 +601,6 @@ const PAGE_NOTE: Record<View["name"], string> = {
   integrations: "Webhooks and applicant-tracking systems that hear about results.",
   privacy: "The notice candidates agree to, how long their data is kept, and erasure.",
   billing: "Attempt credits, payments and GST invoices.",
-  account: "Change the password you sign in with.",
+  signin: "How your staff sign in: your institution's own provider, and two-step sign-in for owners.",
+  account: "Your password and two-step sign-in.",
 };

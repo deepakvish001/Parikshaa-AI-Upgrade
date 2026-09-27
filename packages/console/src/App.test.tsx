@@ -232,6 +232,7 @@ const who = (role: WhoAmI["role"], permissions: string[]): WhoAmI => ({
   role,
   organisation: { id: "acme", name: "Acme" },
   permissions,
+  mustEnrol2fa: false,
 });
 
 function stubClient(overrides: Record<string, unknown> = {}) {
@@ -421,6 +422,72 @@ describe("signing in", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("That email and password were not accepted.");
     expect(fetch).toHaveBeenCalledWith("/api/auth/login", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("asks for the authenticator's code when the account has one, and sends it with the password", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "second_factor_required" }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "invalid_credentials" }), { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    await userEvent.type(screen.getByLabelText("Password"), "correct horse battery staple");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    const code = await screen.findByLabelText("Code from your authenticator app");
+    expect(screen.queryByRole("alert")).toBeNull();
+    await userEvent.type(code, "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("That code was not accepted.");
+    expect(JSON.parse((fetch.mock.calls[1]![1] as RequestInit).body as string)).toMatchObject({ code: "123456" });
+  });
+
+  it("sends a reset link, saying the same whatever the address", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 202 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    await userEvent.click(screen.getByRole("button", { name: "Send the link" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("If asha@acme.test has an account");
+    expect(fetch).toHaveBeenCalledWith("/api/auth/password-reset", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("opens a reset link on choosing a new password, and clears it from the address bar", async () => {
+    window.history.replaceState(null, "", "/console/?reset=abc.def");
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    expect(window.location.search).toBe("");
+    await userEvent.type(screen.getByLabelText("New password"), "a long enough password");
+    await userEvent.type(screen.getByLabelText("The same again"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Set password" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Sign in with your new password");
+    expect(JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({
+      token: "abc.def",
+      password: "a long enough password",
+    });
+  });
+
+  it("signs in with the session the organisation's provider sent back, and forgets it from the address bar", async () => {
+    window.history.replaceState(null, "", "/console/#sso=pks_from_provider");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "staff_auth_required" }), { status: 401 })));
+    renderApp(<App />);
+    expect(window.location.hash).toBe("");
+    expect(sessionStorage.getItem("parikshaa.console.session")).toBe("pks_from_provider");
+  });
+
+  it("says why the organisation's sign-in did not work", () => {
+    window.history.replaceState(null, "", "/console/?sso_error=not_staff");
+    renderApp(<App />);
+    expect(screen.getByRole("alert")).toHaveTextContent("not a member of staff here");
   });
 
   it("goes back to signing in when the session has ended", async () => {

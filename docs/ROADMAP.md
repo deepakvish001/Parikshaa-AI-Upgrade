@@ -88,8 +88,36 @@ carry their organisation; tokens issued before this change stop working, which
 at a three-hour lifetime means at most one sitting in progress during the
 upgrade.
 
-**Still to do in §1:** OIDC, password reset (needs outbound email), and 2FA for
-owners.
+**Finished since:** password reset, a second factor, and single sign-on.
+
+- *Password reset.* "Forgot your password?" emails a link through the same
+  outbox as invitations. The link's secret is an HMAC of the reset's id under
+  the server's key — derived, never stored — and it works once, for an hour;
+  using it ends every session. Asking answers the same whether or not the
+  address has an account, and one account gets at most three links an hour.
+- *Two-step sign-in.* Any member of staff can add an authenticator app (TOTP,
+  RFC 6238: Google or Microsoft Authenticator, any password manager), set up
+  from a QR code drawn in the page, with ten one-time recovery codes. The
+  secret is sealed under a key derived from the server's secret; a code is
+  asked after the password, works once (a replay is refused), and turning the
+  factor off needs the password and a code. An owner can **require it of every
+  owner** — only once they have it themselves — and an owner without it can
+  then do nothing but set it up.
+- *Single sign-on.* An owner connects the organisation's OpenID Connect
+  provider — Google Workspace, Microsoft Entra ID, Okta, Keycloak — on the
+  console's *Sign-in* page. The code flow uses PKCE and a nonce; the state
+  the browser carries is sealed; the ID token is checked against the
+  provider's published keys, issuer, audience and expiry; and every request
+  to the provider goes through the webhooks' SSRF guard. Only people already
+  on the Staff page can sign in this way, and only at the domains the owner
+  lists — nobody is created by it. It can be *enforced* for everyone but
+  owners, who keep their passwords so a provider outage cannot lock the
+  organisation out. The session comes back in the URL fragment, which no
+  server logs.
+
+Not verified here: the provider round trip is tested against a local OpenID
+provider speaking the protocol, not against Google or Microsoft themselves;
+try a sign-in from a test tenant before relying on it.
 
 ## 2. Nothing a candidate does is ever lost
 

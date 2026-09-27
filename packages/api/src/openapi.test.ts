@@ -69,7 +69,19 @@ describe("the OpenAPI document", () => {
     // sign-in, and a candidate opening their invitation link (whose code is
     // itself the proof) — and a question's picture by its SHA-256, which an
     // <img> fetches with no session and only a holder of the picture can name.
-    const open = new Set(["get /health", "get /openapi.json", "post /auth/login", "post /invitations/redeem", "get /media/{sha256}"]);
+    // And the ways back in for someone who cannot sign in: a password reset
+    // (whose link is the proof) and their organisation's own sign-in provider.
+    const open = new Set([
+      "get /health",
+      "get /openapi.json",
+      "post /auth/login",
+      "post /invitations/redeem",
+      "get /media/{sha256}",
+      "post /auth/password-reset",
+      "post /auth/password-reset/confirm",
+      "get /auth/sso/{orgId}/start",
+      "get /auth/sso/callback",
+    ]);
 
     expect(all.length).toBeGreaterThanOrEqual(30);
     for (const { path, method, operation } of all) {

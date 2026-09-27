@@ -55,6 +55,24 @@ export interface WhoAmI {
   readonly role: StaffRole;
   readonly organisation: { readonly id: string; readonly name: string };
   readonly permissions: readonly string[];
+  /** The organisation requires owners to use a second factor and this one has none yet. */
+  readonly mustEnrol2fa: boolean;
+}
+
+export interface TwoFactorStatus {
+  readonly enabled: boolean;
+  readonly recoveryCodesLeft: number;
+  readonly required: boolean;
+}
+
+export interface SsoSettings {
+  readonly configured: boolean;
+  readonly issuer: string | null;
+  readonly clientId: string | null;
+  readonly emailDomains: readonly string[];
+  readonly enforced: boolean;
+  readonly enabled: boolean;
+  readonly redirectUri: string;
 }
 
 export interface ApiKey {
@@ -420,18 +438,50 @@ export class ConsoleClient {
   static async signIn(
     email: string,
     password: string,
+    code?: string,
     baseUrl = "/api",
   ): Promise<{ readonly token: string; readonly user: StaffUser }> {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ...(code === undefined || code === "" ? {} : { code }) }),
     });
     const body = (await response.json().catch(() => ({}))) as { error?: string; token?: string; user?: StaffUser };
     if (!response.ok || body.token === undefined || body.user === undefined) {
       throw new ConsoleError(response.status, body.error ?? "sign_in_failed");
     }
     return { token: body.token, user: body.user };
+  }
+
+  /** Ask for a reset link. The server answers the same whether or not the address has an account. */
+  static async requestReset(email: string, baseUrl = "/api"): Promise<void> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/password-reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new ConsoleError(response.status, body.error ?? "request_failed");
+    }
+  }
+
+  static async completeReset(token: string, password: string, baseUrl = "/api"): Promise<void> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/password-reset/confirm`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
+      throw new ConsoleError(response.status, body.error ?? "request_failed", [], body.message);
+    }
+  }
+
+  /** Where the browser goes to sign in through the organisation's own provider. */
+  static ssoStartUrl(orgId: string, email: string, baseUrl = "/api"): string {
+    const query = email.trim() === "" ? "" : `?email=${encodeURIComponent(email.trim())}`;
+    return `${baseUrl.replace(/\/$/, "")}/auth/sso/${encodeURIComponent(orgId.trim())}/start${query}`;
   }
 
   async #request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -477,6 +527,41 @@ export class ConsoleClient {
 
   async signOut(): Promise<void> {
     await this.#request("/auth/logout", { method: "POST" });
+  }
+
+  twoFactor(): Promise<TwoFactorStatus> {
+    return this.#request<TwoFactorStatus>("/auth/2fa");
+  }
+
+  beginTwoFactor(): Promise<{ readonly secret: string; readonly uri: string }> {
+    return this.#request("/auth/2fa/setup", { method: "POST" });
+  }
+
+  async enableTwoFactor(code: string): Promise<readonly string[]> {
+    return (await this.#request<{ recoveryCodes: string[] }>("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) })).recoveryCodes;
+  }
+
+  async disableTwoFactor(password: string, code: string): Promise<void> {
+    await this.#request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password, code }) });
+  }
+
+  async requireOwner2fa(required: boolean): Promise<void> {
+    await this.#request("/org/security", { method: "PUT", body: JSON.stringify({ requireOwner2fa: required }) });
+  }
+
+  sso(): Promise<SsoSettings> {
+    return this.#request<SsoSettings>("/org/sso");
+  }
+
+  saveSso(settings: {
+    readonly issuer: string;
+    readonly clientId: string;
+    readonly clientSecret?: string;
+    readonly emailDomains: readonly string[];
+    readonly enforced: boolean;
+    readonly enabled: boolean;
+  }): Promise<SsoSettings> {
+    return this.#request<SsoSettings>("/org/sso", { method: "PUT", body: JSON.stringify(settings) });
   }
 
   async changePassword(current: string, next: string): Promise<void> {

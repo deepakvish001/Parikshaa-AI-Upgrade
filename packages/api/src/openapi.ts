@@ -13,6 +13,8 @@ import { PracticeService } from "./practice.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
+import { StaffSecrets } from "./staff-secrets.js";
+import { StaffSecurity } from "./staff-security.js";
 
 /**
  * Build the OpenAPI document from the running route table.
@@ -51,6 +53,8 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     secret: "x".repeat(40),
     publicUrl: "https://example.invalid",
   });
+  const secrets = new StaffSecrets("x".repeat(40));
+  const auth = new StaffAuth(identity, { secrets });
   const app = buildServer({
     service,
     invitations,
@@ -62,7 +66,8 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),
     proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }),
     tokens,
-    auth: new StaffAuth(identity),
+    auth,
+    security: new StaffSecurity({ identity, auth, secrets, publicUrl: "https://example.invalid" }),
     identity,
     bank: new QuestionBank(unusable),
     media: new QuestionMedia(unusable),

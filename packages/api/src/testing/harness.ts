@@ -36,6 +36,9 @@ import { PracticeService } from "../practice.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
+import { StaffSecrets } from "../staff-secrets.js";
+import { StaffSecurity } from "../staff-security.js";
+import type { ItemHandler, Mailer } from "../delivery.js";
 
 /**
  * Wiring shared by the API tests: a server over a real (in-process) Postgres,
@@ -83,13 +86,14 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
-  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"];
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler };
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
   readonly razorpay: FakeRazorpay;
+  readonly security: StaffSecurity;
   readonly app: FastifyInstance;
 }
 
@@ -104,6 +108,13 @@ export async function wire(
     /** For integration tests against a local server. */
     readonly http?: SafeHttpOptions;
     readonly greenhouseHosts?: readonly string[];
+    /** Where staff mail (password resets) goes. */
+    readonly mailer?: Mailer;
+    /**
+     * The clock staff sign-in runs on. Off by default, so sessions do not
+     * expire when a test moves `now` on by days; a second-factor test needs it.
+     */
+    readonly staffClock?: boolean;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -161,6 +172,20 @@ export async function wire(
     ...(options.greenhouseHosts === undefined ? {} : { greenhouseHosts: options.greenhouseHosts }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const secrets = new StaffSecrets(TOKEN_SECRET);
+  const auth = new StaffAuth(identity, {
+    secrets,
+    ...(options.now === undefined || options.staffClock !== true ? {} : { now: options.now }),
+  });
+  const security = new StaffSecurity({
+    identity,
+    auth,
+    secrets,
+    publicUrl: PUBLIC_URL,
+    mailer: options.mailer ?? null,
+    ...(options.http === undefined ? {} : { http: options.http }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -184,7 +209,8 @@ export async function wire(
       ...(options.now === undefined ? {} : { now: options.now }),
     }),
     tokens,
-    auth: new StaffAuth(identity),
+    auth,
+    security,
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
@@ -197,7 +223,17 @@ export async function wire(
     ...options.server,
   });
   await app.ready();
-  return { store, identity, service, privacy, billing, razorpay, app, handlers: integrations.handlers };
+  return {
+    store,
+    identity,
+    service,
+    privacy,
+    billing,
+    razorpay,
+    security,
+    app,
+    handlers: { ...integrations.handlers, staff_email: security.resetMail },
+  };
 }
 
 export async function addOrganisation(identity: IdentityStore, id: string, name = id): Promise<OrgId> {

@@ -18,6 +18,8 @@ import { PracticeService } from "./practice.js";
 import { buildServer, type ServerOptions } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
+import { StaffSecrets } from "./staff-secrets.js";
+import { StaffSecurity } from "./staff-security.js";
 
 /**
  * The whole service, wired: the server and the delivery worker over one
@@ -92,6 +94,10 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     publicUrl: o.publicUrl,
   });
 
+  const secrets = new StaffSecrets(o.secret);
+  const auth = new StaffAuth(identity, { secrets });
+  const security = new StaffSecurity({ identity, auth, secrets, publicUrl: o.publicUrl, mailer: o.mailer ?? null });
+
   const bank = new QuestionBank(o.sql);
   const app = buildServer({
     service,
@@ -110,7 +116,8 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     billing,
     proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
     tokens,
-    auth: new StaffAuth(identity),
+    auth,
+    security,
     identity,
     bank,
     media: new QuestionMedia(o.sql),
@@ -126,7 +133,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
-    handlers: integrations.handlers,
+    handlers: { ...integrations.handlers, staff_email: security.resetMail },
   });
 
   return { app, worker, privacy, billing };

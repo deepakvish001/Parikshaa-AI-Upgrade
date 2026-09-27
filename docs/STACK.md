@@ -25,7 +25,7 @@ the stack is TypeScript end to end, and it is not a preference.
 | Background jobs | pg-boss | Postgres-backed, so no Redis to run. Move to BullMQ only if throughput demands it. |
 | Realtime | SSE | One-way is all probe delivery needs. Survives proxies; simpler than WebSockets. |
 | LLM | Anthropic SDK, `claude-opus-5` | Two paths, different settings — see below. |
-| Auth (staff) | Individual accounts: argon2id passwords, server-side sessions, scoped API keys | A shared token could not say who did anything, so the ledger could not record who set an attempt aside. Session and key secrets are stored only as SHA-256 digests. OIDC against an institution's IdP is next (ROADMAP §1). |
+| Auth (staff) | Individual accounts: argon2id passwords, server-side sessions, scoped API keys | A shared token could not say who did anything, so the ledger could not record who set an attempt aside. Session and key secrets are stored only as SHA-256 digests. Two-step sign-in is TOTP; single sign-on is OpenID Connect with PKCE against the institution's own provider (ROADMAP §1). |
 | Auth (candidate) | Short-lived exam-scoped JWT (`jose`) | A token that grants one attempt and expires. No candidate user records. |
 | Frontend | Vite + React + TanStack Query | A focused SPA. SSR buys nothing for an exam client, and the API has to stand alone anyway. No analytics, no third-party scripts, no runtime font fetches — the page cannot observe the candidate any more than it says it does. |
 | Observability | pino + OpenTelemetry + Sentry | pino is Fastify-native. |

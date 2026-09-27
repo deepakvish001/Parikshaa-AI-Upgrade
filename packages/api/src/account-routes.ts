@@ -62,24 +62,32 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
         tags: ACCOUNT,
         summary: "Sign in with email and password",
         description:
-          "Returns a session token valid for twelve hours. Any failure answers the same way, so the response does not reveal which addresses have accounts. Repeated failures from one address for one account are refused for fifteen minutes.",
+          "Returns a session token valid for twelve hours. Any failure answers the same way, so the response does not reveal which addresses have accounts. Repeated failures from one address for one account are refused for fifteen minutes. An account with a second factor answers `second_factor_required` to the right password alone; send it again with `code` — the authenticator's six digits or a recovery code. Where the organisation signs staff in through its own provider, anyone but an owner is answered `sso_required`.",
         body: S.loginBody,
         response: { 200: S.loginResponse, ...refusals },
       },
     },
     async (request, reply) => {
-      const { email, password } = request.body;
+      const { email, password, code } = request.body;
       if (throttle.blocked(request.ip, email)) {
         return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
       }
 
-      const result = await auth.login(email, password);
-      if (result === null) {
+      const outcome = await auth.login(email, password, code);
+      if (!outcome.ok) {
+        // Asking for the second factor is not a failure; a wrong code is.
+        if (outcome.reason === "second_factor_required") {
+          return reply.code(401).send({ error: "second_factor_required", message: "Enter the code from your authenticator app" });
+        }
         throttle.failed(request.ip, email);
+        if (outcome.reason === "sso_required") {
+          return reply.code(403).send({ error: "sso_required", message: "Your organisation signs its staff in through its own provider" });
+        }
         return reply.code(401).send({ error: "invalid_credentials" });
       }
       throttle.succeeded(request.ip, email);
 
+      const { ok: _, ...result } = outcome;
       const actor: Actor = { kind: "user", ...result.user };
       await service.recordAudit(actor, "auth.login", result.user.id);
       return reply.send(result);
@@ -125,6 +133,7 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
         role: actor.role,
         organisation: { id: actor.orgId, name: org?.name ?? actor.orgId },
         permissions: permissionsOf(actor),
+        mustEnrol2fa: actor.kind === "user" && actor.mustEnrol2fa === true,
       });
     },
   );

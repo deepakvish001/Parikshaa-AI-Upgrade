@@ -277,7 +277,7 @@ sitting is over.
 | Offline verification | implemented — `packages/verify` (CLI) and in-browser via WebCrypto |
 | Deployment | implemented — `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
 | Organisations and isolation | implemented — `org_id` on every tenant table, enforced by row-level security as well as by every query |
-| Staff accounts, roles, API keys | implemented — `packages/api/src/staff-auth.ts`; password sign-in (argon2id). OIDC and 2FA not yet |
+| Staff accounts, roles, API keys | implemented — `packages/api/src/staff-auth.ts`; password sign-in (argon2id), password reset by email, two-step sign-in (TOTP, recovery codes; can be required of owners), single sign-on through the organisation's OpenID Connect provider (`packages/api/src/staff-security.ts`, `oidc.ts`) |
 | Audit log | implemented — append-only `audit_log`, `GET /audit` |
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |

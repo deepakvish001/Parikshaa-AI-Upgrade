@@ -36,6 +36,8 @@ import type { ProctorService } from "./proctoring.js";
 import { registerProctoringRoutes } from "./proctoring-routes.js";
 import { GatewayUnavailable } from "./razorpay.js";
 import { registerPrivacyRoutes } from "./privacy-routes.js";
+import { registerSecurityRoutes, securityStatus } from "./security-routes.js";
+import { SecurityError, type StaffSecurity } from "./staff-security.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
@@ -62,6 +64,8 @@ export interface ServerOptions {
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
   readonly proctor: ProctorService;
+  /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
+  readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
@@ -276,6 +280,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       return null;
     }
     request.orgId = actor.orgId;
+    // An owner their organisation requires to use a second factor, who has
+    // none yet, may do nothing but set one up (routes that ask no permission).
+    if (permission !== null && actor.kind === "user" && actor.mustEnrol2fa === true) {
+      await reply.code(403).send({ error: "two_factor_required", message: "Set up a second factor before continuing" });
+      return null;
+    }
     if (permission !== null && !can(actor, permission)) {
       await reply.code(403).send({ error: "forbidden", message: `This account does not have ${permission}` });
       return null;
@@ -306,6 +316,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   };
 
   app.setErrorHandler(async (error, request, reply) => {
+    if (error instanceof SecurityError) {
+      return reply.code(securityStatus[error.code]).send({ error: error.code, message: error.message });
+    }
     if (error instanceof PracticeError) {
       const status = {
         not_found: 404,
@@ -992,7 +1005,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       bearer,
       staff,
     });
-
+    if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
   });
 
   if (options.clients !== undefined) {
