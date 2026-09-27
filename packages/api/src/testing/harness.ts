@@ -40,6 +40,7 @@ import { StaffAuth, hashPassword } from "../staff-auth.js";
 import { StaffSecrets } from "../staff-secrets.js";
 import { StaffSecurity } from "../staff-security.js";
 import type { ItemHandler, Mailer } from "../delivery.js";
+import type { AtsBaseUrls } from "../ats.js";
 
 /**
  * Wiring shared by the API tests: a server over a real (in-process) Postgres,
@@ -116,6 +117,8 @@ export async function wire(
      * expire when a test moves `now` on by days; a second-factor test needs it.
      */
     readonly staffClock?: boolean;
+    /** Lever's and Zoho's API roots, when a test stands in for them. */
+    readonly atsBases?: AtsBaseUrls;
     /** Stands in for Google in a test of signing in with it. */
     readonly googleIssuer?: string;
   },
@@ -173,6 +176,7 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.http === undefined ? {} : { http: options.http }),
     ...(options.greenhouseHosts === undefined ? {} : { greenhouseHosts: options.greenhouseHosts }),
+    ...(options.atsBases === undefined ? {} : { atsBases: options.atsBases }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const secrets = new StaffSecrets(TOKEN_SECRET);
@@ -212,6 +216,7 @@ export async function wire(
     results: new ResultsService({ store, invitations: invitationStore, exams: service, proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)) }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
+    ats: integrations.ats,
     invigilation: new InvigilationService({
       store,
       proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),

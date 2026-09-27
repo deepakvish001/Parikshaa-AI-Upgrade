@@ -338,6 +338,19 @@ function stubClient(overrides: Record<string, unknown> = {}) {
       { id: "d1", event: "attempt.graded", attemptId: "a1", status: "pending", attempts: 3, error: "HTTP 503", createdAt: "2026-09-01T00:00:00.000Z", sentAt: null },
     ]),
     greenhouse: vi.fn(async () => ({ enabled: false, endpoints: { list_tests: "https://exam.test/api/integrations/greenhouse/list_tests" } })),
+    atsConnectors: vi.fn(async () =>
+      (["lever", "zoho_recruit", "darwinbox"] as const).map((provider) => ({
+        provider,
+        label: { lever: "Lever", zoho_recruit: "Zoho Recruit", darwinbox: "Darwinbox" }[provider],
+        configured: false,
+        enabled: false,
+        settings: {},
+        credentialsSet: false,
+      })),
+    ),
+    saveAts: vi.fn(async (provider: string) => ({ provider, label: "Lever", configured: true, enabled: true, settings: {}, credentialsSet: true })),
+    issueAtsHook: vi.fn(async () => ({ key: "atk.acme.lever.2.x", hookUrl: "https://exam.test/api/integrations/ats/lever/hook/atk.acme.lever.2.x" })),
+    disableAts: vi.fn(async () => undefined),
     issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
     disableGreenhouse: vi.fn(async () => undefined),
     live: vi.fn(async () => liveView),
@@ -1387,6 +1400,21 @@ describe("integrations", () => {
     await userEvent.click(within(greenhouse).getByRole("button", { name: "Turn on and issue a key" }));
     expect(client.issueGreenhouseKey).toHaveBeenCalled();
     expect(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).toHaveTextContent("ghk.acme.1.abc");
+  });
+
+  it("sets up Lever with a stage-to-exam map and its secrets", async () => {
+    const client = await open();
+    const lever = await screen.findByRole("region", { name: "Lever" });
+    await userEvent.click(within(lever).getByRole("button", { name: "Set up Lever" }));
+    await userEvent.type(within(lever).getByLabelText("Stage → exam"), "stage-assess = algorithms");
+    await userEvent.type(within(lever).getByLabelText("Lever API key"), "k");
+    await userEvent.type(within(lever).getByLabelText("Webhook signature token"), "s");
+    await userEvent.click(within(lever).getByRole("button", { name: "Save and turn on" }));
+    await waitFor(() =>
+      expect(client.saveAts).toHaveBeenCalledWith("lever", { stageExams: { "stage-assess": "algorithms" } }, { apiKey: "k", signatureToken: "s" }),
+    );
+    expect(screen.getByRole("region", { name: "Zoho Recruit" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Darwinbox" })).toBeInTheDocument();
   });
 
   it("is not offered to anyone but the owner", async () => {

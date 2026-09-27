@@ -11,7 +11,7 @@ import type { SqlExecutor } from "./sql.js";
 export interface OutboxItem {
   readonly id: string;
   readonly orgId: string;
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email";
+  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly attempts: number;
@@ -19,7 +19,7 @@ export interface OutboxItem {
 
 /** Something to send later, written with the change that caused it. */
 export interface OutboxDraft {
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email";
+  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly sendAfter?: Date;

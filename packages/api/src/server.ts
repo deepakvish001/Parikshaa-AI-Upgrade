@@ -27,6 +27,7 @@ import type { ResultsService } from "./results.js";
 import { registerResultsRoutes } from "./results-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
+import { registerAtsRoutes } from "./ats-routes.js";
 import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
 import type { InvigilationService } from "./invigilation.js";
@@ -39,6 +40,7 @@ import { registerProctoringRoutes } from "./proctoring-routes.js";
 import { GatewayUnavailable } from "./razorpay.js";
 import { registerPrivacyRoutes } from "./privacy-routes.js";
 import { registerSecurityRoutes, securityStatus } from "./security-routes.js";
+import { AtsError, type AtsService } from "./ats.js";
 import { SecurityError, type StaffSecurity } from "./staff-security.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
@@ -64,6 +66,8 @@ export interface ServerOptions {
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
   readonly greenhouse: GreenhouseService;
+  /** Lever, Zoho Recruit and Darwinbox. Absent: no routes for them. */
+  readonly ats?: AtsService;
   readonly invigilation: InvigilationService;
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
@@ -364,6 +368,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   };
 
   app.setErrorHandler(async (error, request, reply) => {
+    if (error instanceof AtsError) {
+      const status = { invalid_request: 400, unauthorised: 401, not_configured: 409, upstream: 502 }[error.code];
+      return reply.code(status).send({ error: error.code, message: error.message });
+    }
     if (error instanceof SecurityError) {
       return reply.code(securityStatus[error.code]).send({ error: error.code, message: error.message });
     }
@@ -391,7 +399,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring" || error.code === "invalid_integration"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -1045,6 +1053,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
+    if (options.ats !== undefined) registerAtsRoutes(routes, { ats: options.ats, throttle, staff });
     registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });

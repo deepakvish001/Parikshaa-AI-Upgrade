@@ -77,6 +77,7 @@ export class AttemptError extends Error {
       | "invalid_privacy"
       | "invalid_billing"
       | "invalid_proctoring"
+      | "invalid_integration"
       | "section_closed"
       | "not_code"
       | "language_not_offered"

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConsoleError, WEBHOOK_EVENTS, type ConsoleClient, type Webhook } from "../api.ts";
+import { ConsoleError, WEBHOOK_EVENTS, type AtsConnector, type AtsProvider, type ConsoleClient, type Webhook } from "../api.ts";
 
 /**
  * Integrations (ROADMAP §7): webhooks to the organisation's own systems, and
- * the Greenhouse connector. Owner only.
+ * Greenhouse, Lever, Zoho Recruit and Darwinbox. Owner only.
  */
 
 const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
@@ -14,6 +14,7 @@ export function IntegrationsPanel({ client }: { client: ConsoleClient }) {
     <>
       <Webhooks client={client} />
       <Greenhouse client={client} />
+      <AtsConnectors client={client} />
     </>
   );
 }
@@ -272,6 +273,205 @@ function Greenhouse({ client }: { client: ConsoleClient }) {
         ) : null}
       </div>
       {enabled ? <p className="notice">A new key stops the old one at once: send Greenhouse the new one straight away.</p> : null}
+    </section>
+  );
+}
+
+// --- Lever, Zoho Recruit, Darwinbox ---------------------------------------------------
+
+type AtsFields = {
+  readonly settings: readonly { readonly name: string; readonly label: string; readonly placeholder?: string; readonly options?: readonly string[] }[];
+  readonly credentials: readonly { readonly name: string; readonly label: string }[];
+  readonly help: string;
+  readonly hookHelp: string;
+};
+
+const ATS_FIELDS: Record<AtsProvider, AtsFields> = {
+  lever: {
+    settings: [{ name: "stageExams", label: "Stage → exam", placeholder: "stage id = exam id, one per line" }],
+    credentials: [
+      { name: "apiKey", label: "Lever API key" },
+      { name: "signatureToken", label: "Webhook signature token" },
+    ],
+    help: "Moving a candidate into a stage you map here sends them that exam. The result is added as a note on the opportunity.",
+    hookHelp: "In Lever, Settings → Integrations and API → Webhooks: add this URL for “Candidate stage change”, and paste its signature token above.",
+  },
+  zoho_recruit: {
+    settings: [
+      { name: "dataCentre", label: "Zoho data centre", options: ["in", "com", "eu", "com.au", "jp", "com.cn"] },
+      { name: "defaultExamId", label: "Exam when none is named", placeholder: "exam id" },
+    ],
+    credentials: [
+      { name: "clientId", label: "Client ID" },
+      { name: "clientSecret", label: "Client secret" },
+      { name: "refreshToken", label: "Refresh token" },
+    ],
+    help: "A workflow rule in Zoho Recruit calls the hook; the result is added as a note on the candidate. Make a Self Client in Zoho's API console with the ZohoRecruit.modules.ALL scope for the refresh token.",
+    hookHelp: "In Zoho Recruit, Setup → Automation → Webhooks: POST to this URL with a raw JSON body of candidateId, email, firstName, lastName, mobile (and examId to choose the exam).",
+  },
+  darwinbox: {
+    settings: [
+      { name: "callbackUrl", label: "Result callback URL", placeholder: "https://…darwinbox…/assessment-result" },
+      { name: "defaultExamId", label: "Exam when none is named", placeholder: "exam id" },
+    ],
+    credentials: [{ name: "callbackToken", label: "Callback bearer token" }],
+    help: "Darwinbox's recruitment workflow calls the hook; the result is posted back to the callback address with the token Darwinbox gives you.",
+    hookHelp: "Give your Darwinbox administrator this URL. It takes JSON: candidate_id, name, email, phone, job_id, and test_id (an exam id).",
+  },
+};
+
+function AtsConnectors({ client }: { client: ConsoleClient }) {
+  const connectors = useQuery({ queryKey: ["ats"], queryFn: () => client.atsConnectors() });
+  if (connectors.data === undefined) return null;
+  return (
+    <>
+      {connectors.data.map((c) => (
+        <AtsCard key={c.provider} client={client} connector={c} />
+      ))}
+    </>
+  );
+}
+
+const stageText = (map: unknown) =>
+  Object.entries((map ?? {}) as Record<string, string>)
+    .map(([stage, exam]) => `${stage} = ${exam}`)
+    .join("\n");
+
+function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsConnector }) {
+  const queryClient = useQueryClient();
+  const fields = ATS_FIELDS[connector.provider];
+  const [open, setOpen] = useState(false);
+  const [settings, setSettings] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      fields.settings.map((f) => [
+        f.name,
+        f.name === "stageExams" ? stageText(connector.settings["stageExams"]) : String(connector.settings[f.name] ?? (f.options?.[0] ?? "")),
+      ]),
+    ),
+  );
+  const [credentials, setCredentials] = useState<Record<string, string>>({});
+  const [hook, setHook] = useState<string | null>(null);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["ats"] });
+
+  const save = useMutation({
+    mutationFn: () => {
+      const shaped: Record<string, unknown> = {};
+      for (const f of fields.settings) {
+        const value = settings[f.name] ?? "";
+        if (f.name === "stageExams") {
+          shaped[f.name] = Object.fromEntries(
+            value
+              .split("\n")
+              .map((line) => line.split("=").map((part) => part.trim()))
+              .filter((pair) => pair.length === 2 && pair[0] !== "" && pair[1] !== ""),
+          );
+        } else shaped[f.name] = f.name === "defaultExamId" && value.trim() === "" ? null : value.trim();
+      }
+      const filled = fields.credentials.every((f) => (credentials[f.name] ?? "") !== "");
+      return client.saveAts(connector.provider, shaped, filled ? credentials : undefined);
+    },
+    onSuccess: async () => {
+      setCredentials({});
+      await refresh();
+    },
+  });
+  const issue = useMutation({ mutationFn: () => client.issueAtsHook(connector.provider), onSuccess: (r) => setHook(r.hookUrl) });
+  const disable = useMutation({ mutationFn: () => client.disableAts(connector.provider), onSettled: refresh });
+  const problem = save.error ?? issue.error ?? disable.error;
+
+  return (
+    <section className="card" aria-label={connector.label}>
+      <strong>{connector.label}</strong> <span className="pill">{connector.enabled ? "on" : "off"}</span>
+      <p className="notice">{fields.help} It sees marks and a link to the report, never answers or follow-ups.</p>
+      {hook === null ? null : (
+        <>
+          <Secret label={`${connector.label} hook URL`} value={hook} onDone={() => setHook(null)} />
+          <p className="notice">{fields.hookHelp}</p>
+        </>
+      )}
+      {open ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            save.mutate();
+          }}
+        >
+          <div className="grid">
+            {fields.settings.map((f) => (
+              <div className="field" key={f.name}>
+                <label htmlFor={`${connector.provider}-${f.name}`}>{f.label}</label>
+                {f.options !== undefined ? (
+                  <select id={`${connector.provider}-${f.name}`} value={settings[f.name]} onChange={(e) => setSettings({ ...settings, [f.name]: e.target.value })}>
+                    {f.options.map((o) => (
+                      <option key={o} value={o}>
+                        zoho.{o}
+                      </option>
+                    ))}
+                  </select>
+                ) : f.name === "stageExams" ? (
+                  <textarea
+                    id={`${connector.provider}-${f.name}`}
+                    rows={3}
+                    placeholder={f.placeholder}
+                    value={settings[f.name]}
+                    onChange={(e) => setSettings({ ...settings, [f.name]: e.target.value })}
+                  />
+                ) : (
+                  <input
+                    id={`${connector.provider}-${f.name}`}
+                    placeholder={f.placeholder}
+                    value={settings[f.name]}
+                    onChange={(e) => setSettings({ ...settings, [f.name]: e.target.value })}
+                  />
+                )}
+              </div>
+            ))}
+            {fields.credentials.map((f) => (
+              <div className="field" key={f.name}>
+                <label htmlFor={`${connector.provider}-${f.name}`}>{f.label}</label>
+                <input
+                  id={`${connector.provider}-${f.name}`}
+                  type="password"
+                  autoComplete="off"
+                  placeholder={connector.credentialsSet ? "Unchanged" : ""}
+                  value={credentials[f.name] ?? ""}
+                  onChange={(e) => setCredentials({ ...credentials, [f.name]: e.target.value })}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="row">
+            <button type="submit" disabled={save.isPending}>
+              Save and turn on
+            </button>
+            <button type="button" className="quiet" onClick={() => setOpen(false)}>
+              Close
+            </button>
+          </div>
+        </form>
+      ) : null}
+      {problem === null ? null : (
+        <p className="error" role="alert">
+          {problem instanceof ConsoleError ? (problem.detail ?? problem.message) : "That did not work."}
+        </p>
+      )}
+      <div className="row">
+        {open ? null : (
+          <button type="button" className={connector.configured ? "secondary" : ""} onClick={() => setOpen(true)}>
+            {connector.configured ? "Change settings" : `Set up ${connector.label}`}
+          </button>
+        )}
+        {connector.enabled ? (
+          <>
+            <button type="button" className="secondary" disabled={issue.isPending} onClick={() => issue.mutate()}>
+              Issue hook URL
+            </button>
+            <button type="button" className="quiet" disabled={disable.isPending} onClick={() => disable.mutate()}>
+              Turn off
+            </button>
+          </>
+        ) : null}
+      </div>
     </section>
   );
 }

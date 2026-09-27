@@ -45,7 +45,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     tokens,
     publicUrl: "https://example.invalid",
   });
-  const { webhooks, greenhouse } = buildIntegrations({
+  const { webhooks, greenhouse, ats } = buildIntegrations({
     sql: unusable,
     store,
     invitationStore,
@@ -63,6 +63,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     webhooks,
     greenhouse,
+    ats,
     invigilation: new InvigilationService({ store, invitations: invitationStore, invigilation: new InvigilationStore(unusable), exams: service }),
     privacy: new PrivacyService({ store, privacy: new PrivacyStore(unusable), invitations: invitationStore, identity, exams: service }),
     billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),

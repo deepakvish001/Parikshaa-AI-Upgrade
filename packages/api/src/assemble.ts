@@ -116,6 +116,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     results: new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
+    ats: integrations.ats,
     invigilation: new InvigilationService({
       store,
       invitations: invitationStore,

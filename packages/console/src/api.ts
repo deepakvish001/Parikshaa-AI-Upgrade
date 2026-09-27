@@ -844,6 +844,25 @@ export class ConsoleClient {
     return (await this.#request<{ deliveries: WebhookDelivery[] }>(`/webhooks/${encodeURIComponent(id)}/deliveries`)).deliveries;
   }
 
+  async atsConnectors(): Promise<readonly AtsConnector[]> {
+    return (await this.#request<{ connectors: AtsConnector[] }>("/integrations/ats")).connectors;
+  }
+
+  saveAts(provider: AtsProvider, settings: Record<string, unknown>, credentials?: Record<string, string>): Promise<AtsConnector> {
+    return this.#request(`/integrations/ats/${provider}`, {
+      method: "PUT",
+      body: JSON.stringify({ settings, ...(credentials === undefined ? {} : { credentials }) }),
+    });
+  }
+
+  issueAtsHook(provider: AtsProvider): Promise<{ readonly key: string; readonly hookUrl: string }> {
+    return this.#request(`/integrations/ats/${provider}/key`, { method: "POST" });
+  }
+
+  async disableAts(provider: AtsProvider): Promise<void> {
+    await this.#request(`/integrations/ats/${provider}/disable`, { method: "POST" });
+  }
+
   greenhouse(): Promise<{ enabled: boolean; endpoints: Record<string, string> }> {
     return this.#request("/integrations/greenhouse");
   }
@@ -1178,4 +1197,15 @@ export interface PracticeSimilarity {
   readonly problem: { readonly id: string; readonly title: string };
   readonly compared: number;
   readonly pairs: readonly { readonly a: PracticeSimilarSide; readonly b: PracticeSimilarSide; readonly similarity: number; readonly shared: number }[];
+}
+
+export type AtsProvider = "lever" | "zoho_recruit" | "darwinbox";
+
+export interface AtsConnector {
+  readonly provider: AtsProvider;
+  readonly label: string;
+  readonly configured: boolean;
+  readonly enabled: boolean;
+  readonly settings: Record<string, unknown>;
+  readonly credentialsSet: boolean;
 }
