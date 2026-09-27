@@ -387,8 +387,7 @@ Zoho, Darwinbox). `docs/openapi.json` already gives an integrator the contract.
 **Universities later:** Moodle via LTI 1.3, and CSV exchange for SIS and ERP
 systems that have no API worth using.
 
-**Status — webhooks and Greenhouse built; Lever, Zoho Recruit and Darwinbox not
-yet.** Every start, submission, grade and voiding is announced by the ledger in
+**Status — webhooks, Greenhouse, Lever, Zoho Recruit and Darwinbox built.** Every start, submission, grade and voiding is announced by the ledger in
 the same transaction that records it, so an integration hears of everything
 that happened and nothing that did not. The worker fans each announcement out,
 one delivery per interested webhook under a fixed id — a fan-out repeated after
@@ -421,8 +420,35 @@ copy of the database signs nothing and authenticates as no one.
 Not verified here: the connector follows Greenhouse's published partner
 documentation, and has not been run against a Greenhouse sandbox, which
 Greenhouse's partnerships team provides once the endpoints are registered with
-them. Lever, Zoho Recruit and Darwinbox have no connector yet; until they do,
-their customers can use webhooks and the API.
+them.
+
+**Lever, Zoho Recruit and Darwinbox** share one connector engine. An owner
+sets each up on the Integrations page and issues a hook URL for the ATS to
+call; the URL carries a key derived from the server's secret (never stored),
+rotated by issuing another. A call invites the candidate as any other —
+asked twice, the same invitation — and when the attempt is graded or set
+aside, the result goes back through the outbox:
+
+- *Lever:* a `candidateStageChange` webhook, its signature checked with the
+  webhook's token; each stage an owner maps to an exam sends that exam. The
+  candidate's name, email and phone come from the opportunity (Lever's v1
+  API), and the result is added to it as a note.
+- *Zoho Recruit:* a workflow webhook sends the candidate as JSON; the result is
+  a note on the candidate, through the v2 API with an access token the stored
+  refresh token buys from Zoho's accounts server in the organisation's data
+  centre (India's by default).
+- *Darwinbox:* its workflow calls the hook with the candidate; the result is
+  posted to the callback address Darwinbox provides, with its bearer token.
+
+What each ATS gave us to call it with — an API key, a refresh token, a
+callback token — has to be kept to be used, so it is stored sealed (AES-GCM
+under a key derived from the server's secret) and never shown again. Every
+call out goes through the SSRF guard. The ATS acts as an author: it sees
+marks and a link to the report, never an answer or a follow-up.
+
+Not verified here: Lever and Zoho Recruit follow their published APIs;
+Darwinbox's partner API is not public, so its shapes are this connector's own
+and are shown in the console. None has been run against a live account.
 
 ## 8. Live invigilation
 

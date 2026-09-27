@@ -75,7 +75,7 @@ tests fail without RLS and pass with it. See STACK.md §0a and
 
 ## 5. Outbound requests
 
-Webhooks, Greenhouse, and OpenID Connect providers are URLs a customer typed.
+Webhooks, Greenhouse, Lever, Zoho Recruit, Darwinbox and OpenID Connect providers are URLs a customer typed.
 All go through one guard (`safe-http.ts`): HTTPS only, no credentials in the
 URL, every resolved address public (checked in the socket's own DNS lookup,
 so DNS rebinding fails), no redirects, 64 KiB replies at most.
@@ -161,4 +161,4 @@ point-in-time recovery; a restore drill that runs in CI. See OPERATIONS.md.
 | ISO 27001 / SOC 2 | Not started; this pack is the starting evidence |
 | Signed DPA with each institution | Needs legal review of a template |
 | India inference region for model calls | To be confirmed with Anthropic |
-| Lever, Zoho Recruit, Darwinbox connectors, MSG91 and Greenhouse sandboxes | Built or specified against published docs; not yet exercised against the live services |
+| Greenhouse, Lever, Zoho Recruit and Darwinbox connectors; MSG91 | Built against published documentation (Darwinbox: a configurable callback); not yet exercised against live accounts |
