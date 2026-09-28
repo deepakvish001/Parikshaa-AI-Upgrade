@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, openQuestion, seedSitting, SHORT, submitAttempt } from "./support.js";
+import { beginSitting, openQuestion, seedSitting, SHORT, submitAttempt } from "./support.js";
 
 /** ROADMAP §8, in a real browser: what an invigilator does reaches the candidate's open page without a reload. */
 
@@ -7,7 +7,7 @@ test("an announcement reaches a candidate's open page, and a reopened attempt op
   const sitting = await seedSitting(request);
   const staff = { authorization: `Bearer ${sitting.token}` };
   await page.clock.install();
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
 
   // The invigilator tells the room something; the page hears of it at its next check-in.

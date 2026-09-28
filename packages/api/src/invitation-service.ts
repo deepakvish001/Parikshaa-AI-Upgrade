@@ -16,7 +16,7 @@ import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor, type Permission } from "./staff-auth.js";
 import { ConsentRequired, type Notice } from "./privacy.js";
 import { needsCamera } from "./proctoring.js";
-import type { ProctoringPolicy } from "@parikshaa/core";
+import type { Exam, ProctoringPolicy } from "@parikshaa/core";
 
 /**
  * A proctored exam starts only once the candidate's page has its camera
@@ -319,4 +319,77 @@ export class InvitationService {
     );
     return { token, attemptId: claim.attemptId, resumed: !claim.claimed };
   }
+
+  /**
+   * What the candidate should know before they begin, read without beginning.
+   *
+   * A computer-based test shows its instructions before the clock: the paper's
+   * shape, its marking, what the palette's colours mean, and a "ready to
+   * begin". Reading them here starts nothing and claims nothing, so a
+   * candidate can take as long as they need. Opening the link is still
+   * {@link redeem}; this only says what it will open.
+   */
+  async briefing(code: string): Promise<Briefing> {
+    const named = this.#o.codes.verify(code);
+    if (named === null) throw new InvalidInvitation();
+    const scope = staffScope(toOrgId(named.orgId));
+    const invitation = await this.#o.invitations.get(scope, named.invitationId);
+    if (invitation === null || invitation.revoked) throw new InvalidInvitation();
+    const exam = await this.#o.store.loadExam(scope, toExamId(invitation.examId));
+    if (exam === null) throw new InvalidInvitation();
+    const started = invitation.attemptId !== null && (await this.#o.store.hasStarted(scope, invitation.attemptId as AttemptId));
+    return briefingOf(exam, invitation, started);
+  }
+}
+
+/** The paper as its instructions describe it, before anything starts. */
+export interface Briefing {
+  readonly title: string;
+  readonly candidate: { readonly name: string; readonly ref: string };
+  /** Already begun: the link resumes it, and the instructions are skipped. */
+  readonly started: boolean;
+  readonly opensAt: string;
+  readonly closesAt: string;
+  readonly durationMs: number;
+  readonly questionCount: number;
+  /** Marks on the paper; a section counts its draw at its first question's marks. */
+  readonly totalMarks: number;
+  readonly sections: readonly { readonly title: string; readonly questionCount: number; readonly durationMs: number | null }[];
+  readonly kinds: readonly ("mcq" | "multiple" | "numeric" | "short" | "code")[];
+  /** The largest mark taken away for a wrong answer; zero when nothing is. */
+  readonly negativeMarks: number;
+  readonly allowRevision: boolean;
+  readonly calculator: boolean;
+  readonly proctored: boolean;
+}
+
+export function briefingOf(exam: Exam, invitation: Pick<Invitation, "name" | "candidateRef" | "opensAt" | "closesAt">, started: boolean): Briefing {
+  const sections = exam.sections ?? [];
+  const every = [...exam.questions, ...sections.flatMap((s) => s.pool)];
+  const kinds = new Set<Briefing["kinds"][number]>();
+  for (const q of every) {
+    if (q.kind === "mcq") kinds.add(q.correctIndices !== undefined && q.correctIndices.length > 1 ? "multiple" : "mcq");
+    else kinds.add(q.kind);
+  }
+  const negativeOf = (q: (typeof every)[number]) => (q.kind === "mcq" || q.kind === "numeric" ? (q.negativeMarks ?? 0) : 0);
+  return {
+    title: exam.title,
+    candidate: { name: invitation.name, ref: invitation.candidateRef },
+    started,
+    opensAt: invitation.opensAt,
+    closesAt: invitation.closesAt,
+    durationMs: exam.policy.durationMs,
+    questionCount: exam.questions.length + sections.reduce((n, s) => n + s.pick, 0),
+    totalMarks:
+      exam.questions.reduce((n, q) => n + q.maxScore, 0) + sections.reduce((n, s) => n + s.pick * (s.pool[0]?.maxScore ?? 0), 0),
+    sections: [
+      ...(sections.length > 0 && exam.questions.length > 0 ? [{ title: "General", questionCount: exam.questions.length, durationMs: null }] : []),
+      ...sections.map((s) => ({ title: s.title, questionCount: s.pick, durationMs: s.durationMs ?? null })),
+    ],
+    kinds: (["mcq", "multiple", "numeric", "short", "code"] as const).filter((k) => kinds.has(k)),
+    negativeMarks: Math.max(0, ...every.map(negativeOf)),
+    allowRevision: exam.policy.allowRevision,
+    calculator: exam.policy.calculator ?? false,
+    proctored: exam.policy.proctoring !== undefined && needsCamera(exam.policy.proctoring),
+  };
 }

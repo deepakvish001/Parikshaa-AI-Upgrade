@@ -224,6 +224,11 @@ export interface ExamPolicy {
   readonly testFeedback?: "all" | "visible";
   /** Offer completion in the code editor. Off by default: most hiring tests are taken without it. */
   readonly codeCompletion?: boolean;
+  /**
+   * An on-screen scientific calculator in the exam bar, as JEE Main offers.
+   * Off by default: most aptitude rounds test the arithmetic too.
+   */
+  readonly calculator?: boolean;
 }
 
 /**

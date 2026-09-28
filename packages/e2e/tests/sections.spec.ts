@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, MCQ, SHORT, seedSitting, submitAttempt } from "./support.js";
+import { beginSitting, MCQ, SHORT, seedSitting, submitAttempt } from "./support.js";
 
 /** ROADMAP §3: a test taken section by section, each with its own clock, locked once left. */
 
@@ -9,7 +9,7 @@ test("a candidate takes a sectioned test in order, and a section once left stays
     sections: [{ id: "apt", title: "Aptitude", pick: 1, pool: [SHORT], durationMs: 10 * 60_000 }],
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
 
   const steps = page.getByRole("navigation", { name: "Sections" });

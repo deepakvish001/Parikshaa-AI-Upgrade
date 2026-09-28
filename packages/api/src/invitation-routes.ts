@@ -250,6 +250,53 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
   );
 
   routes.post(
+    "/invitations/briefing",
+    {
+      schema: {
+        tags: ["Candidate"],
+        summary: "Read an invitation's instructions without opening it",
+        description:
+          "The paper's shape and marking, for the instructions a candidate reads before beginning. Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
+        body: z.object({ code: z.string().min(1).max(512) }),
+        response: {
+          200: z.object({
+            title: z.string(),
+            candidate: z.object({ name: z.string(), ref: z.string() }),
+            started: z.boolean(),
+            opensAt: z.string(),
+            closesAt: z.string(),
+            durationMs: z.number(),
+            questionCount: z.number(),
+            totalMarks: z.number(),
+            sections: z.array(z.object({ title: z.string(), questionCount: z.number(), durationMs: z.number().nullable() })).readonly(),
+            kinds: z.array(z.enum(["mcq", "multiple", "numeric", "short", "code"])).readonly(),
+            negativeMarks: z.number().describe("The largest mark taken away for a wrong answer; zero when nothing is."),
+            allowRevision: z.boolean(),
+            calculator: z.boolean(),
+            proctored: z.boolean(),
+          }),
+          404: S.errorResponse,
+          429: S.errorResponse,
+        },
+      },
+    },
+    async (request, reply) => {
+      if (throttle.blocked(request.ip, "invitation")) {
+        return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
+      }
+      try {
+        return reply.send(await invitations.briefing(request.body.code));
+      } catch (error) {
+        if (error instanceof InvalidInvitation) {
+          throttle.failed(request.ip, "invitation");
+          return reply.code(404).send({ error: "invalid_invitation", message: error.message });
+        }
+        throw error;
+      }
+    },
+  );
+
+  routes.post(
     "/invitations/redeem",
     {
       schema: {

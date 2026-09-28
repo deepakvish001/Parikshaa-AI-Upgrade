@@ -7,11 +7,11 @@ import { PreferencesBar, usePreferences, type Language } from "../i18n.tsx";
  * The frame of every screen before the test: the name, what Parikshaa is for,
  * one card, and a footer that says what happens to the candidate's work.
  */
-export function GateShell({ children, wide = false }: { readonly children: ReactNode; readonly wide?: boolean }) {
+export function GateShell({ children, wide = false, full = false }: { readonly children: ReactNode; readonly wide?: boolean; readonly full?: boolean }) {
   const { t } = usePreferences();
   return (
     <div className="gate-screen">
-      <main className={wide ? "gate wide" : "gate"}>
+      <main className={full ? "gate full" : wide ? "gate wide" : "gate"}>
         <PreferencesBar />
         <h1 className="gate-title">
           <Wordmark size={36} />

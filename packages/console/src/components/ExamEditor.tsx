@@ -127,6 +127,18 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
             </select>
           </div>
         </div>
+        <fieldset className="grid">
+          <legend>Candidate tools</legend>
+          <label className="inline">
+            <input
+              type="checkbox"
+              checked={exam.policy.calculator === true}
+              onChange={(e) => setExam({ ...exam, policy: { ...exam.policy, calculator: e.target.checked } })}
+              style={{ width: "auto" }}
+            />{" "}
+            Offer an on-screen scientific calculator
+          </label>
+        </fieldset>
         {[...exam.questions, ...sections.flatMap((s) => s.pool)].some((q) => q.kind === "code") ? (
           <fieldset className="grid code-policy">
             <legend>Coding questions</legend>

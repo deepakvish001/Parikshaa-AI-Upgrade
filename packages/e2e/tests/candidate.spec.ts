@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { parseReceipt, verifyReceipt } from "@parikshaa/verify";
-import { actions, local, onScreen, openQuestion, SHORT, seedSitting, submitAttempt } from "./support.js";
+import { actions, beginSitting, local, onScreen, openQuestion, SHORT, seedSitting, submitAttempt } from "./support.js";
 
 /**
  * ROADMAP §13: a candidate's whole attempt, in a real browser, against the
@@ -12,7 +12,7 @@ const answered = (page: Page, n: number) => page.getByRole("navigation", { name:
 
 test("a candidate sits the exam from their link, answers a follow-up, and leaves with a record that checks", async ({ page, request }) => {
   const sitting = await seedSitting(request);
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
 
   // A right answer to the multiple-choice question earns a follow-up about it.
@@ -51,7 +51,7 @@ test("a candidate sits the exam from their link, answers a follow-up, and leaves
 
 test("an answer typed while offline is kept, sent when the connection returns, and survives a reload", async ({ page, context, request }) => {
   const sitting = await seedSitting(request);
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await openQuestion(page, 2);
   const box = onScreen(page).getByRole("textbox", { name: SHORT.stem });
 
@@ -70,7 +70,7 @@ test("an answer typed while offline is kept, sent when the connection returns, a
 
 test("a connection that drops while a follow-up is being written leaves nothing stuck on screen", async ({ page, request }) => {
   const sitting = await seedSitting(request);
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
 
   // The first request for a follow-up dies on the way.
   let dropped = 0;
@@ -100,7 +100,7 @@ test("a candidate who reopens their link on another device carries on where they
 
   const laptop = await browser.newContext();
   const first = await laptop.newPage();
-  await first.goto(link);
+  await beginSitting(first, sitting.links["CS001"]!);
   await openQuestion(first, 2);
   await onScreen(first).getByRole("textbox", { name: SHORT.stem }).fill("Started on the laptop.");
   await actions(first).getByRole("button", { name: "Save answer" }).click();

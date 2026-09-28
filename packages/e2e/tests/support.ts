@@ -49,6 +49,8 @@ export async function seedSitting(
     durationMs?: number;
     /** When the window opens; now, if not given. It stays open three hours from then. */
     opensAt?: Date;
+    /** Offer the on-screen calculator. */
+    calculator?: boolean;
   } = {},
 ): Promise<Sitting> {
   const token = await ownerToken(request, options.owner);
@@ -69,6 +71,7 @@ export async function seedSitting(
         allowRevision: true,
         vivaTriggerRatio: options.vivaTriggerRatio ?? 0.5,
         ...(options.proctoring === undefined ? {} : { proctoring: options.proctoring }),
+        ...(options.calculator === undefined ? {} : { calculator: options.calculator }),
       },
     },
   });
@@ -133,6 +136,24 @@ export async function openQuestion(page: Page, n: number): Promise<void> {
   if ((await toggle.isVisible()) && (await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
   await palette.getByRole("button", { name: new RegExp(`^Question ${n}:`) }).click();
   await expect(page.getByRole("heading", { name: new RegExp(`^${n}\\. `) })).toBeVisible();
+}
+
+/**
+ * Open a link for the first time, as a candidate does: the instructions and
+ * system check come first, and the clock starts only with the last button
+ * ("I am ready to begin", or "Continue" when a camera check follows).
+ * Language-independent, so it serves a sitting read in Hindi too.
+ */
+export async function beginSitting(page: Page, link: string): Promise<void> {
+  await page.goto(local(link));
+  await readyToBegin(page);
+}
+
+/** On the instructions page: declare, and begin. */
+export async function readyToBegin(page: Page): Promise<void> {
+  const declare = page.locator(".declare");
+  await declare.locator("input[type=checkbox]").check();
+  await declare.getByRole("button").click();
 }
 
 /** Submit, through the summary a CBT shows first. */

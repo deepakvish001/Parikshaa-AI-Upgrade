@@ -122,14 +122,18 @@ export function SubmitDialog({
 }) {
   const { t } = usePreferences();
   const back = useRef<HTMLButtonElement>(null);
+  // Focus goes to "Keep working" once, when the summary opens — not again on
+  // every render behind it, which would pull it back from "Yes, submit".
+  const cancel = useRef(onCancel);
+  cancel.current = onCancel;
   useEffect(() => {
     back.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape") cancel.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  }, []);
   const left = counts.notAnswered + counts.notVisited + counts.marked;
   const rows: readonly [string, string, number][] = [
     ["answered", t("palette.answered"), counts.answered],

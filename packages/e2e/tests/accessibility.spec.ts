@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "./support.js";
+import { beginSitting, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "./support.js";
 
 /**
  * ROADMAP §9: an exam a candidate cannot operate is an exam they failed for
@@ -16,7 +16,7 @@ async function violations(page: Page): Promise<string[]> {
 
 test("every screen a candidate meets passes WCAG 2.1 AA, in English and in Hindi", async ({ page, request }) => {
   const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
   expect(await violations(page)).toEqual([]);
 
@@ -42,17 +42,26 @@ test("every screen a candidate meets passes WCAG 2.1 AA, in English and in Hindi
   expect(await violations(page)).toEqual([]);
 });
 
+test("the instructions and system check, before the clock, pass WCAG 2.1 AA", async ({ page, request }) => {
+  const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
+  const link = local(sitting.links["CS001"]!);
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: "System check" })).toBeVisible();
+  await expect(page.getByText(/^Good \(\d+ ms\)$/)).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+});
+
 test("the privacy notice passes WCAG 2.1 AA", async ({ page, request }) => {
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ] });
   await setPrivacyNotice(request, sitting.token);
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: "Before you start: your data" })).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });
 
 test("a candidate can sit the whole exam from the keyboard", async ({ page, request }) => {
   const sitting = await seedSitting(request, { vivaTriggerRatio: 1 });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
 
   const focused = (name: string) => page.getByRole("button", { name, exact: true }).evaluate((e) => e === document.activeElement);

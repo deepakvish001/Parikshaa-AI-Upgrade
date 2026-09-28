@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { actions, local, onScreen, openQuestion, OWNER, ownerToken, seedSitting, submitAttempt } from "./support.js";
+import { actions, beginSitting, onScreen, openQuestion, OWNER, ownerToken, seedSitting, submitAttempt } from "./support.js";
 import { FIGURE_SERIES, uploadPicture } from "./pictures.js";
 
 /**
@@ -40,7 +40,7 @@ test("a candidate answers an aptitude paper from the palette, and negative marki
       { id: "cover", kind: "mcq", stem: "By when does it cover the country?", maxScore: 1, rubric: [], options: ["Early June", "Mid-July"], correctIndex: 1, passage },
     ],
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
 
   const figureImage = page.getByRole("img", { name: "Four squares with one, two, three and four dots" });
   await expect(figureImage).toBeVisible();

@@ -81,6 +81,8 @@ Variants are classes:
 Each app adds its own layout on top:
 
 - **Candidate app** (`packages/web/src/styles.css`): the sitting as a computer-based test — an ink exam bar with the clock as HH:MM:SS, section tabs, one question at a time with its kind and marks, the palette in the five shapes candidates know from JEE and NEET (not visited, not answered, answered, marked, answered and marked, each counted), Previous · Clear response · Mark for review & next · Save & next pinned under the question, and a summary before submitting. Full-screen code opens under the bar so the clock stays in sight; the dark editor darkens the whole workspace. Also the follow-up panel and the receipt.
+- **Before the clock** (`components/Instructions.tsx`): an invitation's first opening shows the paper's instructions — who is sitting it, duration, questions, marks, sections, marking, what the palette's shapes mean, how to move — beside a system check (browser, connection, saving on the device, screen, camera) and a declaration. Reading them starts nothing (`POST /invitations/briefing`); the clock starts at "I am ready to begin". The same instructions open from the exam at any time.
+- **Tools** (`components/Tools.tsx`): a strip under the exam bar with the save status for the whole paper, Instructions, a scientific calculator where the exam allows one (`policy.calculator`; parsed by `calc.ts`, never `eval`), rough work kept on the device, A−/A+ text size, light and dark, and keyboard shortcuts (A–D, S, N, P, M, `?`). Warnings at 15, 5 and 1 minute; a plain "Time is up" when it is. On a phone the palette is a bottom sheet and a swipe moves between questions.
 - **Console** (`packages/console/src/styles.css`): the sidebar shell, the exams overview (totals, filters, search, and each exam's candidates sitting, to grade and graded), sign-in, review, results, live sitting, proctoring and invoices.
 
 ## Pages
@@ -106,7 +108,9 @@ Each app adds its own layout on top:
 | 17 | [A wrong answer on a hidden test, dark editor](screenshots/candidate-17-wrong-answer.png) | 17 | [Privacy](screenshots/console-17-privacy.png) |
 | 18 | [The summary before submitting](screenshots/candidate-18-submit-summary.png) | 18 | [Billing](screenshots/console-18-billing.png) · [GST invoice](screenshots/console-18b-gst-invoice.png) |
 | 19 | [A chart to read, in the paper](screenshots/candidate-19-chart.png) | 19 | [Account: password and two-step sign-in](screenshots/console-19-password.png) |
-| | | 20 | [Sign-in: single sign-on and owners' two-step](screenshots/console-20-sign-in-security.png) |
+| 20 | [Instructions and system check, before the clock](screenshots/candidate-20-instructions.png) | 20 | [Sign-in: single sign-on and owners' two-step](screenshots/console-20-sign-in-security.png) |
+| 21 | [The calculator](screenshots/candidate-21-calculator.png) | | |
+| 22 | [Rough work](screenshots/candidate-22-rough-work.png) | | |
 | | | 21 | [Aptitude exam editor](screenshots/console-21-aptitude-editor.png) |
 | | | 22 | [Code similarity](screenshots/console-22-code-similarity.png) |
 | | | 23 | [A function question in the editor](screenshots/console-23-function-question.png) |

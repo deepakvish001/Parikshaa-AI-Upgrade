@@ -76,6 +76,7 @@ describe("the OpenAPI document", () => {
       "get /openapi.json",
       "post /auth/login",
       "post /invitations/redeem",
+      "post /invitations/briefing",
       "get /media/{sha256}",
       "post /auth/password-reset",
       "post /auth/password-reset/confirm",
@@ -100,8 +101,8 @@ describe("the OpenAPI document", () => {
         .map(({ path }) => path);
 
     // Everything a candidate does is to their own attempt, addressed as `me` —
-    // except opening the invitation that gives them one.
-    expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me") || p === "/invitations/redeem")).toBe(true);
+    // except reading and opening the invitation that gives them one.
+    expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me") || p === "/invitations/redeem" || p === "/invitations/briefing")).toBe(true);
     expect(tagged("Institution").some((p) => p === "/exams")).toBe(true);
     // A practice learner reaches only their site's pages; staff run it from /practice-admin.
     expect(tagged("Practice").length).toBeGreaterThan(10);

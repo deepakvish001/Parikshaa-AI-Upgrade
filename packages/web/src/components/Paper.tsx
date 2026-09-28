@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ChevronDown, FileText } from "lucide-react";
+import { ChevronDown, FileText, X } from "lucide-react";
 import { usePreferences } from "../i18n.tsx";
 
 /** A question's or passage's pictures, served by their hash. */
@@ -104,7 +104,16 @@ export function Palette({
         <span className="palette-summary">{summary}</span>
         <ChevronDown aria-hidden="true" />
       </button>
+      {/* On a phone the palette is a sheet over the paper; a tap beside it closes it. */}
+      {open ? <div className="sheet-scrim" aria-hidden="true" onClick={() => setOpen(false)} /> : null}
       <div className="palette-body">
+        <div className="sheet-head">
+          <strong>{t("palette.region")}</strong>
+          <span className="palette-summary">{summary}</span>
+          <button type="button" className="quiet sheet-close" aria-label={t("tools.close")} onClick={() => setOpen(false)}>
+            <X aria-hidden="true" />
+          </button>
+        </div>
         <div className="palette-head">
           <p className="palette-title">{t("palette.region")}</p>
           <p className="palette-summary">{summary}</p>

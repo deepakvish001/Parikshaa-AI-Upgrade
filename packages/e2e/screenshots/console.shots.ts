@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { hashPassword } from "@parikshaa/api";
 import { seedBilledOrganisation } from "../src/database.js";
-import { local, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
+import { beginSitting, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
 import { aptitudePaper, CODE_QUESTION, codeAnswer, MERGE_INTERVALS, RUN_COPIED, RUN_GROUPBY, RUN_OFF_BY_ONE, RUN_ORIGINAL, RUN_WHILE } from "./fixtures.js";
 import { shoot, shootPart } from "./shoot.js";
@@ -213,7 +213,7 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // A proctored candidate, in their own browser with Chromium's fake camera.
   const candidate = await browser.newPage();
-  await candidate.goto(local(proctored.links["SC001"]!));
+  await beginSitting(candidate, proctored.links["SC001"]!);
   await candidate.getByRole("button", { name: "Allow the camera" }).click();
   await candidate.getByRole("button", { name: "My camera works — start the test" }).click();
   await candidate.getByRole("button", { name: "Take my photo" }).click();

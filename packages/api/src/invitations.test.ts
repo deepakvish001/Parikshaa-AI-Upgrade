@@ -153,6 +153,40 @@ describe("importing a cohort", () => {
 });
 
 describe("a candidate opening their link", () => {
+  it("reads the instructions without starting anything, early or in the window", async () => {
+    const [first] = await inviteAll();
+    const brief = () => call("POST", null, "/invitations/briefing", { code: codeFor(first!.id) });
+
+    const early = await brief();
+    expect(early.statusCode, early.payload).toBe(200);
+    expect(early.json()).toMatchObject({
+      title: "Campus drive 2026",
+      candidate: { name: "Ananya Iyer", ref: "CS001" },
+      started: false,
+      durationMs: HOUR,
+      questionCount: 1,
+      totalMarks: 1,
+      kinds: ["mcq"],
+      negativeMarks: 0,
+      calculator: false,
+      proctored: false,
+    });
+
+    clock = OPENS + 60_000;
+    expect((await brief()).json().started).toBe(false);
+    // Reading it claimed nothing: the invitation has not begun.
+    const listed = (await call("GET", owner, "/exams/drive-2026/invitations")).json().invitations;
+    expect(listed.find((i: { candidateRef: string }) => i.candidateRef === "CS001").attemptState).toBe("not_started");
+
+    expect((await redeem(codeFor(first!.id))).statusCode).toBe(200);
+    expect((await brief()).json().started).toBe(true);
+  });
+
+  it("refuses a code it did not issue", async () => {
+    const res = await call("POST", null, "/invitations/briefing", { code: "made-up.code" });
+    expect(res.statusCode).toBe(404);
+  });
+
   it("is told when to come back if it is early", async () => {
     const [first] = await inviteAll();
     const res = await redeem(codeFor(first!.id));

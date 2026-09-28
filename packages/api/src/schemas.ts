@@ -174,6 +174,7 @@ export const examSchema = z.object({
       .optional()
       .describe("What Submit tells a candidate about their code: every test's verdict, hidden ones without their content (all, the default), or the visible tests' only."),
     codeCompletion: z.boolean().optional().describe("Offer completion in the code editor. Off by default."),
+    calculator: z.boolean().optional().describe("An on-screen scientific calculator in the exam bar. Off by default."),
   }),
   questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
   sections: z
@@ -440,6 +441,7 @@ export const candidateStateResponse = z.object({
     proctoring: proctoringPolicy.nullable().describe("What the camera and browser are asked for. Null: nothing."),
     testFeedback: z.enum(["all", "visible"]).describe("What Submit reports about hidden tests."),
     codeCompletion: z.boolean().describe("Whether the code editor offers completion."),
+    calculator: z.boolean().describe("Whether the exam bar offers a calculator."),
   }),
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
   identityCaptured: z.boolean().describe("A proctored exam's identity photos have been taken; until then its questions wait."),

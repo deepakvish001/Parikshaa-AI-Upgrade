@@ -127,6 +127,10 @@
                       "codeCompletion": {
                         "description": "Offer completion in the code editor. Off by default.",
                         "type": "boolean"
+                      },
+                      "calculator": {
+                        "description": "An on-screen scientific calculator in the exam bar. Off by default.",
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -3018,6 +3022,10 @@
                         },
                         "codeCompletion": {
                           "description": "Offer completion in the code editor. Off by default.",
+                          "type": "boolean"
+                        },
+                        "calculator": {
+                          "description": "An on-screen scientific calculator in the exam bar. Off by default.",
                           "type": "boolean"
                         }
                       },
@@ -8080,6 +8088,10 @@
                         "codeCompletion": {
                           "type": "boolean",
                           "description": "Whether the code editor offers completion."
+                        },
+                        "calculator": {
+                          "type": "boolean",
+                          "description": "Whether the exam bar offers a calculator."
                         }
                       },
                       "required": [
@@ -8090,7 +8102,8 @@
                         "questions",
                         "proctoring",
                         "testFeedback",
-                        "codeCompletion"
+                        "codeCompletion",
+                        "calculator"
                       ],
                       "additionalProperties": false
                     },
@@ -32213,6 +32226,203 @@
             }
           },
           "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invitations/briefing": {
+      "post": {
+        "summary": "Read an invitation's instructions without opening it",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "The paper's shape and marking, for the instructions a candidate reads before beginning. Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 512
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "candidate": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "ref": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "ref"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "started": {
+                      "type": "boolean"
+                    },
+                    "opensAt": {
+                      "type": "string"
+                    },
+                    "closesAt": {
+                      "type": "string"
+                    },
+                    "durationMs": {
+                      "type": "number"
+                    },
+                    "questionCount": {
+                      "type": "number"
+                    },
+                    "totalMarks": {
+                      "type": "number"
+                    },
+                    "sections": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "title": {
+                            "type": "string"
+                          },
+                          "questionCount": {
+                            "type": "number"
+                          },
+                          "durationMs": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "title",
+                          "questionCount",
+                          "durationMs"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "kinds": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "mcq",
+                          "multiple",
+                          "numeric",
+                          "short",
+                          "code"
+                        ]
+                      }
+                    },
+                    "negativeMarks": {
+                      "type": "number",
+                      "description": "The largest mark taken away for a wrong answer; zero when nothing is."
+                    },
+                    "allowRevision": {
+                      "type": "boolean"
+                    },
+                    "calculator": {
+                      "type": "boolean"
+                    },
+                    "proctored": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "candidate",
+                    "started",
+                    "opensAt",
+                    "closesAt",
+                    "durationMs",
+                    "questionCount",
+                    "totalMarks",
+                    "sections",
+                    "kinds",
+                    "negativeMarks",
+                    "allowRevision",
+                    "calculator",
+                    "proctored"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
             "description": "A failed request. `error` is a stable code; `message` is for people.",
             "content": {
               "application/json": {

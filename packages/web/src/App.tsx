@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type CandidateState } from "./api.ts";
@@ -14,7 +14,19 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { ChevronLeft, ChevronRight, Eraser, Flag, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eraser, Flag, Hourglass, Send } from "lucide-react";
+import { briefingOfState, Instructions } from "./components/Instructions.tsx";
+import {
+  Calculator,
+  clearRoughWork,
+  InstructionsPanel,
+  RoughWork,
+  ShortcutsPanel,
+  TimeWarnings,
+  ToolStrip,
+  type Panel,
+  type SaveState,
+} from "./components/Tools.tsx";
 import { loadReview, loadVisited, saveReview, saveVisited } from "./review.ts";
 import { Countdown, ExamBar, kindLabel, SubmitDialog } from "./components/Cbt.tsx";
 import { Figures, Palette, PassageCard } from "./components/Paper.tsx";
@@ -452,7 +464,10 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     },
     onSuccess: async () => {
       setProbe(null);
-      if (attemptId !== null) clearLocalDrafts(attemptId);
+      if (attemptId !== null) {
+        clearLocalDrafts(attemptId);
+        clearRoughWork(attemptId);
+      }
       await queryClient.invalidateQueries();
     },
   });
@@ -493,6 +508,63 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       document.getElementById(`q-${currentId}`)?.scrollIntoView?.({ block: "start", behavior: "smooth" });
     }
   }, [currentId, attemptId, inProgress]);
+
+  // The tools beside the paper: one open at a time.
+  const [panel, setPanel] = useState<Panel>(null);
+  // Where a touch on the question began, for a swipe to the next or previous one.
+  const touch = useRef<{ x: number; y: number } | null>(null);
+
+  /**
+   * Keyboard shortcuts, as `?` lists them: A–D choose, S saves and moves on,
+   * N and P move, M marks. Never while typing — a letter in an answer box is
+   * that letter — and never with a modifier held.
+   */
+  const keys = useRef<{ choose: (n: number) => void; save: () => void; next: () => void; prev: () => void; mark: () => void } | null>(null);
+  useEffect(() => {
+    if (!inProgress) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+      const target = e.target as HTMLElement | null;
+      if (target !== null && (target.closest("input:not([type=radio]):not([type=checkbox]), textarea, select, [contenteditable=true], .cm-editor, .floating, [role=dialog]") !== null)) return;
+      const key = e.key.toLowerCase();
+      if (key === "?") setPanel((p) => (p === "shortcuts" ? null : "shortcuts"));
+      else if (key === "escape") setPanel(null);
+      else if (keys.current === null) return;
+      else if ("abcd".includes(key) && key.length === 1) keys.current.choose("abcd".indexOf(key));
+      else if (key === "s") keys.current.save();
+      else if (key === "n") keys.current.next();
+      else if (key === "p") keys.current.prev();
+      else if (key === "m") keys.current.mark();
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [inProgress]);
+
+  /**
+   * Time up: the page says so plainly and hands over what is waiting to be
+   * saved, then reads the attempt again — the server closes it at the next
+   * request, and the record opens in its place.
+   */
+  const [timeUp, setTimeUp] = useState(false);
+  useEffect(() => {
+    if (!inProgress || expiresAt === 0) return;
+    setTimeUp(false);
+    const id = setTimeout(
+      () => {
+        setTimeUp(true);
+        void (async () => {
+          await flushPending().catch(() => undefined);
+          await queryClient.invalidateQueries({ queryKey: ["state"] });
+        })();
+      },
+      Math.max(0, expiresAt - Date.now()),
+    );
+    return () => clearTimeout(id);
+    // flushPending reads refs only; the timer is re-armed when the end moves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inProgress, expiresAt, queryClient]);
 
   const expired = state.error instanceof ApiError && state.error.status === 401;
   useEffect(() => {
@@ -626,6 +698,56 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   };
   const lastPart = parts === null || nextPart === null;
   const canSubmit = !submit.isPending && (answered.size > 0 || Object.keys(drafts).length > 0);
+
+  keys.current =
+    original_ === null || partTimeUp
+      ? null
+      : {
+          choose: (n) => {
+            const inputs = document.getElementById(`q-${original_.id}`)?.querySelectorAll<HTMLInputElement>("input[type=radio], input[type=checkbox]") ?? [];
+            inputs[n]?.click();
+            inputs[n]?.focus();
+          },
+          save: () => original_.kind !== "code" && advanceFrom(original_.id),
+          next: () => next !== null && goTo(next.id),
+          prev: () => previous !== null && goTo(previous.id),
+          mark: () => toggleReview(original_.id),
+        };
+
+  /**
+   * On a touch screen, a sideways swipe across the question moves to the next
+   * or the previous one, as paging a booklet does. Not from inside something
+   * that scrolls or takes typing of its own: an answer box, the code
+   * workspace, a table, a picture or a passage.
+   */
+  const swipe = {
+    onTouchStart: (e: TouchEvent) => {
+      const first = e.touches[0];
+      const inside = (e.target as HTMLElement).closest("textarea, input, select, .workspace, table, .figure, .passage, .probe");
+      touch.current = first !== undefined && e.touches.length === 1 && inside === null ? { x: first.clientX, y: first.clientY } : null;
+    },
+    onTouchEnd: (e: TouchEvent) => {
+      const start = touch.current;
+      touch.current = null;
+      const end = e.changedTouches[0];
+      if (start === null || end === undefined) return;
+      const dx = end.clientX - start.x;
+      const dy = end.clientY - start.y;
+      if (Math.abs(dx) < 70 || Math.abs(dy) > Math.abs(dx) * 0.6) return;
+      if (dx < 0 && next !== null) goTo(next.id);
+      else if (dx > 0 && previous !== null) goTo(previous.id);
+    },
+  };
+
+  // One word for the whole paper: anything unsent on this device, anything on its way, or all of it safe.
+  const statuses = Object.values(status);
+  const paperSave: SaveState = statuses.includes("offline")
+    ? "offline"
+    : saveAnswer.isPending || statuses.includes("saving")
+      ? "saving"
+      : answered.size > 0 || statuses.length > 0
+        ? "saved"
+        : "idle";
 
   const action = !lastPart ? (
     currentPart !== null && !partTimeUp ? (
@@ -837,9 +959,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         }
         action={action}
       />
-      {parts !== null ? <SectionSteps parts={parts} now={now} /> : null}
+      <ToolStrip save={paperSave} panel={panel} onPanel={setPanel} calculator={exam.calculator ?? false}>
+        {parts !== null ? <SectionSteps parts={parts} now={now} /> : null}
+      </ToolStrip>
+      <TimeWarnings expiresAt={state.data.expiresAt} />
+      {panel === "calculator" ? <Calculator onClose={() => setPanel(null)} /> : null}
+      {panel === "rough" ? <RoughWork attemptId={state.data.attemptId} onClose={() => setPanel(null)} /> : null}
+      {panel === "shortcuts" ? <ShortcutsPanel onClose={() => setPanel(null)} /> : null}
+      {panel === "instructions" ? (
+        <InstructionsPanel onClose={() => setPanel(null)}>
+          <Instructions brief={briefingOfState(state.data)} />
+        </InstructionsPanel>
+      ) : null}
       <div className="cbt-body">
-        <main className="cbt-main">
+        <main className="cbt-main" {...swipe}>
           {cameraOn === false ? (
             <p className="offline" role="alert">
               {t("camera.offBanner")}
@@ -925,6 +1058,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           onCancel={() => setConfirming(false)}
           onConfirm={() => submit.mutate(undefined, { onSettled: () => setConfirming(false) })}
         />
+      ) : null}
+
+      {timeUp ? (
+        <div className="scrim">
+          <div className="dialog time-up" role="alertdialog" aria-modal="true" aria-labelledby="time-up-title" aria-describedby="time-up-note">
+            <Hourglass aria-hidden="true" />
+            <h2 id="time-up-title">{t("tools.timeUpTitle")}</h2>
+            <p id="time-up-note" className="notice">
+              {t("tools.timeUpNote")}
+            </p>
+          </div>
+        </div>
       ) : null}
     </div>
   );

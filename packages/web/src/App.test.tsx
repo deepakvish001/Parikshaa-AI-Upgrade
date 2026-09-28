@@ -640,7 +640,7 @@ describe("aptitude papers", () => {
     await userEvent.click(within(cover).getByRole("button", { name: "Mark for review" }));
     expect(within(cover).getByRole("button", { name: "Marked for review" })).toHaveAttribute("aria-pressed", "true");
     expect(within(palette).getByRole("button", { name: "Question 3: Not answered, Marked for review" })).toHaveClass("marked");
-    expect(within(palette).getByText("Done 1/3 · For review 1", { selector: ".palette-body .palette-summary" })).toBeInTheDocument();
+    expect(within(palette).getByText("Done 1/3 · For review 1", { selector: ".palette-head .palette-summary" })).toBeInTheDocument();
 
     // Back after a reload: the mark is still there, on this device.
     unmount();

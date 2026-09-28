@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, MCQ, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
+import { beginSitting, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
 import { aptitudePaper, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED, PRACTICE_SET } from "./fixtures.js";
 import { shoot } from "./shoot.js";
@@ -20,7 +20,7 @@ test("the access code, when a candidate has no link", async ({ page }) => {
 test("the privacy notice, agreed to before anything starts", async ({ page, request }) => {
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ], title: TITLE });
   await setPrivacyNotice(request, sitting.token);
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: "Before you start" })).toBeVisible();
   await shoot(page, "candidate-02-privacy-notice");
 });
@@ -29,6 +29,7 @@ test("a link opened before the window", async ({ page, request }) => {
   const opensAt = new Date(Date.now() + 26 * 3_600_000);
   opensAt.setUTCMinutes(30, 0, 0);
   const sitting = await seedSitting(request, { questions: [MCQ], title: TITLE, opensAt });
+  // Before the window there are no instructions to read: only when to come back.
   await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("region", { name: "Not open yet" })).toBeVisible();
   await shoot(page, "candidate-03-not-open-yet");
@@ -40,7 +41,7 @@ test("the camera check and the identity photos, for a proctored test", async ({ 
     title: TITLE,
     proctoring: { identity: true, snapshotEverySeconds: 60, browserEvents: true },
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: "This test uses your camera" })).toBeVisible();
   await shoot(page, "candidate-04-camera-notice");
   await page.getByRole("button", { name: "Allow the camera" }).click();
@@ -55,8 +56,20 @@ test("the camera check and the identity photos, for a proctored test", async ({ 
 });
 
 test("answering: one question at a time, autosave, a follow-up question, and the submit summary", async ({ page, request }) => {
-  const sitting = await seedSitting(request, { questions: [...QUESTIONS, ...PRACTICE_SET], title: TITLE, vivaTriggerRatio: 0.5 });
-  await page.goto(local(sitting.links["CS001"]!));
+  const sitting = await seedSitting(request, {
+    questions: [...QUESTIONS, ...PRACTICE_SET],
+    title: TITLE,
+    vivaTriggerRatio: 0.5,
+    calculator: true,
+    names: ["Aarav Sharma"],
+  });
+  // The instructions and system check, before the clock.
+  const link = local(sitting.links["CS001"]!);
+  await page.goto(link);
+  await expect(page.getByText(/^Good \(\d+ ms\)$/)).toBeVisible();
+  await page.locator(".declare input[type=checkbox]").check();
+  await shoot(page, "candidate-20-instructions");
+  await readyToBegin(page);
   await expect(page.getByRole("heading", { name: TITLE })).toBeVisible();
   const foot = page.locator(".qfoot");
 
@@ -73,6 +86,17 @@ test("answering: one question at a time, autosave, a follow-up question, and the
   await page.getByRole("radio", { name: "Merge sort" }).check();
   await page.waitForTimeout(300);
   await shoot(page, "candidate-07-exam", { fullPage: false });
+
+  // The tools: the calculator, then rough work, beside the paper.
+  await page.getByRole("button", { name: "Calculator" }).click();
+  const calc = page.getByRole("dialog", { name: "Calculator" });
+  for (const key of ["1", "8", "0", "÷", "2", ".", "5", "="]) await calc.getByRole("button", { name: key, exact: true }).click();
+  await expect(calc).toContainText("72");
+  await shoot(page, "candidate-21-calculator", { fullPage: false });
+  await page.getByRole("button", { name: "Rough work" }).click();
+  await page.getByRole("dialog", { name: "Rough work" }).getByRole("textbox").fill("Stable: equal keys keep their order.\nMerge sort — yes (merge takes left first on ties)\nQuick sort — no\nHeap sort — no");
+  await shoot(page, "candidate-22-rough-work", { fullPage: false });
+  await page.keyboard.press("Escape");
 
   await foot.getByRole("button", { name: "Save & next" }).click();
   const probe = page.getByRole("region", { name: "Follow-up question" });
@@ -112,7 +136,7 @@ test("a test taken section by section", async ({ page, request }) => {
     title: TITLE,
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await page.getByRole("button", { name: "Finish General and go on" }).click();
   await shoot(page, "candidate-10-section-leave", { fullPage: false });
   await page.getByRole("button", { name: "Leave General" }).click();
@@ -124,7 +148,7 @@ test("a test taken section by section", async ({ page, request }) => {
 test("on a phone", async ({ browser, request }) => {
   const sitting = await seedSitting(request, { questions: [...QUESTIONS, ...PRACTICE_SET], title: TITLE, vivaTriggerRatio: 0.99 });
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await phone.goto(local(sitting.links["CS001"]!));
+  await beginSitting(phone, sitting.links["CS001"]!);
   await expect(phone.getByRole("heading", { name: TITLE })).toBeAttached();
   await phone.getByRole("radio", { name: "Merge sort" }).check();
   await shoot(phone, "candidate-13-phone", { fullPage: false });
@@ -139,7 +163,7 @@ test("an aptitude paper: pictures, a passage, several right options, negative ma
     title: "Aptitude Mock Test — Quantitative and Reasoning",
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   const foot = page.locator(".qfoot");
   await expect(page.getByRole("navigation", { name: "Questions" })).toBeVisible();
   await page.getByRole("textbox").fill("100");
@@ -163,7 +187,7 @@ test("a coding question, as on LeetCode: the workspace, Run, full screen, and Su
     title: "Coding Round — Campus Drive 2026",
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   const editor = page.locator(".cm-content");
   await expect(editor).toBeVisible();
   const write = async (source: string) => {

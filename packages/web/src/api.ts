@@ -130,6 +130,36 @@ export async function redeemInvitation(
   return body as unknown as Opened;
 }
 
+/** The paper as its instructions describe it, read before anything starts. */
+export interface Briefing {
+  readonly title: string;
+  readonly candidate: { readonly name: string; readonly ref: string };
+  readonly started: boolean;
+  readonly opensAt: string;
+  readonly closesAt: string;
+  readonly durationMs: number;
+  readonly questionCount: number;
+  readonly totalMarks: number;
+  readonly sections: readonly { readonly title: string; readonly questionCount: number; readonly durationMs: number | null }[];
+  readonly kinds: readonly ("mcq" | "multiple" | "numeric" | "short" | "code")[];
+  readonly negativeMarks: number;
+  readonly allowRevision: boolean;
+  readonly calculator: boolean;
+  readonly proctored: boolean;
+}
+
+/** An invitation's instructions. Starts nothing; opening it is {@link redeemInvitation}. */
+export async function briefInvitation(code: string, baseUrl = "/api"): Promise<Briefing> {
+  const response = await fetch(`${baseUrl.replace(/\/$/, "")}/invitations/briefing`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!response.ok) throw new ApiError(response.status, typeof body["error"] === "string" ? body["error"] : "request_failed", body);
+  return body as unknown as Briefing;
+}
+
 export class ParikshaaClient {
   readonly #baseUrl: string;
   readonly #token: string;
