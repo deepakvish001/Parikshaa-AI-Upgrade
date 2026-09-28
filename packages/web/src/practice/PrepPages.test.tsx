@@ -256,3 +256,98 @@ describe("tracks", () => {
     expect(screen.getByRole("link", { name: /Plan this track/ }).getAttribute("href")).toBe("/practice/nit-practice/plan?track=dsa-basics");
   });
 });
+
+describe("Sahayak on a problem", () => {
+  const mcq = {
+    slug: "stable-sort",
+    title: "Stable sort",
+    difficulty: "easy",
+    tags: [],
+    question: { id: "p1", kind: "mcq", stem: "Which sort is stable?", maxScore: 1, options: ["quick", "merge"] },
+    editorial: null,
+    editorialLocked: false,
+    acceptance: null,
+    solvedBy: 0,
+    status: null,
+    contest: null,
+  };
+
+  it("gives the next hint for its credits, and says where to get more when they run out", async () => {
+    routes["GET /practice/nit-practice/problems/stable-sort"] = () => ({ body: mcq });
+    routes["GET /practice/nit-practice/problems/stable-sort/comments"] = () => ({ body: { comments: [] } });
+    routes["GET /practice/nit-practice/lists"] = () => ({ body: { lists: [{ name: "Bookmarks", solved: 0, problems: [] }] } });
+    let entries: object[] = [];
+    routes["GET /practice/nit-practice/problems/stable-sort/tutor"] = () => ({
+      body: { entries, nextHint: { level: entries.length + 1, credits: entries.length === 0 ? 10 : 20, available: true }, failures: 0, costs: { hint1: 10, hint: 20, review: 40, doubt: 15 } },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 25, history: [] } });
+    routes["POST /practice/nit-practice/problems/stable-sort/tutor/hint"] = () => {
+      if (entries.length === 1) return { status: 402, body: { error: "no_credits", message: "Not enough credits for that." } };
+      const answer = { id: "a1", mode: "hint", hintLevel: 1, answer: "Think about **equal keys**.", credits: 10, createdAt: "2026-10-05T04:00:00Z", question: "" };
+      entries = [answer];
+      return { body: answer };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/problems/stable-sort");
+    await user.click(await screen.findByRole("tab", { name: "Sahayak" }));
+    await user.click(await screen.findByRole("button", { name: "Hint 1 · 10 credits" }));
+    expect(await screen.findByText("equal keys")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/tutor/hint"))!.body).toEqual({ replyIn: "en" });
+    await user.click(await screen.findByRole("button", { name: "Hint 2 · 20 credits" }));
+    expect(await screen.findByText(/Not enough credits/)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Get credits" })).toBeTruthy();
+  });
+});
+
+describe("Plus", () => {
+  it("buys a plan through Checkout and confirms what Checkout hands back", async () => {
+    routes["GET /practice/nit-practice/plus"] = () => ({
+      body: {
+        enabled: true,
+        active: false,
+        until: null,
+        freeModules: 1,
+        monthlyCredits: 100,
+        tutor: true,
+        checkout: true,
+        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900 }],
+      },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [{ delta: 100, reason: "monthly", at: "2026-10-05T04:00:00Z" }] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({ body: { orders: [] } });
+    routes["POST /practice/nit-practice/plus/checkout"] = () => ({
+      status: 201,
+      body: { keyId: "rzp_test", orderId: "order_1", amountPaise: 99_900, title: "Plus, 3 months", learner: { name: "Asha Rao", email: "asha@example.com" } },
+    });
+    routes["POST /practice/nit-practice/plus/confirm"] = () => ({ body: { order: { status: "paid" }, plus: { active: true, until: "2027-01-03T04:00:00Z" } } });
+    let opened: Record<string, unknown> | null = null;
+    // Checkout, standing in: it pays at once and hands back what Razorpay would.
+    class FakeCheckout {
+      constructor(readonly options: Record<string, unknown>) {
+        opened = options;
+      }
+      on() {}
+      open() {
+        (this.options["handler"] as (r: object) => void)({ razorpay_order_id: "order_1", razorpay_payment_id: "pay_1", razorpay_signature: "sig" });
+      }
+    }
+    (window as { Razorpay?: unknown }).Razorpay = FakeCheckout;
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus");
+    expect(await screen.findByText("₹999")).toBeTruthy();
+    expect(screen.getByText("90 days of Plus")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Buy for ₹999" }));
+    expect(await screen.findByText("Paid. Thank you!")).toBeTruthy();
+    expect(opened).toMatchObject({ key: "rzp_test", order_id: "order_1", amount: 99_900 });
+    expect(calls.find((c) => c.path.endsWith("/plus/confirm"))!.body).toEqual({ orderId: "order_1", paymentId: "pay_1", signature: "sig" });
+    delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  it("shows a locked lesson by name, with the way to Plus", async () => {
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true } });
+    open("/practice/nit-practice/lessons/heaps");
+    expect(await screen.findByText("This lesson comes with Plus.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /See Plus/ }).getAttribute("href")).toBe("/practice/nit-practice/plus");
+    expect(screen.queryByRole("button", { name: "Mark as done" })).toBeNull();
+  });
+});

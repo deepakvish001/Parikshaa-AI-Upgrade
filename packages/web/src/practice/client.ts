@@ -401,6 +401,48 @@ export class PracticeClient {
     return this.#request("/coins");
   }
 
+  // --- Plus and the tutor ----------------------------------------------------------------------
+
+  plus(): Promise<PlusOverview> {
+    return this.#request("/plus");
+  }
+
+  checkout(productId: string): Promise<CheckoutOrder> {
+    return this.#post("/plus/checkout", { productId });
+  }
+
+  confirmPayment(orderId: string, paymentId: string, signature: string): Promise<{ readonly order: PlusOrder; readonly plus: { readonly active: boolean; readonly until: string | null } }> {
+    return this.#post("/plus/confirm", { orderId, paymentId, signature });
+  }
+
+  async orders(): Promise<readonly PlusOrder[]> {
+    return (await this.#request<{ orders: PlusOrder[] }>("/orders")).orders;
+  }
+
+  credits(): Promise<Credits> {
+    return this.#request("/credits");
+  }
+
+  tutor(slug: string): Promise<TutorHistory> {
+    return this.#request(`/problems/${encodeURIComponent(slug)}/tutor`);
+  }
+
+  hint(slug: string, replyIn: "en" | "hi", code?: { readonly language: string; readonly source: string }): Promise<TutorAnswer> {
+    return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/hint`, { replyIn, ...(code === undefined ? {} : { code: code.source, language: code.language }) });
+  }
+
+  review(slug: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/review`, { replyIn });
+  }
+
+  doubt(about: { readonly problem?: string; readonly lesson?: string }, question: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    return this.#post("/tutor/doubt", { ...about, question, replyIn });
+  }
+
+  async forgetTutor(slug?: string): Promise<number> {
+    return (await this.#request<{ deleted: number }>(`/tutor${slug === undefined ? "" : `?problem=${encodeURIComponent(slug)}`}`, { method: "DELETE" })).deleted;
+  }
+
   async coinLeaders(): Promise<readonly { readonly rank: number; readonly name: string; readonly coins: number; readonly you: boolean }[]> {
     return (await this.#request<{ leaders: { rank: number; name: string; coins: number; you: boolean }[] }>("/coins/leaders")).leaders;
   }
@@ -437,6 +479,8 @@ export interface TrackItem {
   readonly difficulty: Difficulty | null;
   readonly estMinutes: number;
   readonly status: "done" | "attempted" | null;
+  /** Needs Plus, which this learner does not hold. */
+  readonly locked: boolean;
 }
 
 export interface TrackView {
@@ -455,6 +499,7 @@ export interface Lesson {
   readonly videoUrl: string | null;
   readonly estMinutes: number;
   readonly done: boolean;
+  readonly locked: boolean;
 }
 
 export type Level = "beginner" | "intermediate" | "advanced";
@@ -589,4 +634,65 @@ export interface Coins {
   readonly balance: number;
   readonly dailyCap: number;
   readonly history: readonly { readonly rule: string; readonly amount: number; readonly at: string }[];
+}
+
+export interface PlusProduct {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: "plus" | "credits";
+  readonly days: number;
+  readonly credits: number;
+  readonly pricePaise: number;
+}
+
+export interface PlusOverview {
+  readonly enabled: boolean;
+  readonly active: boolean;
+  readonly until: string | null;
+  readonly freeModules: number;
+  readonly monthlyCredits: number;
+  readonly tutor: boolean;
+  readonly checkout: boolean;
+  readonly products: readonly PlusProduct[];
+}
+
+export interface CheckoutOrder {
+  readonly keyId: string;
+  readonly orderId: string;
+  readonly amountPaise: number;
+  readonly title: string;
+  readonly learner: { readonly name: string; readonly email: string };
+}
+
+export interface PlusOrder {
+  readonly id: string;
+  readonly title: string;
+  readonly days: number;
+  readonly credits: number;
+  readonly amountPaise: number;
+  readonly taxPaise: number;
+  readonly status: "created" | "paid";
+  readonly createdAt: string;
+  readonly paidAt: string | null;
+}
+
+export interface Credits {
+  readonly balance: number;
+  readonly history: readonly { readonly delta: number; readonly reason: "monthly" | "purchase" | "grant" | "spend" | "refund"; readonly at: string }[];
+}
+
+export interface TutorAnswer {
+  readonly id: string;
+  readonly mode: "hint" | "review" | "doubt";
+  readonly hintLevel: number | null;
+  readonly answer: string;
+  readonly credits: number;
+  readonly createdAt: string;
+}
+
+export interface TutorHistory {
+  readonly entries: readonly (TutorAnswer & { readonly question: string })[];
+  readonly nextHint: { readonly level: number; readonly credits: number; readonly available: boolean } | null;
+  readonly failures: number;
+  readonly costs: { readonly hint1: number; readonly hint: number; readonly review: number; readonly doubt: number };
 }

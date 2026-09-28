@@ -44,6 +44,8 @@ const CoinsPage = lazy(() => prep().then((m) => ({ default: m.CoinsPage })));
 const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
 const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
+const PlusPage = lazy(() => prep().then((m) => ({ default: m.PlusPage })));
+const TutorPanel = lazy(() => import("./Tutor.tsx").then((m) => ({ default: m.TutorPanel })));
 import "./practice.css";
 
 /**
@@ -72,6 +74,7 @@ export type Route =
   | { readonly page: "notes" }
   | { readonly page: "potd" }
   | { readonly page: "coins" }
+  | { readonly page: "plus" }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -113,6 +116,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "potd" };
     case "coins":
       return { page: "coins" };
+    case "plus":
+      return { page: "plus" };
     case "signin":
       return { page: "signin", next };
     case "signup":
@@ -351,6 +356,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <LessonPage {...context} slug={route.slug} />
         ) : route.page === "potd" ? (
           <PotdPage {...context} />
+        ) : route.page === "plus" ? (
+          <PlusPage {...context} />
         ) : route.page === "home" || route.page === "plan" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
@@ -563,7 +570,17 @@ function ProblemRow({ problem, index, nav, striped }: { readonly problem: Proble
 
 // --- one problem ------------------------------------------------------------------------------
 
-type Tab = "description" | "editorial" | "submissions" | "discussion" | "notes";
+type Tab = "description" | "editorial" | "submissions" | "discussion" | "notes" | "tutor";
+
+/** The learner's code as the workspace keeps it, for the tutor to read; null for anything else. */
+function codeOf(value: string): { language: string; source: string } | null {
+  try {
+    const parsed = JSON.parse(value) as { language?: unknown; source?: unknown };
+    return typeof parsed.language === "string" && typeof parsed.source === "string" ? { language: parsed.language, source: parsed.source } : null;
+  } catch {
+    return null;
+  }
+}
 
 const draftKey = (site: string, slug: string) => `parikshaa.practice.${site}.draft.${slug}`;
 function loadDraft(site: string, slug: string): string {
@@ -628,7 +645,7 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
 
   const tabs = (
     <div className="problem-tabs" role="tablist" aria-label={p.title}>
-      {(learner === null ? (["description", "editorial", "submissions", "discussion"] as const) : (["description", "editorial", "submissions", "discussion", "notes"] as const)).map((name) => (
+      {(learner === null ? (["description", "editorial", "submissions", "discussion"] as const) : (["description", "editorial", "submissions", "discussion", "notes", "tutor"] as const)).map((name) => (
         <button
           key={name}
           type="button"
@@ -639,7 +656,7 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
           className={tab === name ? "on" : ""}
           onClick={() => setTab(name)}
         >
-          {name === "notes" ? pt() : t(`practice.tab.${name}` as MessageKey)}
+          {name === "tutor" ? navWord(language, "tutor") : name === "notes" ? pt() : t(`practice.tab.${name}` as MessageKey)}
         </button>
       ))}
     </div>
@@ -687,6 +704,10 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
         ) : (
           <Submissions client={client} site={site} slug={slug} contest={contest} onLoad={p.question.kind === "code" ? (s) => change(JSON.stringify({ language: s.language, source: s.answer })) : undefined} />
         )
+      ) : tab === "tutor" && learner !== null ? (
+        <Suspense fallback={null}>
+          <TutorPanel client={client} site={site} slug={slug} code={codeOf(value)} onCredits={() => nav.go("/plus")} />
+        </Suspense>
       ) : tab === "notes" && learner !== null ? (
         <Suspense fallback={null}>
           <NoteEditor client={client} site={site} kind="problem" refId={slug} />

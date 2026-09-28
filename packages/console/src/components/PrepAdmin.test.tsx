@@ -106,3 +106,37 @@ describe("the problem of the day", () => {
     expect(screen.getAllByRole("row")).toHaveLength(22);
   });
 });
+
+describe("Plus", () => {
+  it("turns Plus on, adds a plan and gives a learner Plus", async () => {
+    const saved: object[] = [];
+    const client = {
+      plusAdmin: vi.fn(async () => ({ settings: { plusEnabled: false, freeModules: 1, monthlyCredits: 100, tutorEnabled: true }, products: [] })),
+      savePlusSettings: vi.fn(async (patch: object) => ({ plusEnabled: true, freeModules: 1, monthlyCredits: 100, tutorEnabled: true, ...patch })),
+      savePlusProduct: vi.fn(async (_id: string | null, draft: object) => {
+        saved.push(draft);
+        return { ...draft, id: "p1", position: 0 };
+      }),
+      plusOrders: vi.fn(async () => []),
+      practiceLearners: vi.fn(async () => [{ id: "l1", name: "Asha", email: "asha@example.com", joinedAt: "", solved: 0, submissions: 0, lastActiveAt: null }]),
+      grantPlus: vi.fn(async () => ({ until: "2027-04-03T00:00:00Z" })),
+    };
+    const user = userEvent.setup();
+    const { PlusAdmin } = await import("./PrepAdmin.tsx");
+    show(<PlusAdmin client={client as unknown as ConsoleClient} canManage />);
+    await user.click(await screen.findByLabelText(/Sell Plus on this site/));
+    await waitFor(() => expect(client.savePlusSettings).toHaveBeenCalledWith({ plusEnabled: true }));
+
+    const form = screen.getByRole("form", { name: "New plan" });
+    await user.type(within(form).getByLabelText("Plan name"), "Plus, 3 months");
+    await user.clear(within(form).getByLabelText("Price, ₹"));
+    await user.type(within(form).getByLabelText("Price, ₹"), "499");
+    await user.click(within(form).getByRole("button", { name: "Add plan" }));
+    await waitFor(() => expect(saved).toEqual([{ title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 49_900, active: true }]));
+
+    await user.selectOptions(await screen.findByLabelText("Learner"), "l1");
+    await user.click(screen.getByRole("button", { name: "Give Plus" }));
+    await waitFor(() => expect(client.grantPlus).toHaveBeenCalledWith("l1", 180));
+    expect(await screen.findByText(/Given, until/)).toBeTruthy();
+  });
+});

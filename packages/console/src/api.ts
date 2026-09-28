@@ -829,6 +829,28 @@ export class ConsoleClient {
     await this.#request(`/practice-admin/potd/${encodeURIComponent(day)}`, { method: "PUT", body: JSON.stringify({ problemId }) });
   }
 
+  plusAdmin(): Promise<{ readonly settings: PlusSettings; readonly products: readonly PlusProduct[] }> {
+    return this.#request("/practice-admin/plus");
+  }
+
+  savePlusSettings(settings: Partial<PlusSettings>): Promise<PlusSettings> {
+    return this.#request("/practice-admin/plus", { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  savePlusProduct(id: string | null, draft: Omit<PlusProduct, "id" | "position">): Promise<PlusProduct> {
+    return id === null
+      ? this.#request("/practice-admin/plus/products", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/plus/products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async plusOrders(): Promise<readonly PlusOrder[]> {
+    return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
+  }
+
+  grantPlus(learnerId: string, days: number): Promise<{ readonly until: string }> {
+    return this.#request(`/practice-admin/learners/${encodeURIComponent(learnerId)}/plus`, { method: "POST", body: JSON.stringify({ days }) });
+  }
+
   async practiceLearners(): Promise<readonly PracticeLearner[]> {
     return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
   }
@@ -1394,3 +1416,34 @@ export interface PrepLesson {
 }
 
 export type PrepLessonDraft = Omit<PrepLesson, "id" | "slug" | "updatedAt"> & { readonly slug?: string };
+
+export interface PlusSettings {
+  readonly plusEnabled: boolean;
+  readonly freeModules: number;
+  readonly monthlyCredits: number;
+  readonly tutorEnabled: boolean;
+}
+
+export interface PlusProduct {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: "plus" | "credits";
+  readonly days: number;
+  readonly credits: number;
+  readonly pricePaise: number;
+  readonly active: boolean;
+  readonly position: number;
+}
+
+export interface PlusOrder {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly title: string;
+  readonly days: number;
+  readonly credits: number;
+  readonly amountPaise: number;
+  readonly taxPaise: number;
+  readonly status: "created" | "paid";
+  readonly createdAt: string;
+  readonly paidAt: string | null;
+}

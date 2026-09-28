@@ -431,3 +431,242 @@ export function ProblemOfTheDay({ client, canWrite }: { client: ConsoleClient; c
     </section>
   );
 }
+
+// --- Plus and the tutor --------------------------------------------------------------------------------
+
+const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const admin = useQuery({ queryKey: ["prep", "plus"], queryFn: () => client.plusAdmin() });
+  const orders = useQuery({ queryKey: ["prep", "plus-orders"], queryFn: () => client.plusOrders(), enabled: canManage });
+  const learners = useQuery({ queryKey: ["practice", "learners"], queryFn: () => client.practiceLearners(), enabled: canManage });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep", "plus"] });
+  const settings = useMutation({ mutationFn: (patch: Parameters<ConsoleClient["savePlusSettings"]>[0]) => client.savePlusSettings(patch), onSuccess: refresh });
+  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "credits", days: 90, credits: 1000, rupees: 999 });
+  const addProduct = useMutation({
+    mutationFn: () =>
+      client.savePlusProduct(null, {
+        title: product.title.trim(),
+        kind: product.kind,
+        days: product.kind === "plus" ? product.days : 0,
+        credits: product.credits,
+        pricePaise: Math.round(product.rupees * 100),
+        active: true,
+      }),
+    onSuccess: () => {
+      setProduct({ ...product, title: "" });
+      void refresh();
+    },
+  });
+  const toggle = useMutation({
+    mutationFn: (p: { id: string; title: string; kind: "plus" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
+      client.savePlusProduct(p.id, { title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise, active: !p.active }),
+    onSuccess: refresh,
+  });
+  const [grantTo, setGrantTo] = useState("");
+  const [grantDays, setGrantDays] = useState(180);
+  const grant = useMutation({ mutationFn: () => client.grantPlus(grantTo, grantDays) });
+
+  if (admin.data === undefined) return <p className="notice">Loading…</p>;
+  const s = admin.data.settings;
+  const nameOf = new Map((learners.data ?? []).map((l) => [l.id, l.name]));
+  return (
+    <>
+      <section className="card" aria-label="Plus and the tutor">
+        <div className="bar">
+          <strong>Plus and the tutor</strong>
+        </div>
+        <p className="notice">
+          With Plus off, everything on the site is free. With it on, the problem set and each track's first modules stay free; the rest of the lessons and a study plan
+          need Plus, which learners buy here or you give them. The tutor answers in credits; every learner gets the monthly credits, and its spend counts in this
+          organisation's monthly model budget.
+        </p>
+        <label className="check">
+          <input type="checkbox" checked={s.plusEnabled} disabled={!canManage || settings.isPending} onChange={(e) => settings.mutate({ plusEnabled: e.target.checked })} /> Sell
+          Plus on this site
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={s.tutorEnabled} disabled={!canManage || settings.isPending} onChange={(e) => settings.mutate({ tutorEnabled: e.target.checked })} />{" "}
+          The tutor (Sahayak) answers learners
+        </label>
+        <div className="row">
+          <label>
+            Free modules in each track
+            <input type="number" min={0} max={60} defaultValue={s.freeModules} disabled={!canManage} onBlur={(e) => settings.mutate({ freeModules: Number(e.target.value) })} />
+          </label>
+          <label>
+            Free tutor credits a month
+            <input type="number" min={0} max={100000} defaultValue={s.monthlyCredits} disabled={!canManage} onBlur={(e) => settings.mutate({ monthlyCredits: Number(e.target.value) })} />
+          </label>
+        </div>
+        {settings.isError ? (
+          <p className="error" role="alert">
+            {failure(settings.error, "Those settings could not be saved.")}
+          </p>
+        ) : null}
+      </section>
+
+      <section className="card" aria-label="Plans">
+        <div className="bar">
+          <strong>Plans</strong>
+        </div>
+        {admin.data.products.length === 0 ? (
+          <p className="notice">No plans yet.</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Plan</th>
+                <th scope="col">Gives</th>
+                <th scope="col">Price (GST included)</th>
+                <th scope="col">On sale</th>
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {admin.data.products.map((p) => (
+                <tr key={p.id}>
+                  <td>{p.title}</td>
+                  <td>
+                    {p.days > 0 ? `${p.days} days of Plus` : ""}
+                    {p.days > 0 && p.credits > 0 ? " + " : ""}
+                    {p.credits > 0 ? `${p.credits.toLocaleString("en-IN")} credits` : ""}
+                  </td>
+                  <td>{rupees(p.pricePaise)}</td>
+                  <td>{p.active ? <span className="pill ok">On sale</span> : <span className="pill">Off</span>}</td>
+                  <td>
+                    {canManage ? (
+                      <button type="button" className="secondary" onClick={() => toggle.mutate(p)}>
+                        {p.active ? "Take off sale" : "Put on sale"}
+                      </button>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {canManage ? (
+          <form
+            className="row"
+            aria-label="New plan"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addProduct.mutate();
+            }}
+          >
+            <label className="grow">
+              Plan name
+              <input value={product.title} maxLength={120} required onChange={(e) => setProduct({ ...product, title: e.target.value })} />
+            </label>
+            <label>
+              Kind
+              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "credits" })}>
+                <option value="plus">Plus</option>
+                <option value="credits">Credits pack</option>
+              </select>
+            </label>
+            {product.kind === "plus" ? (
+              <label>
+                Days
+                <input type="number" min={1} max={1100} value={product.days} onChange={(e) => setProduct({ ...product, days: Number(e.target.value) })} />
+              </label>
+            ) : null}
+            <label>
+              Credits
+              <input type="number" min={0} value={product.credits} onChange={(e) => setProduct({ ...product, credits: Number(e.target.value) })} />
+            </label>
+            <label>
+              Price, ₹
+              <input type="number" min={1} step="0.01" value={product.rupees} onChange={(e) => setProduct({ ...product, rupees: Number(e.target.value) })} />
+            </label>
+            <button type="submit" disabled={addProduct.isPending}>
+              Add plan
+            </button>
+          </form>
+        ) : null}
+        {addProduct.isError ? (
+          <p className="error" role="alert">
+            {failure(addProduct.error, "The plan could not be added.")}
+          </p>
+        ) : null}
+      </section>
+
+      {canManage ? (
+        <section className="card" aria-label="Give Plus">
+          <div className="bar">
+            <strong>Give Plus</strong>
+          </div>
+          <p className="notice">For a campus licence, a scholarship or a prize. It runs on from any Plus the learner already holds.</p>
+          <form
+            className="row"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (grantTo !== "") grant.mutate();
+            }}
+          >
+            <label className="grow">
+              Learner
+              <select value={grantTo} onChange={(e) => setGrantTo(e.target.value)}>
+                <option value="">Choose a learner…</option>
+                {(learners.data ?? []).map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} ({l.email})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Days
+              <input type="number" min={1} max={1100} value={grantDays} onChange={(e) => setGrantDays(Number(e.target.value))} />
+            </label>
+            <button type="submit" disabled={grant.isPending || grantTo === ""}>
+              Give Plus
+            </button>
+          </form>
+          {grant.isSuccess ? <p className="notice">Given, until {new Date(grant.data.until).toLocaleDateString("en-IN")}.</p> : null}
+          {grant.isError ? (
+            <p className="error" role="alert">
+              {failure(grant.error, "Plus could not be given.")}
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {canManage && (orders.data ?? []).length > 0 ? (
+        <section className="card" aria-label="Plans bought">
+          <div className="bar">
+            <strong>Plans bought</strong>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">Learner</th>
+                <th scope="col">Plan</th>
+                <th scope="col">Amount</th>
+                <th scope="col">GST within</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.data!
+                .filter((o) => o.status === "paid")
+                .map((o) => (
+                  <tr key={o.id}>
+                    <td>{new Date(o.paidAt ?? o.createdAt).toLocaleDateString("en-IN")}</td>
+                    <td>{nameOf.get(o.learnerId) ?? "—"}</td>
+                    <td>{o.title}</td>
+                    <td>{rupees(o.amountPaise)}</td>
+                    <td>{rupees(o.taxPaise)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+    </>
+  );
+}
