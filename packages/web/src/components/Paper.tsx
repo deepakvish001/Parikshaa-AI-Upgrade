@@ -53,9 +53,18 @@ export interface PaletteItem {
   readonly visited: boolean;
 }
 
-type Status = "not-visited" | "not-answered" | "draft" | "answered" | "marked" | "answered-marked";
+export type Status = "not-visited" | "not-answered" | "draft" | "answered" | "marked" | "answered-marked";
 
-const statusOf = (q: PaletteItem): Status =>
+/** Where a question stands, in words: what a screen reader says for its palette number. */
+export function stateLabel(q: PaletteItem, t: ReturnType<typeof usePreferences>["t"]): string {
+  return [
+    q.answered ? t("palette.answered") : q.draft ? t("palette.draft") : q.visited ? t("palette.notAnswered") : t("palette.notVisited"),
+    ...(q.marked ? [t("palette.marked")] : []),
+  ].join(", ");
+}
+
+/** Where a question stands, as the palette's shapes show it. */
+export const statusOf = (q: PaletteItem): Status =>
   q.answered ? (q.marked ? "answered-marked" : "answered") : q.marked ? "marked" : q.draft ? "draft" : q.visited ? "not-answered" : "not-visited";
 
 /**
@@ -82,11 +91,7 @@ export function Palette({
   const answered = questions.filter((q) => q.answered).length;
   const marked = questions.filter((q) => q.marked).length;
   const count = (status: Status) => questions.filter((q) => statusOf(q) === status).length;
-  const stateOf = (q: PaletteItem) =>
-    [
-      q.answered ? t("palette.answered") : q.draft ? t("palette.draft") : q.visited ? t("palette.notAnswered") : t("palette.notVisited"),
-      ...(q.marked ? [t("palette.marked")] : []),
-    ].join(", ");
+  const stateOf = (q: PaletteItem) => stateLabel(q, t);
   const legend: readonly [Status, string][] = [
     ["answered", t("palette.answered")],
     ["not-answered", t("palette.notAnswered")],

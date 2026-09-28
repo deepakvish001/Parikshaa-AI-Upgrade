@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { beginSitting, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
-import { aptitudePaper, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED, PRACTICE_SET } from "./fixtures.js";
+import { aptitudePaper, CODE_QUESTION, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED, PRACTICE_SET } from "./fixtures.js";
 import { shoot } from "./shoot.js";
 
 /** The candidate's side, page by page. */
@@ -87,6 +87,12 @@ test("answering: one question at a time, autosave, a follow-up question, and the
   await page.waitForTimeout(300);
   await shoot(page, "candidate-07-exam", { fullPage: false });
 
+  // The whole paper at once, read-only.
+  await page.getByRole("button", { name: "Question paper" }).click();
+  await expect(page.getByRole("dialog", { name: "Question paper" })).toBeVisible();
+  await shoot(page, "candidate-23-question-paper", { fullPage: false });
+  await page.keyboard.press("Escape");
+
   // The tools: the calculator, then rough work, beside the paper.
   await page.getByRole("button", { name: "Calculator" }).click();
   const calc = page.getByRole("dialog", { name: "Calculator" });
@@ -108,13 +114,13 @@ test("answering: one question at a time, autosave, a follow-up question, and the
   const probeHi = page.getByRole("region", { name: "अनुवर्ती प्रश्न" });
   await probeHi.getByRole("button", { name: "उत्तर भेजें" }).click();
   await expect(probeHi).toBeHidden();
-  await page.getByRole("textbox").fill("हर तुलना के बाद खोज का अंतराल आधा हो जाता है, इसलिए log₂(n) चरणों में वह खाली हो जाता है।");
+  await page.locator("section.qview").getByRole("textbox").fill("हर तुलना के बाद खोज का अंतराल आधा हो जाता है, इसलिए log₂(n) चरणों में वह खाली हो जाता है।");
   await page.waitForTimeout(1600);
   await shoot(page, "candidate-09-hindi", { fullPage: false });
   await page.getByRole("combobox", { name: "भाषा" }).selectOption("en");
 
   await foot.getByRole("button", { name: "Save & next" }).click();
-  await page.getByRole("textbox").fill("72");
+  await page.locator("section.qview").getByRole("textbox").fill("72");
   await foot.getByRole("button", { name: "Save & next" }).click();
   await page.getByRole("button", { name: "Submit attempt" }).click();
   await expect(page.getByRole("dialog", { name: "Submit your attempt?" })).toBeVisible();
@@ -141,7 +147,7 @@ test("a test taken section by section", async ({ page, request }) => {
   await shoot(page, "candidate-10-section-leave", { fullPage: false });
   await page.getByRole("button", { name: "Leave General" }).click();
   await expect(page.getByRole("timer").first()).toBeVisible();
-  await page.getByRole("textbox").fill("72");
+  await page.locator("section.qview").getByRole("textbox").fill("72");
   await shoot(page, "candidate-11-section-timer", { fullPage: false });
 });
 
@@ -166,7 +172,7 @@ test("an aptitude paper: pictures, a passage, several right options, negative ma
   await beginSitting(page, sitting.links["CS001"]!);
   const foot = page.locator(".qfoot");
   await expect(page.getByRole("navigation", { name: "Questions" })).toBeVisible();
-  await page.getByRole("textbox").fill("100");
+  await page.locator("section.qview").getByRole("textbox").fill("100");
   await foot.getByRole("button", { name: "Save & next" }).click();
   await page.getByRole("radio", { name: "5" }).check();
   await foot.getByRole("button", { name: "Save & next" }).click();
@@ -183,11 +189,15 @@ test("an aptitude paper: pictures, a passage, several right options, negative ma
 
 test("a coding question, as on LeetCode: the workspace, Run, full screen, and Submit", async ({ page, request }) => {
   const sitting = await seedSitting(request, {
-    questions: [MERGE_INTERVALS],
+    // The merge first, so the workspace opens on it; the rail shows the rest of the round.
+    questions: [MERGE_INTERVALS, { ...CODE_QUESTION, id: "q-run" }, { ...MCQ, id: "q-mcq" }],
     title: "Coding Round — Campus Drive 2026",
     vivaTriggerRatio: 0.99,
   });
   await beginSitting(page, sitting.links["CS001"]!);
+  // On a wide screen the question opens full screen, as a coding round's does.
+  const workspace = page.getByRole("dialog");
+  await expect(workspace).toBeVisible();
   const editor = page.locator(".cm-content");
   await expect(editor).toBeVisible();
   const write = async (source: string) => {
@@ -196,17 +206,14 @@ test("a coding question, as on LeetCode: the workspace, Run, full screen, and Su
     await page.keyboard.insertText(source);
   };
 
-  // In the paper: the statement, the editor, and Run on the examples.
+  // The statement beside the editor, and Run on the examples.
   await write(MERGE_SOLUTION);
-  await page.getByRole("button", { name: "Run", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Run results" })).toContainText("2/2 examples pass", { timeout: 30_000 });
+  await workspace.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(workspace.getByRole("region", { name: "Run results" })).toContainText("2/2 examples pass", { timeout: 30_000 });
   await page.waitForTimeout(500);
-  await shoot(page, "candidate-15-coding");
+  await shoot(page, "candidate-15-coding", { fullPage: false });
 
-  // Full screen: the problem beside the editor, and Submit against every test.
-  await page.getByRole("button", { name: "Full screen" }).click();
-  const workspace = page.getByRole("dialog");
-  await expect(workspace).toBeVisible();
+  // Submit against every test.
   await workspace.getByRole("button", { name: "Submit" }).click();
   await expect(workspace.getByRole("region", { name: "Submission results" })).toContainText("5/5 tests passed", { timeout: 30_000 });
   await page.waitForTimeout(500);

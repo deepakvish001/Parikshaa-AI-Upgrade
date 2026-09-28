@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AArrowDown, AArrowUp, BookOpen, Calculator as CalculatorIcon, Check, CloudOff, Keyboard, LoaderCircle, Moon, NotebookPen, Sun, X } from "lucide-react";
+import { AArrowDown, AArrowUp, BookOpen, Calculator as CalculatorIcon, Check, CloudOff, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, X } from "lucide-react";
 import { display, evaluate, type AngleUnit } from "../calc.ts";
 import { usePreferences } from "../i18n.tsx";
 
@@ -72,7 +72,7 @@ export function SaveStatus({ state }: { readonly state: SaveState }) {
   );
 }
 
-export type Panel = "calculator" | "rough" | "shortcuts" | "instructions" | null;
+export type Panel = "calculator" | "rough" | "shortcuts" | "instructions" | "paper" | null;
 
 /**
  * The strip under the exam bar: where the candidate stands on the left (the
@@ -106,6 +106,7 @@ export function ToolStrip({
       <div className="toolstrip-start">{children}</div>
       <div className="toolstrip-end" role="toolbar" aria-label={t("tools.region")}>
         <SaveStatus state={save} />
+        {tool("paper", t("tools.paper"), <ScrollText aria-hidden="true" />)}
         {tool("instructions", t("brief.open"), <BookOpen aria-hidden="true" />)}
         {calculator ? tool("calculator", t("tools.calculator"), <CalculatorIcon aria-hidden="true" />) : null}
         {tool("rough", t("tools.rough"), <NotebookPen aria-hidden="true" />)}
@@ -317,6 +318,16 @@ export function ShortcutsPanel({ onClose }: { readonly onClose: () => void }) {
         ))}
       </dl>
       <p className="notice">{t("keys.note")}</p>
+    </Floating>
+  );
+}
+
+/** The whole paper at once, beside the question on screen. */
+export function PaperPanel({ onClose, children }: { readonly onClose: () => void; readonly children: ReactNode }) {
+  const { t } = usePreferences();
+  return (
+    <Floating label={t("tools.paper")} onClose={onClose} className="paper-panel">
+      {children}
     </Floating>
   );
 }

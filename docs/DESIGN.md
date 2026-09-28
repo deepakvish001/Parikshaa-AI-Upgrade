@@ -83,6 +83,7 @@ Each app adds its own layout on top:
 - **Candidate app** (`packages/web/src/styles.css`): the sitting as a computer-based test — an ink exam bar with the clock as HH:MM:SS, section tabs, one question at a time with its kind and marks, the palette in the five shapes candidates know from JEE and NEET (not visited, not answered, answered, marked, answered and marked, each counted), Previous · Clear response · Mark for review & next · Save & next pinned under the question, and a summary before submitting. Full-screen code opens under the bar so the clock stays in sight; the dark editor darkens the whole workspace. Also the follow-up panel and the receipt.
 - **Before the clock** (`components/Instructions.tsx`): an invitation's first opening shows the paper's instructions — who is sitting it, duration, questions, marks, sections, marking, what the palette's shapes mean, how to move — beside a system check (browser, connection, saving on the device, screen, camera) and a declaration. Reading them starts nothing (`POST /invitations/briefing`); the clock starts at "I am ready to begin". The same instructions open from the exam at any time.
 - **Tools** (`components/Tools.tsx`): a strip under the exam bar with the save status for the whole paper, Instructions, a scientific calculator where the exam allows one (`policy.calculator`; parsed by `calc.ts`, never `eval`), rough work kept on the device, A−/A+ text size, light and dark, and keyboard shortcuts (A–D, S, N, P, M, `?`). Warnings at 15, 5 and 1 minute; a plain "Time is up" when it is. On a phone the palette is a bottom sheet and a swipe moves between questions.
+- **After, and around the paper** (`components/Finished.tsx`, `components/QuestionPaper.tsx`): a submitted attempt opens on "Submitted", when, and how the paper was left — answered, not answered, marked — with "Print or save as PDF" (a print stylesheet, no PDF library) above the record. "Question paper" in the tool strip lists every question's opening line, marks and state, read-only, and goes to any of them. On a wide screen a coding question opens straight into the full-screen workspace, with the paper's numbers down its left side.
 - **Console** (`packages/console/src/styles.css`): the sidebar shell, the exams overview (totals, filters, search, and each exam's candidates sitting, to grade and graded), sign-in, review, results, live sitting, proctoring and invoices.
 
 ## Pages
@@ -100,10 +101,10 @@ Each app adds its own layout on top:
 | 09 | [In Hindi](screenshots/candidate-09-hindi.png) | 09 | [Live sitting](screenshots/console-09-live.png) |
 | 10 | [Leaving a section](screenshots/candidate-10-section-leave.png) | 10 | [Proctoring review](screenshots/console-10-proctoring-review.png) |
 | 11 | [A section's own clock](screenshots/candidate-11-section-timer.png) | 11 | [Question bank, Word import](screenshots/console-11-question-bank.png) |
-| 12 | [The receipt, verified](screenshots/candidate-12-receipt.png) | 12 | [Staff](screenshots/console-12-staff.png) |
+| 12 | [Submitted: the counts, a printable page, and the record verified](screenshots/candidate-12-receipt.png) | 12 | [Staff](screenshots/console-12-staff.png) |
 | 13 | [On a phone](screenshots/candidate-13-phone.png) | 13 | [API keys](screenshots/console-13-api-keys.png) |
 | 14 | [An aptitude paper: pictures, a passage, negative marks, the palette](screenshots/candidate-14-aptitude.png) | 14 | [Spend](screenshots/console-14-spend.png) |
-| 15 | [A coding question: the workspace and Run](screenshots/candidate-15-coding.png) | 15 | [Audit log](screenshots/console-15-audit-log.png) |
+| 15 | [A coding question, full screen with the paper's numbers down the side](screenshots/candidate-15-coding.png) | 15 | [Audit log](screenshots/console-15-audit-log.png) |
 | 16 | [Full screen, after Submit](screenshots/candidate-16-workspace.png) | 16 | [Integrations](screenshots/console-16-integrations.png) |
 | 17 | [A wrong answer on a hidden test, dark editor](screenshots/candidate-17-wrong-answer.png) | 17 | [Privacy](screenshots/console-17-privacy.png) |
 | 18 | [The summary before submitting](screenshots/candidate-18-submit-summary.png) | 18 | [Billing](screenshots/console-18-billing.png) · [GST invoice](screenshots/console-18b-gst-invoice.png) |
@@ -111,6 +112,7 @@ Each app adds its own layout on top:
 | 20 | [Instructions and system check, before the clock](screenshots/candidate-20-instructions.png) | 20 | [Sign-in: single sign-on and owners' two-step](screenshots/console-20-sign-in-security.png) |
 | 21 | [The calculator](screenshots/candidate-21-calculator.png) | | |
 | 22 | [Rough work](screenshots/candidate-22-rough-work.png) | | |
+| 23 | [The question paper, read-only](screenshots/candidate-23-question-paper.png) | | |
 | | | 21 | [Aptitude exam editor](screenshots/console-21-aptitude-editor.png) |
 | | | 22 | [Code similarity](screenshots/console-22-code-similarity.png) |
 | | | 23 | [A function question in the editor](screenshots/console-23-function-question.png) |

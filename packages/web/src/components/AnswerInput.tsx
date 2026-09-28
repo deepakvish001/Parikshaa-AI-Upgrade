@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome, SubmitOutcome } from "../api.ts";
 import { CodeAnswer } from "./CodeAnswer.tsx";
@@ -16,10 +17,14 @@ interface Props {
   readonly number?: number;
   /** Whether the exam allows completion in the code editor. */
   readonly completion?: boolean;
+  /** A code question opens in its full-screen workspace, as a coding round's screen does. */
+  readonly startFull?: boolean;
+  /** Beside the full-screen workspace: the paper's question numbers, to move without leaving it. */
+  readonly rail?: ReactNode;
 }
 
 /** The input for one question, chosen by its kind. */
-export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion }: Props) {
+export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion, startFull, rail }: Props) {
   switch (question.kind) {
     case "mcq": {
       // The letter is drawn by CSS (a counter), so it is in neither the label's text nor its name.
@@ -89,6 +94,8 @@ export function AnswerInput({ question, value, disabled, onChange, onRun, onSubm
           {...(submitLabel === undefined ? {} : { submitLabel })}
           {...(number === undefined ? {} : { number })}
           {...(completion === undefined ? {} : { completion })}
+          {...(startFull === undefined ? {} : { startFull })}
+          {...(rail === undefined ? {} : { rail })}
         />
       );
 

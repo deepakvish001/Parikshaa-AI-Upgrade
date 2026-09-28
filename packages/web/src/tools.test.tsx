@@ -152,6 +152,64 @@ describe("the tools beside the paper", () => {
   });
 });
 
+describe("the question paper", () => {
+  it("lists every question as the candidate left it, and goes to one", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+
+    await userEvent.click(screen.getByRole("button", { name: "Question paper" }));
+    const paper = screen.getByRole("dialog", { name: "Question paper" });
+    const rows = within(paper).getAllByRole("button", { name: /Which sort is stable\?|Why does it terminate\?/ });
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute("aria-current", "step");
+    expect(rows[1]).toHaveTextContent("Written answer");
+    await userEvent.click(rows[1]!);
+    expect(screen.queryByRole("dialog", { name: "Question paper" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /^2\. / })).toBeInTheDocument();
+  });
+});
+
+describe("a coding question on a wide screen", () => {
+  it("opens full screen, with the paper's numbers down the side", async () => {
+    const width = window.innerWidth;
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 1440 });
+    const coding = {
+      ...exam,
+      questions: [
+        exam.questions[0],
+        {
+          id: "q-code",
+          kind: "code",
+          stem: "Add two numbers",
+          maxScore: 5,
+          language: "python",
+          languages: ["python"],
+          starter: null,
+          starters: {},
+          function: null,
+          inputFormat: null,
+          outputFormat: null,
+          constraints: null,
+          samples: [],
+          translations: {},
+        },
+      ],
+    };
+    try {
+      renderApp(<App client={stubClient({ exam: coding })} />);
+      await loaded();
+      await userEvent.keyboard("n");
+      const workspace = await screen.findByRole("dialog", { name: /Add two numbers/ });
+      const rail = within(workspace).getByRole("group", { name: "Questions" });
+      await userEvent.click(within(rail).getByRole("button", { name: /^Question 1:/ }));
+      expect(await screen.findByRole("heading", { name: /^1\. Which sort is stable\?/ })).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: /Add two numbers/ })).not.toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
+    }
+  });
+});
+
 describe("the clock", () => {
   it("warns quietly as the time runs down", async () => {
     renderApp(<App client={stubClient({ expiresAt: Date.now() + 15 * 60_000 + 1200 })} />);

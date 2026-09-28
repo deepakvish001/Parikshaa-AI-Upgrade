@@ -227,6 +227,14 @@ describe("App", () => {
 
     expect(await screen.findByTestId("head-hash")).toHaveTextContent("f".repeat(64));
     expect(screen.getByRole("button", { name: "Download receipt" })).toBeInTheDocument();
+    // Said plainly first: submitted, and how the paper was left.
+    const done = screen.getByRole("region", { name: "Submitted" });
+    expect(within(done).getByText("Answered").nextSibling).toHaveTextContent("1");
+    expect(within(done).getByText("Not answered").nextSibling).toHaveTextContent("1");
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    await userEvent.click(within(done).getByRole("button", { name: "Print or save as PDF" }));
+    expect(print).toHaveBeenCalled();
+    print.mockRestore();
     // Answers are locked once submitted.
     expect(screen.queryByRole("button", { name: "Save answer" })).not.toBeInTheDocument();
   });

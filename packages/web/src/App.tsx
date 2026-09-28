@@ -16,10 +16,13 @@ import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } fr
 import { TopBar } from "./components/Chrome.tsx";
 import { ChevronLeft, ChevronRight, Eraser, Flag, Hourglass, Send } from "lucide-react";
 import { briefingOfState, Instructions } from "./components/Instructions.tsx";
+import { Finished, submittedAt } from "./components/Finished.tsx";
+import { QuestionPaper, QuestionRail } from "./components/QuestionPaper.tsx";
 import {
   Calculator,
   clearRoughWork,
   InstructionsPanel,
+  PaperPanel,
   RoughWork,
   ShortcutsPanel,
   TimeWarnings,
@@ -619,10 +622,24 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       <>
         <TopBar title={exam.title} offered={offered} />
         <main className="page">
-          <header className="exam">
-            <h1>{exam.title}</h1>
-            <p className="sub">{t(`exam.state.${attemptState}`)}</p>
-          </header>
+          {attemptState === "submitted" || attemptState === "graded" ? (
+            <>
+              <h1 className="visually-hidden">{exam.title}</h1>
+              <Finished
+                title={exam.title}
+                graded={attemptState === "graded"}
+                at={submittedAt(ledger.data)}
+                total={exam.questions.length}
+                answered={exam.questions.filter((q) => (answered.get(q.id) ?? "") !== "").length}
+                marked={exam.questions.filter((q) => review.has(q.id)).length}
+              />
+            </>
+          ) : (
+            <header className="exam">
+              <h1>{exam.title}</h1>
+              <p className="sub">{t(`exam.state.${attemptState}`)}</p>
+            </header>
+          )}
           {attemptState === "void" ? (
             /*
              * SPEC §6.2: being set aside without being told why is the situation
@@ -697,6 +714,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     notVisited: items.filter((q) => !q.answered && !q.marked && !q.visited).length,
   };
   const lastPart = parts === null || nextPart === null;
+  // A coding question fills a wide screen, as a coding round's does; a laptop or phone keeps it in the card.
+  const wide = typeof window !== "undefined" && window.innerWidth >= 1280;
   const canSubmit = !submit.isPending && (answered.size > 0 || Object.keys(drafts).length > 0);
 
   keys.current =
@@ -872,6 +891,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           submitLabel={exam.allowRevision ? t("code.submit") : t("code.submitFinal")}
           number={index + 1}
           completion={exam.codeCompletion ?? false}
+          startFull={wide && !lite}
+          rail={<QuestionRail items={items} current={currentId} onGo={goTo} />}
         />
       </section>
     );
@@ -966,6 +987,28 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       {panel === "calculator" ? <Calculator onClose={() => setPanel(null)} /> : null}
       {panel === "rough" ? <RoughWork attemptId={state.data.attemptId} onClose={() => setPanel(null)} /> : null}
       {panel === "shortcuts" ? <ShortcutsPanel onClose={() => setPanel(null)} /> : null}
+      {panel === "paper" ? (
+        <PaperPanel onClose={() => setPanel(null)}>
+          <QuestionPaper
+            current={currentId}
+            onGo={(id) => {
+              setPanel(null);
+              goTo(id);
+            }}
+            entries={shown.map((q, i) => {
+              const translation = language === "en" || original.has(q.id) ? undefined : q.translations?.[language];
+              const stem = translation?.stem ?? q.stem;
+              return {
+                ...items[i]!,
+                stem: q.kind === "code" ? splitStem(stem).title || t("code.problem") : stem,
+                lang: translation === undefined ? "en" : language,
+                maxScore: q.maxScore,
+                kind: kindLabel(q, t),
+              };
+            })}
+          />
+        </PaperPanel>
+      ) : null}
       {panel === "instructions" ? (
         <InstructionsPanel onClose={() => setPanel(null)}>
           <Instructions brief={briefingOfState(state.data)} />

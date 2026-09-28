@@ -2805,3 +2805,228 @@ kbd {
     transform: translateY(100%);
   }
 }
+
+/* --- the end of a sitting ------------------------------------------------------ */
+
+.finished {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  padding: var(--space-8) var(--space-6) var(--space-6);
+  text-align: center;
+  background:
+    radial-gradient(90% 120% at 50% -20%, color-mix(in srgb, var(--success) 14%, transparent), transparent 60%),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+.finished-mark {
+  display: grid;
+  place-items: center;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: var(--space-2);
+  color: #fff;
+  background: var(--success);
+  border-radius: 50%;
+  box-shadow: 0 0 0 8px color-mix(in srgb, var(--success) 16%, transparent);
+}
+.finished-mark svg {
+  width: 2.1rem;
+  height: 2.1rem;
+}
+.finished .eyebrow {
+  margin: 0;
+}
+.finished h2 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  letter-spacing: -0.02em;
+}
+.finished-lead {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--text-muted);
+}
+.finished-lead strong {
+  color: var(--text);
+}
+.finished-figures {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.figure-tile {
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.figure-tile dt {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.figure-tile dd {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.figure-tile.ok dd {
+  color: var(--success);
+}
+.figure-tile.left dd {
+  color: var(--danger);
+}
+.finished > .notice {
+  max-width: 34rem;
+  margin: 0;
+}
+.finished-actions {
+  margin-top: var(--space-3);
+}
+@media (max-width: 40rem) {
+  .finished-figures {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* --- the question paper, read-only --------------------------------------------- */
+
+.floating.paper-panel {
+  width: min(38rem, calc(100vw - 2rem));
+}
+.question-paper {
+  overflow-y: auto;
+  padding: 0 var(--space-3) var(--space-4);
+}
+.question-paper > .notice {
+  margin: var(--space-3) var(--space-2);
+}
+.paper-list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+button.paper-row {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: 3.25rem;
+  padding: var(--space-2);
+  font-weight: var(--weight-regular, 400);
+  text-align: left;
+  white-space: normal;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+button.paper-row:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+button.paper-row.current {
+  background: var(--primary-soft);
+  border-color: var(--primary-soft-border);
+}
+.paper-row .pq {
+  min-height: 2.25rem;
+}
+.paper-stem {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.paper-meta {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+
+/* --- the question rail beside the full-screen coding workspace ----------------- */
+
+.workspace.full.with-rail {
+  padding-left: calc(3.75rem + var(--space-4));
+}
+.ws-rail {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3.75rem;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-2);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+.rail {
+  display: grid;
+  gap: var(--space-2);
+}
+.rail .pq {
+  min-width: 0;
+  min-height: 2.5rem;
+}
+.rail .pq[aria-current="step"] {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+}
+@media (max-width: 64rem) {
+  .workspace.full.with-rail {
+    padding-left: var(--space-4);
+  }
+  .ws-rail {
+    display: none;
+  }
+}
+
+/* --- print, or "Save as PDF": the end of the sitting and its record, on paper --- */
+
+@media print {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    background: #fff;
+  }
+  .topbar,
+  .prefs,
+  .finished-actions,
+  .receipt .row button,
+  .gate-foot {
+    display: none !important;
+  }
+  .page {
+    max-width: none;
+    padding: 0;
+  }
+  .finished,
+  .card {
+    box-shadow: none;
+    border-color: #999;
+    break-inside: avoid;
+  }
+  .finished {
+    background: #fff;
+  }
+  .receipt .hash {
+    word-break: break-all;
+  }
+  .ledger {
+    font-size: 9pt;
+  }
+}
