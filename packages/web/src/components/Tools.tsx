@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AArrowDown, AArrowUp, BookOpen, Calculator as CalculatorIcon, Check, CloudOff, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, X } from "lucide-react";
+import { AArrowDown, AArrowUp, ALargeSmall, BookOpen, Calculator as CalculatorIcon, Check, CloudOff, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, X } from "lucide-react";
 import { display, evaluate, type AngleUnit } from "../calc.ts";
-import { usePreferences } from "../i18n.tsx";
+import { LANGUAGE_NAMES, usePreferences, type Language } from "../i18n.tsx";
 
 /** A setting kept on this device, read once and written as it changes. Storage may be refused; then it lasts the page. */
 export function useStoredSetting<T extends string>(key: string, fallback: T, allowed: readonly T[]): [T, (next: T) => void] {
@@ -51,10 +51,108 @@ export function useReadingPreferences() {
   const at = TEXT_SIZES.indexOf(size);
   return {
     dark,
+    size,
+    setDark: (on: boolean) => setTheme(on ? "dark" : "light"),
     toggleTheme: () => setTheme(dark ? "light" : "dark"),
     smaller: at > 0 ? () => setSize(TEXT_SIZES[at - 1]!) : null,
     larger: at < TEXT_SIZES.length - 1 ? () => setSize(TEXT_SIZES[at + 1]!) : null,
   };
+}
+
+export type ReadingPreferences = ReturnType<typeof useReadingPreferences>;
+
+/**
+ * How the page reads, all in one place: the language, the text size, light
+ * or dark, and low-bandwidth mode. None of it changes during the test, so it
+ * lives behind one button and the bar keeps only what does.
+ */
+export function DisplayPanel({ offered, reading }: { readonly offered: readonly Language[]; readonly reading: ReadingPreferences }) {
+  const { t, language, lite, setLanguage, setLite } = usePreferences();
+  const choices = [...new Set<Language>(["en", "hi", ...offered, language])];
+  return (
+    <div className="display-panel">
+      <div className="display-row">
+        <label htmlFor="pref-language">{t("prefs.language")}</label>
+        <select id="pref-language" value={language} onChange={(e) => setLanguage(e.target.value as Language)}>
+          {choices.map((l) => (
+            <option key={l} value={l} lang={l}>
+              {LANGUAGE_NAMES[l]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="display-row">
+        <span id="display-size">{t("display.size")}</span>
+        <div className="segmented" role="group" aria-labelledby="display-size">
+          <button type="button" aria-label={t("tools.smaller")} title={t("tools.smaller")} disabled={reading.smaller === null} onClick={() => reading.smaller?.()}>
+            <AArrowDown aria-hidden="true" />
+          </button>
+          <output aria-live="polite">{reading.size}%</output>
+          <button type="button" aria-label={t("tools.larger")} title={t("tools.larger")} disabled={reading.larger === null} onClick={() => reading.larger?.()}>
+            <AArrowUp aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      <div className="display-row">
+        <span id="display-theme">{t("display.theme")}</span>
+        <div className="segmented" role="group" aria-labelledby="display-theme">
+          <button type="button" aria-pressed={!reading.dark} aria-label={t("tools.light")} onClick={() => reading.setDark(false)}>
+            <Sun aria-hidden="true" />
+            <span aria-hidden="true">{t("display.light")}</span>
+          </button>
+          <button type="button" aria-pressed={reading.dark} aria-label={t("tools.dark")} onClick={() => reading.setDark(true)}>
+            <Moon aria-hidden="true" />
+            <span aria-hidden="true">{t("display.dark")}</span>
+          </button>
+        </div>
+      </div>
+      <label className="inline display-lite">
+        <input type="checkbox" checked={lite} onChange={(e) => setLite(e.target.checked)} />
+        <span>
+          {t("prefs.lite")}
+          <small>{t("prefs.liteHint")}</small>
+        </span>
+      </label>
+    </div>
+  );
+}
+
+/** The Display button in the exam bar, and its menu. Escape or a click elsewhere closes it. */
+export function DisplayMenu({ offered, reading }: { readonly offered: readonly Language[]; readonly reading: ReadingPreferences }) {
+  const { t } = usePreferences();
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      toggle.current?.focus();
+    };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  return (
+    <div className="display-menu" ref={root}>
+      <button type="button" className="display-toggle" ref={toggle} aria-expanded={open} aria-controls="display-menu" title={t("display.label")} onClick={() => setOpen(!open)}>
+        <ALargeSmall aria-hidden="true" />
+        <span className="display-label">{t("display.label")}</span>
+      </button>
+      {open ? (
+        <div className="display-popover" id="display-menu" role="group" aria-label={t("display.label")}>
+          <DisplayPanel offered={offered} reading={reading} />
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 export type SaveState = "idle" | "saving" | "saved" | "offline";
@@ -75,9 +173,9 @@ export function SaveStatus({ state }: { readonly state: SaveState }) {
 export type Panel = "calculator" | "rough" | "shortcuts" | "instructions" | "paper" | null;
 
 /**
- * The strip under the exam bar: where the candidate stands on the left (the
- * sections, when there are any), and on the right whether their work is
- * saved and the tools a CBT hall offers.
+ * The strip under the exam bar: on the left whether the candidate's work is
+ * saved, the one thing here that changes; on the right the tools a CBT hall
+ * offers.
  */
 export function ToolStrip({
   children,
@@ -93,7 +191,6 @@ export function ToolStrip({
   readonly calculator: boolean;
 }) {
   const { t } = usePreferences();
-  const reading = useReadingPreferences();
   const toggle = (which: Exclude<Panel, null>) => onPanel(panel === which ? null : which);
   const tool = (which: Exclude<Panel, null>, label: string, icon: ReactNode) => (
     <button type="button" className="tool" aria-pressed={panel === which} title={label} onClick={() => toggle(which)}>
@@ -103,30 +200,15 @@ export function ToolStrip({
   );
   return (
     <div className="toolstrip">
-      <div className="toolstrip-start">{children}</div>
-      <div className="toolstrip-end" role="toolbar" aria-label={t("tools.region")}>
+      <div className="toolstrip-start">
         <SaveStatus state={save} />
+        {children}
+      </div>
+      <div className="toolstrip-end" role="toolbar" aria-label={t("tools.region")}>
         {tool("paper", t("tools.paper"), <ScrollText aria-hidden="true" />)}
         {tool("instructions", t("brief.open"), <BookOpen aria-hidden="true" />)}
         {calculator ? tool("calculator", t("tools.calculator"), <CalculatorIcon aria-hidden="true" />) : null}
         {tool("rough", t("tools.rough"), <NotebookPen aria-hidden="true" />)}
-        <span className="tool-group">
-          <button type="button" className="tool icon" title={t("tools.smaller")} aria-label={t("tools.smaller")} disabled={reading.smaller === null} onClick={() => reading.smaller?.()}>
-            <AArrowDown aria-hidden="true" />
-          </button>
-          <button type="button" className="tool icon" title={t("tools.larger")} aria-label={t("tools.larger")} disabled={reading.larger === null} onClick={() => reading.larger?.()}>
-            <AArrowUp aria-hidden="true" />
-          </button>
-        </span>
-        <button
-          type="button"
-          className="tool icon"
-          title={reading.dark ? t("tools.light") : t("tools.dark")}
-          aria-label={reading.dark ? t("tools.light") : t("tools.dark")}
-          onClick={reading.toggleTheme}
-        >
-          {reading.dark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
-        </button>
         <button type="button" className="tool icon" title={t("tools.shortcuts")} aria-label={t("tools.shortcuts")} aria-pressed={panel === "shortcuts"} onClick={() => toggle("shortcuts")}>
           <Keyboard aria-hidden="true" />
         </button>

@@ -95,6 +95,23 @@ describe("keyboard shortcuts", () => {
   });
 });
 
+describe("the palette's key", () => {
+  it("shows \"Typed, not saved\" only while something is, and folds to a line of shapes on request", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    const palette = screen.getByRole("navigation", { name: "Questions" });
+    expect(within(palette).queryByText("Typed, not saved")).not.toBeInTheDocument();
+    expect(within(palette).getByText("Not visited")).toBeInTheDocument();
+
+    const toggle = within(palette).getByRole("button", { name: "Hide the key" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(toggle);
+    expect(within(palette).getByRole("button", { name: "Show the key" })).toHaveAttribute("aria-expanded", "false");
+    // Folded, the words are still there for a screen reader.
+    expect(within(palette).getByText("Not visited")).toHaveClass("legend-label");
+  });
+});
+
 describe("the tools beside the paper", () => {
   it("offer a calculator where the exam allows one, and it works", async () => {
     renderApp(<App client={stubClient()} />);
@@ -144,11 +161,22 @@ describe("the tools beside the paper", () => {
   it("make the text larger and the page dark, and remember both", async () => {
     renderApp(<App client={stubClient()} />);
     await loaded();
-    await userEvent.click(screen.getByRole("button", { name: "Larger text" }));
+    // How the page reads is one menu on the bar, not buttons in the way of the tools.
+    const display = screen.getByRole("button", { name: "Display" });
+    expect(display).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(display);
+    const menu = screen.getByRole("group", { name: "Display" });
+    await userEvent.click(within(menu).getByRole("button", { name: "Larger text" }));
     expect(document.documentElement.style.fontSize).toBe("112%");
-    await userEvent.click(screen.getByRole("button", { name: /^(Dark|Light) theme$/ }));
-    expect(document.documentElement.getAttribute("data-theme")).toMatch(/^(dark|light)$/);
+    expect(menu).toHaveTextContent("112%");
+    await userEvent.click(within(menu).getByRole("button", { name: "Dark theme" }));
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(within(menu).getByRole("button", { name: "Dark theme" })).toHaveAttribute("aria-pressed", "true");
     expect(localStorage.getItem("parikshaa.textSize")).toBe("112");
+    // Escape closes it, and focus goes back to its button.
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("group", { name: "Display" })).not.toBeInTheDocument();
+    expect(display).toHaveFocus();
   });
 });
 

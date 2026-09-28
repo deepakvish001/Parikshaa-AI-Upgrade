@@ -159,6 +159,18 @@ export async function readyToBegin(page: Page): Promise<void> {
   await declare.getByRole("button").click();
 }
 
+/**
+ * Change the page's language during the test, through the Display menu on
+ * the exam bar. Language-independent: it finds the menu by its place, not
+ * its name, and closes it again after.
+ */
+export async function chooseLanguage(page: Page, language: string): Promise<void> {
+  const toggle = page.locator(".display-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+  await page.locator("#pref-language").selectOption(language);
+  await page.keyboard.press("Escape");
+}
+
 /** Submit, through the summary a CBT shows first. */
 export async function submitAttempt(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Submit attempt" }).click();

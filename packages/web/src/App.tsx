@@ -14,24 +14,26 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { ChevronLeft, ChevronRight, Eraser, Flag, Hourglass, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, Eraser, Flag, Hourglass, Lock, Send } from "lucide-react";
 import { briefingOfState, Instructions } from "./components/Instructions.tsx";
 import { Finished, submittedAt } from "./components/Finished.tsx";
 import { QuestionPaper, QuestionRail } from "./components/QuestionPaper.tsx";
 import {
   Calculator,
   clearRoughWork,
+  DisplayMenu,
   InstructionsPanel,
   PaperPanel,
   RoughWork,
   ShortcutsPanel,
   TimeWarnings,
   ToolStrip,
+  useReadingPreferences,
   type Panel,
   type SaveState,
 } from "./components/Tools.tsx";
 import { loadReview, loadVisited, saveReview, saveVisited } from "./review.ts";
-import { Countdown, ExamBar, kindLabel, SubmitDialog } from "./components/Cbt.tsx";
+import { Countdown, ExamBar, kindLabel, SubmitDialog, Tally } from "./components/Cbt.tsx";
 import { Figures, Palette, PassageCard } from "./components/Paper.tsx";
 
 interface OpenProbe {
@@ -202,6 +204,11 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const restored = useRef(false);
   const online = useOnline();
   const { t, language, lite } = usePreferences();
+  // The candidate's reading size and theme, for as long as the attempt is open on this page.
+  const reading = useReadingPreferences();
+  // What a screen reader is told about the follow-up: that one is here, and that the reply went.
+  const [probeNote, setProbeNote] = useState("");
+  const [probeSent, setProbeSent] = useState(false);
   const heartbeatMs = lite ? LITE_HEARTBEAT_MS : HEARTBEAT_MS;
   const autosaveMs = lite ? LITE_AUTOSAVE_DELAY_MS : AUTOSAVE_DELAY_MS;
   // Per question: the candidate asked to read the original rather than the translation.
@@ -428,6 +435,17 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       probeRequested.current = false;
     }
   }, [client, queryClient, lite]);
+
+  // Said once, when the follow-up is written out, rather than word by word as it streams.
+  useEffect(() => {
+    if (probe !== null && !probe.streaming && probe.prompt !== "") setProbeNote(`${t("probe.eyebrow")}: ${probe.prompt}`);
+  }, [probe, t]);
+  // "Reply sent" folds away after a few seconds.
+  useEffect(() => {
+    if (!probeSent) return;
+    const id = setTimeout(() => setProbeSent(false), 6000);
+    return () => clearTimeout(id);
+  }, [probeSent]);
 
   // Reopen a probe the candidate left unanswered, e.g. after a reload.
   useEffect(() => {
@@ -779,6 +797,9 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         ? "saved"
         : "idle";
 
+  // A section with its own time shows that time in the pill, in place of the test's.
+  const sectionClock = currentPart !== null && currentPart.endsAt != null && !partTimeUp ? { title: currentPart.title, endsAt: currentPart.endsAt, durationMs: currentPart.durationMs } : null;
+
   const action = !lastPart ? (
     currentPart !== null && !partTimeUp ? (
       <button
@@ -980,8 +1001,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     <div className="cbt">
       <ExamBar
         title={exam.title}
-        offered={offered}
-        clock={<Countdown expiresAt={state.data.expiresAt} />}
+        display={<DisplayMenu offered={offered} reading={reading} />}
+        clock={<Countdown expiresAt={state.data.expiresAt} section={sectionClock} />}
         status={
           cameraOn === true ? (
             <span className="camera-pill" role="status">
@@ -991,9 +1012,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         }
         action={action}
       />
-      <ToolStrip save={paperSave} panel={panel} onPanel={setPanel} calculator={exam.calculator ?? false}>
-        {parts !== null ? <SectionSteps parts={parts} now={now} /> : null}
-      </ToolStrip>
+      <ToolStrip save={paperSave} panel={panel} onPanel={setPanel} calculator={exam.calculator ?? false} />
       <TimeWarnings expiresAt={state.data.expiresAt} />
       {panel === "calculator" ? <Calculator onClose={() => setPanel(null)} /> : null}
       {panel === "rough" ? <RoughWork attemptId={state.data.attemptId} onClose={() => setPanel(null)} /> : null}
@@ -1041,6 +1060,9 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
             onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
           />
+          <p className="visually-hidden" role="status">
+            {probeNote}
+          </p>
           {probe !== null ? (
             <ProbePanel
               prompt={probe.prompt}
@@ -1048,9 +1070,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               onReply={async (reply) => {
                 await client.replyToProbe(probe.id, reply);
                 setProbe(null);
+                setProbeSent(true);
+                setProbeNote(t("probe.sent"));
                 await queryClient.invalidateQueries({ queryKey: ["state"] });
               }}
             />
+          ) : probeSent ? (
+            <p className="probe-sent">
+              <CircleCheck aria-hidden="true" />
+              {t("probe.sent")}
+            </p>
           ) : null}
 
           {currentPart !== null && partTimeUp ? (
@@ -1081,18 +1110,23 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           {question}
         </main>
 
-        {shown.length > 0 ? (
+        {shown.length > 0 || parts !== null ? (
           <aside className="cbt-side">
-            <Palette questions={items} current={currentId} onGo={goTo} />
+            {parts !== null ? <SectionTabs parts={parts} /> : null}
+            {shown.length > 0 ? <Palette questions={items} current={currentId} onGo={goTo} /> : null}
           </aside>
         ) : null}
       </div>
 
       {leaving && currentPart !== null ? (
         <div className="scrim" onClick={(e) => e.target === e.currentTarget && setLeaving(false)}>
-          <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="leave-section">
-            <h2 id="leave-section">{t("section.confirm", { title: currentPart.title })}</h2>
-            <p className="notice">{t("section.lockNote")}</p>
+          <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="leave-section" aria-describedby="leave-section-note">
+            <h2 id="leave-section">{t("section.leaveTitle", { title: currentPart.title })}</h2>
+            <Tally counts={counts} />
+            <p className="dialog-warn" id="leave-section-note">
+              <Lock aria-hidden="true" />
+              {t("section.confirm", { title: currentPart.title })}
+            </p>
             <div className="dialog-actions">
               <button type="button" className="secondary" onClick={() => setLeaving(false)} autoFocus>
                 {t("section.stay")}
@@ -1159,36 +1193,31 @@ function useNow(running: boolean): number {
   return now;
 }
 
-const clockOf = (ms: number): string => {
-  const seconds = Math.ceil(ms / 1000);
-  const m = Math.floor(seconds / 60);
-  return `${m}:${String(seconds % 60).padStart(2, "0")}`;
-};
-
 /**
- * Where a sectioned test stands: each part, done, now or to come, and the
- * current part's own time, to the second: a section is short enough for
- * seconds to matter.
+ * Where a sectioned test stands, above the palette: every part, done and
+ * locked, now, or to come, each with its number of questions. The parts left
+ * behind stay in sight, so the candidate sees the whole paper. The current
+ * part's own time is in the pill in the bar.
  */
-function SectionSteps({ parts, now }: { parts: readonly CandidatePart[]; now: number }) {
+function SectionTabs({ parts }: { parts: readonly CandidatePart[] }) {
   const { t } = usePreferences();
-  const current = parts.find((p) => p.state === "current");
-  const left = current?.endsAt == null ? null : Math.max(0, current.endsAt - now);
   return (
-    <nav className="sections card" aria-label={t("section.region")}>
+    <nav className="section-tabs" aria-label={t("section.region")}>
       <ol>
         {parts.map((p) => (
-          <li key={p.sectionId ?? "fixed"} className={`step ${p.state}`} aria-current={p.state === "current" ? "step" : undefined}>
-            <span className="step-title">{p.title}</span>
-            <span className="step-state">{t(`section.${p.state}`)}</span>
+          <li key={p.sectionId ?? "fixed"} className={`section-tab ${p.state}`} aria-current={p.state === "current" ? "step" : undefined}>
+            {p.state === "done" ? <Lock aria-hidden="true" /> : null}
+            <span className="section-tab-title">{p.title}</span>
+            <span className="section-tab-count" aria-hidden="true">
+              {p.questionIds.length}
+            </span>
+            <span className="visually-hidden">
+              {" "}
+              ({t("section.questions", { n: p.questionIds.length })}, {t(`section.${p.state}`)})
+            </span>
           </li>
         ))}
       </ol>
-      {left !== null && left > 0 ? (
-        <p className={`section-clock${left < 60_000 ? " urgent" : ""}`} role="timer">
-          {t("section.timeLeft", { time: clockOf(left) })}
-        </p>
-      ) : null}
     </nav>
   );
 }

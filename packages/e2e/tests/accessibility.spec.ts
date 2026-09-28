@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { beginSitting, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "./support.js";
+import { beginSitting, chooseLanguage, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "./support.js";
 
 /**
  * ROADMAP §9: an exam a candidate cannot operate is an exam they failed for
@@ -35,12 +35,17 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(page.getByRole("region", { name: "Follow-up question" })).toContainText("Walk me through");
       expect(await violations(page)).toEqual([]);
 
-      await page.getByLabel("Language").selectOption("hi");
+      // The Display menu open over the paper.
+      await page.getByRole("button", { name: "Display" }).click();
+      await expect(page.getByRole("group", { name: "Display" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+
+      await chooseLanguage(page, "hi");
       await expect(page.getByRole("button", { name: "प्रयास जमा करें" })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.lang)).toBe("hi");
       expect(await violations(page)).toEqual([]);
 
-      await page.getByLabel("भाषा").selectOption("en");
+      await chooseLanguage(page, "en");
       // The summary before submitting, over the paper.
       await page.getByRole("button", { name: "Submit attempt" }).click();
       const summary = page.getByRole("dialog", { name: "Submit your attempt?" });

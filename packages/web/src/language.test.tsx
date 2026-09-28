@@ -71,6 +71,8 @@ describe("the page in Hindi", () => {
     renderApp(<App client={client} />);
     await screen.findByRole("heading", { name: "Algorithms" });
 
+    // The language is in the Display menu, with the other reading settings.
+    await userEvent.click(screen.getByRole("button", { name: "Display" }));
     await userEvent.selectOptions(screen.getByLabelText("Language"), "hi");
 
     expect(document.documentElement.lang).toBe("hi");
@@ -107,6 +109,7 @@ describe("the page in Hindi", () => {
   it("offers a language a question is translated into, with the interface in it too", async () => {
     renderApp(<App client={stubClient()} />);
     await screen.findByRole("heading", { name: "Algorithms" });
+    await userEvent.click(screen.getByRole("button", { name: "Display" }));
     await userEvent.selectOptions(screen.getByLabelText("Language"), "ta");
     await userEvent.click(await screen.findByRole("button", { name: /^கேள்வி 2:/ }));
     expect(screen.getByRole("heading", { name: /ஏன் நிற்கிறது\?/ })).toHaveAttribute("lang", "ta");
@@ -139,7 +142,8 @@ describe("low-bandwidth mode", () => {
 
   it("is switched on and off by the candidate, and remembered", async () => {
     renderApp(<App client={stubClient()} />);
-    await userEvent.click(await screen.findByRole("checkbox", { name: "Low-bandwidth mode" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Display" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /^Low-bandwidth mode/ }));
     expect(localStorage.getItem("parikshaa.lite")).toBe("1");
   });
 });

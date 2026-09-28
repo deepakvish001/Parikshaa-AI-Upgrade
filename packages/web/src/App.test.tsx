@@ -167,11 +167,18 @@ describe("App", () => {
 
     const probe = await screen.findByRole("region", { name: "Follow-up question" });
     expect(probe).toHaveTextContent("Which quantity decreases each round?");
+    // The candidate is taken to the reply box, and a screen reader is told once, not word by word.
+    const box = screen.getByLabelText("Your reply to the follow-up");
+    await waitFor(() => expect(box).toHaveFocus());
+    expect(screen.getAllByRole("status").some((s) => s.textContent === "A follow-up on your answer: Which quantity decreases each round?")).toBe(true);
 
-    await userEvent.type(screen.getByLabelText("Your reply to the follow-up"), "The potential.");
+    await userEvent.type(box, "The potential.");
     await userEvent.click(screen.getByRole("button", { name: "Send reply" }));
 
     await waitFor(() => expect(client.replyToProbe).toHaveBeenCalledWith("p1", "The potential."));
+    // The panel folds to one line: sent, and thanks.
+    expect(await screen.findByText("Reply sent. Thank you.", { selector: ".probe-sent" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Follow-up question" })).not.toBeInTheDocument();
   });
 
   it("presents the probe as a follow-up, never as an accusation", async () => {
@@ -532,7 +539,10 @@ describe("a test taken section by section", () => {
     expect(screen.queryByRole("button", { name: "Submit attempt" })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Finish General and go on" }));
-    expect(screen.getByText("You cannot come back to General once you leave it.")).toBeInTheDocument();
+    // What leaving means, with the part's own counts.
+    const leave = screen.getByRole("alertdialog", { name: "Leave General?" });
+    expect(leave).toHaveAccessibleDescription("You cannot come back to General once you leave it.");
+    expect(within(leave).getByText("Not answered").closest("div")).toHaveTextContent("Not answered1");
     await userEvent.click(screen.getByRole("button", { name: "Stay" }));
     expect(client.nextSection).not.toHaveBeenCalled();
 
@@ -542,7 +552,11 @@ describe("a test taken section by section", () => {
 
     expect(await screen.findByText(/Why does it terminate\?/)).toBeInTheDocument();
     expect(screen.queryByText(/Which sort is stable\?/)).not.toBeInTheDocument();
-    expect(screen.getByText(/(9:5\d|10:00) left in this section/)).toHaveAttribute("role", "timer");
+    // The section's own time is in the pill in the bar, under the section's name.
+    expect(screen.getByRole("timer", { name: /(9:5\d|10:00) left in this section/ })).toHaveTextContent(/^Aptitude(9:5\d|10:00)$/);
+    // The part left behind stays in sight, locked.
+    const tabs = screen.getByRole("navigation", { name: "Sections" });
+    expect(within(tabs).getByText("General").closest("li")).toHaveClass("done");
     // The last part: now it can be submitted.
     expect(screen.getByRole("button", { name: "Submit attempt" })).toBeInTheDocument();
   });

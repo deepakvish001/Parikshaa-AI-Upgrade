@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { beginSitting, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
+import { beginSitting, chooseLanguage, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
 import { aptitudePaper, CODE_QUESTION, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED, PRACTICE_SET } from "./fixtures.js";
 import { shoot } from "./shoot.js";
@@ -112,14 +112,14 @@ test("answering: one question at a time, autosave, a follow-up question, and the
   await probe.getByLabel("Your reply to the follow-up").fill("Merge sort only moves an element past another when it is strictly smaller, so equal keys keep their order.");
   await shoot(page, "candidate-08-follow-up", { fullPage: false });
 
-  await page.getByRole("combobox", { name: "Language" }).selectOption("hi");
+  await chooseLanguage(page, "hi");
   const probeHi = page.getByRole("region", { name: "अनुवर्ती प्रश्न" });
   await probeHi.getByRole("button", { name: "उत्तर भेजें" }).click();
   await expect(probeHi).toBeHidden();
   await page.locator("section.qview").getByRole("textbox").fill("हर तुलना के बाद खोज का अंतराल आधा हो जाता है, इसलिए log₂(n) चरणों में वह खाली हो जाता है।");
   await page.waitForTimeout(1600);
   await shoot(page, "candidate-09-hindi", { fullPage: false });
-  await page.getByRole("combobox", { name: "भाषा" }).selectOption("en");
+  await chooseLanguage(page, "en");
 
   await foot.getByRole("button", { name: "Save & next" }).click();
   await page.locator("section.qview").getByRole("textbox").fill("72");

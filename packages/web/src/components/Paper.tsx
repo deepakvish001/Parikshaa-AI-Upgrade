@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ChevronDown, FileText, X } from "lucide-react";
 import { usePreferences } from "../i18n.tsx";
 
@@ -41,6 +41,9 @@ export function PassageCard({
     </section>
   );
 }
+
+/** How long the palette's key stays open before folding to one line. */
+export const LEGEND_FOLDS_AFTER_MS = 60_000;
 
 export interface PaletteItem {
   readonly id: string;
@@ -92,14 +95,23 @@ export function Palette({
   const marked = questions.filter((q) => q.marked).length;
   const count = (status: Status) => questions.filter((q) => statusOf(q) === status).length;
   const stateOf = (q: PaletteItem) => stateLabel(q, t);
-  const legend: readonly [Status, string][] = [
+  // "Typed, not saved" only while something is; the rest always, so the shapes are learnt.
+  const legend: readonly (readonly [Status, string])[] = [
     ["answered", t("palette.answered")],
     ["not-answered", t("palette.notAnswered")],
     ["not-visited", t("palette.notVisited")],
     ["marked", t("palette.marked")],
     ["answered-marked", t("palette.answeredMarked")],
-    ["draft", t("palette.draft")],
+    ...(count("draft") > 0 ? [["draft", t("palette.draft")] as const] : []),
   ];
+  // After the first minute the key folds to one line of shapes and counts; the candidate can open it again.
+  const [keyOpen, setKeyOpen] = useState(true);
+  const [keyTouched, setKeyTouched] = useState(false);
+  useEffect(() => {
+    if (keyTouched) return;
+    const id = setTimeout(() => setKeyOpen(false), LEGEND_FOLDS_AFTER_MS);
+    return () => clearTimeout(id);
+  }, [keyTouched]);
   const summary = t("palette.summary", { answered, total: questions.length, marked });
 
   return (
@@ -126,19 +138,33 @@ export function Palette({
             <span style={{ width: `${Math.round((answered / Math.max(1, questions.length)) * 100)}%` }} />
           </div>
         </div>
-        <ul className="palette-legend">
-          {legend.map(([status, label]) => (
-            <li key={status}>
-              <span className={`pq ${status}`} aria-hidden="true">
-                {count(status)}
-              </span>
-              <span>
-                {label}
-                {status === "answered-marked" ? <small> {t("palette.counted")}</small> : null}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className={`palette-key${keyOpen ? "" : " folded"}`}>
+          <ul className="palette-legend" id="palette-legend">
+            {legend.map(([status, label]) => (
+              <li key={status} className={`legend-${status}`} title={label}>
+                <span className={`pq ${status}`} aria-hidden="true">
+                  {count(status)}
+                </span>
+                <span className="legend-label">
+                  {label}
+                  {status === "answered-marked" ? <small> {t("palette.counted")}</small> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="link key-toggle"
+            aria-expanded={keyOpen}
+            aria-controls="palette-legend"
+            onClick={() => {
+              setKeyTouched(true);
+              setKeyOpen(!keyOpen);
+            }}
+          >
+            {keyOpen ? t("palette.hideKey") : t("palette.showKey")}
+          </button>
+        </div>
         <ol className="palette-grid">
           {questions.map((q) => (
             <li key={q.id}>

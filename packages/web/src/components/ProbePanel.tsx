@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MessageCircleQuestion } from "lucide-react";
 import { usePreferences } from "../i18n.tsx";
 
@@ -26,6 +26,12 @@ export function ProbePanel({ prompt, streaming, onReply }: Props) {
   const [reply, setReply] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+
+  // Once the question is written out, the reply box is where the candidate is taken: no hunting for it.
+  useEffect(() => {
+    if (!streaming) box.current?.focus({ preventScroll: false });
+  }, [streaming]);
 
   const send = async () => {
     setSending(true);
@@ -50,12 +56,16 @@ export function ProbePanel({ prompt, streaming, onReply }: Props) {
       </p>
 
       <textarea
+        ref={box}
         aria-label={t("probe.replyLabel")}
         placeholder={t("probe.placeholder")}
         value={reply}
         disabled={sending || streaming}
         onChange={(e) => setReply(e.target.value)}
       />
+      <p className="probe-count" aria-hidden="true">
+        {t("probe.count", { n: reply.trim().length })}
+      </p>
 
       <div className="row">
         <button type="button" onClick={send} disabled={sending || streaming || reply.trim() === ""}>
