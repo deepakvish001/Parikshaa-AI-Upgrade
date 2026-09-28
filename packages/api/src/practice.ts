@@ -62,7 +62,13 @@ export class PracticeError extends Error {
       | "language_not_offered"
       | "too_many_runs"
       | "contest_not_started"
-      | "email_not_verified",
+      | "email_not_verified"
+      | "plus_required"
+      | "no_credits"
+      | "tutor_closed"
+      | "unavailable"
+      | "payment_invalid"
+      | "not_configured",
     message: string,
   ) {
     super(message);

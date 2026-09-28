@@ -17,6 +17,7 @@ import {
 } from "@parikshaa/store";
 import { PracticeError, istDay, slugOf, streaks } from "./practice.js";
 import { addDays, countStudyDays, daysBetween, generatePlan, reschedule, review, type PlanItem } from "./prep-plan.js";
+import type { PrepPlus } from "./prep-plus.js";
 
 /**
  * Prep (ROADMAP §16): the practice site as a place to prepare, not only a
@@ -56,6 +57,8 @@ export interface ItemView {
   readonly difficulty: Difficulty | null;
   readonly estMinutes: number;
   readonly status: "done" | "attempted" | null;
+  /** A lesson that needs Plus, for a learner who does not hold it. */
+  readonly locked: boolean;
 }
 
 export interface Reward {
@@ -84,11 +87,38 @@ export class PrepService {
   readonly #practice: PracticeStore;
   readonly #store: PrepStore;
   readonly #now: () => number;
+  readonly #plus: PrepPlus | null;
 
-  constructor(options: { practice: PracticeStore; store: PrepStore; now?: () => number }) {
+  constructor(options: { practice: PracticeStore; store: PrepStore; plus?: PrepPlus | null; now?: () => number }) {
     this.#practice = options.practice;
     this.#store = options.store;
+    this.#plus = options.plus ?? null;
     this.#now = options.now ?? (() => Date.now());
+  }
+
+  /**
+   * Lessons that need Plus, for this learner: with Plus on and not held, those
+   * found only past each track's free modules. Empty otherwise.
+   */
+  async #locked(site: PracticeSite, learner: Learner | null, tracks: readonly Track[]): Promise<ReadonlySet<string>> {
+    if (this.#plus === null) return new Set();
+    const status = await this.#plus.status(site, learner);
+    if (status.active) return new Set();
+    const { freeModules } = await this.#plus.settings(site.orgId);
+    const free = new Set<string>();
+    const paid = new Set<string>();
+    for (const t of tracks) {
+      t.modules.forEach((m, i) => {
+        for (const item of m.items) if (item.lessonId !== null) (i < freeModules ? free : paid).add(item.lessonId);
+      });
+    }
+    return new Set([...paid].filter((id) => !free.has(id)));
+  }
+
+  /** A study plan needs Plus when the site sells it. */
+  async #planAllowed(site: PracticeSite, learner: Learner): Promise<void> {
+    if (this.#plus === null) return;
+    if (!(await this.#plus.status(site, learner)).active) throw new PracticeError("plus_required", "A study plan comes with Plus");
   }
 
   #today(): string {
@@ -118,7 +148,7 @@ export class PrepService {
     };
   }
 
-  #items(track: Track, state: State) {
+  #items(track: Track, state: State, locked: ReadonlySet<string> = new Set()) {
     return track.modules.map((m) => ({
       title: m.title,
       items: m.items.flatMap((item): (ItemView & { id: string })[] => {
@@ -134,12 +164,15 @@ export class PrepService {
               difficulty: p.difficulty,
               estMinutes: { easy: 20, medium: 40, hard: 60 }[p.difficulty],
               status: state.solved.has(p.id) ? "done" : state.attempted.has(p.id) ? "attempted" : null,
+              locked: false,
             },
           ];
         }
         const l = item.lessonId === null ? undefined : state.lessons.get(item.lessonId);
         if (l === undefined) return [];
-        return [{ id: l.id, kind: "lesson", slug: l.slug, title: l.title, difficulty: null, estMinutes: l.estMinutes, status: state.lessonsDone.has(l.id) ? "done" : null }];
+        return [
+          { id: l.id, kind: "lesson", slug: l.slug, title: l.title, difficulty: null, estMinutes: l.estMinutes, status: state.lessonsDone.has(l.id) ? "done" : null, locked: locked.has(l.id) },
+        ];
       }),
     }));
   }
@@ -158,7 +191,8 @@ export class PrepService {
     const state = await this.#state(site, learner);
     const track = state.tracks.find((t) => t.slug === slug);
     if (track === undefined) throw new PracticeError("not_found", "No such track");
-    const modules = this.#items(track, state).map((m) => ({ title: m.title, items: m.items.map(({ id: _, ...item }) => item) }));
+    const locked = await this.#locked(site, learner, state.tracks);
+    const modules = this.#items(track, state, locked).map((m) => ({ title: m.title, items: m.items.map(({ id: _, ...item }) => item) }));
     const items = modules.flatMap((m) => m.items);
     return {
       slug: track.slug,
@@ -175,13 +209,24 @@ export class PrepService {
     const lesson = await this.#store.lessonBySlug(scope, slug);
     if (lesson === null) throw new PracticeError("not_found", "No such lesson");
     const done = learner === null ? false : (await this.#store.lessonsDone(scope)).some((d) => d.lessonId === lesson.id);
-    return { slug: lesson.slug, title: lesson.title, body: lesson.body, videoUrl: lesson.videoUrl === "" ? null : lesson.videoUrl, estMinutes: lesson.estMinutes, done };
+    const locked = (await this.#locked(site, learner, await this.#store.tracks(scope))).has(lesson.id);
+    return {
+      slug: lesson.slug,
+      title: lesson.title,
+      // A locked lesson is named, and its length given, so a learner knows what Plus would open.
+      body: locked ? "" : lesson.body,
+      videoUrl: locked || lesson.videoUrl === "" ? null : lesson.videoUrl,
+      estMinutes: lesson.estMinutes,
+      done,
+      locked,
+    };
   }
 
   async completeLesson(site: PracticeSite, learner: Learner, slug: string): Promise<Reward> {
     const scope = practiceLearner(site.orgId, learner.id);
     const lesson = await this.#store.lessonBySlug(scope, slug);
     if (lesson === null) throw new PracticeError("not_found", "No such lesson");
+    if ((await this.#locked(site, learner, await this.#store.tracks(scope))).has(lesson.id)) throw new PracticeError("plus_required", "This lesson comes with Plus");
     const first = await this.#store.markLessonDone(scope, lesson.id, new Date(this.#now()));
     await this.#store.completeItem(scope, lesson.id, new Date(this.#now()));
     if (!first) return NONE;
@@ -313,6 +358,7 @@ export class PrepService {
 
   /** What a plan would be, before it is started. */
   async previewPlan(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
+    await this.#planAllowed(site, learner);
     const { track, outcome } = await this.#planFor(site, learner, input);
     const neededMinutes = outcome.studyDaysToDeadline === 0 ? null : Math.ceil(outcome.totalMinutes / outcome.studyDaysToDeadline / 0.8 / 5) * 5;
     return {
@@ -329,6 +375,7 @@ export class PrepService {
   }
 
   async startPlan(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[]; goal?: string | undefined }) {
+    await this.#planAllowed(site, learner);
     const { track, level, offDays, outcome } = await this.#planFor(site, learner, input);
     const goal = (input.goal ?? "").trim().slice(0, 200);
     await this.#store.startPlan(

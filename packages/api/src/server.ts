@@ -21,6 +21,9 @@ import { PracticeError, type PracticeService } from "./practice.js";
 import { registerPracticeRoutes } from "./practice-routes.js";
 import type { PrepService } from "./prep.js";
 import { registerPrepRoutes } from "./prep-routes.js";
+import type { PrepPlus } from "./prep-plus.js";
+import { registerPrepPlusRoutes } from "./prep-plus-routes.js";
+import type { Sahayak } from "./sahayak.js";
 import type { PracticeIdentity } from "./practice-identity.js";
 import { registerPracticeIdentityRoutes } from "./practice-identity-routes.js";
 import type { InvitationService } from "./invitation-service.js";
@@ -68,6 +71,8 @@ export interface ServerOptions {
   readonly practiceIdentity?: PracticeIdentity;
   /** Tracks, the study plan, revision, notes, lists, the problem of the day and coins (ROADMAP §16). Needs `practice`. */
   readonly prep?: PrepService;
+  /** Plus, credits and the tutor (ROADMAP §16). Needs `practice`. */
+  readonly prepPlus?: { readonly plus: PrepPlus; readonly tutor: Sahayak };
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -280,7 +285,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const type = reply.getHeader("content-type");
     if (typeof type !== "string" || !type.startsWith("text/html")) return payload;
     const console = request.originalUrl.startsWith("/console");
-    const razorpay = console ? " https://*.razorpay.com" : "";
+    // A practice site's learners buy Plus there, through the same Checkout.
+    const pays = console || request.originalUrl.startsWith("/practice/");
+    const razorpay = pays ? " https://*.razorpay.com" : "";
     reply.header(
       "content-security-policy",
       [
@@ -291,7 +298,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         `img-src 'self' data: blob:${razorpay}`,
         "font-src 'self' data:",
         `connect-src 'self'${razorpay}`,
-        `frame-src ${console ? "https://*.razorpay.com" : "'none'"}`,
+        `frame-src ${pays ? "https://*.razorpay.com" : "'none'"}`,
         "media-src 'self' blob:",
         "worker-src 'self' blob:",
         "object-src 'none'",
@@ -397,6 +404,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         too_many_runs: 429,
         contest_not_started: 403,
         email_not_verified: 403,
+        plus_required: 402,
+        no_credits: 402,
+        tutor_closed: 403,
+        unavailable: 503,
+        payment_invalid: 400,
+        not_configured: 409,
       }[error.code];
       return reply.code(status).send({ error: error.code, message: error.message });
     }
@@ -1077,6 +1090,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       const prep = options.prep;
       registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }), ...(prep === undefined ? {} : { prep }) });
       if (prep !== undefined) registerPrepRoutes(routes, { practice: options.practice, prep, service, staff, bearer });
+      if (options.prepPlus !== undefined) registerPrepPlusRoutes(routes, { practice: options.practice, ...options.prepPlus, service, staff, bearer });
       if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
     }
 

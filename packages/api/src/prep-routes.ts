@@ -41,6 +41,7 @@ const itemView = z.object({
   difficulty: difficulty.nullable(),
   estMinutes: z.number(),
   status: z.enum(["done", "attempted"]).nullable(),
+  locked: z.boolean().describe("A lesson that needs Plus, for a learner who does not hold it."),
 });
 const trackSummary = z.object({ slug: z.string(), title: z.string(), description: z.string(), modules: z.number(), items: z.number(), done: z.number() });
 const trackView = z.object({
@@ -51,7 +52,15 @@ const trackView = z.object({
   done: z.number(),
   modules: z.array(z.object({ title: z.string(), done: z.number(), items: z.array(itemView).readonly() })).readonly(),
 });
-const lessonView = z.object({ slug: z.string(), title: z.string(), body: z.string().describe("Markdown."), videoUrl: z.string().nullable(), estMinutes: z.number(), done: z.boolean() });
+const lessonView = z.object({
+  slug: z.string(),
+  title: z.string(),
+  body: z.string().describe("Markdown; empty while locked."),
+  videoUrl: z.string().nullable(),
+  estMinutes: z.number(),
+  done: z.boolean(),
+  locked: z.boolean().describe("Needs Plus, which this learner does not hold."),
+});
 
 const taskView = z.object({
   id: z.string(),

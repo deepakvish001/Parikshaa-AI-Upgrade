@@ -1029,7 +1029,7 @@ export interface AuditRecord {
 
 export interface UsageRecord {
   readonly attemptId: AttemptId | null;
-  readonly route: "probe" | "assess" | "grade";
+  readonly route: "probe" | "assess" | "grade" | "tutor";
   readonly model: string;
   readonly speed: "standard" | "fast";
   readonly inputTokens: number;

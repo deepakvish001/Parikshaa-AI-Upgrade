@@ -12,6 +12,7 @@ import {
   ProctorStore,
   PracticeStore,
   PrepStore,
+  PrepPlusStore,
   QuestionBank,
   QuestionMedia,
   DataKeys,
@@ -35,6 +36,8 @@ import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
 import { PracticeService } from "../practice.js";
 import { PrepService } from "../prep.js";
+import { PrepPlus } from "../prep-plus.js";
+import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
@@ -201,6 +204,7 @@ export async function wire(
     ...(options.runner === undefined ? {} : { runner: options.runner }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, ...(options.now === undefined ? {} : { now: options.now }) });
   const practiceIdentity = new PracticeIdentity({
     store: new PracticeStore(sql),
     practice,
@@ -244,7 +248,11 @@ export async function wire(
     media: new QuestionMedia(sql),
     practice,
     practiceIdentity,
-    prep: new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), ...(options.now === undefined ? {} : { now: options.now }) }),
+    prep: new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+    prepPlus: {
+      plus: prepPlus,
+      tutor: new Sahayak({ client: options.client, practice: new PracticeStore(sql), prep: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+    },
     ...options.server,
   });
   await app.ready();

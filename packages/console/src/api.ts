@@ -98,7 +98,7 @@ export interface ApiKey {
 }
 
 export interface RouteUsage {
-  readonly route: "probe" | "assess" | "grade";
+  readonly route: "probe" | "assess" | "grade" | "tutor";
   readonly calls: number;
   readonly inputTokens: number;
   readonly outputTokens: number;
