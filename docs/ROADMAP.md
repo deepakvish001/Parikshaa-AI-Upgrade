@@ -651,9 +651,29 @@ printable from the console.
 
 The model-spend ceiling of §0 still applies on top, per organisation.
 
-Not in it: e-invoicing (IRN from the GST portal, needed above ₹5 crore
-turnover), credit notes and refunds of payments, TDS, and automatic monthly
-invoicing (the operator runs `invoice-all` — a cron line).
+**Finished since:**
+
+- *Refunds and credit notes.* The operator refunds unspent credits of a
+  payment (`billing refund`): the credits are taken back under lock — never
+  more than the payment bought, never credits already spent — the money goes
+  back through Razorpay, and a GST credit note (section 34) is issued against
+  the payment's invoice, in a series of its own (`PKC/2627/000001`), taxed as
+  the invoice was. Refunds of a payment add up to it exactly. If Razorpay
+  refuses, the credits come back and nothing is numbered.
+- *TDS.* The operator sets the rate a buyer deducts under section 194J (0, 1, 2
+  or 10%); invoices then show the deduction, on the value before GST, and the
+  net payable. Form 16A certificates are recorded against invoices.
+- *E-invoicing.* Every invoice and credit note can be written in the IRP's
+  e-invoice schema (INV-01, version 1.1) for upload; the IRN, acknowledgement
+  and signed QR code it returns are recorded and printed on the invoice, QR
+  code and all. Needed above ₹5 crore turnover.
+- *Monthly invoicing* runs by itself: each instance checks every six hours and
+  issues last month's usage invoices, once.
+
+Not in it: submitting to the IRP directly — that needs a GST Suvidha
+Provider's or NIC's API credentials, so the JSON is uploaded through the
+portal or a GSP — and TDS on prepaid card payments, where the buyer pays in
+full at checkout.
 
 ## 13. Real-browser testing and hardening
 

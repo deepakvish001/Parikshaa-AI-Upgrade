@@ -18,6 +18,8 @@ export interface PaymentGateway {
   verifyPayment(orderId: string, paymentId: string, signature: string): boolean;
   /** The webhook's signature over its raw body. */
   verifyWebhook(rawBody: string, signature: string): boolean;
+  /** Refund part or all of a captured payment. */
+  refund(paymentId: string, amountPaise: number, notes: Readonly<Record<string, string>>): Promise<{ readonly id: string }>;
 }
 
 /** The gateway is down or refused the order; the customer can try again. */
@@ -78,6 +80,29 @@ export class RazorpayGateway implements PaymentGateway {
   verifyWebhook(rawBody: string, signature: string): boolean {
     return sameSignature(hmac(this.#webhookSecret, rawBody), signature);
   }
+
+  /** `POST /v1/payments/:id/refund`, at normal speed, with our refund's id in its notes. */
+  async refund(paymentId: string, amountPaise: number, notes: Readonly<Record<string, string>>): Promise<{ id: string }> {
+    let response: Response;
+    try {
+      response = await this.#fetch(`https://api.razorpay.com/v1/payments/${encodeURIComponent(paymentId)}/refund`, {
+        method: "POST",
+        headers: {
+          authorization: `Basic ${Buffer.from(`${this.keyId}:${this.#keySecret}`).toString("base64")}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ amount: amountPaise, speed: "normal", notes }),
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (error) {
+      throw new GatewayUnavailable(`Razorpay could not be reached: ${error instanceof Error ? error.name : "error"}`);
+    }
+    const body = (await response.json().catch(() => ({}))) as { id?: unknown; error?: { description?: string } };
+    if (!response.ok || typeof body.id !== "string") {
+      throw new GatewayUnavailable(`Razorpay refused the refund: ${body.error?.description ?? `HTTP ${response.status}`}`);
+    }
+    return { id: body.id };
+  }
 }
 
 /**
@@ -99,6 +124,16 @@ export class FakeRazorpay implements PaymentGateway {
     if (this.unavailable) throw new GatewayUnavailable("Razorpay could not be reached: fake outage");
     const id = `order_fake${String(this.orders.length + 1).padStart(6, "0")}`;
     this.orders.push({ id, ...order });
+    return { id };
+  }
+
+  readonly refunds: { id: string; paymentId: string; amountPaise: number; notes: Readonly<Record<string, string>> }[] = [];
+  refuseRefunds = false;
+
+  async refund(paymentId: string, amountPaise: number, notes: Readonly<Record<string, string>>): Promise<{ id: string }> {
+    if (this.unavailable || this.refuseRefunds) throw new GatewayUnavailable("Razorpay refused the refund: fake refusal");
+    const id = `rfnd_fake${String(this.refunds.length + 1).padStart(6, "0")}`;
+    this.refunds.push({ id, paymentId, amountPaise, notes });
     return { id };
   }
 

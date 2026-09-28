@@ -7,11 +7,14 @@ import {
   type BuyerDetails,
   type CreditMovement,
   type IdentityStore,
+  type EInvoice,
   type Invoice,
   type InvoiceBuilder,
   type Payment,
+  type Refund,
+  type TdsCertificate,
 } from "@parikshaa/store";
-import { STATES, stateOf, taxInvoice, taxesOn, validGstin, type Supplier } from "./gst.js";
+import { STATES, creditNote, eInvoicePayload, stateOf, taxInvoice, taxesOn, validGstin, type Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
@@ -49,6 +52,8 @@ export interface BillingSummary {
   readonly history: readonly CreditMovement[];
   readonly payments: readonly Payment[];
   readonly invoices: readonly Omit<Invoice, "document">[];
+  readonly refunds: readonly Refund[];
+  readonly tdsCertificates: readonly TdsCertificate[];
   /** Whether credits can be bought here, and the Razorpay key Checkout needs. */
   readonly checkout: { readonly available: boolean; readonly keyId: string | null };
   readonly supplier: { readonly legalName: string; readonly stateCode: string } | null;
@@ -133,11 +138,13 @@ export class BillingService {
 
   async summary(actor: Actor): Promise<BillingSummary> {
     const scope = this.#owner(actor);
-    const [account, history, payments, invoices] = await Promise.all([
+    const [account, history, payments, invoices, refunds, tdsCertificates] = await Promise.all([
       this.#o.billing.account(scope),
       this.#o.billing.history(scope, 100),
       this.#o.billing.payments(scope),
       this.#o.billing.invoices(scope),
+      this.#o.billing.refunds(scope),
+      this.#o.billing.tdsCertificates(scope),
     ]);
     const { gateway, supplier } = this.#o;
     return {
@@ -145,6 +152,8 @@ export class BillingService {
       history,
       payments,
       invoices: invoices.map(({ document: _, ...rest }) => rest),
+      refunds,
+      tdsCertificates,
       checkout: { available: gateway !== null && supplier !== null && account?.mode === "prepaid", keyId: gateway?.keyId ?? null },
       supplier: supplier === null ? null : { legalName: supplier.legalName, stateCode: stateOf(supplier.gstin) },
     };
@@ -270,10 +279,149 @@ export class BillingService {
     return (await this.#o.billing.invoices(this.#owner(actor))).map(({ document: _, ...rest }) => rest);
   }
 
-  async invoice(actor: Actor, id: string): Promise<Invoice> {
-    const found = await this.#o.billing.invoice(this.#owner(actor), id);
+  async invoice(actor: Actor, id: string): Promise<Invoice & { readonly eInvoice: EInvoice | null }> {
+    const scope = this.#owner(actor);
+    const found = await this.#o.billing.invoice(scope, id);
     if (found === null) throw new AttemptError("not_found", "No such invoice");
-    return found;
+    return { ...found, eInvoice: await this.#o.billing.eInvoice(scope, id) };
+  }
+
+  // --- refunds, TDS and e-invoicing: the operator's (billing-cli) ----------------------------
+
+  /**
+   * Refund unspent credits of one payment through Razorpay, and issue the GST
+   * credit note against the payment's invoice. The credits are taken back
+   * first, under lock, so they cannot be spent while the money goes back;
+   * if Razorpay refuses, they are restored and the refund is marked failed.
+   */
+  async refundPayment(orgId: OrgId, input: { readonly payment: string; readonly credits: number; readonly reason: string }): Promise<{ refund: Refund; creditNote: Invoice }> {
+    const supplier = this.#o.supplier;
+    if (supplier === null) throw new BillingNotConfigured("no supplier details to issue a credit note as (PARIKSHAA_SUPPLIER_*)");
+    const gateway = this.#gateway();
+    if (!Number.isInteger(input.credits) || input.credits < 1) throw new AttemptError("invalid_billing", "Refund a whole number of credits");
+    if (input.reason.trim() === "") throw new AttemptError("invalid_billing", "A refund needs a reason: it is printed on the credit note");
+    const scope = staffScope(orgId);
+    const id = this.#o.newId();
+    const reserved = await this.#o.billing.reserveRefund(scope, {
+      id,
+      payment: input.payment,
+      credits: input.credits,
+      reason: input.reason.trim(),
+      price: (payment, before) => {
+        // Everything left of the payment: exactly what remains, so the refunds add up to the payment.
+        if (before.credits + input.credits === payment.credits) {
+          return {
+            taxablePaise: payment.taxablePaise - before.taxablePaise,
+            taxPaise: payment.taxPaise - before.taxPaise,
+            amountPaise: payment.amountPaise - before.amountPaise,
+          };
+        }
+        const taxablePaise = Math.round((payment.taxablePaise * input.credits) / payment.credits);
+        const taxes = taxesOn(taxablePaise, stateOf(supplier.gstin), payment.buyerState);
+        return { taxablePaise, taxPaise: taxes.taxPaise, amountPaise: taxes.totalPaise };
+      },
+    });
+    if (!reserved.ok) {
+      const why = {
+        no_payment: "No such payment for this organisation",
+        not_paid: "That payment was never completed",
+        more_than_bought: "That is more credits than the payment bought, less any refunded already",
+        already_spent: "Those credits have been spent: only unspent credits can be refunded",
+      }[reserved.refusal];
+      throw new AttemptError("invalid_billing", why);
+    }
+    const { refund, payment, invoice } = reserved;
+    let razorpayRefund: { id: string };
+    try {
+      razorpayRefund = await gateway.refund(payment.paymentId!, refund.amountPaise, { orgId, refundId: refund.id, creditNoteFor: invoice.number });
+    } catch (error) {
+      await this.#o.billing.failRefund(scope, refund.id);
+      throw error;
+    }
+    const at = new Date(this.#o.now());
+    const note = await this.#o.billing.completeRefund(
+      scope,
+      refund.id,
+      razorpayRefund.id,
+      invoice.id,
+      (number, issuedAt, account) =>
+        creditNote({
+          number,
+          issuedAt,
+          supplier,
+          buyer: { ...account, stateCode: payment.buyerState },
+          original: { number: invoice.number, date: String(invoice.document["date"] ?? invoice.issuedAt.slice(0, 10)) },
+          description: `Refund of ${refund.credits} unused assessment attempt credit${refund.credits === 1 ? "" : "s"}`,
+          quantity: refund.credits,
+          taxablePaise: refund.taxablePaise,
+          taxPaise: refund.taxPaise,
+          reason: refund.reason,
+        }),
+      at,
+    );
+    await this.#o.store.appendAudit(scope, {
+      actorKind: "system",
+      actorId: null,
+      action: "billing.refunded",
+      target: refund.id,
+      detail: { credits: refund.credits, amountPaise: refund.amountPaise, creditNote: note.number, razorpayRefund: razorpayRefund.id },
+    });
+    return { refund: { ...refund, status: "processed", razorpayRefundId: razorpayRefund.id, creditNoteId: note.id }, creditNote: note };
+  }
+
+  /** The rate the buyer deducts at source, printed on invoices issued from now on. */
+  async setTds(orgId: OrgId, percent: number): Promise<BillingAccount> {
+    if (![0, 1, 2, 10].includes(percent)) throw new AttemptError("invalid_billing", "TDS under 194J is 0, 1, 2 or 10 percent");
+    const account = await this.#o.billing.setTds(staffScope(orgId), percent as 0 | 1 | 2 | 10);
+    if (account === null) throw new AttemptError("not_found", "This organisation has no billing account");
+    return account;
+  }
+
+  /** A Form 16A the buyer sent, against one of its invoices. */
+  async recordTdsCertificate(orgId: OrgId, input: { readonly invoiceNumber: string; readonly amountPaise: number; readonly certificate: string; readonly quarter: string }): Promise<TdsCertificate> {
+    const scope = staffScope(orgId);
+    const invoice = await this.#o.billing.invoiceByNumber(scope, input.invoiceNumber);
+    if (invoice === null || invoice.kind === "credit_note") throw new AttemptError("not_found", `No invoice ${input.invoiceNumber} for this organisation`);
+    if (!/^\d{4}-\d{2} Q[1-4]$/.test(input.quarter)) throw new AttemptError("invalid_billing", "The quarter reads like 2026-27 Q2");
+    return this.#o.billing.recordTdsCertificate(scope, { invoiceId: invoice.id, amountPaise: input.amountPaise, certificate: input.certificate.trim(), quarter: input.quarter });
+  }
+
+  /** An invoice or credit note in the e-invoice schema, to upload to the IRP. */
+  async eInvoiceJson(orgId: OrgId, invoiceNumber: string): Promise<Record<string, unknown>> {
+    const invoice = await this.#o.billing.invoiceByNumber(staffScope(orgId), invoiceNumber);
+    if (invoice === null) throw new AttemptError("not_found", `No invoice ${invoiceNumber} for this organisation`);
+    return eInvoicePayload(invoice.document, new Date(invoice.issuedAt));
+  }
+
+  /** What the IRP returned for an invoice: its IRN, acknowledgement and signed QR code, printed from then on. */
+  async recordIrn(orgId: OrgId, invoiceNumber: string, irp: { readonly irn: string; readonly ackNo: string; readonly ackDate: string; readonly signedQr: string }): Promise<EInvoice> {
+    const scope = staffScope(orgId);
+    const invoice = await this.#o.billing.invoiceByNumber(scope, invoiceNumber);
+    if (invoice === null) throw new AttemptError("not_found", `No invoice ${invoiceNumber} for this organisation`);
+    const irn = irp.irn.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(irn)) throw new AttemptError("invalid_billing", "An IRN is 64 hexadecimal characters");
+    const record: EInvoice = { invoiceId: invoice.id, irn, ackNo: irp.ackNo.trim(), ackDate: irp.ackDate.trim(), signedQr: irp.signedQr.trim() };
+    await this.#o.billing.recordEInvoice(scope, record);
+    return record;
+  }
+
+  /**
+   * Issue last month's usage invoice to every invoiced organisation that has
+   * not had it: run daily, it does nothing after the first time each month.
+   */
+  async invoiceLastMonth(orgIds: readonly OrgId[]): Promise<number> {
+    if (this.#o.supplier === null) return 0;
+    const ist = new Date(this.#o.now() + 330 * 60_000);
+    const last = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() - 1, 1));
+    const period = `${last.getUTCFullYear()}-${String(last.getUTCMonth() + 1).padStart(2, "0")}`;
+    let issued = 0;
+    for (const orgId of orgIds) {
+      const account = await this.#o.billing.account(staffScope(orgId));
+      if (account?.mode !== "invoiced") continue;
+      const { created } = await this.issueUsageInvoice(orgId, period);
+      if (created) issued += 1;
+    }
+    return issued;
   }
 
   // --- the operator's side (billing-cli) --------------------------------------
@@ -294,6 +442,7 @@ export class BillingService {
         supplier,
         buyer: account,
         lines: [{ description: `Assessment attempts started in ${label}`, quantity: attempts, ratePaise: account.pricePaise }],
+        tdsPercent: account.tdsPercent,
       });
     const { invoice, created } = await this.#o.billing.issueUsageInvoice(scope, period, build, new Date(this.#o.now()));
     return { invoice, created, attempts };

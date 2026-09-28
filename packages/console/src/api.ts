@@ -1060,7 +1060,9 @@ export type BuyerDetails = Pick<BillingAccount, "legalName" | "gstin" | "stateCo
 export interface InvoiceSummary {
   readonly id: string;
   readonly number: string;
-  readonly kind: "credits" | "usage";
+  readonly kind: "credits" | "usage" | "credit_note";
+  /** For a credit note: the invoice it reduces. */
+  readonly againstInvoice?: string | null;
   readonly paymentId: string | null;
   readonly period: string | null;
   readonly totalPaise: number;
@@ -1069,6 +1071,8 @@ export interface InvoiceSummary {
 
 export interface TaxInvoice extends InvoiceSummary {
   readonly document: InvoiceDocument;
+  /** The IRN and signed QR code from the Invoice Registration Portal, once recorded. */
+  readonly eInvoice?: { readonly irn: string; readonly ackNo: string; readonly ackDate: string; readonly signedQr: string } | null;
 }
 
 export interface InvoiceDocument {
@@ -1085,6 +1089,11 @@ export interface InvoiceDocument {
   readonly totalPaise: number;
   readonly totalInWords: string;
   readonly note?: string;
+  /** Section 194J: what the buyer deducts at source, and what is then payable. */
+  readonly tds?: { readonly section: string; readonly ratePercent: number; readonly amountPaise: number; readonly netPayablePaise: number };
+  /** A credit note: the invoice it reduces, and why. */
+  readonly against?: { readonly number: string; readonly date: string };
+  readonly reason?: string;
 }
 
 export interface BillingSummary {
@@ -1092,7 +1101,7 @@ export interface BillingSummary {
   readonly history: readonly {
     readonly id: string;
     readonly delta: number;
-    readonly reason: "purchase" | "attempt" | "grant" | "refund";
+    readonly reason: "purchase" | "attempt" | "grant" | "refund" | "payment_refund" | "refund_reversed";
     readonly attemptId: string | null;
     readonly paymentId: string | null;
     readonly note: string | null;

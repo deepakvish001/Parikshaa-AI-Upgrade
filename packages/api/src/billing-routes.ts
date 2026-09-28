@@ -47,13 +47,15 @@ const account = z.object({
   stateCode: z.string().nullable(),
   address: z.string(),
   billingEmail: z.string().nullable(),
+  tdsPercent: z.number().describe("Deducted at source by the buyer under section 194J, on the value before GST."),
   updatedAt: z.string(),
 });
 
 const invoiceSummary = z.object({
   id: z.string(),
   number: z.string(),
-  kind: z.enum(["credits", "usage"]),
+  kind: z.enum(["credits", "usage", "credit_note"]),
+  againstInvoice: z.string().nullable().describe("For a credit note: the invoice it reduces."),
   paymentId: z.string().nullable(),
   period: z.string().nullable(),
   totalPaise: z.number(),
@@ -78,7 +80,7 @@ export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): v
                 z.object({
                   id: z.string(),
                   delta: z.number(),
-                  reason: z.enum(["purchase", "attempt", "grant", "refund"]),
+                  reason: z.enum(["purchase", "attempt", "grant", "refund", "payment_refund", "refund_reversed"]),
                   attemptId: z.string().nullable(),
                   paymentId: z.string().nullable(),
                   note: z.string().nullable(),
@@ -104,6 +106,28 @@ export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): v
               )
               .readonly(),
             invoices: z.array(invoiceSummary).readonly(),
+            refunds: z
+              .array(
+                z.object({
+                  id: z.string(),
+                  paymentId: z.string(),
+                  credits: z.number(),
+                  taxablePaise: z.number(),
+                  taxPaise: z.number(),
+                  amountPaise: z.number(),
+                  reason: z.string(),
+                  status: z.enum(["pending", "processed", "failed"]),
+                  razorpayRefundId: z.string().nullable(),
+                  creditNoteId: z.string().nullable(),
+                  createdAt: z.string(),
+                }),
+              )
+              .readonly()
+              .describe("Unspent credits refunded with the payment that bought them, each with its credit note."),
+            tdsCertificates: z
+              .array(z.object({ id: z.string(), invoiceId: z.string(), amountPaise: z.number(), certificate: z.string(), quarter: z.string(), recordedAt: z.string() }))
+              .readonly()
+              .describe("Form 16A certificates received for TDS deducted."),
             checkout: z.object({ available: z.boolean(), keyId: z.string().nullable() }),
             supplier: z.object({ legalName: z.string(), stateCode: z.string() }).nullable(),
           }),
@@ -204,7 +228,16 @@ export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): v
         summary: "One tax invoice, as issued",
         security: SECURED,
         params: z.object({ invoiceId: z.string().min(1) }),
-        response: { 200: invoiceSummary.extend({ document: z.record(z.string(), z.unknown()) }), ...refusals },
+        response: {
+          200: invoiceSummary.extend({
+            document: z.record(z.string(), z.unknown()),
+            eInvoice: z
+              .object({ invoiceId: z.string(), irn: z.string(), ackNo: z.string(), ackDate: z.string(), signedQr: z.string() })
+              .nullable()
+              .describe("The IRN and signed QR code from the Invoice Registration Portal, once recorded."),
+          }),
+          ...refusals,
+        },
       },
     },
     async (request, reply) => {

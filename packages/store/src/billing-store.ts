@@ -22,6 +22,8 @@ export interface BillingAccount {
   readonly stateCode: string | null;
   readonly address: string;
   readonly billingEmail: string | null;
+  /** Deducted at source by the buyer under section 194J, on the value before GST. */
+  readonly tdsPercent: number;
   readonly updatedAt: string;
 }
 
@@ -30,7 +32,7 @@ export type BuyerDetails = Pick<BillingAccount, "legalName" | "gstin" | "stateCo
 export interface CreditMovement {
   readonly id: string;
   readonly delta: number;
-  readonly reason: "purchase" | "attempt" | "grant" | "refund";
+  readonly reason: "purchase" | "attempt" | "grant" | "refund" | "payment_refund" | "refund_reversed";
   readonly attemptId: string | null;
   readonly paymentId: string | null;
   readonly note: string | null;
@@ -55,7 +57,9 @@ export interface Payment {
 export interface Invoice {
   readonly id: string;
   readonly number: string;
-  readonly kind: "credits" | "usage";
+  readonly kind: "credits" | "usage" | "credit_note";
+  /** For a credit note: the invoice it reduces. */
+  readonly againstInvoice: string | null;
   readonly paymentId: string | null;
   readonly period: string | null;
   readonly document: Record<string, unknown>;
@@ -83,7 +87,45 @@ export function financialYear(at: Date): string {
 }
 
 /** `PKS/2627/000123`: the prefix, the financial year's two short years, and the serial. Fifteen characters. */
-export const invoiceNumber = (fy: string, serial: number): string => `PKS/${fy.slice(2, 4)}${fy.slice(5, 7)}/${String(serial).padStart(6, "0")}`;
+export const invoiceNumber = (fy: string, serial: number, prefix = "PKS"): string =>
+  `${prefix}/${fy.slice(2, 4)}${fy.slice(5, 7)}/${String(serial).padStart(6, "0")}`;
+
+/** Credit notes are numbered in a series of their own: `PKC/2627/000001`. */
+export const creditNoteNumber = (fy: string, serial: number): string => invoiceNumber(fy, serial, "PKC");
+
+export interface Refund {
+  readonly id: string;
+  readonly paymentId: string;
+  readonly credits: number;
+  readonly taxablePaise: number;
+  readonly taxPaise: number;
+  readonly amountPaise: number;
+  readonly reason: string;
+  readonly status: "pending" | "processed" | "failed";
+  readonly razorpayRefundId: string | null;
+  readonly creditNoteId: string | null;
+  readonly createdAt: string;
+}
+
+export interface TdsCertificate {
+  readonly id: string;
+  readonly invoiceId: string;
+  readonly amountPaise: number;
+  readonly certificate: string;
+  readonly quarter: string;
+  readonly recordedAt: string;
+}
+
+export interface EInvoice {
+  readonly invoiceId: string;
+  readonly irn: string;
+  readonly ackNo: string;
+  readonly ackDate: string;
+  readonly signedQr: string;
+}
+
+/** Why a refund could not be reserved. */
+export type RefundRefusal = "no_payment" | "not_paid" | "more_than_bought" | "already_spent";
 
 interface AccountRow {
   mode: BillingMode;
@@ -94,10 +136,11 @@ interface AccountRow {
   state_code: string | null;
   address: string;
   billing_email: string | null;
+  tds_percent: number;
   updated_at: string | Date;
 }
 
-const ACCOUNT = `mode, price_paise, credits, legal_name, gstin, state_code, address, billing_email, updated_at`;
+const ACCOUNT = `mode, price_paise, credits, legal_name, gstin, state_code, address, billing_email, tds_percent, updated_at`;
 
 const toAccount = (r: AccountRow): BillingAccount => ({
   mode: r.mode,
@@ -108,6 +151,7 @@ const toAccount = (r: AccountRow): BillingAccount => ({
   stateCode: r.state_code,
   address: r.address,
   billingEmail: r.billing_email,
+  tdsPercent: Number(r.tds_percent ?? 0),
   updatedAt: new Date(r.updated_at).toISOString(),
 });
 
@@ -144,7 +188,8 @@ const toPayment = (r: PaymentRow): Payment => ({
 interface InvoiceRow {
   id: string;
   number: string;
-  kind: "credits" | "usage";
+  kind: "credits" | "usage" | "credit_note";
+  against_invoice: string | null;
   payment_id: string | null;
   period: string | null;
   document: Record<string, unknown> | string;
@@ -152,17 +197,48 @@ interface InvoiceRow {
   issued_at: string | Date;
 }
 
-const INVOICE = `id, number, kind, payment_id, period, document, total_paise, issued_at`;
+const INVOICE = `id, number, kind, against_invoice, payment_id, period, document, total_paise, issued_at`;
 
 const toInvoice = (r: InvoiceRow): Invoice => ({
   id: r.id,
   number: r.number,
   kind: r.kind,
+  againstInvoice: r.against_invoice,
   paymentId: r.payment_id,
   period: r.period,
   document: typeof r.document === "string" ? (JSON.parse(r.document) as Record<string, unknown>) : r.document,
   totalPaise: Number(r.total_paise),
   issuedAt: new Date(r.issued_at).toISOString(),
+});
+
+interface RefundRow {
+  id: string;
+  payment_id: string;
+  credits: number;
+  taxable_paise: number;
+  tax_paise: number;
+  amount_paise: number;
+  reason: string;
+  status: Refund["status"];
+  razorpay_refund_id: string | null;
+  credit_note_id: string | null;
+  created_at: string | Date;
+}
+
+const REFUND = `id, payment_id, credits, taxable_paise, tax_paise, amount_paise, reason, status, razorpay_refund_id, credit_note_id, created_at`;
+
+const toRefund = (r: RefundRow): Refund => ({
+  id: r.id,
+  paymentId: r.payment_id,
+  credits: Number(r.credits),
+  taxablePaise: Number(r.taxable_paise),
+  taxPaise: Number(r.tax_paise),
+  amountPaise: Number(r.amount_paise),
+  reason: r.reason,
+  status: r.status,
+  razorpayRefundId: r.razorpay_refund_id,
+  creditNoteId: r.credit_note_id,
+  createdAt: new Date(r.created_at).toISOString(),
 });
 
 /** Builds an invoice's document once its number is known, from the account and — for a purchase — the payment; returns it with its total. */
@@ -441,22 +517,220 @@ export class BillingStore {
     tx: SqlExecutor,
     scope: Scope,
     account: BillingAccount,
-    what: { readonly kind: Invoice["kind"]; readonly payment: Payment | null; readonly period: string | null },
+    what: {
+      readonly kind: Invoice["kind"];
+      readonly payment: Payment | null;
+      readonly period: string | null;
+      readonly againstInvoice?: string;
+    },
     build: InvoiceBuilder,
     at: Date,
   ): Promise<Invoice> {
     const fy = financialYear(at);
+    const creditNote = what.kind === "credit_note";
     const counter = await tx.query<{ last: number }>(
       `INSERT INTO invoice_counters (fy, last) VALUES ($1, 1) ON CONFLICT (fy) DO UPDATE SET last = invoice_counters.last + 1 RETURNING last`,
-      [fy],
+      [creditNote ? `CN:${fy}` : fy],
     );
-    const number = invoiceNumber(fy, Number(counter[0]!.last));
+    const number = creditNote ? creditNoteNumber(fy, Number(counter[0]!.last)) : invoiceNumber(fy, Number(counter[0]!.last));
     const { document, totalPaise } = build(number, at, account, what.payment);
     const rows = await tx.query<InvoiceRow>(
-      `INSERT INTO invoices (org_id, id, number, kind, payment_id, period, document, total_paise, issued_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${INVOICE}`,
-      [scope.orgId, this.#newId(), number, what.kind, what.payment?.id ?? null, what.period, JSON.stringify(document), totalPaise, at.toISOString()],
+      `INSERT INTO invoices (org_id, id, number, kind, payment_id, period, document, total_paise, issued_at, against_invoice)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING ${INVOICE}`,
+      [
+        scope.orgId,
+        this.#newId(),
+        number,
+        what.kind,
+        creditNote ? null : (what.payment?.id ?? null),
+        what.period,
+        JSON.stringify(document),
+        totalPaise,
+        at.toISOString(),
+        what.againstInvoice ?? null,
+      ],
     );
     return toInvoice(rows[0]!);
+  }
+
+  // --- refunds and credit notes ------------------------------------------------------------
+
+  /**
+   * Take back unspent credits for a refund of the payment that bought them,
+   * under the payment's and the account's locks: never more credits than the
+   * payment bought, less those refunded already, and never credits already
+   * spent. `price` computes the money from the payment and what was refunded
+   * of it before. The refund is `pending` until the gateway confirms.
+   */
+  async reserveRefund(
+    scope: Scope,
+    input: {
+      readonly id: string;
+      /** Ours, or Razorpay's `pay_…`. */
+      readonly payment: string;
+      readonly credits: number;
+      readonly reason: string;
+      readonly price: (payment: Payment, before: { readonly credits: number; readonly amountPaise: number; readonly taxablePaise: number; readonly taxPaise: number }) => {
+        readonly taxablePaise: number;
+        readonly taxPaise: number;
+        readonly amountPaise: number;
+      };
+    },
+  ): Promise<{ readonly ok: true; readonly refund: Refund; readonly payment: Payment; readonly invoice: Invoice } | { readonly ok: false; readonly refusal: RefundRefusal }> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const found = await tx.query<PaymentRow>(
+        `SELECT ${PAYMENT} FROM payments WHERE org_id = $1 AND (id = $2 OR razorpay_payment_id = $2) FOR UPDATE`,
+        [scope.orgId, input.payment],
+      );
+      const row = found[0];
+      if (row === undefined) return { ok: false, refusal: "no_payment" as const };
+      const payment = toPayment(row);
+      if (payment.status !== "paid") return { ok: false, refusal: "not_paid" as const };
+      const before = await tx.query<{ credits: number | string; amount: number | string; taxable: number | string; tax: number | string }>(
+        `SELECT coalesce(sum(credits), 0) AS credits, coalesce(sum(amount_paise), 0) AS amount,
+                coalesce(sum(taxable_paise), 0) AS taxable, coalesce(sum(tax_paise), 0) AS tax
+           FROM refunds WHERE org_id = $1 AND payment_id = $2 AND status <> 'failed'`,
+        [scope.orgId, payment.id],
+      );
+      const prior = {
+        credits: Number(before[0]!.credits),
+        amountPaise: Number(before[0]!.amount),
+        taxablePaise: Number(before[0]!.taxable),
+        taxPaise: Number(before[0]!.tax),
+      };
+      if (prior.credits + input.credits > payment.credits) return { ok: false, refusal: "more_than_bought" as const };
+      const accounts = await tx.query<AccountRow>(
+        `UPDATE billing_accounts SET credits = credits - $2 WHERE org_id = $1 AND credits >= $2 RETURNING ${ACCOUNT}`,
+        [scope.orgId, input.credits],
+      );
+      if (accounts[0] === undefined) return { ok: false, refusal: "already_spent" as const };
+      const money = input.price(payment, prior);
+      await tx.query(`INSERT INTO credit_ledger (org_id, id, delta, reason, payment_id, note) VALUES ($1, $2, $3, 'payment_refund', $4, $5)`, [
+        scope.orgId,
+        this.#newId(),
+        -input.credits,
+        payment.id,
+        input.reason,
+      ]);
+      const rows = await tx.query<RefundRow>(
+        `INSERT INTO refunds (org_id, id, payment_id, credits, taxable_paise, tax_paise, amount_paise, reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${REFUND}`,
+        [scope.orgId, input.id, payment.id, input.credits, money.taxablePaise, money.taxPaise, money.amountPaise, input.reason],
+      );
+      const invoice = await tx.query<InvoiceRow>(`SELECT ${INVOICE} FROM invoices WHERE org_id = $1 AND payment_id = $2`, [scope.orgId, payment.id]);
+      if (invoice[0] === undefined) throw new Error("A paid payment has no invoice");
+      return { ok: true as const, refund: toRefund(rows[0]!), payment, invoice: toInvoice(invoice[0]) };
+    });
+  }
+
+  /** The gateway refunded the money: record its id and issue the credit note, once. */
+  async completeRefund(scope: Scope, refundId: string, razorpayRefundId: string, againstInvoice: string, build: InvoiceBuilder, at: Date): Promise<Invoice> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<RefundRow>(`SELECT ${REFUND} FROM refunds WHERE org_id = $1 AND id = $2 FOR UPDATE`, [scope.orgId, refundId]);
+      const refund = rows[0];
+      if (refund === undefined) throw new Error("No such refund");
+      if (refund.credit_note_id !== null) {
+        const existing = await tx.query<InvoiceRow>(`SELECT ${INVOICE} FROM invoices WHERE org_id = $1 AND id = $2`, [scope.orgId, refund.credit_note_id]);
+        return toInvoice(existing[0]!);
+      }
+      const accounts = await tx.query<AccountRow>(`SELECT ${ACCOUNT} FROM billing_accounts WHERE org_id = $1`, [scope.orgId]);
+      const note = await this.#issue(tx, scope, toAccount(accounts[0]!), { kind: "credit_note", payment: null, period: null, againstInvoice }, build, at);
+      await tx.query(
+        `UPDATE refunds SET status = 'processed', razorpay_refund_id = $3, credit_note_id = $4, processed_at = $5 WHERE org_id = $1 AND id = $2`,
+        [scope.orgId, refundId, razorpayRefundId, note.id, at.toISOString()],
+      );
+      return note;
+    });
+  }
+
+  /** The gateway refused: give the credits back, and say so in the ledger. */
+  async failRefund(scope: Scope, refundId: string): Promise<void> {
+    await withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<RefundRow>(
+        `UPDATE refunds SET status = 'failed' WHERE org_id = $1 AND id = $2 AND status = 'pending' RETURNING ${REFUND}`,
+        [scope.orgId, refundId],
+      );
+      const refund = rows[0];
+      if (refund === undefined) return;
+      await tx.query(`UPDATE billing_accounts SET credits = credits + $2 WHERE org_id = $1`, [scope.orgId, refund.credits]);
+      await tx.query(`INSERT INTO credit_ledger (org_id, id, delta, reason, payment_id, note) VALUES ($1, $2, $3, 'refund_reversed', $4, $5)`, [
+        scope.orgId,
+        this.#newId(),
+        refund.credits,
+        refund.payment_id,
+        "The payment gateway did not refund it",
+      ]);
+    });
+  }
+
+  async refunds(scope: Scope): Promise<readonly Refund[]> {
+    return withScope(this.#sql, scope, async (tx) =>
+      (await tx.query<RefundRow>(`SELECT ${REFUND} FROM refunds WHERE org_id = $1 ORDER BY created_at DESC`, [scope.orgId])).map(toRefund),
+    );
+  }
+
+  // --- TDS -----------------------------------------------------------------------------------
+
+  async setTds(scope: Scope, percent: 0 | 1 | 2 | 10): Promise<BillingAccount | null> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<AccountRow>(`UPDATE billing_accounts SET tds_percent = $2, updated_at = now() WHERE org_id = $1 RETURNING ${ACCOUNT}`, [scope.orgId, percent]);
+      return rows[0] === undefined ? null : toAccount(rows[0]);
+    });
+  }
+
+  async invoiceByNumber(scope: Scope, number: string): Promise<Invoice | null> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<InvoiceRow>(`SELECT ${INVOICE} FROM invoices WHERE org_id = $1 AND number = $2`, [scope.orgId, number]);
+      return rows[0] === undefined ? null : toInvoice(rows[0]);
+    });
+  }
+
+  async recordTdsCertificate(scope: Scope, certificate: Omit<TdsCertificate, "id" | "recordedAt">): Promise<TdsCertificate> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ id: string; invoice_id: string; amount_paise: number; certificate: string; quarter: string; recorded_at: string | Date }>(
+        `INSERT INTO tds_certificates (org_id, id, invoice_id, amount_paise, certificate, quarter) VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id, invoice_id, amount_paise, certificate, quarter, recorded_at`,
+        [scope.orgId, this.#newId(), certificate.invoiceId, certificate.amountPaise, certificate.certificate, certificate.quarter],
+      );
+      const r = rows[0]!;
+      return { id: r.id, invoiceId: r.invoice_id, amountPaise: Number(r.amount_paise), certificate: r.certificate, quarter: r.quarter, recordedAt: new Date(r.recorded_at).toISOString() };
+    });
+  }
+
+  async tdsCertificates(scope: Scope): Promise<readonly TdsCertificate[]> {
+    return withScope(this.#sql, scope, async (tx) =>
+      (
+        await tx.query<{ id: string; invoice_id: string; amount_paise: number; certificate: string; quarter: string; recorded_at: string | Date }>(
+          `SELECT id, invoice_id, amount_paise, certificate, quarter, recorded_at FROM tds_certificates WHERE org_id = $1 ORDER BY recorded_at DESC`,
+          [scope.orgId],
+        )
+      ).map((r) => ({ id: r.id, invoiceId: r.invoice_id, amountPaise: Number(r.amount_paise), certificate: r.certificate, quarter: r.quarter, recordedAt: new Date(r.recorded_at).toISOString() })),
+    );
+  }
+
+  // --- e-invoicing ---------------------------------------------------------------------------
+
+  async recordEInvoice(scope: Scope, einvoice: EInvoice): Promise<void> {
+    await withScope(this.#sql, scope, (tx) =>
+      tx.query(`INSERT INTO e_invoices (org_id, invoice_id, irn, ack_no, ack_date, signed_qr) VALUES ($1, $2, $3, $4, $5, $6)`, [
+        scope.orgId,
+        einvoice.invoiceId,
+        einvoice.irn,
+        einvoice.ackNo,
+        einvoice.ackDate,
+        einvoice.signedQr,
+      ]),
+    );
+  }
+
+  async eInvoice(scope: Scope, invoiceId: string): Promise<EInvoice | null> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ invoice_id: string; irn: string; ack_no: string; ack_date: string; signed_qr: string }>(
+        `SELECT invoice_id, irn, ack_no, ack_date, signed_qr FROM e_invoices WHERE org_id = $1 AND invoice_id = $2`,
+        [scope.orgId, invoiceId],
+      );
+      const r = rows[0];
+      return r === undefined ? null : { invoiceId: r.invoice_id, irn: r.irn, ackNo: r.ack_no, ackDate: r.ack_date, signedQr: r.signed_qr };
+    });
   }
 }

@@ -40695,6 +40695,10 @@
                                 "null"
                               ]
                             },
+                            "tdsPercent": {
+                              "type": "number",
+                              "description": "Deducted at source by the buyer under section 194J, on the value before GST."
+                            },
                             "updatedAt": {
                               "type": "string"
                             }
@@ -40708,6 +40712,7 @@
                             "stateCode",
                             "address",
                             "billingEmail",
+                            "tdsPercent",
                             "updatedAt"
                           ],
                           "additionalProperties": false
@@ -40736,7 +40741,9 @@
                               "purchase",
                               "attempt",
                               "grant",
-                              "refund"
+                              "refund",
+                              "payment_refund",
+                              "refund_reversed"
                             ]
                           },
                           "attemptId": {
@@ -40858,7 +40865,15 @@
                             "type": "string",
                             "enum": [
                               "credits",
-                              "usage"
+                              "usage",
+                              "credit_note"
+                            ]
+                          },
+                          "againstInvoice": {
+                            "description": "For a credit note: the invoice it reduces.",
+                            "type": [
+                              "string",
+                              "null"
                             ]
                           },
                           "paymentId": {
@@ -40884,10 +40899,116 @@
                           "id",
                           "number",
                           "kind",
+                          "againstInvoice",
                           "paymentId",
                           "period",
                           "totalPaise",
                           "issuedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "refunds": {
+                      "readOnly": true,
+                      "description": "Unspent credits refunded with the payment that bought them, each with its credit note.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "paymentId": {
+                            "type": "string"
+                          },
+                          "credits": {
+                            "type": "number"
+                          },
+                          "taxablePaise": {
+                            "type": "number"
+                          },
+                          "taxPaise": {
+                            "type": "number"
+                          },
+                          "amountPaise": {
+                            "type": "number"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "processed",
+                              "failed"
+                            ]
+                          },
+                          "razorpayRefundId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "creditNoteId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "paymentId",
+                          "credits",
+                          "taxablePaise",
+                          "taxPaise",
+                          "amountPaise",
+                          "reason",
+                          "status",
+                          "razorpayRefundId",
+                          "creditNoteId",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "tdsCertificates": {
+                      "readOnly": true,
+                      "description": "Form 16A certificates received for TDS deducted.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "invoiceId": {
+                            "type": "string"
+                          },
+                          "amountPaise": {
+                            "type": "number"
+                          },
+                          "certificate": {
+                            "type": "string"
+                          },
+                          "quarter": {
+                            "type": "string"
+                          },
+                          "recordedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "invoiceId",
+                          "amountPaise",
+                          "certificate",
+                          "quarter",
+                          "recordedAt"
                         ],
                         "additionalProperties": false
                       }
@@ -40940,6 +41061,8 @@
                     "history",
                     "payments",
                     "invoices",
+                    "refunds",
+                    "tdsCertificates",
                     "checkout",
                     "supplier"
                   ],
@@ -41231,6 +41354,10 @@
                         "null"
                       ]
                     },
+                    "tdsPercent": {
+                      "type": "number",
+                      "description": "Deducted at source by the buyer under section 194J, on the value before GST."
+                    },
                     "updatedAt": {
                       "type": "string"
                     }
@@ -41244,6 +41371,7 @@
                     "stateCode",
                     "address",
                     "billingEmail",
+                    "tdsPercent",
                     "updatedAt"
                   ],
                   "additionalProperties": false
@@ -41727,7 +41855,15 @@
                           "type": "string",
                           "enum": [
                             "credits",
-                            "usage"
+                            "usage",
+                            "credit_note"
+                          ]
+                        },
+                        "againstInvoice": {
+                          "description": "For a credit note: the invoice it reduces.",
+                          "type": [
+                            "string",
+                            "null"
                           ]
                         },
                         "paymentId": {
@@ -41760,6 +41896,7 @@
                         "id",
                         "number",
                         "kind",
+                        "againstInvoice",
                         "paymentId",
                         "period",
                         "totalPaise",
@@ -41982,7 +42119,15 @@
                       "type": "string",
                       "enum": [
                         "credits",
-                        "usage"
+                        "usage",
+                        "credit_note"
+                      ]
+                    },
+                    "againstInvoice": {
+                      "description": "For a credit note: the invoice it reduces.",
+                      "type": [
+                        "string",
+                        "null"
                       ]
                     },
                     "paymentId": {
@@ -42009,17 +42154,55 @@
                         "type": "string"
                       },
                       "additionalProperties": {}
+                    },
+                    "eInvoice": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "invoiceId": {
+                              "type": "string"
+                            },
+                            "irn": {
+                              "type": "string"
+                            },
+                            "ackNo": {
+                              "type": "string"
+                            },
+                            "ackDate": {
+                              "type": "string"
+                            },
+                            "signedQr": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "invoiceId",
+                            "irn",
+                            "ackNo",
+                            "ackDate",
+                            "signedQr"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The IRN and signed QR code from the Invoice Registration Portal, once recorded."
                     }
                   },
                   "required": [
                     "id",
                     "number",
                     "kind",
+                    "againstInvoice",
                     "paymentId",
                     "period",
                     "totalPaise",
                     "issuedAt",
-                    "document"
+                    "document",
+                    "eInvoice"
                   ],
                   "additionalProperties": false
                 }

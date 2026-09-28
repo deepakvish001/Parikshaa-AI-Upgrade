@@ -51,7 +51,13 @@ export interface AssembleOptions {
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds">;
 }
 
-export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: DeliveryWorker; privacy: PrivacyService; billing: BillingService } {
+export function assemble(o: AssembleOptions): {
+  app: FastifyInstance;
+  worker: DeliveryWorker;
+  privacy: PrivacyService;
+  billing: BillingService;
+  identity: IdentityStore;
+} {
   const keys = new DataKeys(o.dataKey);
   const proctorStore = new ProctorStore(o.sql, keys);
   const store = new LedgerStore(o.sql, { keys });
@@ -151,5 +157,5 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
   });
 
-  return { app, worker, privacy, billing };
+  return { app, worker, privacy, billing, identity };
 }

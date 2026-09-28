@@ -165,6 +165,8 @@ export function taxInvoice(input: {
   readonly buyer: Buyer;
   readonly lines: readonly InvoiceLine[];
   readonly note?: string;
+  /** Section 194J: what the buyer deducts at source, on the value before GST. */
+  readonly tdsPercent?: number;
 }): { document: Record<string, unknown>; totalPaise: number } {
   const supplierState = stateOf(input.supplier.gstin);
   const placeOfSupply = input.buyer.stateCode ?? supplierState;
@@ -198,8 +200,178 @@ export function taxInvoice(input: {
         : [{ name: "IGST", ratePercent: GST_RATE_PERCENT, amountPaise: taxes.igstPaise }],
       totalPaise: taxes.totalPaise,
       totalInWords: rupeesInWords(taxes.totalPaise),
+      ...(input.tdsPercent === undefined || input.tdsPercent === 0 ? {} : { tds: tdsOn(taxablePaise, taxes.totalPaise, input.tdsPercent) }),
       ...(input.note === undefined ? {} : { note: input.note }),
     },
+  };
+}
+
+/**
+ * TDS under section 194J: the buyer deducts it from what they pay, on the
+ * value before GST (CBDT circular 23/2017, where GST is shown separately),
+ * and pays it to the government in the supplier's name. The invoice says
+ * what to deduct and what to pay.
+ */
+export function tdsOn(taxablePaise: number, totalPaise: number, ratePercent: number) {
+  const amountPaise = percent(taxablePaise, ratePercent);
+  return { section: "194J", ratePercent, amountPaise, netPayablePaise: totalPaise - amountPaise };
+}
+
+/**
+ * A GST credit note (section 34, CGST Rules r.53) against a tax invoice:
+ * what is credited back, taxed as the invoice was — same place of supply,
+ * same split — and naming the invoice it reduces.
+ */
+export function creditNote(input: {
+  readonly number: string;
+  readonly issuedAt: Date;
+  readonly supplier: Supplier;
+  readonly buyer: Buyer;
+  readonly original: { readonly number: string; readonly date: string };
+  readonly description: string;
+  readonly quantity: number;
+  readonly taxablePaise: number;
+  readonly taxPaise: number;
+  readonly reason: string;
+}): { document: Record<string, unknown>; totalPaise: number } {
+  const supplierState = stateOf(input.supplier.gstin);
+  const placeOfSupply = input.buyer.stateCode ?? supplierState;
+  const intraState = placeOfSupply === supplierState;
+  const half = GST_RATE_PERCENT / 2;
+  // The tax was split when the amount was fixed; halves for CGST and SGST, the odd paisa to SGST.
+  const cgst = Math.floor(input.taxPaise / 2);
+  const totalPaise = input.taxablePaise + input.taxPaise;
+  return {
+    totalPaise,
+    document: {
+      title: "Credit Note",
+      number: input.number,
+      date: new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium" }).format(input.issuedAt),
+      against: input.original,
+      reason: input.reason,
+      supplier: { ...input.supplier, state: STATES[supplierState] ?? supplierState, stateCode: supplierState },
+      buyer: {
+        legalName: input.buyer.legalName,
+        gstin: input.buyer.gstin,
+        address: input.buyer.address,
+        state: input.buyer.stateCode === null ? null : (STATES[input.buyer.stateCode] ?? input.buyer.stateCode),
+        stateCode: input.buyer.stateCode,
+      },
+      placeOfSupply: { code: placeOfSupply, state: STATES[placeOfSupply] ?? placeOfSupply },
+      reverseCharge: false,
+      lines: [
+        {
+          description: input.description,
+          quantity: input.quantity,
+          ratePaise: input.quantity === 0 ? 0 : Math.round(input.taxablePaise / input.quantity),
+          sac: input.supplier.sac,
+          amountPaise: input.taxablePaise,
+        },
+      ],
+      taxablePaise: input.taxablePaise,
+      taxes: intraState
+        ? [
+            { name: "CGST", ratePercent: half, amountPaise: cgst },
+            { name: "SGST", ratePercent: half, amountPaise: input.taxPaise - cgst },
+          ]
+        : [{ name: "IGST", ratePercent: GST_RATE_PERCENT, amountPaise: input.taxPaise }],
+      totalPaise,
+      totalInWords: rupeesInWords(totalPaise),
+    },
+  };
+}
+
+/** A six-digit PIN code from an address, as the e-invoice schema requires one. */
+export const pinOf = (address: string): number | null => {
+  const match = /\b([1-9]\d{5})\b/.exec(address);
+  return match === null ? null : Number(match[1]);
+};
+
+const rupees = (paise: number) => Math.round(paise) / 100;
+const ddmmyyyy = (at: Date) => {
+  const ist = new Date(at.getTime() + 330 * 60_000);
+  return `${String(ist.getUTCDate()).padStart(2, "0")}/${String(ist.getUTCMonth() + 1).padStart(2, "0")}/${ist.getUTCFullYear()}`;
+};
+
+export class EInvoiceNotPossible extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "EInvoiceNotPossible";
+  }
+}
+
+/**
+ * An invoice or credit note as the e-invoice schema (INV-01, version 1.1)
+ * wants it, for the Invoice Registration Portal: upload it there — or through
+ * a GST Suvidha Provider — and record the IRN and signed QR it returns. Only
+ * a B2B supply is e-invoiced, so the buyer must have a GSTIN.
+ */
+export function eInvoicePayload(document: Record<string, unknown>, issuedAt: Date): Record<string, unknown> {
+  const d = document as {
+    title: string;
+    number: string;
+    supplier: { legalName: string; gstin: string; address: string; stateCode: string };
+    buyer: { legalName: string; gstin: string | null; address: string; stateCode: string | null };
+    placeOfSupply: { code: string };
+    lines: { description: string; quantity: number; ratePaise: number; sac: string; amountPaise: number }[];
+    taxablePaise: number;
+    taxes: { name: string; ratePercent: number; amountPaise: number }[];
+    totalPaise: number;
+    against?: { number: string; date: string };
+  };
+  if (d.buyer.gstin === null) throw new EInvoiceNotPossible("The buyer has no GSTIN: e-invoicing covers business-to-business supplies only");
+  const sellerPin = pinOf(d.supplier.address);
+  const buyerPin = pinOf(d.buyer.address);
+  if (sellerPin === null || buyerPin === null) throw new EInvoiceNotPossible("Both addresses need a six-digit PIN code for the e-invoice");
+  const tax = (name: string) => d.taxes.find((t) => t.name === name)?.amountPaise ?? 0;
+  const rate = d.taxes.reduce((sum, t) => sum + t.ratePercent, 0);
+  const line = (address: string) => address.split(/,|\n/)[0]!.trim().slice(0, 100);
+  const place = (address: string) => (address.split(/,|\n/).map((p) => p.trim()).filter(Boolean).at(-2) ?? line(address)).replace(/\d{6}/, "").trim().slice(0, 50) || "India";
+  const credit = d.title === "Credit Note";
+  return {
+    Version: "1.1",
+    TranDtls: { TaxSch: "GST", SupTyp: "B2B", RegRev: "N", IgstOnIntra: "N" },
+    DocDtls: { Typ: credit ? "CRN" : "INV", No: d.number, Dt: ddmmyyyy(issuedAt) },
+    SellerDtls: { Gstin: d.supplier.gstin, LglNm: d.supplier.legalName, Addr1: line(d.supplier.address), Loc: place(d.supplier.address), Pin: sellerPin, Stcd: d.supplier.stateCode },
+    BuyerDtls: {
+      Gstin: d.buyer.gstin,
+      LglNm: d.buyer.legalName,
+      Pos: d.placeOfSupply.code,
+      Addr1: line(d.buyer.address),
+      Loc: place(d.buyer.address),
+      Pin: buyerPin,
+      Stcd: d.buyer.stateCode ?? d.buyer.gstin.slice(0, 2),
+    },
+    ItemList: d.lines.map((l, i) => {
+      const share = d.taxablePaise === 0 ? 0 : l.amountPaise / d.taxablePaise;
+      const igst = rupees(tax("IGST") * share);
+      const cgst = rupees(tax("CGST") * share);
+      const sgst = rupees(tax("SGST") * share);
+      return {
+        SlNo: String(i + 1),
+        PrdDesc: l.description.slice(0, 300),
+        IsServc: "Y",
+        HsnCd: l.sac,
+        Qty: l.quantity,
+        Unit: "OTH",
+        UnitPrice: rupees(l.ratePaise),
+        TotAmt: rupees(l.amountPaise),
+        AssAmt: rupees(l.amountPaise),
+        GstRt: rate,
+        IgstAmt: igst,
+        CgstAmt: cgst,
+        SgstAmt: sgst,
+        TotItemVal: Math.round((rupees(l.amountPaise) + igst + cgst + sgst) * 100) / 100,
+      };
+    }),
+    ValDtls: {
+      AssVal: rupees(d.taxablePaise),
+      CgstVal: rupees(tax("CGST")),
+      SgstVal: rupees(tax("SGST")),
+      IgstVal: rupees(tax("IGST")),
+      TotInvVal: rupees(d.totalPaise),
+    },
+    ...(credit && d.against !== undefined ? { RefDtls: { PrecDocDtls: [{ InvNo: d.against.number, InvDt: d.against.date }] } } : {}),
   };
 }
 

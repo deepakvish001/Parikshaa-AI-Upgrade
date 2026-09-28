@@ -205,15 +205,33 @@ returned; without it, such a payment is credited only when they come back.
 Payments must be captured automatically (the dashboard's default for Checkout).
 
 **Invoiced organisations** are billed monthly, in arrears, for the attempts
-their ledgers show as started in that month (IST). Run it on the 1st:
+their ledgers show as started in that month (IST). The API issues last month's
+invoices by itself early on the 1st (checked every six hours; set
+`INVOICE_WORKER=off` on nodes that should not). To issue them by hand:
 
 ```bash
 npm run billing -w @parikshaa/api -- invoice-all 2026-10
 ```
 
-It issues each invoiced organisation's invoice once; running it again changes
-nothing. Invoices are numbered in one series per financial year and appear on
-each owner's Billing page to print.
+Either way each invoice is issued once; running again changes nothing.
+Invoices are numbered in one series per financial year, credit notes in
+another, and both appear on each owner's Billing page to print.
+
+**Refunds, TDS and e-invoices** are the operator's:
+
+```bash
+# Refund 40 unspent credits of a payment, with a credit note (needs the Razorpay keys)
+npm run billing -w @parikshaa/api -- refund acme pay_NbC7x… 40 Drive cancelled
+# The buyer deducts 2% TDS under 194J: printed on invoices from now
+npm run billing -w @parikshaa/api -- tds acme 2
+npm run billing -w @parikshaa/api -- tds-certificate acme PKS/2627/000012 118.00 ABCD1234EF "2026-27 Q3"
+# E-invoicing: the JSON to upload to the IRP, then what it returned
+npm run billing -w @parikshaa/api -- e-invoice acme PKS/2627/000012 > inv.json
+npm run billing -w @parikshaa/api -- irn acme PKS/2627/000012 <irn> <ack no> "<ack date>" signed-qr.txt
+```
+
+E-invoices need a six-digit PIN code in both the supplier's and the buyer's
+address.
 
 ## The hardening suites
 
