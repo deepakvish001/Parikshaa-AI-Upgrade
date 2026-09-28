@@ -345,7 +345,9 @@ export class InvitationService {
     const exam = await this.#o.store.loadExam(scope, toExamId(invitation.examId));
     if (exam === null) throw new InvalidInvitation();
     const started = invitation.attemptId !== null && (await this.#o.store.hasStarted(scope, invitation.attemptId as AttemptId));
-    return briefingOf(exam, invitation, started);
+    // What opening will ask for, so the page can ask it first: the same notice and camera redeem would refuse without.
+    const notice = started ? null : await this.#notice(toOrgId(named.orgId));
+    return { ...briefingOf(exam, invitation, started), notice };
   }
 }
 
@@ -368,9 +370,21 @@ export interface Briefing {
   readonly allowRevision: boolean;
   readonly calculator: boolean;
   readonly proctored: boolean;
+  /** What a proctored test's camera will do, told before it is asked for; null when it has no camera. */
+  readonly proctoring: ProctoringPolicy | null;
+  /**
+   * The privacy notice to agree to before opening, or null when there is none
+   * or the attempt has begun. Redeem still insists on it; this lets the page
+   * show it first, in its place among the steps, instead of on refusal.
+   */
+  readonly notice: Notice | null;
 }
 
-export function briefingOf(exam: Exam, invitation: Pick<Invitation, "name" | "candidateRef" | "opensAt" | "closesAt">, started: boolean): Briefing {
+export function briefingOf(
+  exam: Exam,
+  invitation: Pick<Invitation, "name" | "candidateRef" | "opensAt" | "closesAt">,
+  started: boolean,
+): Omit<Briefing, "notice"> {
   const sections = exam.sections ?? [];
   const every = [...exam.questions, ...sections.flatMap((s) => s.pool)];
   const kinds = new Set<Briefing["kinds"][number]>();
@@ -398,5 +412,6 @@ export function briefingOf(exam: Exam, invitation: Pick<Invitation, "name" | "ca
     allowRevision: exam.policy.allowRevision,
     calculator: exam.policy.calculator ?? false,
     proctored: exam.policy.proctoring !== undefined && needsCamera(exam.policy.proctoring),
+    proctoring: exam.policy.proctoring !== undefined && needsCamera(exam.policy.proctoring) ? exam.policy.proctoring : null,
   };
 }

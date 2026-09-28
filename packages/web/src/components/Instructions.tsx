@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { CircleCheck, CircleDashed, CircleX, Clock3, FileQuestionMark, Layers, TriangleAlert, Trophy } from "lucide-react";
-import type { Briefing, CandidateState } from "../api.ts";
+import type { Briefing, CandidateState, PaperBrief } from "../api.ts";
 import { usePreferences } from "../i18n.tsx";
+import { KeyTable } from "./Tools.tsx";
 
 type Kind = Briefing["kinds"][number];
 const KIND_KEY = {
@@ -13,7 +14,7 @@ const KIND_KEY = {
 } as const satisfies Record<Kind, string>;
 
 /** The instructions of a sitting already under way, from the paper the page already has. */
-export function briefingOfState(state: CandidateState): Omit<Briefing, "candidate" | "started" | "opensAt" | "closesAt"> {
+export function briefingOfState(state: CandidateState): PaperBrief {
   const { exam } = state;
   const kinds = new Set<Kind>();
   for (const q of exam.questions) kinds.add(q.kind === "mcq" ? (q.multiple ? "multiple" : "mcq") : q.kind);
@@ -40,7 +41,7 @@ const minutes = (ms: number) => Math.round(ms / 60_000);
  * it. Shown before the clock on an invitation link, and on demand from the
  * exam bar at any time after.
  */
-export function Instructions({ brief }: { readonly brief: Omit<Briefing, "candidate" | "started" | "opensAt" | "closesAt"> }) {
+export function Instructions({ brief }: { readonly brief: PaperBrief }) {
   const { t } = usePreferences();
   const facts = [
     { icon: Clock3, label: t("brief.duration"), value: t("brief.minutes", { n: minutes(brief.durationMs) }) },
@@ -50,11 +51,11 @@ export function Instructions({ brief }: { readonly brief: Omit<Briefing, "candid
   ];
   const timed = brief.sections.some((s) => s.durationMs !== null);
   const rules = [
-    brief.negativeMarks > 0 ? t("brief.negative", { n: brief.negativeMarks }) : t("brief.noNegative"),
+    brief.negativeMarks === 1 ? t("brief.negativeOne") : brief.negativeMarks > 0 ? t("brief.negative", { n: brief.negativeMarks }) : t("brief.noNegative"),
     brief.allowRevision ? t("brief.revision") : t("brief.final"),
     brief.calculator ? t("brief.calculator") : t("brief.noCalculator"),
     ...(timed ? [t("brief.sectionsLocked")] : []),
-    ...(brief.proctored ? [t("brief.camera")] : []),
+    ...(brief.proctored ? [t("brief.cameraUsed")] : []),
   ];
   const legend: readonly [string, string][] = [
     ["not-visited", t("palette.notVisited")],
@@ -136,7 +137,12 @@ export function Instructions({ brief }: { readonly brief: Omit<Briefing, "candid
           <li>{t("brief.move4")}</li>
           <li>{t("brief.move5")}</li>
         </ol>
-        <p className="notice">{t("brief.keys")}</p>
+      </section>
+
+      <section aria-labelledby="brief-keys">
+        <h3 id="brief-keys">{t("brief.keysHeading")}</h3>
+        <KeyTable />
+        <p className="notice">{t("keys.note")}</p>
       </section>
     </div>
   );
@@ -152,14 +158,20 @@ interface Check {
 
 const ICON = { checking: CircleDashed, ok: CircleCheck, warn: TriangleAlert, bad: CircleX, later: CircleDashed } as const;
 
+/** Where the camera stands for the system check: none, already working, or checked on a step still to come. */
+export type CameraCheckState = "none" | "checked" | "next";
+
 /**
  * Whether this machine is ready: the browser, the connection to the server,
  * saving on the device, the screen, and the camera where the test uses one.
- * A problem is explained, never a reason to stop: the candidate decides.
+ * Each row passes, warns, or fails, and says how to fix what it finds. A
+ * problem is explained, never a reason to stop: the candidate decides. On a
+ * phone the rows fold into one line while they all pass.
  */
-export function SystemCheck({ camera }: { readonly camera: boolean }) {
+export function SystemCheck({ camera }: { readonly camera: CameraCheckState }) {
   const { t } = usePreferences();
   const [checks, setChecks] = useState<readonly Check[]>([]);
+  const [open, setOpen] = useState(false);
 
   const run = useCallback(async () => {
     const base: Check[] = [];
@@ -176,7 +188,8 @@ export function SystemCheck({ camera }: { readonly camera: boolean }) {
     base.push({ id: "storage", label: t("brief.checkStorage"), state: storage ? "ok" : "warn", detail: storage ? t("brief.ok") : t("brief.storageOff") });
     const wide = window.innerWidth >= 600;
     base.push({ id: "screen", label: t("brief.checkScreen"), state: wide ? "ok" : "warn", detail: wide ? t("brief.ok") : t("brief.screenSmall") });
-    if (camera) base.push({ id: "camera", label: t("brief.checkCamera"), state: "later", detail: t("brief.cameraNext") });
+    if (camera === "checked") base.push({ id: "camera", label: t("brief.checkCamera"), state: "ok", detail: t("brief.cameraOk") });
+    if (camera === "next") base.push({ id: "camera", label: t("brief.checkCamera"), state: "later", detail: t("brief.cameraNext") });
     const connection: Check = { id: "connection", label: t("brief.checkConnection"), state: "checking", detail: t("brief.checking") };
     setChecks([connection, ...base]);
 
@@ -200,14 +213,28 @@ export function SystemCheck({ camera }: { readonly camera: boolean }) {
     void run();
   }, [run]);
 
+  const done = checks.filter((c) => c.state !== "checking" && c.state !== "later");
+  const passed = done.filter((c) => c.state === "ok").length;
+  const settled = checks.length > 0 && !checks.some((c) => c.state === "checking");
+  const allPassed = settled && passed === done.length;
+
   return (
-    <section className="syscheck" aria-labelledby="syscheck-title">
+    <section className={`syscheck${allPassed && !open ? " folded" : ""}`} aria-labelledby="syscheck-title">
       <div className="syscheck-head">
         <h3 id="syscheck-title">{t("brief.check")}</h3>
         <button type="button" className="quiet" onClick={() => void run()}>
           {t("brief.again")}
         </button>
       </div>
+      {allPassed ? (
+        <p className="syscheck-summary">
+          <CircleCheck aria-hidden="true" />
+          <span>{t("brief.allPassed", { n: passed })}</span>
+          <button type="button" className="link" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? t("brief.hideChecks") : t("brief.showChecks")}
+          </button>
+        </p>
+      ) : null}
       <ul aria-live="polite">
         {checks.map((c) => {
           const Icon = ICON[c.state];
@@ -225,11 +252,11 @@ export function SystemCheck({ camera }: { readonly camera: boolean }) {
 }
 
 /**
- * The page before an invitation's test begins: who is sitting it, the
- * instructions, the system check, and a declaration. Nothing here runs the
- * clock; it starts only with the last button.
+ * The last step before the clock: who is sitting it, the instructions, the
+ * system check, and a declaration. Nothing here runs the clock; it starts
+ * only with the last button.
  */
-export function BriefingScreen({ brief, onBegin }: { readonly brief: Briefing; readonly onBegin: () => void }) {
+export function BriefingScreen({ brief, onBegin, cameraChecked = false }: { readonly brief: Briefing; readonly onBegin: () => void; readonly cameraChecked?: boolean }) {
   const { t } = usePreferences();
   const [declared, setDeclared] = useState(false);
   const initials = brief.candidate.name
@@ -244,7 +271,7 @@ export function BriefingScreen({ brief, onBegin }: { readonly brief: Briefing; r
       <header className="briefing-head">
         <div>
           <p className="eyebrow">{t("brief.heading")}</p>
-          <h2 id="briefing-title">{brief.title}</h2>
+          <h1 id="briefing-title">{brief.title}</h1>
         </div>
         <div className="candidate-card" aria-label={t("brief.candidate")}>
           <span className="avatar" aria-hidden="true">
@@ -261,13 +288,13 @@ export function BriefingScreen({ brief, onBegin }: { readonly brief: Briefing; r
       <div className="briefing-body">
         <Instructions brief={brief} />
         <aside className="briefing-side">
-          <SystemCheck camera={brief.proctored} />
+          <SystemCheck camera={!brief.proctored ? "none" : cameraChecked ? "checked" : "next"} />
           <div className="declare">
             <label className="inline">
               <input type="checkbox" checked={declared} onChange={(e) => setDeclared(e.target.checked)} /> {t("brief.declare")}
             </label>
             <button type="button" className="large block" disabled={!declared} onClick={onBegin}>
-              {brief.proctored ? t("brief.continue") : t("brief.begin")}
+              {t("brief.begin")}
             </button>
             <p className="notice">{t("brief.clockNote")}</p>
           </div>

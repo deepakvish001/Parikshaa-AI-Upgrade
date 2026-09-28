@@ -63,7 +63,7 @@ for (const colorScheme of ["light", "dark"] as const) {
     test("the privacy notice passes WCAG 2.1 AA", async ({ page, request }) => {
       const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ] });
       await setPrivacyNotice(request, sitting.token);
-      await beginSitting(page, sitting.links["CS001"]!);
+      await page.goto(local(sitting.links["CS001"]!));
       await expect(page.getByRole("heading", { name: "Before you start: your data" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
     });

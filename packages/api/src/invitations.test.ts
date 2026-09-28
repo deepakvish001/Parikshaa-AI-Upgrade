@@ -191,6 +191,8 @@ describe("a candidate opening their link", () => {
       negativeMarks: 0,
       calculator: false,
       proctored: false,
+      proctoring: null,
+      notice: null,
     });
 
     clock = OPENS + 60_000;

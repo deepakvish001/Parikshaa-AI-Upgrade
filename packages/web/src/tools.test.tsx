@@ -129,7 +129,7 @@ describe("the tools beside the paper", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Instructions" }));
     const panel = screen.getByRole("dialog", { name: "Instructions" });
-    expect(panel).toHaveTextContent("A wrong answer can cost up to 1 marks.");
+    expect(panel).toHaveTextContent("A wrong answer can cost up to 1 mark.");
     expect(panel).toHaveTextContent("Not visited");
   });
 

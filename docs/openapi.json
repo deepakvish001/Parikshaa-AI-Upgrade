@@ -32882,7 +32882,7 @@
         "tags": [
           "Candidate"
         ],
-        "description": "The paper's shape and marking, for the instructions a candidate reads before beginning. Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
+        "description": "The paper's shape and marking, for the instructions a candidate reads before beginning, and what opening it will ask for (the privacy notice, the camera). Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
         "requestBody": {
           "required": true,
           "content": {
@@ -33001,6 +33001,150 @@
                     },
                     "proctored": {
                       "type": "boolean"
+                    },
+                    "proctoring": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "type": "boolean",
+                              "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                            },
+                            "snapshotEverySeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "A webcam photo this often while the attempt is open; null for none."
+                            },
+                            "browserEvents": {
+                              "type": "boolean",
+                              "description": "Record leaving the tab or full screen, and copying or pasting."
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "snapshotEverySeconds",
+                            "browserEvents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "What a proctored test's camera will do; null when it has none."
+                    },
+                    "notice": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number"
+                            },
+                            "hash": {
+                              "type": "string",
+                              "description": "SHA-256 of the notice's canonical form; the consent in the ledger records it."
+                            },
+                            "controllerName": {
+                              "type": "string"
+                            },
+                            "purpose": {
+                              "type": "string"
+                            },
+                            "retentionDays": {
+                              "type": "number"
+                            },
+                            "grievance": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "email": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "email"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "collected": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "rights": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "properties": {
+                                "hi": {
+                                  "type": "object",
+                                  "properties": {
+                                    "collected": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "rights": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "collected",
+                                    "rights"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "hi"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "hash",
+                            "controllerName",
+                            "purpose",
+                            "retentionDays",
+                            "grievance",
+                            "collected",
+                            "rights",
+                            "translations"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The privacy notice opening will ask agreement to, so it can be shown first; null when there is none or the attempt has begun."
                     }
                   },
                   "required": [
@@ -33017,7 +33161,9 @@
                     "negativeMarks",
                     "allowRevision",
                     "calculator",
-                    "proctored"
+                    "proctored",
+                    "proctoring",
+                    "notice"
                   ],
                   "additionalProperties": false
                 }

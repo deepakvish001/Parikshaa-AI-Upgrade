@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { beginSitting, OWNER, SHORT, seedSitting } from "./support.js";
+import { local, OWNER, readyToBegin, SHORT, seedSitting } from "./support.js";
 
 /**
  * ROADMAP §14 in a real browser, with Chromium's fake camera: the camera
@@ -16,13 +16,16 @@ test.use({
 test("a proctored sitting: camera first, identity photos, then an invigilator confirms them", async ({ page, browser, request }) => {
   const sitting = await seedSitting(request, { questions: [SHORT], proctoring: { identity: true, snapshotEverySeconds: 15, browserEvents: true } });
 
-  await beginSitting(page, sitting.links["CS001"]!);
+  // The camera is a step before the instructions, whose last button starts the clock.
+  await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "This test uses your camera" })).toBeVisible();
   await page.getByRole("button", { name: "Allow the camera" }).click();
-  await page.getByRole("button", { name: "My camera works — start the test" }).click();
+  await page.getByRole("button", { name: "My camera works" }).click();
+  await readyToBegin(page);
 
   await expect(page.getByRole("heading", { name: "Confirm who you are" })).toBeVisible();
   await page.getByRole("button", { name: "Take my photo" }).click();
+  await page.getByRole("button", { name: "Use this photo" }).click();
   await page.getByRole("button", { name: "Take a photo of my ID" }).click();
   await page.getByRole("button", { name: "Send and start answering" }).click();
 

@@ -133,6 +133,13 @@ function Screens({ client: injected }: { client?: ParikshaaClient }) {
     rememberToken(null);
     setToken(null);
   }, []);
+  // A code typed in by hand that opened nothing: back to the box, saying so.
+  const [refused, setRefused] = useState(false);
+  const refuse = useCallback(() => {
+    rememberToken(null);
+    setToken(null);
+    setRefused(true);
+  }, []);
 
   if (client === null && invite !== null) {
     return (
@@ -149,7 +156,9 @@ function Screens({ client: injected }: { client?: ParikshaaClient }) {
   if (client === null) {
     return (
       <TokenGate
+        failed={refused}
         onToken={(next) => {
+          setRefused(false);
           if (isInviteCode(next)) {
             session.set(INVITE_KEY, next);
             setInvite(next);
@@ -159,7 +168,9 @@ function Screens({ client: injected }: { client?: ParikshaaClient }) {
     );
   }
   // A token that ran out, with the invitation still in hand: open it again.
-  return <Attempt client={client} {...(invite === null ? {} : { onExpired: expired })} />;
+  // Without one, the candidate is asked for a code once more.
+  const onExpired = invite !== null ? expired : injected === undefined ? refuse : undefined;
+  return <Attempt client={client} {...(onExpired === undefined ? {} : { onExpired })} />;
 }
 
 /** Where a question's unsent text stands. */

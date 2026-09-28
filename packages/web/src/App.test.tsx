@@ -65,13 +65,33 @@ function renderApp(element: ReactElement) {
 }
 
 describe("App", () => {
-  it("asks for an access code when the URL carries no token", () => {
+  it("asks for an access code when the URL carries no token", async () => {
     renderApp(<App />);
 
-    expect(screen.getByRole("heading", { name: "Parikshaa" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Access code")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Start your test" })).toBeInTheDocument();
+    const code = screen.getByLabelText("Access code");
+    // Not yet, and why: the button says what it is waiting for.
+    expect(screen.getByRole("button", { name: "Begin" })).toBeDisabled();
+    expect(code).toHaveAccessibleDescription("Paste your code to continue");
     // The candidate is told what the exam does and does not do, up front.
-    expect(screen.getByText(/If a test uses your camera, it says so before it starts/)).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "What to expect" })).toHaveTextContent(/If a test uses your camera, it says so before it starts/);
+
+    // A code pasted from an email comes with spaces and line breaks; they are not part of it.
+    await userEvent.type(code, " eyJ.abc \n");
+    await userEvent.tab();
+    expect(code).toHaveValue("eyJ.abc");
+  });
+
+  it("says so when a code typed in opens nothing, and asks again", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "invalid_attempt_token" }), { status: 401 })));
+    renderApp(<App />);
+
+    await userEvent.type(screen.getByLabelText("Access code"), "eyJ.expired");
+    await userEvent.click(screen.getByRole("button", { name: "Begin" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("This code has expired or does not work. Ask your institution for a new link.");
+    expect(screen.getByLabelText("Access code")).toHaveAttribute("aria-invalid", "true");
+    vi.unstubAllGlobals();
   });
 
   it("shows the paper one question at a time, as a computer-based test does", async () => {

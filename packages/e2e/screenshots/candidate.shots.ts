@@ -20,9 +20,10 @@ test("the access code, when a candidate has no link", async ({ page }) => {
 test("the privacy notice, agreed to before anything starts", async ({ page, request }) => {
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ], title: TITLE });
   await setPrivacyNotice(request, sitting.token);
-  await beginSitting(page, sitting.links["CS001"]!);
+  await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "Before you start" })).toBeVisible();
-  await shoot(page, "candidate-02-privacy-notice");
+  // The agree bar sticks to the bottom of the window, so the window is the picture.
+  await shoot(page, "candidate-02-privacy-notice", { fullPage: false });
 });
 
 test("a link opened before the window", async ({ page, request }) => {
@@ -41,14 +42,15 @@ test("the camera check and the identity photos, for a proctored test", async ({ 
     title: TITLE,
     proctoring: { identity: true, snapshotEverySeconds: 60, browserEvents: true },
   });
-  await beginSitting(page, sitting.links["CS001"]!);
+  await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "This test uses your camera" })).toBeVisible();
   await shoot(page, "candidate-04-camera-notice");
   await page.getByRole("button", { name: "Allow the camera" }).click();
-  await expect(page.getByRole("button", { name: "My camera works — start the test" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "My camera works" })).toBeVisible();
   await page.waitForTimeout(600);
   await shoot(page, "candidate-05-camera-check");
-  await page.getByRole("button", { name: "My camera works — start the test" }).click();
+  await page.getByRole("button", { name: "My camera works" }).click();
+  await readyToBegin(page);
   await expect(page.getByRole("heading", { name: "Confirm who you are" })).toBeVisible();
   await page.getByRole("button", { name: "Take my photo" }).click();
   await page.waitForTimeout(400);

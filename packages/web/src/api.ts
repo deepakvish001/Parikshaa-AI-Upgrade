@@ -1,4 +1,5 @@
 import type { CandidateLedger, CandidateState } from "@parikshaa/api";
+import type { ProctoringPolicy } from "@parikshaa/core/browser";
 
 /** Something an invigilator told everyone in the sitting. */
 export interface Announcement {
@@ -146,7 +147,14 @@ export interface Briefing {
   readonly allowRevision: boolean;
   readonly calculator: boolean;
   readonly proctored: boolean;
+  /** What the camera will do, for a proctored test; null otherwise. */
+  readonly proctoring: ProctoringPolicy | null;
+  /** The privacy notice opening will ask agreement to; null when there is none or the attempt has begun. */
+  readonly notice: Notice | null;
 }
+
+/** The paper itself, as the instructions describe it: a briefing without who, when, or what opening asks. */
+export type PaperBrief = Omit<Briefing, "candidate" | "started" | "opensAt" | "closesAt" | "proctoring" | "notice">;
 
 /** An invitation's instructions. Starts nothing; opening it is {@link redeemInvitation}. */
 export async function briefInvitation(code: string, baseUrl = "/api"): Promise<Briefing> {

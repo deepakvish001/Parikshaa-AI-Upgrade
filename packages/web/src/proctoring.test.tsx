@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -95,7 +95,51 @@ describe("opening a proctored test", () => {
     expect(screen.getByText(/leave this tab or full screen/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Allow the camera" }));
-    await userEvent.click(await screen.findByRole("button", { name: "My camera works — start the test" }));
+    await userEvent.click(await screen.findByRole("button", { name: "My camera works" }));
+    expect(fetch).toHaveBeenCalledWith("/api/invitations/redeem", expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC", camera: true }) }));
+  });
+
+  it("puts the camera among the steps before the instructions, so the instructions' button is the one that starts the clock", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const brief = {
+      title: "Watched drive",
+      candidate: { name: "Ananya Iyer", ref: "CS001" },
+      started: false,
+      opensAt: new Date(Date.now() - 60_000).toISOString(),
+      closesAt: new Date(Date.now() + 3_600_000).toISOString(),
+      durationMs: 3_600_000,
+      questionCount: 1,
+      totalMarks: 1,
+      sections: [],
+      kinds: ["short"],
+      negativeMarks: 0,
+      allowRevision: true,
+      calculator: false,
+      proctored: true,
+      proctoring: POLICY,
+      notice: null,
+    };
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("/invitations/briefing")) return json(brief);
+      if (url.endsWith("/health")) return json({ ok: true });
+      if (url.endsWith("/invitations/redeem")) return json({ token: "eyJ.t", attemptId: "a1", resumed: false });
+      return json({ error: "attempt_token_required" }, 401);
+    });
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "This test uses your camera" })).toBeInTheDocument();
+    const steps = screen.getByRole("list", { name: "Steps before the test" });
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["1Camera", "2Instructions", "3Begin"]);
+    await userEvent.click(screen.getByRole("button", { name: "Allow the camera" }));
+    await userEvent.click(await screen.findByRole("button", { name: "My camera works" }));
+
+    // The camera is already checked on the instructions' system check, and nothing has opened yet.
+    const page = await screen.findByRole("region", { name: "Watched drive" });
+    expect(within(page).getByText("Working")).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
+    await userEvent.click(within(page).getByRole("checkbox", { name: /I have read the instructions/ }));
+    await userEvent.click(within(page).getByRole("button", { name: "I am ready to begin" }));
     expect(fetch).toHaveBeenCalledWith("/api/invitations/redeem", expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC", camera: true }) }));
   });
 
@@ -119,12 +163,19 @@ describe("the identity step", () => {
     expect(await screen.findByRole("heading", { name: "Confirm who you are" })).toBeInTheDocument();
     expect(screen.queryByText("1. Why?")).toBeNull();
     await userEvent.click(await screen.findByRole("button", { name: "Take my photo" }));
+    // Each photo is shown back, to keep or retake.
+    expect(screen.getByRole("img", { name: "Your photo" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retake" }));
+    const retaken = shots + 1;
+    await userEvent.click(screen.getByRole("button", { name: "Take my photo" }));
+    await userEvent.click(screen.getByRole("button", { name: "Use this photo" }));
     await userEvent.click(screen.getByRole("button", { name: "Take a photo of my ID" }));
     expect(screen.getByRole("img", { name: "Your photo" })).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "Your photo ID" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Send and start answering" }));
 
-    expect(client.captureIdentity).toHaveBeenCalledWith(expect.stringMatching(/^c2hvdC/), expect.stringMatching(/^c2hvdC/));
+    // The second photo of the candidate, not the one retaken.
+    expect(client.captureIdentity).toHaveBeenCalledWith(`c2hvdC${retaken}`, `c2hvdC${retaken + 1}`);
     expect(await screen.findByRole("heading", { name: /^1\. Why\?/ })).toBeInTheDocument();
   });
 });

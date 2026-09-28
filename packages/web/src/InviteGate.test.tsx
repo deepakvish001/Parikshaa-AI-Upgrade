@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -28,8 +28,39 @@ const state = {
   drafts: [],
 };
 
+const brief = {
+  title: "Campus drive",
+  candidate: { name: "Ananya Iyer", ref: "CS001" },
+  started: false,
+  opensAt: new Date(Date.now() - 60_000).toISOString(),
+  closesAt: new Date(Date.now() + 3_600_000).toISOString(),
+  durationMs: 3_600_000,
+  questionCount: 20,
+  totalMarks: 80,
+  sections: [],
+  kinds: ["mcq", "numeric"],
+  negativeMarks: 1,
+  allowRevision: true,
+  calculator: true,
+  proctored: false,
+  proctoring: null,
+  notice: null,
+};
+
+const NOTICE = {
+  version: 3,
+  hash: "ab".repeat(32),
+  controllerName: "Acme Technologies Pvt Ltd",
+  purpose: "To assess candidates for engineering roles.",
+  retentionDays: 90,
+  grievance: { name: "Priya Menon", email: "privacy@acme.test" },
+  collected: ["Your answers."],
+  rights: ["Have it erased."],
+};
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  localStorage.clear();
   sessionStorage.clear();
   window.history.replaceState(null, "", "/");
 });
@@ -52,22 +83,6 @@ describe("an invitation link", () => {
 
   it("shows the instructions and a system check first, and starts the clock only at Ready to begin", async () => {
     window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
-    const brief = {
-      title: "Campus drive",
-      candidate: { name: "Ananya Iyer", ref: "CS001" },
-      started: false,
-      opensAt: new Date(Date.now() - 60_000).toISOString(),
-      closesAt: new Date(Date.now() + 3_600_000).toISOString(),
-      durationMs: 3_600_000,
-      questionCount: 20,
-      totalMarks: 80,
-      sections: [],
-      kinds: ["mcq", "numeric"],
-      negativeMarks: 1,
-      allowRevision: true,
-      calculator: true,
-      proctored: false,
-    };
     const fetch = vi.fn(async (url: string) => {
       if (url.endsWith("/invitations/briefing")) return json(brief);
       if (url.endsWith("/invitations/redeem")) return json({ token: "eyJ.token", attemptId: "a1", resumed: false });
@@ -79,10 +94,17 @@ describe("an invitation link", () => {
     renderApp(<App />);
 
     const page = await screen.findByRole("region", { name: "Campus drive" });
+    // One step before the clock, and it is the last.
+    const steps = screen.getByRole("list", { name: "Steps before the test" });
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["1Instructions", "2Begin"]);
+    expect(within(steps).getByText("Instructions").closest("li")).toHaveAttribute("aria-current", "step");
     expect(page).toHaveTextContent("Ananya Iyer");
     expect(page).toHaveTextContent("Roll number: CS001");
     expect(page).toHaveTextContent("60 min");
-    expect(page).toHaveTextContent("A wrong answer can cost up to 1 marks.");
+    expect(page).toHaveTextContent("A wrong answer can cost up to 1 mark.");
+    // Each shortcut key a chip, beside what it does.
+    expect(within(page).getByRole("heading", { name: "From the keyboard" })).toBeInTheDocument();
+    expect(within(page).getByText("Esc").tagName).toBe("KBD");
     expect(page).toHaveTextContent("An on-screen calculator is in the bar under the clock.");
     expect(await screen.findByText(/^Good \(\d+ ms\)$/)).toBeInTheDocument();
     // Reading costs nothing: the link has not been opened.
@@ -127,6 +149,25 @@ describe("an invitation link", () => {
     const early = await screen.findByRole("region", { name: "Not open yet" });
     expect(early).toHaveTextContent(/10:00\s?am IST/i);
     expect(early).toHaveTextContent(/Nothing has started yet/);
+  });
+
+  it("counts down to the opening, says what to get ready, and lets the candidate in by itself", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const opensAt = new Date(Date.now() + 90 * 60_000).toISOString();
+    const early = { ...brief, opensAt, proctored: true, proctoring: { identity: true, snapshotEverySeconds: 60, browserEvents: true } };
+    const fetch = vi.fn(async (url: string) => (url.endsWith("/invitations/briefing") ? json(early) : json({ error: "not_open_yet", opensAt }, 403)));
+    vi.stubGlobal("fetch", fetch);
+
+    renderApp(<App />);
+
+    const page = await screen.findByRole("region", { name: "Not open yet" });
+    expect(within(page).getByRole("heading", { level: 1 })).toHaveTextContent("Campus drive");
+    expect(within(page).getByRole("timer")).toHaveAccessibleName(/^Opens in 1:(29|30):\d\d$/);
+    expect(page).toHaveTextContent("Keep your photo ID card with you.");
+    // A proctored test adds the camera to what to get ready.
+    expect(page).toHaveTextContent(/This test uses your camera/);
+    // Waiting opens nothing.
+    expect(fetch).not.toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
   });
 
   it("says plainly when the window has closed", async () => {
@@ -182,38 +223,63 @@ describe("an invitation link", () => {
     expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
   });
 
-  it("shows the privacy notice first, and starts only once it is agreed to", async () => {
+  it("shows the privacy notice first, then the instructions, and starts only at the last button", async () => {
     window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
-    const notice = {
-      version: 3,
-      hash: "ab".repeat(32),
-      controllerName: "Acme Technologies Pvt Ltd",
-      purpose: "To assess candidates for engineering roles.",
-      retentionDays: 90,
-      grievance: { name: "Priya Menon", email: "privacy@acme.test" },
-      collected: ["Your answers."],
-      rights: ["Have it erased."],
-    };
-    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
-      if (!url.endsWith("/invitations/redeem")) return json(state);
-      const body = JSON.parse(String(init?.body)) as { consent?: { noticeVersion: number } };
-      return body.consent?.noticeVersion === 3
-        ? json({ token: "eyJ.token", attemptId: "a1", resumed: false })
-        : json({ error: "consent_required", notice }, 428);
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("/invitations/briefing")) return json({ ...brief, notice: NOTICE });
+      if (url.endsWith("/invitations/redeem")) return json({ token: "eyJ.token", attemptId: "a1", resumed: false });
+      if (url.endsWith("/health")) return json({ ok: true });
+      return json(state);
     });
     vi.stubGlobal("fetch", fetch);
 
     renderApp(<App />);
 
     expect(await screen.findByRole("heading", { name: "Before you start: your data" })).toBeInTheDocument();
-    expect(screen.getByText("Acme Technologies Pvt Ltd")).toBeInTheDocument();
-    expect(screen.getByText(/90 days after you finish/)).toBeInTheDocument();
+    const steps = screen.getByRole("list", { name: "Steps before the test" });
+    expect(within(steps).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["1Your data", "2Instructions", "3Begin"]);
+    // The short version first: who, why, how long, and the rights.
+    const glance = screen.getByLabelText("At a glance");
+    expect(glance).toHaveTextContent("Acme Technologies Pvt Ltd");
+    expect(glance).toHaveTextContent("90 days after you finish");
     expect(screen.getByRole("link", { name: "privacy@acme.test" })).toHaveAttribute("href", "mailto:privacy@acme.test");
-    const start = screen.getByRole("button", { name: "Agree and start the test" });
-    expect(start).toBeDisabled();
+    expect(screen.getByText("Notice version 3")).toBeInTheDocument();
+    const agree = screen.getByRole("button", { name: "Agree and continue" });
+    expect(agree).toBeDisabled();
 
     await userEvent.click(screen.getByRole("checkbox", { name: /agree to my data being used/ }));
-    await userEvent.click(start);
+    await userEvent.click(agree);
+
+    // Agreeing opened nothing: the instructions come next, and only they start the clock.
+    expect(await screen.findByRole("region", { name: "Campus drive" })).toBeInTheDocument();
+    expect(within(steps).getByText("Your data").closest("li")).toHaveClass("done");
+    expect(fetch).not.toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
+    await userEvent.click(screen.getByRole("checkbox", { name: /I have read the instructions/ }));
+    await userEvent.click(screen.getByRole("button", { name: "I am ready to begin" }));
+
+    expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/invitations/redeem",
+      expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC", consent: { noticeVersion: 3 } }) }),
+    );
+  });
+
+  it("asks for agreement when opening does, if the briefing could not say so first", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+      if (!url.endsWith("/invitations/redeem")) return json(state);
+      const body = JSON.parse(String(init?.body)) as { consent?: { noticeVersion: number } };
+      return body.consent?.noticeVersion === 3
+        ? json({ token: "eyJ.token", attemptId: "a1", resumed: false })
+        : json({ error: "consent_required", notice: NOTICE }, 428);
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Before you start: your data" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: /agree to my data being used/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Agree and continue" }));
 
     expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
     expect(fetch).toHaveBeenCalledWith(
@@ -243,8 +309,7 @@ describe("an invitation link", () => {
     expect(await screen.findByRole("heading", { name: "शुरू करने से पहले: आपका डेटा" })).toBeInTheDocument();
     expect(screen.getByText("आपके उत्तर।")).toBeInTheDocument();
     expect(screen.getByText("इसे मिटवाएँ।")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "सहमत हूँ, परीक्षा शुरू करें" })).toBeDisabled();
-    localStorage.clear();
+    expect(screen.getByRole("button", { name: "सहमत हूँ, आगे बढ़ें" })).toBeDisabled();
   });
 
   it("tells a candidate the test cannot start yet when the organisation's credits have run out, without the details", async () => {

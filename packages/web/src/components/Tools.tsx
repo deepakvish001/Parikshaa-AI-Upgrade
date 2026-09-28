@@ -293,30 +293,40 @@ export function clearRoughWork(attemptId: string): void {
   }
 }
 
+/** Every keyboard shortcut, each key a chip beside what it does. */
+export function KeyTable() {
+  const { t } = usePreferences();
+  const rows: readonly [readonly string[], string][] = [
+    [["A", "B", "C", "D"], t("keys.choose")],
+    [["S"], t("exam.saveNext")],
+    [["N"], t("exam.next")],
+    [["P"], t("exam.prev")],
+    [["M"], t("exam.markReview")],
+    [["?"], t("tools.shortcuts")],
+    [["Esc"], t("tools.close")],
+  ];
+  return (
+    <dl className="keys">
+      {rows.map(([keys, what]) => (
+        <div key={keys.join()}>
+          <dt>
+            {keys.map((k) => (
+              <kbd key={k}>{k}</kbd>
+            ))}
+          </dt>
+          <dd>{what}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 /** Every keyboard shortcut, as `?` lists them. */
 export function ShortcutsPanel({ onClose }: { readonly onClose: () => void }) {
   const { t } = usePreferences();
-  const rows: readonly [string, string][] = [
-    ["A – D", t("keys.choose")],
-    ["S", t("exam.saveNext")],
-    ["N", t("exam.next")],
-    ["P", t("exam.prev")],
-    ["M", t("exam.markReview")],
-    ["?", t("tools.shortcuts")],
-    ["Esc", t("tools.close")],
-  ];
   return (
     <Floating label={t("tools.shortcuts")} onClose={onClose} className="shortcuts">
-      <dl className="keys">
-        {rows.map(([keys, what]) => (
-          <div key={keys}>
-            <dt>
-              <kbd>{keys}</kbd>
-            </dt>
-            <dd>{what}</dd>
-          </div>
-        ))}
-      </dl>
+      <KeyTable />
       <p className="notice">{t("keys.note")}</p>
     </Floating>
   );
