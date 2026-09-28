@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { local, MCQ, PRIVATE_OWNER, seedSitting, setPrivacyNotice } from "./support.js";
+import { local, MCQ, PRIVATE_OWNER, seedSitting, setPrivacyNotice, submitAttempt } from "./support.js";
 
 /** ROADMAP §11, in a real browser: consent before the clock, and the candidate's own data after. */
 
@@ -20,7 +20,7 @@ test("a candidate agrees to the privacy notice before starting, and can download
   await page.getByRole("radio", { name: "Merge sort" }).check();
   await page.getByRole("button", { name: "Save answer" }).click();
   await expect(page.getByText("Saved")).toBeVisible();
-  await page.getByRole("button", { name: "Submit attempt" }).click();
+  await submitAttempt(page);
   await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
 
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download my data" }).click()]);

@@ -28,7 +28,7 @@ test("a candidate reads the exam in Hindi on a slow connection: compressed, and 
   for (const e of encodings) expect(e).toMatch(/^(br|gzip)$/);
 
   await page.getByRole("radio", { name: "मर्ज सॉर्ट" }).check();
-  await page.getByRole("button", { name: "उत्तर सहेजें" }).first().click();
+  await page.getByRole("button", { name: "सहेजें और आगे" }).click();
   const probe = page.getByRole("region", { name: "अनुवर्ती प्रश्न" });
   await expect(probe).toContainText("Walk me through");
   expect(probes).toEqual(["?stream=0"]);

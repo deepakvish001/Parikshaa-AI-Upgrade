@@ -1,7 +1,7 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
-import { ApiError, ParikshaaClient, type Announcement, type CandidatePart } from "./api.ts";
+import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type CandidateState } from "./api.ts";
 import { inline } from "@parikshaa/brand/markdown";
 import { AnswerInput } from "./components/AnswerInput.tsx";
 import { splitStem } from "./components/code-meta.ts";
@@ -14,8 +14,9 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { Clock, Flag } from "lucide-react";
-import { loadReview, saveReview } from "./review.ts";
+import { ChevronLeft, ChevronRight, Eraser, Flag, Send } from "lucide-react";
+import { loadReview, loadVisited, saveReview, saveVisited } from "./review.ts";
+import { Countdown, ExamBar, kindLabel, SubmitDialog } from "./components/Cbt.tsx";
 import { Figures, Palette, PassageCard } from "./components/Paper.tsx";
 
 interface OpenProbe {
@@ -190,8 +191,12 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   });
 
   const attemptId = state.data?.attemptId ?? null;
+  // Which questions the candidate has opened: the palette tells "not visited" from "not answered".
+  const [visited, setVisited] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
-    if (attemptId !== null) setReview(loadReview(attemptId));
+    if (attemptId === null) return;
+    setReview(loadReview(attemptId));
+    setVisited(loadVisited(attemptId));
   }, [attemptId]);
   const toggleReview = (questionId: string) => {
     const next = new Set(review);
@@ -466,6 +471,29 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   });
   const now = useNow(inProgress && (state.data?.parts ?? []).some((p) => p.endsAt !== null));
 
+  // One question at a time, as a computer-based test shows it: the one open now,
+  // by id, so that a section changing under it falls back to that section's first.
+  const [current, setCurrent] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const focusStem = useRef(false);
+  const paperNow = state.data === undefined ? null : paperOf(state.data, now);
+  const currentId = paperNow === null ? null : (paperNow.shown.find((q) => q.id === current) ?? paperNow.shown[0])?.id ?? null;
+  useEffect(() => {
+    if (currentId === null || attemptId === null || !inProgress) return;
+    setVisited((prior) => {
+      if (prior.has(currentId)) return prior;
+      const next = new Set(prior).add(currentId);
+      saveVisited(attemptId, next);
+      return next;
+    });
+    // Moving to a question takes focus to its heading, so a screen reader reads it from the top.
+    if (focusStem.current) {
+      focusStem.current = false;
+      document.getElementById(`q-${currentId}-stem`)?.focus({ preventScroll: true });
+      document.getElementById(`q-${currentId}`)?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+    }
+  }, [currentId, attemptId, inProgress]);
+
   const expired = state.error instanceof ApiError && state.error.status === 401;
   useEffect(() => {
     if (expired) onExpired?.();
@@ -510,334 +538,414 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const open = attemptState === "in_progress";
   // A sectioned test shows one part at a time. A part whose own time is up is
   // treated as over here at once; the server closes it on the next request.
-  const parts = state.data.parts ?? null;
-  const currentPart = parts?.find((p) => p.state === "current") ?? null;
-  const partTimeUp = currentPart?.endsAt != null && now >= currentPart.endsAt;
-  const nextPart = parts?.find((p) => p.state === "upcoming") ?? null;
-  const shown =
-    parts === null
-      ? exam.questions
-      : currentPart === null || partTimeUp
-        ? []
-        : exam.questions.filter((q) => currentPart.questionIds.includes(q.id));
+  const { parts, currentPart, partTimeUp, nextPart, shown } = paperOf(state.data, now);
   // The languages this exam's questions can be read in, besides English.
   const offered = [...new Set(exam.questions.flatMap((q) => Object.keys(q.translations ?? {})))] as Language[];
+
+  if (!open) {
+    return (
+      <>
+        <TopBar title={exam.title} offered={offered} />
+        <main className="page">
+          <header className="exam">
+            <h1>{exam.title}</h1>
+            <p className="sub">{t(`exam.state.${attemptState}`)}</p>
+          </header>
+          {attemptState === "void" ? (
+            /*
+             * SPEC §6.2: being set aside without being told why is the situation
+             * this design objects to. The reason a person recorded is shown as they
+             * wrote it, not summarized and not softened.
+             */
+            <section className="card" aria-label={t("exam.voidTitle")}>
+              <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>{t("exam.voidTitle")}</h2>
+              <p style={{ margin: 0 }}>{voidReason}</p>
+              <p className="notice" style={{ marginTop: ".75rem" }}>
+                {t("exam.voidNote")}
+              </p>
+            </section>
+          ) : null}
+          {ledger.data !== undefined ? <Receipt ledger={ledger.data} myData={() => client.myData()} /> : null}
+        </main>
+      </>
+    );
+  }
+
+  const at = Math.max(0, shown.findIndex((q) => q.id === currentId));
+  const original_ = shown[at] ?? null;
+  const previous = shown[at - 1] ?? null;
+  const next = shown[at + 1] ?? null;
 
   /**
    * Leaving a question commits it, when the exam allows answers to be revised.
    * Where it does not, committing is final, so it waits for the button.
    */
   const leave = (questionId: string) => {
-    if (!open || !exam.allowRevision || saveAnswer.isPending || partTimeUp) return;
+    if (!exam.allowRevision || saveAnswer.isPending || partTimeUp) return;
     const value = drafts[questionId];
     if (value === undefined || value.trim() === "" || value === (answered.get(questionId) ?? "")) return;
     saveAnswer.mutate({ questionId, answer: value });
   };
+  const goTo = (id: string) => {
+    if (original_ !== null && id !== original_.id) leave(original_.id);
+    focusStem.current = true;
+    setCurrent(id);
+  };
+  /** Save & next: commits what is typed, whatever the exam's revision rule — the candidate pressed Save. */
+  const commit = (questionId: string) => {
+    const committed = answered.get(questionId) ?? "";
+    const value = drafts[questionId] ?? committed;
+    if (value !== committed && value.trim() !== "" && !saveAnswer.isPending) saveAnswer.mutate({ questionId, answer: value });
+  };
+  const advanceFrom = (questionId: string) => {
+    commit(questionId);
+    if (next !== null) {
+      focusStem.current = true;
+      setCurrent(next.id);
+    }
+  };
+
+  const items = shown.map((q) => {
+    const committed = answered.get(q.id) ?? "";
+    const typed = drafts[q.id];
+    return {
+      id: q.id,
+      number: exam.questions.indexOf(q) + 1,
+      answered: committed !== "",
+      draft: typed !== undefined && typed.trim() !== "" && typed !== committed,
+      marked: review.has(q.id),
+      visited: visited.has(q.id) || q.id === currentId,
+    };
+  });
+  const counts = {
+    answered: items.filter((q) => q.answered && !q.marked).length,
+    answeredMarked: items.filter((q) => q.answered && q.marked).length,
+    marked: items.filter((q) => !q.answered && q.marked).length,
+    notAnswered: items.filter((q) => !q.answered && !q.marked && q.visited).length,
+    notVisited: items.filter((q) => !q.answered && !q.marked && !q.visited).length,
+  };
+  const lastPart = parts === null || nextPart === null;
+  const canSubmit = !submit.isPending && (answered.size > 0 || Object.keys(drafts).length > 0);
+
+  const action = !lastPart ? (
+    currentPart !== null && !partTimeUp ? (
+      <button
+        type="button"
+        className="exambar-action"
+        onClick={() => {
+          // Leaving the question for the way out commits it, as moving to another question does.
+          if (original_ !== null) leave(original_.id);
+          setLeaving(true);
+        }}
+      >
+        {t("section.next", { title: currentPart.title })}
+      </button>
+    ) : null
+  ) : (
+    <button
+      type="button"
+      className="exambar-action"
+      onClick={() => {
+        if (original_ !== null) leave(original_.id);
+        setConfirming(true);
+      }}
+      disabled={!canSubmit}
+    >
+      <Send aria-hidden="true" />
+      {submit.isPending ? t("exam.submitting") : t("exam.submit")}
+    </button>
+  );
+
+  let question: JSX.Element | null = null;
+  if (original_ !== null) {
+    const index = exam.questions.indexOf(original_);
+    // The question as this candidate reads it: in their language when it
+    // has been translated, unless they asked for the original.
+    const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
+    const q = translation === undefined ? original_ : localised(original_, translation);
+    const shownIn: Language = translation === undefined ? "en" : language;
+    const committed = answered.get(q.id) ?? "";
+    const value = drafts[q.id] ?? committed;
+    const dirty = value !== committed;
+    const draftStatus = status[q.id];
+    const marked = review.has(q.id);
+    const isCode = q.kind === "code";
+    // A passage is shown beside each question about it, with the run it covers.
+    // Read defensively: a server from before pictures and passages sends neither.
+    const passage = original_.passage ?? null;
+    let from = index + 1;
+    let to = index + 1;
+    if (passage !== null) {
+      let a = at;
+      while (a > 0 && shown[a - 1]?.passage?.id === passage.id) a -= 1;
+      let b = at;
+      while (b < shown.length - 1 && shown[b + 1]?.passage?.id === passage.id) b += 1;
+      from = exam.questions.indexOf(shown[a]!) + 1;
+      to = exam.questions.indexOf(shown[b]!) + 1;
+    }
+    const saveLabel = next === null
+      ? exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")
+      : exam.allowRevision ? t("exam.saveNext") : t("exam.saveFinalNext");
+    const saveState = !dirty
+      ? savedAt[q.id] !== undefined || committed !== ""
+        ? t("exam.saved")
+        : ""
+      : draftStatus === "offline"
+        ? t("exam.keptOffline")
+        : draftStatus === "synced"
+          ? t("exam.draftSaved")
+          : draftStatus === "saving"
+            ? t("exam.saving")
+            : "";
+
+    const card = (
+      <section
+        className={`card question qview${marked ? " marked" : ""}${isCode ? " is-code" : ""}`}
+        id={`q-${q.id}`}
+        aria-labelledby={`q-${q.id}-stem`}
+      >
+        <div className="q-meta">
+          <span className="q-of">{t("exam.questionOf", { n: index + 1, total: exam.questions.length })}</span>
+          <span className="kind-chip">{kindLabel(q, t)}</span>
+          <span className="q-badges">
+            <span className="marks">{q.maxScore === 1 ? t("exam.mark") : t("exam.marks", { n: q.maxScore })}</span>
+            {(q.kind === "mcq" || q.kind === "numeric") && (q.negativeMarks ?? 0) > 0 ? (
+              <span className="marks negative">{t("exam.negative", { n: q.negativeMarks })}</span>
+            ) : null}
+          </span>
+          <button type="button" className={`quiet review-toggle${marked ? " on" : ""}`} aria-pressed={marked} onClick={() => toggleReview(q.id)}>
+            <Flag aria-hidden="true" />
+            {marked ? t("exam.marked") : t("exam.markReview")}
+          </button>
+        </div>
+        <h2 className="q-stem" lang={shownIn} id={`q-${q.id}-stem`} tabIndex={-1}>
+          <span className="q-num">{index + 1}.</span>{" "}
+          {/* A code question's statement is Markdown: its first paragraph heads it, the rest is below. */}
+          {isCode ? <span className="q-title">{inline(splitStem(q.stem).title || t("code.problem"))}</span> : q.stem}
+        </h2>
+        <Figures images={q.images ?? []} />
+        {q.kind === "mcq" && q.multiple ? <p className="notice choose-all">{t("exam.chooseAll")}</p> : null}
+        {language !== "en" && original_.translations?.[language] !== undefined ? (
+          <button
+            type="button"
+            className="quiet"
+            onClick={() => {
+              const toggled = new Set(original);
+              if (toggled.has(original_.id)) toggled.delete(original_.id);
+              else toggled.add(original_.id);
+              setOriginal(toggled);
+            }}
+          >
+            {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
+          </button>
+        ) : null}
+        <AnswerInput
+          key={q.id}
+          question={q}
+          value={value}
+          disabled={partTimeUp}
+          onChange={(text) => edit(q.id, text)}
+          onRun={(lang, source, input) => client.runCode(q.id, lang, source, input)}
+          onSubmit={(lang, source) => submitCode(q.id, lang, source)}
+          submitLabel={exam.allowRevision ? t("code.submit") : t("code.submitFinal")}
+          number={index + 1}
+          completion={exam.codeCompletion ?? false}
+        />
+      </section>
+    );
+
+    question = (
+      <>
+        {passage !== null ? (
+          <div className="qsplit">
+            <PassageCard passage={passage} from={from} to={to} />
+            {card}
+          </div>
+        ) : (
+          card
+        )}
+        <div className="qfoot" role="group" aria-label={t("exam.questionOf", { n: index + 1, total: exam.questions.length })}>
+          <button type="button" className="secondary" onClick={() => previous !== null && goTo(previous.id)} disabled={previous === null}>
+            <ChevronLeft aria-hidden="true" />
+            {t("exam.prev")}
+          </button>
+          {isCode ? null : (
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                edit(q.id, "");
+                if (committed !== "" && exam.allowRevision) saveAnswer.mutate({ questionId: q.id, answer: "" });
+              }}
+              disabled={value === "" || (committed !== "" && !exam.allowRevision)}
+            >
+              <Eraser aria-hidden="true" />
+              {t("exam.clear")}
+            </button>
+          )}
+          <span className="saved" aria-live="polite">
+            {saveState}
+          </span>
+          <span className="spacer" />
+          {next === null ? null : (
+            <button
+              type="button"
+              className="review-next"
+              onClick={() => {
+                if (!review.has(q.id)) toggleReview(q.id);
+                advanceFrom(q.id);
+              }}
+            >
+              {t("exam.markNext")}
+            </button>
+          )}
+          {isCode ? (
+            next === null ? null : (
+              <button type="button" onClick={() => goTo(next.id)}>
+                {t("exam.next")}
+                <ChevronRight aria-hidden="true" />
+              </button>
+            )
+          ) : (
+            <button
+              type="button"
+              className="save-next"
+              onClick={() => advanceFrom(q.id)}
+              disabled={saveAnswer.isPending || partTimeUp || (next === null && (!dirty || value.trim() === ""))}
+            >
+              {saveLabel}
+              {next === null ? null : <ChevronRight aria-hidden="true" />}
+            </button>
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
-    <>
-      <TopBar title={exam.title} offered={offered}>
-        {open ? <TimeLeft expiresAt={state.data.expiresAt} /> : null}
-      </TopBar>
-      <main className="page">
-        <header className="exam">
-          <h1>{exam.title}</h1>
-          <p className="sub">
-            {open ? (
-              <>
-                {t("exam.answeredOf", { answered: answered.size, total: exam.questions.length })}
-                {cameraOn === true ? (
-                  <span className="camera-pill" role="status">
-                    {t("camera.on")}
-                  </span>
-                ) : null}
-              </>
-            ) : (
-              t(`exam.state.${attemptState}`)
-            )}
-          </p>
-          {open ? (
-            <div className="progress" aria-hidden="true">
-              <span style={{ width: `${Math.round((answered.size / Math.max(1, exam.questions.length)) * 100)}%` }} />
-            </div>
-          ) : null}
-        </header>
-
-        {open && cameraOn === false ? (
-          <p className="offline" role="alert">
-            {t("camera.offBanner")}
-          </p>
-        ) : null}
-
-        {open && !online ? (
-          <p className="offline" role="status">
-            {t("exam.offline")}
-          </p>
-        ) : null}
-
-        {attemptState === "void" ? (
-          /*
-           * SPEC §6.2: being set aside without being told why is the situation
-           * this design objects to. The reason a person recorded is shown as they
-           * wrote it, not summarized and not softened.
-           */
-          <section className="card" aria-label={t("exam.voidTitle")}>
-            <h2 style={{ fontSize: "1rem", margin: "0 0 .4rem" }}>{t("exam.voidTitle")}</h2>
-            <p style={{ margin: 0 }}>{voidReason}</p>
-            <p className="notice" style={{ marginTop: ".75rem" }}>
-              {t("exam.voidNote")}
+    <div className="cbt">
+      <ExamBar
+        title={exam.title}
+        offered={offered}
+        clock={<Countdown expiresAt={state.data.expiresAt} />}
+        status={
+          cameraOn === true ? (
+            <span className="camera-pill" role="status">
+              {t("camera.on")}
+            </span>
+          ) : null
+        }
+        action={action}
+      />
+      {parts !== null ? <SectionSteps parts={parts} now={now} /> : null}
+      <div className="cbt-body">
+        <main className="cbt-main">
+          {cameraOn === false ? (
+            <p className="offline" role="alert">
+              {t("camera.offBanner")}
             </p>
-          </section>
-        ) : null}
-
-        {open ? (
+          ) : null}
+          {!online ? (
+            <p className="offline" role="status">
+              {t("exam.offline")}
+            </p>
+          ) : null}
           <Announcements
             items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
             onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
           />
-        ) : null}
+          {probe !== null ? (
+            <ProbePanel
+              prompt={probe.prompt}
+              streaming={probe.streaming}
+              onReply={async (reply) => {
+                await client.replyToProbe(probe.id, reply);
+                setProbe(null);
+                await queryClient.invalidateQueries({ queryKey: ["state"] });
+              }}
+            />
+          ) : null}
 
-        {probe !== null && open ? (
-          <ProbePanel
-            prompt={probe.prompt}
-            streaming={probe.streaming}
-            onReply={async (reply) => {
-              await client.replyToProbe(probe.id, reply);
-              setProbe(null);
-              await queryClient.invalidateQueries({ queryKey: ["state"] });
-            }}
-          />
-        ) : null}
+          {currentPart !== null && partTimeUp ? (
+            <p className="card notice-card" role="status">
+              {t("section.timeUp", { title: currentPart.title })}
+            </p>
+          ) : null}
 
-        {parts !== null && open ? <SectionSteps parts={parts} now={now} /> : null}
-
-        {open && currentPart !== null && partTimeUp ? (
-          <p className="card notice-card" role="status">
-            {t("section.timeUp", { title: currentPart.title })}
-          </p>
-        ) : null}
-
-        {open && parts !== null && (currentPart === null || partTimeUp) && nextPart !== null ? (
-          <section className="card section-intro" aria-labelledby="section-intro-title">
-            <p className="eyebrow">{t("section.introEyebrow")}</p>
-            <h2 id="section-intro-title">{nextPart.title}</h2>
-            <ul className="facts">
-              <li>{t("section.questions", { n: nextPart.questionIds.length })}</li>
-              <li>
-                {nextPart.durationMs === null
-                  ? t("section.untimed")
-                  : t("section.timed", { minutes: Math.round(nextPart.durationMs / 60_000) })}
-              </li>
-            </ul>
-            <p className="notice">{t("section.lockNote")}</p>
-            <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
-              {advance.isPending ? t("section.starting") : t("section.start", { title: nextPart.title })}
-            </button>
-          </section>
-        ) : null}
-
-        {open && shown.length > 1 ? (
-          <Palette
-            questions={shown.map((q) => {
-              const committed = answered.get(q.id) ?? "";
-              const typed = drafts[q.id];
-              return {
-                id: q.id,
-                number: exam.questions.indexOf(q) + 1,
-                answered: committed !== "",
-                draft: typed !== undefined && typed.trim() !== "" && typed !== committed,
-                marked: review.has(q.id),
-              };
-            })}
-          />
-        ) : null}
-
-        {shown.map((original_, at) => {
-          const index = exam.questions.indexOf(original_);
-          // A passage is shown once, above the first of the questions next to each other that share it.
-          // Read defensively: a server from before pictures and passages sends neither.
-          const passage = original_.passage ?? null;
-          const opensPassage = passage !== null && shown[at - 1]?.passage?.id !== passage.id;
-          const passageRun = opensPassage
-            ? shown.slice(at).findIndex((q) => q.passage?.id !== passage!.id) === -1
-              ? shown.length - at
-              : shown.slice(at).findIndex((q) => q.passage?.id !== passage!.id)
-            : 0;
-          // The question as this candidate reads it: in their language when it
-          // has been translated, unless they asked for the original.
-          const translation = language === "en" || original.has(original_.id) ? undefined : original_.translations?.[language];
-          const question = translation === undefined ? original_ : localised(original_, translation);
-          const shownIn: Language = translation === undefined ? "en" : language;
-          const committed = answered.get(question.id) ?? "";
-          const value = drafts[question.id] ?? committed;
-          const dirty = value !== committed;
-          const draftStatus = status[question.id];
-          const marked = review.has(question.id);
-          return (
-            <Fragment key={question.id}>
-              {opensPassage ? (
-                <PassageCard
-                  passage={passage}
-                  from={index + 1}
-                  to={exam.questions.indexOf(shown[at + passageRun - 1]!) + 1}
-                />
-              ) : null}
-              <section
-                className={`card question${marked ? " marked" : ""}${passage !== null ? " in-passage" : ""}`}
-                id={`q-${question.id}`}
-                aria-labelledby={`q-${question.id}-stem`}
-                onBlur={(e) => {
-                  // Only when focus leaves the question, not when it moves within it.
-                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) leave(question.id);
-                }}
-              >
-                <div className="q-head">
-                  <h2 lang={shownIn} id={`q-${question.id}-stem`} tabIndex={-1}>
-                    <span className="q-num">{index + 1}.</span>{" "}
-                    {/* A code question's statement is Markdown: its first paragraph heads it, the rest is below. */}
-                    {question.kind === "code" ? <span className="q-title">{inline(splitStem(question.stem).title || t("code.problem"))}</span> : question.stem}
-                  </h2>
-                  <span className="q-badges">
-                    <span className="marks">{question.maxScore === 1 ? t("exam.mark") : t("exam.marks", { n: question.maxScore })}</span>
-                    {(question.kind === "mcq" || question.kind === "numeric") && (question.negativeMarks ?? 0) > 0 ? (
-                      <span className="marks negative">{t("exam.negative", { n: question.negativeMarks })}</span>
-                    ) : null}
-                  </span>
-                </div>
-                <Figures images={question.images ?? []} />
-                {question.kind === "mcq" && question.multiple ? <p className="notice choose-all">{t("exam.chooseAll")}</p> : null}
-                {language !== "en" && original_.translations?.[language] !== undefined ? (
-                  <button
-                    type="button"
-                    className="quiet"
-                    onClick={() => {
-                      const next = new Set(original);
-                      if (next.has(original_.id)) next.delete(original_.id);
-                      else next.add(original_.id);
-                      setOriginal(next);
-                    }}
-                  >
-                    {shownIn === "en" ? t("exam.showTranslated", { language: LANGUAGE_NAMES[language] }) : t("exam.showOriginal")}
-                  </button>
-                ) : null}
-
-                <AnswerInput
-                  question={question}
-                  value={value}
-                  disabled={!open}
-                  onChange={(next) => edit(question.id, next)}
-                  onRun={(language, source, input) => client.runCode(question.id, language, source, input)}
-                  onSubmit={(language, source) => submitCode(question.id, language, source)}
-                  submitLabel={exam.allowRevision ? t("code.submit") : t("code.submitFinal")}
-                  number={index + 1}
-                  completion={exam.codeCompletion ?? false}
-                />
-
-                {open ? (
-                  <div className="row">
-                    {/* A code answer is committed by the workspace's Submit, which tests it too. */}
-                    {question.kind === "code" ? null : (
-                      <button
-                        type="button"
-                        className="secondary"
-                        disabled={!dirty || value.trim() === "" || saveAnswer.isPending}
-                        onClick={() => saveAnswer.mutate({ questionId: question.id, answer: value })}
-                      >
-                        {exam.allowRevision ? t("exam.saveAnswer") : t("exam.saveFinal")}
-                      </button>
-                    )}
-                    <button type="button" className={`quiet review-toggle${marked ? " on" : ""}`} aria-pressed={marked} onClick={() => toggleReview(question.id)}>
-                      <Flag aria-hidden="true" />
-                      {marked ? t("exam.marked") : t("exam.markReview")}
-                    </button>
-                    <span className="saved" aria-live="polite">
-                      {!dirty
-                        ? savedAt[question.id] !== undefined || committed !== ""
-                          ? t("exam.saved")
-                          : ""
-                        : draftStatus === "offline"
-                          ? t("exam.keptOffline")
-                          : draftStatus === "synced"
-                            ? t("exam.draftSaved")
-                            : draftStatus === "saving"
-                              ? t("exam.saving")
-                              : ""}
-                    </span>
-                  </div>
-                ) : null}
-              </section>
-            </Fragment>
-          );
-        })}
-
-        {open && currentPart !== null && !partTimeUp && nextPart !== null ? (
-          leaving ? (
-            <div className="card confirm" role="alertdialog" aria-labelledby="leave-section">
-              <p id="leave-section" style={{ margin: "0 0 .75rem" }}>
-                {t("section.confirm", { title: currentPart.title })}
-              </p>
-              <div className="row" style={{ marginTop: 0 }}>
-                <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
-                  {t("section.confirmYes", { title: currentPart.title })}
-                </button>
-                <button type="button" className="secondary" onClick={() => setLeaving(false)}>
-                  {t("section.stay")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="row">
-              <button type="button" onClick={() => setLeaving(true)}>
-                {t("section.next", { title: currentPart.title })}
+          {parts !== null && (currentPart === null || partTimeUp) && nextPart !== null ? (
+            <section className="card section-intro" aria-labelledby="section-intro-title">
+              <p className="eyebrow">{t("section.introEyebrow")}</p>
+              <h2 id="section-intro-title">{nextPart.title}</h2>
+              <ul className="facts">
+                <li>{t("section.questions", { n: nextPart.questionIds.length })}</li>
+                <li>
+                  {nextPart.durationMs === null
+                    ? t("section.untimed")
+                    : t("section.timed", { minutes: Math.round(nextPart.durationMs / 60_000) })}
+                </li>
+              </ul>
+              <p className="notice">{t("section.lockNote")}</p>
+              <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
+                {advance.isPending ? t("section.starting") : t("section.start", { title: nextPart.title })}
               </button>
-              <span className="notice">{t("section.lockNote")}</span>
-            </div>
-          )
-        ) : open && (parts === null || nextPart === null) ? (
-          <div className="finish">
-            <button
-              type="button"
-              className="large"
-              onClick={() => submit.mutate()}
-              disabled={submit.isPending || (answered.size === 0 && Object.keys(drafts).length === 0)}
-            >
-              {submit.isPending ? t("exam.submitting") : t("exam.submit")}
-            </button>
-            <span className="notice">{t("exam.submitNote")}</span>
-          </div>
-        ) : ledger.data !== undefined ? (
-          <Receipt ledger={ledger.data} myData={() => client.myData()} />
+            </section>
+          ) : null}
+
+          {question}
+        </main>
+
+        {shown.length > 0 ? (
+          <aside className="cbt-side">
+            <Palette questions={items} current={currentId} onGo={goTo} />
+          </aside>
         ) : null}
-      </main>
-    </>
+      </div>
+
+      {leaving && currentPart !== null ? (
+        <div className="scrim" onClick={(e) => e.target === e.currentTarget && setLeaving(false)}>
+          <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="leave-section">
+            <h2 id="leave-section">{t("section.confirm", { title: currentPart.title })}</h2>
+            <p className="notice">{t("section.lockNote")}</p>
+            <div className="dialog-actions">
+              <button type="button" className="secondary" onClick={() => setLeaving(false)} autoFocus>
+                {t("section.stay")}
+              </button>
+              <button type="button" onClick={() => advance.mutate()} disabled={advance.isPending}>
+                {t("section.confirmYes", { title: currentPart.title })}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {confirming ? (
+        <SubmitDialog
+          counts={counts}
+          pending={submit.isPending}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() => submit.mutate(undefined, { onSettled: () => setConfirming(false) })}
+        />
+      ) : null}
+    </div>
   );
 }
 
 /**
- * Time left in the exam.
- *
- * This is the exam's own window, which a candidate is entitled to see. It is
- * not a timer on the micro-viva — SPEC §8 rules that out, and the probe panel
- * shows none.
+ * What of the paper is in front of the candidate now: every question, or the
+ * current part's, or none while a section's time is up or the next waits to start.
  */
-function TimeLeft({ expiresAt }: { expiresAt: number }) {
-  const { t } = usePreferences();
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const remaining = Math.max(0, expiresAt - now);
-  const minutes = Math.floor(remaining / 60_000);
-  const hours = Math.floor(minutes / 60);
-  return (
-    <span className={`clock${remaining < 5 * 60_000 ? " urgent" : ""}`}>
-      <Clock aria-hidden="true" />
-      {remaining === 0 ? t("exam.timeUp") : t("exam.timeLeft", { time: hours > 0 ? `${hours}h ${minutes % 60}m` : `${minutes}m` })}
-    </span>
-  );
+function paperOf(data: CandidateState, now: number) {
+  const parts = data.parts ?? null;
+  const currentPart = parts?.find((p) => p.state === "current") ?? null;
+  const partTimeUp = currentPart?.endsAt != null && now >= currentPart.endsAt;
+  const nextPart = parts?.find((p) => p.state === "upcoming") ?? null;
+  const shown =
+    parts === null
+      ? data.exam.questions
+      : currentPart === null || partTimeUp
+        ? []
+        : data.exam.questions.filter((q) => currentPart.questionIds.includes(q.id));
+  return { parts, currentPart, partTimeUp, nextPart, shown };
 }
 
 /** The time now, ticking each second while `running`. */

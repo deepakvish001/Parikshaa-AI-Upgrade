@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, seedSitting, SHORT } from "./support.js";
+import { local, openQuestion, seedSitting, SHORT, submitAttempt } from "./support.js";
 
 /** ROADMAP §8, in a real browser: what an invigilator does reaches the candidate's open page without a reload. */
 
@@ -20,8 +20,9 @@ test("an announcement reaches a candidate's open page, and a reopened attempt op
   await expect(announcements).not.toContainText("explain in one line");
 
   // Submitted by accident…
+  await openQuestion(page, 2);
   await page.getByRole("textbox", { name: SHORT.stem }).fill("The interval halves.");
-  await page.getByRole("button", { name: "Submit attempt" }).click();
+  await submitAttempt(page);
   await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
 
   // …reopened by the invigilator, with a reason on the record.
@@ -35,5 +36,6 @@ test("an announcement reaches a candidate's open page, and a reopened attempt op
 
   await page.clock.fastForward(31_000);
   await expect(page.getByRole("button", { name: "Submit attempt" })).toBeVisible();
+  await openQuestion(page, 2);
   await expect(page.getByRole("textbox", { name: SHORT.stem })).toHaveValue("The interval halves.");
 });

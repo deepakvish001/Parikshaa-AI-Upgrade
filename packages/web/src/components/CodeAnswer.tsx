@@ -151,7 +151,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   // Full screen: below the page's top bar, so the clock stays in sight; the page behind does not scroll.
   useEffect(() => {
     if (!full) return;
-    const place = () => setTop(document.querySelector(".topbar")?.getBoundingClientRect().bottom ?? 0);
+    const place = () => setTop(document.querySelector(".exambar, .topbar")?.getBoundingClientRect().bottom ?? 0);
     place();
     window.addEventListener("resize", place);
     document.body.classList.add("workspace-open");
@@ -361,7 +361,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (aside !== undefined) {
     return (
-      <div className="workspace standalone">
+      <div className={`workspace standalone${prefs.dark && !lite ? " ws-dark" : ""}`}>
         <SplitPane
           direction="row"
           initial={44}
@@ -390,7 +390,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (full) {
     return (
-      <div className="workspace full" role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
+      <div className={`workspace full${prefs.dark && !lite ? " ws-dark" : ""}`} role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
         {toolbar}
         <SplitPane
           direction="row"

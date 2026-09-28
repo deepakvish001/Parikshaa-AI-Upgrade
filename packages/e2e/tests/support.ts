@@ -1,4 +1,4 @@
-import { expect, type APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 /** Seeding through the API, as an institution's own tooling would. */
 
@@ -118,4 +118,25 @@ export async function setPrivacyNotice(request: APIRequestContext, token: string
     },
   });
   expect(saved.status(), await saved.text()).toBe(200);
+}
+
+/** The question on screen: the paper shows one at a time, as a computer-based test does. */
+export const onScreen = (page: Page) => page.locator("section.qview");
+/** The actions under it: Previous, Clear response, Mark for review & next, Save & next. */
+export const actions = (page: Page) => page.locator(".qfoot");
+
+/** Open question `n` from the palette, unfolding it first where a phone folds it away. */
+export async function openQuestion(page: Page, n: number): Promise<void> {
+  const palette = page.getByRole("navigation", { name: "Questions" });
+  const toggle = palette.locator(".palette-toggle");
+  await expect(palette).toBeVisible();
+  if ((await toggle.isVisible()) && (await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  await palette.getByRole("button", { name: new RegExp(`^Question ${n}:`) }).click();
+  await expect(page.getByRole("heading", { name: new RegExp(`^${n}\\. `) })).toBeVisible();
+}
+
+/** Submit, through the summary a CBT shows first. */
+export async function submitAttempt(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Submit attempt" }).click();
+  await page.getByRole("dialog", { name: "Submit your attempt?" }).getByRole("button", { name: "Yes, submit" }).click();
 }

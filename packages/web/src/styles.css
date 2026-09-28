@@ -386,164 +386,6 @@ button.quiet.review-toggle.on {
   font-weight: var(--weight-semibold);
 }
 
-/* --- the question palette ---------------------------------------------------- */
-
-.palette {
-  margin-bottom: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
-}
-.palette-toggle {
-  width: 100%;
-  justify-content: flex-start;
-  gap: var(--space-3);
-  min-height: 3rem;
-  padding: 0 var(--space-4);
-  color: var(--text);
-  background: none;
-  border: none;
-  box-shadow: none;
-}
-.palette-toggle:hover:not(:disabled) {
-  background: var(--surface-2);
-  border-color: transparent;
-}
-.palette-toggle .palette-summary {
-  flex: 1;
-  text-align: right;
-}
-.palette-toggle svg {
-  transition: transform var(--duration) var(--ease);
-}
-.palette.open .palette-toggle svg {
-  transform: rotate(180deg);
-}
-.palette-body {
-  display: none;
-  padding: 0 var(--space-4) var(--space-4);
-}
-.palette.open .palette-body {
-  display: block;
-}
-.palette-title {
-  display: none;
-  margin: 0;
-  font-weight: var(--weight-semibold);
-}
-.palette-summary {
-  margin: 0 0 var(--space-3);
-  font-size: var(--text-xs);
-  font-weight: var(--weight-medium);
-  color: var(--text-muted);
-}
-.palette-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.pq {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-  width: 100%;
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-  padding: 0;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius);
-  box-shadow: none;
-}
-button.pq:hover:not(:disabled) {
-  color: var(--text);
-  background: var(--surface-2);
-  border-color: var(--primary);
-}
-.pq.answered,
-button.pq.answered:hover:not(:disabled) {
-  color: #fff;
-  background: var(--success);
-  border-color: var(--success);
-}
-.pq.draft {
-  background: var(--warning-soft);
-  border-color: var(--warning-border);
-}
-.pq.marked::after {
-  content: "";
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  width: 10px;
-  height: 10px;
-  background: var(--accent);
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-}
-.palette-legend {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-2) var(--space-3);
-  margin: var(--space-4) 0 0;
-  padding: var(--space-3) 0 0;
-  list-style: none;
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
-}
-.palette-legend li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.palette-legend .pq {
-  width: 1rem;
-  min-width: 1rem;
-  min-height: 1rem;
-  height: 1rem;
-  border-radius: 4px;
-}
-.palette-legend .pq.marked::after {
-  top: -3px;
-  right: -3px;
-  width: 7px;
-  height: 7px;
-  border-width: 1px;
-}
-
-/* On a wide screen the palette sits beside the paper, where it stays in view. */
-@media (min-width: 78rem) {
-  .palette {
-    position: fixed;
-    top: 5.25rem;
-    left: calc(50% + var(--page-width) / 2 + var(--space-6));
-    width: 15rem;
-    max-height: calc(100vh - 7rem);
-    margin: 0;
-    overflow-y: auto;
-  }
-  .palette-toggle {
-    display: none;
-  }
-  .palette-body,
-  .palette.open .palette-body {
-    display: block;
-    padding-top: var(--space-4);
-  }
-  .palette-title {
-    display: block;
-  }
-}
-
 /* --- the micro-viva: a question about the candidate's answer, never an alarm */
 
 .probe {
@@ -1276,86 +1118,8 @@ body.workspace-open {
   outline-offset: -2px;
 }
 
-/* --- sections with their own time (ROADMAP §3) ------------------------------ */
+/* --- sections with their own time (ROADMAP §3): the tabs are with the sitting above */
 
-.sections {
-  padding: var(--space-4) var(--space-5);
-}
-.sections ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  counter-reset: step;
-}
-.sections .step {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: var(--space-3);
-  align-items: center;
-  flex: 1 1 9rem;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  counter-increment: step;
-}
-.sections .step::before {
-  content: counter(step);
-  grid-row: span 2;
-  display: grid;
-  place-items: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  font-size: var(--text-xs);
-  font-weight: var(--weight-bold);
-  color: var(--text-muted);
-  background: var(--surface-sunken);
-  border-radius: 50%;
-}
-.sections .step.current {
-  background: var(--primary-soft);
-  border-color: var(--primary);
-}
-.sections .step.current::before {
-  color: var(--text-on-primary);
-  background: var(--primary);
-}
-.sections .step.done::before {
-  content: "✓";
-  color: var(--success);
-  background: var(--success-soft);
-}
-.sections .step.done .step-title {
-  color: var(--text-muted);
-}
-.sections .step-title {
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-}
-.sections .step-state {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-}
-.section-clock {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-4) 0 0;
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-sm);
-  font-weight: var(--weight-semibold);
-  font-variant-numeric: tabular-nums;
-  color: var(--primary);
-  background: var(--primary-soft);
-  border-radius: var(--radius-full);
-}
-.section-clock.urgent {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
 .section-intro {
   text-align: center;
   padding: var(--space-10) var(--space-8);
@@ -1472,4 +1236,951 @@ body.workspace-open {
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: 4px;
+}
+
+/* --- the sitting: a computer-based test, one question at a time ------------ */
+/*
+ * Laid out the way candidates in India already know from JEE, NEET and the
+ * hiring platforms: the clock in an ink bar across the top, the paper in the
+ * middle, the question palette to the right with its five familiar shapes,
+ * and Save & next where the thumb or the mouse expects it.
+ */
+
+:root {
+  --review: #6b3fd4;
+  --review-soft: #f1ebff;
+  --review-border: #d6c7fb;
+  --bar-height: 4rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --review: #b69cff;
+    --review-soft: #241a3f;
+    --review-border: #3f2f6d;
+  }
+}
+:root[data-theme="dark"] {
+  --review: #b69cff;
+  --review-soft: #241a3f;
+  --review-border: #3f2f6d;
+}
+
+.cbt {
+  min-height: 100vh;
+  background: var(--bg);
+}
+
+.exambar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  color: var(--chrome-text);
+  background:
+    radial-gradient(120% 180% at 50% -40%, rgb(74 92 224 / 0.35), transparent 60%),
+    linear-gradient(180deg, var(--chrome-2), var(--chrome));
+  border-bottom: 1px solid var(--chrome-border);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.2), 0 8px 24px rgb(8 11 25 / 0.18);
+}
+.exambar-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 96rem;
+  min-height: var(--bar-height);
+  margin: 0 auto;
+  padding: var(--space-2) var(--space-6);
+}
+.exambar-start,
+.exambar-end {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.exambar-end {
+  justify-content: flex-end;
+}
+.exambar .brand-mark {
+  flex: none;
+  font-size: var(--text-md);
+  color: var(--chrome-text-strong);
+}
+.exambar .divider {
+  flex: none;
+  width: 1px;
+  height: 1.5rem;
+  background: var(--chrome-border);
+}
+.exambar h1.exam-name {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  letter-spacing: 0;
+  color: var(--chrome-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exambar .camera-pill {
+  flex: none;
+  color: #7ee2b3;
+  background: rgb(83 199 148 / 0.12);
+  border-color: rgb(83 199 148 / 0.3);
+}
+.exambar .prefs {
+  flex-wrap: nowrap;
+  margin: 0;
+  white-space: nowrap;
+  color: var(--chrome-text);
+}
+.exambar .prefs label[for="pref-language"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.exambar .prefs label {
+  color: var(--chrome-text);
+}
+.exambar .prefs select {
+  min-height: 2.25rem;
+  color: var(--chrome-text-strong);
+  background-color: rgb(255 255 255 / 0.06);
+  border-color: rgb(255 255 255 / 0.16);
+}
+.exambar .prefs select option {
+  color: var(--gray-900);
+  background: #fff;
+}
+.exambar .prefs input[type="checkbox"] {
+  accent-color: var(--saffron-500);
+}
+button.exambar-action {
+  min-height: 2.5rem;
+  padding: 0 var(--space-5);
+  color: #1b1203;
+  background: var(--saffron-500);
+  border-color: var(--saffron-500);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.25) inset, 0 6px 16px rgb(242 140 40 / 0.28);
+}
+button.exambar-action:hover:not(:disabled) {
+  background: #f59b43;
+  border-color: #f59b43;
+}
+
+.countdown {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 0.3rem var(--space-5) 0.35rem;
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: var(--radius-lg);
+}
+.countdown-label {
+  font-size: 0.625rem;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chrome-text);
+  opacity: 0.8;
+}
+.countdown-digits {
+  font-family: var(--font-mono);
+  font-size: 1.375rem;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  color: var(--chrome-text-strong);
+}
+.countdown.soon .countdown-digits {
+  color: #ffc978;
+}
+.countdown.urgent {
+  background: rgb(242 128 111 / 0.14);
+  border-color: rgb(242 128 111 / 0.45);
+  animation: urgent 2s var(--ease) infinite;
+}
+.countdown.urgent .countdown-digits {
+  color: #ffb4a8;
+}
+@keyframes urgent {
+  50% {
+    box-shadow: 0 0 0 5px rgb(242 128 111 / 0.12);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .countdown.urgent {
+    animation: none;
+  }
+}
+
+/* The sections of a sectioned paper: tabs under the bar, as JEE lays out its subjects. */
+.sections {
+  position: sticky;
+  top: var(--bar-height);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-6);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.sections ol {
+  display: flex;
+  gap: var(--space-1);
+  margin: 0 auto 0 0;
+  padding: 0;
+  overflow-x: auto;
+  list-style: none;
+  counter-reset: step;
+}
+.sections .step {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  white-space: nowrap;
+  counter-increment: step;
+}
+.sections .step::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  font-size: 0.6875rem;
+  font-weight: var(--weight-bold);
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  border-radius: 50%;
+}
+.sections .step::after {
+  content: "";
+  position: absolute;
+  inset: auto var(--space-3) -1px;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+}
+.sections .step.current::after {
+  background: var(--primary);
+}
+.sections .step.current::before {
+  color: var(--text-on-primary);
+  background: var(--primary);
+}
+.sections .step.done::before {
+  content: "✓";
+  color: var(--success);
+  background: var(--success-soft);
+}
+.sections .step-title {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+.sections .step.upcoming .step-title,
+.sections .step.done .step-title {
+  color: var(--text-muted);
+}
+.sections .step-state {
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+}
+.section-clock {
+  flex: none;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-radius: var(--radius-full);
+}
+.section-clock.urgent {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.cbt-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  align-items: start;
+  gap: var(--space-6);
+  max-width: 96rem;
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+.cbt-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.cbt-main > * {
+  margin: 0;
+}
+
+/* The question */
+.card.qview {
+  scroll-margin-top: calc(var(--bar-height) + 4rem);
+  /* Tall enough that the actions sit at the foot of the window, where a CBT puts them. */
+  min-height: calc(100vh - var(--bar-height) - 10.5rem);
+  padding: var(--space-6) var(--space-8) var(--space-8);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+.card.qview:focus-within {
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+.card.qview.marked {
+  border-color: var(--review-border);
+  box-shadow: inset 4px 0 0 var(--review), var(--shadow-sm);
+}
+.q-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px dashed var(--border-strong);
+}
+.q-of {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  color: var(--text);
+}
+.kind-chip {
+  padding: 0.125rem var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--primary);
+  background: var(--primary-soft);
+  border: 1px solid var(--primary-soft-border);
+  border-radius: var(--radius-full);
+}
+.q-meta .q-badges {
+  flex: none;
+}
+.q-meta button.review-toggle {
+  min-height: 2rem;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+}
+.q-meta button.review-toggle.on {
+  color: var(--review);
+  background: var(--review-soft);
+}
+h2.q-stem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-medium);
+  line-height: 1.6;
+  letter-spacing: -0.005em;
+}
+h2.q-stem:focus {
+  outline: none;
+}
+h2.q-stem:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.qview label.option {
+  min-height: 3.5rem;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-md);
+  border-radius: var(--radius-lg);
+}
+.qview label.option input {
+  margin-top: 0;
+}
+.qview .opt-key {
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: var(--text-sm);
+  border-radius: var(--radius);
+}
+.qview label.option:has(input:checked) {
+  background: var(--primary-soft);
+}
+.qview input[type="text"],
+.qview input:not([type]),
+.qview input[inputmode] {
+  max-width: 20rem;
+  min-height: 3rem;
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+.qview textarea:not(.code) {
+  min-height: 14rem;
+  line-height: 1.65;
+}
+.qview.is-code {
+  padding: var(--space-5) var(--space-6) var(--space-6);
+}
+.cbt:has(.sections) .card.qview {
+  min-height: calc(100vh - var(--bar-height) - 13.5rem);
+}
+.qsplit .card.qview,
+.cbt-main:has(.probe) .card.qview {
+  min-height: 0;
+}
+
+/* A passage beside the question about it, each scrolling on its own. */
+.qsplit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--space-4);
+}
+.qsplit > .passage {
+  position: sticky;
+  top: calc(var(--bar-height) + var(--space-6));
+  max-height: calc(100vh - var(--bar-height) - 9rem);
+  margin: 0;
+  overflow-y: auto;
+  border-radius: var(--radius-xl);
+}
+
+/* The actions under the question, pinned to the bottom of the window. */
+.qfoot {
+  position: sticky;
+  bottom: var(--space-4);
+  z-index: 10;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+}
+.qfoot button {
+  min-height: 2.75rem;
+  padding: 0 var(--space-4);
+  font-size: var(--text-base);
+}
+.qfoot .spacer {
+  flex: 1;
+}
+.qfoot .saved {
+  padding: 0 var(--space-2);
+}
+.qfoot button.ghost {
+  color: var(--text-muted);
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+.qfoot button.ghost:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.qfoot button.review-next {
+  color: var(--review);
+  background: var(--review-soft);
+  border-color: var(--review-border);
+  box-shadow: none;
+}
+.qfoot button.review-next:hover:not(:disabled) {
+  color: #fff;
+  background: var(--review);
+  border-color: var(--review);
+}
+.qfoot button.save-next {
+  color: #fff;
+  background: var(--success);
+  border-color: var(--success);
+  padding-right: var(--space-3);
+}
+.qfoot button.save-next:hover:not(:disabled) {
+  filter: brightness(0.94);
+  background: var(--success);
+  border-color: var(--success);
+}
+
+/* --- the question palette ---------------------------------------------------- */
+
+.cbt-side {
+  position: sticky;
+  top: calc(var(--bar-height) + var(--space-6));
+  min-width: 0;
+}
+.palette {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+.palette-toggle {
+  display: none;
+  width: 100%;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  min-height: 3rem;
+  padding: 0 var(--space-4);
+  color: var(--text);
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+.palette-toggle:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+.palette-toggle .palette-summary {
+  flex: 1;
+  margin: 0;
+  text-align: right;
+}
+.palette-toggle svg {
+  transition: transform var(--duration) var(--ease);
+}
+.palette.open .palette-toggle svg {
+  transform: rotate(180deg);
+}
+.palette-body {
+  max-height: calc(100vh - var(--bar-height) - 4rem);
+  overflow-y: auto;
+  padding: var(--space-5);
+}
+.palette-head {
+  margin-bottom: var(--space-4);
+}
+.palette-title {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+.palette-summary {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  color: var(--text-muted);
+}
+.meter {
+  height: 6px;
+  margin-top: var(--space-3);
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-full);
+}
+.meter > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 70%, #7ee2b3));
+  border-radius: inherit;
+  transition: width 400ms var(--ease);
+}
+.palette-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: 0 0 var(--space-4);
+  list-style: none;
+  font-size: var(--text-xs);
+  line-height: 1.3;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+.palette-legend li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.palette-legend li:nth-last-child(2) {
+  grid-column: span 2;
+}
+.palette-legend small {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+.palette-legend .pq {
+  flex: none;
+  width: 1.75rem;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  font-size: 0.6875rem;
+}
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(2.5rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.palette-foot {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+/*
+ * The five shapes. Each is drawn on a layer behind the number, so a cut
+ * corner never clips the focus ring or the ring round the current question.
+ */
+.pq {
+  --pq-bg: var(--surface);
+  --pq-fg: var(--text);
+  --pq-border: var(--border-strong);
+  --pq-clip: none;
+  --pq-radius: var(--radius);
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  place-items: center;
+  width: 100%;
+  min-width: 2.25rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--pq-fg);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: none;
+}
+.pq::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--pq-bg);
+  border: 1px solid var(--pq-border);
+  border-radius: var(--pq-radius);
+  clip-path: var(--pq-clip);
+  transition: filter var(--duration) var(--ease);
+}
+button.pq:hover:not(:disabled) {
+  color: var(--pq-fg);
+  background: transparent;
+  border-color: transparent;
+}
+button.pq:hover:not(:disabled)::before {
+  filter: brightness(0.94);
+}
+button.pq[aria-current="step"] {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+}
+.pq.not-visited {
+  --pq-bg: var(--surface-sunken);
+  --pq-fg: var(--text-muted);
+  --pq-border: var(--border);
+}
+.pq.not-answered {
+  --pq-bg: var(--danger);
+  --pq-fg: #fff;
+  --pq-border: transparent;
+  --pq-clip: polygon(0 0, 100% 0, 100% 72%, 78% 100%, 22% 100%, 0 72%);
+  --pq-radius: 4px;
+}
+.pq.answered {
+  --pq-bg: var(--success);
+  --pq-fg: #fff;
+  --pq-border: transparent;
+  --pq-clip: polygon(22% 0, 78% 0, 100% 28%, 100% 100%, 0 100%, 0 28%);
+  --pq-radius: 4px;
+}
+.pq.draft {
+  --pq-bg: var(--warning-soft);
+  --pq-fg: var(--warning);
+  --pq-border: var(--warning-border);
+}
+.pq.marked,
+.pq.answered-marked {
+  --pq-bg: var(--review);
+  --pq-fg: #fff;
+  --pq-border: transparent;
+  --pq-clip: none;
+  --pq-radius: 50%;
+}
+.pq.answered-marked::after {
+  content: "";
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--success) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='white' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat;
+  border: 1.5px solid var(--surface);
+  border-radius: 50%;
+}
+.palette-grid .pq.marked,
+.palette-grid .pq.answered-marked {
+  aspect-ratio: 1;
+  width: auto;
+  justify-self: center;
+  min-width: 2.5rem;
+}
+
+/* --- dialogs: submitting, and leaving a section ------------------------------ */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(8 11 25 / 0.55);
+  backdrop-filter: blur(2px);
+  animation: fade var(--duration) var(--ease);
+}
+.dialog {
+  width: min(30rem, 100%);
+  padding: var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  animation: rise 200ms var(--ease);
+}
+.dialog h2 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-lg);
+  line-height: 1.4;
+}
+.tally {
+  display: grid;
+  gap: 0;
+  margin: 0 0 var(--space-4);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.tally > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-4);
+}
+.tally > div + div {
+  border-top: 1px solid var(--border);
+}
+.tally dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+.tally dd {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.tally .pq {
+  width: 1.4rem;
+  min-width: 1.4rem;
+  height: 1.4rem;
+  min-height: 1.4rem;
+}
+.dialog-warn {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--warning);
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius);
+}
+.dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+}
+.dialog-actions button {
+  min-height: 2.75rem;
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* Laptops: a narrower palette. Tablets and phones: the palette folds above the paper. */
+@media (max-width: 80rem) {
+  .cbt-body {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: var(--space-4);
+    padding: var(--space-4);
+  }
+}
+@media (max-width: 64rem) {
+  .exambar-inner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "start end"
+      "clock clock";
+    row-gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+  }
+  .exambar-start {
+    grid-area: start;
+  }
+  .exambar-end {
+    grid-area: end;
+  }
+  .exambar-clock {
+    grid-area: clock;
+    justify-self: stretch;
+  }
+  .countdown {
+    grid-auto-flow: column;
+    justify-content: center;
+    align-items: baseline;
+    gap: var(--space-3);
+    padding: 0.2rem var(--space-3);
+  }
+  .countdown-digits {
+    font-size: var(--text-lg);
+  }
+  /* The paper's name stays the page's heading for a screen reader, and out of a crowded bar. */
+  .exambar h1.exam-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .exambar .divider {
+    display: none;
+  }
+  .sections {
+    position: static;
+    padding: 0 var(--space-3);
+  }
+  .cbt-body {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--space-3);
+  }
+  .cbt-side {
+    position: static;
+    order: -1;
+  }
+  .palette-toggle {
+    display: flex;
+  }
+  .palette-body {
+    display: none;
+    max-height: none;
+    padding-top: 0;
+  }
+  .palette.open .palette-body {
+    display: block;
+  }
+  .palette-head {
+    display: none;
+  }
+  .qsplit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .qsplit > .passage {
+    position: static;
+    max-height: 40vh;
+  }
+}
+@media (max-width: 40rem) {
+  .exambar .prefs .inline:last-child {
+    display: none;
+  }
+  button.exambar-action {
+    padding: 0 var(--space-3);
+  }
+  button.exambar-action svg {
+    display: none;
+  }
+  .card.qview {
+    min-height: 0;
+    padding: var(--space-4) var(--space-4) var(--space-5);
+  }
+  .q-meta button.review-toggle {
+    margin-left: 0;
+  }
+  .qfoot {
+    bottom: 0;
+    margin: 0 calc(-1 * var(--space-3));
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  .qfoot button {
+    flex: 1 1 auto;
+    padding: 0 var(--space-3);
+  }
+  .qfoot .spacer,
+  .qfoot .saved {
+    display: none;
+  }
+}
+
+/* A code question: the actions sit under the workspace rather than over the editor. */
+.cbt-main:has(.is-code) .qfoot {
+  position: static;
+  box-shadow: var(--shadow-sm);
+}
+
+/*
+ * The dark editor darkens the whole workspace around it, as the coding
+ * platforms do, so the eye is not pulled between a black editor and white
+ * panes. The same roles, re-valued, only inside the workspace.
+ */
+.workspace.ws-dark {
+  --bg: #0b0f1c;
+  --surface: #131a2a;
+  --surface-2: #182033;
+  --surface-sunken: #0f1524;
+  --border: #242d44;
+  --border-strong: #323c57;
+  --text: #e6e9f3;
+  --text-muted: #a3abc1;
+  --text-subtle: #737c95;
+  --primary: #8b98fa;
+  --primary-hover: #a3adfb;
+  --primary-soft: #1b2248;
+  --primary-soft-border: #2f3a78;
+  --success: #53c794;
+  --success-soft: #11291f;
+  --success-border: #1f4a37;
+  --danger: #f2806f;
+  --danger-soft: #2e1715;
+  --danger-border: #5a2923;
+  --warning: #f1b65c;
+  --warning-soft: #2a2011;
+  --text-on-primary: #0b0f1c;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: dark;
+}
+.workspace.ws-dark button.submit,
+.workspace.ws-dark .ws-actions button.submit {
+  color: #06140e;
 }

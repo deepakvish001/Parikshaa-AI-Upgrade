@@ -75,12 +75,13 @@ describe("the page in Hindi", () => {
 
     expect(document.documentElement.lang).toBe("hi");
     expect(localStorage.getItem("parikshaa.language")).toBe("hi");
-    expect(screen.getByText("3 में से 0 के उत्तर दिए")).toBeInTheDocument();
-    expect(screen.getByText(/^\d+m बाकी$/)).toBeInTheDocument();
+    expect(screen.getByText("प्रश्न 1 / 3")).toBeInTheDocument();
+    expect(screen.getByRole("timer", { name: /^\d+m बाकी$/ })).toHaveTextContent("शेष समय");
     const heading = screen.getByRole("heading", { name: /कौन सा सॉर्ट स्थिर है\?/ });
     expect(heading).toHaveAttribute("lang", "hi");
     expect(screen.getByRole("radio", { name: "मर्जसॉर्ट" })).toBeInTheDocument();
     // Not translated: shown as written, and marked as English for a screen reader.
+    await userEvent.click(screen.getByRole("button", { name: /^प्रश्न 2:/ }));
     expect(screen.getByRole("heading", { name: /Why does it terminate\?/ })).toHaveAttribute("lang", "en");
     expect(screen.getAllByRole("button", { name: "प्रयास जमा करें" })).toHaveLength(1);
   });
@@ -97,9 +98,9 @@ describe("the page in Hindi", () => {
     localStorage.setItem("parikshaa.language", "hi");
     const client = stubClient();
     renderApp(<App client={client} />);
-    const card = (await screen.findByRole("heading", { name: /कौन सा सॉर्ट/ })).closest("section")!;
-    await userEvent.click(within(card).getByRole("radio", { name: "मर्जसॉर्ट" }));
-    await userEvent.click(within(card).getByRole("button", { name: "उत्तर सहेजें" }));
+    await screen.findByRole("heading", { name: /कौन सा सॉर्ट/ });
+    await userEvent.click(screen.getByRole("radio", { name: "मर्जसॉर्ट" }));
+    await userEvent.click(screen.getByRole("button", { name: "सहेजें और आगे" }));
     expect(client.saveAnswer).toHaveBeenCalledWith("q-mcq", "1");
   });
 
@@ -107,6 +108,7 @@ describe("the page in Hindi", () => {
     renderApp(<App client={stubClient()} />);
     await screen.findByRole("heading", { name: "Algorithms" });
     await userEvent.selectOptions(screen.getByLabelText("Language"), "ta");
+    await userEvent.click(screen.getByRole("button", { name: /^கேள்வி 2:/ }));
     expect(screen.getByRole("heading", { name: /ஏன் நிற்கிறது\?/ })).toHaveAttribute("lang", "ta");
     expect(screen.getByRole("button", { name: "முயற்சியைச் சமர்ப்பி" })).toBeInTheDocument();
   });
@@ -117,9 +119,9 @@ describe("low-bandwidth mode", () => {
     localStorage.setItem("parikshaa.lite", "1");
     const client = stubClient();
     renderApp(<App client={client} />);
-    const card = (await screen.findByRole("heading", { name: /Which sort is stable\?/ })).closest("section")!;
-    await userEvent.click(within(card).getByRole("radio", { name: "mergesort" }));
-    await userEvent.click(within(card).getByRole("button", { name: "Save answer" }));
+    await screen.findByRole("heading", { name: /Which sort is stable\?/ });
+    await userEvent.click(screen.getByRole("radio", { name: "mergesort" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save & next" }));
 
     expect(await screen.findByText("Why mergesort?")).toBeInTheDocument();
     expect(client.probeOnce).toHaveBeenCalled();
@@ -129,6 +131,7 @@ describe("low-bandwidth mode", () => {
   it("answers code in a plain text area, never downloading the editor", async () => {
     localStorage.setItem("parikshaa.lite", "1");
     renderApp(<App client={stubClient()} />);
+    await userEvent.click(await screen.findByRole("button", { name: /^Question 3:/ }));
     const box = await screen.findByRole("textbox", { name: /^Code for question \d+$/ });
     expect(box.tagName).toBe("TEXTAREA");
     expect(document.querySelector(".cm-editor")).toBeNull();
