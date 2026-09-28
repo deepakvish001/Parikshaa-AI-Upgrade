@@ -799,6 +799,36 @@ export class ConsoleClient {
     return this.#request<PracticeSimilarity>(`/practice-admin/problems/${encodeURIComponent(problemId)}/similarity`);
   }
 
+  // --- prep (ROADMAP §16) -----------------------------------------------------------
+
+  async prepTracks(): Promise<readonly PrepTrack[]> {
+    return (await this.#request<{ tracks: PrepTrack[] }>("/practice-admin/tracks")).tracks;
+  }
+
+  saveTrack(id: string | null, draft: PrepTrackDraft): Promise<PrepTrack> {
+    return id === null
+      ? this.#request("/practice-admin/tracks", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/tracks/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async prepLessons(): Promise<readonly PrepLesson[]> {
+    return (await this.#request<{ lessons: PrepLesson[] }>("/practice-admin/lessons")).lessons;
+  }
+
+  saveLesson(id: string | null, draft: PrepLessonDraft): Promise<PrepLesson> {
+    return id === null
+      ? this.#request("/practice-admin/lessons", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/lessons/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  potdSchedule(): Promise<{ readonly today: string; readonly days: readonly { readonly day: string; readonly problemId: string }[] }> {
+    return this.#request("/practice-admin/potd");
+  }
+
+  async setPotd(day: string, problemId: string | null): Promise<void> {
+    await this.#request(`/practice-admin/potd/${encodeURIComponent(day)}`, { method: "PUT", body: JSON.stringify({ problemId }) });
+  }
+
   async practiceLearners(): Promise<readonly PracticeLearner[]> {
     return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
   }
@@ -1325,3 +1355,42 @@ export interface LtiPlatform extends LtiPlatformInput {
   readonly enabled: boolean;
   readonly tool: { readonly toolUrl: string; readonly loginUrl: string; readonly redirectUrl: string; readonly jwksUrl: string; readonly customParameters: string };
 }
+
+// --- prep (ROADMAP §16) ---------------------------------------------------------------
+
+export interface PrepTrack {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly position: number;
+  readonly published: boolean;
+  readonly updatedAt: string;
+  readonly modules: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly position: number;
+    readonly items: readonly { readonly id: string; readonly position: number; readonly problemId: string | null; readonly lessonId: string | null }[];
+  }[];
+}
+
+export interface PrepTrackDraft {
+  readonly title: string;
+  readonly slug?: string;
+  readonly description: string;
+  readonly published: boolean;
+  readonly modules: readonly { readonly title: string; readonly items: readonly ({ readonly problemId: string } | { readonly lessonId: string })[] }[];
+}
+
+export interface PrepLesson {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly body: string;
+  readonly videoUrl: string;
+  readonly estMinutes: number;
+  readonly published: boolean;
+  readonly updatedAt: string;
+}
+
+export type PrepLessonDraft = Omit<PrepLesson, "id" | "slug" | "updatedAt"> & { readonly slug?: string };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleCheck, CircleDashed, Flame, Lock, LogIn, MessageSquare, Search, ShieldCheck, Trophy } from "lucide-react";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
@@ -26,6 +26,24 @@ import {
   type Submission,
   type Verdict,
 } from "./client.ts";
+import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context, type Nav } from "./parts.tsx";
+import { navWord } from "./prep-nav.ts";
+
+// The prep pages come in a chunk of their own, when one is first opened.
+const prep = () => import("./PrepPages.tsx");
+const HomePage = lazy(() => prep().then((m) => ({ default: m.HomePage })));
+const TracksPage = lazy(() => prep().then((m) => ({ default: m.TracksPage })));
+const TrackPage = lazy(() => prep().then((m) => ({ default: m.TrackPage })));
+const LessonPage = lazy(() => prep().then((m) => ({ default: m.LessonPage })));
+const PlanPage = lazy(() => prep().then((m) => ({ default: m.PlanPage })));
+const RevisePage = lazy(() => prep().then((m) => ({ default: m.RevisePage })));
+const ListsPage = lazy(() => prep().then((m) => ({ default: m.ListsPage })));
+const NotesPage = lazy(() => prep().then((m) => ({ default: m.NotesPage })));
+const PotdPage = lazy(() => prep().then((m) => ({ default: m.PotdPage })));
+const CoinsPage = lazy(() => prep().then((m) => ({ default: m.CoinsPage })));
+const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
+const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
+const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
 import "./practice.css";
 
 /**
@@ -44,6 +62,16 @@ export type Route =
   | { readonly page: "contest"; readonly slug: string }
   | { readonly page: "leaderboard" }
   | { readonly page: "progress" }
+  | { readonly page: "home" }
+  | { readonly page: "tracks" }
+  | { readonly page: "track"; readonly slug: string }
+  | { readonly page: "lesson"; readonly slug: string }
+  | { readonly page: "plan"; readonly track: string | undefined }
+  | { readonly page: "revise" }
+  | { readonly page: "lists" }
+  | { readonly page: "notes" }
+  | { readonly page: "potd" }
+  | { readonly page: "coins" }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -67,6 +95,24 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "leaderboard" };
     case "progress":
       return { page: "progress" };
+    case "home":
+      return { page: "home" };
+    case "tracks":
+      return second === undefined ? { page: "tracks" } : { page: "track", slug: second };
+    case "lessons":
+      return second === undefined ? { page: "tracks" } : { page: "lesson", slug: second };
+    case "plan":
+      return { page: "plan", track: query.get("track") ?? undefined };
+    case "revise":
+      return { page: "revise" };
+    case "lists":
+      return { page: "lists" };
+    case "notes":
+      return { page: "notes" };
+    case "potd":
+      return { page: "potd" };
+    case "coins":
+      return { page: "coins" };
     case "signin":
       return { page: "signin", next };
     case "signup":
@@ -74,25 +120,6 @@ export function parseRoute(pathname: string, search: string): Route {
     default:
       return { page: "problems" };
   }
-}
-
-interface Nav {
-  readonly site: string;
-  readonly href: (path: string) => string;
-  readonly go: (path: string) => void;
-}
-
-function Link({ nav, to, children, className, current }: { readonly nav: Nav; readonly to: string; readonly children: ReactNode; readonly className?: string; readonly current?: boolean }) {
-  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
-    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    nav.go(to);
-  };
-  return (
-    <a href={nav.href(to)} onClick={onClick} {...(className === undefined ? {} : { className })} {...(current ? { "aria-current": "page" as const } : {})}>
-      {children}
-    </a>
-  );
 }
 
 // --- the app -----------------------------------------------------------------------------
@@ -125,7 +152,8 @@ function arrival(site: string): { session: string | null; verify: string | null;
 }
 
 function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: string }) {
-  const { t } = usePreferences();
+  const { t, language } = usePreferences();
+  const p = (word: Parameters<typeof navWord>[1]) => navWord(language, word);
   const queryClient = useQueryClient();
   const [arrived] = useState(() => arrival(site));
   const [token, setToken] = useState<string | null>(() => loadToken(site));
@@ -189,7 +217,7 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
       saveToken(site, next);
       setToken(next);
       void queryClient.invalidateQueries({ queryKey: ["practice", site] });
-      nav.go(then ?? "/problems");
+      nav.go(then ?? "/home");
     },
     [site, queryClient, nav],
   );
@@ -242,9 +270,27 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <span className="divider" aria-hidden="true" />
           <span className="exam-name">{info.data.title}</span>
           <nav aria-label={t("practice.nav")} className="practice-nav">
+            {learner === null ? null : (
+              <Link nav={nav} to="/home" current={here("/home")}>
+                {p("home")}
+              </Link>
+            )}
+            <Link nav={nav} to="/tracks" current={here("/tracks") || here("/lessons")}>
+              {p("tracks")}
+            </Link>
             <Link nav={nav} to="/problems" current={here("/problems") || location.path === nav.href("")}>
               {t("practice.problems")}
             </Link>
+            {learner === null ? null : (
+              <>
+                <Link nav={nav} to="/plan" current={here("/plan")}>
+                  {p("plan")}
+                </Link>
+                <Link nav={nav} to="/revise" current={here("/revise")}>
+                  {p("revise")}
+                </Link>
+              </>
+            )}
             <Link nav={nav} to="/contests" current={here("/contests")}>
               {t("practice.contests")}
             </Link>
@@ -286,6 +332,7 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
             )}
           </div>
         )}
+        <Suspense fallback={<p className="notice">{t("practice.loading")}</p>}>
         {route.page === "problems" ? (
           <ProblemsPage {...context} welcome={info.data.welcome} />
         ) : route.page === "problem" ? (
@@ -296,6 +343,30 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <ContestPage {...context} slug={route.slug} />
         ) : route.page === "leaderboard" ? (
           <LeaderboardPage {...context} />
+        ) : route.page === "tracks" ? (
+          <TracksPage {...context} />
+        ) : route.page === "track" ? (
+          <TrackPage {...context} slug={route.slug} />
+        ) : route.page === "lesson" ? (
+          <LessonPage {...context} slug={route.slug} />
+        ) : route.page === "potd" ? (
+          <PotdPage {...context} />
+        ) : route.page === "home" || route.page === "plan" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
+          learner === null ? (
+            <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
+          ) : route.page === "home" ? (
+            <HomePage {...context} learner={learner} />
+          ) : route.page === "plan" ? (
+            <PlanPage {...context} learner={learner} track={route.track} />
+          ) : route.page === "revise" ? (
+            <RevisePage {...context} learner={learner} />
+          ) : route.page === "lists" ? (
+            <ListsPage {...context} learner={learner} />
+          ) : route.page === "notes" ? (
+            <NotesPage {...context} learner={learner} />
+          ) : (
+            <CoinsPage {...context} learner={learner} />
+          )
         ) : route.page === "progress" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next="/progress" />
@@ -305,24 +376,13 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
         ) : (
           <AccountForm {...context} mode={route.page} next={route.next} onSignedIn={signedIn} google={options.data?.google === true} />
         )}
+        </Suspense>
       </main>
     </div>
   );
 }
 
-interface Context {
-  readonly client: PracticeClient;
-  readonly nav: Nav;
-  readonly learner: Learner | null;
-  readonly site: string;
-}
-
 // --- small parts ----------------------------------------------------------------------------
-
-function DifficultyPill({ difficulty }: { readonly difficulty: Difficulty }) {
-  const { t } = usePreferences();
-  return <span className={`difficulty ${difficulty}`}>{t(`practice.difficulty.${difficulty}` as MessageKey)}</span>;
-}
 
 function StandingIcon({ status }: { readonly status: Standing }) {
   const { t } = usePreferences();
@@ -362,40 +422,6 @@ function span(ms: number): string {
   const hms = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   return d > 0 ? `${d}d ${hms}` : hms;
 }
-
-function useWhen() {
-  const { language } = usePreferences();
-  return useCallback(
-    (iso: string, withTime = true) =>
-      new Intl.DateTimeFormat(`${language}-IN`, {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-        ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
-      }).format(new Date(iso)),
-    [language],
-  );
-}
-
-function SignInNeeded({ nav, next }: { readonly nav: Nav; readonly next: string }) {
-  const { t } = usePreferences();
-  return (
-    <div className="card sign-in-needed">
-      <p>{t("practice.signInToSee")}</p>
-      <div className="row">
-        <Link nav={nav} to={`/signin?next=${encodeURIComponent(next)}`} className="button">
-          {t("practice.signIn")}
-        </Link>
-        <Link nav={nav} to={`/signup?next=${encodeURIComponent(next)}`} className="button secondary">
-          {t("practice.signUp")}
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-const messageOf = (error: unknown, fallback: string): string =>
-  error instanceof ApiError && typeof error.detail["message"] === "string" ? error.detail["message"] : fallback;
 
 // --- the problem set ---------------------------------------------------------------------------
 
@@ -537,7 +563,7 @@ function ProblemRow({ problem, index, nav, striped }: { readonly problem: Proble
 
 // --- one problem ------------------------------------------------------------------------------
 
-type Tab = "description" | "editorial" | "submissions" | "discussion";
+type Tab = "description" | "editorial" | "submissions" | "discussion" | "notes";
 
 const draftKey = (site: string, slug: string) => `parikshaa.practice.${site}.draft.${slug}`;
 function loadDraft(site: string, slug: string): string {
@@ -562,6 +588,9 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
   const [value, setValue] = useState(() => loadDraft(site, slug));
   const [tab, setTab] = useState<Tab>("description");
   const [solvedNow, setSolvedNow] = useState(false);
+  const [reward, setReward] = useState<Verdict["reward"]>(undefined);
+  const { language } = usePreferences();
+  const pt = () => navWord(language, "notes");
   const here = `/problems/${slug}${contest === undefined ? "" : `?contest=${encodeURIComponent(contest)}`}`;
 
   const change = (next: string) => {
@@ -571,6 +600,7 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["practice", site] });
   const judged = (verdict: Verdict) => {
     if (verdict.firstSolve) setSolvedNow(true);
+    setReward(verdict.reward);
     void refresh();
   };
 
@@ -598,7 +628,7 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
 
   const tabs = (
     <div className="problem-tabs" role="tablist" aria-label={p.title}>
-      {(["description", "editorial", "submissions", "discussion"] as const).map((name) => (
+      {(learner === null ? (["description", "editorial", "submissions", "discussion"] as const) : (["description", "editorial", "submissions", "discussion", "notes"] as const)).map((name) => (
         <button
           key={name}
           type="button"
@@ -609,7 +639,7 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
           className={tab === name ? "on" : ""}
           onClick={() => setTab(name)}
         >
-          {t(`practice.tab.${name}` as MessageKey)}
+          {name === "notes" ? pt() : t(`practice.tab.${name}` as MessageKey)}
         </button>
       ))}
     </div>
@@ -632,6 +662,11 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
                 {t("practice.acceptance")}: {percent(p.acceptance)} · {t("practice.solvedByN", { n: p.solvedBy })}
               </span>
             </div>
+            {learner === null || p.contest !== null ? null : (
+              <Suspense fallback={null}>
+                <SaveMenu client={client} site={site} slug={slug} />
+              </Suspense>
+            )}
             {p.tags.length === 0 ? null : (
               <div className="tag-row">
                 {p.tags.map((name) => (
@@ -652,6 +687,10 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
         ) : (
           <Submissions client={client} site={site} slug={slug} contest={contest} onLoad={p.question.kind === "code" ? (s) => change(JSON.stringify({ language: s.language, source: s.answer })) : undefined} />
         )
+      ) : tab === "notes" && learner !== null ? (
+        <Suspense fallback={null}>
+          <NoteEditor client={client} site={site} kind="problem" refId={slug} />
+        </Suspense>
       ) : (
         <Discussion client={client} nav={nav} learner={learner} site={site} slug={slug} here={here} />
       )}
@@ -676,6 +715,11 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
           <ContestBanner nav={nav} contest={p.contest} />
         )}
       </div>
+      {reward === undefined || reward.coins <= 0 ? null : (
+        <Suspense fallback={null}>
+          <RewardNote reward={reward} />
+        </Suspense>
+      )}
       {solvedNow ? (
         <p className="alert ok solved-banner" role="status">
           <Trophy aria-hidden="true" /> {p.contest === null ? t("practice.solvedNow") : t("practice.solvedInContest")}

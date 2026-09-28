@@ -69,6 +69,8 @@ export interface Verdict {
   readonly cases: Extract<SubmitOutcome, { compiled: true }>["cases"];
   readonly submissionId: string;
   readonly firstSolve: boolean;
+  /** Coins paid for this submission, where the site keeps them. */
+  readonly reward?: Reward;
 }
 
 export interface Submission {
@@ -300,6 +302,108 @@ export class PracticeClient {
   contest(slug: string): Promise<Contest> {
     return this.#request(`/contests/${encodeURIComponent(slug)}`);
   }
+
+  // --- prep (ROADMAP §16) ------------------------------------------------------------------
+
+  home(): Promise<Home> {
+    return this.#request("/home");
+  }
+
+  async tracks(): Promise<readonly TrackSummary[]> {
+    return (await this.#request<{ tracks: TrackSummary[] }>("/tracks")).tracks;
+  }
+
+  track(slug: string): Promise<TrackView> {
+    return this.#request(`/tracks/${encodeURIComponent(slug)}`);
+  }
+
+  lesson(slug: string): Promise<Lesson> {
+    return this.#request(`/lessons/${encodeURIComponent(slug)}`);
+  }
+
+  lessonDone(slug: string): Promise<Reward> {
+    return this.#post(`/lessons/${encodeURIComponent(slug)}/done`);
+  }
+
+  async plan(): Promise<Plan | null> {
+    return (await this.#request<{ plan: Plan | null }>("/plan")).plan;
+  }
+
+  previewPlan(input: PlanInput): Promise<PlanPreview> {
+    return this.#post("/plan/preview", input);
+  }
+
+  async startPlan(input: PlanInput): Promise<Plan> {
+    return (await this.#post<{ plan: Plan }>("/plan", input)).plan;
+  }
+
+  async stopPlan(): Promise<void> {
+    await this.#request("/plan", { method: "DELETE" });
+  }
+
+  async addTask(title: string, estMinutes: number, day?: string): Promise<void> {
+    await this.#post("/plan/tasks", { title, estMinutes, ...(day === undefined ? {} : { day }) });
+  }
+
+  async setTaskDone(id: string, done: boolean): Promise<void> {
+    await this.#request(`/plan/tasks/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify({ done }) });
+  }
+
+  startFocus(taskId: string | null): Promise<{ readonly id: string; readonly startedAt: string }> {
+    return this.#post("/focus", { taskId });
+  }
+
+  stopFocus(id: string): Promise<{ readonly seconds: number }> {
+    return this.#post(`/focus/${encodeURIComponent(id)}/stop`);
+  }
+
+  async focusWeek(): Promise<readonly { readonly day: string; readonly minutes: number }[]> {
+    return (await this.#request<{ days: { day: string; minutes: number }[] }>("/focus")).days;
+  }
+
+  revision(): Promise<Revision> {
+    return this.#request("/revise");
+  }
+
+  grade(slug: string, grade: Grade): Promise<{ readonly dueOn: string; readonly intervalDays: number }> {
+    return this.#post(`/revise/${encodeURIComponent(slug)}`, { grade });
+  }
+
+  async lists(): Promise<readonly ProblemList[]> {
+    return (await this.#request<{ lists: ProblemList[] }>("/lists")).lists;
+  }
+
+  async saveTo(list: string, slug: string): Promise<void> {
+    await this.#request(`/lists/${encodeURIComponent(list)}/${encodeURIComponent(slug)}`, { method: "PUT" });
+  }
+
+  async removeFrom(list: string, slug: string): Promise<void> {
+    await this.#request(`/lists/${encodeURIComponent(list)}/${encodeURIComponent(slug)}`, { method: "DELETE" });
+  }
+
+  async notes(): Promise<readonly Note[]> {
+    return (await this.#request<{ notes: Note[] }>("/notes")).notes;
+  }
+
+  note(kind: NoteKind, ref: string): Promise<Note> {
+    return this.#request(`/notes/${kind}/${encodeURIComponent(ref)}`);
+  }
+
+  saveNote(kind: NoteKind, ref: string, body: string, title?: string): Promise<Note> {
+    return this.#request(`/notes/${kind}/${encodeURIComponent(ref)}`, { method: "PUT", body: JSON.stringify({ body, ...(title === undefined ? {} : { title }) }) });
+  }
+
+  potd(): Promise<{ readonly today: PotdDay | null; readonly calendar: readonly PotdDay[] }> {
+    return this.#request("/potd");
+  }
+
+  coins(): Promise<Coins> {
+    return this.#request("/coins");
+  }
+
+  async coinLeaders(): Promise<readonly { readonly rank: number; readonly name: string; readonly coins: number; readonly you: boolean }[]> {
+    return (await this.#request<{ leaders: { rank: number; name: string; coins: number; you: boolean }[] }>("/coins/leaders")).leaders;
+  }
 }
 
 const contestQuery = (contest: string | undefined) => (contest === undefined ? "" : `?contest=${encodeURIComponent(contest)}`);
@@ -308,4 +412,181 @@ const contestQuery = (contest: string | undefined) => (contest === undefined ? "
 export function asSubmitOutcome(verdict: Verdict): SubmitOutcome {
   if (verdict.status === "compile_error") return { tested: true, compiled: false, compileOutput: verdict.compileOutput ?? "" };
   return { tested: true, compiled: true, passed: verdict.passed, total: verdict.total, cases: verdict.cases };
+}
+
+// --- prep types ----------------------------------------------------------------------------
+
+export interface Reward {
+  readonly coins: number;
+  readonly reasons: readonly string[];
+}
+
+export interface TrackSummary {
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly modules: number;
+  readonly items: number;
+  readonly done: number;
+}
+
+export interface TrackItem {
+  readonly kind: "problem" | "lesson";
+  readonly slug: string;
+  readonly title: string;
+  readonly difficulty: Difficulty | null;
+  readonly estMinutes: number;
+  readonly status: "done" | "attempted" | null;
+}
+
+export interface TrackView {
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly items: number;
+  readonly done: number;
+  readonly modules: readonly { readonly title: string; readonly done: number; readonly items: readonly TrackItem[] }[];
+}
+
+export interface Lesson {
+  readonly slug: string;
+  readonly title: string;
+  readonly body: string;
+  readonly videoUrl: string | null;
+  readonly estMinutes: number;
+  readonly done: boolean;
+}
+
+export type Level = "beginner" | "intermediate" | "advanced";
+
+export interface PlanInput {
+  readonly track: string;
+  readonly level: Level;
+  readonly deadline: string;
+  readonly dailyMinutes: number;
+  readonly offDays: readonly number[];
+  readonly goal?: string;
+}
+
+export interface Sprint {
+  readonly sprint: number;
+  readonly from: string;
+  readonly to: string;
+  readonly tasks: number;
+  readonly done: number;
+}
+
+export interface PlanPreview {
+  readonly track: { readonly slug: string; readonly title: string };
+  readonly tasks: number;
+  readonly totalMinutes: number;
+  readonly finishOn: string;
+  readonly deadline: string;
+  readonly fits: boolean;
+  readonly sprints: readonly Sprint[];
+  readonly dailyMinutesToFit: number | null;
+}
+
+export interface PlanTask {
+  readonly id: string;
+  readonly day: string;
+  readonly sprint: number;
+  readonly kind: "learn" | "practice" | "revise" | "custom";
+  readonly title: string;
+  readonly estMinutes: number;
+  readonly done: boolean;
+  readonly movedFrom: string | null;
+  readonly link: { readonly kind: "problem" | "lesson"; readonly slug: string } | null;
+  readonly difficulty: Difficulty | null;
+}
+
+export interface Plan {
+  readonly track: { readonly slug: string; readonly title: string };
+  readonly level: Level;
+  readonly deadline: string;
+  readonly dailyMinutes: number;
+  readonly offDays: readonly number[];
+  readonly goal: string;
+  readonly startedAt: string;
+  readonly finishOn: string;
+  readonly onTrack: boolean;
+  readonly daysLeft: number;
+  readonly studyDaysLeft: number;
+  readonly done: number;
+  readonly total: number;
+  readonly sprint: number;
+  readonly sprints: readonly Sprint[];
+  readonly moved: number;
+  readonly today: readonly PlanTask[];
+  readonly upcoming: readonly PlanTask[];
+  readonly completed: readonly PlanTask[];
+}
+
+export interface PotdDay {
+  readonly day: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly difficulty: Difficulty;
+  readonly solved: boolean;
+  readonly solvedThatDay: boolean;
+}
+
+export interface Home {
+  readonly name: string;
+  readonly today: string;
+  readonly streak: number;
+  readonly longestStreak: number;
+  readonly coins: number;
+  readonly checkin: number;
+  readonly dueCards: number;
+  readonly focusMinutesToday: number;
+  readonly potd: PotdDay | null;
+  readonly plan: Pick<Plan, "track" | "finishOn" | "deadline" | "sprint" | "sprints" | "today" | "moved"> | null;
+  readonly continue: {
+    readonly slug: string;
+    readonly title: string;
+    readonly items: number;
+    readonly done: number;
+    readonly next: { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string } | null;
+  } | null;
+  readonly solved: number;
+}
+
+export type Grade = "again" | "hard" | "good" | "easy";
+
+export interface Revision {
+  readonly due: readonly {
+    readonly slug: string;
+    readonly title: string;
+    readonly difficulty: Difficulty;
+    readonly tags: readonly string[];
+    readonly dueOn: string;
+    readonly lastReviewedAt: string | null;
+    readonly reps: number;
+    readonly note: string | null;
+  }[];
+  readonly later: number;
+  readonly upcoming: number;
+}
+
+export interface ProblemList {
+  readonly name: string;
+  readonly solved: number;
+  readonly problems: readonly { readonly slug: string; readonly title: string; readonly difficulty: Difficulty; readonly solved: boolean }[];
+}
+
+export type NoteKind = "problem" | "lesson" | "topic";
+
+export interface Note {
+  readonly kind: NoteKind;
+  readonly ref: string;
+  readonly title: string;
+  readonly body: string;
+  readonly updatedAt: string | null;
+}
+
+export interface Coins {
+  readonly balance: number;
+  readonly dailyCap: number;
+  readonly history: readonly { readonly rule: string; readonly amount: number; readonly at: string }[];
 }

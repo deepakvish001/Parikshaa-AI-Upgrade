@@ -10,6 +10,7 @@ import {
   type PracticeSiteSettings,
   type PracticeSimilarity,
 } from "../api.ts";
+import { Lessons, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
 
 /**
  * A practice site (ROADMAP §15): the organisation's problems at
@@ -18,7 +19,7 @@ import {
  * nothing published.
  */
 
-type Tab = "site" | "problems" | "contests" | "learners" | "discussion";
+type Tab = "site" | "problems" | "tracks" | "lessons" | "potd" | "contests" | "learners" | "discussion";
 
 export interface PracticeCan {
   readonly manage: boolean;
@@ -36,6 +37,9 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
   const tabs: [Tab, string][] = [
     ["site", "Site"],
     ["problems", "Problems"],
+    ["tracks", "Tracks"],
+    ["lessons", "Lessons"],
+    ["potd", "Problem of the day"],
     ["contests", "Contests"],
     ...(can.readLearners ? ([["learners", "Learners"]] as [Tab, string][]) : []),
     ["discussion", "Discussion"],
@@ -56,6 +60,9 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
         </>
       ) : null}
       {tab === "problems" ? <Problems client={client} canWrite={can.write} canReview={can.review === true} /> : null}
+      {tab === "tracks" ? <Tracks client={client} canWrite={can.write} /> : null}
+      {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
+      {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
       {tab === "contests" ? <Contests client={client} canWrite={can.write} /> : null}
       {tab === "learners" ? <Learners client={client} /> : null}
       {tab === "discussion" ? <Discussion client={client} canWrite={can.write} /> : null}
