@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { hashPassword } from "@parikshaa/api";
 import { seedBilledOrganisation } from "../src/database.js";
-import { local, MCQ, seedSitting } from "./support.js";
+import { beginSitting, MCQ, seedSitting } from "./support.js";
 
 /**
  * ROADMAP §12, in a real browser: an organisation out of credits cannot start
@@ -19,7 +19,7 @@ test("an owner out of credits buys more through Checkout, gets a tax invoice, an
 
   // Out of credits: the candidate is told it cannot start yet, and no time is used.
   const candidate = await browser.newPage();
-  await candidate.goto(local(sitting.links["CS001"]!));
+  await beginSitting(candidate, sitting.links["CS001"]!);
   await expect(candidate.getByRole("region", { name: "Cannot start yet" })).toBeVisible();
 
   await page.addInitScript(() => {
@@ -38,7 +38,7 @@ test("an owner out of credits buys more through Checkout, gets a tax invoice, an
   await page.goto("/console/");
   await page.getByLabel("Email").fill(BILLED_OWNER.email);
   await page.getByLabel("Password").fill(BILLED_OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("button", { name: "Billing" }).click();
 
   const buy = page.getByRole("region", { name: "Buy credits" });

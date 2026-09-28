@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": { "noEmit": true, "types": ["node"], "lib": ["ES2022", "DOM"] },
-  "include": ["tests/**/*.ts", "screenshots/**/*.ts", "playwright.config.ts", "playwright.screenshots.config.ts"]
+  "include": ["tests/**/*.ts", "screenshots/**/*.ts", "visual/**/*.ts", "perf/**/*.ts", "playwright*.config.ts"]
 }

@@ -2,6 +2,7 @@ import {
   allQuestions,
   cohortAnalytics,
   decodeCodeAnswer,
+  percentileOf,
   foldAttempt,
   paperOf,
   resultOf,
@@ -55,6 +56,10 @@ export interface CandidateReport {
     readonly language: string | null;
     /** A code answer's tests, as counted on the record; null when none ran. */
     readonly tests: { readonly passed: number; readonly total: number } | null;
+    /** When an answer was first and last saved, after the start; and how often. The record keeps saves, not where the candidate looked. */
+    readonly firstSavedMs: number | null;
+    readonly lastSavedMs: number | null;
+    readonly saves: number;
   }[];
   readonly vivas: readonly {
     readonly questionId: string;
@@ -67,6 +72,8 @@ export interface CandidateReport {
   }[];
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
+  /** Among the graded candidates of the same exam. */
+  readonly standing: { readonly percentile: number | null; readonly rank: number | null; readonly graded: number; readonly meanPercent: number | null };
   readonly ledger: { readonly head: string; readonly length: number };
   /** For a proctored exam (ROADMAP §14): the identity decision and what the camera and browser sent. Observations. */
   readonly proctoring: {
@@ -148,6 +155,7 @@ export class ResultsService {
     const { exam, rows } = await this.results(actor, examId);
     const definition = (await this.#store.loadExam(staffScope(actor.orgId), examId))!;
     const questions = allQuestions(definition);
+    const cutoff = definition.policy.cutoff !== undefined;
     const header: Cell[] = [
       "Ref",
       "Name",
@@ -156,6 +164,7 @@ export class ResultsService {
       "Total",
       "Out of",
       "Percent",
+      ...(cutoff ? ["Outcome"] : []),
       "Started (IST)",
       "Submitted (IST)",
       "Minutes",
@@ -172,6 +181,7 @@ export class ResultsService {
       r.total,
       r.maxTotal,
       r.percent,
+      ...(cutoff ? [r.outcome] : []),
       istStamp(r.startedAt),
       r.submittedAt === null ? null : istStamp(r.submittedAt),
       r.durationMs === null ? null : Math.round(r.durationMs / 6000) / 10,
@@ -260,6 +270,12 @@ export class ResultsService {
     const { projection } = folded;
     const invitation = await this.#invitations.byAttempt(scope, attemptId);
     const answers = new Map(projection.attempt.responses.map((r) => [r.questionId as string, r.answer]));
+    const saved = new Map<string, number[]>();
+    for (const e of entries) {
+      if (e.event.type !== "answer_submitted") continue;
+      const id = e.event.response.questionId as string;
+      saved.set(id, [...(saved.get(id) ?? []), e.timestamp - projection.attempt.startedAt]);
+    }
 
     return {
       exam: { id: definition.id, title: definition.title },
@@ -281,6 +297,9 @@ export class ResultsService {
           answer: code === null ? (q.kind === "mcq" && raw !== null ? optionsChosen(q.options, raw) : raw) : code.source,
           language: code?.language ?? null,
           tests: testsOf(projection.codeScores.get(q.id)),
+          firstSavedMs: saved.get(q.id)?.[0] ?? null,
+          lastSavedMs: saved.get(q.id)?.at(-1) ?? null,
+          saves: saved.get(q.id)?.length ?? 0,
         };
       }),
       vivas: projection.vivas.map((v) => ({
@@ -294,8 +313,30 @@ export class ResultsService {
       })),
       voidReason: projection.voidReason,
       voidedBy: projection.voidedBy?.name ?? null,
+      standing: await this.#standing(scope, definition, result),
       ledger: { head: entries.at(-1)!.hash, length: entries.length },
       proctoring: await this.#proctoring(scope, attemptId, definition, projection),
+    };
+  }
+
+  /** Where a graded result stands among the exam's other graded results. */
+  async #standing(scope: Scope, definition: Exam, result: AttemptResult): Promise<CandidateReport["standing"]> {
+    const chains = await this.#store.loadExamLedgers(scope, definition.id);
+    const percents: number[] = [];
+    for (const [id, entries] of chains) {
+      if (id === result.attemptId) continue;
+      const other = resultOf(entries, definition);
+      if (other !== null && other.state === "graded" && other.percent !== null) percents.push(other.percent);
+    }
+    const graded = percents.length + (result.state === "graded" && result.percent !== null ? 1 : 0);
+    const all = result.state === "graded" && result.percent !== null ? [...percents, result.percent] : percents;
+    const meanPercent = all.length === 0 ? null : Math.round((all.reduce((s, p) => s + p, 0) / all.length) * 10) / 10;
+    if (result.state !== "graded" || result.percent === null) return { percentile: null, rank: null, graded, meanPercent };
+    return {
+      percentile: percentileOf(result.percent, percents),
+      rank: percents.filter((p) => p > result.percent!).length + 1,
+      graded,
+      meanPercent,
     };
   }
 

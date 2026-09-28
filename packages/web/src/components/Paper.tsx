@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ChevronDown, FileText } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ChevronDown, FileText, X } from "lucide-react";
 import { usePreferences } from "../i18n.tsx";
 
 /** A question's or passage's pictures, served by their hash. */
@@ -49,70 +49,115 @@ export interface PaletteItem {
   /** Typed but not yet saved as an answer. */
   readonly draft: boolean;
   readonly marked: boolean;
+  /** Opened at least once. */
+  readonly visited: boolean;
 }
 
+export type Status = "not-visited" | "not-answered" | "draft" | "answered" | "marked" | "answered-marked";
+
+/** Where a question stands, in words: what a screen reader says for its palette number. */
+export function stateLabel(q: PaletteItem, t: ReturnType<typeof usePreferences>["t"]): string {
+  return [
+    q.answered ? t("palette.answered") : q.draft ? t("palette.draft") : q.visited ? t("palette.notAnswered") : t("palette.notVisited"),
+    ...(q.marked ? [t("palette.marked")] : []),
+  ].join(", ");
+}
+
+/** Where a question stands, as the palette's shapes show it. */
+export const statusOf = (q: PaletteItem): Status =>
+  q.answered ? (q.marked ? "answered-marked" : "answered") : q.marked ? "marked" : q.draft ? "draft" : q.visited ? "not-answered" : "not-visited";
+
 /**
- * Every question at a glance, as exam halls in India lay them out: answered,
- * not answered, marked for review. A question's button takes the candidate to
- * it. Beside the paper on a wide screen; folded above it on a phone.
+ * Every question at a glance, as exam halls in India lay them out: not
+ * visited, not answered, answered, marked for review, and answered and marked
+ * — each with how many, and each in the shape a JEE or NEET candidate already
+ * reads without thinking. A number takes the candidate to that question.
+ * Beside the paper on a wide screen; a drawer on a phone.
  */
-export function Palette({ questions }: { readonly questions: readonly PaletteItem[] }) {
+export function Palette({
+  questions,
+  current,
+  onGo,
+  footer,
+}: {
+  readonly questions: readonly PaletteItem[];
+  readonly current: string | null;
+  readonly onGo: (id: string) => void;
+  /** What sits under the grid: the way out of a section, or of the test. */
+  readonly footer?: ReactNode;
+}) {
   const { t } = usePreferences();
   const [open, setOpen] = useState(false);
   const answered = questions.filter((q) => q.answered).length;
   const marked = questions.filter((q) => q.marked).length;
-  const stateOf = (q: PaletteItem) =>
-    [q.answered ? t("palette.answered") : q.draft ? t("palette.draft") : t("palette.notAnswered"), ...(q.marked ? [t("palette.marked")] : [])].join(", ");
-
-  const go = (id: string) => {
-    const card = document.getElementById(`q-${id}`);
-    card?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    document.getElementById(`q-${id}-stem`)?.focus({ preventScroll: true });
-    setOpen(false);
-  };
+  const count = (status: Status) => questions.filter((q) => statusOf(q) === status).length;
+  const stateOf = (q: PaletteItem) => stateLabel(q, t);
+  const legend: readonly [Status, string][] = [
+    ["answered", t("palette.answered")],
+    ["not-answered", t("palette.notAnswered")],
+    ["not-visited", t("palette.notVisited")],
+    ["marked", t("palette.marked")],
+    ["answered-marked", t("palette.answeredMarked")],
+    ["draft", t("palette.draft")],
+  ];
+  const summary = t("palette.summary", { answered, total: questions.length, marked });
 
   return (
     <nav className={`palette${open ? " open" : ""}`} aria-label={t("palette.region")}>
       <button type="button" className="palette-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span>{t("palette.region")}</span>
-        <span className="palette-summary">{t("palette.summary", { answered, total: questions.length, marked })}</span>
+        <span className="palette-summary">{summary}</span>
         <ChevronDown aria-hidden="true" />
       </button>
+      {/* On a phone the palette is a sheet over the paper; a tap beside it closes it. */}
+      {open ? <div className="sheet-scrim" aria-hidden="true" onClick={() => setOpen(false)} /> : null}
       <div className="palette-body">
-        <p className="palette-title">{t("palette.region")}</p>
-        <p className="palette-summary">{t("palette.summary", { answered, total: questions.length, marked })}</p>
+        <div className="sheet-head">
+          <strong>{t("palette.region")}</strong>
+          <span className="palette-summary">{summary}</span>
+          <button type="button" className="quiet sheet-close" aria-label={t("tools.close")} onClick={() => setOpen(false)}>
+            <X aria-hidden="true" />
+          </button>
+        </div>
+        <div className="palette-head">
+          <p className="palette-title">{t("palette.region")}</p>
+          <p className="palette-summary">{summary}</p>
+          <div className="meter" aria-hidden="true">
+            <span style={{ width: `${Math.round((answered / Math.max(1, questions.length)) * 100)}%` }} />
+          </div>
+        </div>
+        <ul className="palette-legend">
+          {legend.map(([status, label]) => (
+            <li key={status}>
+              <span className={`pq ${status}`} aria-hidden="true">
+                {count(status)}
+              </span>
+              <span>
+                {label}
+                {status === "answered-marked" ? <small> {t("palette.counted")}</small> : null}
+              </span>
+            </li>
+          ))}
+        </ul>
         <ol className="palette-grid">
           {questions.map((q) => (
             <li key={q.id}>
               <button
                 type="button"
-                className={`pq${q.answered ? " answered" : q.draft ? " draft" : ""}${q.marked ? " marked" : ""}`}
+                className={`pq ${statusOf(q)}${q.answered ? " answered" : ""}${q.marked ? " marked" : ""}`}
                 aria-label={t("palette.item", { n: q.number, state: stateOf(q) })}
-                onClick={() => go(q.id)}
+                aria-current={q.id === current ? "step" : undefined}
+                onClick={() => {
+                  onGo(q.id);
+                  setOpen(false);
+                }}
               >
                 {q.number}
               </button>
             </li>
           ))}
         </ol>
-        <ul className="palette-legend">
-          <li>
-            <span className="pq answered" aria-hidden="true" />
-            {t("palette.answered")}
-          </li>
-          <li>
-            <span className="pq draft" aria-hidden="true" />
-            {t("palette.draft")}
-          </li>
-          <li>
-            <span className="pq" aria-hidden="true" />
-            {t("palette.notAnswered")}
-          </li>
-          <li>
-            <span className="pq marked" aria-hidden="true" />
-            {t("palette.marked")}
-          </li>
-        </ul>
+        {footer === undefined ? null : <div className="palette-foot">{footer}</div>}
       </div>
     </nav>
   );

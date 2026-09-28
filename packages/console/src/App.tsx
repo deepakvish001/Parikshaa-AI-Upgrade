@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Building2,
   ChevronRight,
@@ -7,15 +7,15 @@ import {
   GraduationCap,
   KeyRound,
   KeySquare,
-  Languages,
+  LayoutDashboard,
+  LockKeyhole,
   Library,
   LogOut,
-  MessageCircleQuestion,
   Plug,
   Receipt,
   ScrollText,
+  Search,
   Shield,
-  ShieldCheck,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -36,11 +36,22 @@ import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
 import { ExamList } from "./components/ExamList.tsx";
+import { ExamOverview, ExamSide, ExamTabs, QuestionsTab, type ExamTab } from "./components/ExamPage.tsx";
+import { CommandPalette, useCommandKey, type PageLink } from "./components/CommandPalette.tsx";
+import { TryTest } from "./components/Preview.tsx";
+import { Home } from "./components/Home.tsx";
+import { Gallery } from "./components/Gallery.tsx";
+import { ToastProvider, useToast } from "@parikshaa/brand/ui";
+import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
+import { SignIn } from "./components/SignIn.tsx";
 
 type View =
+  | { readonly name: "home" }
+  | { readonly name: "gallery" }
   | { readonly name: "exams" }
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
+  | { readonly name: "questions"; readonly examId: string }
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "bank" }
   | { readonly name: "practice" }
@@ -55,6 +66,7 @@ type View =
   | { readonly name: "integrations" }
   | { readonly name: "privacy" }
   | { readonly name: "billing" }
+  | { readonly name: "signin" }
   | { readonly name: "account" };
 
 /**
@@ -83,9 +95,33 @@ const stored = {
   },
 };
 
+/**
+ * What the address bar brought: a session from the organisation's sign-in
+ * provider (in the fragment, which no server logs), a provider's refusal, or a
+ * password reset link. Each is taken once and cleared from the address bar.
+ */
+function arrival(): { sso: string | null; ssoError: string | null; reset: string | null } {
+  if (typeof window === "undefined") return { sso: null, ssoError: null, reset: null };
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const found = { sso: hash.get("sso"), ssoError: query.get("sso_error"), reset: query.get("reset") };
+  if (found.sso !== null || found.ssoError !== null || found.reset !== null) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  return found;
+}
+
 export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   const queryClient = useQueryClient();
-  const [token, setToken] = useState<string | null>(() => (injected === undefined ? stored.get() : null));
+  const [arrived] = useState(arrival);
+  const [token, setToken] = useState<string | null>(() => {
+    if (injected !== undefined) return null;
+    if (arrived.sso !== null) {
+      stored.set(arrived.sso);
+      return arrived.sso;
+    }
+    return stored.get();
+  });
   const client = injected ?? (token === null ? null : new ConsoleClient(token));
 
   const signIn = (next: string) => {
@@ -99,100 +135,23 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
     queryClient.clear();
   };
 
-  if (client === null) return <SignIn onSignedIn={signIn} />;
-  return <Console client={client} onSignedOut={signOut} />;
-}
-
-function SignIn({ onSignedIn }: { onSignedIn: (token: string) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const signIn = useMutation({
-    mutationFn: () => ConsoleClient.signIn(email.trim(), password),
-    onSuccess: ({ token }) => onSignedIn(token),
-  });
-  const refused =
-    signIn.error instanceof ConsoleError
-      ? signIn.error.status === 429
-        ? "Too many attempts. Wait a few minutes and try again."
-        : "That email and password were not accepted."
-      : signIn.error === null
-        ? null
-        : "Could not reach the server.";
-
+  if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
   return (
-    <div className="signin">
-      <aside className="signin-brand" aria-hidden="true">
-        <Wordmark size={34} product="Console" />
-        <div className="signin-pitch">
-          <p className="signin-headline">Assessment you can prove.</p>
-          <ul>
-            <li>
-              <ShieldCheck /> Every answer sealed in a hash-chained ledger, checkable by anyone.
-            </li>
-            <li>
-              <MessageCircleQuestion /> A short follow-up on answers that need one — asked, never accused.
-            </li>
-            <li>
-              <Languages /> Hindi and ten Indian languages, on a phone or a lab machine.
-            </li>
-          </ul>
-        </div>
-        <p className="signin-foot">परीक्षा · Built for Indian institutions</p>
-      </aside>
-      <main className="signin-form">
-        <div className="signin-card">
-          <span className="signin-mark">
-            <Wordmark size={28} />
-          </span>
-          <h1>Sign in to the console</h1>
-          <p className="notice">For examiners, invigilators and administrators.</p>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              signIn.mutate();
-            }}
-          >
-            <div className="field">
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {refused === null ? null : (
-              <p className="error" role="alert">
-                {refused}
-              </p>
-            )}
-            <button type="submit" className="block large" disabled={signIn.isPending || email.trim() === "" || password === ""}>
-              {signIn.isPending ? "Signing in…" : "Sign in"}
-            </button>
-          </form>
-        </div>
-      </main>
-    </div>
+    <ToastProvider>
+      <Console client={client} onSignedOut={signOut} />
+    </ToastProvider>
   );
 }
 
 function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
   const [view, setView] = useState<View>(() => {
-    const report = new URLSearchParams(window.location.search).get("report");
-    if (report === null || report === "") return { name: "exams" };
+    const query = new URLSearchParams(window.location.search);
+    if (query.has("gallery")) return { name: "gallery" };
+    const report = query.get("report");
+    if (report === null || report === "") return { name: "home" };
     window.history.replaceState(null, "", window.location.pathname);
     return { name: "report", examId: "", attemptId: report };
   });
@@ -214,6 +173,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const [problems, setProblems] = useState<ConsoleError["problems"]>([]);
 
   const exams = useQuery({ queryKey: ["exams"], queryFn: () => client.listExams() });
+  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: () => client.dashboard(), enabled: view.name === "home" });
 
   const editing = useQuery({
     queryKey: ["exam", view.name === "editor" ? view.examId : null],
@@ -237,9 +197,15 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
 
   const saveExam = useMutation({
     mutationFn: (exam: Exam) => client.saveExam(exam),
-    onSuccess: async () => {
+    onSuccess: async (_, exam) => {
       setProblems([]);
-      await queryClient.invalidateQueries({ queryKey: ["exams"] });
+      toast(`Saved “${exam.title}”`, "success");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["exams"] }),
+        // The exam page reads the paper and its results; both follow the edit.
+        queryClient.invalidateQueries({ queryKey: ["exam"] }),
+        queryClient.invalidateQueries({ queryKey: ["results"] }),
+      ]);
       setView({ name: "exams" });
     },
     // The server validates independently of the client; if it disagrees, show
@@ -260,6 +226,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       return client.cloneExam(examId, id).then(() => id);
     },
     onSuccess: async (id) => {
+      toast("Copy made. Change it, then save.", "success");
       await queryClient.invalidateQueries({ queryKey: ["exams"] });
       setProblems([]);
       setView({ name: "editor", examId: id });
@@ -299,6 +266,31 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   });
 
   const examTitle = (id: string) => exams.data?.find((e) => e.id === id)?.title ?? id;
+  /** Sat by anyone, and so no longer editable: changed by copying. */
+  const frozen = (id: string) => {
+    const c = exams.data?.find((e) => e.id === id)?.attempts;
+    return c !== undefined && c.inProgress + c.submitted + c.graded + c.void > 0;
+  };
+
+  // The exam page: its definition for the questions tab and the side panel,
+  // and its results for who qualified.
+  const pageExamId =
+    (view.name === "attempts" || view.name === "questions" || view.name === "candidates" || view.name === "live" || view.name === "results") && view.examId !== ""
+      ? view.examId
+      : null;
+  const examDefinition = useQuery({
+    queryKey: ["exam", pageExamId],
+    queryFn: () => client.loadExam(pageExamId!),
+    enabled: pageExamId !== null && (view.name === "attempts" || view.name === "questions"),
+  });
+  const examResults = useQuery({
+    queryKey: ["results", pageExamId],
+    queryFn: () => client.results(pageExamId!),
+    enabled: pageExamId !== null && view.name === "attempts" && can("attempt:review"),
+  });
+  const [trying, setTrying] = useState(false);
+  const [searching, setSearching] = useState(false);
+  useCommandKey(useCallback(() => setSearching(true), []));
   const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
 
   const tabs: readonly {
@@ -317,6 +309,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     { view: { name: "integrations" }, label: "Integrations", permission: "org:manage", group: "org", icon: Plug },
     { view: { name: "privacy" }, label: "Privacy", permission: "org:manage", group: "org", icon: Shield },
     { view: { name: "billing" }, label: "Billing", permission: "org:manage", group: "org", icon: Receipt },
+    { view: { name: "signin" }, label: "Sign-in", permission: "org:manage", group: "org", icon: LockKeyhole },
   ];
 
   const section = SECTION_OF[view.name];
@@ -339,12 +332,33 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const visible = tabs.filter((tab) => can(tab.permission));
   const onExam =
     (view.name === "attempts" ||
+      view.name === "questions" ||
       view.name === "review" ||
       view.name === "candidates" ||
       view.name === "results" ||
       view.name === "live" ||
       view.name === "report") &&
     view.examId !== "";
+
+  // An owner their organisation requires to use two-step sign-in, who has not
+  // set it up, can do only that: the server refuses everything else anyway.
+  if (me.data?.mustEnrol2fa === true) {
+    return (
+      <main className="content enrol">
+        <header className="page-head">
+          <Wordmark size={28} product="Console" />
+          <h1>Set up two-step sign-in</h1>
+          <p className="notice">{me.data.organisation.name} requires owners to use it before continuing.</p>
+        </header>
+        <TwoFactorPanel client={client} onSignedOut={onSignedOut} onEnrolled={() => void queryClient.invalidateQueries({ queryKey: ["me"] })} />
+        <div className="row">
+          <button type="button" className="secondary" onClick={() => signOut.mutate()}>
+            Sign out
+          </button>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <div className="shell">
@@ -362,6 +376,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             </div>
           )}
           <nav className="side-nav account" aria-label="Account">
+            {navItem({ name: "home" }, "Home", LayoutDashboard)}
             <p className="nav-group">Assess</p>
             {navItem({ name: "exams" }, "Exams", ClipboardList)}
             {visible.filter((tab) => tab.group === "assess").map((tab) => navItem(tab.view, tab.label, tab.icon))}
@@ -378,7 +393,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
                 </div>
               )}
               <div className="me-actions">
-                {me.data?.kind === "user" ? navItem({ name: "account" }, "Password", KeyRound) : null}
+                {me.data?.kind === "user" ? navItem({ name: "account" }, "Account", KeyRound) : null}
                 <button type="button" className="nav-item" onClick={() => signOut.mutate()}>
                   <LogOut aria-hidden="true" />
                   Sign out
@@ -399,7 +414,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
                 Exams
               </button>
             ) : (
-              <span>{visible.find((tab) => tab.view.name === section)?.label ?? (section === "account" ? "Password" : "")}</span>
+              <span>{visible.find((tab) => tab.view.name === section)?.label ?? OTHER_PAGES[section] ?? ""}</span>
             )}
             {onExam ? (
               <>
@@ -422,13 +437,61 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
               </>
             ) : null}
           </nav>
+          <span className="spacer" />
+          <button type="button" className="search-trigger" onClick={() => setSearching(true)} aria-keyshortcuts="Control+K">
+            <Search aria-hidden="true" />
+            <span>Search</span>
+            <kbd>Ctrl K</kbd>
+          </button>
         </header>
+        {searching ? (
+          <CommandPalette
+            client={client}
+            exams={exams.data ?? []}
+            canSearchCandidates={can("attempt:read")}
+            pages={[
+              { label: "Home", go: () => go({ name: "home" }) },
+              { label: "Exams", go: () => go({ name: "exams" }) },
+              ...visible.map((tab): PageLink => ({ label: tab.label, go: () => go(tab.view) })),
+              ...(me.data?.kind === "user" ? [{ label: "Account", go: () => go({ name: "account" }) }] : []),
+              { label: "Design system", go: () => go({ name: "gallery" }) },
+            ]}
+            onExam={(examId) => go({ name: "attempts", examId })}
+            onCandidate={(hit) =>
+              go(
+                hit.attemptId !== null && can("attempt:review")
+                  ? { name: "report", examId: hit.examId, attemptId: hit.attemptId }
+                  : { name: "candidates", examId: hit.examId },
+              )
+            }
+            onClose={() => setSearching(false)}
+          />
+        ) : null}
 
         <main className="content">
           <header className="page-head">
             <h1>{pageTitle(view, examTitle)}</h1>
             <p className="notice">{PAGE_NOTE[view.name]}</p>
           </header>
+
+      {view.name === "home" ? (
+        <Home
+          dashboard={dashboard.data}
+          exams={exams.data ?? []}
+          name={me.data?.name}
+          canWrite={can("exam:write")}
+          onExam={(examId) => go({ name: "attempts", examId })}
+          onGo={(target) => {
+            if (target === "search") return setSearching(true);
+            if (target === "new-exam") {
+              setProblems([]);
+              return go({ name: "editor", examId: null });
+            }
+            go({ name: target });
+          }}
+        />
+      ) : null}
+      {view.name === "gallery" ? <Gallery /> : null}
 
       {view.name === "exams" ? (
         exams.isPending ? (
@@ -465,21 +528,31 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         />
       ) : null}
 
-      {view.name === "attempts" ? (
-        <div className="row" style={{ marginTop: 0, marginBottom: ".85rem" }}>
-          <button type="button" className="secondary" onClick={() => setView({ name: "candidates", examId: view.examId })}>
-            Schedule and invite candidates
-          </button>
-          <button type="button" className="secondary" onClick={() => setView({ name: "live", examId: view.examId })}>
-            Live sitting
-          </button>
-          {can("attempt:review") ? (
-            <button type="button" className="secondary" onClick={() => setView({ name: "results", examId: view.examId })}>
-              Results and exports
-            </button>
-          ) : null}
-        </div>
+      {pageExamId !== null ? (
+        <ExamTabs
+          current={view.name as ExamTab}
+          canReview={can("attempt:review")}
+          onGo={(tab) => {
+            if (tab === "attempts") setIssued(null);
+            go({ name: tab, examId: pageExamId });
+          }}
+        />
       ) : null}
+
+      {view.name === "questions" ? (
+        examDefinition.data === undefined ? (
+          <p className="notice">{examDefinition.error === null ? "Loading…" : "Could not load the exam."}</p>
+        ) : (
+          <QuestionsTab
+            exam={examDefinition.data}
+            frozen={frozen(view.examId)}
+            {...(can("exam:write")
+              ? { onEdit: () => (frozen(view.examId) ? cloneExam.mutate(view.examId) : setView({ name: "editor", examId: view.examId })) }
+              : {})}
+          />
+        )
+      ) : null}
+      {trying && examDefinition.data !== undefined ? <TryTest exam={examDefinition.data} onClose={() => setTrying(false)} /> : null}
 
       {view.name === "candidates" ? (
         <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} />
@@ -495,7 +568,20 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} /> : null}
       {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
 
-      {view.name === "attempts" && attempts.data !== undefined ? (
+      {view.name === "attempts" ? (
+        <ExamOverview
+          side={
+            <ExamSide
+              summary={exams.data?.find((e) => e.id === view.examId)}
+              exam={examDefinition.data}
+              results={examResults.data}
+              {...(can("attempt:review") ? { onResults: () => go({ name: "results", examId: view.examId }) } : {})}
+              {...(can("exam:write") ? { onEdit: () => setView({ name: "editor", examId: view.examId }) } : {})}
+              onTry={() => setTrying(true)}
+            />
+          }
+        >
+      {attempts.data !== undefined ? (
         <AttemptList
           attempts={attempts.data}
           issued={issued}
@@ -513,6 +599,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           onStart={(candidateId) => startAttempt.mutate({ examId: view.examId, candidateId })}
           onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
         />
+      ) : null}
+        </ExamOverview>
       ) : null}
 
       {view.name === "review" && review.data !== undefined ? (
@@ -532,7 +620,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
 
       {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
       {view.name === "practice" ? (
-        <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read") }} />
+        <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
       ) : null}
       {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
       {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
@@ -541,7 +629,13 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
       {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
       {view.name === "billing" ? <BillingPanel client={client} /> : null}
-      {view.name === "account" ? <AccountPanel client={client} onSignedOut={onSignedOut} /> : null}
+      {view.name === "signin" && me.data !== undefined ? <OrgSignInPanel client={client} orgId={me.data.organisation.id} /> : null}
+      {view.name === "account" ? (
+        <>
+          <AccountPanel client={client} onSignedOut={onSignedOut} />
+          <TwoFactorPanel client={client} onSignedOut={onSignedOut} />
+        </>
+      ) : null}
         </main>
       </div>
     </div>
@@ -550,9 +644,12 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
 
 /** Which sidebar entry a view belongs under. */
 const SECTION_OF: Record<View["name"], View["name"]> = {
+  home: "home",
+  gallery: "gallery",
   exams: "exams",
   editor: "exams",
   attempts: "exams",
+  questions: "exams",
   review: "exams",
   candidates: "exams",
   results: "exams",
@@ -567,27 +664,31 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   integrations: "integrations",
   privacy: "privacy",
   billing: "billing",
+  signin: "signin",
   account: "account",
 };
 
 function pageTitle(view: View, examTitle: (id: string) => string): string {
   switch (view.name) {
+    case "home":
+      return "Home";
+    case "gallery":
+      return "Design system";
     case "exams":
       return "Exams";
     case "editor":
       return view.examId === null ? "New exam" : "Edit exam";
     case "attempts":
+    case "questions":
       return examTitle(view.examId);
     case "review":
       return "Review an attempt";
     case "candidates":
-      return "Schedule and invite";
     case "results":
-      return "Results and exports";
     case "live":
-      return "Live sitting";
+      return view.examId === "" ? PAGE_FALLBACK[view.name] : examTitle(view.examId);
     case "report":
-      return "Candidate report";
+      return "Scorecard";
     case "bank":
       return "Question bank";
     case "practice":
@@ -606,21 +707,31 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Privacy";
     case "billing":
       return "Billing";
+    case "signin":
+      return "Sign-in";
     case "account":
-      return "Password";
+      return "Account";
   }
 }
 
+const PAGE_FALLBACK = { candidates: "Schedule and invite", results: "Results and exports", live: "Live sitting" } as const;
+
 /** One line under each page's title: what the page is for. */
+/** Breadcrumb labels for the pages not in the sidebar's permission-gated list. */
+const OTHER_PAGES: Partial<Record<View["name"], string>> = { home: "Home", gallery: "Design system", account: "Account" };
+
 const PAGE_NOTE: Record<View["name"], string> = {
+  home: "What is sitting now and next, what has just happened, and what is left to set up.",
+  gallery: "Parikshaa's design system: colour, type, and every shared component, live.",
   exams: "Every assessment your organisation runs. Open one to invite candidates, watch a sitting or read results.",
   editor: "Questions, sections drawn per candidate, timing, and what the camera does. A sat exam is frozen; copy it to change it.",
   attempts: "Everyone who has started this exam, whether they are here now, and what is left to grade.",
+  questions: "The paper as candidates will see it. Preview any question, or try the whole test; nothing is recorded.",
   review: "The grade, and beside it the evidence — kept apart, and decided by a person.",
   candidates: "The window the test is open, and who is invited to it.",
   results: "Scores, the spread, and what the follow-ups found. Download for your own records.",
   live: "Who is here, who has gone quiet, and anything that needs an invigilator.",
-  report: "One candidate's answers, grades and record, ready to print.",
+  report: "One candidate's result, sections, standing and answers, with the follow-ups apart. Ready to print or save as a PDF.",
   bank: "Questions filed by topic and difficulty, to draw exams from. Import from a spreadsheet or a Word paper.",
   practice: "A practice site for your learners: problems from the bank, contests, and their progress. Nothing there is an exam.",
   staff: "Who can sign in to this console, and what each can do.",
@@ -630,5 +741,6 @@ const PAGE_NOTE: Record<View["name"], string> = {
   integrations: "Webhooks and applicant-tracking systems that hear about results.",
   privacy: "The notice candidates agree to, how long their data is kept, and erasure.",
   billing: "Attempt credits, payments and GST invoices.",
-  account: "Change the password you sign in with.",
+  signin: "How your staff sign in: your institution's own provider, and two-step sign-in for owners.",
+  account: "Your password and two-step sign-in.",
 };

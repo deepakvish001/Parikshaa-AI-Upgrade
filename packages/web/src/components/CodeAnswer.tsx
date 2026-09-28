@@ -38,6 +38,10 @@ interface Props {
   readonly aside?: ReactNode;
   /** Shown in place of Run and Submit: a visitor asked to sign in first. */
   readonly blocked?: ReactNode;
+  /** Open full screen from the start, as a coding round's screen does on a wide display. */
+  readonly startFull?: boolean;
+  /** Beside the full-screen workspace, on its left: the paper's question numbers. */
+  readonly rail?: ReactNode;
 }
 
 // --- editor preferences --------------------------------------------------------
@@ -84,14 +88,14 @@ type Shown = { readonly kind: "run"; readonly outcome: RunOutcome; readonly cust
  * reporting as much as the exam allows. It sits in the question's card, and
  * opens full screen with the problem beside the editor.
  */
-export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked }: Props) {
+export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked, startFull = false, rail }: Props) {
   const { t, lite } = usePreferences();
   const { language, source } = readCodeAnswer(value, question);
   const functionMode = question.function !== null && question.function !== undefined;
   const params = question.function?.params ?? [];
 
   const [prefs, setPrefs] = useEditorPrefs();
-  const [full, setFull] = useState(false);
+  const [full, setFull] = useState(startFull);
   const [top, setTop] = useState(0);
   const [tab, setTab] = useState<"testcase" | "result">("testcase");
   const [picked, setPicked] = useState<number | "custom">(question.samples.length > 0 ? 0 : "custom");
@@ -151,7 +155,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   // Full screen: below the page's top bar, so the clock stays in sight; the page behind does not scroll.
   useEffect(() => {
     if (!full) return;
-    const place = () => setTop(document.querySelector(".topbar")?.getBoundingClientRect().bottom ?? 0);
+    const place = () => setTop(document.querySelector(".exambar, .topbar")?.getBoundingClientRect().bottom ?? 0);
     place();
     window.addEventListener("resize", place);
     document.body.classList.add("workspace-open");
@@ -361,7 +365,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (aside !== undefined) {
     return (
-      <div className="workspace standalone">
+      <div className={`workspace standalone${prefs.dark && !lite ? " ws-dark" : ""}`}>
         <SplitPane
           direction="row"
           initial={44}
@@ -390,7 +394,8 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (full) {
     return (
-      <div className="workspace full" role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
+      <div className={`workspace full${prefs.dark && !lite ? " ws-dark" : ""}${rail === undefined ? "" : " with-rail"}`} role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
+        {rail === undefined ? null : <div className="ws-rail">{rail}</div>}
         {toolbar}
         <SplitPane
           direction="row"

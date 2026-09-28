@@ -34,6 +34,25 @@ export class IntegrationSecrets {
     return `ghk.${orgId}.${version}.${this.#derive("greenhouse", orgId, version).toString("base64url")}`;
   }
 
+  /**
+   * An applicant-tracking system's inbound key, `atk.<org>.<provider>.<version>.<mac>`:
+   * what Lever, Zoho Recruit or Darwinbox presents when it asks for a test.
+   */
+  atsKey(orgId: string, provider: string, version: number): string {
+    return `atk.${orgId}.${provider}.${version}.${this.#derive("ats", orgId, provider, version).toString("base64url")}`;
+  }
+
+  /** The organisation, provider and version an ATS key names, if the server issued it. Whether that version is current is the caller's to check. */
+  verifyAtsKey(key: string): { orgId: string; provider: string; version: number } | null {
+    const parts = key.split(".");
+    if (parts.length !== 5 || parts[0] !== "atk" || !/^\d{1,9}$/.test(parts[3]!)) return null;
+    const [, orgId, provider, version] = parts as [string, string, string, string, string];
+    const expected = Buffer.from(this.atsKey(orgId, provider, Number(version)));
+    const given = Buffer.from(key);
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+    return { orgId, provider, version: Number(version) };
+  }
+
   /** The organisation and version a Greenhouse key names, if the server issued it. Whether that version is current is the caller's to check. */
   verifyGreenhouseKey(key: string): { orgId: string; version: number } | null {
     const parts = key.split(".");

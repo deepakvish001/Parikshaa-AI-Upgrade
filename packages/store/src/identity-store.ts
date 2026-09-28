@@ -1,4 +1,5 @@
 import type { OrgId } from "@parikshaa/core";
+import { enqueue } from "./outbox-store.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
@@ -22,6 +23,39 @@ export interface Organisation {
   readonly id: OrgId;
   readonly name: string;
   readonly monthlySpendCapMicroUsd: number | null;
+  /** Owners must use a second factor (ROADMAP §1). */
+  readonly requireOwner2fa: boolean;
+}
+
+/** An organisation's OpenID Connect provider. `clientSecret` is sealed by the caller. */
+export interface SsoConfig {
+  readonly orgId: OrgId;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly clientSecret: string;
+  readonly emailDomains: readonly string[];
+  readonly enforced: boolean;
+  readonly enabled: boolean;
+}
+
+/** A second factor's state, for sign-in. Secrets are sealed by the caller. */
+export interface TotpState {
+  readonly secret: string | null;
+  readonly pendingSecret: string | null;
+  readonly enabledAt: string | null;
+  readonly lastStep: number | null;
+}
+
+/** A password reset, as the mail worker and the confirming request see it. */
+export interface PasswordReset {
+  readonly id: string;
+  readonly userId: string;
+  readonly orgId: OrgId;
+  readonly email: string;
+  readonly name: string;
+  readonly expiresAt: string;
+  readonly used: boolean;
+  readonly disabled: boolean;
 }
 
 export interface StaffUser {
@@ -82,7 +116,7 @@ export class IdentityStore {
 
   async createOrganisation(id: OrgId, name: string): Promise<Organisation> {
     await this.#sql.query(`INSERT INTO organisations (id, name) VALUES ($1, $2)`, [id, name]);
-    return { id, name, monthlySpendCapMicroUsd: null };
+    return { id, name, monthlySpendCapMicroUsd: null, requireOwner2fa: false };
   }
 
   /** Every organisation's id, for tooling that walks the whole database. */
@@ -92,10 +126,12 @@ export class IdentityStore {
   }
 
   async getOrganisation(id: OrgId): Promise<Organisation | null> {
-    const rows = await this.#sql.query<{ id: string; name: string; monthly_spend_cap_micro_usd: number | string | null }>(
-      `SELECT id, name, monthly_spend_cap_micro_usd FROM organisations WHERE id = $1`,
-      [id],
-    );
+    const rows = await this.#sql.query<{
+      id: string;
+      name: string;
+      monthly_spend_cap_micro_usd: number | string | null;
+      require_owner_2fa: boolean;
+    }>(`SELECT id, name, monthly_spend_cap_micro_usd, require_owner_2fa FROM organisations WHERE id = $1`, [id]);
     const row = rows[0];
     if (row === undefined) return null;
     return {
@@ -103,7 +139,12 @@ export class IdentityStore {
       name: row.name,
       monthlySpendCapMicroUsd:
         row.monthly_spend_cap_micro_usd === null ? null : Number(row.monthly_spend_cap_micro_usd),
+      requireOwner2fa: row.require_owner_2fa === true,
     };
+  }
+
+  async setRequireOwner2fa(id: OrgId, required: boolean): Promise<void> {
+    await this.#sql.query(`UPDATE organisations SET require_owner_2fa = $2 WHERE id = $1`, [id, required]);
   }
 
   async setSpendCap(id: OrgId, capMicroUsd: number | null): Promise<void> {
@@ -197,18 +238,26 @@ export class IdentityStore {
     ]);
   }
 
-  /** The user behind a live session: not revoked, not expired, not disabled. */
-  async userForSession(tokenHash: string, now: Date): Promise<StaffUser | null> {
-    const rows = await this.#sql.query<UserRow>(
-      `SELECT u.id, u.org_id, u.email, u.name, u.role, u.password_hash, u.disabled_at
-         FROM staff_sessions s JOIN staff_users u ON u.id = s.user_id
+  /**
+   * The user behind a live session: not revoked, not expired, not disabled.
+   * `mustEnrol2fa` says the organisation requires owners to use a second
+   * factor and this owner has none yet.
+   */
+  async userForSession(tokenHash: string, now: Date): Promise<(StaffUser & { readonly mustEnrol2fa: boolean }) | null> {
+    const rows = await this.#sql.query<UserRow & { must_enrol: boolean }>(
+      `SELECT u.id, u.org_id, u.email, u.name, u.role, u.password_hash, u.disabled_at,
+              (u.role = 'owner' AND o.require_owner_2fa AND u.totp_enabled_at IS NULL) AS must_enrol
+         FROM staff_sessions s
+         JOIN staff_users u ON u.id = s.user_id
+         JOIN organisations o ON o.id = u.org_id
         WHERE s.token_hash = $1
           AND s.revoked_at IS NULL
           AND s.expires_at > $2
           AND u.disabled_at IS NULL`,
       [tokenHash, now.toISOString()],
     );
-    return rows[0] === undefined ? null : withoutSecret(toUser(rows[0]));
+    const row = rows[0];
+    return row === undefined ? null : { ...withoutSecret(toUser(row)), mustEnrol2fa: row.must_enrol === true };
   }
 
   async revokeSession(tokenHash: string): Promise<void> {
@@ -221,6 +270,215 @@ export class IdentityStore {
     await this.#sql.query(`UPDATE staff_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, [
       userId,
     ]);
+  }
+
+  // --- second factor ----------------------------------------------------------
+
+  async totpState(userId: string): Promise<TotpState> {
+    const rows = await this.#sql.query<{
+      totp_secret: string | null;
+      totp_pending_secret: string | null;
+      totp_enabled_at: string | Date | null;
+      totp_last_step: number | string | null;
+    }>(`SELECT totp_secret, totp_pending_secret, totp_enabled_at, totp_last_step FROM staff_users WHERE id = $1`, [userId]);
+    const row = rows[0];
+    return {
+      secret: row?.totp_secret ?? null,
+      pendingSecret: row?.totp_pending_secret ?? null,
+      enabledAt: row?.totp_enabled_at == null ? null : new Date(row.totp_enabled_at).toISOString(),
+      lastStep: row?.totp_last_step == null ? null : Number(row.totp_last_step),
+    };
+  }
+
+  /** A secret being set up; it becomes the account's only once a code from it is accepted. */
+  async setPendingTotp(userId: string, sealedSecret: string): Promise<void> {
+    await this.#sql.query(`UPDATE staff_users SET totp_pending_secret = $2 WHERE id = $1`, [userId, sealedSecret]);
+  }
+
+  /** Make the pending secret the account's, with fresh recovery codes (as digests). */
+  async enableTotp(userId: string, step: number, recoveryCodeHashes: readonly string[]): Promise<boolean> {
+    return this.#sql.transaction(async (tx) => {
+      const rows = await tx.query<{ id: string }>(
+        `UPDATE staff_users
+            SET totp_secret = totp_pending_secret, totp_pending_secret = NULL, totp_enabled_at = now(), totp_last_step = $2
+          WHERE id = $1 AND totp_pending_secret IS NOT NULL
+          RETURNING id`,
+        [userId, step],
+      );
+      if (rows.length === 0) return false;
+      await tx.query(`DELETE FROM staff_recovery_codes WHERE user_id = $1`, [userId]);
+      for (const hash of recoveryCodeHashes) {
+        await tx.query(`INSERT INTO staff_recovery_codes (user_id, code_hash) VALUES ($1, $2)`, [userId, hash]);
+      }
+      return true;
+    });
+  }
+
+  async disableTotp(userId: string): Promise<void> {
+    await this.#sql.transaction(async (tx) => {
+      await tx.query(
+        `UPDATE staff_users SET totp_secret = NULL, totp_pending_secret = NULL, totp_enabled_at = NULL, totp_last_step = NULL WHERE id = $1`,
+        [userId],
+      );
+      await tx.query(`DELETE FROM staff_recovery_codes WHERE user_id = $1`, [userId]);
+    });
+  }
+
+  /**
+   * Record that a code for `step` was used. Refuses a step at or before the
+   * last one accepted, so a code seen once — over a shoulder, in a proxy —
+   * cannot be used again.
+   */
+  async claimTotpStep(userId: string, step: number): Promise<boolean> {
+    const rows = await this.#sql.query<{ id: string }>(
+      `UPDATE staff_users SET totp_last_step = $2
+        WHERE id = $1 AND totp_secret IS NOT NULL AND (totp_last_step IS NULL OR totp_last_step < $2)
+        RETURNING id`,
+      [userId, step],
+    );
+    return rows.length > 0;
+  }
+
+  /** Spend a recovery code. Each works once. */
+  async useRecoveryCode(userId: string, codeHash: string): Promise<boolean> {
+    const rows = await this.#sql.query<{ user_id: string }>(
+      `UPDATE staff_recovery_codes SET used_at = now()
+        WHERE user_id = $1 AND code_hash = $2 AND used_at IS NULL
+        RETURNING user_id`,
+      [userId, codeHash],
+    );
+    return rows.length > 0;
+  }
+
+  async recoveryCodesLeft(userId: string): Promise<number> {
+    const rows = await this.#sql.query<{ n: number | string }>(
+      `SELECT count(*) AS n FROM staff_recovery_codes WHERE user_id = $1 AND used_at IS NULL`,
+      [userId],
+    );
+    return Number(rows[0]?.n ?? 0);
+  }
+
+  // --- password reset -----------------------------------------------------------
+
+  /**
+   * Record a reset and queue its email in one transaction, so a reset exists
+   * exactly when its mail is on its way. The outbox row names the reset only.
+   */
+  async requestPasswordReset(user: { readonly id: string; readonly orgId: OrgId }, now: Date, expiresAt: Date): Promise<string> {
+    const id = this.#newId();
+    await this.#sql.transaction(async (tx) => {
+      await tx.query(`INSERT INTO password_resets (id, user_id, created_at, expires_at) VALUES ($1, $2, $3, $4)`, [
+        id,
+        user.id,
+        now.toISOString(),
+        expiresAt.toISOString(),
+      ]);
+      await enqueue(
+        tx,
+        user.orgId,
+        [{ kind: "staff_email", subject: { resetId: id }, purpose: "password_reset", id: `reset:${id}`, sendAfter: now }],
+        this.#newId,
+      );
+    });
+    return id;
+  }
+
+  /** How many resets an account asked for since a moment: a reset flood is an annoyance to its owner. */
+  async recentResets(userId: string, since: Date): Promise<number> {
+    const rows = await this.#sql.query<{ n: number | string }>(
+      `SELECT count(*) AS n FROM password_resets WHERE user_id = $1 AND created_at > $2`,
+      [userId, since.toISOString()],
+    );
+    return Number(rows[0]?.n ?? 0);
+  }
+
+  async passwordReset(id: string): Promise<PasswordReset | null> {
+    const rows = await this.#sql.query<{
+      id: string;
+      user_id: string;
+      org_id: string;
+      email: string;
+      name: string;
+      expires_at: string | Date;
+      used_at: string | Date | null;
+      disabled_at: string | Date | null;
+    }>(
+      `SELECT r.id, r.user_id, u.org_id, u.email, u.name, r.expires_at, r.used_at, u.disabled_at
+         FROM password_resets r JOIN staff_users u ON u.id = r.user_id WHERE r.id = $1`,
+      [id],
+    );
+    const row = rows[0];
+    if (row === undefined) return null;
+    return {
+      id: row.id,
+      userId: row.user_id,
+      orgId: row.org_id as OrgId,
+      email: row.email,
+      name: row.name,
+      expiresAt: new Date(row.expires_at).toISOString(),
+      used: row.used_at !== null,
+      disabled: row.disabled_at !== null,
+    };
+  }
+
+  /**
+   * Use a reset: set the password, end every session, and spend this reset and
+   * any other outstanding for the account. Null if it was used, expired, or the
+   * account is disabled — all under one statement's check, so two clicks on the
+   * same link cannot both succeed.
+   */
+  async completePasswordReset(id: string, passwordHash: string, now: Date): Promise<{ userId: string; orgId: OrgId } | null> {
+    return this.#sql.transaction(async (tx) => {
+      const rows = await tx.query<{ user_id: string; org_id: string }>(
+        `UPDATE password_resets r SET used_at = $2
+           FROM staff_users u
+          WHERE r.id = $1 AND u.id = r.user_id AND r.used_at IS NULL AND r.expires_at > $2 AND u.disabled_at IS NULL
+          RETURNING r.user_id, u.org_id`,
+        [id, now.toISOString()],
+      );
+      const row = rows[0];
+      if (row === undefined) return null;
+      await tx.query(`UPDATE staff_users SET password_hash = $2 WHERE id = $1`, [row.user_id, passwordHash]);
+      await tx.query(`UPDATE password_resets SET used_at = $2 WHERE user_id = $1 AND used_at IS NULL`, [row.user_id, now.toISOString()]);
+      await tx.query(`UPDATE staff_sessions SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, [row.user_id]);
+      return { userId: row.user_id, orgId: row.org_id as OrgId };
+    });
+  }
+
+  // --- single sign-on -------------------------------------------------------------
+
+  async ssoConfig(orgId: OrgId): Promise<SsoConfig | null> {
+    const rows = await this.#sql.query<{
+      org_id: string;
+      issuer: string;
+      client_id: string;
+      client_secret: string;
+      email_domains: string[];
+      enforced: boolean;
+      enabled: boolean;
+    }>(`SELECT org_id, issuer, client_id, client_secret, email_domains, enforced, enabled FROM sso_configs WHERE org_id = $1`, [orgId]);
+    const row = rows[0];
+    if (row === undefined) return null;
+    return {
+      orgId: row.org_id as OrgId,
+      issuer: row.issuer,
+      clientId: row.client_id,
+      clientSecret: row.client_secret,
+      emailDomains: row.email_domains ?? [],
+      enforced: row.enforced,
+      enabled: row.enabled,
+    };
+  }
+
+  async saveSsoConfig(config: SsoConfig): Promise<void> {
+    await this.#sql.query(
+      `INSERT INTO sso_configs (org_id, issuer, client_id, client_secret, email_domains, enforced, enabled, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+       ON CONFLICT (org_id) DO UPDATE SET
+         issuer = EXCLUDED.issuer, client_id = EXCLUDED.client_id, client_secret = EXCLUDED.client_secret,
+         email_domains = EXCLUDED.email_domains, enforced = EXCLUDED.enforced, enabled = EXCLUDED.enabled, updated_at = now()`,
+      [config.orgId, config.issuer, config.clientId, config.clientSecret, JSON.stringify(config.emailDomains), config.enforced, config.enabled],
+    );
   }
 
   // --- API keys -------------------------------------------------------------

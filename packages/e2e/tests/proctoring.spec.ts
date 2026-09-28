@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, OWNER, SHORT, seedSitting } from "./support.js";
+import { beginSitting, OWNER, SHORT, seedSitting } from "./support.js";
 
 /**
  * ROADMAP §14 in a real browser, with Chromium's fake camera: the camera
@@ -16,7 +16,7 @@ test.use({
 test("a proctored sitting: camera first, identity photos, then an invigilator confirms them", async ({ page, browser, request }) => {
   const sitting = await seedSitting(request, { questions: [SHORT], proctoring: { identity: true, snapshotEverySeconds: 15, browserEvents: true } });
 
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: "This test uses your camera" })).toBeVisible();
   await page.getByRole("button", { name: "Allow the camera" }).click();
   await page.getByRole("button", { name: "My camera works — start the test" }).click();
@@ -35,7 +35,7 @@ test("a proctored sitting: camera first, identity photos, then an invigilator co
   await staff.goto("/console/");
   await staff.getByLabel("Email").fill(OWNER.email);
   await staff.getByLabel("Password").fill(OWNER.password);
-  await staff.getByRole("button", { name: "Sign in" }).click();
+  await staff.getByRole("button", { name: "Sign in", exact: true }).click();
   await staff.getByRole("button", { name: sitting.title }).click();
   await staff.getByRole("button", { name: "Live sitting" }).click();
   const row = staff.getByRole("row").filter({ hasText: "CS001" });

@@ -1,6 +1,6 @@
 import { foldAttempt } from "./attempt.js";
 import type { LedgerEntry } from "./chain.js";
-import type { AttemptState, Exam, QuestionId, VivaVerdict } from "./domain.js";
+import type { AttemptState, Exam, ExamCutoff, QuestionId, VivaVerdict } from "./domain.js";
 import { allQuestions, paperOf } from "./paper.js";
 
 /**
@@ -35,6 +35,50 @@ export interface AttemptResult {
     readonly verdicts: Readonly<Partial<Record<VivaVerdict, number>>>;
   };
   readonly voidReason: string | null;
+  /**
+   * Marks by part of the paper, for an exam with sections: its fixed questions
+   * (id "", "General") if it has any, then each section as this candidate drew it.
+   * Empty for an exam without sections.
+   */
+  readonly sections: readonly SectionScore[];
+  /** Against the exam's cut-off, once graded. Null without a cut-off, or before grading, or set aside. */
+  readonly outcome: Outcome | null;
+}
+
+export type Outcome = "qualified" | "failed";
+
+export interface SectionScore {
+  readonly id: string;
+  readonly title: string;
+  readonly score: number | null;
+  readonly max: number;
+  readonly percent: number | null;
+}
+
+/**
+ * Whether marks reach the cut-off: the whole paper's, and every section's
+ * that has its own. A section worth nothing on this paper cannot hold anyone back.
+ */
+export function outcomeOf(cutoff: ExamCutoff | undefined, percent: number | null, sections: readonly SectionScore[]): Outcome | null {
+  if (cutoff === undefined || percent === null) return null;
+  if (percent < cutoff.percent) return "failed";
+  for (const [id, minimum] of Object.entries(cutoff.sections ?? {})) {
+    const part = sections.find((s) => s.id === id);
+    if (part === undefined || part.max === 0 || part.percent === null) continue;
+    if (part.percent < minimum) return "failed";
+  }
+  return "qualified";
+}
+
+/**
+ * The share of `others` this percent is ahead of, ties counting half: the
+ * percentile a scorecard states. Null with nobody to compare against.
+ */
+export function percentileOf(percent: number, others: readonly number[]): number | null {
+  if (others.length === 0) return null;
+  const below = others.filter((p) => p < percent).length;
+  const level = others.filter((p) => p === percent).length;
+  return round(((below + level / 2) * 100) / others.length, 1);
 }
 
 /** One attempt's result, from its chain. Null if the chain does not fold. */
@@ -58,6 +102,24 @@ export function resultOf(entries: readonly LedgerEntry[], definition: Exam): Att
     for (const q of paper.questions) scores[q.id] = { score: projection.scores.get(q.id) ?? 0, max: q.maxScore };
   }
 
+  const onPaper = new Set(paper.questions.map((q) => q.id as string));
+  const partOf = (id: string, title: string, ids: readonly string[]): SectionScore => {
+    const questions = paper.questions.filter((q) => ids.includes(q.id));
+    const max = questions.reduce((sum, q) => sum + q.maxScore, 0);
+    const score = graded ? questions.reduce((sum, q) => sum + (projection.scores.get(q.id) ?? 0), 0) : null;
+    return { id, title, score, max, percent: score === null || max === 0 ? null : round((score * 100) / max, 1) };
+  };
+  const sections: SectionScore[] = [];
+  if ((definition.sections ?? []).length > 0) {
+    const fixed = definition.questions.map((q) => q.id as string).filter((id) => onPaper.has(id));
+    if (fixed.length > 0) sections.push(partOf("", "General", fixed));
+    for (const section of definition.sections ?? []) {
+      sections.push(partOf(section.id, section.title, section.pool.map((q) => q.id as string).filter((id) => onPaper.has(id))));
+    }
+  }
+  const percent = projection.total === null || maxTotal === 0 ? null : round((projection.total * 100) / maxTotal, 1);
+  const state = projection.attempt.state;
+
   const verdicts: Partial<Record<VivaVerdict, number>> = {};
   for (const viva of projection.vivas) {
     if (viva.assessment !== null) verdicts[viva.assessment.verdict] = (verdicts[viva.assessment.verdict] ?? 0) + 1;
@@ -66,10 +128,10 @@ export function resultOf(entries: readonly LedgerEntry[], definition: Exam): Att
   return {
     attemptId: projection.attempt.id,
     candidateId: projection.attempt.candidateId,
-    state: projection.attempt.state,
+    state,
     total: projection.total,
     maxTotal,
-    percent: projection.total === null || maxTotal === 0 ? null : round((projection.total * 100) / maxTotal, 1),
+    percent,
     startedAt: projection.attempt.startedAt,
     submittedAt: submitted?.timestamp ?? null,
     durationMs: submitted === undefined ? null : submitted.timestamp - projection.attempt.startedAt,
@@ -80,6 +142,8 @@ export function resultOf(entries: readonly LedgerEntry[], definition: Exam): Att
       verdicts,
     },
     voidReason: projection.voidReason,
+    sections,
+    outcome: state === "graded" ? outcomeOf(definition.policy.cutoff, percent, sections) : null,
   };
 }
 
@@ -107,6 +171,9 @@ export interface CohortAnalytics {
   readonly setAside: number;
   readonly meanPercent: number | null;
   readonly medianPercent: number | null;
+  /** Graded candidates at or above the cut-off, and below it; null for an exam without one. */
+  readonly qualified: number | null;
+  readonly failed: number | null;
   /** Graded candidates in each tenth of the range: 0–10%, 10–20% … 90–100%. */
   readonly distribution: readonly number[];
   readonly questions: readonly QuestionAnalytics[];
@@ -180,6 +247,8 @@ export function cohortAnalytics(results: readonly AttemptResult[], definition: E
     setAside: results.filter((r) => r.state === "void").length,
     meanPercent: percents.length === 0 ? null : round(percents.reduce((s, p) => s + p, 0) / percents.length, 1),
     medianPercent: median === null ? null : round(median, 1),
+    qualified: definition.policy.cutoff === undefined ? null : graded.filter((r) => r.outcome === "qualified").length,
+    failed: definition.policy.cutoff === undefined ? null : graded.filter((r) => r.outcome === "failed").length,
     distribution,
     questions,
     time: {

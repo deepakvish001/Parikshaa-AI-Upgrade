@@ -41,6 +41,18 @@ export interface InvitationStatus extends Invitation {
   readonly delivery: { readonly email: DeliveryState | null; readonly sms: DeliveryState | null };
 }
 
+/** A candidate found by search, with the exam they were invited to. */
+export interface CandidateHit {
+  readonly invitationId: string;
+  readonly examId: string;
+  readonly examTitle: string;
+  readonly candidateRef: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly attemptId: string | null;
+  readonly attemptState: InvitationStatus["attemptState"];
+}
+
 export interface DeliveryState {
   readonly status: "pending" | "sending" | "sent" | "failed" | "skipped";
   readonly purpose: string;
@@ -213,6 +225,46 @@ export class InvitationStore {
         ...toInvitation(row),
         attemptState: row.attempt_id === null ? "not_started" : lifecycleState(row.lifecycle),
         delivery: { email: toDelivery(row.email_delivery), sms: toDelivery(row.sms_delivery) },
+      }));
+    });
+  }
+
+  /**
+   * Candidates across every exam whose reference, name or email contains
+   * `text`, most recently invited first: what the console's search finds.
+   */
+  async search(scope: Scope, text: string, limit = 20): Promise<readonly CandidateHit[]> {
+    const needle = `%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{
+        id: string;
+        exam_id: string;
+        exam_title: string | null;
+        candidate_ref: string;
+        name: string;
+        email: string | null;
+        attempt_id: string | null;
+        lifecycle: string | null;
+      }>(
+        `SELECT i.id, i.exam_id, e.definition ->> 'title' AS exam_title, i.candidate_ref, i.name, i.email, i.attempt_id,
+                ${lifecycleSql("i.org_id", "i.attempt_id")} AS lifecycle
+           FROM invitations i
+           LEFT JOIN exams e ON e.org_id = i.org_id AND e.id = i.exam_id
+          WHERE i.org_id = $1 AND i.revoked_at IS NULL
+            AND (i.candidate_ref ILIKE $2 OR i.name ILIKE $2 OR coalesce(i.email, '') ILIKE $2)
+          ORDER BY i.created_at DESC, i.candidate_ref
+          LIMIT $3`,
+        [scope.orgId, needle, limit],
+      );
+      return rows.map((row) => ({
+        invitationId: row.id,
+        examId: row.exam_id,
+        examTitle: row.exam_title ?? row.exam_id,
+        candidateRef: row.candidate_ref,
+        name: row.name,
+        email: row.email,
+        attemptId: row.attempt_id,
+        attemptState: row.attempt_id === null ? "not_started" : lifecycleState(row.lifecycle),
       }));
     });
   }

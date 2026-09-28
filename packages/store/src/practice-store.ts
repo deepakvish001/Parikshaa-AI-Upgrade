@@ -1,5 +1,6 @@
 import type { OrgId, Question } from "@parikshaa/core";
 import type { Difficulty } from "./question-bank.js";
+import { enqueue } from "./outbox-store.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
@@ -47,6 +48,16 @@ export interface Learner {
   readonly name: string;
   readonly createdAt: string;
   readonly erased: boolean;
+  /** The learner proved the address is theirs: by the emailed link, or a provider that vouched for it. */
+  readonly emailVerified: boolean;
+}
+
+/** How a site's learners may sign in. The Google secret is sealed by the caller. */
+export interface PracticeSignIn {
+  readonly requireVerified: boolean;
+  readonly googleEnabled: boolean;
+  readonly googleClientId: string | null;
+  readonly googleClientSecret: string | null;
 }
 
 export interface LearnerWithSecret extends Learner {
@@ -257,7 +268,9 @@ interface LearnerRow {
   password_hash: string;
   created_at: string | Date;
   erased_at: string | Date | null;
+  email_verified_at: string | Date | null;
 }
+const LEARNER_COLUMNS = "id, org_id, email, name, password_hash, created_at, erased_at, email_verified_at";
 const toLearner = (r: LearnerRow): LearnerWithSecret => ({
   id: r.id,
   orgId: r.org_id as OrgId,
@@ -266,6 +279,7 @@ const toLearner = (r: LearnerRow): LearnerWithSecret => ({
   passwordHash: r.password_hash,
   createdAt: iso(r.created_at),
   erased: r.erased_at !== null,
+  emailVerified: r.email_verified_at !== null && r.email_verified_at !== undefined,
 });
 const withoutSecret = ({ passwordHash: _, ...learner }: LearnerWithSecret): Learner => learner;
 
@@ -314,12 +328,14 @@ export class PracticeStore {
 
   // --- learners -------------------------------------------------------------------
 
-  async createLearner(learner: { orgId: OrgId; email: string; name: string; passwordHash: string }): Promise<Learner> {
+  /** `verified`: the address was vouched for already, by a provider it was signed in with. */
+  async createLearner(learner: { orgId: OrgId; email: string; name: string; passwordHash: string; verified?: boolean }): Promise<Learner> {
     try {
       const rows = await this.#sql.query<LearnerRow>(
-        `INSERT INTO learners (id, org_id, email, name, password_hash) VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, org_id, email, name, password_hash, created_at, erased_at`,
-        [this.#newId(), learner.orgId, learner.email.trim(), learner.name.trim(), learner.passwordHash],
+        `INSERT INTO learners (id, org_id, email, name, password_hash, email_verified_at)
+         VALUES ($1, $2, $3, $4, $5, CASE WHEN $6 THEN now() END)
+         RETURNING ${LEARNER_COLUMNS}`,
+        [this.#newId(), learner.orgId, learner.email.trim(), learner.name.trim(), learner.passwordHash, learner.verified === true],
       );
       return withoutSecret(toLearner(rows[0]!));
     } catch (error) {
@@ -330,7 +346,7 @@ export class PracticeStore {
 
   async learnerByEmail(orgId: OrgId, email: string): Promise<LearnerWithSecret | null> {
     const rows = await this.#sql.query<LearnerRow>(
-      `SELECT id, org_id, email, name, password_hash, created_at, erased_at FROM learners
+      `SELECT ${LEARNER_COLUMNS} FROM learners
         WHERE org_id = $1 AND lower(email) = lower($2) AND erased_at IS NULL`,
       [orgId, email.trim()],
     );
@@ -343,12 +359,61 @@ export class PracticeStore {
 
   async learnerForSession(tokenHash: string, now: Date): Promise<Learner | null> {
     const rows = await this.#sql.query<LearnerRow>(
-      `SELECT l.id, l.org_id, l.email, l.name, l.password_hash, l.created_at, l.erased_at
+      `SELECT l.id, l.org_id, l.email, l.name, l.password_hash, l.created_at, l.erased_at, l.email_verified_at
          FROM learner_sessions s JOIN learners l ON l.id = s.learner_id
         WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.expires_at > $2 AND l.erased_at IS NULL`,
       [tokenHash, now],
     );
     return rows[0] === undefined ? null : withoutSecret(toLearner(rows[0]));
+  }
+
+  async learnerById(orgId: OrgId, id: string): Promise<Learner | null> {
+    const rows = await this.#sql.query<LearnerRow>(
+      `SELECT ${LEARNER_COLUMNS} FROM learners WHERE org_id = $1 AND id = $2 AND erased_at IS NULL`,
+      [orgId, id],
+    );
+    return rows[0] === undefined ? null : withoutSecret(toLearner(rows[0]));
+  }
+
+  /** Mark the address verified — only if it is still the one the link was made for. */
+  async markVerified(orgId: OrgId, id: string, email: string): Promise<boolean> {
+    const rows = await this.#sql.query<{ id: string }>(
+      `UPDATE learners SET email_verified_at = coalesce(email_verified_at, now())
+        WHERE org_id = $1 AND id = $2 AND lower(email) = lower($3) AND erased_at IS NULL RETURNING id`,
+      [orgId, id, email],
+    );
+    return rows.length > 0;
+  }
+
+  /** Queue a verification email. The outbox row names the learner only; the message is built when sent. */
+  async queueVerification(orgId: OrgId, learnerId: string, now: Date): Promise<void> {
+    await enqueue(this.#sql, orgId, [{ kind: "learner_email", subject: { learnerId }, purpose: "verify_email", sendAfter: now }], this.#newId);
+  }
+
+  async signInSettings(orgId: OrgId): Promise<PracticeSignIn> {
+    const rows = await this.#sql.query<{
+      require_verified: boolean;
+      google_enabled: boolean;
+      google_client_id: string | null;
+      google_client_secret: string | null;
+    }>(`SELECT require_verified, google_enabled, google_client_id, google_client_secret FROM practice_sign_in WHERE org_id = $1`, [orgId]);
+    const r = rows[0];
+    return {
+      requireVerified: r?.require_verified ?? false,
+      googleEnabled: r?.google_enabled ?? false,
+      googleClientId: r?.google_client_id ?? null,
+      googleClientSecret: r?.google_client_secret ?? null,
+    };
+  }
+
+  async saveSignInSettings(orgId: OrgId, settings: PracticeSignIn): Promise<void> {
+    await this.#sql.query(
+      `INSERT INTO practice_sign_in (org_id, require_verified, google_enabled, google_client_id, google_client_secret, updated_at)
+       VALUES ($1, $2, $3, $4, $5, now())
+       ON CONFLICT (org_id) DO UPDATE SET require_verified = $2, google_enabled = $3, google_client_id = $4,
+         google_client_secret = $5, updated_at = now()`,
+      [orgId, settings.requireVerified, settings.googleEnabled, settings.googleClientId, settings.googleClientSecret],
+    );
   }
 
   async revokeSession(tokenHash: string): Promise<void> {

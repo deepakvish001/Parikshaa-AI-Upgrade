@@ -33,9 +33,14 @@ import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
 import { PracticeService } from "../practice.js";
+import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
+import { StaffSecrets } from "../staff-secrets.js";
+import { StaffSecurity } from "../staff-security.js";
+import type { ItemHandler, Mailer } from "../delivery.js";
+import type { AtsBaseUrls } from "../ats.js";
 
 /**
  * Wiring shared by the API tests: a server over a real (in-process) Postgres,
@@ -83,13 +88,14 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
-  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"];
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler };
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
   readonly razorpay: FakeRazorpay;
+  readonly security: StaffSecurity;
   readonly app: FastifyInstance;
 }
 
@@ -104,6 +110,17 @@ export async function wire(
     /** For integration tests against a local server. */
     readonly http?: SafeHttpOptions;
     readonly greenhouseHosts?: readonly string[];
+    /** Where staff mail (password resets) goes. */
+    readonly mailer?: Mailer;
+    /**
+     * The clock staff sign-in runs on. Off by default, so sessions do not
+     * expire when a test moves `now` on by days; a second-factor test needs it.
+     */
+    readonly staffClock?: boolean;
+    /** Lever's and Zoho's API roots, when a test stands in for them. */
+    readonly atsBases?: AtsBaseUrls;
+    /** Stands in for Google in a test of signing in with it. */
+    readonly googleIssuer?: string;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -159,6 +176,38 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.http === undefined ? {} : { http: options.http }),
     ...(options.greenhouseHosts === undefined ? {} : { greenhouseHosts: options.greenhouseHosts }),
+    ...(options.atsBases === undefined ? {} : { atsBases: options.atsBases }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const secrets = new StaffSecrets(TOKEN_SECRET);
+  const auth = new StaffAuth(identity, {
+    secrets,
+    ...(options.now === undefined || options.staffClock !== true ? {} : { now: options.now }),
+  });
+  const security = new StaffSecurity({
+    identity,
+    auth,
+    secrets,
+    publicUrl: PUBLIC_URL,
+    mailer: options.mailer ?? null,
+    ...(options.http === undefined ? {} : { http: options.http }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const practice = new PracticeService({
+    store: new PracticeStore(sql),
+    bank: new QuestionBank(sql),
+    ...(options.runner === undefined ? {} : { runner: options.runner }),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const practiceIdentity = new PracticeIdentity({
+    store: new PracticeStore(sql),
+    practice,
+    secrets,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    mailer: options.mailer ?? null,
+    ...(options.http === undefined ? {} : { http: options.http }),
+    ...(options.googleIssuer === undefined ? {} : { issuer: options.googleIssuer }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const app = buildServer({
@@ -167,6 +216,8 @@ export async function wire(
     results: new ResultsService({ store, invitations: invitationStore, exams: service, proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)) }),
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
+    ats: integrations.ats,
+    lti: integrations.lti,
     invigilation: new InvigilationService({
       store,
       proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
@@ -184,20 +235,27 @@ export async function wire(
       ...(options.now === undefined ? {} : { now: options.now }),
     }),
     tokens,
-    auth: new StaffAuth(identity),
+    auth,
+    security,
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
-    practice: new PracticeService({
-      store: new PracticeStore(sql),
-      bank: new QuestionBank(sql),
-      ...(options.runner === undefined ? {} : { runner: options.runner }),
-      ...(options.now === undefined ? {} : { now: options.now }),
-    }),
+    practice,
+    practiceIdentity,
     ...options.server,
   });
   await app.ready();
-  return { store, identity, service, privacy, billing, razorpay, app, handlers: integrations.handlers };
+  return {
+    store,
+    identity,
+    service,
+    privacy,
+    billing,
+    razorpay,
+    security,
+    app,
+    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
+  };
 }
 
 export async function addOrganisation(identity: IdentityStore, id: string, name = id): Promise<OrgId> {

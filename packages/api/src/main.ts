@@ -65,7 +65,7 @@ async function main(): Promise<void> {
           webhookSecret: required("RAZORPAY_WEBHOOK_SECRET"),
         });
 
-  const { app, worker, privacy } = assemble({
+  const { app, worker, privacy, billing, identity } = assemble({
     sql,
     ...(runner === undefined ? {} : { runner }),
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
@@ -124,6 +124,21 @@ async function main(): Promise<void> {
     setTimeout(sweep, 60_000).unref();
   }
 
+  // Invoicing (ROADMAP §12): early each month, last month's usage invoice to
+  // every invoiced organisation. Checked every six hours; issuing is
+  // idempotent, so several instances and restarts issue each invoice once.
+  let invoicing: ReturnType<typeof setInterval> | undefined;
+  if (process.env["INVOICE_WORKER"] !== "off") {
+    const run = () =>
+      identity
+        .organisationIds()
+        .then((orgs) => billing.invoiceLastMonth(orgs))
+        .then((issued) => (issued > 0 ? app.log.info({ issued }, "monthly invoices") : undefined))
+        .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "monthly invoicing failed"));
+    invoicing = setInterval(run, 6 * 60 * 60 * 1000);
+    setTimeout(run, 120_000).unref();
+  }
+
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info({ port }, "listening");
@@ -132,6 +147,7 @@ async function main(): Promise<void> {
     process.once(signal, () => {
       clearInterval(delivering);
       clearInterval(retaining);
+      clearInterval(invoicing);
       void app.close().then(() => sql.end()).then(() => process.exit(0));
     });
   }

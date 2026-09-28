@@ -20,6 +20,24 @@ export interface Webhook {
   readonly disabled: boolean;
 }
 
+export type AtsProvider = "lever" | "zoho_recruit" | "darwinbox";
+
+export interface AtsConnector {
+  readonly provider: AtsProvider;
+  readonly enabled: boolean;
+  readonly keyVersion: number;
+  readonly settings: Record<string, unknown>;
+  /** Sealed by the caller. */
+  readonly credentials: string | null;
+}
+
+export interface AtsCandidate {
+  readonly invitationId: string;
+  readonly provider: AtsProvider;
+  readonly externalId: string;
+  readonly detail: Record<string, unknown>;
+}
+
 export interface GreenhouseSettings {
   readonly keyVersion: number;
   readonly enabled: boolean;
@@ -184,6 +202,76 @@ export class IntegrationStore {
       return r === undefined
         ? null
         : { invitationId: r.invitation_id, applicationId: r.application_id, profileUrl: r.profile_url, completeUrl: r.complete_url, sentBy: r.sent_by };
+    });
+  }
+
+  // --- other applicant-tracking systems (Lever, Zoho Recruit, Darwinbox) ----------
+
+  async atsConnectors(scope: Scope): Promise<readonly AtsConnector[]> {
+    return withScope(this.#sql, scope, async (tx) =>
+      (
+        await tx.query<{ provider: AtsProvider; enabled: boolean; key_version: number; settings: Record<string, unknown>; credentials: string | null }>(
+          `SELECT provider, enabled, key_version, settings, credentials FROM ats_connectors WHERE org_id = $1 ORDER BY provider`,
+          [scope.orgId],
+        )
+      ).map((r) => ({ provider: r.provider, enabled: r.enabled, keyVersion: Number(r.key_version), settings: r.settings ?? {}, credentials: r.credentials })),
+    );
+  }
+
+  async atsConnector(scope: Scope, provider: AtsProvider): Promise<AtsConnector | null> {
+    return (await this.atsConnectors(scope)).find((c) => c.provider === provider) ?? null;
+  }
+
+  /** Save a connector's settings and (sealed) credentials, turning it on. `credentials` null keeps what is stored. */
+  async saveAtsConnector(scope: Scope, provider: AtsProvider, settings: Record<string, unknown>, credentials: string | null): Promise<AtsConnector> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ provider: AtsProvider; enabled: boolean; key_version: number; settings: Record<string, unknown>; credentials: string | null }>(
+        `INSERT INTO ats_connectors (org_id, provider, settings, credentials) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (org_id, provider) DO UPDATE SET settings = EXCLUDED.settings,
+           credentials = coalesce(EXCLUDED.credentials, ats_connectors.credentials), enabled = true, updated_at = now()
+         RETURNING provider, enabled, key_version, settings, credentials`,
+        [scope.orgId, provider, JSON.stringify(settings), credentials],
+      );
+      const r = rows[0]!;
+      return { provider: r.provider, enabled: r.enabled, keyVersion: Number(r.key_version), settings: r.settings, credentials: r.credentials };
+    });
+  }
+
+  /** A new inbound key: the old one stops working. */
+  async rotateAtsKey(scope: Scope, provider: AtsProvider): Promise<number | null> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ key_version: number }>(
+        `UPDATE ats_connectors SET key_version = key_version + 1, updated_at = now() WHERE org_id = $1 AND provider = $2 RETURNING key_version`,
+        [scope.orgId, provider],
+      );
+      return rows[0] === undefined ? null : Number(rows[0].key_version);
+    });
+  }
+
+  async disableAtsConnector(scope: Scope, provider: AtsProvider): Promise<void> {
+    await withScope(this.#sql, scope, (tx) =>
+      tx.query(`UPDATE ats_connectors SET enabled = false, updated_at = now() WHERE org_id = $1 AND provider = $2`, [scope.orgId, provider]),
+    );
+  }
+
+  async recordAtsCandidate(scope: Scope, candidate: AtsCandidate): Promise<void> {
+    await withScope(this.#sql, scope, (tx) =>
+      tx.query(
+        `INSERT INTO ats_candidates (org_id, invitation_id, provider, external_id, detail) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, invitation_id) DO UPDATE SET detail = EXCLUDED.detail`,
+        [scope.orgId, candidate.invitationId, candidate.provider, candidate.externalId, JSON.stringify(candidate.detail)],
+      ),
+    );
+  }
+
+  async atsCandidate(scope: Scope, invitationId: string): Promise<AtsCandidate | null> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ invitation_id: string; provider: AtsProvider; external_id: string; detail: Record<string, unknown> }>(
+        `SELECT invitation_id, provider, external_id, detail FROM ats_candidates WHERE org_id = $1 AND invitation_id = $2`,
+        [scope.orgId, invitationId],
+      );
+      const r = rows[0];
+      return r === undefined ? null : { invitationId: r.invitation_id, provider: r.provider, externalId: r.external_id, detail: r.detail ?? {} };
     });
   }
 }

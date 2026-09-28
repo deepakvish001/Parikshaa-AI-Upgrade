@@ -277,7 +277,7 @@ sitting is over.
 | Offline verification | implemented — `packages/verify` (CLI) and in-browser via WebCrypto |
 | Deployment | implemented — `Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml` |
 | Organisations and isolation | implemented — `org_id` on every tenant table, enforced by row-level security as well as by every query |
-| Staff accounts, roles, API keys | implemented — `packages/api/src/staff-auth.ts`; password sign-in (argon2id). OIDC and 2FA not yet |
+| Staff accounts, roles, API keys | implemented — `packages/api/src/staff-auth.ts`; password sign-in (argon2id), password reset by email, two-step sign-in (TOTP, recovery codes; can be required of owners), single sign-on through the organisation's OpenID Connect provider (`packages/api/src/staff-security.ts`, `oidc.ts`) |
 | Audit log | implemented — append-only `audit_log`, `GET /audit` |
 | Model spend metering and cap | implemented — every model call recorded with its cost; per-organisation monthly cap; `GET /usage` |
 | Autosave, offline drafts, resume | implemented — `PUT /attempts/me/drafts/:questionId`; drafts committed at close (§3) |
@@ -289,12 +289,13 @@ sitting is over.
 | Function questions, checkers, Run and Submit | implemented: `packages/core/src/signature.ts` (starters and callers for five languages), `packages/runner/src/judge.ts`, `POST /attempts/me/code/submit`; a hidden test reaches the candidate as its verdict alone |
 | Code similarity | implemented — `packages/core/src/similarity.ts` (winnowing), `GET /exams/:id/similarity`; evidence for a person, never a mark |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
+| Applicant-tracking systems and LMSs | implemented — Greenhouse (`greenhouse.ts`), Lever, Zoho Recruit and Darwinbox (`ats.ts`), Moodle and other LMSs through LTI 1.3 with grades back (`lti.ts`) |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
-| Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
-| Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |
+| Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English, Hindi and nine regional languages (drafts awaiting review; the privacy notice English or Hindi only); `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
+| Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; refunds with credit notes; TDS (194J); e-invoice JSON and IRN; monthly invoicing on its own; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
 | Identity check and camera proctoring | implemented, per exam and off by default — photo + photo ID reviewed by a person (`identity_reviewed` in the ledger), webcam photos, browser events |
-| Practice sites | implemented — `/practice/<site>` for learners with accounts of their own (`packages/api/src/practice.ts`, migration 0013): problems published from the bank, Run and Submit, editorials, progress and streaks, a leaderboard, ICPC-scored contests, moderated discussion; the console's Practice page. Separate from exams and from the ledger (ROADMAP §15) |
+| Practice sites | implemented — `/practice/<site>` for learners with accounts of their own (`packages/api/src/practice.ts`, migration 0013): problems published from the bank, Run and Submit, editorials, progress and streaks, a leaderboard, ICPC-scored contests, moderated discussion; confirmed email addresses, Google sign-in and similar-code review between learners (`practice-identity.ts`, migration 0015); the console's Practice page. Separate from exams and from the ledger (ROADMAP §15) |
 | Candidate accounts / enrolment | out of scope (§2); a practice learner's account is not a candidate's |
 
 Complete end to end and deployable, for more than one institution at once: an

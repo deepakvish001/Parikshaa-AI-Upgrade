@@ -106,6 +106,26 @@ describe("the cohort's results", () => {
     ]);
   });
 
+  it("says who qualified against the exam's cut-off, and where a candidate stands", async () => {
+    const saved = await call("POST", owner, "/exams", { ...exam, policy: { ...exam.policy, cutoff: { percent: 60 } } });
+    expect(saved.statusCode, saved.payload).toBe(201);
+    const top = await sit("007", { q1: "0", q2: "1" }, 30);
+    await sit("008", { q1: "1", q2: "1" }, 50);
+
+    const { rows, analytics } = (await call("GET", owner, "/exams/drive/results")).json();
+    const byRef = Object.fromEntries(rows.map((r: { ref: string }) => [r.ref, r]));
+    expect(byRef["007"].outcome).toBe("qualified");
+    expect(byRef["008"].outcome).toBe("failed"); // 33.3%
+    expect(analytics).toMatchObject({ qualified: 1, failed: 1 });
+
+    const report = (await call("GET", owner, `/attempts/${top}/report`)).json();
+    expect(report.standing).toEqual({ percentile: 100, rank: 1, graded: 2, meanPercent: 66.7 });
+    expect(report.questions[0]).toMatchObject({ saves: 1, firstSavedMs: 0 });
+
+    const csv = (await call("GET", owner, "/exams/drive/results.csv")).payload;
+    expect(csv.split("\n")[0]).toContain('"Outcome"');
+  });
+
   it("includes a candidate started from the console, under their candidate id", async () => {
     clock = OPENS;
     const started = (await call("POST", owner, "/exams/drive/attempts", { candidateId: "walk-in-1" })).json();

@@ -53,6 +53,12 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
   return { client: client as unknown as ParikshaaClient, setState: (patch: object) => (state = { ...state, ...patch }) };
 }
 
+/** Open question `n` from the palette, as a candidate does. */
+async function openQuestion(n: number) {
+  const palette = screen.getByRole("navigation", { name: "Questions" });
+  await userEvent.click(within(palette).getByRole("button", { name: new RegExp(`^Question ${n}:`) }));
+}
+
 function renderApp(element: ReactElement) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={queryClient}>{element}</QueryClientProvider>);
@@ -68,14 +74,51 @@ describe("App", () => {
     expect(screen.getByText(/If a test uses your camera, it says so before it starts/)).toBeInTheDocument();
   });
 
-  it("renders the exam and its questions", async () => {
+  it("shows the paper one question at a time, as a computer-based test does", async () => {
     const { client } = stubClient();
     renderApp(<App client={client} />);
 
     expect(await screen.findByRole("heading", { name: "Algorithms" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^1\. Which sort is stable\?/ })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /^2\. Why does it terminate\?/ })).toBeInTheDocument();
-    expect(screen.getByText(/0 of 2 answered/)).toBeInTheDocument();
+    expect(screen.getByText("Question 1 of 2")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /^2\. Why does it terminate\?/ })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save & next" }));
+    expect(await screen.findByRole("heading", { name: /^2\. Why does it terminate\?/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^2\./ })).toHaveFocus();
+    await userEvent.click(screen.getByRole("button", { name: "Previous" }));
+    expect(screen.getByRole("heading", { name: /^1\. Which sort is stable\?/ })).toBeInTheDocument();
+  });
+
+  it("tells a question never opened from one left unanswered", async () => {
+    localStorage.clear();
+    const { client } = stubClient();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    const palette = screen.getByRole("navigation", { name: "Questions" });
+    expect(within(palette).getByRole("button", { name: "Question 1: Not answered" })).toHaveAttribute("aria-current", "step");
+    expect(within(palette).getByRole("button", { name: "Question 2: Not visited" })).toHaveClass("not-visited");
+    await openQuestion(2);
+    expect(within(palette).getByRole("button", { name: "Question 2: Not answered" })).toHaveClass("not-answered");
+  });
+
+  it("marks a question for review and moves on, and clears a response", async () => {
+    localStorage.clear();
+    const { client } = stubClient();
+    renderApp(<App client={client} />);
+    await screen.findByRole("heading", { name: "Algorithms" });
+
+    await userEvent.click(screen.getByLabelText("mergesort"));
+    await userEvent.click(screen.getByRole("button", { name: "Mark for review & next" }));
+    await waitFor(() => expect(client.saveAnswer).toHaveBeenCalledWith("q-mcq", "1"));
+    const palette = screen.getByRole("navigation", { name: "Questions" });
+    expect(await within(palette).findByRole("button", { name: "Question 1: Answered, Marked for review" })).toHaveClass("answered-marked");
+    expect(screen.getByRole("heading", { name: /^2\./ })).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Why does it terminate?"), "It halves");
+    await userEvent.click(screen.getByRole("button", { name: "Clear response" }));
+    expect(screen.getByLabelText("Why does it terminate?")).toHaveValue("");
   });
 
   it("saves an answer and then asks whether a probe is due", async () => {
@@ -84,7 +127,7 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Algorithms" });
 
     await userEvent.click(screen.getByLabelText("mergesort"));
-    await userEvent.click(screen.getAllByRole("button", { name: "Save answer" })[0]!);
+    await userEvent.click(screen.getByRole("button", { name: "Save & next" }));
 
     await waitFor(() => expect(client.saveAnswer).toHaveBeenCalledWith("q-mcq", "1"));
     await waitFor(() => expect(client.streamProbe).toHaveBeenCalled());
@@ -100,7 +143,7 @@ describe("App", () => {
     await screen.findByRole("heading", { name: "Algorithms" });
 
     await userEvent.click(screen.getByLabelText("mergesort"));
-    await userEvent.click(screen.getAllByRole("button", { name: "Save answer" })[0]!);
+    await userEvent.click(screen.getByRole("button", { name: "Save & next" }));
 
     const probe = await screen.findByRole("region", { name: "Follow-up question" });
     expect(probe).toHaveTextContent("Which quantity decreases each round?");
@@ -163,7 +206,7 @@ describe("App", () => {
 
     // Exam time, not a probe timer — SPEC §8 forbids the latter and the probe
     // panel shows none.
-    expect(screen.getByText(/4[45]m left/)).toBeInTheDocument();
+    expect(screen.getByRole("timer", { name: /4[45]m left/ })).toHaveTextContent(/00:4[45]:\d\d/);
   });
 
   it("shows the receipt with its head hash once the attempt is submitted", async () => {
@@ -184,6 +227,14 @@ describe("App", () => {
 
     expect(await screen.findByTestId("head-hash")).toHaveTextContent("f".repeat(64));
     expect(screen.getByRole("button", { name: "Download receipt" })).toBeInTheDocument();
+    // Said plainly first: submitted, and how the paper was left.
+    const done = screen.getByRole("region", { name: "Submitted" });
+    expect(within(done).getByText("Answered").nextSibling).toHaveTextContent("1");
+    expect(within(done).getByText("Not answered").nextSibling).toHaveTextContent("1");
+    const print = vi.spyOn(window, "print").mockImplementation(() => undefined);
+    await userEvent.click(within(done).getByRole("button", { name: "Print or save as PDF" }));
+    expect(print).toHaveBeenCalled();
+    print.mockRestore();
     // Answers are locked once submitted.
     expect(screen.queryByRole("button", { name: "Save answer" })).not.toBeInTheDocument();
   });
@@ -231,11 +282,16 @@ describe("nothing a candidate types is lost", () => {
   });
 
   const shortAnswer = () => screen.getByLabelText("Why does it terminate?");
+  /** Loaded, and on the written question. */
+  const onShortAnswer = async () => {
+    await screen.findByRole("heading", { name: "Algorithms" });
+    await openQuestion(2);
+  };
 
   it("autosaves once typing pauses, not on every keystroke, and says so", async () => {
     const { client } = stubClient();
     renderApp(<App client={client} />);
-    await screen.findByRole("heading", { name: "Algorithms" });
+    await onShortAnswer();
 
     await userEvent.type(shortAnswer(), "The measure decreases");
 
@@ -256,7 +312,7 @@ describe("nothing a candidate types is lost", () => {
       }),
     });
     renderApp(<App client={client} />);
-    await screen.findByRole("heading", { name: "Algorithms" });
+    await onShortAnswer();
 
     await userEvent.type(shortAnswer(), "Offline words");
 
@@ -271,6 +327,7 @@ describe("nothing a candidate types is lost", () => {
     const { client, setState } = stubClient();
     setState({ drafts: [{ questionId: "q-short", answer: "Typed on the other laptop", savedAt: 5 }] });
     renderApp(<App client={client} />);
+    await onShortAnswer();
 
     expect(await screen.findByDisplayValue("Typed on the other laptop")).toBeInTheDocument();
     expect(screen.getByText("Draft saved")).toBeInTheDocument();
@@ -287,6 +344,7 @@ describe("nothing a candidate types is lost", () => {
     const { client, setState } = stubClient();
     setState({ drafts: [{ questionId: "q-short", answer: "Older", savedAt: 5 }] });
     renderApp(<App client={client} />);
+    await onShortAnswer();
 
     expect(await screen.findByDisplayValue("Written while offline")).toBeInTheDocument();
     window.dispatchEvent(new Event("online"));
@@ -296,10 +354,10 @@ describe("nothing a candidate types is lost", () => {
   it("commits an answer when the candidate moves on, and only then asks about a probe", async () => {
     const { client } = stubClient();
     renderApp(<App client={client} />);
-    await screen.findByRole("heading", { name: "Algorithms" });
+    await onShortAnswer();
 
     await userEvent.type(shortAnswer(), "Because it halves");
-    await userEvent.click(screen.getByLabelText("mergesort")); // on to the next question
+    await userEvent.click(screen.getByRole("button", { name: "Previous" })); // on to another question
 
     await waitFor(() => expect(client.saveAnswer).toHaveBeenCalledWith("q-short", "Because it halves"));
     await waitFor(() => expect(client.streamProbe).toHaveBeenCalled());
@@ -309,23 +367,29 @@ describe("nothing a candidate types is lost", () => {
     const { client, setState } = stubClient();
     setState({ exam: { ...exam, allowRevision: false } });
     renderApp(<App client={client} />);
-    await screen.findByRole("heading", { name: "Algorithms" });
+    await onShortAnswer();
 
+    expect(screen.getByRole("button", { name: "Save final answer" })).toBeInTheDocument();
     await userEvent.type(shortAnswer(), "Still thinking");
-    await userEvent.click(screen.getByLabelText("mergesort"));
+    await userEvent.click(screen.getByRole("button", { name: "Previous" }));
 
     // Committing is final here, so it waits for the candidate to say so.
     expect(client.saveAnswer).not.toHaveBeenCalled();
-    expect(screen.getAllByRole("button", { name: "Save final answer" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Save final answer & next" })).toBeInTheDocument();
   });
 
   it("sends what is still waiting to autosave before submitting", async () => {
     const { client } = stubClient();
     renderApp(<App client={client} />);
-    await screen.findByRole("heading", { name: "Algorithms" });
+    await onShortAnswer();
 
     await userEvent.type(shortAnswer(), "Last words");
     await userEvent.click(screen.getByRole("button", { name: "Submit attempt" }));
+    // The last look: what is answered, left and marked, before anything is final.
+    const summary = screen.getByRole("dialog", { name: "Submit your attempt?" });
+    expect(summary).toHaveTextContent(/questions have no answer yet/);
+    expect(client.submit).not.toHaveBeenCalled();
+    await userEvent.click(within(summary).getByRole("button", { name: "Yes, submit" }));
 
     await waitFor(() => expect(client.submit).toHaveBeenCalled());
     const draftOrder = (client.saveDraft as unknown as { mock: { invocationCallOrder: number[] } }).mock
@@ -346,7 +410,7 @@ describe("nothing a candidate types is lost", () => {
     const loads = (client.state as unknown as { mock: { calls: unknown[] } }).mock.calls.length;
 
     await userEvent.click(screen.getByLabelText("mergesort"));
-    await userEvent.click(screen.getAllByRole("button", { name: "Save answer" })[0]!);
+    await userEvent.click(screen.getByRole("button", { name: "Save & next" }));
 
     await waitFor(() => expect(client.streamProbe).toHaveBeenCalled());
     await waitFor(() => expect(screen.queryByRole("region", { name: "Follow-up question" })).not.toBeInTheDocument());
@@ -366,7 +430,7 @@ describe("nothing a candidate types is lost", () => {
     });
     renderApp(<App client={client} />);
 
-    expect(await screen.findByText(/1h 1[45]m left/)).toBeInTheDocument();
+    expect(await screen.findByRole("timer", { name: /1h 1[45]m left/ })).toBeInTheDocument();
   });
 });
 
@@ -458,7 +522,7 @@ describe("a test taken section by section", () => {
 
     expect(await screen.findByText(/Why does it terminate\?/)).toBeInTheDocument();
     expect(screen.queryByText(/Which sort is stable\?/)).not.toBeInTheDocument();
-    expect(screen.getByRole("timer")).toHaveTextContent(/(9:5\d|10:00) left in this section/);
+    expect(screen.getByText(/(9:5\d|10:00) left in this section/)).toHaveAttribute("role", "timer");
     // The last part: now it can be submitted.
     expect(screen.getByRole("button", { name: "Submit attempt" })).toBeInTheDocument();
   });
@@ -551,16 +615,17 @@ describe("aptitude papers", () => {
 
     await userEvent.click(within(primes).getByLabelText("5"));
     await userEvent.click(within(primes).getByLabelText("2"));
-    const card = primes.closest("section")!;
-    await userEvent.click(within(card as HTMLElement).getByRole("button", { name: "Save answer" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save & next" }));
     await waitFor(() => expect(client.saveAnswer).toHaveBeenCalledWith("q-primes", "0,2"));
   });
 
-  it("shows a passage once, above the questions about it", async () => {
+  it("shows a passage beside each question about it", async () => {
     const { client, setState } = stubClient();
     setState({ exam: paper });
     renderApp(<App client={client} />);
     await screen.findByRole("heading", { name: "Algorithms" });
+    expect(screen.queryByRole("region", { name: "The monsoon" })).not.toBeInTheDocument();
+    await openQuestion(2);
 
     const passage = screen.getByRole("region", { name: "The monsoon" });
     expect(passage).toHaveTextContent("Passage · Questions 2–3");
@@ -578,11 +643,12 @@ describe("aptitude papers", () => {
     expect(within(palette).getByRole("button", { name: "Question 1: Not answered" })).toBeInTheDocument();
     expect(within(palette).getByRole("button", { name: "Question 2: Answered" })).toHaveClass("answered");
 
+    await openQuestion(3);
     const cover = screen.getByRole("region", { name: /By when does it cover the country\?/ });
     await userEvent.click(within(cover).getByRole("button", { name: "Mark for review" }));
     expect(within(cover).getByRole("button", { name: "Marked for review" })).toHaveAttribute("aria-pressed", "true");
     expect(within(palette).getByRole("button", { name: "Question 3: Not answered, Marked for review" })).toHaveClass("marked");
-    expect(within(palette).getByText("Done 1/3 · For review 1", { selector: ".palette-body .palette-summary" })).toBeInTheDocument();
+    expect(within(palette).getByText("Done 1/3 · For review 1", { selector: ".palette-head .palette-summary" })).toBeInTheDocument();
 
     // Back after a reload: the mark is still there, on this device.
     unmount();
@@ -653,6 +719,6 @@ describe("a coding question", () => {
     await userEvent.click(within(card).getByRole("button", { name: "Submit" }));
     expect(client.submitCode).toHaveBeenCalledWith("q-sum", "python", codeExam.questions[0]!.starter);
     expect(await within(card).findByRole("region", { name: "Submission results" })).toHaveTextContent("2/2 tests passed");
-    await waitFor(() => expect(within(card).getByText("Saved")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Saved")).toBeInTheDocument());
   });
 });

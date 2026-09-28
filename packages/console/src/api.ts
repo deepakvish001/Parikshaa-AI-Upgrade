@@ -4,6 +4,19 @@ export interface ExamSummary {
   readonly id: string;
   readonly title: string;
   readonly questionCount: number;
+  /** The rest arrived later; an older server leaves them out. */
+  readonly createdAt?: string;
+  readonly totalMarks?: number | null;
+  readonly sectionCount?: number;
+  readonly durationMs?: number | null;
+  readonly proctored?: boolean;
+  readonly attempts?: {
+    readonly invited: number;
+    readonly inProgress: number;
+    readonly submitted: number;
+    readonly graded: number;
+    readonly void: number;
+  };
 }
 
 export interface AttemptSummary {
@@ -55,6 +68,24 @@ export interface WhoAmI {
   readonly role: StaffRole;
   readonly organisation: { readonly id: string; readonly name: string };
   readonly permissions: readonly string[];
+  /** The organisation requires owners to use a second factor and this one has none yet. */
+  readonly mustEnrol2fa: boolean;
+}
+
+export interface TwoFactorStatus {
+  readonly enabled: boolean;
+  readonly recoveryCodesLeft: number;
+  readonly required: boolean;
+}
+
+export interface SsoSettings {
+  readonly configured: boolean;
+  readonly issuer: string | null;
+  readonly clientId: string | null;
+  readonly emailDomains: readonly string[];
+  readonly enforced: boolean;
+  readonly enabled: boolean;
+  readonly redirectUri: string;
 }
 
 export interface ApiKey {
@@ -156,6 +187,39 @@ export interface InvitationRow {
   readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
 }
 
+/** The console's home page. */
+export interface Dashboard {
+  readonly sittings: readonly {
+    readonly examId: string;
+    readonly title: string;
+    readonly opensAt: string;
+    readonly closesAt: string;
+    readonly invited: number;
+    readonly started: number;
+  }[];
+  /** Null for an account that may not read the audit log. */
+  readonly activity: readonly { readonly at: string; readonly actor: string; readonly action: string; readonly target: string | null }[] | null;
+  readonly setup: {
+    readonly exams: number;
+    readonly bankQuestions: number;
+    readonly scheduled: number;
+    readonly invited: number;
+    readonly staff: number;
+    readonly privacyNotice: boolean;
+  };
+}
+
+export interface CandidateHit {
+  readonly invitationId: string;
+  readonly examId: string;
+  readonly examTitle: string;
+  readonly candidateRef: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly attemptId: string | null;
+  readonly attemptState: InvitationRow["attemptState"];
+}
+
 export interface RowProblem {
   readonly row: number;
   readonly message: string;
@@ -189,6 +253,20 @@ export interface ResultRow {
   readonly scores: Readonly<Record<string, { readonly score: number; readonly max: number }>>;
   readonly probes: { readonly asked: number; readonly replied: number; readonly verdicts: Partial<Record<Verdict, number>> };
   readonly voidReason: string | null;
+  /** Marks by part of a sectioned paper; "" is the fixed questions. Newer servers only. */
+  readonly sections?: readonly SectionScore[];
+  /** Against the exam's cut-off, once graded; null without one. */
+  readonly outcome?: Outcome | null;
+}
+
+export type Outcome = "qualified" | "failed";
+
+export interface SectionScore {
+  readonly id: string;
+  readonly title: string;
+  readonly score: number | null;
+  readonly max: number;
+  readonly percent: number | null;
 }
 
 export interface QuestionStats {
@@ -210,6 +288,9 @@ export interface Results {
     readonly setAside: number;
     readonly meanPercent: number | null;
     readonly medianPercent: number | null;
+    /** Graded candidates either side of the cut-off; null without one. */
+    readonly qualified?: number | null;
+    readonly failed?: number | null;
     readonly distribution: readonly number[];
     readonly questions: readonly QuestionStats[];
     readonly time: { readonly medianMinutes: number | null; readonly p90Minutes: number | null };
@@ -236,6 +317,10 @@ export interface CandidateReport {
     readonly answer: string | null;
     readonly language: string | null;
     readonly tests: { readonly passed: number; readonly total: number } | null;
+    /** When an answer was first and last saved, after the start, and how often. */
+    readonly firstSavedMs?: number | null;
+    readonly lastSavedMs?: number | null;
+    readonly saves?: number;
   }[];
   readonly vivas: readonly {
     readonly questionId: string;
@@ -248,6 +333,8 @@ export interface CandidateReport {
   }[];
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
+  /** Among the exam's graded candidates. */
+  readonly standing?: { readonly percentile: number | null; readonly rank: number | null; readonly graded: number; readonly meanPercent: number | null };
   readonly ledger: { readonly head: string; readonly length: number };
   /** For a proctored exam: observations, never findings. */
   readonly proctoring?: {
@@ -420,18 +507,50 @@ export class ConsoleClient {
   static async signIn(
     email: string,
     password: string,
+    code?: string,
     baseUrl = "/api",
   ): Promise<{ readonly token: string; readonly user: StaffUser }> {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, ...(code === undefined || code === "" ? {} : { code }) }),
     });
     const body = (await response.json().catch(() => ({}))) as { error?: string; token?: string; user?: StaffUser };
     if (!response.ok || body.token === undefined || body.user === undefined) {
       throw new ConsoleError(response.status, body.error ?? "sign_in_failed");
     }
     return { token: body.token, user: body.user };
+  }
+
+  /** Ask for a reset link. The server answers the same whether or not the address has an account. */
+  static async requestReset(email: string, baseUrl = "/api"): Promise<void> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/password-reset`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      throw new ConsoleError(response.status, body.error ?? "request_failed");
+    }
+  }
+
+  static async completeReset(token: string, password: string, baseUrl = "/api"): Promise<void> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/password-reset/confirm`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token, password }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
+      throw new ConsoleError(response.status, body.error ?? "request_failed", [], body.message);
+    }
+  }
+
+  /** Where the browser goes to sign in through the organisation's own provider. */
+  static ssoStartUrl(orgId: string, email: string, baseUrl = "/api"): string {
+    const query = email.trim() === "" ? "" : `?email=${encodeURIComponent(email.trim())}`;
+    return `${baseUrl.replace(/\/$/, "")}/auth/sso/${encodeURIComponent(orgId.trim())}/start${query}`;
   }
 
   async #request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -477,6 +596,41 @@ export class ConsoleClient {
 
   async signOut(): Promise<void> {
     await this.#request("/auth/logout", { method: "POST" });
+  }
+
+  twoFactor(): Promise<TwoFactorStatus> {
+    return this.#request<TwoFactorStatus>("/auth/2fa");
+  }
+
+  beginTwoFactor(): Promise<{ readonly secret: string; readonly uri: string }> {
+    return this.#request("/auth/2fa/setup", { method: "POST" });
+  }
+
+  async enableTwoFactor(code: string): Promise<readonly string[]> {
+    return (await this.#request<{ recoveryCodes: string[] }>("/auth/2fa/enable", { method: "POST", body: JSON.stringify({ code }) })).recoveryCodes;
+  }
+
+  async disableTwoFactor(password: string, code: string): Promise<void> {
+    await this.#request("/auth/2fa/disable", { method: "POST", body: JSON.stringify({ password, code }) });
+  }
+
+  async requireOwner2fa(required: boolean): Promise<void> {
+    await this.#request("/org/security", { method: "PUT", body: JSON.stringify({ requireOwner2fa: required }) });
+  }
+
+  sso(): Promise<SsoSettings> {
+    return this.#request<SsoSettings>("/org/sso");
+  }
+
+  saveSso(settings: {
+    readonly issuer: string;
+    readonly clientId: string;
+    readonly clientSecret?: string;
+    readonly emailDomains: readonly string[];
+    readonly enforced: boolean;
+    readonly enabled: boolean;
+  }): Promise<SsoSettings> {
+    return this.#request<SsoSettings>("/org/sso", { method: "PUT", body: JSON.stringify(settings) });
   }
 
   async changePassword(current: string, next: string): Promise<void> {
@@ -630,6 +784,21 @@ export class ConsoleClient {
       : this.#request(`/practice-admin/contests/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
   }
 
+  practiceSignIn(): Promise<PracticeSignIn> {
+    return this.#request<PracticeSignIn>("/practice-admin/sign-in");
+  }
+
+  savePracticeSignIn(settings: {
+    readonly requireVerified: boolean;
+    readonly google: { readonly enabled: boolean; readonly clientId: string | null; readonly clientSecret?: string };
+  }): Promise<PracticeSignIn> {
+    return this.#request<PracticeSignIn>("/practice-admin/sign-in", { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  practiceSimilarity(problemId: string): Promise<PracticeSimilarity> {
+    return this.#request<PracticeSimilarity>(`/practice-admin/problems/${encodeURIComponent(problemId)}/similarity`);
+  }
+
   async practiceLearners(): Promise<readonly PracticeLearner[]> {
     return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
   }
@@ -672,6 +841,15 @@ export class ConsoleClient {
       }
       throw error;
     }
+  }
+
+  dashboard(): Promise<Dashboard> {
+    return this.#request<Dashboard>("/dashboard");
+  }
+
+  /** Candidates across every exam matching `q` (at least two characters). */
+  async searchCandidates(q: string): Promise<readonly CandidateHit[]> {
+    return (await this.#request<{ candidates: CandidateHit[] }>(`/candidates/search?q=${encodeURIComponent(q)}`)).candidates;
   }
 
   async listInvitations(examId: string): Promise<readonly InvitationRow[]> {
@@ -742,6 +920,37 @@ export class ConsoleClient {
 
   async webhookDeliveries(id: string): Promise<readonly WebhookDelivery[]> {
     return (await this.#request<{ deliveries: WebhookDelivery[] }>(`/webhooks/${encodeURIComponent(id)}/deliveries`)).deliveries;
+  }
+
+  async ltiPlatforms(): Promise<readonly LtiPlatform[]> {
+    return (await this.#request<{ platforms: LtiPlatform[] }>("/lti/platforms")).platforms;
+  }
+
+  registerLti(platform: LtiPlatformInput): Promise<LtiPlatform> {
+    return this.#request("/lti/platforms", { method: "POST", body: JSON.stringify(platform) });
+  }
+
+  updateLti(id: string, platform: LtiPlatformInput): Promise<LtiPlatform> {
+    return this.#request(`/lti/platforms/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(platform) });
+  }
+
+  async atsConnectors(): Promise<readonly AtsConnector[]> {
+    return (await this.#request<{ connectors: AtsConnector[] }>("/integrations/ats")).connectors;
+  }
+
+  saveAts(provider: AtsProvider, settings: Record<string, unknown>, credentials?: Record<string, string>): Promise<AtsConnector> {
+    return this.#request(`/integrations/ats/${provider}`, {
+      method: "PUT",
+      body: JSON.stringify({ settings, ...(credentials === undefined ? {} : { credentials }) }),
+    });
+  }
+
+  issueAtsHook(provider: AtsProvider): Promise<{ readonly key: string; readonly hookUrl: string }> {
+    return this.#request(`/integrations/ats/${provider}/key`, { method: "POST" });
+  }
+
+  async disableAts(provider: AtsProvider): Promise<void> {
+    await this.#request(`/integrations/ats/${provider}/disable`, { method: "POST" });
   }
 
   greenhouse(): Promise<{ enabled: boolean; endpoints: Record<string, string> }> {
@@ -929,7 +1138,9 @@ export type BuyerDetails = Pick<BillingAccount, "legalName" | "gstin" | "stateCo
 export interface InvoiceSummary {
   readonly id: string;
   readonly number: string;
-  readonly kind: "credits" | "usage";
+  readonly kind: "credits" | "usage" | "credit_note";
+  /** For a credit note: the invoice it reduces. */
+  readonly againstInvoice?: string | null;
   readonly paymentId: string | null;
   readonly period: string | null;
   readonly totalPaise: number;
@@ -938,6 +1149,8 @@ export interface InvoiceSummary {
 
 export interface TaxInvoice extends InvoiceSummary {
   readonly document: InvoiceDocument;
+  /** The IRN and signed QR code from the Invoice Registration Portal, once recorded. */
+  readonly eInvoice?: { readonly irn: string; readonly ackNo: string; readonly ackDate: string; readonly signedQr: string } | null;
 }
 
 export interface InvoiceDocument {
@@ -954,6 +1167,11 @@ export interface InvoiceDocument {
   readonly totalPaise: number;
   readonly totalInWords: string;
   readonly note?: string;
+  /** Section 194J: what the buyer deducts at source, and what is then payable. */
+  readonly tds?: { readonly section: string; readonly ratePercent: number; readonly amountPaise: number; readonly netPayablePaise: number };
+  /** A credit note: the invoice it reduces, and why. */
+  readonly against?: { readonly number: string; readonly date: string };
+  readonly reason?: string;
 }
 
 export interface BillingSummary {
@@ -961,7 +1179,7 @@ export interface BillingSummary {
   readonly history: readonly {
     readonly id: string;
     readonly delta: number;
-    readonly reason: "purchase" | "attempt" | "grant" | "refund";
+    readonly reason: "purchase" | "attempt" | "grant" | "refund" | "payment_refund" | "refund_reversed";
     readonly attemptId: string | null;
     readonly paymentId: string | null;
     readonly note: string | null;
@@ -1056,4 +1274,54 @@ export interface PracticeComment {
   readonly body: string;
   readonly createdAt: string;
   readonly hidden: boolean;
+}
+
+export interface PracticeSignIn {
+  readonly requireVerified: boolean;
+  readonly google: { readonly enabled: boolean; readonly clientId: string | null; readonly secretSet: boolean };
+  /** Register this with Google; null until the site has an address. */
+  readonly redirectUri: string | null;
+}
+
+export interface PracticeSimilarSide {
+  readonly learnerId: string;
+  readonly name: string;
+  readonly language: string;
+  readonly source: string;
+  readonly status: string;
+  readonly submittedAt: string;
+}
+
+export interface PracticeSimilarity {
+  readonly problem: { readonly id: string; readonly title: string };
+  readonly compared: number;
+  readonly pairs: readonly { readonly a: PracticeSimilarSide; readonly b: PracticeSimilarSide; readonly similarity: number; readonly shared: number }[];
+}
+
+export type AtsProvider = "lever" | "zoho_recruit" | "darwinbox";
+
+export interface AtsConnector {
+  readonly provider: AtsProvider;
+  readonly label: string;
+  readonly configured: boolean;
+  readonly enabled: boolean;
+  readonly settings: Record<string, unknown>;
+  readonly credentialsSet: boolean;
+}
+
+export interface LtiPlatformInput {
+  readonly name: string;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly deploymentIds: readonly string[];
+  readonly authLoginUrl: string;
+  readonly authTokenUrl: string;
+  readonly jwksUrl: string;
+  readonly enabled?: boolean;
+}
+
+export interface LtiPlatform extends LtiPlatformInput {
+  readonly id: string;
+  readonly enabled: boolean;
+  readonly tool: { readonly toolUrl: string; readonly loginUrl: string; readonly redirectUrl: string; readonly jwksUrl: string; readonly customParameters: string };
 }

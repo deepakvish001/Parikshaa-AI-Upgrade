@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleError, type BillingAccount, type BillingOrder, type BuyerDetails, type ConsoleClient, type InvoiceDocument } from "../api.ts";
+import { QrCode } from "./Security.tsx";
 
 /**
  * Billing (ROADMAP §12): the balance, the details a tax invoice carries,
@@ -117,7 +118,7 @@ export function BillingPanel({ client, checkout = loadCheckout }: { client: Cons
               {invoices.map((i) => (
                 <tr key={i.id}>
                   <td className="mono">{i.number}</td>
-                  <td>{i.kind === "credits" ? "Credits" : `Attempts, ${i.period}`}</td>
+                  <td>{i.kind === "credits" ? "Credits" : i.kind === "credit_note" ? "Credit note: refund" : `Attempts, ${i.period}`}</td>
                   <td>{when(i.issuedAt)}</td>
                   <td>{rupees(i.totalPaise)}</td>
                   <td>
@@ -154,7 +155,11 @@ export function BillingPanel({ client, checkout = loadCheckout }: { client: Cons
                         ? "Bought"
                         : m.reason === "grant"
                           ? `Granted${m.note === null ? "" : ` — ${m.note}`}`
-                          : "Returned: the attempt did not start"}
+                          : m.reason === "payment_refund"
+                            ? `Refunded${m.note === null ? "" : ` — ${m.note}`}`
+                            : m.reason === "refund_reversed"
+                              ? "Restored: the refund did not go through"
+                              : "Returned: the attempt did not start"}
                   </td>
                   <td className="mono">{m.delta > 0 ? `+${m.delta}` : m.delta}</td>
                 </tr>
@@ -342,7 +347,7 @@ function InvoiceView({ client, id, onBack }: { client: ConsoleClient; id: string
   if (invoice.error !== null) return <p className="error">Could not load the invoice.</p>;
   const d: InvoiceDocument = invoice.data.document;
   return (
-    <article className="report" aria-label={`Tax invoice ${d.number}`}>
+    <article className="report" aria-label={`${d.title === "Credit Note" ? "Credit note" : "Tax invoice"} ${d.number}`}>
       <div className="row no-print" style={{ marginTop: 0 }}>
         <button type="button" className="secondary" onClick={onBack}>
           Back to billing
@@ -364,9 +369,14 @@ function InvoiceView({ client, id, onBack }: { client: ConsoleClient; id: string
           </div>
           <div>
             <p>
-              Invoice <span className="mono">{d.number}</span>
+              {d.title === "Credit Note" ? "Credit note" : "Invoice"} <span className="mono">{d.number}</span>
             </p>
             <p>Date {d.date}</p>
+            {d.against === undefined ? null : (
+              <p>
+                Against invoice <span className="mono">{d.against.number}</span> of {d.against.date}
+              </p>
+            )}
             <p>
               Place of supply: {d.placeOfSupply.state} ({d.placeOfSupply.code})
             </p>
@@ -416,7 +426,27 @@ function InvoiceView({ client, id, onBack }: { client: ConsoleClient; id: string
           </tbody>
         </table>
         <p>{d.totalInWords}</p>
+        {d.tds === undefined ? null : (
+          <p>
+            TDS deductible under section {d.tds.section} @ {d.tds.ratePercent}% of the taxable value: {rupees(d.tds.amountPaise)}. Net payable:{" "}
+            <strong>{rupees(d.tds.netPayablePaise)}</strong>.
+          </p>
+        )}
+        {d.reason === undefined ? null : <p>Reason: {d.reason}</p>}
         {d.note === undefined ? null : <p className="notice">{d.note}</p>}
+        {invoice.data.eInvoice == null ? null : (
+          <div className="qr-row">
+            <QrCode value={invoice.data.eInvoice.signedQr} size={132} />
+            <div>
+              <p className="mono" style={{ wordBreak: "break-all" }}>
+                IRN {invoice.data.eInvoice.irn}
+              </p>
+              <p>
+                Ack. no. {invoice.data.eInvoice.ackNo} · {invoice.data.eInvoice.ackDate}
+              </p>
+            </div>
+          </div>
+        )}
       </section>
     </article>
   );

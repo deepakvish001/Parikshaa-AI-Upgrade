@@ -150,4 +150,11 @@ describe("validateExam", () => {
       expect(problems({ ...short, translations: { xx: { stem: "?" } } as never })).toEqual(["questions.0.translations.xx"]);
     });
   });
+
+  it("keeps a cut-off to percentages of sections that exist", () => {
+    const base = exam({});
+    expect(problemsOf({ ...base, policy: { ...base.policy, cutoff: { percent: 120 } } })).toContain("policy.cutoff.percent");
+    expect(problemsOf({ ...base, policy: { ...base.policy, cutoff: { percent: 40, sections: { nope: 30 } } } })).toContain("policy.cutoff.sections.nope");
+    expect(problemsOf({ ...base, policy: { ...base.policy, cutoff: { percent: 40, sections: { "": 30 } } } })).toEqual([]);
+  });
 });

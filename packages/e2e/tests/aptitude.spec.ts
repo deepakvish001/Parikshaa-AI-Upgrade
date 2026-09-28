@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, OWNER, ownerToken, seedSitting } from "./support.js";
+import { actions, beginSitting, onScreen, openQuestion, OWNER, ownerToken, seedSitting, submitAttempt } from "./support.js";
 import { FIGURE_SERIES, uploadPicture } from "./pictures.js";
 
 /**
@@ -40,33 +40,39 @@ test("a candidate answers an aptitude paper from the palette, and negative marki
       { id: "cover", kind: "mcq", stem: "By when does it cover the country?", maxScore: 1, rubric: [], options: ["Early June", "Mid-July"], correctIndex: 1, passage },
     ],
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
 
   const figureImage = page.getByRole("img", { name: "Four squares with one, two, three and four dots" });
   await expect(figureImage).toBeVisible();
   expect(await figureImage.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+
+  // Wrong on the series (−0.5), both primes (+4), the passage right (+2).
+  const question = onScreen(page);
+  const save = actions(page).getByRole("button", { name: /^Save (& next|answer)$/ });
+  await question.getByRole("radio", { name: "6" }).check();
+  await save.click();
+  await question.getByRole("checkbox", { name: "2" }).check();
+  await question.getByRole("checkbox", { name: "5" }).check();
+  await save.click();
+
+  // The passage sits beside each question about it.
   await expect(page.getByRole("region", { name: "The monsoon", exact: true })).toContainText("Passage · Questions 3–4");
   await expect(page.getByText("It covers the whole country by mid-July.")).toHaveCount(1);
 
-  // Wrong on the series (−0.5), both primes (+4), the passage right (+2).
-  const card = (n: number) => page.locator("section.question").nth(n - 1);
-  await card(1).getByRole("radio", { name: "6" }).check();
-  await card(1).getByRole("button", { name: "Save answer" }).click();
-  await card(2).getByRole("checkbox", { name: "2" }).check();
-  await card(2).getByRole("checkbox", { name: "5" }).check();
-  await card(2).getByRole("button", { name: "Save answer" }).click();
-
   const palette = page.getByRole("navigation", { name: "Questions" });
-  await palette.getByRole("button", { name: /^Question 4:/ }).click();
-  await card(4).getByRole("button", { name: "Mark for review" }).click();
+  await openQuestion(page, 4);
+  await question.getByRole("button", { name: "Mark for review" }).click();
   await expect(palette.getByRole("button", { name: "Question 4: Not answered, Marked for review" })).toBeVisible();
-  await card(3).getByRole("radio", { name: "Early June" }).check();
-  await card(3).getByRole("button", { name: "Save answer" }).click();
-  await card(4).getByRole("radio", { name: "Mid-July" }).check();
-  await card(4).getByRole("button", { name: "Save answer" }).click();
+  await expect(palette.getByRole("button", { name: "Question 3: Not answered" })).toBeVisible();
+  await openQuestion(page, 3);
+  await question.getByRole("radio", { name: "Early June" }).check();
+  await save.click();
+  await question.getByRole("radio", { name: "Mid-July" }).check();
+  await save.click();
   await expect(palette.getByRole("button", { name: "Question 2: Answered" })).toBeVisible();
+  await expect(palette.getByRole("button", { name: "Question 4: Answered, Marked for review" })).toBeVisible();
 
-  await page.getByRole("button", { name: "Submit attempt" }).click();
+  await submitAttempt(page);
   await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
 
   const attempts = await (await request.get(`/api/exams/${sitting.examId}/attempts`, { headers: { authorization: `Bearer ${sitting.token}` } })).json();

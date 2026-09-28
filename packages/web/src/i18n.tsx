@@ -1,17 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+
 /**
  * The candidate's language and bandwidth preferences (ROADMAP §9).
  *
- * The interface is translated into Hindi; a question can additionally be
- * translated into any of the languages below, and a candidate reading one of
- * those sees its questions in it with the interface in English. Both choices
- * are kept on this device, like a reading-glasses setting: nothing about them
- * is sent to the server or recorded against the candidate.
+ * The interface is in English, Hindi, and nine more of the Eighth Schedule's
+ * languages; a question can be translated into the same languages. A string
+ * a language's table does not have is shown in English — so a table can grow
+ * without the page ever showing a key. The privacy notice's wording stays in
+ * English or Hindi, the languages its text is reviewed in (see
+ * `packages/api/src/privacy.ts`). Both choices are kept on this device, like
+ * a reading-glasses setting: nothing about them is sent to the server or
+ * recorded against the candidate.
  */
 
-export type UiLocale = "en" | "hi";
 export type Language = "en" | "hi" | "bn" | "ta" | "te" | "mr" | "gu" | "kn" | "ml" | "pa" | "or";
+export type UiLocale = Language;
 
 /** Each language by its own name, as a speaker looks for it. */
 export const LANGUAGE_NAMES: Record<Language, string> = {
@@ -76,6 +80,112 @@ const en = {
   "exam.submit": "Submit attempt",
   "exam.submitting": "Submitting…",
   "exam.submitNote": "You cannot change your answers after this.",
+  "exam.questionOf": "Question {n} of {total}",
+  "exam.prev": "Previous",
+  "exam.next": "Next",
+  "exam.saveNext": "Save & next",
+  "exam.saveFinalNext": "Save final answer & next",
+  "exam.markNext": "Mark for review & next",
+  "exam.clear": "Clear response",
+  "exam.timeLeftLabel": "Time left",
+  "exam.kind.single": "Single correct",
+  "exam.kind.multiple": "Multiple correct",
+  "exam.kind.numeric": "Numerical answer",
+  "exam.kind.short": "Written answer",
+  "exam.kind.code": "Coding",
+  "palette.notVisited": "Not visited",
+  "palette.answeredMarked": "Answered & marked",
+  "palette.counted": "(counted for evaluation)",
+  "submit.title": "Submit your attempt?",
+  "submit.confirm": "Yes, submit",
+  "submit.back": "Keep working",
+  "submit.markedNote": "Answers marked for review are submitted as they are.",
+  "submit.unanswered": "{n} questions have no answer yet.",
+  "brief.heading": "Instructions",
+  "brief.open": "Instructions",
+  "brief.candidate": "Candidate",
+  "brief.roll": "Roll number",
+  "brief.duration": "Duration",
+  "brief.minutes": "{n} min",
+  "brief.questions": "Questions",
+  "brief.marks": "Total marks",
+  "brief.sections": "Sections",
+  "brief.paper": "About this paper",
+  "brief.section": "Section",
+  "brief.time": "Time",
+  "brief.testTime": "The test's time",
+  "brief.kinds": "Question types",
+  "brief.negative": "A wrong answer can cost up to {n} marks. A question left blank costs nothing.",
+  "brief.noNegative": "No marks are taken away for a wrong answer.",
+  "brief.revision": "You can change a saved answer until you submit.",
+  "brief.final": "A saved answer is final, so check it before you save.",
+  "brief.calculator": "An on-screen calculator is in the bar under the clock.",
+  "brief.noCalculator": "There is no calculator in this test.",
+  "brief.camera": "This test uses your camera. You will be asked to allow it next.",
+  "brief.sectionsLocked": "Sections are taken in order. Once you leave one, it is closed.",
+  "brief.palette": "The question palette",
+  "brief.paletteNote": "Each number in the palette shows where that question stands:",
+  "brief.moving": "Moving through the paper",
+  "brief.move1": "Save & next saves your answer and opens the next question.",
+  "brief.move2": "Mark for review & next keeps a question to come back to. A marked question that has an answer is still counted.",
+  "brief.move3": "Clear response removes your answer to the question on screen.",
+  "brief.move4": "To go to any question, press its number in the palette.",
+  "brief.move5": "The clock at the top counts down. When it reaches zero, what you have saved is submitted for you.",
+  "brief.keys": "From the keyboard: A–D choose an option, S saves and moves on, N and P move, M marks for review, ? shows every shortcut.",
+  "brief.check": "System check",
+  "brief.checkBrowser": "Browser",
+  "brief.checkConnection": "Connection",
+  "brief.checkStorage": "Saving on this device",
+  "brief.checkScreen": "Screen",
+  "brief.checkCamera": "Camera",
+  "brief.ok": "Ready",
+  "brief.browserOld": "Too old: use a recent Chrome, Edge, Firefox or Safari.",
+  "brief.fast": "Good ({ms} ms)",
+  "brief.slow": "Slow ({ms} ms). The test still works, and keeps your answers on this device.",
+  "brief.offline": "The server cannot be reached. Check your internet connection.",
+  "brief.storageOff": "Blocked. Leave private browsing, so your answers survive the page closing.",
+  "brief.screenSmall": "Small screen. A laptop or tablet is easier.",
+  "brief.cameraNext": "Checked on the next step.",
+  "brief.checking": "Checking…",
+  "brief.again": "Check again",
+  "brief.declare": "I have read the instructions, and I will take this test by myself.",
+  "brief.begin": "I am ready to begin",
+  "brief.continue": "Continue",
+  "brief.clockNote": "Your time starts when you begin, not before.",
+  "tools.region": "Tools",
+  "tools.saved": "All answers saved",
+  "tools.saving": "Saving…",
+  "tools.offline": "Offline: kept on this device",
+  "tools.calculator": "Calculator",
+  "tools.calcScreen": "Calculator display: type with the keyboard",
+  "tools.error": "Error",
+  "tools.rough": "Rough work",
+  "tools.roughHint": "Work things out here.",
+  "tools.roughNote": "Kept on this device only. It is never sent or marked.",
+  "tools.smaller": "Smaller text",
+  "tools.larger": "Larger text",
+  "tools.light": "Light theme",
+  "tools.dark": "Dark theme",
+  "tools.shortcuts": "Keyboard shortcuts",
+  "tools.close": "Close",
+  "tools.minutesLeft": "{n} minutes left.",
+  "tools.oneMinute": "1 minute left.",
+  "tools.timeUpTitle": "Time is up",
+  "tools.timeUpNote": "What you saved is being submitted. Your record opens in a moment.",
+  "keys.choose": "Choose option A, B, C or D",
+  "keys.note": "Shortcuts work when you are not typing in an answer box.",
+  "done.title": "Submitted",
+  "done.graded": "Graded",
+  "done.lead": "Your answers are in, and sealed in your record.",
+  "done.at": "Submitted {time}.",
+  "done.total": "Questions",
+  "done.answered": "Answered",
+  "done.unanswered": "Not answered",
+  "done.marked": "Marked for review",
+  "done.next": "You can close this page now. Your results will come from the organisation that invited you.",
+  "done.print": "Print or save as PDF",
+  "tools.paper": "Question paper",
+  "paper.note": "Every question, as you left it. Choose one to go to it.",
 
   "section.region": "Sections",
   "section.done": "done",
@@ -228,6 +338,15 @@ const en = {
   "practice.contests": "Contests",
   "practice.leaderboard": "Leaderboard",
   "practice.signIn": "Sign in",
+  "practice.withGoogle": "Continue with Google",
+  "practice.or": "or",
+  "practice.googleFailed": "Signing in with Google did not work. Try again, or use your email and password.",
+  "practice.verifyBanner": "Confirm your email address: we sent a link to {email}.",
+  "practice.verifyRequired": "Confirm your email address to submit and to join discussions: we sent a link to {email}.",
+  "practice.resend": "Send the link again",
+  "practice.resent": "Sent. Check your inbox, and the spam folder.",
+  "practice.verified": "Your email address is confirmed. Thank you.",
+  "practice.verifyFailed": "That confirmation link is not valid. Sign in and send a new one.",
   "practice.signUp": "Create account",
   "practice.signOut": "Sign out",
   "practice.signInToSee": "Sign in to see this, and to keep your progress.",
@@ -412,6 +531,112 @@ const hi: Record<MessageKey, string> = {
   "exam.submit": "प्रयास जमा करें",
   "exam.submitting": "जमा हो रहा है…",
   "exam.submitNote": "इसके बाद आप अपने उत्तर नहीं बदल सकेंगे।",
+  "exam.questionOf": "प्रश्न {n} / {total}",
+  "exam.prev": "पिछला",
+  "exam.next": "अगला",
+  "exam.saveNext": "सहेजें और आगे",
+  "exam.saveFinalNext": "अंतिम उत्तर सहेजें और आगे",
+  "exam.markNext": "समीक्षा के लिए चिह्नित करें और आगे",
+  "exam.clear": "उत्तर हटाएँ",
+  "exam.timeLeftLabel": "शेष समय",
+  "exam.kind.single": "एक सही विकल्प",
+  "exam.kind.multiple": "एक से अधिक सही विकल्प",
+  "exam.kind.numeric": "संख्यात्मक उत्तर",
+  "exam.kind.short": "लिखित उत्तर",
+  "exam.kind.code": "कोडिंग",
+  "palette.notVisited": "नहीं देखा",
+  "palette.answeredMarked": "उत्तर दिया और चिह्नित",
+  "palette.counted": "(मूल्यांकन में गिना जाएगा)",
+  "submit.title": "क्या आप अपना प्रयास जमा करना चाहते हैं?",
+  "submit.confirm": "हाँ, जमा करें",
+  "submit.back": "काम जारी रखें",
+  "submit.markedNote": "समीक्षा के लिए चिह्नित उत्तर जैसे हैं वैसे ही जमा होंगे।",
+  "submit.unanswered": "{n} प्रश्नों का अभी कोई उत्तर नहीं है।",
+  "brief.heading": "निर्देश",
+  "brief.open": "निर्देश",
+  "brief.candidate": "परीक्षार्थी",
+  "brief.roll": "अनुक्रमांक",
+  "brief.duration": "अवधि",
+  "brief.minutes": "{n} मिनट",
+  "brief.questions": "प्रश्न",
+  "brief.marks": "कुल अंक",
+  "brief.sections": "खंड",
+  "brief.paper": "इस प्रश्नपत्र के बारे में",
+  "brief.section": "खंड",
+  "brief.time": "समय",
+  "brief.testTime": "परीक्षा का समय",
+  "brief.kinds": "प्रश्नों के प्रकार",
+  "brief.negative": "गलत उत्तर पर अधिकतम {n} अंक कट सकते हैं। खाली छोड़े गए प्रश्न पर कुछ नहीं कटता।",
+  "brief.noNegative": "गलत उत्तर पर कोई अंक नहीं कटता।",
+  "brief.revision": "जमा करने से पहले आप सहेजा गया उत्तर बदल सकते हैं।",
+  "brief.final": "सहेजा गया उत्तर अंतिम है, इसलिए सहेजने से पहले जाँच लें।",
+  "brief.calculator": "घड़ी के नीचे वाली पट्टी में ऑन-स्क्रीन कैलकुलेटर है।",
+  "brief.noCalculator": "इस परीक्षा में कैलकुलेटर नहीं है।",
+  "brief.camera": "यह परीक्षा आपका कैमरा इस्तेमाल करती है। अगले चरण में इसकी अनुमति माँगी जाएगी।",
+  "brief.sectionsLocked": "खंड क्रम से देने हैं। एक खंड छोड़ने के बाद वह बंद हो जाता है।",
+  "brief.palette": "प्रश्न पैलेट",
+  "brief.paletteNote": "पैलेट में हर संख्या बताती है कि वह प्रश्न किस स्थिति में है:",
+  "brief.moving": "प्रश्नपत्र में आगे-पीछे जाना",
+  "brief.move1": "सहेजें और आगे आपका उत्तर सहेजकर अगला प्रश्न खोलता है।",
+  "brief.move2": "समीक्षा के लिए चिह्नित करें और आगे प्रश्न को बाद में देखने के लिए रखता है। चिह्नित प्रश्न का उत्तर हो तो वह भी गिना जाता है।",
+  "brief.move3": "उत्तर हटाएँ स्क्रीन पर दिख रहे प्रश्न का आपका उत्तर हटा देता है।",
+  "brief.move4": "किसी भी प्रश्न पर जाने के लिए पैलेट में उसकी संख्या दबाएँ।",
+  "brief.move5": "ऊपर की घड़ी उल्टी गिनती करती है। शून्य होने पर आपका सहेजा हुआ सब अपने-आप जमा हो जाता है।",
+  "brief.keys": "कीबोर्ड से: A–D विकल्प चुनें, S सहेजकर आगे, N और P आगे-पीछे, M समीक्षा के लिए चिह्नित, ? सभी शॉर्टकट दिखाता है।",
+  "brief.check": "सिस्टम जाँच",
+  "brief.checkBrowser": "ब्राउज़र",
+  "brief.checkConnection": "कनेक्शन",
+  "brief.checkStorage": "इस डिवाइस पर सहेजना",
+  "brief.checkScreen": "स्क्रीन",
+  "brief.checkCamera": "कैमरा",
+  "brief.ok": "तैयार",
+  "brief.browserOld": "पुराना है: नया Chrome, Edge, Firefox या Safari इस्तेमाल करें।",
+  "brief.fast": "अच्छा ({ms} ms)",
+  "brief.slow": "धीमा ({ms} ms)। परीक्षा फिर भी चलेगी और आपके उत्तर इस डिवाइस पर रखे जाएँगे।",
+  "brief.offline": "सर्वर तक नहीं पहुँच पा रहे। अपना इंटरनेट कनेक्शन जाँचें।",
+  "brief.storageOff": "रोका गया है। प्राइवेट ब्राउज़िंग से बाहर आएँ, ताकि पेज बंद होने पर भी उत्तर बचे रहें।",
+  "brief.screenSmall": "छोटी स्क्रीन। लैपटॉप या टैबलेट पर आसान रहेगा।",
+  "brief.cameraNext": "अगले चरण में जाँचा जाएगा।",
+  "brief.checking": "जाँच हो रही है…",
+  "brief.again": "फिर से जाँचें",
+  "brief.declare": "मैंने निर्देश पढ़ लिए हैं, और यह परीक्षा मैं स्वयं दूँगा/दूँगी।",
+  "brief.begin": "मैं शुरू करने के लिए तैयार हूँ",
+  "brief.continue": "आगे बढ़ें",
+  "brief.clockNote": "आपका समय शुरू करने पर ही शुरू होगा, उससे पहले नहीं।",
+  "tools.region": "उपकरण",
+  "tools.saved": "सभी उत्तर सहेजे गए",
+  "tools.saving": "सहेजा जा रहा है…",
+  "tools.offline": "ऑफ़लाइन: इस डिवाइस पर रखा गया",
+  "tools.calculator": "कैलकुलेटर",
+  "tools.calcScreen": "कैलकुलेटर स्क्रीन: कीबोर्ड से टाइप करें",
+  "tools.error": "त्रुटि",
+  "tools.rough": "रफ़ कार्य",
+  "tools.roughHint": "यहाँ हिसाब लगाएँ।",
+  "tools.roughNote": "केवल इस डिवाइस पर रखा जाता है। न भेजा जाता है, न जाँचा जाता है।",
+  "tools.smaller": "छोटे अक्षर",
+  "tools.larger": "बड़े अक्षर",
+  "tools.light": "हल्की थीम",
+  "tools.dark": "गहरी थीम",
+  "tools.shortcuts": "कीबोर्ड शॉर्टकट",
+  "tools.close": "बंद करें",
+  "tools.minutesLeft": "{n} मिनट बाकी।",
+  "tools.oneMinute": "1 मिनट बाकी।",
+  "tools.timeUpTitle": "समय समाप्त",
+  "tools.timeUpNote": "आपका सहेजा हुआ जमा हो रहा है। आपका रिकॉर्ड अभी खुलेगा।",
+  "keys.choose": "विकल्प A, B, C या D चुनें",
+  "keys.note": "शॉर्टकट तब काम करते हैं जब आप उत्तर-बॉक्स में टाइप नहीं कर रहे हों।",
+  "done.title": "जमा हो गया",
+  "done.graded": "मूल्यांकन हो गया",
+  "done.lead": "आपके उत्तर जमा हो गए हैं और आपके रिकॉर्ड में सील हैं।",
+  "done.at": "{time} को जमा किया।",
+  "done.total": "प्रश्न",
+  "done.answered": "उत्तर दिए",
+  "done.unanswered": "उत्तर नहीं दिए",
+  "done.marked": "समीक्षा के लिए चिह्नित",
+  "done.next": "अब आप यह पेज बंद कर सकते हैं। आपका परिणाम आपको बुलाने वाली संस्था देगी।",
+  "done.print": "प्रिंट करें या PDF सहेजें",
+  "tools.paper": "प्रश्नपत्र",
+  "paper.note": "सभी प्रश्न, जैसे आपने छोड़े। किसी पर जाने के लिए उसे चुनें।",
 
   "section.region": "खंड",
   "section.done": "पूरा",
@@ -564,6 +789,15 @@ const hi: Record<MessageKey, string> = {
   "practice.contests": "प्रतियोगिताएँ",
   "practice.leaderboard": "लीडरबोर्ड",
   "practice.signIn": "साइन इन",
+  "practice.withGoogle": "Google से जारी रखें",
+  "practice.or": "या",
+  "practice.googleFailed": "Google से साइन इन नहीं हो सका। फिर कोशिश करें, या ईमेल और पासवर्ड से साइन इन करें।",
+  "practice.verifyBanner": "अपना ईमेल पता पुष्ट करें: हमने {email} पर एक लिंक भेजा है।",
+  "practice.verifyRequired": "उत्तर जमा करने और चर्चा में भाग लेने के लिए अपना ईमेल पुष्ट करें: हमने {email} पर एक लिंक भेजा है।",
+  "practice.resend": "लिंक फिर से भेजें",
+  "practice.resent": "भेज दिया। अपना इनबॉक्स और स्पैम फ़ोल्डर देखें।",
+  "practice.verified": "आपका ईमेल पता पुष्ट हो गया। धन्यवाद।",
+  "practice.verifyFailed": "यह पुष्टि लिंक मान्य नहीं है। साइन इन करके नया लिंक भेजें।",
   "practice.signUp": "खाता बनाएँ",
   "practice.signOut": "साइन आउट",
   "practice.signInToSee": "इसे देखने और अपनी प्रगति सहेजने के लिए साइन इन करें।",
@@ -698,14 +932,46 @@ const hi: Record<MessageKey, string> = {
   "identity.failed": "फ़ोटो नहीं भेजी जा सकीं। अपना कनेक्शन जाँचें और दोबारा कोशिश करें।",
 };
 
-const MESSAGES: Record<UiLocale, Record<MessageKey, string>> = { en, hi };
+/** A language's strings: any it lacks are shown in English. */
+export type Messages = Partial<Record<MessageKey, string>>;
 
-/** The interface's language for a chosen language: Hindi, or English for the rest. */
-export const uiLocaleOf = (language: Language): UiLocale => (language === "hi" ? "hi" : "en");
+/**
+ * English and Hindi, the two a page starts in, come with it. Every other
+ * language's table is fetched when someone chooses it, so a candidate on a
+ * slow connection does not download nine languages to read one.
+ */
+const MESSAGES: Partial<Record<UiLocale, Messages>> = { en, hi };
+const LOADERS: Record<Exclude<UiLocale, "en" | "hi">, () => Promise<Messages>> = {
+  bn: () => import("./locales/bn.ts").then((m) => m.bn),
+  ta: () => import("./locales/ta.ts").then((m) => m.ta),
+  te: () => import("./locales/te.ts").then((m) => m.te),
+  mr: () => import("./locales/mr.ts").then((m) => m.mr),
+  gu: () => import("./locales/gu.ts").then((m) => m.gu),
+  kn: () => import("./locales/kn.ts").then((m) => m.kn),
+  ml: () => import("./locales/ml.ts").then((m) => m.ml),
+  pa: () => import("./locales/pa.ts").then((m) => m.pa),
+  or: () => import("./locales/or.ts").then((m) => m.or),
+};
+
+/** Whether a language's table is here yet. */
+export const isLoaded = (locale: UiLocale): boolean => MESSAGES[locale] !== undefined;
+
+/** Fetch a language's table, once. Until it arrives, its strings are shown in English. */
+export async function loadLocale(locale: UiLocale): Promise<void> {
+  if (isLoaded(locale)) return;
+  MESSAGES[locale] = await LOADERS[locale as keyof typeof LOADERS]();
+}
+
+/** The interface's language for a chosen language: the same one, now that every language has a table. */
+export const uiLocaleOf = (language: Language): UiLocale => language;
 
 export function translate(locale: UiLocale, key: MessageKey, vars: Record<string, string | number> = {}): string {
-  return MESSAGES[locale][key].replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
+  const text = MESSAGES[locale]?.[key] ?? en[key];
+  return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
 }
+
+/** How far each language's table covers the interface, 0–1: for the tests, and for anyone adding a language. */
+export const coverage = (locale: UiLocale): number => Object.keys(MESSAGES[locale] ?? {}).filter((k) => k in en).length / Object.keys(en).length;
 
 const LANGUAGE_KEY = "parikshaa.language";
 const LITE_KEY = "parikshaa.lite";
@@ -777,7 +1043,21 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Screen readers pronounce the page by this.
-  const ui = uiLocaleOf(language);
+  const chosen = uiLocaleOf(language);
+  const [ready, setReady] = useState(() => isLoaded(chosen));
+  useEffect(() => {
+    if (isLoaded(chosen)) return setReady(true);
+    setReady(false);
+    let current = true;
+    loadLocale(chosen)
+      .then(() => current && setReady(true))
+      // Offline before the table came: stay in English rather than show nothing.
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [chosen]);
+  const ui: UiLocale = ready && isLoaded(chosen) ? chosen : "en";
   useEffect(() => {
     document.documentElement.lang = ui;
   }, [ui]);

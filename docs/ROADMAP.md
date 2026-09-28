@@ -46,7 +46,7 @@ Then the levers, in the order they pay:
 **Exit criterion:** a measured cost per attempt, and a per-organisation spend
 cap that cannot be exceeded.
 
-**Status — instrumentation built, measurement not yet run.** Every model call
+**Status — instrumentation and the run built; the run not yet made with a real key.** Every model call
 now reports its tokens (input, output, cache read, cache write by TTL), speed
 and inference region, priced in integer micro-dollars and stored against its
 attempt. `GET /usage` reports spend by route, per-attempt p50/p90/max and
@@ -55,9 +55,17 @@ monthly cap stops probes quietly and refuses grading with 402 once reached. It
 is a soft ceiling — calls already in flight complete — which is the honest
 version of "cannot be exceeded" without serialising every call.
 
-What remains is the 50-attempt run itself. It spends real API budget, so it is
-run deliberately by the account holder, not by CI; the levers above follow
-from what it shows.
+The run itself is one command: `npm run cost-run` (`scripts/cost-run.mjs`)
+sits 50 attempts at a hiring-screen paper against a deployment with a real
+model key — four kinds of candidate, strong to weak and one answering in
+Hinglish, drawn by a seeded generator so reruns are comparable — taking each
+probe as it comes, then assessing and grading. It writes the per-attempt
+distribution (p10–p99, max, a histogram), the split by route and candidate,
+and whether the prompt cache is being read, as `cost-run.md` and
+`cost-run.json`. It has been exercised end to end against the fake model; the
+real run spends API budget, so it is the account holder's to start, not CI's,
+and the figure it produces — not the ₹20-25 estimate — is what pricing and the
+levers above follow from.
 
 ## 1. Multi-tenancy and identity
 
@@ -88,8 +96,36 @@ carry their organisation; tokens issued before this change stop working, which
 at a three-hour lifetime means at most one sitting in progress during the
 upgrade.
 
-**Still to do in §1:** OIDC, password reset (needs outbound email), and 2FA for
-owners.
+**Finished since:** password reset, a second factor, and single sign-on.
+
+- *Password reset.* "Forgot your password?" emails a link through the same
+  outbox as invitations. The link's secret is an HMAC of the reset's id under
+  the server's key — derived, never stored — and it works once, for an hour;
+  using it ends every session. Asking answers the same whether or not the
+  address has an account, and one account gets at most three links an hour.
+- *Two-step sign-in.* Any member of staff can add an authenticator app (TOTP,
+  RFC 6238: Google or Microsoft Authenticator, any password manager), set up
+  from a QR code drawn in the page, with ten one-time recovery codes. The
+  secret is sealed under a key derived from the server's secret; a code is
+  asked after the password, works once (a replay is refused), and turning the
+  factor off needs the password and a code. An owner can **require it of every
+  owner** — only once they have it themselves — and an owner without it can
+  then do nothing but set it up.
+- *Single sign-on.* An owner connects the organisation's OpenID Connect
+  provider — Google Workspace, Microsoft Entra ID, Okta, Keycloak — on the
+  console's *Sign-in* page. The code flow uses PKCE and a nonce; the state
+  the browser carries is sealed; the ID token is checked against the
+  provider's published keys, issuer, audience and expiry; and every request
+  to the provider goes through the webhooks' SSRF guard. Only people already
+  on the Staff page can sign in this way, and only at the domains the owner
+  lists — nobody is created by it. It can be *enforced* for everyone but
+  owners, who keep their passwords so a provider outage cannot lock the
+  organisation out. The session comes back in the URL fragment, which no
+  server logs.
+
+Not verified here: the provider round trip is tested against a local OpenID
+provider speaking the protocol, not against Google or Microsoft themselves;
+try a sign-in from a test tenant before relying on it.
 
 ## 2. Nothing a candidate does is ever lost
 
@@ -359,8 +395,8 @@ Zoho, Darwinbox). `docs/openapi.json` already gives an integrator the contract.
 **Universities later:** Moodle via LTI 1.3, and CSV exchange for SIS and ERP
 systems that have no API worth using.
 
-**Status — webhooks and Greenhouse built; Lever, Zoho Recruit and Darwinbox not
-yet.** Every start, submission, grade and voiding is announced by the ledger in
+**Status — webhooks, Greenhouse, Lever, Zoho Recruit, Darwinbox and LTI 1.3 (Moodle) built.**
+Every start, submission, grade and voiding is announced by the ledger in
 the same transaction that records it, so an integration hears of everything
 that happened and nothing that did not. The worker fans each announcement out,
 one delivery per interested webhook under a fixed id — a fan-out repeated after
@@ -393,8 +429,53 @@ copy of the database signs nothing and authenticates as no one.
 Not verified here: the connector follows Greenhouse's published partner
 documentation, and has not been run against a Greenhouse sandbox, which
 Greenhouse's partnerships team provides once the endpoints are registered with
-them. Lever, Zoho Recruit and Darwinbox have no connector yet; until they do,
-their customers can use webhooks and the API.
+them.
+
+**Lever, Zoho Recruit and Darwinbox** share one connector engine. An owner
+sets each up on the Integrations page and issues a hook URL for the ATS to
+call; the URL carries a key derived from the server's secret (never stored),
+rotated by issuing another. A call invites the candidate as any other —
+asked twice, the same invitation — and when the attempt is graded or set
+aside, the result goes back through the outbox:
+
+- *Lever:* a `candidateStageChange` webhook, its signature checked with the
+  webhook's token; each stage an owner maps to an exam sends that exam. The
+  candidate's name, email and phone come from the opportunity (Lever's v1
+  API), and the result is added to it as a note.
+- *Zoho Recruit:* a workflow webhook sends the candidate as JSON; the result is
+  a note on the candidate, through the v2 API with an access token the stored
+  refresh token buys from Zoho's accounts server in the organisation's data
+  centre (India's by default).
+- *Darwinbox:* its workflow calls the hook with the candidate; the result is
+  posted to the callback address Darwinbox provides, with its bearer token.
+
+What each ATS gave us to call it with — an API key, a refresh token, a
+callback token — has to be kept to be used, so it is stored sealed (AES-GCM
+under a key derived from the server's secret) and never shown again. Every
+call out goes through the SSRF guard. The ATS acts as an author: it sees
+marks and a link to the report, never an answer or a follow-up.
+
+Not verified here: Lever and Zoho Recruit follow their published APIs;
+Darwinbox's partner API is not public, so its shapes are this connector's own
+and are shown in the console. None has been run against a live account.
+
+**Moodle, through LTI 1.3,** is built too — Canvas and Blackboard speak the same
+protocol. An owner registers the Moodle site (its address, and the client and
+deployment IDs Moodle gives the tool); the console shows the four URLs to enter
+in Moodle. A course activity names its exam with the custom parameter
+`exam=<exam id>`. The launch is an OpenID Connect third-party login with a
+nonce and sealed state; the ID token is checked against Moodle's published
+keys, issuer, client, deployment and expiry. A student becomes an invitation
+like any candidate — the same one each launch — and lands on their personal
+link, so consent, the window and resuming work as they do by email; a teacher
+sees what the activity sets. Once graded, the score goes to the course's grade
+book through Assignment and Grade Services: the tool signs a client assertion
+with its own key (made per platform, sealed at rest, its public half served as
+a JWKS), buys a token for the score scope, and posts the score. A set-aside
+attempt sends none. The activity must open in a new window: the pages refuse
+to be framed. Not verified here: tested against a stand-in platform speaking
+the protocol, not a live Moodle; CSV exchange for SIS and ERP systems is
+already covered by the results export.
 
 ## 8. Live invigilation
 
@@ -428,9 +509,13 @@ opens again by itself. Extending time (§2) sits beside it.
 - Keyboard navigation, screen-reader labels, contrast — an exam a candidate
   cannot operate is an exam they failed for the wrong reason.
 
-**Status — built.** The candidate's page is in English and Hindi, chosen from
-a picker on every screen and remembered on the device; the page's `lang`
-follows, so a screen reader pronounces it. The privacy notice's standing text
+**Status — built.** The candidate's page — the exam, the invitation and the
+practice sites — is in English, Hindi and the nine regional languages below,
+chosen from a picker on every screen and remembered on the device; the page's
+`lang` follows, so a screen reader pronounces it, and dates are written the
+language's way. The nine regional tables (`packages/web/src/locales/`) are
+drafts: each needs a native speaker's review before a sitting in that
+language, and any string one lacks is shown in English, never as a key. The privacy notice's standing text
 is in Hindi too, and hashed with the rest. A question can carry translations
 into Hindi and nine more scheduled languages (Bengali, Tamil, Telugu, Marathi,
 Gujarati, Kannada, Malayalam, Punjabi, Odia), written in the console's editor;
@@ -454,8 +539,10 @@ privacy notice, in English and in Hindi — and the console's busiest pages are
 checked against WCAG 2.1 AA by axe in the browser suite, and one test sits the
 whole exam from the keyboard alone. Focus is always visible.
 
-Not in it: the interface in languages other than English and Hindi (the
-string table is one file to add to), and translated exam titles.
+Not in it: a reviewed translation of the nine regional tables; the privacy
+notice in them (it stays in English or Hindi, because its text is hashed into
+the record and a legal notice should not ship as a draft); the console in
+anything but English; and translated exam titles.
 
 ## 10. Scale and operations
 
@@ -495,7 +582,7 @@ and what to turn on.
 *Requires people and money, not code:* a penetration test, an ISO 27001 or SOC
 2 audit, and legal review of the DPA.
 
-**Status — DPDP built; the rest is not.** An owner sets the organisation's
+**Status — built, except what needs people and money.** An owner sets the organisation's
 privacy notice — who is responsible, why the data is collected, the grievance
 officer, and a retention period — on the console's *Privacy* page. From then
 on a candidate opening their link reads the notice and agrees to it **before
@@ -526,7 +613,22 @@ answers — "Download my data" does. Answers are sealed from here on. A ledger
 written before this change holds its answers in the clear and cannot be
 shredded: erasing it clears everything around it — invitation, drafts,
 queued messages — and records `data_erased`, but its entries stay readable.
-Data residency, CI secret scanning and the evidence pack are still to do.
+
+**Also built since:** CI scans the whole git history for secrets (gitleaks,
+pinned by checksum), fails on any high or critical advisory in what ships
+(`npm audit --omit=dev`), runs GitHub's dependency review on pull requests and
+CodeQL's security queries on every change; Dependabot proposes updates. Every
+page is served with a Content-Security-Policy that runs only its own origin's
+scripts, is never framed, sends no Referer, and gets HSTS over HTTPS. The
+**evidence pack** a security review asks for is
+[`docs/SECURITY.md`](SECURITY.md): what is held and how, isolation,
+authentication, outbound requests, the sandbox, the model's inputs, logging,
+DPDP, supply chain and recovery — each with the file that shows it — and a
+disclosure policy in `.github/SECURITY.md`.
+
+Data residency is a deployment choice the code already allows — the runbook
+names the Indian regions — with one question left that code cannot answer:
+whether Anthropic offers an Indian inference region.
 
 ## 12. Billing
 
@@ -563,9 +665,29 @@ printable from the console.
 
 The model-spend ceiling of §0 still applies on top, per organisation.
 
-Not in it: e-invoicing (IRN from the GST portal, needed above ₹5 crore
-turnover), credit notes and refunds of payments, TDS, and automatic monthly
-invoicing (the operator runs `invoice-all` — a cron line).
+**Finished since:**
+
+- *Refunds and credit notes.* The operator refunds unspent credits of a
+  payment (`billing refund`): the credits are taken back under lock — never
+  more than the payment bought, never credits already spent — the money goes
+  back through Razorpay, and a GST credit note (section 34) is issued against
+  the payment's invoice, in a series of its own (`PKC/2627/000001`), taxed as
+  the invoice was. Refunds of a payment add up to it exactly. If Razorpay
+  refuses, the credits come back and nothing is numbered.
+- *TDS.* The operator sets the rate a buyer deducts under section 194J (0, 1, 2
+  or 10%); invoices then show the deduction, on the value before GST, and the
+  net payable. Form 16A certificates are recorded against invoices.
+- *E-invoicing.* Every invoice and credit note can be written in the IRP's
+  e-invoice schema (INV-01, version 1.1) for upload; the IRN, acknowledgement
+  and signed QR code it returns are recorded and printed on the invoice, QR
+  code and all. Needed above ₹5 crore turnover.
+- *Monthly invoicing* runs by itself: each instance checks every six hours and
+  issues last month's usage invoices, once.
+
+Not in it: submitting to the IRP directly — that needs a GST Suvidha
+Provider's or NIC's API credentials, so the JSON is uploaded through the
+portal or a GSP — and TDS on prepaid card payments, where the buyer pays in
+full at checkout.
 
 ## 13. Real-browser testing and hardening
 
@@ -667,8 +789,23 @@ and can write submissions and comments only in their own name (migration
 0013). Nothing on a practice site reaches the integrity ledger, an exam, or a
 candidate's record. The console's **Practice** page runs it all.
 
-Not in it: plagiarism checks across learners, badges, premium problems, and
-sign-in with Google. Learner email addresses are not verified.
+**Finished since:**
+
+- *Confirmed addresses.* Every new learner is emailed a link to confirm their
+  address — derived, not stored: an HMAC over the learner and the address, so
+  it stops working if the address changes — resendable three times an hour.
+  A site can keep submitting and discussing for confirmed learners; reading
+  stays open to all.
+- *Continue with Google.* An owner pastes a Google OAuth client into the
+  Practice page; learners then sign in with Google (the same OpenID Connect
+  code as staff single sign-on, with PKCE and a nonce). The first time makes
+  their account, already confirmed; an existing account with the same address
+  is signed in and confirmed. Such an account has no password.
+- *Similar code between learners.* For each code problem, a reviewer sees
+  pairs of learners whose latest accepted answers are alike by the exam's
+  winnowing measure, side by side. It changes nothing a learner sees.
+
+Not in it: badges and premium problems.
 
 ## Sequencing
 

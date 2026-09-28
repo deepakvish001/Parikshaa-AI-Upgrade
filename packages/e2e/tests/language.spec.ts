@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, MCQ, SHORT, seedSitting } from "./support.js";
+import { beginSitting, MCQ, SHORT, seedSitting } from "./support.js";
 
 /** ROADMAP §9, in a real browser: a sitting in Hindi, in low-bandwidth mode. */
 
@@ -21,14 +21,14 @@ test("a candidate reads the exam in Hindi on a slow connection: compressed, and 
     if (r.url().includes("/api/attempts/me/probe")) probes.push(new URL(r.url()).search);
   });
 
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: /कौन सा सॉर्ट स्थिर है\?/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.lang)).toBe("hi");
   expect(encodings.length).toBeGreaterThan(0);
   for (const e of encodings) expect(e).toMatch(/^(br|gzip)$/);
 
   await page.getByRole("radio", { name: "मर्ज सॉर्ट" }).check();
-  await page.getByRole("button", { name: "उत्तर सहेजें" }).first().click();
+  await page.getByRole("button", { name: "सहेजें और आगे" }).click();
   const probe = page.getByRole("region", { name: "अनुवर्ती प्रश्न" });
   await expect(probe).toContainText("Walk me through");
   expect(probes).toEqual(["?stream=0"]);

@@ -19,12 +19,17 @@ import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import { registerPracticeRoutes } from "./practice-routes.js";
+import type { PracticeIdentity } from "./practice-identity.js";
+import { registerPracticeIdentityRoutes } from "./practice-identity-routes.js";
 import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
 import { registerResultsRoutes } from "./results-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
+import { registerAtsRoutes } from "./ats-routes.js";
+import type { LtiService } from "./lti.js";
+import { registerLtiRoutes } from "./lti-routes.js";
 import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
 import type { InvigilationService } from "./invigilation.js";
@@ -36,6 +41,9 @@ import type { ProctorService } from "./proctoring.js";
 import { registerProctoringRoutes } from "./proctoring-routes.js";
 import { GatewayUnavailable } from "./razorpay.js";
 import { registerPrivacyRoutes } from "./privacy-routes.js";
+import { registerSecurityRoutes, securityStatus } from "./security-routes.js";
+import { AtsError, type AtsService } from "./ats.js";
+import { SecurityError, type StaffSecurity } from "./staff-security.js";
 import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
@@ -54,15 +62,28 @@ export interface ServerOptions {
   readonly media: QuestionMedia;
   /** Practice sites (ROADMAP §15). Absent: no practice routes. */
   readonly practice?: PracticeService;
+  /** Practice learners' email verification and Google sign-in. */
+  readonly practiceIdentity?: PracticeIdentity;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
   readonly greenhouse: GreenhouseService;
+  /** Lever, Zoho Recruit and Darwinbox. Absent: no routes for them. */
+  readonly ats?: AtsService;
+  /** Moodle and other LMSs, through LTI 1.3. */
+  readonly lti?: LtiService;
   readonly invigilation: InvigilationService;
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
   readonly proctor: ProctorService;
+  /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
+  readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
+  /**
+   * Send Strict-Transport-Security: browsers then refuse plain HTTP to this
+   * host. On when the deployment is served over HTTPS (`PUBLIC_URL`).
+   */
+  readonly hsts?: boolean;
   /** Take the client address from X-Forwarded-For. Set only behind a proxy you control. */
   readonly trustProxy?: boolean;
   /** Lifetime of an issued attempt token. Defaults to three hours. */
@@ -187,6 +208,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Billing", description: "Prepaid attempt credits, Razorpay payments and GST tax invoices." },
         { name: "Practice", description: "An institution's practice site, as its learners use it: problems, Run and Submit, progress, contests and discussion. No answer key reaches it." },
         { name: "Practice (staff)", description: "Running a practice site: publishing problems from the bank, editorials, contests, learners and moderation." },
+        { name: "LTI", description: "Moodle and other LMSs through LTI 1.3: registering the LMS, the launch, and grades back to its grade book." },
         { name: "Proctoring", description: "Camera proctoring an exam's author turns on: identity photos, webcam photos, browser events. Observations, never verdicts." },
         {
           name: "Greenhouse",
@@ -236,6 +258,45 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
+    // ROADMAP §11. Every response: nothing sniffed into a script, never
+    // framed (a framed exam page is a clickjacking target), and no Referer —
+    // an invitation code or a reset link in the address must not follow a
+    // click to another site.
+    reply.header("x-content-type-options", "nosniff");
+    reply.header("x-frame-options", "DENY");
+    reply.header("referrer-policy", "no-referrer");
+    reply.header("cross-origin-opener-policy", "same-origin");
+    reply.header("permissions-policy", "camera=(self), microphone=(), geolocation=(), payment=(self)");
+    if (options.hsts === true) reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
+  });
+  // The pages themselves: scripts only from this origin, so an injected
+  // <script> or inline handler does not run. The console alone may load
+  // Razorpay's Checkout, which the Billing page opens to buy credits.
+  app.addHook("onSend", async (request, reply, payload) => {
+    const type = reply.getHeader("content-type");
+    if (typeof type !== "string" || !type.startsWith("text/html")) return payload;
+    const console = request.originalUrl.startsWith("/console");
+    const razorpay = console ? " https://*.razorpay.com" : "";
+    reply.header(
+      "content-security-policy",
+      [
+        "default-src 'self'",
+        `script-src 'self'${razorpay}`,
+        // React sets style attributes; no stylesheet is fetched from elsewhere.
+        "style-src 'self' 'unsafe-inline'",
+        `img-src 'self' data: blob:${razorpay}`,
+        "font-src 'self' data:",
+        `connect-src 'self'${razorpay}`,
+        `frame-src ${console ? "https://*.razorpay.com" : "'none'"}`,
+        "media-src 'self' blob:",
+        "worker-src 'self' blob:",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+      ].join("; "),
+    );
+    return payload;
   });
   // The route *pattern*, never the URL: a URL can carry a token or an invitation code.
   app.addHook("onResponse", async (request, reply) => {
@@ -276,6 +337,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       return null;
     }
     request.orgId = actor.orgId;
+    // An owner their organisation requires to use a second factor, who has
+    // none yet, may do nothing but set one up (routes that ask no permission).
+    if (permission !== null && actor.kind === "user" && actor.mustEnrol2fa === true) {
+      await reply.code(403).send({ error: "two_factor_required", message: "Set up a second factor before continuing" });
+      return null;
+    }
     if (permission !== null && !can(actor, permission)) {
       await reply.code(403).send({ error: "forbidden", message: `This account does not have ${permission}` });
       return null;
@@ -306,6 +373,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
   };
 
   app.setErrorHandler(async (error, request, reply) => {
+    if (error instanceof AtsError) {
+      const status = { invalid_request: 400, unauthorised: 401, not_configured: 409, upstream: 502 }[error.code];
+      return reply.code(status).send({ error: error.code, message: error.message });
+    }
+    if (error instanceof SecurityError) {
+      return reply.code(securityStatus[error.code]).send({ error: error.code, message: error.message });
+    }
     if (error instanceof PracticeError) {
       const status = {
         not_found: 404,
@@ -318,6 +392,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         sign_in_failed: 401,
         too_many_runs: 429,
         contest_not_started: 403,
+        email_not_verified: 403,
       }[error.code];
       return reply.code(status).send({ error: error.code, message: error.message });
     }
@@ -329,7 +404,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring" || error.code === "invalid_integration"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -488,6 +563,25 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const actor = await staff(request, reply, "exam:read");
         if (actor === null) return;
         return reply.send({ exams: await service.listExams(actor) });
+      },
+    );
+
+    routes.get(
+      "/dashboard",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "The console's home page",
+          description:
+            "Sittings open now, scheduled, and closed in the last week; the latest actions, for an account that may read the audit log; and which first steps the organisation has taken.",
+          security: [{ staffAuth: [] }],
+          response: { 200: S.dashboardResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:read");
+        if (actor === null) return;
+        return reply.send(await service.dashboard(actor));
       },
     );
 
@@ -974,11 +1068,17 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
     registerBankRoutes(routes, { service, bank: options.bank, media: options.media, staff });
     const throttle = options.loginThrottle ?? new LoginThrottle();
-    if (options.practice !== undefined) registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle });
+    if (options.practice !== undefined) {
+      const identity = options.practiceIdentity;
+      registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }) });
+      if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
+    }
 
     registerInvitationRoutes(routes, { invitations: options.invitations, throttle, staff });
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
+    if (options.ats !== undefined) registerAtsRoutes(routes, { ats: options.ats, throttle, staff });
+    if (options.lti !== undefined) registerLtiRoutes(routes, { lti: options.lti, staff });
     registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });
@@ -992,7 +1092,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       bearer,
       staff,
     });
-
+    if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
   });
 
   if (options.clients !== undefined) {

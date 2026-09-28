@@ -10,9 +10,12 @@ import { InvitationService } from "./invitation-service.js";
 import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
+import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
+import { StaffSecrets } from "./staff-secrets.js";
+import { StaffSecurity } from "./staff-security.js";
 
 /**
  * Build the OpenAPI document from the running route table.
@@ -42,7 +45,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     tokens,
     publicUrl: "https://example.invalid",
   });
-  const { webhooks, greenhouse } = buildIntegrations({
+  const { webhooks, greenhouse, ats, lti } = buildIntegrations({
     sql: unusable,
     store,
     invitationStore,
@@ -51,22 +54,29 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     secret: "x".repeat(40),
     publicUrl: "https://example.invalid",
   });
+  const secrets = new StaffSecrets("x".repeat(40));
+  const practice = new PracticeService({ store: new PracticeStore(unusable), bank: new QuestionBank(unusable) });
+  const auth = new StaffAuth(identity, { secrets });
   const app = buildServer({
     service,
     invitations,
     results: new ResultsService({ store, invitations: invitationStore, exams: service }),
     webhooks,
     greenhouse,
+    ats,
+    lti,
     invigilation: new InvigilationService({ store, invitations: invitationStore, invigilation: new InvigilationStore(unusable), exams: service }),
     privacy: new PrivacyService({ store, privacy: new PrivacyStore(unusable), invitations: invitationStore, identity, exams: service }),
     billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),
     proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }),
     tokens,
-    auth: new StaffAuth(identity),
+    auth,
+    security: new StaffSecurity({ identity, auth, secrets, publicUrl: "https://example.invalid" }),
     identity,
     bank: new QuestionBank(unusable),
     media: new QuestionMedia(unusable),
-    practice: new PracticeService({ store: new PracticeStore(unusable), bank: new QuestionBank(unusable) }),
+    practice,
+    practiceIdentity: new PracticeIdentity({ store: new PracticeStore(unusable), practice, secrets, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
   });
 
   await app.ready();

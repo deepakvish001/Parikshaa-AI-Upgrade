@@ -174,6 +174,17 @@ export const examSchema = z.object({
       .optional()
       .describe("What Submit tells a candidate about their code: every test's verdict, hidden ones without their content (all, the default), or the visible tests' only."),
     codeCompletion: z.boolean().optional().describe("Offer completion in the code editor. Off by default."),
+    calculator: z.boolean().optional().describe("An on-screen scientific calculator in the exam bar. Off by default."),
+    cutoff: z
+      .object({
+        percent: z.number().describe("Percent of the candidate's own paper, 0–100."),
+        sections: z
+          .record(z.string(), z.number())
+          .optional()
+          .describe('Minimum percent of each section\'s marks, by section id; "" is the fixed questions.'),
+      })
+      .optional()
+      .describe("The mark to qualify. Absent: results carry marks only."),
   }),
   questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
   sections: z
@@ -283,7 +294,23 @@ export const bankDocxProblems = z.object({
 });
 
 export const examListResponse = z.object({
-  exams: z.array(z.object({ id: z.string(), title: z.string(), questionCount: z.number() })).readonly(),
+  exams: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        questionCount: z.number(),
+        createdAt: z.string(),
+        totalMarks: z.number().nullable().describe("Marks on the paper: each section counted at its draw of its first question's marks."),
+        sectionCount: z.number(),
+        durationMs: z.number().nullable(),
+        proctored: z.boolean(),
+        attempts: z
+          .object({ invited: z.number(), inProgress: z.number(), submitted: z.number(), graded: z.number(), void: z.number() })
+          .describe("Invitations not revoked, and attempts by where they stand."),
+      }),
+    )
+    .readonly(),
 });
 
 export const attemptListResponse = z.object({
@@ -424,6 +451,7 @@ export const candidateStateResponse = z.object({
     proctoring: proctoringPolicy.nullable().describe("What the camera and browser are asked for. Null: nothing."),
     testFeedback: z.enum(["all", "visible"]).describe("What Submit reports about hidden tests."),
     codeCompletion: z.boolean().describe("Whether the code editor offers completion."),
+    calculator: z.boolean().describe("Whether the exam bar offers a calculator."),
   }),
   state: z.enum(["created", "in_progress", "submitted", "graded", "void"]),
   identityCaptured: z.boolean().describe("A proctored exam's identity photos have been taken; until then its questions wait."),
@@ -602,6 +630,7 @@ export const staffUser = z.object({
 export const loginBody = z.object({
   email: z.string().min(3),
   password: z.string().min(1),
+  code: z.string().max(32).optional().describe("The second factor, when the account has one: six digits from the authenticator app, or a recovery code."),
 });
 
 export const loginResponse = z.object({
@@ -618,6 +647,9 @@ export const whoAmIResponse = z.object({
   role: staffRole,
   organisation: z.object({ id: z.string(), name: z.string() }),
   permissions: z.array(z.string()).readonly(),
+  mustEnrol2fa: z
+    .boolean()
+    .describe("The organisation requires owners to use a second factor and this account has none: nothing else is allowed until it does."),
 });
 
 export const changePasswordBody = z.object({
@@ -730,3 +762,86 @@ export const mediaUploadResponse = z.object({
 });
 
 export const mediaParams = z.object({ sha256: z.string() });
+
+// --- password reset, a second factor, single sign-on (ROADMAP §1) --------------
+
+export const resetRequestBody = z.object({ email: z.string().min(3).max(320) });
+
+export const resetConfirmBody = z.object({
+  token: z.string().min(10).max(200).describe("From the reset link."),
+  password: z.string().min(1).describe("At least 12 characters."),
+});
+
+export const twoFactorStatus = z.object({
+  enabled: z.boolean(),
+  recoveryCodesLeft: z.number().int(),
+  required: z.boolean().describe("This account is an owner and the organisation requires owners to use one."),
+});
+
+export const twoFactorSetup = z.object({
+  secret: z.string().describe("Base32, for typing into an authenticator app."),
+  uri: z.string().describe("The `otpauth://` URI, to show as a QR code."),
+});
+
+export const twoFactorCode = z.object({ code: z.string().min(6).max(32) });
+
+export const recoveryCodes = z.object({ recoveryCodes: z.array(z.string()).readonly() });
+
+export const twoFactorDisable = z.object({ password: z.string().min(1), code: z.string().min(6).max(32) });
+
+export const orgSecurityBody = z.object({ requireOwner2fa: z.boolean() });
+
+export const ssoSettings = z.object({
+  configured: z.boolean(),
+  issuer: z.string().nullable(),
+  clientId: z.string().nullable(),
+  emailDomains: z.array(z.string()).readonly(),
+  enforced: z.boolean(),
+  enabled: z.boolean(),
+  redirectUri: z.string().describe("Register this with the provider as the redirect URI."),
+});
+
+export const ssoSettingsBody = z.object({
+  issuer: z.string().url().describe("The provider's issuer, e.g. https://accounts.google.com or https://login.microsoftonline.com/<tenant>/v2.0"),
+  clientId: z.string().min(1).max(500),
+  clientSecret: z.string().min(1).max(2000).optional().describe("Leave out to keep the one already set."),
+  emailDomains: z.array(z.string().min(1).max(253)).max(20),
+  enforced: z.boolean().describe("Staff other than owners may then sign in only through the provider."),
+  enabled: z.boolean(),
+});
+
+export const ssoStartParams = z.object({ orgId: z.string().min(1).max(100) });
+export const ssoStartQuery = z.object({ email: z.string().max(320).optional() });
+export const ssoCallbackQuery = z.object({
+  code: z.string().max(4000).optional(),
+  state: z.string().max(4000).optional(),
+  error: z.string().max(200).optional(),
+});
+
+export const dashboardResponse = z.object({
+  sittings: z
+    .array(
+      z.object({
+        examId: z.string(),
+        title: z.string(),
+        opensAt: z.string(),
+        closesAt: z.string(),
+        invited: z.number().int(),
+        started: z.number().int().describe("Invited candidates who have begun."),
+      }),
+    )
+    .readonly(),
+  activity: z
+    .array(z.object({ at: z.string(), actor: z.string(), action: z.string(), target: z.string().nullable() }))
+    .readonly()
+    .nullable()
+    .describe("The ten latest actions; null for an account that may not read the audit log."),
+  setup: z.object({
+    exams: z.number().int(),
+    bankQuestions: z.number().int(),
+    scheduled: z.number().int(),
+    invited: z.number().int(),
+    staff: z.number().int(),
+    privacyNotice: z.boolean(),
+  }),
+});

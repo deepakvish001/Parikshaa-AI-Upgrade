@@ -2,6 +2,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { hash as argon2Hash, verify as argon2Verify } from "@node-rs/argon2";
 import type { OrgId } from "@parikshaa/core";
 import type { ApiKeyRole, IdentityStore, StaffRole, StaffUser } from "@parikshaa/store";
+import type { StaffSecrets } from "./staff-secrets.js";
+import { matchTotp, normaliseRecoveryCode } from "./totp.js";
 
 /**
  * Staff authentication and authorization.
@@ -25,6 +27,11 @@ export type Actor =
       readonly role: StaffRole;
       readonly name: string;
       readonly email: string;
+      /**
+       * The organisation requires owners to use a second factor and this one
+       * has none yet: until they set it up, nothing but that is allowed.
+       */
+      readonly mustEnrol2fa?: boolean;
     }
   | {
       readonly kind: "api_key";
@@ -149,32 +156,79 @@ export interface LoginResult {
   readonly user: StaffUser;
 }
 
+/**
+ * How a sign-in went. The refusals after `invalid` are said only once the
+ * password was right, so they reveal nothing to someone guessing.
+ */
+export type LoginOutcome =
+  | ({ readonly ok: true } & LoginResult)
+  | { readonly ok: false; readonly reason: "invalid" | "second_factor_required" | "sso_required" };
+
 export class StaffAuth {
   readonly #identity: IdentityStore;
   readonly #now: () => number;
+  readonly #secrets: StaffSecrets | null;
 
-  constructor(identity: IdentityStore, options: { readonly now?: () => number } = {}) {
+  constructor(identity: IdentityStore, options: { readonly now?: () => number; readonly secrets?: StaffSecrets } = {}) {
     this.#identity = identity;
     this.#now = options.now ?? (() => Date.now());
+    this.#secrets = options.secrets ?? null;
   }
 
-  /** Returns null for any failure, and says nothing about which part failed. */
-  async login(email: string, password: string): Promise<LoginResult | null> {
+  /**
+   * Sign in with a password, and a second factor when the account has one:
+   * a code from the authenticator app, or one of its recovery codes.
+   */
+  async login(email: string, password: string, code?: string): Promise<LoginOutcome> {
     const user = await this.#identity.findUserByEmail(email);
     if (user === null) {
       await argon2Verify(await decoyHash(), password).catch(() => false);
-      return null;
+      return { ok: false, reason: "invalid" };
     }
 
     const ok = await argon2Verify(user.passwordHash, password).catch(() => false);
-    if (!ok || user.disabled) return null;
+    if (!ok || user.disabled) return { ok: false, reason: "invalid" };
 
+    // An organisation that signs its staff in through its own provider keeps
+    // passwords for owners only, so a broken provider cannot lock everyone out.
+    if (user.role !== "owner") {
+      const sso = await this.#identity.ssoConfig(user.orgId);
+      if (sso !== null && sso.enabled && sso.enforced) return { ok: false, reason: "sso_required" };
+    }
+
+    const totp = await this.#identity.totpState(user.id);
+    if (totp.secret !== null) {
+      if (code === undefined || code.trim() === "") return { ok: false, reason: "second_factor_required" };
+      if (!(await this.#secondFactor(user.id, totp.secret, code))) return { ok: false, reason: "invalid" };
+    }
+
+    const { passwordHash: _, ...safe } = user;
+    return { ok: true, ...(await this.startSession(safe)) };
+  }
+
+  /** Whether `code` is a current authenticator code or an unused recovery code; spends either. */
+  async #secondFactor(userId: string, sealed: string, code: string): Promise<boolean> {
+    const secret = this.#secrets?.open("totp", userId, sealed) ?? null;
+    if (secret === null) return false;
+    const step = matchTotp(secret, code, this.#now());
+    if (step !== null) return this.#identity.claimTotpStep(userId, step);
+    const recovery = normaliseRecoveryCode(code);
+    if (recovery.length !== 10) return false;
+    return this.#identity.useRecoveryCode(userId, digest(recovery));
+  }
+
+  /** Check a code for a signed-in account, as turning the factor off asks for one. */
+  async verifySecondFactor(userId: string, code: string): Promise<boolean> {
+    const totp = await this.#identity.totpState(userId);
+    return totp.secret !== null && this.#secondFactor(userId, totp.secret, code);
+  }
+
+  /** A fresh session for someone already proven to be `user`: by password, or by their organisation's provider. */
+  async startSession(user: StaffUser): Promise<LoginResult> {
     const token = newSecret(SESSION_PREFIX);
     const expiresAt = new Date(this.#now() + SESSION_TTL_MS);
     await this.#identity.createSession(user.id, digest(token), expiresAt);
-
-    const { passwordHash: _, ...safe } = user;
-    return { token, expiresAt: expiresAt.toISOString(), user: safe };
+    return { token, expiresAt: expiresAt.toISOString(), user };
   }
 
   async logout(token: string): Promise<void> {
@@ -186,7 +240,15 @@ export class StaffAuth {
     if (bearer.startsWith(SESSION_PREFIX)) {
       const user = await this.#identity.userForSession(digest(bearer), new Date(this.#now()));
       if (user === null) return null;
-      return { kind: "user", id: user.id, orgId: user.orgId, role: user.role, name: user.name, email: user.email };
+      return {
+        kind: "user",
+        id: user.id,
+        orgId: user.orgId,
+        role: user.role,
+        name: user.name,
+        email: user.email,
+        ...(user.mustEnrol2fa ? { mustEnrol2fa: true } : {}),
+      };
     }
     if (bearer.startsWith(API_KEY_PREFIX)) {
       const key = await this.#identity.useApiKey(digest(bearer));

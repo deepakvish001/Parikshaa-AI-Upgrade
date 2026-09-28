@@ -224,6 +224,32 @@ export interface ExamPolicy {
   readonly testFeedback?: "all" | "visible";
   /** Offer completion in the code editor. Off by default: most hiring tests are taken without it. */
   readonly codeCompletion?: boolean;
+  /**
+   * An on-screen scientific calculator in the exam bar, as JEE Main offers.
+   * Off by default: most aptitude rounds test the arithmetic too.
+   */
+  readonly calculator?: boolean;
+  /**
+   * The mark a candidate must reach to qualify. Absent: results carry no
+   * verdict, only marks. It decides nothing by itself; it sorts the list a
+   * person reads.
+   */
+  readonly cutoff?: ExamCutoff;
+}
+
+/**
+ * Qualifying marks, as a campus drive or an entrance test sets them: a share
+ * of the whole paper, and optionally a share of each section, all of which a
+ * candidate must reach.
+ */
+export interface ExamCutoff {
+  /** Percent of the candidate's own paper, 0–100. */
+  readonly percent: number;
+  /**
+   * Percent of the marks a section put on the candidate's paper, by section id.
+   * "" is the exam's fixed questions, which come before any section.
+   */
+  readonly sections?: Readonly<Record<string, number>>;
 }
 
 /**

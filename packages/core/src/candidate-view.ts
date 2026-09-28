@@ -96,6 +96,8 @@ export interface CandidateExam {
   readonly testFeedback: "all" | "visible";
   /** Whether the code editor offers completion. */
   readonly codeCompletion: boolean;
+  /** Whether the exam bar offers a calculator. */
+  readonly calculator: boolean;
 }
 
 export function candidateQuestion(question: Question): CandidateQuestion {
@@ -173,5 +175,6 @@ export function candidateView(exam: Exam): CandidateExam {
     proctoring: exam.policy.proctoring ?? null,
     testFeedback: exam.policy.testFeedback ?? "all",
     codeCompletion: exam.policy.codeCompletion ?? false,
+    calculator: exam.policy.calculator ?? false,
   };
 }

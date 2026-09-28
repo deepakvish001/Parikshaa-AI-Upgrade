@@ -612,10 +612,22 @@ describe("exam authoring", () => {
     expect(listed.json().exams.map((e: { id: string }) => e.id)).toEqual([E]);
   });
 
-  it("lists exams with their question counts", async () => {
-    const res = await app.inject({ method: "GET", url: "/exams", headers: asStaff() });
+  it("lists exams with their question counts, and where their candidates stand", async () => {
+    let res = await app.inject({ method: "GET", url: "/exams", headers: asStaff() });
+    expect(res.json().exams).toEqual([
+      expect.objectContaining({
+        id: E,
+        title: "Algorithms",
+        questionCount: 2,
+        proctored: false,
+        sectionCount: 0,
+        attempts: { invited: 0, inProgress: 1, submitted: 0, graded: 0, void: 0 },
+      }),
+    ]);
 
-    expect(res.json().exams).toEqual([{ id: E, title: "Algorithms", questionCount: 2 }]);
+    await app.inject({ method: "POST", url: "/attempts/me/submit", headers: asCandidate() });
+    res = await app.inject({ method: "GET", url: "/exams", headers: asStaff() });
+    expect(res.json().exams[0].attempts).toEqual({ invited: 0, inProgress: 0, submitted: 1, graded: 0, void: 0 });
   });
 
   it("serves the full exam, answer key included, to staff only", async () => {

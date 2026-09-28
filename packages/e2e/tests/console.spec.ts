@@ -26,10 +26,11 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await page.goto("/console/");
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
   await page.getByRole("button", { name: sitting.title }).click();
-  await page.getByRole("button", { name: "Results and exports" }).click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
 
   const candidates = page.getByRole("region", { name: "Candidates" });
   const rows = candidates.getByRole("row");
@@ -44,7 +45,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   const csv = await readFile((await download.path())!, "utf8");
   expect(csv).toContain('"CS001","Candidate 1","cs001@college.test","graded",4,10,40');
 
-  await rows.nth(1).getByRole("button", { name: "Report" }).click();
+  await rows.nth(1).getByRole("button", { name: "Scorecard" }).click();
   await expect(page.getByRole("heading", { name: /Candidate 1/ })).toBeVisible();
   await expect(page.getByRole("region", { name: "Answers" })).toContainText("Merge sort");
   await expect(page.getByRole("region", { name: "Follow-up evidence" })).toContainText("None were asked.");
@@ -58,8 +59,42 @@ test("a report link from a webhook or Greenhouse opens straight on that candidat
   await page.goto(`/console/?report=${attemptId}`);
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: /Candidate 1/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Print or save as PDF" })).toBeVisible();
+});
+
+test("an exam page: who qualified against the cut-off, the paper tried as a candidate, and a candidate found with Ctrl+K", async ({ page, request }) => {
+  const sitting = await seedSitting(request, { refs: ["CS001", "CS002"], names: ["Ananya Iyer", "Rohan Das"], cutoff: { percent: 30 } });
+  await sitAndGrade(request, sitting, "CS001", "1");
+  await sitAndGrade(request, sitting, "CS002", "0");
+
+  await page.goto("/console/");
+  await page.getByLabel("Email").fill(OWNER.email);
+  await page.getByLabel("Password").fill(OWNER.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
+  await page.getByRole("button", { name: sitting.title }).click();
+
+  const side = page.getByRole("complementary", { name: "Candidates at a glance" });
+  await expect(side.getByRole("listitem").filter({ hasText: /^Qualified/ })).toContainText("1");
+  await expect(side.getByRole("listitem").filter({ hasText: "Not qualified" })).toContainText("1");
+  await expect(side.getByRole("listitem").filter({ hasText: "Completed" })).toContainText("2");
+
+  // Tried as a candidate: nothing reaches the server, so the counts stay as they are.
+  await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
+  await page.getByRole("button", { name: "Try test" }).click();
+  const trying = page.getByRole("dialog", { name: "Try test" });
+  await trying.getByRole("radio", { name: /Merge sort/ }).check();
+  await trying.getByRole("button", { name: "Submit preview" }).click();
+  await expect(trying.getByText(/on the 1 question marked automatically/)).toBeVisible();
+  await trying.getByRole("button", { name: "Close" }).click();
+
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("Ananya");
+  await expect(page.getByRole("option", { name: /Ananya Iyer/ }).first()).toBeVisible();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "Scorecard" })).toContainText("Qualified");
+  await expect(page.getByRole("region", { name: "Answers" })).toContainText("Merge sort");
 });

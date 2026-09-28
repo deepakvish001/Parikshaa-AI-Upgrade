@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { local, MCQ, SHORT, seedSitting } from "./support.js";
+import { beginSitting, MCQ, SHORT, seedSitting, submitAttempt } from "./support.js";
 
 /** ROADMAP §3: a test taken section by section, each with its own clock, locked once left. */
 
@@ -9,7 +9,7 @@ test("a candidate takes a sectioned test in order, and a section once left stays
     sections: [{ id: "apt", title: "Aptitude", pick: 1, pool: [SHORT], durationMs: 10 * 60_000 }],
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
 
   const steps = page.getByRole("navigation", { name: "Sections" });
@@ -25,7 +25,7 @@ test("a candidate takes a sectioned test in order, and a section once left stays
   const box = page.getByRole("textbox", { name: SHORT.stem });
   await expect(box).toBeVisible();
   await expect(page.getByRole("radio", { name: "Merge sort" })).toBeHidden();
-  await expect(page.getByRole("timer")).toContainText(/\d+:\d\d left in this section/);
+  await expect(page.getByText(/\d+:\d\d left in this section/)).toHaveAttribute("role", "timer");
 
   // The server holds the line too: the left part can no longer be answered.
   const token = await page.evaluate(() => sessionStorage.getItem("parikshaa.attempt-token"));
@@ -36,7 +36,7 @@ test("a candidate takes a sectioned test in order, and a section once left stays
   expect(refused.status()).toBe(409);
 
   await box.fill("The interval halves every step, so it must become empty.");
-  await page.getByRole("button", { name: "Submit attempt" }).click();
+  await submitAttempt(page);
   await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
 
   const ledger = await request.get("/api/attempts/me/ledger", { headers: { authorization: `Bearer ${token}` } });

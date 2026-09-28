@@ -10,7 +10,7 @@ test("a teacher uploads a Word question paper, checks what was found, and adds i
   await page.goto("/console/");
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Question bank" }).click();
 
   const word = page.getByRole("region", { name: "Import from Word" });

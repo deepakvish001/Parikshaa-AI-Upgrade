@@ -50,6 +50,71 @@ describe("an invitation link", () => {
     expect(fetch).toHaveBeenCalledWith("/api/invitations/redeem", expect.objectContaining({ body: JSON.stringify({ code: "org-a.inv-1.MAC" }) }));
   });
 
+  it("shows the instructions and a system check first, and starts the clock only at Ready to begin", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const brief = {
+      title: "Campus drive",
+      candidate: { name: "Ananya Iyer", ref: "CS001" },
+      started: false,
+      opensAt: new Date(Date.now() - 60_000).toISOString(),
+      closesAt: new Date(Date.now() + 3_600_000).toISOString(),
+      durationMs: 3_600_000,
+      questionCount: 20,
+      totalMarks: 80,
+      sections: [],
+      kinds: ["mcq", "numeric"],
+      negativeMarks: 1,
+      allowRevision: true,
+      calculator: true,
+      proctored: false,
+    };
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("/invitations/briefing")) return json(brief);
+      if (url.endsWith("/invitations/redeem")) return json({ token: "eyJ.token", attemptId: "a1", resumed: false });
+      if (url.endsWith("/health")) return json({ ok: true });
+      return json(state);
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    renderApp(<App />);
+
+    const page = await screen.findByRole("region", { name: "Campus drive" });
+    expect(page).toHaveTextContent("Ananya Iyer");
+    expect(page).toHaveTextContent("Roll number: CS001");
+    expect(page).toHaveTextContent("60 min");
+    expect(page).toHaveTextContent("A wrong answer can cost up to 1 marks.");
+    expect(page).toHaveTextContent("An on-screen calculator is in the bar under the clock.");
+    expect(await screen.findByText(/^Good \(\d+ ms\)$/)).toBeInTheDocument();
+    // Reading costs nothing: the link has not been opened.
+    expect(fetch).not.toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
+
+    const begin = screen.getByRole("button", { name: "I am ready to begin" });
+    expect(begin).toBeDisabled();
+    await userEvent.click(screen.getByRole("checkbox", { name: /I have read the instructions/ }));
+    await userEvent.click(begin);
+
+    // The exam, with its clock: only now has the link been opened.
+    expect(await screen.findByRole("timer")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
+  });
+
+  it("goes straight back into a test already begun", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith("/invitations/briefing")) {
+        return json({ started: true, opensAt: new Date(Date.now() - 60_000).toISOString(), closesAt: new Date(Date.now() + 60_000).toISOString() });
+      }
+      if (url.endsWith("/invitations/redeem")) return json({ token: "eyJ.token", attemptId: "a1", resumed: true });
+      return json(state);
+    });
+    vi.stubGlobal("fetch", fetch);
+
+    renderApp(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Campus drive" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "I am ready to begin" })).not.toBeInTheDocument();
+  });
+
   it("says when to come back if it is early, in IST, and that nothing has started", async () => {
     window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
     vi.stubGlobal(

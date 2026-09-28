@@ -9,6 +9,7 @@ import {
   ConsoleError,
   type AttemptReview,
   type CandidateReport,
+  type Dashboard,
   type ExamSummary,
   type LiveRow,
   type LiveView,
@@ -18,6 +19,11 @@ import {
 } from "./api.ts";
 
 const exams: ExamSummary[] = [{ id: "exam-1", title: "Algorithms", questionCount: 2 }];
+const dashboardView: Dashboard = {
+  sittings: [{ examId: "exam-1", title: "Algorithms", opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", invited: 40, started: 12 }],
+  activity: [{ at: "2026-10-01T04:00:00.000Z", actor: "Asha", action: "invitations.imported", target: "exam-1" }],
+  setup: { exams: 1, bankQuestions: 0, scheduled: 1, invited: 40, staff: 1, privacyNotice: false },
+};
 
 const review: AttemptReview = {
   state: "graded",
@@ -232,6 +238,7 @@ const who = (role: WhoAmI["role"], permissions: string[]): WhoAmI => ({
   role,
   organisation: { id: "acme", name: "Acme" },
   permissions,
+  mustEnrol2fa: false,
 });
 
 function stubClient(overrides: Record<string, unknown> = {}) {
@@ -264,6 +271,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
       monthlyCapMicroUsd: 50_000_000,
     })),
     listExams: vi.fn(async () => exams),
+    dashboard: vi.fn(async () => dashboardView),
     loadExam: vi.fn(async () => ({
       id: "exam-1",
       title: "Algorithms",
@@ -337,6 +345,22 @@ function stubClient(overrides: Record<string, unknown> = {}) {
       { id: "d1", event: "attempt.graded", attemptId: "a1", status: "pending", attempts: 3, error: "HTTP 503", createdAt: "2026-09-01T00:00:00.000Z", sentAt: null },
     ]),
     greenhouse: vi.fn(async () => ({ enabled: false, endpoints: { list_tests: "https://exam.test/api/integrations/greenhouse/list_tests" } })),
+    atsConnectors: vi.fn(async () =>
+      (["lever", "zoho_recruit", "darwinbox"] as const).map((provider) => ({
+        provider,
+        label: { lever: "Lever", zoho_recruit: "Zoho Recruit", darwinbox: "Darwinbox" }[provider],
+        configured: false,
+        enabled: false,
+        settings: {},
+        credentialsSet: false,
+      })),
+    ),
+    saveAts: vi.fn(async (provider: string) => ({ provider, label: "Lever", configured: true, enabled: true, settings: {}, credentialsSet: true })),
+    issueAtsHook: vi.fn(async () => ({ key: "atk.acme.lever.2.x", hookUrl: "https://exam.test/api/integrations/ats/lever/hook/atk.acme.lever.2.x" })),
+    disableAts: vi.fn(async () => undefined),
+    ltiPlatforms: vi.fn(async () => []),
+    registerLti: vi.fn(async (p: object) => ({ ...p, id: "p1", enabled: true, tool: { toolUrl: "t", loginUrl: "l", redirectUrl: "r", jwksUrl: "j", customParameters: "exam=<exam id>" } })),
+    updateLti: vi.fn(async () => undefined),
     issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
     disableGreenhouse: vi.fn(async () => undefined),
     live: vi.fn(async () => liveView),
@@ -423,6 +447,72 @@ describe("signing in", () => {
     expect(fetch).toHaveBeenCalledWith("/api/auth/login", expect.objectContaining({ method: "POST" }));
   });
 
+  it("asks for the authenticator's code when the account has one, and sends it with the password", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "second_factor_required" }), { status: 401 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: "invalid_credentials" }), { status: 401 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    await userEvent.type(screen.getByLabelText("Password"), "correct horse battery staple");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    const code = await screen.findByLabelText("Code from your authenticator app");
+    expect(screen.queryByRole("alert")).toBeNull();
+    await userEvent.type(code, "123456");
+    await userEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("That code was not accepted.");
+    expect(JSON.parse((fetch.mock.calls[1]![1] as RequestInit).body as string)).toMatchObject({ code: "123456" });
+  });
+
+  it("sends a reset link, saying the same whatever the address", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 202 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Forgot your password?" }));
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    await userEvent.click(screen.getByRole("button", { name: "Send the link" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("If asha@acme.test has an account");
+    expect(fetch).toHaveBeenCalledWith("/api/auth/password-reset", expect.objectContaining({ method: "POST" }));
+  });
+
+  it("opens a reset link on choosing a new password, and clears it from the address bar", async () => {
+    window.history.replaceState(null, "", "/console/?reset=abc.def");
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    renderApp(<App />);
+
+    expect(window.location.search).toBe("");
+    await userEvent.type(screen.getByLabelText("New password"), "a long enough password");
+    await userEvent.type(screen.getByLabelText("The same again"), "a long enough password");
+    await userEvent.click(screen.getByRole("button", { name: "Set password" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Sign in with your new password");
+    expect(JSON.parse((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({
+      token: "abc.def",
+      password: "a long enough password",
+    });
+  });
+
+  it("signs in with the session the organisation's provider sent back, and forgets it from the address bar", async () => {
+    window.history.replaceState(null, "", "/console/#sso=pks_from_provider");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "staff_auth_required" }), { status: 401 })));
+    renderApp(<App />);
+    expect(window.location.hash).toBe("");
+    expect(sessionStorage.getItem("parikshaa.console.session")).toBe("pks_from_provider");
+  });
+
+  it("says why the organisation's sign-in did not work", () => {
+    window.history.replaceState(null, "", "/console/?sso_error=not_staff");
+    renderApp(<App />);
+    expect(screen.getByRole("alert")).toHaveTextContent("not a member of staff here");
+  });
+
   it("goes back to signing in when the session has ended", async () => {
     sessionStorage.setItem("parikshaa.console.session", "pks_expired");
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "staff_auth_required" }), { status: 401 })));
@@ -438,7 +528,37 @@ describe("console", () => {
   it("lists exams", async () => {
     renderApp(<App client={stubClient()} />);
     expect(await screen.findByRole("button", { name: "Algorithms" })).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+  });
+
+  it("sums where candidates stand, and filters exams by it", async () => {
+    const counts = (inProgress: number, submitted: number, graded: number) => ({ invited: 0, inProgress, submitted, graded, void: 0 });
+    const client = stubClient({
+      listExams: vi.fn(async () => [
+        { id: "live", title: "Campus Drive", questionCount: 20, durationMs: 3_600_000, totalMarks: 80, proctored: true, sectionCount: 2, attempts: counts(3, 1, 0) },
+        { id: "done", title: "Mid-term", questionCount: 5, attempts: counts(0, 2, 7) },
+        { id: "new", title: "Mock Test", questionCount: 10, attempts: counts(0, 0, 0) },
+      ]),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
+    await screen.findByRole("button", { name: "Campus Drive" });
+
+    const glance = screen.getByRole("region", { name: "At a glance" });
+    expect(within(glance).getByText("Sitting now").previousSibling).toHaveTextContent("3");
+    expect(within(glance).getByText("To grade").previousSibling).toHaveTextContent("3");
+    expect(screen.getByText("60 min · 80 marks")).toBeInTheDocument();
+    expect(screen.getByText("Proctored")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sitting now" }));
+    expect(screen.queryByRole("button", { name: "Mid-term" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Not yet sat" }));
+    expect(screen.getByRole("button", { name: "Mock Test" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Campus Drive" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "All" }));
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search exams" }), "mid");
+    expect(screen.getByRole("button", { name: "Mid-term" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mock Test" })).not.toBeInTheDocument();
   });
 });
 
@@ -981,6 +1101,7 @@ describe("exams drawn from the bank", () => {
   it("copies an exam, which is how a sat exam is changed", async () => {
     const client = stubClient();
     renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await userEvent.click(await screen.findByRole("button", { name: "Copy" }));
 
     await waitFor(() => expect(client.cloneExam).toHaveBeenCalledWith("exam-1", expect.stringMatching(/^exam-1-copy-/)));
@@ -999,6 +1120,7 @@ describe("exams drawn from the bank", () => {
       }),
     });
     renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add question" }));
     await userEvent.type(screen.getAllByLabelText("Question").at(-1)!, "One more");
@@ -1137,7 +1259,7 @@ describe("scheduling and inviting a cohort", () => {
     const client = stubClient();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Schedule and invite candidates" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Candidates" }));
     return client;
   };
 
@@ -1183,7 +1305,7 @@ describe("results and exports", () => {
   const open = async (client = stubClient()) => {
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Results and exports" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Results" }));
     return client;
   };
   const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
@@ -1250,10 +1372,11 @@ describe("results and exports", () => {
   it("opens a candidate's report, with the code as written and the follow-up set apart", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Candidates" });
-    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Report" }));
+    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Scorecard" }));
 
     expect(client.report).toHaveBeenCalledWith("a2");
-    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(screen.getByLabelText("Code in python")).toHaveTextContent("print(sum(map(int, input().split())))");
     const answers = screen.getByRole("region", { name: "Answers" });
     expect(answers).toHaveTextContent("Tests passed 3 of 4");
@@ -1272,8 +1395,8 @@ describe("results and exports", () => {
   it("is not offered to an invigilator", async () => {
     renderApp(<App client={stubClient({ me: vi.fn(async () => who("invigilator", ["exam:read", "attempt:start", "attempt:read", "attempt:extend"])) })} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await screen.findByRole("button", { name: "Schedule and invite candidates" });
-    expect(screen.queryByRole("button", { name: "Results and exports" })).toBeNull();
+    await screen.findByRole("button", { name: "Candidates" });
+    expect(screen.queryByRole("button", { name: "Results" })).toBeNull();
   });
 });
 
@@ -1322,6 +1445,41 @@ describe("integrations", () => {
     expect(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).toHaveTextContent("ghk.acme.1.abc");
   });
 
+  it("sets up Lever with a stage-to-exam map and its secrets", async () => {
+    const client = await open();
+    const lever = await screen.findByRole("region", { name: "Lever" });
+    await userEvent.click(within(lever).getByRole("button", { name: "Set up Lever" }));
+    await userEvent.type(within(lever).getByLabelText("Stage → exam"), "stage-assess = algorithms");
+    await userEvent.type(within(lever).getByLabelText("Lever API key"), "k");
+    await userEvent.type(within(lever).getByLabelText("Webhook signature token"), "s");
+    await userEvent.click(within(lever).getByRole("button", { name: "Save and turn on" }));
+    await waitFor(() =>
+      expect(client.saveAts).toHaveBeenCalledWith("lever", { stageExams: { "stage-assess": "algorithms" } }, { apiKey: "k", signatureToken: "s" }),
+    );
+    expect(screen.getByRole("region", { name: "Zoho Recruit" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Darwinbox" })).toBeInTheDocument();
+  });
+
+  it("registers a Moodle site from its address, client ID and deployment", async () => {
+    const client = await open();
+    const moodle = await screen.findByRole("region", { name: "Moodle (LTI 1.3)" });
+    await userEvent.type(within(moodle).getByLabelText("Moodle site address"), "https://lms.college.ac.in/");
+    await userEvent.type(within(moodle).getByLabelText("Client ID"), "abc123");
+    await userEvent.type(within(moodle).getByLabelText("Deployment ID"), "4");
+    await userEvent.click(within(moodle).getByRole("button", { name: "Register" }));
+    await waitFor(() =>
+      expect(client.registerLti).toHaveBeenCalledWith({
+        name: "lms.college.ac.in",
+        issuer: "https://lms.college.ac.in",
+        clientId: "abc123",
+        deploymentIds: ["4"],
+        authLoginUrl: "https://lms.college.ac.in/mod/lti/auth.php",
+        authTokenUrl: "https://lms.college.ac.in/mod/lti/token.php",
+        jwksUrl: "https://lms.college.ac.in/mod/lti/certs.php",
+      }),
+    );
+  });
+
   it("is not offered to anyone but the owner", async () => {
     renderApp(<App client={stubClient({ me: vi.fn(async () => who("author", ["exam:read", "exam:read_key", "exam:write", "attempt:start", "attempt:read"])) })} />);
     await screen.findByRole("button", { name: "Algorithms" });
@@ -1332,7 +1490,8 @@ describe("integrations", () => {
     window.history.replaceState(null, "", "/console/?report=a2");
     const client = stubClient();
     renderApp(<App client={client} />);
-    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(client.report).toHaveBeenCalledWith("a2");
     expect(window.location.search).toBe("");
   });
@@ -1448,7 +1607,8 @@ describe("privacy (ROADMAP §11)", () => {
   it("is not offered to someone who does not manage the organisation", async () => {
     window.history.replaceState(null, "", "/console/?report=a2");
     renderApp(<App client={stubClient({ me: vi.fn(async () => who("reviewer", ["exam:read", "attempt:read", "attempt:review"])) })} />);
-    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Erase personal data…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
   });
@@ -1518,6 +1678,7 @@ describe("proctoring (ROADMAP §14)", () => {
     const client = stubClient();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByText(/Off: the test uses no camera/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Use the candidate's camera" }));
@@ -1581,5 +1742,315 @@ describe("proctoring (ROADMAP §14)", () => {
     expect(section).toHaveTextContent("ID confirmed by Meera — Face matches");
     expect(section).toHaveTextContent("12 webcam photos · tab hidden ×1");
     window.history.replaceState(null, "", "/");
+  });
+});
+
+describe("the exam page (HackerRank for Work's test page)", () => {
+  const paper = {
+    id: "exam-1",
+    title: "Algorithms",
+    questions: [
+      { id: "q1", kind: "mcq", stem: "Which sort is stable?", maxScore: 2, rubric: [], options: ["Merge sort", "Heap sort"], correctIndex: 0 },
+      { id: "q2", kind: "numeric", stem: "What is 6 × 7?", maxScore: 3, rubric: [], expected: 42, tolerance: 0 },
+      { id: "q3", kind: "short", stem: "Explain stability.", maxScore: 5, rubric: [], expectedPoints: ["equal keys keep their order"] },
+    ],
+    policy: { durationMs: 45 * 60_000, allowRevision: true, vivaTriggerRatio: 0.5, cutoff: { percent: 60 } },
+  };
+  const withCutoff: Results = {
+    ...results,
+    rows: results.rows.map((r) => ({ ...r, outcome: r.percent === null ? null : r.percent >= 60 ? "qualified" : "failed" })),
+    analytics: { ...results.analytics, qualified: 1, failed: 1 },
+  };
+  const summary: ExamSummary[] = [
+    { id: "exam-1", title: "Algorithms", questionCount: 3, attempts: { invited: 12, inProgress: 2, submitted: 1, graded: 2, void: 0 } },
+  ];
+  const client = (overrides: Record<string, unknown> = {}) =>
+    stubClient({ listExams: vi.fn(async () => summary), loadExam: vi.fn(async () => paper), results: vi.fn(async () => withCutoff), ...overrides });
+
+  it("opens on the overview, with tabs and where the candidates stand down the side", async () => {
+    renderApp(<App client={client()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+
+    const tabs = screen.getByRole("navigation", { name: "Exam" });
+    expect(within(tabs).getAllByRole("button").map((b) => b.textContent)).toEqual(["Overview", "Questions", "Candidates", "Live sitting", "Results"]);
+    expect(within(tabs).getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+
+    const side = screen.getByRole("complementary", { name: "Candidates at a glance" });
+    const count = (label: string) => within(side).getByText(label).nextElementSibling?.textContent;
+    expect(count("Invited")).toBe("12");
+    expect(count("In progress")).toBe("2");
+    expect(count("Completed")).toBe("3");
+    expect(count("To evaluate")).toBe("1");
+    await waitFor(() => expect(count("Qualified")).toBe("1"));
+    expect(count("Not qualified")).toBe("1");
+    expect(within(side).getByText("45 min")).toBeInTheDocument();
+    expect(within(side).getByText("60%")).toBeInTheDocument();
+  });
+
+  it("lists the questions read-only, with a preview as the candidate sees it", async () => {
+    renderApp(<App client={client()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Questions" }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Preview question 1" }));
+    expect(screen.getByRole("radio", { name: /Merge sort/ })).toBeChecked();
+    expect(screen.getByText("Correct")).toBeInTheDocument();
+    // Candidates have sat it, so it is copied to change, not edited.
+    expect(screen.getByRole("button", { name: "Copy to change" })).toBeInTheDocument();
+  });
+
+  it("tries the test as a candidate, saving nothing, and says what the automatic questions would score", async () => {
+    const stub = client();
+    renderApp(<App client={stub} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Questions" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Try test" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Try test" });
+    expect(within(dialog).getByText("Nothing you do here is saved")).toBeInTheDocument();
+    expect(within(dialog).getByRole("timer")).toHaveTextContent("00:45:00");
+    await userEvent.click(within(dialog).getByRole("radio", { name: /Merge sort/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: /Save & next/ }));
+    await userEvent.type(within(dialog).getByLabelText("Your answer"), "41");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Mark for review & next/ }));
+    expect(within(dialog).getByRole("button", { name: "Question 2: answered marked" })).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Finish preview" }));
+
+    expect(within(dialog).getByText(/2 of 5 marks on the 2 questions marked automatically/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Graded later")).toBeInTheDocument();
+    expect(stub.startAttempt).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Try test" })).toBeNull();
+  });
+
+  it("marks who qualified in the results, and filters by it", async () => {
+    renderApp(<App client={client()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Results" }));
+
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    expect(within((await within(table).findByText("CS001")).closest("tr")!).getByText("Qualified")).toBeInTheDocument();
+    expect(within(within(table).getByText("CS002").closest("tr")!).getByText("Not qualified")).toBeInTheDocument();
+    await userEvent.selectOptions(within(table).getByRole("combobox", { name: "Show" }), "qualified");
+    expect(within(table).queryByText("CS002")).toBeNull();
+    expect(within(table).getByText("CS001")).toBeInTheDocument();
+  });
+});
+
+describe("the exam editor's question list", () => {
+  it("reorders questions, and saves the order", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Order");
+    await userEvent.type(screen.getByLabelText("Question"), "First?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Add question" }));
+    const second = screen.getByRole("region", { name: "Question 2" });
+    await userEvent.type(within(second).getByLabelText("Question"), "Second?");
+    await userEvent.type(within(second).getByLabelText("Option 1"), "c");
+    await userEvent.type(within(second).getByLabelText("Option 2"), "d");
+
+    await userEvent.click(screen.getByRole("button", { name: "Move question 2 up" }));
+    expect(within(screen.getByRole("region", { name: "Question 1" })).getByRole("button", { name: "Second?" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: { stem: string }[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions.map((q) => q.stem)).toEqual(["Second?", "First?"]);
+  });
+
+  it("opens a saved exam as a list to scan, and a question to edit", async () => {
+    const client = stubClient({
+      loadExam: vi.fn(async () => ({
+        id: "exam-1",
+        title: "Algorithms",
+        questions: [{ id: "q1", kind: "mcq", stem: "Which sort is stable?", maxScore: 2, rubric: [], options: ["Merge sort", "Heap sort"], correctIndex: 0 }],
+        policy: { durationMs: 60_000, allowRevision: true, vivaTriggerRatio: 0.5 },
+      })),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+
+    const item = await screen.findByRole("region", { name: "Question 1" });
+    expect(within(item).getByText("Multiple choice")).toBeInTheDocument();
+    expect(within(item).queryByLabelText("Option 1")).toBeNull();
+    await userEvent.click(within(item).getByRole("button", { name: "Edit" }));
+    expect(within(item).getByLabelText("Option 1")).toHaveValue("Merge sort");
+  });
+
+  it("saves a qualifying mark, overall and for a section", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Drive");
+    await userEvent.type(screen.getByLabelText("Question"), "Which?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Add a section drawn per candidate" }));
+    await userEvent.type(within(screen.getByRole("region", { name: "Section 1" })).getByLabelText("Section title"), "Quant");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByText(/results show marks only/)).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Set a qualifying mark"));
+    await userEvent.clear(screen.getByLabelText("Qualifying mark (% of the paper)"));
+    await userEvent.type(screen.getByLabelText("Qualifying mark (% of the paper)"), "55");
+    await userEvent.type(screen.getByLabelText("Minimum in Quant (%)"), "40");
+    // The whole exam's cut-off shows in the head.
+    expect(within(screen.getByLabelText("This paper")).getByText("55%")).toBeInTheDocument();
+
+    // A section's minimum goes with the section.
+    await userEvent.click(screen.getByRole("tab", { name: "Questions" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove section" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ policy: { cutoff?: unknown } }][] } }).mock.calls[0]![0];
+    expect(saved.policy.cutoff).toEqual({ percent: 55 });
+  });
+});
+
+describe("Ctrl+K", () => {
+  it("finds a candidate across exams and opens their scorecard", async () => {
+    const client = stubClient({
+      searchCandidates: vi.fn(async () => [
+        {
+          invitationId: "i1",
+          examId: "exam-1",
+          examTitle: "Algorithms",
+          candidateRef: "CS001",
+          name: "Ananya Iyer",
+          email: "a@college.test",
+          attemptId: "a2",
+          attemptState: "graded",
+        },
+      ]),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+
+    await userEvent.keyboard("{Control>}k{/Control}");
+    const search = screen.getByRole("combobox", { name: "Search exams, candidates and pages" });
+    expect(search).toHaveFocus();
+    await userEvent.type(search, "anan");
+    expect(await screen.findByRole("option", { name: /Ananya Iyer/ })).toBeInTheDocument();
+    expect(client.searchCandidates).toHaveBeenCalledWith("anan");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+  });
+
+  it("goes to an exam or a page from the keyboard", async () => {
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    await userEvent.click(screen.getByRole("button", { name: /Search/ }));
+    await userEvent.type(screen.getByRole("combobox"), "audit");
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { name: "Audit log" })).toBeInTheDocument();
+  });
+});
+
+describe("the scorecard", () => {
+  it("shows the verdict, each section, where the candidate stands, and when answers were saved", async () => {
+    const client = stubClient({
+      report: vi.fn(async () => ({
+        ...report,
+        result: {
+          ...report.result,
+          outcome: "qualified",
+          sections: [
+            { id: "", title: "General", score: 5, max: 5, percent: 100 },
+            { id: "quant", title: "Quant", score: 4, max: 5, percent: 80 },
+          ],
+        },
+        questions: report.questions.map((q, i) => ({ ...q, firstSavedMs: (i + 1) * 90_000, lastSavedMs: (i + 1) * 200_000, saves: i + 1 })),
+        standing: { percentile: 92, rank: 3, graded: 40, meanPercent: 61.5 },
+      })),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Results" }));
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Scorecard" }));
+
+    const card = await screen.findByRole("region", { name: "Scorecard" });
+    expect(within(card).getByText("Qualified")).toBeInTheDocument();
+    expect(within(card).getByText("92nd")).toBeInTheDocument();
+    expect(within(card).getByText("3 of 40")).toBeInTheDocument();
+    const sections = screen.getByRole("region", { name: "Sections" });
+    expect(within(sections).getByText("Quant")).toBeInTheDocument();
+    expect(within(sections).getByText("80%")).toBeInTheDocument();
+    expect(screen.getByText(/First saved at 1:30 \(minutes/)).toBeInTheDocument();
+    expect(screen.getByText(/First saved at 3:00, last at 6:40 · saved 2 times/)).toBeInTheDocument();
+  });
+});
+
+describe("home", () => {
+  it("opens on the sittings, the latest activity and what is left to set up", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
+    const sittings = await screen.findByRole("region", { name: "Sittings" });
+    expect(within(sittings).getByRole("button", { name: "Algorithms" })).toBeInTheDocument();
+    expect(within(sittings).getByText("12 of 40 started")).toBeInTheDocument();
+    expect(within(sittings).getByRole("button", { name: "Next month" })).toBeInTheDocument();
+
+    const activity = screen.getByRole("region", { name: "Recent activity" });
+    expect(activity).toHaveTextContent("Asha invited candidates");
+
+    const setup = screen.getByRole("region", { name: "Get started" });
+    expect(within(setup).getByText("3 of 6 done")).toBeInTheDocument();
+    expect(within(setup).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
+    await userEvent.click(within(setup).getByRole("button", { name: "Add questions to the bank" }));
+    expect(await screen.findByRole("heading", { name: "Question bank" })).toBeInTheDocument();
+  });
+
+  it("goes from a sitting to its exam, and says so when an exam is saved", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    expect(await screen.findByRole("navigation", { name: "Exam" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Home" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Mechanics");
+    await userEvent.type(screen.getByLabelText("Question"), "Which?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+    expect(await within(screen.getByRole("region", { name: "Notifications" })).findByText("Saved “Mechanics”")).toBeInTheDocument();
+  });
+
+  it("hides the first steps once they are done, and the activity from those who may not read the audit log", async () => {
+    const client = stubClient({
+      dashboard: vi.fn(async () => ({
+        ...dashboardView,
+        activity: null,
+        setup: { exams: 3, bankQuestions: 20, scheduled: 2, invited: 90, staff: 4, privacyNotice: true },
+      })),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("region", { name: "Sittings" });
+    expect(screen.queryByRole("region", { name: "Get started" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Recent activity" })).toBeNull();
+  });
+});
+
+describe("the design system page", () => {
+  it("is found from Ctrl+K and shows the shared pieces live", async () => {
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("region", { name: "Sittings" });
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await userEvent.type(screen.getByRole("combobox"), "design");
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { name: "Design system" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Open a dialog" }));
+    expect(screen.getByRole("dialog", { name: "Submit your attempt?" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Show a toast" }));
+    expect(screen.getByRole("region", { name: "Notifications" })).toHaveTextContent("Saved “Campus drive 2026”");
   });
 });

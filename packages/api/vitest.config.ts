@@ -12,5 +12,7 @@ export default defineConfig({
       "@parikshaa/verify": src("verify"),
     },
   },
-  test: { include: ["src/**/*.test.ts"], environment: "node", testTimeout: 30_000 },
+  // Each test's beforeEach builds a whole database (PGlite), which a busy
+  // machine running every suite at once can take over ten seconds to do.
+  test: { include: ["src/**/*.test.ts"], environment: "node", testTimeout: 30_000, hookTimeout: 30_000 },
 });

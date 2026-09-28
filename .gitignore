@@ -6,4 +6,5 @@ coverage/
 *.tsbuildinfo
 packages/e2e/test-results/
 packages/e2e/playwright-report/
+packages/e2e/visual-report/
 packages/e2e/load-*.txt

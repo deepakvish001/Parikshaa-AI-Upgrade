@@ -181,3 +181,36 @@ export const MERGE_SOLUTION = `class Solution:
 
 /** Forgets to sort: right on the examples, wrong on a hidden test that comes out of order. */
 export const MERGE_UNSORTED = MERGE_SOLUTION.replace("        intervals.sort(key=lambda it: it[0])\n", "");
+
+const mcq = (id: string, stem: string, options: readonly string[], correctIndex: number, extra: Record<string, unknown> = {}) => ({
+  id,
+  kind: "mcq",
+  stem,
+  maxScore: 4,
+  negativeMarks: 1,
+  rubric: [],
+  options,
+  correctIndex,
+  ...extra,
+});
+
+/** A campus drive's aptitude round, so the palette looks like a real sitting's. */
+export const PRACTICE_SET = [
+  mcq("p1", "A shopkeeper marks an article 25% above cost and allows a 10% discount, earning ₹150. What is the cost price?", ["₹1,200", "₹1,500", "₹1,800", "₹2,000"], 1),
+  mcq("p2", "In how many ways can a committee of 2 be chosen from 6 people?", ["12", "15", "30", "36"], 1),
+  mcq("p3", "Pointing to a photograph, Ravi says, “Her mother is the only daughter of my mother.” How is Ravi related to the girl?", ["Father", "Brother", "Uncle", "Cousin"], 2),
+  mcq("p4", "If CODE is written as DPEF, how is BASE written?", ["CBTF", "CATF", "DBTF", "CBSF"], 0),
+  mcq("p5", "The average of five consecutive odd numbers is 27. What is the largest of them?", ["29", "31", "33", "35"], 1),
+  mcq("p6", "A train 240 m long passes a pole in 12 seconds. How long will it take to pass a platform 360 m long?", ["24 s", "30 s", "36 s", "40 s"], 1),
+  mcq("p7", "Which of these numbers are divisible by 11?", ["121", "253", "341", "506"], 0, { correctIndices: [0, 1, 3], partialCredit: true }),
+  mcq("p8", "Choose the word most nearly opposite in meaning to “frugal”.", ["Thrifty", "Extravagant", "Careful", "Modest"], 1),
+  mcq("p9", "A can finish a work in 12 days and B in 18 days. Working together, in how many days will they finish it?", ["6.4", "7.2", "8", "9"], 1),
+  mcq("p10", "Find the odd one out.", ["Mercury", "Venus", "Moon", "Mars"], 2),
+  mcq("p11", "Simple interest on ₹8,000 at 6% per annum for 3 years is:", ["₹1,240", "₹1,440", "₹1,540", "₹1,640"], 1),
+  mcq("p12", "Which data structure gives O(1) average-time lookup by key?", ["Linked list", "Binary heap", "Hash table", "Sorted array"], 2),
+  mcq("p13", "Complete the series: 2, 6, 12, 20, 30, ?", ["40", "42", "44", "48"], 1),
+  mcq("p14", "If today is Wednesday, what day will it be 100 days from now?", ["Thursday", "Friday", "Saturday", "Sunday"], 1),
+  mcq("p15", "The ratio of boys to girls in a class is 3 : 2. If there are 18 boys, how many students are there?", ["27", "30", "32", "36"], 1),
+  mcq("p16", "Which SQL clause filters groups after aggregation?", ["WHERE", "GROUP BY", "HAVING", "ORDER BY"], 2),
+  mcq("p17", "A clock shows 3:15. What is the angle between the hour and minute hands?", ["0°", "7.5°", "15°", "22.5°"], 1),
+];

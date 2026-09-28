@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { hashPassword } from "@parikshaa/api";
 import { seedBilledOrganisation } from "../src/database.js";
-import { local, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
+import { beginSitting, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
 import { aptitudePaper, CODE_QUESTION, codeAnswer, MERGE_INTERVALS, RUN_COPIED, RUN_GROUPBY, RUN_OFF_BY_ONE, RUN_ORIGINAL, RUN_WHILE } from "./fixtures.js";
 import { shoot, shootPart } from "./shoot.js";
@@ -28,7 +28,7 @@ async function signIn(page: Page, account: { email: string; password: string }) 
   await page.goto("/console/");
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Account" })).toBeVisible();
 }
 
@@ -89,7 +89,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   }
 
   // --- an organisation's worth of exams and candidates ---------------------
-  const drive = await seedSitting(request, { owner: org, questions: [MCQ, SHORT, NUMERIC, CODE_QUESTION], title: TITLE, refs: REFS, names: PEOPLE, vivaTriggerRatio: 0.5 });
+  const drive = await seedSitting(request, { owner: org, questions: [MCQ, SHORT, NUMERIC, CODE_QUESTION], title: TITLE, refs: REFS, names: PEOPLE, vivaTriggerRatio: 0.5, cutoff: { percent: 50 } });
   const staffHeaders = { authorization: `Bearer ${drive.token}` };
   for (const [i, a] of ANSWERS.entries()) {
     const { attemptId } = await sit(request, drive, REFS[i]!, a);
@@ -155,38 +155,65 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // --- the pages -----------------------------------------------------------
   await page.reload(); // the session is kept for the tab; what was seeded is fetched afresh
+  await expect(page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: TITLE })).toBeVisible();
+  await page.waitForTimeout(500);
+  await shoot(page, "console-32-home");
   await nav(page, "Exams");
   await expect(page.getByRole("button", { name: TITLE })).toBeVisible();
   await shoot(page, "console-02-exams");
 
   await page.getByRole("row").filter({ hasText: "Java Developer Screening" }).getByRole("button", { name: "Edit" }).click();
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
+  await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Preview question 1" }).click();
   await shoot(page, "console-03-exam-editor");
+
 
   await nav(page, "Exams");
   await page.getByRole("row").filter({ hasText: "Aptitude Mock Test" }).getByRole("button", { name: "Edit" }).click();
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
+  await page.getByRole("button", { name: "Expand all" }).click();
   await page.getByText("Passage — The monsoon").first().scrollIntoViewIfNeeded();
   await shoot(page, "console-21-aptitude-editor");
 
   await nav(page, "Exams");
   await page.getByRole("row").filter({ hasText: "LeetCode Round" }).getByRole("button", { name: "Edit" }).click();
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
-  await page.getByText("What candidates start from").click();
+  await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByText("What candidates start from").first().click();
   await page.getByText("Input and output format, constraints (Markdown)").click();
   await shoot(page, "console-23-function-question");
 
   await nav(page, "Exams");
   await page.getByRole("button", { name: TITLE }).click();
   await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Candidates at a glance" }).getByText("Qualified", { exact: true })).toBeVisible();
+  await page.waitForTimeout(500);
   await shoot(page, "console-04-exam-attempts");
 
-  await page.getByRole("button", { name: "Schedule and invite candidates" }).click();
+  // Its questions, one previewed, and the whole test tried as a candidate.
+  await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
+  await page.getByRole("button", { name: "Preview question 1" }).click();
+  await shoot(page, "console-27-exam-questions");
+  await page.getByRole("button", { name: "Try test" }).click();
+  const trying = page.getByRole("dialog", { name: "Try test" });
+  await trying.getByRole("radio").first().check();
+  await trying.getByRole("button", { name: /Save & next/ }).click();
+  await shoot(page, "console-28-try-test", { fullPage: false });
+  await trying.getByRole("button", { name: "End preview" }).click();
+
+  // Ctrl+K: a candidate found across every exam.
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("sharma");
+  await expect(page.getByRole("option", { name: /Aarav Sharma/ }).first()).toBeVisible();
+  await shoot(page, "console-30-search", { fullPage: false });
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Candidates", exact: true }).click();
   await page.waitForTimeout(500);
   await shoot(page, "console-05-invite");
 
   await page.getByRole("button", { name: TITLE }).click();
-  await page.getByRole("button", { name: "Results and exports" }).click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
   await expect(page.getByRole("region", { name: "Candidates" })).toBeVisible();
   const similar = page.getByRole("region", { name: "Code similarity" });
   await expect(similar.getByRole("button", { name: "Compare" }).first()).toBeVisible();
@@ -195,7 +222,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   await expect(similar.getByRole("group", { name: /side by side$/ })).toBeVisible();
   await shootPart(similar, "console-22-code-similarity");
 
-  await page.getByRole("region", { name: "Candidates" }).getByRole("row").filter({ hasText: "Aarav Sharma" }).getByRole("button", { name: "Report" }).click();
+  await page.getByRole("region", { name: "Candidates" }).getByRole("row").filter({ hasText: "Aarav Sharma" }).getByRole("button", { name: "Scorecard" }).click();
   await page.waitForTimeout(800);
   await shoot(page, "console-07-candidate-report");
 
@@ -213,7 +240,7 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // A proctored candidate, in their own browser with Chromium's fake camera.
   const candidate = await browser.newPage();
-  await candidate.goto(local(proctored.links["SC001"]!));
+  await beginSitting(candidate, proctored.links["SC001"]!);
   await candidate.getByRole("button", { name: "Allow the camera" }).click();
   await candidate.getByRole("button", { name: "My camera works — start the test" }).click();
   await candidate.getByRole("button", { name: "Take my photo" }).click();
@@ -241,6 +268,21 @@ test("every page of the console", async ({ page, browser, request }) => {
   await expect(word.getByRole("table", { name: "Questions found" })).toBeVisible();
   await shoot(page, "console-11-question-bank");
 
+  // The bank as a library, from an exam being written.
+  await nav(page, "Exams");
+  await page.getByRole("row").filter({ hasText: "Java Developer Screening" }).getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Add from bank" }).first().click();
+  const library = page.getByRole("dialog", { name: "Add from the question bank" });
+  await library.locator(".library input").first().check();
+  await library.locator(".library input").nth(1).check();
+  await shoot(page, "console-29-library-drawer", { fullPage: false });
+  await page.keyboard.press("Escape");
+  await page.getByRole("tab", { name: "Settings" }).click();
+  await page.getByLabel("Set a qualifying mark").check();
+  await page.getByLabel("Qualifying mark (% of the paper)").fill("65");
+  await page.getByRole("heading", { name: "Qualifying mark" }).scrollIntoViewIfNeeded();
+  await shoot(page, "console-31-exam-settings", { fullPage: false });
+
   for (const [label, name] of [
     ["Staff", "console-12-staff"],
     ["API keys", "console-13-api-keys"],
@@ -248,12 +290,22 @@ test("every page of the console", async ({ page, browser, request }) => {
     ["Audit log", "console-15-audit-log"],
     ["Integrations", "console-16-integrations"],
     ["Privacy", "console-17-privacy"],
-    ["Password", "console-19-password"],
+    ["Sign-in", "console-20-sign-in-security"],
+    ["Account", "console-19-password"],
   ] as const) {
     await nav(page, label);
     await page.waitForTimeout(700);
     await shoot(page, name);
   }
+
+  // The design system, live.
+  await page.goto("/console/?gallery");
+  await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
+  await shoot(page, "console-33-design-system");
+  await page.getByRole("button", { name: "Show a toast" }).click();
+  await page.getByRole("button", { name: "Open a drawer" }).click();
+  await shoot(page, "console-34-drawer-and-toast", { fullPage: false });
+  await page.keyboard.press("Escape");
 
   // Billing, visited last: the credits bought at the start, and their GST invoice.
   await nav(page, "Billing");

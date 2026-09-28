@@ -15,7 +15,9 @@
     "build:clients": "npm run build -w @parikshaa/web && npm run build -w @parikshaa/console",
     "migrate": "npm run migrate -w @parikshaa/store",
     "verify": "node packages/verify/dist/cli.js",
-    "openapi": "npm run build && npm run openapi -w @parikshaa/api"
+    "openapi": "npm run build && npm run openapi -w @parikshaa/api",
+    "cost-run": "node scripts/cost-run.mjs",
+    "budget": "node scripts/bundle-budget.mjs"
   },
   "engines": {
     "node": ">=20"

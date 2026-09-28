@@ -1,7 +1,7 @@
-import { expect, test, type Page } from "@playwright/test";
-import { local, MCQ, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
+import { expect, test } from "@playwright/test";
+import { beginSitting, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
-import { aptitudePaper, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED } from "./fixtures.js";
+import { aptitudePaper, CODE_QUESTION, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED, PRACTICE_SET } from "./fixtures.js";
 import { shoot } from "./shoot.js";
 
 /** The candidate's side, page by page. */
@@ -10,7 +10,6 @@ const NUMERIC = { id: "q3", kind: "numeric", stem: "A train covers 180 km in 2.5
 const QUESTIONS = [MCQ, SHORT, NUMERIC];
 const TITLE = "Campus Drive 2026 — Aptitude and Reasoning";
 
-const question = (page: Page, n: number) => page.locator("section.card").filter({ has: page.getByRole("heading", { name: new RegExp(`^${n}\\. `) }) });
 
 test("the access code, when a candidate has no link", async ({ page }) => {
   await page.goto("/");
@@ -21,7 +20,7 @@ test("the access code, when a candidate has no link", async ({ page }) => {
 test("the privacy notice, agreed to before anything starts", async ({ page, request }) => {
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ], title: TITLE });
   await setPrivacyNotice(request, sitting.token);
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: "Before you start" })).toBeVisible();
   await shoot(page, "candidate-02-privacy-notice");
 });
@@ -30,6 +29,7 @@ test("a link opened before the window", async ({ page, request }) => {
   const opensAt = new Date(Date.now() + 26 * 3_600_000);
   opensAt.setUTCMinutes(30, 0, 0);
   const sitting = await seedSitting(request, { questions: [MCQ], title: TITLE, opensAt });
+  // Before the window there are no instructions to read: only when to come back.
   await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("region", { name: "Not open yet" })).toBeVisible();
   await shoot(page, "candidate-03-not-open-yet");
@@ -41,7 +41,7 @@ test("the camera check and the identity photos, for a proctored test", async ({ 
     title: TITLE,
     proctoring: { identity: true, snapshotEverySeconds: 60, browserEvents: true },
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await expect(page.getByRole("heading", { name: "This test uses your camera" })).toBeVisible();
   await shoot(page, "candidate-04-camera-notice");
   await page.getByRole("button", { name: "Allow the camera" }).click();
@@ -55,31 +55,77 @@ test("the camera check and the identity photos, for a proctored test", async ({ 
   await shoot(page, "candidate-06-identity");
 });
 
-test("answering: the questions, autosave, and a follow-up question", async ({ page, request }) => {
-  const sitting = await seedSitting(request, { questions: QUESTIONS, title: TITLE, vivaTriggerRatio: 0.5 });
-  await page.goto(local(sitting.links["CS001"]!));
+test("answering: one question at a time, autosave, a follow-up question, and the submit summary", async ({ page, request }) => {
+  const sitting = await seedSitting(request, {
+    questions: [...QUESTIONS, ...PRACTICE_SET],
+    title: TITLE,
+    vivaTriggerRatio: 0.5,
+    calculator: true,
+    names: ["Aarav Sharma"],
+  });
+  // The instructions and system check, before the clock.
+  const link = local(sitting.links["CS001"]!);
+  await page.goto(link);
+  await expect(page.getByText(/^Good \(\d+ ms\)$/)).toBeVisible();
+  await page.locator(".declare input[type=checkbox]").check();
+  await shoot(page, "candidate-20-instructions");
+  await readyToBegin(page);
   await expect(page.getByRole("heading", { name: TITLE })).toBeVisible();
-  await question(page, 2).getByRole("textbox").fill("Each comparison halves the interval that can hold the target, so after at most log₂(n) steps it is empty");
-  await page.waitForTimeout(1600);
-  await shoot(page, "candidate-07-exam");
+  const foot = page.locator(".qfoot");
 
-  await question(page, 1).getByRole("radio", { name: "Merge sort" }).check();
-  await question(page, 1).getByRole("button", { name: "Save answer" }).click();
+  // A few questions opened and answered first, so the palette reads like a sitting under way.
+  await page.getByRole("button", { name: /^Question 4:/ }).click();
+  await page.getByRole("radio", { name: "₹1,800" }).check();
+  await foot.getByRole("button", { name: "Save & next" }).click();
+  await page.getByRole("radio", { name: "12" }).check();
+  await foot.getByRole("button", { name: "Mark for review & next" }).click();
+  await foot.getByRole("button", { name: "Mark for review & next" }).click();
+  await foot.getByRole("button", { name: "Save & next" }).click();
+  await page.getByRole("button", { name: /^Question 1:/ }).click();
+
+  await page.getByRole("radio", { name: "Merge sort" }).check();
+  await page.waitForTimeout(300);
+  await shoot(page, "candidate-07-exam", { fullPage: false });
+
+  // The whole paper at once, read-only.
+  await page.getByRole("button", { name: "Question paper" }).click();
+  await expect(page.getByRole("dialog", { name: "Question paper" })).toBeVisible();
+  await shoot(page, "candidate-23-question-paper", { fullPage: false });
+  await page.keyboard.press("Escape");
+
+  // The tools: the calculator, then rough work, beside the paper.
+  await page.getByRole("button", { name: "Calculator" }).click();
+  const calc = page.getByRole("dialog", { name: "Calculator" });
+  for (const key of ["1", "8", "0", "÷", "2", ".", "5", "="]) await calc.getByRole("button", { name: key, exact: true }).click();
+  await expect(calc).toContainText("72");
+  await shoot(page, "candidate-21-calculator", { fullPage: false });
+  await page.getByRole("button", { name: "Rough work" }).click();
+  await page.getByRole("dialog", { name: "Rough work" }).getByRole("textbox").fill("Stable: equal keys keep their order.\nMerge sort — yes (merge takes left first on ties)\nQuick sort — no\nHeap sort — no");
+  await shoot(page, "candidate-22-rough-work", { fullPage: false });
+  await page.keyboard.press("Escape");
+
+  await foot.getByRole("button", { name: "Save & next" }).click();
   const probe = page.getByRole("region", { name: "Follow-up question" });
   await expect(probe).toContainText("Walk me through why your answer holds");
   await probe.getByLabel("Your reply to the follow-up").fill("Merge sort only moves an element past another when it is strictly smaller, so equal keys keep their order.");
-  await shoot(page, "candidate-08-follow-up");
+  await shoot(page, "candidate-08-follow-up", { fullPage: false });
 
   await page.getByRole("combobox", { name: "Language" }).selectOption("hi");
   const probeHi = page.getByRole("region", { name: "अनुवर्ती प्रश्न" });
   await probeHi.getByRole("button", { name: "उत्तर भेजें" }).click();
   await expect(probeHi).toBeHidden();
-  await shoot(page, "candidate-09-hindi");
+  await page.locator("section.qview").getByRole("textbox").fill("हर तुलना के बाद खोज का अंतराल आधा हो जाता है, इसलिए log₂(n) चरणों में वह खाली हो जाता है।");
+  await page.waitForTimeout(1600);
+  await shoot(page, "candidate-09-hindi", { fullPage: false });
   await page.getByRole("combobox", { name: "भाषा" }).selectOption("en");
 
-  await question(page, 3).getByRole("textbox").fill("72");
-  await question(page, 3).getByRole("button", { name: "Save answer" }).click();
+  await foot.getByRole("button", { name: "Save & next" }).click();
+  await page.locator("section.qview").getByRole("textbox").fill("72");
+  await foot.getByRole("button", { name: "Save & next" }).click();
   await page.getByRole("button", { name: "Submit attempt" }).click();
+  await expect(page.getByRole("dialog", { name: "Submit your attempt?" })).toBeVisible();
+  await shoot(page, "candidate-18-submit-summary", { fullPage: false });
+  await page.getByRole("button", { name: "Yes, submit" }).click();
   const record = page.getByRole("region", { name: "Your record" });
   await record.getByRole("button", { name: "Check this record" }).click();
   await expect(record.getByRole("status")).toContainText("unbroken");
@@ -96,21 +142,21 @@ test("a test taken section by section", async ({ page, request }) => {
     title: TITLE,
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
   await page.getByRole("button", { name: "Finish General and go on" }).click();
-  await shoot(page, "candidate-10-section-leave");
+  await shoot(page, "candidate-10-section-leave", { fullPage: false });
   await page.getByRole("button", { name: "Leave General" }).click();
-  await expect(page.getByRole("timer")).toBeVisible();
-  await question(page, 2).getByRole("textbox").fill("72");
-  await shoot(page, "candidate-11-section-timer");
+  await expect(page.getByRole("timer").first()).toBeVisible();
+  await page.locator("section.qview").getByRole("textbox").fill("72");
+  await shoot(page, "candidate-11-section-timer", { fullPage: false });
 });
 
 test("on a phone", async ({ browser, request }) => {
-  const sitting = await seedSitting(request, { questions: QUESTIONS, title: TITLE, vivaTriggerRatio: 0.99 });
+  const sitting = await seedSitting(request, { questions: [...QUESTIONS, ...PRACTICE_SET], title: TITLE, vivaTriggerRatio: 0.99 });
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  await phone.goto(local(sitting.links["CS001"]!));
-  await expect(phone.getByRole("heading", { name: TITLE })).toBeVisible();
-  await question(phone, 1).getByRole("radio", { name: "Merge sort" }).check();
+  await beginSitting(phone, sitting.links["CS001"]!);
+  await expect(phone.getByRole("heading", { name: TITLE })).toBeAttached();
+  await phone.getByRole("radio", { name: "Merge sort" }).check();
   await shoot(phone, "candidate-13-phone", { fullPage: false });
 });
 
@@ -123,28 +169,35 @@ test("an aptitude paper: pictures, a passage, several right options, negative ma
     title: "Aptitude Mock Test — Quantitative and Reasoning",
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
-  const card = (n: number) => page.locator("section.question").nth(n - 1);
+  await beginSitting(page, sitting.links["CS001"]!);
+  const foot = page.locator(".qfoot");
   await expect(page.getByRole("navigation", { name: "Questions" })).toBeVisible();
-  await card(1).getByRole("textbox").fill("100");
-  await card(1).getByRole("button", { name: "Save answer" }).click();
-  await card(2).getByRole("radio", { name: "5" }).check();
-  await card(2).getByRole("button", { name: "Save answer" }).click();
-  await card(3).getByRole("checkbox", { name: "23" }).check();
-  await card(3).getByRole("checkbox", { name: "29" }).check();
-  await card(4).getByRole("button", { name: "Mark for review" }).click();
-  await expect(card(1)).toContainText("Saved");
-  await page.waitForTimeout(1600);
-  await shoot(page, "candidate-14-aptitude");
+  await page.locator("section.qview").getByRole("textbox").fill("100");
+  await foot.getByRole("button", { name: "Save & next" }).click();
+  await page.getByRole("radio", { name: "5" }).check();
+  await foot.getByRole("button", { name: "Save & next" }).click();
+  await page.getByRole("checkbox", { name: "23" }).check();
+  await page.getByRole("checkbox", { name: "29" }).check();
+  await foot.getByRole("button", { name: "Mark for review & next" }).click();
+  await page.getByRole("radio", { name: "First week of June" }).check();
+  await page.waitForTimeout(600);
+  await shoot(page, "candidate-14-aptitude", { fullPage: false });
+  await page.getByRole("button", { name: /^Question 1:/ }).click();
+  await page.waitForTimeout(400);
+  await shoot(page, "candidate-19-chart", { fullPage: false });
 });
 
 test("a coding question, as on LeetCode: the workspace, Run, full screen, and Submit", async ({ page, request }) => {
   const sitting = await seedSitting(request, {
-    questions: [MERGE_INTERVALS],
+    // The merge first, so the workspace opens on it; the rail shows the rest of the round.
+    questions: [MERGE_INTERVALS, { ...CODE_QUESTION, id: "q-run" }, { ...MCQ, id: "q-mcq" }],
     title: "Coding Round — Campus Drive 2026",
     vivaTriggerRatio: 0.99,
   });
-  await page.goto(local(sitting.links["CS001"]!));
+  await beginSitting(page, sitting.links["CS001"]!);
+  // On a wide screen the question opens full screen, as a coding round's does.
+  const workspace = page.getByRole("dialog");
+  await expect(workspace).toBeVisible();
   const editor = page.locator(".cm-content");
   await expect(editor).toBeVisible();
   const write = async (source: string) => {
@@ -153,17 +206,14 @@ test("a coding question, as on LeetCode: the workspace, Run, full screen, and Su
     await page.keyboard.insertText(source);
   };
 
-  // In the paper: the statement, the editor, and Run on the examples.
+  // The statement beside the editor, and Run on the examples.
   await write(MERGE_SOLUTION);
-  await page.getByRole("button", { name: "Run", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Run results" })).toContainText("2/2 examples pass", { timeout: 30_000 });
+  await workspace.getByRole("button", { name: "Run", exact: true }).click();
+  await expect(workspace.getByRole("region", { name: "Run results" })).toContainText("2/2 examples pass", { timeout: 30_000 });
   await page.waitForTimeout(500);
-  await shoot(page, "candidate-15-coding");
+  await shoot(page, "candidate-15-coding", { fullPage: false });
 
-  // Full screen: the problem beside the editor, and Submit against every test.
-  await page.getByRole("button", { name: "Full screen" }).click();
-  const workspace = page.getByRole("dialog");
-  await expect(workspace).toBeVisible();
+  // Submit against every test.
   await workspace.getByRole("button", { name: "Submit" }).click();
   await expect(workspace.getByRole("region", { name: "Submission results" })).toContainText("5/5 tests passed", { timeout: 30_000 });
   await page.waitForTimeout(500);

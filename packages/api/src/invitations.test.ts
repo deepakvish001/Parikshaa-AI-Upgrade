@@ -152,7 +152,62 @@ describe("importing a cohort", () => {
   });
 });
 
+describe("finding a candidate", () => {
+  it("across exams, by reference, name or email, and only in this organisation", async () => {
+    await inviteAll();
+    const find = async (q: string, token = owner) => {
+      const res = await call("GET", token, `/candidates/search?q=${encodeURIComponent(q)}`);
+      expect(res.statusCode, res.payload).toBe(200);
+      return res.json().candidates as { candidateRef: string; examTitle: string; attemptState: string }[];
+    };
+
+    expect((await find("rohan")).map((c) => c.candidateRef)).toEqual(["CS002"]);
+    expect(await find("cs00")).toHaveLength(3);
+    expect((await find("ananya@"))[0]).toMatchObject({ candidateRef: "CS001", examTitle: "Campus drive 2026", attemptState: "not_started" });
+    expect(await find("a")).toEqual([]); // too short to mean anything
+    expect(await find("%")).toEqual([]); // a wildcard is a character here, not everyone
+
+    const other = await addOrganisation(identity, "org-b", "Other");
+    await addStaff(identity, other, "owner@other.test", "owner");
+    expect(await find("rohan", await signIn(app, "owner@other.test"))).toEqual([]);
+  });
+});
+
 describe("a candidate opening their link", () => {
+  it("reads the instructions without starting anything, early or in the window", async () => {
+    const [first] = await inviteAll();
+    const brief = () => call("POST", null, "/invitations/briefing", { code: codeFor(first!.id) });
+
+    const early = await brief();
+    expect(early.statusCode, early.payload).toBe(200);
+    expect(early.json()).toMatchObject({
+      title: "Campus drive 2026",
+      candidate: { name: "Ananya Iyer", ref: "CS001" },
+      started: false,
+      durationMs: HOUR,
+      questionCount: 1,
+      totalMarks: 1,
+      kinds: ["mcq"],
+      negativeMarks: 0,
+      calculator: false,
+      proctored: false,
+    });
+
+    clock = OPENS + 60_000;
+    expect((await brief()).json().started).toBe(false);
+    // Reading it claimed nothing: the invitation has not begun.
+    const listed = (await call("GET", owner, "/exams/drive-2026/invitations")).json().invitations;
+    expect(listed.find((i: { candidateRef: string }) => i.candidateRef === "CS001").attemptState).toBe("not_started");
+
+    expect((await redeem(codeFor(first!.id))).statusCode).toBe(200);
+    expect((await brief()).json().started).toBe(true);
+  });
+
+  it("refuses a code it did not issue", async () => {
+    const res = await call("POST", null, "/invitations/briefing", { code: "made-up.code" });
+    expect(res.statusCode).toBe(404);
+  });
+
   it("is told when to come back if it is early", async () => {
     const [first] = await inviteAll();
     const res = await redeem(codeFor(first!.id));

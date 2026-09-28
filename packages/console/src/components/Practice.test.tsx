@@ -26,7 +26,12 @@ const problem = (id: string, title: string, patch: Partial<PracticeProblem> = {}
 
 function stub() {
   let site: PracticeSiteSettings | null = null;
-  const problems: PracticeProblem[] = [problem("p1", "Stable sort")];
+  const problems: PracticeProblem[] = [
+    problem("p1", "Stable sort"),
+    problem("p3", "Sum of a list", {
+      question: { id: "p3" as never, kind: "code", stem: "Sum", maxScore: 1, rubric: [], language: "python", tests: [] } as unknown as PracticeProblem["question"],
+    }),
+  ];
   const contests: PracticeContest[] = [];
   const comments: PracticeComment[] = [
     {
@@ -78,6 +83,28 @@ function stub() {
       comments[comments.indexOf(c)] = { ...c, hidden };
     }),
     replyInPractice: vi.fn(async () => undefined),
+    practiceSignIn: vi.fn(async () => ({
+      requireVerified: false,
+      google: { enabled: false, clientId: null, secretSet: false },
+      redirectUri: "https://exam.test/api/practice/nit-practice/auth/google/callback",
+    })),
+    savePracticeSignIn: vi.fn(async () => ({
+      requireVerified: true,
+      google: { enabled: true, clientId: "id.apps.googleusercontent.com", secretSet: true },
+      redirectUri: "https://exam.test/api/practice/nit-practice/auth/google/callback",
+    })),
+    practiceSimilarity: vi.fn(async () => ({
+      problem: { id: "p3", title: "Sum of a list" },
+      compared: 3,
+      pairs: [
+        {
+          a: { learnerId: "l1", name: "Asha", language: "python", source: "total = 0", status: "passed", submittedAt: "2026-09-24T10:00:00.000Z" },
+          b: { learnerId: "l2", name: "Bilal", language: "python", source: "acc = 0", status: "passed", submittedAt: "2026-09-24T11:00:00.000Z" },
+          similarity: 0.93,
+          shared: 20,
+        },
+      ],
+    })),
   };
   return client;
 }
@@ -177,5 +204,44 @@ describe("the practice panel", () => {
     await userEvent.type(screen.getByLabelText("Your reply"), "Please do not post answers.");
     await userEvent.click(screen.getByRole("button", { name: "Post reply" }));
     await waitFor(() => expect(client.replyInPractice).toHaveBeenCalledWith("stable-sort", "Please do not post answers."));
+  });
+});
+
+describe("finishing the site (ROADMAP §15)", () => {
+  it("lets an owner require confirmed addresses and offer Google sign-in", async () => {
+    const client = stub();
+    show(client);
+    await userEvent.click(await screen.findByLabelText(/Only confirmed/));
+    await userEvent.click(screen.getByLabelText(/Continue with/));
+    expect(screen.getByText("https://exam.test/api/practice/nit-practice/auth/google/callback")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Google OAuth client ID"), "id.apps.googleusercontent.com");
+    await userEvent.type(screen.getByLabelText("Client secret"), "shh");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(client.savePracticeSignIn).toHaveBeenCalledWith({
+        requireVerified: true,
+        google: { enabled: true, clientId: "id.apps.googleusercontent.com", clientSecret: "shh" },
+      }),
+    );
+  });
+
+  it("shows a reviewer learners whose code is alike, side by side", async () => {
+    const client = stub();
+    show(client, { ...all, review: true });
+    await userEvent.click(screen.getByRole("tab", { name: "Problems" }));
+    // Only code is compared.
+    await screen.findByText("Stable sort");
+    expect(screen.queryByRole("button", { name: "Similar code for Stable sort" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Similar code for Sum of a list" }));
+    expect(await screen.findByText("93%")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Compare" }));
+    expect(screen.getByRole("group", { name: "Asha and Bilal, side by side" })).toHaveTextContent("acc = 0");
+  });
+
+  it("does not offer the comparison without the right to review", async () => {
+    show(stub());
+    await userEvent.click(screen.getByRole("tab", { name: "Problems" }));
+    await screen.findByText("Sum of a list");
+    expect(screen.queryByRole("button", { name: /Similar code/ })).toBeNull();
   });
 });

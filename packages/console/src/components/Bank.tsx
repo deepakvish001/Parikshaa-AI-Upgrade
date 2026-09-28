@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Drawer } from "@parikshaa/brand/ui";
+import { Library, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { validateQuestion, type ExamProblem, type Question } from "@parikshaa/core/browser";
 import { base64Of, ConsoleError, type BankEntry, type BankFilter, type ConsoleClient, type Difficulty, type DocxImport } from "../api.ts";
@@ -12,6 +14,9 @@ import { QuestionFields, blankQuestion } from "./QuestionFields.tsx";
  */
 
 const DIFFICULTIES: readonly Difficulty[] = ["easy", "medium", "hard"];
+
+/** What each kind of question is called in a list. */
+export const KIND_NAME: Record<Question["kind"], string> = { mcq: "Multiple choice", short: "Written", numeric: "Numeric", code: "Coding" };
 
 const summary = (q: Question) => (q.stem.length > 90 ? `${q.stem.slice(0, 90)}…` : q.stem);
 
@@ -469,53 +474,71 @@ export function BankPicker({
   const bank = useQuery({ queryKey: ["bank-picker", filter], queryFn: () => load(filter) });
   const available = (bank.data?.questions ?? []).filter((e) => !exclude.has(e.id));
 
+  const heading = useRef<HTMLHeadingElement>(null);
+  const marks = available.filter((e) => chosen.has(e.id)).reduce((sum, e) => sum + e.question.maxScore, 0);
+
   return (
-    <div className="card picker" role="dialog" aria-label="Add from the question bank">
-      <Filters filter={filter} topics={bank.data?.topics ?? []} onChange={setFilter} />
-      {available.length === 0 ? (
-        <p className="notice">{bank.data === undefined ? "Loading…" : "No questions match."}</p>
-      ) : (
-        <div className="row">
-          <button
-            type="button"
-            className="quiet"
-            onClick={() => setChosen(new Set(available.map((e) => e.id)))}
-          >
-            Select all {available.length}
+    <Drawer label="Add from the question bank" onClose={onClose} initialFocus={heading} className="drawer">
+        <header className="drawer-head">
+          <Library aria-hidden="true" />
+          <h2 ref={heading} tabIndex={-1}>
+            Add from the library
+          </h2>
+          <span className="spacer" />
+          <button type="button" className="quiet icon" aria-label="Close" onClick={onClose}>
+            <X aria-hidden="true" />
           </button>
+        </header>
+        <p className="notice">What you add is a copy: editing the question in the bank later will not change this exam.</p>
+        <Filters filter={filter} topics={bank.data?.topics ?? []} onChange={setFilter} />
+        <div className="drawer-body">
+          {available.length === 0 ? (
+            <p className="notice">{bank.data === undefined ? "Loading…" : "No questions match."}</p>
+          ) : (
+            <div className="row" style={{ marginTop: 0 }}>
+              <button type="button" className="quiet" onClick={() => setChosen(new Set(available.map((e) => e.id)))}>
+                Select all {available.length}
+              </button>
+            </div>
+          )}
+          <ul className="library">
+            {available.map((entry) => (
+              <li key={entry.id} className={chosen.has(entry.id) ? "chosen" : undefined}>
+                <label className="option">
+                  <input
+                    type="checkbox"
+                    style={{ width: "auto" }}
+                    checked={chosen.has(entry.id)}
+                    onChange={(e) => {
+                      const next = new Set(chosen);
+                      if (e.target.checked) next.add(entry.id);
+                      else next.delete(entry.id);
+                      setChosen(next);
+                    }}
+                  />{" "}
+                  <span className="library-stem">{summary(entry.question)}</span>
+                  <span className="library-meta">
+                    <span className="tag">{KIND_NAME[entry.question.kind]}</span>
+                    <span className={`difficulty ${entry.difficulty}`}>{entry.difficulty}</span>
+                    <span className="notice">
+                      {entry.question.maxScore} marks · {entry.topic || "no topic"}
+                    </span>
+                  </span>
+                </label>
+              </li>
+            ))}
+          </ul>
         </div>
-      )}
-      {available.map((entry) => (
-        <label className="option" key={entry.id}>
-          <input
-            type="checkbox"
-            style={{ width: "auto" }}
-            checked={chosen.has(entry.id)}
-            onChange={(e) => {
-              const next = new Set(chosen);
-              if (e.target.checked) next.add(entry.id);
-              else next.delete(entry.id);
-              setChosen(next);
-            }}
-          />{" "}
-          {summary(entry.question)}{" "}
-          <span className="notice">
-            · {entry.question.maxScore} marks · {entry.topic || "no topic"} · {entry.difficulty}
-          </span>
-        </label>
-      ))}
-      <div className="row">
-        <button
-          type="button"
-          disabled={chosen.size === 0}
-          onClick={() => onPick(available.filter((e) => chosen.has(e.id)).map((e) => e.question))}
-        >
-          Add {chosen.size} question{chosen.size === 1 ? "" : "s"}
-        </button>
-        <button type="button" className="quiet" onClick={onClose}>
-          Cancel
-        </button>
-      </div>
-    </div>
+        <footer className="drawer-foot">
+          <span className="notice">{chosen.size === 0 ? "Nothing chosen" : `${chosen.size} chosen · ${marks} marks`}</span>
+          <span className="spacer" />
+          <button type="button" className="quiet" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" disabled={chosen.size === 0} onClick={() => onPick(available.filter((e) => chosen.has(e.id)).map((e) => e.question))}>
+            Add {chosen.size} question{chosen.size === 1 ? "" : "s"}
+          </button>
+        </footer>
+    </Drawer>
   );
 }

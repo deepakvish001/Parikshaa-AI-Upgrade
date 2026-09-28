@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, redeemInvitation, type Notice } from "../api.ts";
-import { uiLocaleOf, usePreferences } from "../i18n.tsx";
+import { ApiError, briefInvitation, redeemInvitation, type Briefing, type Notice } from "../api.ts";
+import { BriefingScreen } from "./Instructions.tsx";
+import { type Language, uiLocaleOf, usePreferences } from "../i18n.tsx";
 import { GateShell } from "./Chrome.tsx";
 import type { ProctoringPolicy } from "@parikshaa/core/browser";
 import { CameraCheck } from "./CameraCheck.tsx";
@@ -14,6 +15,7 @@ interface Props {
 
 type Stage =
   | { readonly kind: "opening" }
+  | { readonly kind: "briefing"; readonly brief: Briefing }
   | { readonly kind: "notice"; readonly notice: Notice }
   | { readonly kind: "camera"; readonly policy: ProctoringPolicy; readonly consent: { noticeVersion: number } | undefined }
   | { readonly kind: "early"; readonly opensAt: string }
@@ -23,8 +25,8 @@ type Stage =
   | { readonly kind: "offline" };
 
 /** Times as the candidate reads them: IST, spelled out. */
-const ist = (iso: string, locale: "en" | "hi" = "en") =>
-  `${new Intl.DateTimeFormat(locale === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
+const ist = (iso: string, locale: Language = "en") =>
+  `${new Intl.DateTimeFormat(`${locale}-IN`, { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
 
 /**
  * Opening an invitation link.
@@ -54,20 +56,39 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
     }
   }, [code, onOpened]);
 
+  /**
+   * The instructions first, when the test has not begun and its window is
+   * open: reading them starts nothing. Otherwise — resumed, early, closed, or
+   * the briefing unreadable — straight to opening, which says what is wrong.
+   */
+  const enter = useCallback(async () => {
+    try {
+      const brief = await briefInvitation(code);
+      if (!brief.started && Date.now() >= Date.parse(brief.opensAt) && Date.now() < Date.parse(brief.closesAt)) {
+        setStage({ kind: "briefing", brief });
+        return;
+      }
+    } catch {
+      // Opening explains an invalid or unreachable link better than this could.
+    }
+    await open();
+  }, [code, open]);
+
   useEffect(() => {
-    void open();
-  }, [open]);
+    void enter();
+  }, [enter]);
 
   // Early: try again at the moment the window opens, and at most every minute.
   useEffect(() => {
     if (stage.kind !== "early") return;
     const wait = Math.max(1_000, Math.min(Date.parse(stage.opensAt) - Date.now() + 1_000, 60_000));
-    const timer = setTimeout(() => void open(), wait);
+    const timer = setTimeout(() => void enter(), wait);
     return () => clearTimeout(timer);
-  }, [stage, open]);
+  }, [stage, enter]);
 
   return (
-    <GateShell wide={stage.kind === "notice"}>
+    <GateShell wide={stage.kind === "notice"} full={stage.kind === "briefing"}>
+      {stage.kind === "briefing" ? <BriefingScreen brief={stage.brief} onBegin={() => void open()} /> : null}
       {stage.kind === "opening" ? (
         <div className="gate-card">
           <p className="notice" style={{ margin: 0, textAlign: "center" }}>

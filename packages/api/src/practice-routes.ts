@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { Learner, PracticeSite } from "@parikshaa/store";
 import type { PracticeService } from "./practice.js";
+import type { PracticeIdentity } from "./practice-identity.js";
 import * as S from "./schemas.js";
 import type { ExamService } from "./service.js";
 import { RateLimiter } from "./rate-limit.js";
@@ -17,6 +18,8 @@ export interface PracticeRouteDeps {
   readonly bearer: (request: FastifyRequest) => string | null;
   /** Shared with staff sign-in: repeated failures from one address for one account are refused for a while. */
   readonly throttle: LoginThrottle;
+  /** Email verification and Google sign-in. Absent: neither. */
+  readonly identity?: PracticeIdentity;
 }
 
 /** Accounts made from one address: enough for a lab full of students, not for a script. */
@@ -37,7 +40,7 @@ const problemParams = siteParams.extend({ problem: z.string().min(1).max(80) });
 const contestParams = siteParams.extend({ contest: z.string().min(1).max(80) });
 const contestQuery = z.object({ contest: z.string().min(1).max(80).optional() });
 
-const learnerView = z.object({ id: z.string(), name: z.string(), email: z.string() });
+const learnerView = z.object({ id: z.string(), name: z.string(), email: z.string(), emailVerified: z.boolean() });
 const session = z.object({ token: z.string(), expiresAt: z.string(), learner: learnerView });
 const siteView = z.object({ slug: z.string(), title: z.string(), welcome: z.string().describe("Markdown.") });
 const status = z.enum(["solved", "attempted"]).nullable();
@@ -232,7 +235,7 @@ const staffComment = z.object({
  * and the staff's under `/practice-admin`.
  */
 export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps): void {
-  const { practice, service, staff, bearer, throttle } = deps;
+  const { practice, service, staff, bearer, throttle, identity } = deps;
   const signups = new RateLimiter(SIGNUPS);
   const tooMany = (reply: FastifyReply) => reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
 
@@ -272,7 +275,9 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
     async (request, reply) => {
       await siteOf(request);
       if (!signups.take(request.ip).ok) return tooMany(reply);
-      return reply.code(201).send(await practice.signUp(request.params.site, request.body));
+      const created = await practice.signUp(request.params.site, request.body);
+      await identity?.sendVerification(created.learner);
+      return reply.code(201).send(created);
     },
   );
 
@@ -311,7 +316,7 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
     const site = await siteOf(request);
     const learner = await learnerOf(site, request, reply);
     if (learner === null) return;
-    return reply.send({ id: learner.id, name: learner.name, email: learner.email });
+    return reply.send({ id: learner.id, name: learner.name, email: learner.email, emailVerified: learner.emailVerified });
   });
 
   routes.delete(
@@ -392,6 +397,7 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
       const site = await siteOf(request);
       const learner = await learnerOf(site, request, reply);
       if (learner === null) return;
+      await identity?.assertMayContribute(site, learner);
       const { answer, language, contest } = request.body;
       return reply.send(await practice.submit(site, learner, request.params.problem, answer, language ?? null, contest));
     },
@@ -443,6 +449,7 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
       const site = await siteOf(request);
       const learner = await learnerOf(site, request, reply);
       if (learner === null) return;
+      await identity?.assertMayContribute(site, learner);
       return reply.code(201).send(await practice.comment(site, learner, request.params.problem, request.body.body));
     },
   );
