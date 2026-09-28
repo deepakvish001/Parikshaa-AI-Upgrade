@@ -291,7 +291,7 @@ sitting is over.
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
 | Applicant-tracking systems and LMSs | implemented — Greenhouse (`greenhouse.ts`), Lever, Zoho Recruit and Darwinbox (`ats.ts`), Moodle and other LMSs through LTI 1.3 with grades back (`lti.ts`) |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
-| Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
+| Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English, Hindi and nine regional languages (drafts awaiting review; the privacy notice English or Hindi only); `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
 | Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; refunds with credit notes; TDS (194J); e-invoice JSON and IRN; monthly invoicing on its own; `billing-cli` |
 | Consent, retention, erasure (DPDP) | implemented — notice agreed before the clock as `consent_given`; personal fields sealed per attempt, erased by destroying the key (`data_erased`); `GET /attempts/me/data` |
 | Identity check and camera proctoring | implemented, per exam and off by default — photo + photo ID reviewed by a person (`identity_reviewed` in the ledger), webcam photos, browser events |

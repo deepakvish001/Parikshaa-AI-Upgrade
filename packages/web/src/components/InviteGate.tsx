@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, redeemInvitation, type Notice } from "../api.ts";
-import { uiLocaleOf, usePreferences } from "../i18n.tsx";
+import { type Language, uiLocaleOf, usePreferences } from "../i18n.tsx";
 import { GateShell } from "./Chrome.tsx";
 import type { ProctoringPolicy } from "@parikshaa/core/browser";
 import { CameraCheck } from "./CameraCheck.tsx";
@@ -23,8 +23,8 @@ type Stage =
   | { readonly kind: "offline" };
 
 /** Times as the candidate reads them: IST, spelled out. */
-const ist = (iso: string, locale: "en" | "hi" = "en") =>
-  `${new Intl.DateTimeFormat(locale === "hi" ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
+const ist = (iso: string, locale: Language = "en") =>
+  `${new Intl.DateTimeFormat(`${locale}-IN`, { timeZone: "Asia/Kolkata", dateStyle: "full", timeStyle: "short" }).format(new Date(iso))} IST`;
 
 /**
  * Opening an invitation link.

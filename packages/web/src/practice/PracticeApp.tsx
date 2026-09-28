@@ -367,7 +367,7 @@ function useWhen() {
   const { language } = usePreferences();
   return useCallback(
     (iso: string, withTime = true) =>
-      new Intl.DateTimeFormat(language === "hi" ? "hi-IN" : "en-IN", {
+      new Intl.DateTimeFormat(`${language}-IN`, {
         day: "numeric",
         month: "short",
         year: "numeric",

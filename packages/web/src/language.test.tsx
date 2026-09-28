@@ -103,12 +103,12 @@ describe("the page in Hindi", () => {
     expect(client.saveAnswer).toHaveBeenCalledWith("q-mcq", "1");
   });
 
-  it("offers a language a question is translated into, with the interface in English", async () => {
+  it("offers a language a question is translated into, with the interface in it too", async () => {
     renderApp(<App client={stubClient()} />);
     await screen.findByRole("heading", { name: "Algorithms" });
     await userEvent.selectOptions(screen.getByLabelText("Language"), "ta");
     expect(screen.getByRole("heading", { name: /ஏன் நிற்கிறது\?/ })).toHaveAttribute("lang", "ta");
-    expect(screen.getByRole("button", { name: "Submit attempt" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "முயற்சியைச் சமர்ப்பி" })).toBeInTheDocument();
   });
 });
 

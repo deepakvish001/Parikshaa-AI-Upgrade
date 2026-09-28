@@ -501,9 +501,13 @@ opens again by itself. Extending time (§2) sits beside it.
 - Keyboard navigation, screen-reader labels, contrast — an exam a candidate
   cannot operate is an exam they failed for the wrong reason.
 
-**Status — built.** The candidate's page is in English and Hindi, chosen from
-a picker on every screen and remembered on the device; the page's `lang`
-follows, so a screen reader pronounces it. The privacy notice's standing text
+**Status — built.** The candidate's page — the exam, the invitation and the
+practice sites — is in English, Hindi and the nine regional languages below,
+chosen from a picker on every screen and remembered on the device; the page's
+`lang` follows, so a screen reader pronounces it, and dates are written the
+language's way. The nine regional tables (`packages/web/src/locales/`) are
+drafts: each needs a native speaker's review before a sitting in that
+language, and any string one lacks is shown in English, never as a key. The privacy notice's standing text
 is in Hindi too, and hashed with the rest. A question can carry translations
 into Hindi and nine more scheduled languages (Bengali, Tamil, Telugu, Marathi,
 Gujarati, Kannada, Malayalam, Punjabi, Odia), written in the console's editor;
@@ -527,8 +531,10 @@ privacy notice, in English and in Hindi — and the console's busiest pages are
 checked against WCAG 2.1 AA by axe in the browser suite, and one test sits the
 whole exam from the keyboard alone. Focus is always visible.
 
-Not in it: the interface in languages other than English and Hindi (the
-string table is one file to add to), and translated exam titles.
+Not in it: a reviewed translation of the nine regional tables; the privacy
+notice in them (it stays in English or Hindi, because its text is hashed into
+the record and a legal notice should not ship as a draft); the console in
+anything but English; and translated exam titles.
 
 ## 10. Scale and operations
 

@@ -1,17 +1,30 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
+import { bn } from "./locales/bn.ts";
+import { gu } from "./locales/gu.ts";
+import { kn } from "./locales/kn.ts";
+import { ml } from "./locales/ml.ts";
+import { mr } from "./locales/mr.ts";
+import { or } from "./locales/or.ts";
+import { pa } from "./locales/pa.ts";
+import { ta } from "./locales/ta.ts";
+import { te } from "./locales/te.ts";
+
 /**
  * The candidate's language and bandwidth preferences (ROADMAP §9).
  *
- * The interface is translated into Hindi; a question can additionally be
- * translated into any of the languages below, and a candidate reading one of
- * those sees its questions in it with the interface in English. Both choices
- * are kept on this device, like a reading-glasses setting: nothing about them
- * is sent to the server or recorded against the candidate.
+ * The interface is in English, Hindi, and nine more of the Eighth Schedule's
+ * languages; a question can be translated into the same languages. A string
+ * a language's table does not have is shown in English — so a table can grow
+ * without the page ever showing a key. The privacy notice's wording stays in
+ * English or Hindi, the languages its text is reviewed in (see
+ * `packages/api/src/privacy.ts`). Both choices are kept on this device, like
+ * a reading-glasses setting: nothing about them is sent to the server or
+ * recorded against the candidate.
  */
 
-export type UiLocale = "en" | "hi";
 export type Language = "en" | "hi" | "bn" | "ta" | "te" | "mr" | "gu" | "kn" | "ml" | "pa" | "or";
+export type UiLocale = Language;
 
 /** Each language by its own name, as a speaker looks for it. */
 export const LANGUAGE_NAMES: Record<Language, string> = {
@@ -716,14 +729,21 @@ const hi: Record<MessageKey, string> = {
   "identity.failed": "फ़ोटो नहीं भेजी जा सकीं। अपना कनेक्शन जाँचें और दोबारा कोशिश करें।",
 };
 
-const MESSAGES: Record<UiLocale, Record<MessageKey, string>> = { en, hi };
+/** A language's strings: any it lacks are shown in English. */
+export type Messages = Partial<Record<MessageKey, string>>;
 
-/** The interface's language for a chosen language: Hindi, or English for the rest. */
-export const uiLocaleOf = (language: Language): UiLocale => (language === "hi" ? "hi" : "en");
+const MESSAGES: Record<UiLocale, Messages> = { en, hi, bn, ta, te, mr, gu, kn, ml, pa, or };
+
+/** The interface's language for a chosen language: the same one, now that every language has a table. */
+export const uiLocaleOf = (language: Language): UiLocale => language;
 
 export function translate(locale: UiLocale, key: MessageKey, vars: Record<string, string | number> = {}): string {
-  return MESSAGES[locale][key].replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
+  const text = MESSAGES[locale][key] ?? en[key];
+  return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
 }
+
+/** How far each language's table covers the interface, 0–1: for the tests, and for anyone adding a language. */
+export const coverage = (locale: UiLocale): number => Object.keys(MESSAGES[locale]).filter((k) => k in en).length / Object.keys(en).length;
 
 const LANGUAGE_KEY = "parikshaa.language";
 const LITE_KEY = "parikshaa.lite";
