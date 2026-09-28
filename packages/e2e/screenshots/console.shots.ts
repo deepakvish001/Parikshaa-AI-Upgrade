@@ -155,6 +155,9 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // --- the pages -----------------------------------------------------------
   await page.reload(); // the session is kept for the tab; what was seeded is fetched afresh
+  await expect(page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: TITLE })).toBeVisible();
+  await page.waitForTimeout(500);
+  await shoot(page, "console-32-home");
   await nav(page, "Exams");
   await expect(page.getByRole("button", { name: TITLE })).toBeVisible();
   await shoot(page, "console-02-exams");
@@ -294,6 +297,15 @@ test("every page of the console", async ({ page, browser, request }) => {
     await page.waitForTimeout(700);
     await shoot(page, name);
   }
+
+  // The design system, live.
+  await page.goto("/console/?gallery");
+  await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
+  await shoot(page, "console-33-design-system");
+  await page.getByRole("button", { name: "Show a toast" }).click();
+  await page.getByRole("button", { name: "Open a drawer" }).click();
+  await shoot(page, "console-34-drawer-and-toast", { fullPage: false });
+  await page.keyboard.press("Escape");
 
   // Billing, visited last: the credits bought at the start, and their GST invoice.
   await nav(page, "Billing");
