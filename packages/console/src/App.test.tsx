@@ -1249,7 +1249,7 @@ describe("scheduling and inviting a cohort", () => {
     const client = stubClient();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Schedule and invite candidates" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Candidates" }));
     return client;
   };
 
@@ -1295,7 +1295,7 @@ describe("results and exports", () => {
   const open = async (client = stubClient()) => {
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Results and exports" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Results" }));
     return client;
   };
   const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
@@ -1362,10 +1362,11 @@ describe("results and exports", () => {
   it("opens a candidate's report, with the code as written and the follow-up set apart", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Candidates" });
-    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Report" }));
+    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Scorecard" }));
 
     expect(client.report).toHaveBeenCalledWith("a2");
-    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(screen.getByLabelText("Code in python")).toHaveTextContent("print(sum(map(int, input().split())))");
     const answers = screen.getByRole("region", { name: "Answers" });
     expect(answers).toHaveTextContent("Tests passed 3 of 4");
@@ -1384,8 +1385,8 @@ describe("results and exports", () => {
   it("is not offered to an invigilator", async () => {
     renderApp(<App client={stubClient({ me: vi.fn(async () => who("invigilator", ["exam:read", "attempt:start", "attempt:read", "attempt:extend"])) })} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await screen.findByRole("button", { name: "Schedule and invite candidates" });
-    expect(screen.queryByRole("button", { name: "Results and exports" })).toBeNull();
+    await screen.findByRole("button", { name: "Candidates" });
+    expect(screen.queryByRole("button", { name: "Results" })).toBeNull();
   });
 });
 
@@ -1479,7 +1480,8 @@ describe("integrations", () => {
     window.history.replaceState(null, "", "/console/?report=a2");
     const client = stubClient();
     renderApp(<App client={client} />);
-    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(client.report).toHaveBeenCalledWith("a2");
     expect(window.location.search).toBe("");
   });
@@ -1595,7 +1597,8 @@ describe("privacy (ROADMAP §11)", () => {
   it("is not offered to someone who does not manage the organisation", async () => {
     window.history.replaceState(null, "", "/console/?report=a2");
     renderApp(<App client={stubClient({ me: vi.fn(async () => who("reviewer", ["exam:read", "attempt:read", "attempt:review"])) })} />);
-    expect(await screen.findByText("9 / 10 · 90%")).toBeInTheDocument();
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Erase personal data…" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Privacy" })).toBeNull();
   });
@@ -1665,6 +1668,7 @@ describe("proctoring (ROADMAP §14)", () => {
     const client = stubClient();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
     expect(screen.getByText(/Off: the test uses no camera/)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Use the candidate's camera" }));
@@ -1728,5 +1732,246 @@ describe("proctoring (ROADMAP §14)", () => {
     expect(section).toHaveTextContent("ID confirmed by Meera — Face matches");
     expect(section).toHaveTextContent("12 webcam photos · tab hidden ×1");
     window.history.replaceState(null, "", "/");
+  });
+});
+
+describe("the exam page (HackerRank for Work's test page)", () => {
+  const paper = {
+    id: "exam-1",
+    title: "Algorithms",
+    questions: [
+      { id: "q1", kind: "mcq", stem: "Which sort is stable?", maxScore: 2, rubric: [], options: ["Merge sort", "Heap sort"], correctIndex: 0 },
+      { id: "q2", kind: "numeric", stem: "What is 6 × 7?", maxScore: 3, rubric: [], expected: 42, tolerance: 0 },
+      { id: "q3", kind: "short", stem: "Explain stability.", maxScore: 5, rubric: [], expectedPoints: ["equal keys keep their order"] },
+    ],
+    policy: { durationMs: 45 * 60_000, allowRevision: true, vivaTriggerRatio: 0.5, cutoff: { percent: 60 } },
+  };
+  const withCutoff: Results = {
+    ...results,
+    rows: results.rows.map((r) => ({ ...r, outcome: r.percent === null ? null : r.percent >= 60 ? "qualified" : "failed" })),
+    analytics: { ...results.analytics, qualified: 1, failed: 1 },
+  };
+  const summary: ExamSummary[] = [
+    { id: "exam-1", title: "Algorithms", questionCount: 3, attempts: { invited: 12, inProgress: 2, submitted: 1, graded: 2, void: 0 } },
+  ];
+  const client = (overrides: Record<string, unknown> = {}) =>
+    stubClient({ listExams: vi.fn(async () => summary), loadExam: vi.fn(async () => paper), results: vi.fn(async () => withCutoff), ...overrides });
+
+  it("opens on the overview, with tabs and where the candidates stand down the side", async () => {
+    renderApp(<App client={client()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+
+    const tabs = screen.getByRole("navigation", { name: "Exam" });
+    expect(within(tabs).getAllByRole("button").map((b) => b.textContent)).toEqual(["Overview", "Questions", "Candidates", "Live sitting", "Results"]);
+    expect(within(tabs).getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
+
+    const side = screen.getByRole("complementary", { name: "Candidates at a glance" });
+    const count = (label: string) => within(side).getByText(label).nextElementSibling?.textContent;
+    expect(count("Invited")).toBe("12");
+    expect(count("In progress")).toBe("2");
+    expect(count("Completed")).toBe("3");
+    expect(count("To evaluate")).toBe("1");
+    await waitFor(() => expect(count("Qualified")).toBe("1"));
+    expect(count("Not qualified")).toBe("1");
+    expect(within(side).getByText("45 min")).toBeInTheDocument();
+    expect(within(side).getByText("60%")).toBeInTheDocument();
+  });
+
+  it("lists the questions read-only, with a preview as the candidate sees it", async () => {
+    renderApp(<App client={client()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Questions" }));
+
+    await userEvent.click(await screen.findByRole("button", { name: "Preview question 1" }));
+    expect(screen.getByRole("radio", { name: /Merge sort/ })).toBeChecked();
+    expect(screen.getByText("Correct")).toBeInTheDocument();
+    // Candidates have sat it, so it is copied to change, not edited.
+    expect(screen.getByRole("button", { name: "Copy to change" })).toBeInTheDocument();
+  });
+
+  it("tries the test as a candidate, saving nothing, and says what the automatic questions would score", async () => {
+    const stub = client();
+    renderApp(<App client={stub} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Questions" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Try test" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Try test" });
+    expect(within(dialog).getByText("Nothing you do here is saved")).toBeInTheDocument();
+    expect(within(dialog).getByRole("timer")).toHaveTextContent("00:45:00");
+    await userEvent.click(within(dialog).getByRole("radio", { name: /Merge sort/ }));
+    await userEvent.click(within(dialog).getByRole("button", { name: /Save & next/ }));
+    await userEvent.type(within(dialog).getByLabelText("Your answer"), "41");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Mark for review & next/ }));
+    expect(within(dialog).getByRole("button", { name: "Question 2: answered marked" })).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Finish preview" }));
+
+    expect(within(dialog).getByText(/2 of 5 marks on the 2 questions marked automatically/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Graded later")).toBeInTheDocument();
+    expect(stub.startAttempt).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("dialog", { name: "Try test" })).toBeNull();
+  });
+
+  it("marks who qualified in the results, and filters by it", async () => {
+    renderApp(<App client={client()} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Results" }));
+
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    expect(within((await within(table).findByText("CS001")).closest("tr")!).getByText("Qualified")).toBeInTheDocument();
+    expect(within(within(table).getByText("CS002").closest("tr")!).getByText("Not qualified")).toBeInTheDocument();
+    await userEvent.selectOptions(within(table).getByRole("combobox", { name: "Show" }), "qualified");
+    expect(within(table).queryByText("CS002")).toBeNull();
+    expect(within(table).getByText("CS001")).toBeInTheDocument();
+  });
+});
+
+describe("the exam editor's question list", () => {
+  it("reorders questions, and saves the order", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Order");
+    await userEvent.type(screen.getByLabelText("Question"), "First?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Add question" }));
+    const second = screen.getByRole("region", { name: "Question 2" });
+    await userEvent.type(within(second).getByLabelText("Question"), "Second?");
+    await userEvent.type(within(second).getByLabelText("Option 1"), "c");
+    await userEvent.type(within(second).getByLabelText("Option 2"), "d");
+
+    await userEvent.click(screen.getByRole("button", { name: "Move question 2 up" }));
+    expect(within(screen.getByRole("region", { name: "Question 1" })).getByRole("button", { name: "Second?" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ questions: { stem: string }[] }][] } }).mock.calls[0]![0];
+    expect(saved.questions.map((q) => q.stem)).toEqual(["Second?", "First?"]);
+  });
+
+  it("opens a saved exam as a list to scan, and a question to edit", async () => {
+    const client = stubClient({
+      loadExam: vi.fn(async () => ({
+        id: "exam-1",
+        title: "Algorithms",
+        questions: [{ id: "q1", kind: "mcq", stem: "Which sort is stable?", maxScore: 2, rubric: [], options: ["Merge sort", "Heap sort"], correctIndex: 0 }],
+        policy: { durationMs: 60_000, allowRevision: true, vivaTriggerRatio: 0.5 },
+      })),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+
+    const item = await screen.findByRole("region", { name: "Question 1" });
+    expect(within(item).getByText("Multiple choice")).toBeInTheDocument();
+    expect(within(item).queryByLabelText("Option 1")).toBeNull();
+    await userEvent.click(within(item).getByRole("button", { name: "Edit" }));
+    expect(within(item).getByLabelText("Option 1")).toHaveValue("Merge sort");
+  });
+
+  it("saves a qualifying mark, overall and for a section", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Drive");
+    await userEvent.type(screen.getByLabelText("Question"), "Which?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Add a section drawn per candidate" }));
+    await userEvent.type(within(screen.getByRole("region", { name: "Section 1" })).getByLabelText("Section title"), "Quant");
+
+    await userEvent.click(screen.getByRole("tab", { name: "Settings" }));
+    expect(screen.getByText(/results show marks only/)).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText("Set a qualifying mark"));
+    await userEvent.clear(screen.getByLabelText("Qualifying mark (% of the paper)"));
+    await userEvent.type(screen.getByLabelText("Qualifying mark (% of the paper)"), "55");
+    await userEvent.type(screen.getByLabelText("Minimum in Quant (%)"), "40");
+    // The whole exam's cut-off shows in the head.
+    expect(within(screen.getByLabelText("This paper")).getByText("55%")).toBeInTheDocument();
+
+    // A section's minimum goes with the section.
+    await userEvent.click(screen.getByRole("tab", { name: "Questions" }));
+    await userEvent.click(screen.getByRole("button", { name: "Remove section" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+    await waitFor(() => expect(client.saveExam).toHaveBeenCalled());
+    const saved = (client.saveExam as unknown as { mock: { calls: [{ policy: { cutoff?: unknown } }][] } }).mock.calls[0]![0];
+    expect(saved.policy.cutoff).toEqual({ percent: 55 });
+  });
+});
+
+describe("Ctrl+K", () => {
+  it("finds a candidate across exams and opens their scorecard", async () => {
+    const client = stubClient({
+      searchCandidates: vi.fn(async () => [
+        {
+          invitationId: "i1",
+          examId: "exam-1",
+          examTitle: "Algorithms",
+          candidateRef: "CS001",
+          name: "Ananya Iyer",
+          email: "a@college.test",
+          attemptId: "a2",
+          attemptState: "graded",
+        },
+      ]),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+
+    await userEvent.keyboard("{Control>}k{/Control}");
+    const search = screen.getByRole("combobox", { name: "Search exams, candidates and pages" });
+    expect(search).toHaveFocus();
+    await userEvent.type(search, "anan");
+    expect(await screen.findByRole("option", { name: /Ananya Iyer/ })).toBeInTheDocument();
+    expect(client.searchCandidates).toHaveBeenCalledWith("anan");
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+
+    expect(await screen.findByText("9 / 10")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+  });
+
+  it("goes to an exam or a page from the keyboard", async () => {
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    await userEvent.click(screen.getByRole("button", { name: /Search/ }));
+    await userEvent.type(screen.getByRole("combobox"), "audit");
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { name: "Audit log" })).toBeInTheDocument();
+  });
+});
+
+describe("the scorecard", () => {
+  it("shows the verdict, each section, where the candidate stands, and when answers were saved", async () => {
+    const client = stubClient({
+      report: vi.fn(async () => ({
+        ...report,
+        result: {
+          ...report.result,
+          outcome: "qualified",
+          sections: [
+            { id: "", title: "General", score: 5, max: 5, percent: 100 },
+            { id: "quant", title: "Quant", score: 4, max: 5, percent: 80 },
+          ],
+        },
+        questions: report.questions.map((q, i) => ({ ...q, firstSavedMs: (i + 1) * 90_000, lastSavedMs: (i + 1) * 200_000, saves: i + 1 })),
+        standing: { percentile: 92, rank: 3, graded: 40, meanPercent: 61.5 },
+      })),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Results" }));
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Scorecard" }));
+
+    const card = await screen.findByRole("region", { name: "Scorecard" });
+    expect(within(card).getByText("Qualified")).toBeInTheDocument();
+    expect(within(card).getByText("92nd")).toBeInTheDocument();
+    expect(within(card).getByText("3 of 40")).toBeInTheDocument();
+    const sections = screen.getByRole("region", { name: "Sections" });
+    expect(within(sections).getByText("Quant")).toBeInTheDocument();
+    expect(within(sections).getByText("80%")).toBeInTheDocument();
+    expect(screen.getByText(/First saved at 1:30 \(minutes/)).toBeInTheDocument();
+    expect(screen.getByText(/First saved at 3:00, last at 6:40 · saved 2 times/)).toBeInTheDocument();
   });
 });

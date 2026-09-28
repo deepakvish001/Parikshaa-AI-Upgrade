@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { CandidateReport, ConsoleClient, QuestionStats, ResultRow, Results, Similarity, Verdict } from "../api.ts";
+import { Award, CircleCheck, CircleX, Printer } from "lucide-react";
+import type { CandidateReport, ConsoleClient, Outcome, QuestionStats, ResultRow, Results, SectionScore, Similarity, Verdict } from "../api.ts";
 import { EraseCard } from "./Privacy.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
@@ -26,6 +27,19 @@ const STATE: Record<ResultRow["state"], string> = {
 };
 
 const VERDICTS: readonly Verdict[] = ["consistent", "shallow", "inconsistent", "inconclusive"];
+
+const OUTCOME: Record<Outcome, string> = { qualified: "Qualified", failed: "Not qualified" };
+
+/** Qualified or not, as a badge; nothing for an exam without a qualifying mark or an attempt not yet graded. */
+export function OutcomeBadge({ outcome }: { outcome: Outcome | null | undefined }) {
+  if (outcome === null || outcome === undefined) return null;
+  return (
+    <span className={`pill outcome ${outcome === "qualified" ? "ok" : "bad"}`}>
+      {outcome === "qualified" ? <CircleCheck aria-hidden="true" /> : <CircleX aria-hidden="true" />}
+      {OUTCOME[outcome]}
+    </span>
+  );
+}
 
 function save(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
@@ -69,6 +83,12 @@ export function ResultsPanel({ client, examId, onReport }: { client: ConsoleClie
           <Figure label="Mean" value={analytics.meanPercent === null ? "—" : `${analytics.meanPercent}%`} />
           <Figure label="Median" value={analytics.medianPercent === null ? "—" : `${analytics.medianPercent}%`} />
           <Figure label="Median time" value={analytics.time.medianMinutes === null ? "—" : `${analytics.time.medianMinutes} min`} />
+          {analytics.qualified === null || analytics.qualified === undefined ? null : (
+            <>
+              <Figure label="Qualified" value={analytics.qualified} />
+              <Figure label="Not qualified" value={analytics.failed ?? 0} />
+            </>
+          )}
         </dl>
         {analytics.graded > 0 ? <Distribution counts={analytics.distribution} /> : null}
       </section>
@@ -111,7 +131,8 @@ function Distribution({ counts }: { counts: readonly number[] }) {
 
 function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (attemptId: string) => void }) {
   const [filter, setFilter] = useState("");
-  const [state, setState] = useState<ResultRow["state"] | "all">("all");
+  const [state, setState] = useState<ResultRow["state"] | Outcome | "all">("all");
+  const cutoff = rows.some((r) => r.outcome !== undefined && r.outcome !== null);
   const [sort, setSort] = useState<{ key: SortKey; descending: boolean }>({ key: "percent", descending: true });
 
   const shown = useMemo(() => {
@@ -119,7 +140,7 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
     const value = (r: ResultRow): string | number =>
       sort.key === "ref" ? r.ref : sort.key === "name" ? r.name.toLowerCase() : sort.key === "percent" ? (r.percent ?? -1) : (r.durationMs ?? Number.MAX_SAFE_INTEGER);
     return rows
-      .filter((r) => state === "all" || r.state === state)
+      .filter((r) => state === "all" || r.state === state || r.outcome === state)
       .filter((r) => needle === "" || `${r.ref} ${r.name} ${r.email ?? ""}`.toLowerCase().includes(needle))
       .sort((a, b) => {
         const [x, y] = [value(a), value(b)];
@@ -160,6 +181,12 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
               {STATE[s]}
             </option>
           ))}
+          {cutoff ? (
+            <>
+              <option value="qualified">Qualified</option>
+              <option value="failed">Not qualified</option>
+            </>
+          ) : null}
         </select>
       </div>
       {rows.length === 0 ? (
@@ -174,6 +201,7 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
                 {header("percent", "Marks")}
                 {header("minutes", "Time")}
                 <th scope="col">State</th>
+                {cutoff ? <th scope="col">Outcome</th> : null}
                 <th scope="col" />
               </tr>
             </thead>
@@ -187,9 +215,14 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
                   <td>
                     <span className="pill" data-state={r.state}>{STATE[r.state]}</span>
                   </td>
+                  {cutoff ? (
+                    <td>
+                      <OutcomeBadge outcome={r.outcome} />
+                    </td>
+                  ) : null}
                   <td>
                     <button type="button" className="quiet" onClick={() => onReport(r.attemptId)}>
-                      Report
+                      Scorecard
                     </button>
                   </td>
                 </tr>
@@ -303,34 +336,71 @@ export function ReportPanel({ client, attemptId, canErase = false }: { client: C
   );
 }
 
+const ordinal = (n: number) => {
+  const teen = n % 100 >= 11 && n % 100 <= 13;
+  return `${n}${teen ? "th" : (["th", "st", "nd", "rd"][n % 10] ?? "th")}`;
+};
+
+const clockOf = (ms: number | null | undefined) => {
+  if (ms === null || ms === undefined) return "—";
+  const total = Math.round(ms / 1000);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+};
+
+/**
+ * One candidate's scorecard: the verdict and the marks, how each section
+ * went, where they stand among the rest, each answer with when it was saved,
+ * and — apart, as evidence — the follow-ups. Laid out to print as a PDF.
+ */
 export function Report({ report }: { report: CandidateReport }) {
   const { candidate, result } = report;
+  const standing = report.standing;
+  const sections = result.sections ?? [];
   return (
-    <article className="report">
+    <article className="report scorecard">
       <div className="row no-print" style={{ marginTop: 0, marginBottom: ".85rem" }}>
         <button type="button" className="secondary" onClick={() => window.print()}>
+          <Printer aria-hidden="true" />
           Print or save as PDF
         </button>
       </div>
 
-      <section className="card">
-        <p className="notice">{report.exam.title}</p>
-        <h2 style={{ margin: ".1rem 0" }}>
-          {candidate.name === "" ? candidate.ref : candidate.name} <span className="mono notice">{candidate.ref}</span>
-        </h2>
-        {candidate.email === null ? null : <p className="notice">{candidate.email}</p>}
+      <section className="card scorecard-head" aria-label="Scorecard">
+        <div className="scorecard-who">
+          <p className="notice">{report.exam.title}</p>
+          <h2>
+            {candidate.name === "" ? candidate.ref : candidate.name} <span className="mono notice">{candidate.ref}</span>
+          </h2>
+          {candidate.email === null ? null : <p className="notice">{candidate.email}</p>}
+          <p className="notice">
+            Started {when(result.startedAt)}
+            {result.submittedAt === null ? "" : ` · submitted ${when(result.submittedAt)} · ${minutes(result.durationMs)}`}
+          </p>
+        </div>
         {result.state === "void" ? (
           <p className="error">
             Set aside{report.voidedBy === null ? "" : ` by ${report.voidedBy}`}: {report.voidReason}
           </p>
         ) : (
-          <p className="grade">{result.total === null ? "Not graded yet" : `${result.total} / ${result.maxTotal} · ${result.percent}%`}</p>
+          <div className="scorecard-score">
+            <Ring percent={result.percent} />
+            <div>
+              <p className="grade">{result.total === null ? "Not graded yet" : `${result.total} / ${result.maxTotal}`}</p>
+              <OutcomeBadge outcome={result.outcome} />
+            </div>
+          </div>
         )}
-        <p className="notice">
-          Started {when(result.startedAt)}
-          {result.submittedAt === null ? "" : ` · submitted ${when(result.submittedAt)} · ${minutes(result.durationMs)}`}
-        </p>
+        {standing === undefined || result.state !== "graded" ? null : (
+          <dl className="figures scorecard-figures">
+            <Figure label="Percentile" value={standing.percentile === null ? "—" : ordinal(Math.round(standing.percentile))} />
+            <Figure label="Rank" value={standing.rank === null ? "—" : `${standing.rank} of ${standing.graded}`} />
+            <Figure label="Cohort mean" value={standing.meanPercent === null ? "—" : `${standing.meanPercent}%`} />
+            <Figure label="Follow-ups" value={`${result.probes.asked} asked`} />
+          </dl>
+        )}
       </section>
+
+      {sections.length === 0 ? null : <SectionTable sections={sections} />}
 
       {report.proctoring === null || report.proctoring === undefined ? null : (
         <section className="card" aria-label="Proctoring">
@@ -360,6 +430,13 @@ export function Report({ report }: { report: CandidateReport }) {
               <span className="spacer" />
               <span className="mono">{q.score === null ? `— / ${q.maxScore}` : `${q.score} / ${q.maxScore}`}</span>
             </div>
+            {q.saves === undefined ? null : (
+              <p className="notice small saved-line">
+                {q.saves === 0
+                  ? "Never saved"
+                  : `First saved at ${clockOf(q.firstSavedMs)}${q.saves > 1 ? `, last at ${clockOf(q.lastSavedMs)} · saved ${q.saves} times` : ""} (minutes into the attempt)`}
+              </p>
+            )}
             {q.answer === null ? (
               <p className="notice">Not answered.</p>
             ) : q.kind === "code" ? (
@@ -516,5 +593,57 @@ function SimilarRow({ pair, open, onToggle }: { pair: Pair; open: boolean; onTog
         </tr>
       ) : null}
     </>
+  );
+}
+
+/** The percentage as a ring, the way a scorecard shows it at a glance. */
+function Ring({ percent }: { percent: number | null }) {
+  const p = percent === null ? 0 : Math.max(0, Math.min(100, percent));
+  const r = 30;
+  const length = 2 * Math.PI * r;
+  return (
+    <svg className="ring" width="76" height="76" viewBox="0 0 76 76" role="img" aria-label={percent === null ? "Not graded" : `${percent}%`}>
+      <circle cx="38" cy="38" r={r} className="ring-track" />
+      <circle cx="38" cy="38" r={r} className="ring-value" strokeDasharray={`${(p / 100) * length} ${length}`} transform="rotate(-90 38 38)" />
+      <text x="38" y="43" textAnchor="middle">
+        {percent === null ? "—" : `${Math.round(percent)}%`}
+      </text>
+    </svg>
+  );
+}
+
+/** Marks section by section, with a bar for each. */
+function SectionTable({ sections }: { sections: readonly SectionScore[] }) {
+  return (
+    <section className="card" aria-label="Sections">
+      <strong>
+        <Award aria-hidden="true" className="inline-icon" /> By section
+      </strong>
+      <table className="section-scores">
+        <thead>
+          <tr>
+            <th scope="col">Section</th>
+            <th scope="col" className="num">
+              Marks
+            </th>
+            <th scope="col">Share</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sections.map((section) => (
+            <tr key={section.id}>
+              <td>{section.title}</td>
+              <td className="num mono">{section.score === null ? `— / ${section.max}` : `${section.score} / ${section.max}`}</td>
+              <td>
+                <span className="bar-track" aria-hidden="true">
+                  <span className="bar-fill" style={{ width: `${Math.max(0, Math.min(100, section.percent ?? 0))}%` }} />
+                </span>{" "}
+                <span className="mono">{section.percent === null ? "—" : `${section.percent}%`}</span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }

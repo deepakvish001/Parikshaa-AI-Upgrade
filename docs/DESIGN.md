@@ -85,6 +85,11 @@ Each app adds its own layout on top:
 - **Tools** (`components/Tools.tsx`): a strip under the exam bar with the save status for the whole paper, Instructions, a scientific calculator where the exam allows one (`policy.calculator`; parsed by `calc.ts`, never `eval`), rough work kept on the device, A−/A+ text size, light and dark, and keyboard shortcuts (A–D, S, N, P, M, `?`). Warnings at 15, 5 and 1 minute; a plain "Time is up" when it is. On a phone the palette is a bottom sheet and a swipe moves between questions.
 - **After, and around the paper** (`components/Finished.tsx`, `components/QuestionPaper.tsx`): a submitted attempt opens on "Submitted", when, and how the paper was left — answered, not answered, marked — with "Print or save as PDF" (a print stylesheet, no PDF library) above the record. "Question paper" in the tool strip lists every question's opening line, marks and state, read-only, and goes to any of them. On a wide screen a coding question opens straight into the full-screen workspace, with the paper's numbers down its left side.
 - **Console** (`packages/console/src/styles.css`): the sidebar shell, the exams overview (totals, filters, search, and each exam's candidates sitting, to grade and graded), sign-in, review, results, live sitting, proctoring and invoices.
+- **An exam's page** (`components/ExamPage.tsx`): tabs across it — Overview · Questions · Candidates · Live sitting · Results — and down the side where its candidates stand: invited, in progress, completed, to evaluate, and, once it has a qualifying mark, qualified and not qualified, with the test's duration, marks and rules. The Questions tab lists the paper read-only, each question with a preview as the candidate sees it and the right answer marked.
+- **Writing an exam** (`components/ExamEditor.tsx`): the title and the paper's questions, marks, time and qualifying mark across the top; then Questions and Settings. Questions are a list — number, kind, stem, marks — each opened to edit or preview, moved up or down, or removed; "Add from bank" slides the question bank in from the right as a library to tick questions from. Settings hold the timing, the qualifying mark (`policy.cutoff`: a share of the paper, and optionally a minimum per section), the candidate's tools and the camera.
+- **Try test** (`components/Preview.tsx`): any exam, sat or not, taken as a candidate would — the clock, one question at a time, the palette, Mark for review — in a dialog that sends nothing to the server. At the end it says what the automatically marked questions would have scored.
+- **Scorecard** (`components/Results.tsx`): one candidate's page, laid out to print or save as a PDF — the percentage as a ring, Qualified or Not qualified, percentile and rank among the graded, marks by section, each answer with when it was first and last saved, then the follow-ups kept apart as evidence.
+- **Ctrl+K** (`components/CommandPalette.tsx`): from anywhere in the console, find an exam, a candidate across every exam by roll number, name or email (`GET /candidates/search`), or a page, and go there with the keyboard.
 
 ## Pages
 
@@ -92,11 +97,11 @@ Each app adds its own layout on top:
 | --- | --- | --- | --- |
 | 01 | [Access code](screenshots/candidate-01-access-code.png) | 01 | [Sign in](screenshots/console-01-sign-in.png) |
 | 02 | [Privacy notice (DPDP)](screenshots/candidate-02-privacy-notice.png) | 02 | [Exams: totals, filters and where candidates stand](screenshots/console-02-exams.png) |
-| 03 | [Link opened early](screenshots/candidate-03-not-open-yet.png) | 03 | [Exam editor](screenshots/console-03-exam-editor.png) |
-| 04 | [Camera notice](screenshots/candidate-04-camera-notice.png) | 04 | [An exam's attempts](screenshots/console-04-exam-attempts.png) |
+| 03 | [Link opened early](screenshots/candidate-03-not-open-yet.png) | 03 | [Exam editor: the question list, one previewed](screenshots/console-03-exam-editor.png) |
+| 04 | [Camera notice](screenshots/candidate-04-camera-notice.png) | 04 | [An exam's page: tabs, attempts, and its candidates down the side](screenshots/console-04-exam-attempts.png) |
 | 05 | [Camera check](screenshots/candidate-05-camera-check.png) | 05 | [Schedule and invite](screenshots/console-05-invite.png) |
 | 06 | [Identity photos](screenshots/candidate-06-identity.png) | 06 | [Results and exports](screenshots/console-06-results.png) |
-| 07 | [One question at a time: the exam bar, the palette, Save & next](screenshots/candidate-07-exam.png) | 07 | [Candidate report](screenshots/console-07-candidate-report.png) |
+| 07 | [One question at a time: the exam bar, the palette, Save & next](screenshots/candidate-07-exam.png) | 07 | [Scorecard: qualified, percentile, sections](screenshots/console-07-candidate-report.png) |
 | 08 | [A follow-up question](screenshots/candidate-08-follow-up.png) | 08 | [Review an attempt](screenshots/console-08-review.png) |
 | 09 | [In Hindi](screenshots/candidate-09-hindi.png) | 09 | [Live sitting](screenshots/console-09-live.png) |
 | 10 | [Leaving a section](screenshots/candidate-10-section-leave.png) | 10 | [Proctoring review](screenshots/console-10-proctoring-review.png) |
@@ -119,6 +124,11 @@ Each app adds its own layout on top:
 | | | 24 | [Practice site settings](screenshots/console-24-practice-site.png) |
 | | | 25 | [Practice problems, published from the bank](screenshots/console-25-practice-problems.png) |
 | | | 26 | [Moderating the discussion](screenshots/console-26-practice-discussion.png) |
+| | | 27 | [An exam's questions, previewed as the candidate sees them](screenshots/console-27-exam-questions.png) |
+| | | 28 | [Try test: the paper as a candidate, nothing saved](screenshots/console-28-try-test.png) |
+| | | 29 | [Adding from the library](screenshots/console-29-library-drawer.png) |
+| | | 30 | [Ctrl+K: a candidate found across every exam](screenshots/console-30-search.png) |
+| | | 31 | [Settings: the qualifying mark](screenshots/console-31-exam-settings.png) |
 
 A practice site (ROADMAP §15), as a learner sees it at `/practice/<site>`:
 

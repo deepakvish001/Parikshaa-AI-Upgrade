@@ -93,7 +93,7 @@ test("a candidate can sit the whole exam from the keyboard", async ({ page, requ
   await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
 });
 
-test("the console's results and live pages pass WCAG 2.1 AA", async ({ page, request }) => {
+test("the console's exam page — overview, live, questions, try test, editor — and search pass WCAG 2.1 AA", async ({ page, request }) => {
   const sitting = await seedSitting(request);
   await page.goto("/console/");
   expect(await violations(page)).toEqual([]);
@@ -105,5 +105,23 @@ test("the console's results and live pages pass WCAG 2.1 AA", async ({ page, req
   expect(await violations(page)).toEqual([]);
   await page.getByRole("button", { name: "Live sitting" }).click();
   await expect(page.getByRole("region", { name: "Candidates now" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+
+  // The questions, one previewed; the test tried; the editor's list and settings; Ctrl+K.
+  await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
+  await page.getByRole("button", { name: "Preview question 1" }).click();
+  expect(await violations(page)).toEqual([]);
+  await page.getByRole("button", { name: "Try test" }).click();
+  await expect(page.getByRole("dialog", { name: "Try test" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+  await page.getByRole("button", { name: "End preview" }).click();
+  await page.getByRole("button", { name: "Copy to change" }).or(page.getByRole("button", { name: "Edit questions" })).click();
+  await expect(page.getByRole("heading", { name: /exam/ })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+  await page.getByRole("tab", { name: "Settings" }).click();
+  expect(await violations(page)).toEqual([]);
+  await page.keyboard.press("Control+k");
+  await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("cs0");
+  await expect(page.getByRole("option").first()).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });

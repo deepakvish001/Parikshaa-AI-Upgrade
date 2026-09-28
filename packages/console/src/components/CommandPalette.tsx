@@ -1,0 +1,206 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ClipboardList, CornerDownLeft, LayoutGrid, Search, UserRound } from "lucide-react";
+import type { CandidateHit, ConsoleClient, ExamSummary } from "../api.ts";
+
+/**
+ * Ctrl+K (⌘K on a Mac): find an exam, a candidate across every exam, or a
+ * page, and go there without the mouse. Candidates are searched on the
+ * server, by roll number, name or email, from two characters.
+ */
+
+export interface PageLink {
+  readonly label: string;
+  readonly go: () => void;
+}
+
+type Item =
+  | { readonly kind: "exam"; readonly id: string; readonly exam: ExamSummary }
+  | { readonly kind: "candidate"; readonly id: string; readonly hit: CandidateHit }
+  | { readonly kind: "page"; readonly id: string; readonly page: PageLink };
+
+const STATE: Record<CandidateHit["attemptState"], string> = {
+  not_started: "not started",
+  in_progress: "taking it",
+  submitted: "to grade",
+  graded: "graded",
+  void: "set aside",
+};
+
+/** Opens on Ctrl+K or ⌘K, wherever focus is. */
+export function useCommandKey(onOpen: () => void): void {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        onOpen();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onOpen]);
+}
+
+export function CommandPalette({
+  client,
+  exams,
+  pages,
+  canSearchCandidates,
+  onExam,
+  onCandidate,
+  onClose,
+}: {
+  client: ConsoleClient;
+  exams: readonly ExamSummary[];
+  pages: readonly PageLink[];
+  canSearchCandidates: boolean;
+  onExam: (examId: string) => void;
+  onCandidate: (hit: CandidateHit) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [typed, setTyped] = useState("");
+  const [active, setActive] = useState(0);
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => input.current?.focus(), []);
+  // Ask the server once typing pauses, not on every key.
+  useEffect(() => {
+    const wait = window.setTimeout(() => setTyped(query.trim()), 180);
+    return () => window.clearTimeout(wait);
+  }, [query]);
+
+  const candidates = useQuery({
+    queryKey: ["candidate-search", typed],
+    queryFn: () => client.searchCandidates(typed),
+    enabled: canSearchCandidates && typed.length >= 2,
+    staleTime: 30_000,
+  });
+
+  const needle = query.trim().toLowerCase();
+  const items = useMemo<readonly Item[]>(() => {
+    const examItems: Item[] = exams
+      .filter((e) => needle === "" || e.title.toLowerCase().includes(needle))
+      .slice(0, needle === "" ? 5 : 8)
+      .map((exam) => ({ kind: "exam", id: `exam:${exam.id}`, exam }));
+    const candidateItems: Item[] =
+      needle.length >= 2 ? (candidates.data ?? []).map((hit) => ({ kind: "candidate", id: `cand:${hit.invitationId}`, hit })) : [];
+    const pageItems: Item[] = pages
+      .filter((p) => needle === "" || p.label.toLowerCase().includes(needle))
+      .map((page) => ({ kind: "page", id: `page:${page.label}`, page }));
+    return [...examItems, ...candidateItems, ...pageItems];
+  }, [exams, candidates.data, pages, needle]);
+
+  useEffect(() => setActive(0), [needle]);
+  const choose = (item: Item | undefined) => {
+    if (item === undefined) return;
+    onClose();
+    if (item.kind === "exam") onExam(item.exam.id);
+    else if (item.kind === "candidate") onCandidate(item.hit);
+    else item.page.go();
+  };
+
+  const group = (kind: Item["kind"], title: string) => {
+    const shown = items.filter((i) => i.kind === kind);
+    if (shown.length === 0) return null;
+    return (
+      <li role="presentation">
+        <p className="palette-group" id={`palette-${kind}`}>
+          {title}
+        </p>
+        <ul role="group" aria-labelledby={`palette-${kind}`}>
+          {shown.map((item) => {
+            const index = items.indexOf(item);
+            return (
+              <li
+                key={item.id}
+                id={`palette-item-${index}`}
+                role="option"
+                aria-selected={index === active}
+                className={`palette-item${index === active ? " active" : ""}`}
+                onMouseEnter={() => setActive(index)}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => choose(item)}
+              >
+                {item.kind === "exam" ? (
+                  <>
+                    <ClipboardList aria-hidden="true" />
+                    <span className="palette-main">{item.exam.title}</span>
+                    <span className="palette-meta">
+                      {item.exam.questionCount} questions
+                      {item.exam.attempts === undefined ? "" : ` · ${item.exam.attempts.inProgress} sitting · ${item.exam.attempts.submitted} to grade`}
+                    </span>
+                  </>
+                ) : item.kind === "candidate" ? (
+                  <>
+                    <UserRound aria-hidden="true" />
+                    <span className="palette-main">
+                      {item.hit.name || item.hit.candidateRef} <span className="mono notice">{item.hit.candidateRef}</span>
+                    </span>
+                    <span className="palette-meta">
+                      {item.hit.examTitle} · {STATE[item.hit.attemptState]}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <LayoutGrid aria-hidden="true" />
+                    <span className="palette-main">{item.page.label}</span>
+                    <span className="palette-meta">Page</span>
+                  </>
+                )}
+                {index === active ? <CornerDownLeft aria-hidden="true" className="palette-enter" /> : null}
+              </li>
+            );
+          })}
+        </ul>
+      </li>
+    );
+  };
+
+  return (
+    <div className="palette-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="palette" role="dialog" aria-modal="true" aria-label="Search">
+        <label className="palette-input">
+          <Search aria-hidden="true" />
+          <input
+            ref={input}
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-list"
+            aria-activedescendant={items.length === 0 ? undefined : `palette-item-${active}`}
+            aria-label="Search exams, candidates and pages"
+            placeholder={canSearchCandidates ? "Search exams, candidates by roll number, name or email, and pages" : "Search exams and pages"}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                setActive((a) => Math.min(items.length - 1, a + 1));
+              } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                setActive((a) => Math.max(0, a - 1));
+              } else if (e.key === "Enter") {
+                e.preventDefault();
+                choose(items[active]);
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                onClose();
+              }
+            }}
+          />
+          <kbd>Esc</kbd>
+        </label>
+        <ul className="palette-list" id="palette-list" role="listbox" aria-label="Results">
+          {group("exam", "Exams")}
+          {group("candidate", "Candidates")}
+          {group("page", "Pages")}
+        </ul>
+        {items.length === 0 ? (
+          <p className="notice palette-empty">{candidates.isFetching ? "Searching…" : `Nothing matches “${query.trim()}”.`}</p>
+        ) : null}
+        <p className="palette-foot notice small">
+          <kbd>↑</kbd> <kbd>↓</kbd> to move · <kbd>Enter</kbd> to open · <kbd>Ctrl</kbd> <kbd>K</kbd> from anywhere
+        </p>
+      </div>
+    </div>
+  );
+}

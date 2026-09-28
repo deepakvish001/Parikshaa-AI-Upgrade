@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Building2,
   ChevronRight,
@@ -13,6 +13,7 @@ import {
   Plug,
   Receipt,
   ScrollText,
+  Search,
   Shield,
   Users,
   type LucideIcon,
@@ -34,6 +35,9 @@ import { AttemptList } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
 import { ExamList } from "./components/ExamList.tsx";
+import { ExamOverview, ExamSide, ExamTabs, QuestionsTab, type ExamTab } from "./components/ExamPage.tsx";
+import { CommandPalette, useCommandKey, type PageLink } from "./components/CommandPalette.tsx";
+import { TryTest } from "./components/Preview.tsx";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { SignIn } from "./components/SignIn.tsx";
 
@@ -41,6 +45,7 @@ type View =
   | { readonly name: "exams" }
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
+  | { readonly name: "questions"; readonly examId: string }
   | { readonly name: "review"; readonly examId: string; readonly attemptId: string }
   | { readonly name: "bank" }
   | { readonly name: "practice" }
@@ -180,7 +185,12 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     mutationFn: (exam: Exam) => client.saveExam(exam),
     onSuccess: async () => {
       setProblems([]);
-      await queryClient.invalidateQueries({ queryKey: ["exams"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["exams"] }),
+        // The exam page reads the paper and its results; both follow the edit.
+        queryClient.invalidateQueries({ queryKey: ["exam"] }),
+        queryClient.invalidateQueries({ queryKey: ["results"] }),
+      ]);
       setView({ name: "exams" });
     },
     // The server validates independently of the client; if it disagrees, show
@@ -240,6 +250,31 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   });
 
   const examTitle = (id: string) => exams.data?.find((e) => e.id === id)?.title ?? id;
+  /** Sat by anyone, and so no longer editable: changed by copying. */
+  const frozen = (id: string) => {
+    const c = exams.data?.find((e) => e.id === id)?.attempts;
+    return c !== undefined && c.inProgress + c.submitted + c.graded + c.void > 0;
+  };
+
+  // The exam page: its definition for the questions tab and the side panel,
+  // and its results for who qualified.
+  const pageExamId =
+    (view.name === "attempts" || view.name === "questions" || view.name === "candidates" || view.name === "live" || view.name === "results") && view.examId !== ""
+      ? view.examId
+      : null;
+  const examDefinition = useQuery({
+    queryKey: ["exam", pageExamId],
+    queryFn: () => client.loadExam(pageExamId!),
+    enabled: pageExamId !== null && (view.name === "attempts" || view.name === "questions"),
+  });
+  const examResults = useQuery({
+    queryKey: ["results", pageExamId],
+    queryFn: () => client.results(pageExamId!),
+    enabled: pageExamId !== null && view.name === "attempts" && can("attempt:review"),
+  });
+  const [trying, setTrying] = useState(false);
+  const [searching, setSearching] = useState(false);
+  useCommandKey(useCallback(() => setSearching(true), []));
   const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
 
   const tabs: readonly {
@@ -281,6 +316,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const visible = tabs.filter((tab) => can(tab.permission));
   const onExam =
     (view.name === "attempts" ||
+      view.name === "questions" ||
       view.name === "review" ||
       view.name === "candidates" ||
       view.name === "results" ||
@@ -384,7 +420,34 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
               </>
             ) : null}
           </nav>
+          <span className="spacer" />
+          <button type="button" className="search-trigger" onClick={() => setSearching(true)} aria-keyshortcuts="Control+K">
+            <Search aria-hidden="true" />
+            <span>Search</span>
+            <kbd>Ctrl K</kbd>
+          </button>
         </header>
+        {searching ? (
+          <CommandPalette
+            client={client}
+            exams={exams.data ?? []}
+            canSearchCandidates={can("attempt:read")}
+            pages={[
+              { label: "Exams", go: () => go({ name: "exams" }) },
+              ...visible.map((tab): PageLink => ({ label: tab.label, go: () => go(tab.view) })),
+              ...(me.data?.kind === "user" ? [{ label: "Account", go: () => go({ name: "account" }) }] : []),
+            ]}
+            onExam={(examId) => go({ name: "attempts", examId })}
+            onCandidate={(hit) =>
+              go(
+                hit.attemptId !== null && can("attempt:review")
+                  ? { name: "report", examId: hit.examId, attemptId: hit.attemptId }
+                  : { name: "candidates", examId: hit.examId },
+              )
+            }
+            onClose={() => setSearching(false)}
+          />
+        ) : null}
 
         <main className="content">
           <header className="page-head">
@@ -427,21 +490,31 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         />
       ) : null}
 
-      {view.name === "attempts" ? (
-        <div className="row" style={{ marginTop: 0, marginBottom: ".85rem" }}>
-          <button type="button" className="secondary" onClick={() => setView({ name: "candidates", examId: view.examId })}>
-            Schedule and invite candidates
-          </button>
-          <button type="button" className="secondary" onClick={() => setView({ name: "live", examId: view.examId })}>
-            Live sitting
-          </button>
-          {can("attempt:review") ? (
-            <button type="button" className="secondary" onClick={() => setView({ name: "results", examId: view.examId })}>
-              Results and exports
-            </button>
-          ) : null}
-        </div>
+      {pageExamId !== null ? (
+        <ExamTabs
+          current={view.name as ExamTab}
+          canReview={can("attempt:review")}
+          onGo={(tab) => {
+            if (tab === "attempts") setIssued(null);
+            go({ name: tab, examId: pageExamId });
+          }}
+        />
       ) : null}
+
+      {view.name === "questions" ? (
+        examDefinition.data === undefined ? (
+          <p className="notice">{examDefinition.error === null ? "Loading…" : "Could not load the exam."}</p>
+        ) : (
+          <QuestionsTab
+            exam={examDefinition.data}
+            frozen={frozen(view.examId)}
+            {...(can("exam:write")
+              ? { onEdit: () => (frozen(view.examId) ? cloneExam.mutate(view.examId) : setView({ name: "editor", examId: view.examId })) }
+              : {})}
+          />
+        )
+      ) : null}
+      {trying && examDefinition.data !== undefined ? <TryTest exam={examDefinition.data} onClose={() => setTrying(false)} /> : null}
 
       {view.name === "candidates" ? (
         <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} />
@@ -457,7 +530,20 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} /> : null}
       {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
 
-      {view.name === "attempts" && attempts.data !== undefined ? (
+      {view.name === "attempts" ? (
+        <ExamOverview
+          side={
+            <ExamSide
+              summary={exams.data?.find((e) => e.id === view.examId)}
+              exam={examDefinition.data}
+              results={examResults.data}
+              {...(can("attempt:review") ? { onResults: () => go({ name: "results", examId: view.examId }) } : {})}
+              {...(can("exam:write") ? { onEdit: () => setView({ name: "editor", examId: view.examId }) } : {})}
+              onTry={() => setTrying(true)}
+            />
+          }
+        >
+      {attempts.data !== undefined ? (
         <AttemptList
           attempts={attempts.data}
           issued={issued}
@@ -475,6 +561,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
           onStart={(candidateId) => startAttempt.mutate({ examId: view.examId, candidateId })}
           onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
         />
+      ) : null}
+        </ExamOverview>
       ) : null}
 
       {view.name === "review" && review.data !== undefined ? (
@@ -521,6 +609,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   exams: "exams",
   editor: "exams",
   attempts: "exams",
+  questions: "exams",
   review: "exams",
   candidates: "exams",
   results: "exams",
@@ -546,17 +635,16 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
     case "editor":
       return view.examId === null ? "New exam" : "Edit exam";
     case "attempts":
+    case "questions":
       return examTitle(view.examId);
     case "review":
       return "Review an attempt";
     case "candidates":
-      return "Schedule and invite";
     case "results":
-      return "Results and exports";
     case "live":
-      return "Live sitting";
+      return view.examId === "" ? PAGE_FALLBACK[view.name] : examTitle(view.examId);
     case "report":
-      return "Candidate report";
+      return "Scorecard";
     case "bank":
       return "Question bank";
     case "practice":
@@ -582,16 +670,19 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
   }
 }
 
+const PAGE_FALLBACK = { candidates: "Schedule and invite", results: "Results and exports", live: "Live sitting" } as const;
+
 /** One line under each page's title: what the page is for. */
 const PAGE_NOTE: Record<View["name"], string> = {
   exams: "Every assessment your organisation runs. Open one to invite candidates, watch a sitting or read results.",
   editor: "Questions, sections drawn per candidate, timing, and what the camera does. A sat exam is frozen; copy it to change it.",
   attempts: "Everyone who has started this exam, whether they are here now, and what is left to grade.",
+  questions: "The paper as candidates will see it. Preview any question, or try the whole test; nothing is recorded.",
   review: "The grade, and beside it the evidence — kept apart, and decided by a person.",
   candidates: "The window the test is open, and who is invited to it.",
   results: "Scores, the spread, and what the follow-ups found. Download for your own records.",
   live: "Who is here, who has gone quiet, and anything that needs an invigilator.",
-  report: "One candidate's answers, grades and record, ready to print.",
+  report: "One candidate's result, sections, standing and answers, with the follow-ups apart. Ready to print or save as a PDF.",
   bank: "Questions filed by topic and difficulty, to draw exams from. Import from a spreadsheet or a Word paper.",
   practice: "A practice site for your learners: problems from the bank, contests, and their progress. Nothing there is an exam.",
   staff: "Who can sign in to this console, and what each can do.",

@@ -285,6 +285,16 @@ export function validateExam(exam: Exam): ExamValidation {
       message: "The viva trigger ratio is a fraction of a question's marks, so it must be between 0 and 1.",
     });
   }
+  const cutoff = exam.policy.cutoff;
+  if (cutoff !== undefined) {
+    const fair = (n: number) => Number.isFinite(n) && n >= 0 && n <= 100;
+    if (!fair(cutoff.percent)) problems.push({ path: "policy.cutoff.percent", message: "The qualifying mark is a percentage, from 0 to 100." });
+    const known = new Set(["", ...(exam.sections ?? []).map((s) => s.id)]);
+    for (const [id, percent] of Object.entries(cutoff.sections ?? {})) {
+      if (!known.has(id)) problems.push({ path: `policy.cutoff.sections.${id}`, message: "There is no such section." });
+      else if (!fair(percent)) problems.push({ path: `policy.cutoff.sections.${id}`, message: "A section's qualifying mark is a percentage, from 0 to 100." });
+    }
+  }
   const every = exam.policy.proctoring?.snapshotEverySeconds;
   if (every !== undefined && every !== null && (!Number.isInteger(every) || every < 15 || every > 900)) {
     problems.push({

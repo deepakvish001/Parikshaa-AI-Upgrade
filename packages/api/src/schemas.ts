@@ -175,6 +175,16 @@ export const examSchema = z.object({
       .describe("What Submit tells a candidate about their code: every test's verdict, hidden ones without their content (all, the default), or the visible tests' only."),
     codeCompletion: z.boolean().optional().describe("Offer completion in the code editor. Off by default."),
     calculator: z.boolean().optional().describe("An on-screen scientific calculator in the exam bar. Off by default."),
+    cutoff: z
+      .object({
+        percent: z.number().describe("Percent of the candidate's own paper, 0–100."),
+        sections: z
+          .record(z.string(), z.number())
+          .optional()
+          .describe('Minimum percent of each section\'s marks, by section id; "" is the fixed questions.'),
+      })
+      .optional()
+      .describe("The mark to qualify. Absent: results carry marks only."),
   }),
   questions: z.array(questionSchema).readonly().describe("Given to every candidate."),
   sections: z

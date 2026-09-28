@@ -184,6 +184,43 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
   );
 
   routes.get(
+    "/candidates/search",
+    {
+      schema: {
+        tags: INVITE,
+        summary: "Find candidates across every exam",
+        description: "By reference, name or email; the most recently invited first, at most twenty. Fewer than two characters finds nobody.",
+        security: SECURED,
+        querystring: z.object({ q: z.string().max(200) }),
+        response: {
+          200: z.object({
+            candidates: z
+              .array(
+                z.object({
+                  invitationId: z.string(),
+                  examId: z.string(),
+                  examTitle: z.string(),
+                  candidateRef: z.string(),
+                  name: z.string(),
+                  email: z.string().nullable(),
+                  attemptId: z.string().nullable(),
+                  attemptState: z.enum(["not_started", "in_progress", "submitted", "graded", "void"]),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:read");
+      if (actor === null) return;
+      return reply.send({ candidates: await invitations.search(actor, request.query.q) });
+    },
+  );
+
+  routes.get(
     "/exams/:examId/invitations/links.csv",
     {
       schema: {

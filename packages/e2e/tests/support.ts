@@ -51,6 +51,8 @@ export async function seedSitting(
     opensAt?: Date;
     /** Offer the on-screen calculator. */
     calculator?: boolean;
+    /** The qualifying mark. */
+    cutoff?: { percent: number; sections?: Record<string, number> };
   } = {},
 ): Promise<Sitting> {
   const token = await ownerToken(request, options.owner);
@@ -72,6 +74,7 @@ export async function seedSitting(
         vivaTriggerRatio: options.vivaTriggerRatio ?? 0.5,
         ...(options.proctoring === undefined ? {} : { proctoring: options.proctoring }),
         ...(options.calculator === undefined ? {} : { calculator: options.calculator }),
+        ...(options.cutoff === undefined ? {} : { cutoff: options.cutoff }),
       },
     },
   });

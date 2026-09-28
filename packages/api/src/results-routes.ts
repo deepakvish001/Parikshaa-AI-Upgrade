@@ -51,6 +51,11 @@ const result = z.object({
   scores: z.record(z.string(), z.object({ score: z.number(), max: z.number() })),
   probes: z.object({ asked: z.number(), replied: z.number(), verdicts }),
   voidReason: z.string().nullable(),
+  sections: z
+    .array(z.object({ id: z.string(), title: z.string(), score: z.number().nullable(), max: z.number(), percent: z.number().nullable() }))
+    .readonly()
+    .describe('Marks by part of the paper, for an exam with sections; "" is the fixed questions.'),
+  outcome: z.enum(["qualified", "failed"]).nullable().describe("Against the exam's cut-off, once graded; null without one."),
 });
 const similaritySide = z.object({ attemptId: z.string(), ref: z.string(), name: z.string(), language: z.string(), source: z.string() });
 const similarityResponse = z.object({
@@ -85,6 +90,8 @@ const resultsResponse = z.object({
     setAside: z.number(),
     meanPercent: z.number().nullable(),
     medianPercent: z.number().nullable(),
+    qualified: z.number().nullable().describe("Graded candidates at or above the cut-off; null without one."),
+    failed: z.number().nullable(),
     distribution: z.array(z.number()).readonly().describe("Graded candidates per tenth of the range, 0–10% first."),
     questions: z
       .array(
@@ -132,6 +139,9 @@ const reportResponse = z.object({
           .object({ passed: z.number().int(), total: z.number().int() })
           .nullable()
           .describe("For a code answer run against its question's tests: how many passed. Counts only, as the record keeps them."),
+        firstSavedMs: z.number().nullable().describe("When the answer was first saved, in milliseconds after the attempt started."),
+        lastSavedMs: z.number().nullable().describe("When it was last saved, likewise."),
+        saves: z.number().int().describe("How many times an answer to it was saved."),
       }),
     )
     .readonly(),
@@ -150,6 +160,14 @@ const reportResponse = z.object({
     .readonly(),
   voidReason: z.string().nullable(),
   voidedBy: z.string().nullable(),
+  standing: z
+    .object({
+      percentile: z.number().nullable().describe("Share of the other graded candidates this one is ahead of, ties counting half."),
+      rank: z.number().int().nullable(),
+      graded: z.number().int(),
+      meanPercent: z.number().nullable(),
+    })
+    .describe("Where the candidate stands among those graded on the same exam."),
   ledger: z.object({ head: z.string(), length: z.number() }),
   proctoring: z
     .object({

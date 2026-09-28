@@ -1,6 +1,7 @@
 import { candidateId, examId as toExamId, orgId as toOrgId, type AttemptId, type ExamId, type OrgId } from "@parikshaa/core";
 import {
   staffScope,
+  type CandidateHit,
   type ExamWindow,
   type Invitation,
   type InvitationDraft,
@@ -215,6 +216,12 @@ export class InvitationService {
 
   list(actor: Actor, examId: string): Promise<readonly InvitationStatus[]> {
     return this.#o.invitations.list(this.#require(actor, "attempt:read"), examId);
+  }
+
+  /** Candidates across the organisation's exams matching `text`, for the console's search. */
+  search(actor: Actor, text: string): Promise<readonly CandidateHit[]> {
+    const scope = this.#require(actor, "attempt:read");
+    return text.trim().length < 2 ? Promise.resolve([]) : this.#o.invitations.search(scope, text.trim());
   }
 
   async resend(actor: Actor, invitationId: string, channels: readonly Channel[]): Promise<void> {

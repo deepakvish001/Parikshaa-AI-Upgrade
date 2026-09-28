@@ -187,6 +187,17 @@ export interface InvitationRow {
   readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
 }
 
+export interface CandidateHit {
+  readonly invitationId: string;
+  readonly examId: string;
+  readonly examTitle: string;
+  readonly candidateRef: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly attemptId: string | null;
+  readonly attemptState: InvitationRow["attemptState"];
+}
+
 export interface RowProblem {
   readonly row: number;
   readonly message: string;
@@ -220,6 +231,20 @@ export interface ResultRow {
   readonly scores: Readonly<Record<string, { readonly score: number; readonly max: number }>>;
   readonly probes: { readonly asked: number; readonly replied: number; readonly verdicts: Partial<Record<Verdict, number>> };
   readonly voidReason: string | null;
+  /** Marks by part of a sectioned paper; "" is the fixed questions. Newer servers only. */
+  readonly sections?: readonly SectionScore[];
+  /** Against the exam's cut-off, once graded; null without one. */
+  readonly outcome?: Outcome | null;
+}
+
+export type Outcome = "qualified" | "failed";
+
+export interface SectionScore {
+  readonly id: string;
+  readonly title: string;
+  readonly score: number | null;
+  readonly max: number;
+  readonly percent: number | null;
 }
 
 export interface QuestionStats {
@@ -241,6 +266,9 @@ export interface Results {
     readonly setAside: number;
     readonly meanPercent: number | null;
     readonly medianPercent: number | null;
+    /** Graded candidates either side of the cut-off; null without one. */
+    readonly qualified?: number | null;
+    readonly failed?: number | null;
     readonly distribution: readonly number[];
     readonly questions: readonly QuestionStats[];
     readonly time: { readonly medianMinutes: number | null; readonly p90Minutes: number | null };
@@ -267,6 +295,10 @@ export interface CandidateReport {
     readonly answer: string | null;
     readonly language: string | null;
     readonly tests: { readonly passed: number; readonly total: number } | null;
+    /** When an answer was first and last saved, after the start, and how often. */
+    readonly firstSavedMs?: number | null;
+    readonly lastSavedMs?: number | null;
+    readonly saves?: number;
   }[];
   readonly vivas: readonly {
     readonly questionId: string;
@@ -279,6 +311,8 @@ export interface CandidateReport {
   }[];
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
+  /** Among the exam's graded candidates. */
+  readonly standing?: { readonly percentile: number | null; readonly rank: number | null; readonly graded: number; readonly meanPercent: number | null };
   readonly ledger: { readonly head: string; readonly length: number };
   /** For a proctored exam: observations, never findings. */
   readonly proctoring?: {
@@ -785,6 +819,11 @@ export class ConsoleClient {
       }
       throw error;
     }
+  }
+
+  /** Candidates across every exam matching `q` (at least two characters). */
+  async searchCandidates(q: string): Promise<readonly CandidateHit[]> {
+    return (await this.#request<{ candidates: CandidateHit[] }>(`/candidates/search?q=${encodeURIComponent(q)}`)).candidates;
   }
 
   async listInvitations(examId: string): Promise<readonly InvitationRow[]> {
