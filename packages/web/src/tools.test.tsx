@@ -95,6 +95,43 @@ describe("keyboard shortcuts", () => {
   });
 });
 
+describe("on a phone", () => {
+  it("keeps the tools in one sheet, the Display settings among them, and gives them back with Escape", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    const opener = screen.getByRole("button", { name: "Tools" });
+    await userEvent.click(opener);
+    const sheet = screen.getByRole("dialog", { name: "Tools" });
+    expect(within(sheet).getAllByRole("button").map((b) => b.textContent)).toEqual(
+      expect.arrayContaining(["Question paper", "Instructions", "Calculator", "Rough work", "Keyboard shortcuts", "Display"]),
+    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Display" }));
+    const display = screen.getByRole("dialog", { name: "Display" });
+    expect(within(display).getByLabelText("Language")).toBeInTheDocument();
+    await userEvent.click(within(display).getByRole("button", { name: "Back" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Tools" })).getByRole("button", { name: "Calculator" }));
+    // A tool chosen closes the sheet and opens the tool.
+    expect(screen.queryByRole("dialog", { name: "Tools" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Calculator" })).toBeInTheDocument();
+  });
+
+  it("opens the palette from the strip, and puts Clear response under More actions", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    await userEvent.click(screen.getByRole("button", { name: /^Questions 0\/\d+$/ }));
+    expect(screen.getByRole("navigation", { name: "Questions" })).toHaveClass("open");
+    // Focus goes to the question on screen, and Escape closes the sheet.
+    expect(screen.getByRole("button", { name: /^Question 1:/ })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("navigation", { name: "Questions" })).not.toHaveClass("open");
+
+    await userEvent.click(screen.getByLabelText("mergesort"));
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Clear response" }));
+    expect(screen.getByLabelText("mergesort")).not.toBeChecked();
+  });
+});
+
 describe("the palette's key", () => {
   it("shows \"Typed, not saved\" only while something is, and folds to a line of shapes on request", async () => {
     renderApp(<App client={stubClient()} />);

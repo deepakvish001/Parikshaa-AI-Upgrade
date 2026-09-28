@@ -14,7 +14,7 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { ChevronLeft, ChevronRight, CircleCheck, Eraser, Flag, Hourglass, Lock, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, Ellipsis, Eraser, Flag, Hand, Hourglass, Lock, Send } from "lucide-react";
 import { briefingOfState, Instructions } from "./components/Instructions.tsx";
 import { Finished, submittedAt } from "./components/Finished.tsx";
 import { QuestionPaper, QuestionRail } from "./components/QuestionPaper.tsx";
@@ -22,6 +22,7 @@ import {
   Calculator,
   clearRoughWork,
   DisplayMenu,
+  DisplayPanel,
   InstructionsPanel,
   PaperPanel,
   RoughWork,
@@ -209,6 +210,30 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   // What a screen reader is told about the follow-up: that one is here, and that the reply went.
   const [probeNote, setProbeNote] = useState("");
   const [probeSent, setProbeSent] = useState(false);
+  // The palette as a sheet on a phone, opened from the strip under the bar.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Clear response, under "⋯" in a phone's footer.
+  const [moreOpen, setMoreOpen] = useState(false);
+  // "Swipe to move", said once on a touch screen, the first time a paper opens there.
+  const [swipeHint, setSwipeHint] = useState(false);
+  useEffect(() => {
+    if (typeof matchMedia !== "function" || !matchMedia("(pointer: coarse)").matches) return;
+    try {
+      if (localStorage.getItem("parikshaa.swipeHint") !== null) return;
+      localStorage.setItem("parikshaa.swipeHint", "1");
+    } catch {
+      return;
+    }
+    setSwipeHint(true);
+    const hide = () => setSwipeHint(false);
+    const id = setTimeout(hide, 6000);
+    // Gone at the first touch too: it has been read, or it is in the way.
+    window.addEventListener("pointerdown", hide, { once: true });
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("pointerdown", hide);
+    };
+  }, []);
   const heartbeatMs = lite ? LITE_HEARTBEAT_MS : HEARTBEAT_MS;
   const autosaveMs = lite ? LITE_AUTOSAVE_DELAY_MS : AUTOSAVE_DELAY_MS;
   // Per question: the candidate asked to read the original rather than the translation.
@@ -705,6 +730,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     saveAnswer.mutate({ questionId, answer: value });
   };
   const goTo = (id: string) => {
+    setMoreOpen(false);
     if (original_ !== null && id !== original_.id) leave(original_.id);
     focusStem.current = true;
     setCurrent(id);
@@ -823,9 +849,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         setConfirming(true);
       }}
       disabled={!canSubmit}
+      // One name for it, whichever of its labels the width shows.
+      aria-label={submit.isPending ? undefined : t("exam.submit")}
     >
       <Send aria-hidden="true" />
-      {submit.isPending ? t("exam.submitting") : t("exam.submit")}
+      {submit.isPending ? (
+        t("exam.submitting")
+      ) : (
+        <>
+          <span className="label-long">{t("exam.submit")}</span>
+          <span className="label-short">{t("exam.submitShort")}</span>
+        </>
+      )}
     </button>
   );
 
@@ -888,7 +923,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           </span>
           <button type="button" className={`quiet review-toggle${marked ? " on" : ""}`} aria-pressed={marked} onClick={() => toggleReview(q.id)}>
             <Flag aria-hidden="true" />
-            {marked ? t("exam.marked") : t("exam.markReview")}
+            <span className="review-toggle-label">{marked ? t("exam.marked") : t("exam.markReview")}</span>
           </button>
         </div>
         <h2 className="q-stem" lang={shownIn} id={`q-${q.id}-stem`} tabIndex={-1}>
@@ -940,14 +975,14 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           card
         )}
         <div className="qfoot" role="group" aria-label={t("exam.questionOf", { n: index + 1, total: exam.questions.length })}>
-          <button type="button" className="secondary" onClick={() => previous !== null && goTo(previous.id)} disabled={previous === null}>
+          <button type="button" className="secondary foot-prev" onClick={() => previous !== null && goTo(previous.id)} disabled={previous === null}>
             <ChevronLeft aria-hidden="true" />
-            {t("exam.prev")}
+            <span className="foot-label">{t("exam.prev")}</span>
           </button>
           {isCode ? null : (
             <button
               type="button"
-              className="ghost"
+              className="ghost foot-clear"
               onClick={() => {
                 edit(q.id, "");
                 if (committed !== "" && exam.allowRevision) saveAnswer.mutate({ questionId: q.id, answer: "" });
@@ -958,6 +993,30 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               {t("exam.clear")}
             </button>
           )}
+          {isCode ? null : (
+            <div className="foot-more">
+              <button type="button" className="secondary" aria-label={t("exam.more")} title={t("exam.more")} aria-expanded={moreOpen} onClick={() => setMoreOpen(!moreOpen)}>
+                <Ellipsis aria-hidden="true" />
+              </button>
+              {moreOpen ? (
+                <div className="foot-menu" role="menu" aria-label={t("exam.more")}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={value === "" || (committed !== "" && !exam.allowRevision)}
+                    onClick={() => {
+                      setMoreOpen(false);
+                      edit(q.id, "");
+                      if (committed !== "" && exam.allowRevision) saveAnswer.mutate({ questionId: q.id, answer: "" });
+                    }}
+                  >
+                    <Eraser aria-hidden="true" />
+                    {t("exam.clear")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
           <span className="saved" aria-live="polite">
             {saveState}
           </span>
@@ -966,17 +1025,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             <button
               type="button"
               className="review-next"
+              aria-label={t("exam.markNext")}
               onClick={() => {
                 if (!review.has(q.id)) toggleReview(q.id);
                 advanceFrom(q.id);
               }}
             >
-              {t("exam.markNext")}
+              <Flag aria-hidden="true" />
+              <span className="label-long">{t("exam.markNext")}</span>
+              <span className="label-short">{t("exam.markShort")}</span>
             </button>
           )}
           {isCode ? (
             next === null ? null : (
-              <button type="button" onClick={() => goTo(next.id)}>
+              <button type="button" className="foot-next" onClick={() => goTo(next.id)}>
                 {t("exam.next")}
                 <ChevronRight aria-hidden="true" />
               </button>
@@ -1012,8 +1074,21 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         }
         action={action}
       />
-      <ToolStrip save={paperSave} panel={panel} onPanel={setPanel} calculator={exam.calculator ?? false} />
+      <ToolStrip
+        save={paperSave}
+        panel={panel}
+        onPanel={setPanel}
+        calculator={exam.calculator ?? false}
+        questions={shown.length > 0 ? { done: items.filter((i) => i.answered).length, total: items.length, onOpen: () => setPaletteOpen(true) } : undefined}
+        display={<DisplayPanel offered={offered} reading={reading} />}
+      />
       <TimeWarnings expiresAt={state.data.expiresAt} />
+      {swipeHint ? (
+        <p className="swipe-hint" role="status">
+          <Hand aria-hidden="true" />
+          {t("exam.swipeHint")}
+        </p>
+      ) : null}
       {panel === "calculator" ? <Calculator onClose={() => setPanel(null)} /> : null}
       {panel === "rough" ? <RoughWork attemptId={state.data.attemptId} onClose={() => setPanel(null)} /> : null}
       {panel === "shortcuts" ? <ShortcutsPanel onClose={() => setPanel(null)} /> : null}
@@ -1112,8 +1187,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
 
         {shown.length > 0 || parts !== null ? (
           <aside className="cbt-side">
-            {parts !== null ? <SectionTabs parts={parts} /> : null}
-            {shown.length > 0 ? <Palette questions={items} current={currentId} onGo={goTo} /> : null}
+            {shown.length > 0 ? (
+              <Palette
+                questions={items}
+                current={currentId}
+                onGo={goTo}
+                open={paletteOpen}
+                onOpenChange={setPaletteOpen}
+                header={parts !== null ? <SectionTabs parts={parts} /> : undefined}
+              />
+            ) : parts !== null ? (
+              <SectionTabs parts={parts} />
+            ) : null}
           </aside>
         ) : null}
       </div>

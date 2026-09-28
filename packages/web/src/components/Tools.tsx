@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AArrowDown, AArrowUp, ALargeSmall, BookOpen, Calculator as CalculatorIcon, Check, CloudOff, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, X } from "lucide-react";
+import { AArrowDown, AArrowUp, ALargeSmall, BookOpen, Calculator as CalculatorIcon, Check, ChevronLeft, CloudOff, Grid3x3, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, Wrench, X, type LucideIcon } from "lucide-react";
 import { display, evaluate, type AngleUnit } from "../calc.ts";
 import { LANGUAGE_NAMES, usePreferences, type Language } from "../i18n.tsx";
 
@@ -162,10 +162,16 @@ export function SaveStatus({ state }: { readonly state: SaveState }) {
   const { t } = usePreferences();
   if (state === "idle") return null;
   const Icon = state === "saving" ? LoaderCircle :state === "offline" ? CloudOff : Check;
+  // On a phone the pill shortens to its icon and one word; the whole of it is what is heard.
+  const long = state === "saving" ? t("tools.saving") : state === "offline" ? t("tools.offline") : t("tools.saved");
+  const short = state === "saving" ? t("tools.savingShort") : state === "offline" ? t("tools.offlineShort") : t("tools.savedShort");
   return (
-    <span className={`save-status ${state}`} role="status">
+    <span className={`save-status ${state}`} role="status" title={long}>
       <Icon aria-hidden="true" />
-      {state === "saving" ? t("tools.saving") : state === "offline" ? t("tools.offline") : t("tools.saved")}
+      <span className="label-long">{long}</span>
+      <span className="label-short" aria-hidden="true">
+        {short}
+      </span>
     </span>
   );
 }
@@ -183,14 +189,21 @@ export function ToolStrip({
   panel,
   onPanel,
   calculator,
+  questions,
+  display,
 }: {
   readonly children?: ReactNode;
   readonly save: SaveState;
   readonly panel: Panel;
   readonly onPanel: (panel: Panel) => void;
   readonly calculator: boolean;
+  /** On a phone the palette opens from here: its button, with how far the candidate is. */
+  readonly questions?: { readonly done: number; readonly total: number; readonly onOpen: () => void } | undefined;
+  /** The Display settings, for the phone's Tools sheet. */
+  readonly display?: ReactNode;
 }) {
   const { t } = usePreferences();
+  const [sheet, setSheet] = useState<"tools" | "display" | null>(null);
   const toggle = (which: Exclude<Panel, null>) => onPanel(panel === which ? null : which);
   const tool = (which: Exclude<Panel, null>, label: string, icon: ReactNode) => (
     <button type="button" className="tool" aria-pressed={panel === which} title={label} onClick={() => toggle(which)}>
@@ -198,6 +211,13 @@ export function ToolStrip({
       <span className="tool-label">{label}</span>
     </button>
   );
+  const tools: readonly (readonly [Exclude<Panel, null>, string, LucideIcon])[] = [
+    ["paper", t("tools.paper"), ScrollText],
+    ["instructions", t("brief.open"), BookOpen],
+    ...(calculator ? ([["calculator", t("tools.calculator"), CalculatorIcon]] as const) : []),
+    ["rough", t("tools.rough"), NotebookPen],
+    ["shortcuts", t("tools.shortcuts"), Keyboard],
+  ];
   return (
     <div className="toolstrip">
       <div className="toolstrip-start">
@@ -213,7 +233,114 @@ export function ToolStrip({
           <Keyboard aria-hidden="true" />
         </button>
       </div>
+      <div className="toolstrip-compact">
+        {questions === undefined ? null : (
+          <button type="button" className="tool compact questions-open" onClick={questions.onOpen}>
+            <Grid3x3 aria-hidden="true" />
+            <span>{t("palette.region")}</span>
+            <span className="compact-count">
+              {questions.done}/{questions.total}
+            </span>
+          </button>
+        )}
+        <button type="button" className="tool compact tools-open" aria-haspopup="dialog" aria-expanded={sheet !== null} onClick={() => setSheet("tools")}>
+          <Wrench aria-hidden="true" />
+          <span>{t("tools.region")}</span>
+        </button>
+      </div>
+      {sheet === null ? null : (
+        <BottomSheet
+          label={sheet === "display" ? t("display.label") : t("tools.region")}
+          onClose={() => setSheet(null)}
+          onBack={sheet === "display" ? () => setSheet("tools") : undefined}
+        >
+          {sheet === "display" ? (
+            display
+          ) : (
+            <div className="tools-grid">
+              {tools.map(([which, label, Icon]) => (
+                <button
+                  key={which}
+                  type="button"
+                  className="tools-grid-item"
+                  onClick={() => {
+                    setSheet(null);
+                    onPanel(which);
+                  }}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+              {display === undefined ? null : (
+                <button type="button" className="tools-grid-item" onClick={() => setSheet("display")}>
+                  <ALargeSmall aria-hidden="true" />
+                  <span>{t("display.label")}</span>
+                </button>
+              )}
+            </div>
+          )}
+        </BottomSheet>
+      )}
     </div>
+  );
+}
+
+/**
+ * A sheet up from the bottom of a phone's screen, over a dimmed page: the
+ * tools, the display settings. Escape, the close button or a tap on the page
+ * above closes it, and focus goes back where it was.
+ */
+export function BottomSheet({
+  label,
+  onClose,
+  onBack,
+  children,
+}: {
+  readonly label: string;
+  readonly onClose: () => void;
+  readonly onBack?: (() => void) | undefined;
+  readonly children: ReactNode;
+}) {
+  const { t } = usePreferences();
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const before = document.activeElement as HTMLElement | null;
+    ref.current?.focus();
+    return () => before?.focus?.();
+  }, []);
+  return (
+    <>
+      <div className="bottom-sheet-scrim" aria-hidden="true" onClick={onClose} />
+      <section
+        className="bottom-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        tabIndex={-1}
+        ref={ref}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.stopPropagation();
+            onClose();
+          }
+        }}
+      >
+        <span className="bottom-sheet-grip" aria-hidden="true" />
+        <header className="bottom-sheet-head">
+          {onBack === undefined ? null : (
+            <button type="button" className="tool icon" aria-label={t("tools.back")} title={t("tools.back")} onClick={onBack}>
+              <ChevronLeft aria-hidden="true" />
+            </button>
+          )}
+          <strong>{label}</strong>
+          <button type="button" className="tool icon" aria-label={t("tools.close")} title={t("tools.close")} onClick={onClose}>
+            <X aria-hidden="true" />
+          </button>
+        </header>
+        {children}
+      </section>
+    </>
   );
 }
 

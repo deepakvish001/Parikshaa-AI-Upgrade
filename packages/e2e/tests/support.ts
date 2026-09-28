@@ -131,12 +131,14 @@ export const onScreen = (page: Page) => page.locator("section.qview");
 /** The actions under it: Previous, Clear response, Mark for review & next, Save & next. */
 export const actions = (page: Page) => page.locator(".qfoot");
 
-/** Open question `n` from the palette, unfolding it first where a phone folds it away. */
+/** Open question `n` from the palette, opening its sheet first where a phone keeps it in one. */
 export async function openQuestion(page: Page, n: number): Promise<void> {
   const palette = page.getByRole("navigation", { name: "Questions" });
-  const toggle = palette.locator(".palette-toggle");
-  await expect(palette).toBeVisible();
-  if ((await toggle.isVisible()) && (await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  // On a phone or tablet the palette is a sheet, opened from the strip under the bar.
+  const opener = page.locator(".questions-open");
+  // Wait for the paper, then look: isVisible does not wait for anything.
+  await expect(palette).toBeAttached();
+  if ((await opener.isVisible()) && !(await palette.evaluate((el) => el.classList.contains("open")))) await opener.click();
   await palette.getByRole("button", { name: new RegExp(`^Question ${n}:`) }).click();
   await expect(page.getByRole("heading", { name: new RegExp(`^${n}\\. `) })).toBeVisible();
 }

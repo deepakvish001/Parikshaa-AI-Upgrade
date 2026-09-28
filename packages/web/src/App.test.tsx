@@ -753,6 +753,6 @@ describe("a coding question", () => {
     await userEvent.click(within(card).getByRole("button", { name: "Submit" }));
     expect(client.submitCode).toHaveBeenCalledWith("q-sum", "python", codeExam.questions[0]!.starter);
     expect(await within(card).findByRole("region", { name: "Submission results" })).toHaveTextContent("2/2 tests passed");
-    await waitFor(() => expect(screen.getByText("Saved")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Saved", { selector: ".qfoot .saved" })).toBeInTheDocument());
   });
 });
