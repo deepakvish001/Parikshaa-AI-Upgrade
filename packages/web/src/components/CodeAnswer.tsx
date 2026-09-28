@@ -96,6 +96,8 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   const [prefs, setPrefs] = useEditorPrefs();
   const [full, setFull] = useState(startFull);
+  // On a phone the full-screen workspace shows one pane at a time, by tab.
+  const [phoneTab, setPhoneTab] = useState<"problem" | "code" | "result">("code");
   const [top, setTop] = useState(0);
   const [tab, setTab] = useState<"testcase" | "result">("testcase");
   const [picked, setPicked] = useState<number | "custom">(question.samples.length > 0 ? 0 : "custom");
@@ -394,12 +396,28 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (full) {
     return (
-      <div className={`workspace full${prefs.dark && !lite ? " ws-dark" : ""}${rail === undefined ? "" : " with-rail"}`} {...(prefs.dark && !lite ? { "data-theme": "dark" } : {})} role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
+      <div
+        className={`workspace full${prefs.dark && !lite ? " ws-dark" : ""}${rail === undefined ? "" : " with-rail"}`}
+        {...(prefs.dark && !lite ? { "data-theme": "dark" } : {})}
+        data-phone-tab={phoneTab}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={headingId}
+        style={{ top }}
+      >
         {rail === undefined ? null : <div className="ws-rail">{rail}</div>}
         {toolbar}
+        <div className="ws-phone-tabs" role="tablist" aria-label={t("code.editor")}>
+          {(["problem", "code", "result"] as const).map((tab) => (
+            <button key={tab} type="button" role="tab" aria-selected={phoneTab === tab} onClick={() => setPhoneTab(tab)}>
+              {tab === "problem" ? t("code.problem") : tab === "code" ? t("code.code") : t("code.result")}
+            </button>
+          ))}
+        </div>
         <SplitPane
           direction="row"
-          initial={42}
+          initial={40}
+          remember="code-problem"
           label={t("code.problem")}
           className="ws-main"
           first={
@@ -407,7 +425,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
               <ProblemStatement question={question} number={number} withTitle headingId={headingId} />
             </div>
           }
-          second={<SplitPane direction="column" initial={60} label={t("code.result")} first={editor} second={console_} />}
+          second={<SplitPane direction="column" initial={60} remember="code-result" label={t("code.result")} first={editor} second={console_} />}
         />
         {actions}
       </div>
@@ -474,7 +492,7 @@ function RunView({ question, outcome, custom }: { readonly question: CandidateCo
   const shownResult = results[Math.min(at, results.length - 1)];
   return (
     <section className="run-output" aria-label="Run results">
-      <p className={`verdict ${first === undefined ? "ok" : "bad"}`}>
+      <p className={`verdict ${first === undefined ? "ok" : "bad"}`} data-status={first ?? "passed"}>
         {custom ? t("code.status.ran") : first === undefined ? t("code.status.passed") : t(statusKey(first))}
         {custom ? null : <span className="verdict-count"> · {t("code.examplesPass", { passed, total: results.length })}</span>}
       </p>
@@ -540,7 +558,7 @@ function SubmitView({ question, outcome }: { readonly question: CandidateCodeQue
   const picked = cases[Math.min(at, cases.length - 1)];
   return (
     <section className="run-output submission" aria-label="Submission results">
-      <p className={`verdict ${failing === undefined ? "ok" : "bad"}`}>
+      <p className={`verdict ${failing === undefined ? "ok" : "bad"}`} data-status={failing ?? "passed"}>
         {failing === undefined ? t("code.status.passed") : t(statusKey(failing))}
         {outcome.passed === null || outcome.total === null ? null : (
           <span className="verdict-count"> · {t("code.passedOf", { passed: outcome.passed, total: outcome.total })}</span>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AArrowDown, AArrowUp, ALargeSmall, BookOpen, Calculator as CalculatorIcon, Check, ChevronLeft, CloudOff, Grid3x3, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, Wrench, X, type LucideIcon } from "lucide-react";
+import { AArrowDown, AArrowUp, ALargeSmall, BookOpen, Calculator as CalculatorIcon, Check, ChevronLeft, CloudOff, GripVertical, Grid3x3, Keyboard, LoaderCircle, Moon, NotebookPen, ScrollText, Sun, Wrench, X, type LucideIcon } from "lucide-react";
 import { display, evaluate, type AngleUnit } from "../calc.ts";
 import { LANGUAGE_NAMES, usePreferences, type Language } from "../i18n.tsx";
 
@@ -155,18 +155,31 @@ export function DisplayMenu({ offered, reading }: { readonly offered: readonly L
   );
 }
 
-export type SaveState = "idle" | "saving" | "saved" | "offline";
+export type SaveState = "idle" | "saving" | "saved" | "offline" | "back";
 
-/** Whether everything the candidate has done is safe: one answer for the whole paper, always in sight. */
-export function SaveStatus({ state }: { readonly state: SaveState }) {
+/**
+ * Whether everything the candidate has done is safe: one answer for the whole
+ * paper, always in sight, and the one place a dropped connection shows — a
+ * quiet pill, never a dialog. Back online, it says how many answers went.
+ */
+export function SaveStatus({ state, sent = 0 }: { readonly state: SaveState; readonly sent?: number }) {
   const { t } = usePreferences();
   if (state === "idle") return null;
-  const Icon = state === "saving" ? LoaderCircle :state === "offline" ? CloudOff : Check;
+  const Icon = state === "saving" ? LoaderCircle : state === "offline" ? CloudOff : Check;
   // On a phone the pill shortens to its icon and one word; the whole of it is what is heard.
-  const long = state === "saving" ? t("tools.saving") : state === "offline" ? t("tools.offline") : t("tools.saved");
+  const long =
+    state === "saving"
+      ? t("tools.saving")
+      : state === "offline"
+        ? t("tools.offline")
+        : state === "back"
+          ? sent === 1
+            ? t("tools.backOnlineOne")
+            : t("tools.backOnline", { n: sent })
+          : t("tools.saved");
   const short = state === "saving" ? t("tools.savingShort") : state === "offline" ? t("tools.offlineShort") : t("tools.savedShort");
   return (
-    <span className={`save-status ${state}`} role="status" title={long}>
+    <span className={`save-status ${state === "back" ? "saved back" : state}`} role="status" title={state === "offline" ? t("exam.offline") : long}>
       <Icon aria-hidden="true" />
       <span className="label-long">{long}</span>
       <span className="label-short" aria-hidden="true">
@@ -177,6 +190,8 @@ export function SaveStatus({ state }: { readonly state: SaveState }) {
 }
 
 export type Panel = "calculator" | "rough" | "shortcuts" | "instructions" | "paper" | null;
+/** A tool that opens in a window beside the paper. */
+export type Tool = Exclude<Panel, null>;
 
 /**
  * The strip under the exam bar: on the left whether the candidate's work is
@@ -186,16 +201,20 @@ export type Panel = "calculator" | "rough" | "shortcuts" | "instructions" | "pap
 export function ToolStrip({
   children,
   save,
-  panel,
-  onPanel,
+  sent = 0,
+  open,
+  onToggle,
   calculator,
   questions,
   display,
 }: {
   readonly children?: ReactNode;
   readonly save: SaveState;
-  readonly panel: Panel;
-  readonly onPanel: (panel: Panel) => void;
+  /** How many answers went when the connection came back. */
+  readonly sent?: number;
+  /** The tools open now, oldest first. */
+  readonly open: readonly Tool[];
+  readonly onToggle: (tool: Tool) => void;
   readonly calculator: boolean;
   /** On a phone the palette opens from here: its button, with how far the candidate is. */
   readonly questions?: { readonly done: number; readonly total: number; readonly onOpen: () => void } | undefined;
@@ -204,14 +223,13 @@ export function ToolStrip({
 }) {
   const { t } = usePreferences();
   const [sheet, setSheet] = useState<"tools" | "display" | null>(null);
-  const toggle = (which: Exclude<Panel, null>) => onPanel(panel === which ? null : which);
-  const tool = (which: Exclude<Panel, null>, label: string, icon: ReactNode) => (
-    <button type="button" className="tool" aria-pressed={panel === which} title={label} onClick={() => toggle(which)}>
+  const tool = (which: Tool, label: string, icon: ReactNode) => (
+    <button type="button" className="tool" data-tool={which} aria-pressed={open.includes(which)} title={label} onClick={() => onToggle(which)}>
       {icon}
       <span className="tool-label">{label}</span>
     </button>
   );
-  const tools: readonly (readonly [Exclude<Panel, null>, string, LucideIcon])[] = [
+  const tools: readonly (readonly [Tool, string, LucideIcon])[] = [
     ["paper", t("tools.paper"), ScrollText],
     ["instructions", t("brief.open"), BookOpen],
     ...(calculator ? ([["calculator", t("tools.calculator"), CalculatorIcon]] as const) : []),
@@ -221,7 +239,7 @@ export function ToolStrip({
   return (
     <div className="toolstrip">
       <div className="toolstrip-start">
-        <SaveStatus state={save} />
+        <SaveStatus state={save} sent={sent} />
         {children}
       </div>
       <div className="toolstrip-end" role="toolbar" aria-label={t("tools.region")}>
@@ -229,7 +247,15 @@ export function ToolStrip({
         {tool("instructions", t("brief.open"), <BookOpen aria-hidden="true" />)}
         {calculator ? tool("calculator", t("tools.calculator"), <CalculatorIcon aria-hidden="true" />) : null}
         {tool("rough", t("tools.rough"), <NotebookPen aria-hidden="true" />)}
-        <button type="button" className="tool icon" title={t("tools.shortcuts")} aria-label={t("tools.shortcuts")} aria-pressed={panel === "shortcuts"} onClick={() => toggle("shortcuts")}>
+        <button
+          type="button"
+          className="tool icon"
+          data-tool="shortcuts"
+          title={t("tools.shortcuts")}
+          aria-label={t("tools.shortcuts")}
+          aria-pressed={open.includes("shortcuts")}
+          onClick={() => onToggle("shortcuts")}
+        >
           <Keyboard aria-hidden="true" />
         </button>
       </div>
@@ -265,7 +291,7 @@ export function ToolStrip({
                   className="tools-grid-item"
                   onClick={() => {
                     setSheet(null);
-                    onPanel(which);
+                    if (!open.includes(which)) onToggle(which);
                   }}
                 >
                   <Icon aria-hidden="true" />
@@ -344,20 +370,39 @@ export function BottomSheet({
   );
 }
 
-/** A tool's floating panel: beside the paper, not over it, closed with its button or Escape. */
-function Floating({ label, onClose, className = "", children }: { readonly label: string; readonly onClose: () => void; readonly className?: string; readonly children: ReactNode }) {
+/**
+ * A tool's window: a 360 px panel with a title bar, docked to the right of
+ * the question and stacked under any other open one, so it helps without
+ * covering the paper. Its title bar moves it; Escape or its close button
+ * shuts it, and the page puts focus back on the tool's button. On a phone
+ * it is a sheet the height of the screen.
+ */
+export function ToolWindow({
+  label,
+  onClose,
+  className = "",
+  children,
+}: {
+  readonly label: string;
+  readonly onClose: () => void;
+  readonly className?: string;
+  readonly children: ReactNode;
+}) {
   const { t } = usePreferences();
   const ref = useRef<HTMLElement>(null);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number; from: { x: number; y: number } } | null>(null);
   useEffect(() => {
     ref.current?.focus();
   }, []);
   return (
     <section
-      className={`floating ${className}`}
+      className={`tool-window floating ${className}`}
       role="dialog"
       aria-label={label}
       tabIndex={-1}
       ref={ref}
+      style={offset.x === 0 && offset.y === 0 ? undefined : { translate: `${offset.x}px ${offset.y}px` }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
           e.stopPropagation();
@@ -365,7 +410,20 @@ function Floating({ label, onClose, className = "", children }: { readonly label
         }
       }}
     >
-      <header className="floating-head">
+      <header
+        className="floating-head"
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest("button") !== null || e.button !== 0) return;
+          drag.current = { x: e.clientX, y: e.clientY, from: offset };
+          (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current;
+          if (d !== null) setOffset({ x: d.from.x + e.clientX - d.x, y: d.from.y + e.clientY - d.y });
+        }}
+        onPointerUp={() => (drag.current = null)}
+      >
+        <GripVertical className="window-grip" aria-hidden="true" />
         <strong>{label}</strong>
         <button type="button" className="tool icon" aria-label={t("tools.close")} title={t("tools.close")} onClick={onClose}>
           <X aria-hidden="true" />
@@ -377,13 +435,13 @@ function Floating({ label, onClose, className = "", children }: { readonly label
 }
 
 const KEYS: readonly (readonly [string, string, "fn" | "num" | "op" | "act"])[] = [
-  ["unit", "", "act"], ["(", "(", "op"], [")", ")", "op"], ["⌫", "back", "act"], ["C", "clear", "act"],
+  ["(", "(", "op"], [")", ")", "op"], ["Ans", "Ans", "fn"], ["⌫", "back", "act"], ["C", "clear", "act"],
   ["sin", "sin(", "fn"], ["cos", "cos(", "fn"], ["tan", "tan(", "fn"], ["√", "√(", "fn"], ["x²", "^2", "fn"],
   ["log", "log(", "fn"], ["ln", "ln(", "fn"], ["xʸ", "^", "fn"], ["π", "π", "fn"], ["e", "e", "fn"],
   ["7", "7", "num"], ["8", "8", "num"], ["9", "9", "num"], ["÷", "÷", "op"], ["n!", "!", "fn"],
   ["4", "4", "num"], ["5", "5", "num"], ["6", "6", "num"], ["×", "×", "op"], ["%", "%", "fn"],
-  ["1", "1", "num"], ["2", "2", "num"], ["3", "3", "num"], ["−", "−", "op"], ["Ans", "Ans", "fn"],
-  ["0", "0", "num"], [".", ".", "num"], ["EXP", "E", "fn"], ["+", "+", "op"], ["=", "equals", "act"],
+  ["1", "1", "num"], ["2", "2", "num"], ["3", "3", "num"], ["−", "−", "op"], ["EXP", "E", "fn"],
+  ["0", "0", "num"], [".", ".", "num"], ["+", "+", "op"], ["=", "equals", "act"],
 ];
 
 /**
@@ -423,7 +481,7 @@ export function Calculator({ onClose }: { readonly onClose: () => void }) {
   };
 
   return (
-    <Floating label={t("tools.calculator")} onClose={onClose} className="calculator">
+    <ToolWindow label={t("tools.calculator")} onClose={onClose} className="calculator">
       <div
         className="calc-screen"
         tabIndex={0}
@@ -444,20 +502,27 @@ export function Calculator({ onClose }: { readonly onClose: () => void }) {
           {result ?? " "}
         </output>
       </div>
-      <div className="calc-keys">
-        {KEYS.map(([label, value, kind]) =>
-          label === "unit" ? (
-            <button key="unit" type="button" className="calc-key act" aria-pressed={unit === "rad"} onClick={() => setUnit(unit === "deg" ? "rad" : "deg")}>
-              {unit === "deg" ? "DEG" : "RAD"}
-            </button>
-          ) : (
-            <button key={label} type="button" className={`calc-key ${kind}${value === "equals" ? " equals" : ""}`} onClick={() => press(value)}>
-              {label}
-            </button>
-          ),
-        )}
+      <div className="calc-unit segmented" role="group" aria-label={t("tools.angle")}>
+        <button type="button" aria-pressed={unit === "deg"} onClick={() => setUnit("deg")}>
+          DEG
+        </button>
+        <button type="button" aria-pressed={unit === "rad"} onClick={() => setUnit("rad")}>
+          RAD
+        </button>
       </div>
-    </Floating>
+      <div className="calc-keys">
+        {KEYS.map(([label, value, kind]) => (
+          <button
+            key={label}
+            type="button"
+            className={`calc-key ${kind}${value === "equals" ? " equals" : ""}${value === "0" ? " wide" : ""}`}
+            onClick={() => press(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </ToolWindow>
   );
 }
 
@@ -473,7 +538,7 @@ export function RoughWork({ attemptId, onClose }: { readonly attemptId: string; 
     }
   });
   return (
-    <Floating label={t("tools.rough")} onClose={onClose} className="rough">
+    <ToolWindow label={t("tools.rough")} onClose={onClose} className="rough">
       <textarea
         aria-label={t("tools.rough")}
         placeholder={t("tools.roughHint")}
@@ -489,7 +554,7 @@ export function RoughWork({ attemptId, onClose }: { readonly attemptId: string; 
         }}
       />
       <p className="notice">{t("tools.roughNote")}</p>
-    </Floating>
+    </ToolWindow>
   );
 }
 
@@ -534,10 +599,10 @@ export function KeyTable() {
 export function ShortcutsPanel({ onClose }: { readonly onClose: () => void }) {
   const { t } = usePreferences();
   return (
-    <Floating label={t("tools.shortcuts")} onClose={onClose} className="shortcuts">
+    <ToolWindow label={t("tools.shortcuts")} onClose={onClose} className="shortcuts">
       <KeyTable />
       <p className="notice">{t("keys.note")}</p>
-    </Floating>
+    </ToolWindow>
   );
 }
 
@@ -545,9 +610,9 @@ export function ShortcutsPanel({ onClose }: { readonly onClose: () => void }) {
 export function PaperPanel({ onClose, children }: { readonly onClose: () => void; readonly children: ReactNode }) {
   const { t } = usePreferences();
   return (
-    <Floating label={t("tools.paper")} onClose={onClose} className="paper-panel">
+    <ToolWindow label={t("tools.paper")} onClose={onClose} className="paper-panel">
       {children}
-    </Floating>
+    </ToolWindow>
   );
 }
 
@@ -555,9 +620,9 @@ export function PaperPanel({ onClose, children }: { readonly onClose: () => void
 export function InstructionsPanel({ onClose, children }: { readonly onClose: () => void; readonly children: ReactNode }) {
   const { t } = usePreferences();
   return (
-    <Floating label={t("brief.heading")} onClose={onClose} className="instructions-panel">
+    <ToolWindow label={t("brief.heading")} onClose={onClose} className="instructions-panel">
       {children}
-    </Floating>
+    </ToolWindow>
   );
 }
 

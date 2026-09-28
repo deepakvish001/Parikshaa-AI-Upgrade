@@ -14,7 +14,7 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { ChevronLeft, ChevronRight, CircleCheck, Ellipsis, Eraser, Flag, Hand, Hourglass, Lock, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, Ellipsis, Eraser, Flag, Hand, Lock, Send, X } from "lucide-react";
 import { briefingOfState, Instructions } from "./components/Instructions.tsx";
 import { Finished, submittedAt } from "./components/Finished.tsx";
 import { QuestionPaper, QuestionRail } from "./components/QuestionPaper.tsx";
@@ -30,11 +30,11 @@ import {
   TimeWarnings,
   ToolStrip,
   useReadingPreferences,
-  type Panel,
   type SaveState,
+  type Tool,
 } from "./components/Tools.tsx";
 import { loadReview, loadVisited, saveReview, saveVisited } from "./review.ts";
-import { Countdown, ExamBar, kindLabel, SubmitDialog, Tally } from "./components/Cbt.tsx";
+import { Countdown, ExamBar, kindLabel, SubmitDialog, Tally, TimeUpScreen, type PaperCounts } from "./components/Cbt.tsx";
 import { Figures, Palette, PassageCard } from "./components/Paper.tsx";
 
 interface OpenProbe {
@@ -368,6 +368,33 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     };
   }, [flushUnsent]);
 
+  /*
+   * Back online: once everything that waited has gone, the save status says
+   * how many answers were sent, for a few seconds. Nothing modal, ever.
+   */
+  const reconnecting = useRef<number | null>(null);
+  const waitingOffline = useRef(0);
+  const [sentBack, setSentBack] = useState<number | null>(null);
+  // Counted while offline: the moment the connection returns, sending starts and "offline" becomes "saving".
+  useEffect(() => {
+    if (!online) waitingOffline.current = Object.values(status).filter((s) => s === "offline").length;
+  }, [online, status]);
+  useEffect(() => {
+    if (!online || waitingOffline.current === 0) return;
+    reconnecting.current = waitingOffline.current;
+    waitingOffline.current = 0;
+  }, [online]);
+  useEffect(() => {
+    if (reconnecting.current === null || Object.values(status).some((s) => s === "offline" || s === "saving")) return;
+    setSentBack(reconnecting.current);
+    reconnecting.current = null;
+  }, [status]);
+  useEffect(() => {
+    if (sentBack === null) return;
+    const id = setTimeout(() => setSentBack(null), 5000);
+    return () => clearTimeout(id);
+  }, [sentBack]);
+
   const edit = (questionId: string, text: string) => {
     setDrafts((prior) => ({ ...prior, [questionId]: text }));
     if (attemptId !== null) saveLocalDraft(attemptId, expiresAt, questionId, { answer: text, synced: false });
@@ -550,6 +577,32 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const focusStem = useRef(false);
   const paperNow = state.data === undefined ? null : paperOf(state.data, now);
   const currentId = paperNow === null ? null : (paperNow.shown.find((q) => q.id === current) ?? paperNow.shown[0])?.id ?? null;
+
+  /*
+   * Reopened — after a reload, or on another device — the page goes back to
+   * where the candidate was: the question with unsent work, or the one after
+   * the last saved. Said once, then out of the way.
+   */
+  const resumed = useRef(false);
+  const [welcome, setWelcome] = useState<number | null>(null);
+  useEffect(() => {
+    if (resumed.current || paperNow === null || state.data?.state !== "in_progress") return;
+    resumed.current = true;
+    const shownNow = paperNow.shown;
+    const saved = new Set(state.data.answers.map((a) => a.questionId));
+    const drafted = new Set((state.data.drafts ?? []).map((d) => d.questionId));
+    if (saved.size === 0 && drafted.size === 0) return;
+    const lastSaved = shownNow.reduce((at, q, i) => (saved.has(q.id) ? i : at), -1);
+    const target = shownNow.find((q) => drafted.has(q.id) && !saved.has(q.id)) ?? shownNow[Math.min(lastSaved + 1, shownNow.length - 1)];
+    if (target === undefined) return;
+    setCurrent(target.id);
+    setWelcome(state.data.exam.questions.indexOf(target) + 1);
+  }, [paperNow, state.data]);
+  useEffect(() => {
+    if (welcome === null) return;
+    const id = setTimeout(() => setWelcome(null), 8000);
+    return () => clearTimeout(id);
+  }, [welcome]);
   useEffect(() => {
     if (currentId === null || attemptId === null || !inProgress) return;
     setVisited((prior) => {
@@ -566,8 +619,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     }
   }, [currentId, attemptId, inProgress]);
 
-  // The tools beside the paper: one open at a time.
-  const [panel, setPanel] = useState<Panel>(null);
+  // The tools beside the paper, oldest first: several may be open, stacked, the newest on top.
+  const [windows, setWindows] = useState<readonly Tool[]>([]);
+  const toggleWindow = (tool: Tool) => setWindows((open) => (open.includes(tool) ? open.filter((w) => w !== tool) : [...open, tool]));
+  /** Close a tool's window, and put focus back on the button that opened it (or Tools, on a phone). */
+  const closeWindow = useCallback((tool: Tool) => {
+    setWindows((open) => open.filter((w) => w !== tool));
+    requestAnimationFrame(() => {
+      const shown = (el: HTMLElement | null) => el !== null && (typeof el.checkVisibility === "function" ? el.checkVisibility() : el.offsetParent !== null);
+      const button = document.querySelector<HTMLElement>(`.toolstrip-end [data-tool="${tool}"]`);
+      const tools = document.querySelector<HTMLElement>(".tools-open");
+      // The tool's own button where it is on screen; on a phone, Tools; failing both, the tool's.
+      (shown(button) ? button : shown(tools) ? tools : button)?.focus();
+    });
+  }, []);
   // Where a touch on the question began, for a swipe to the next or previous one.
   const touch = useRef<{ x: number; y: number } | null>(null);
 
@@ -577,15 +642,22 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
    * that letter — and never with a modifier held.
    */
   const keys = useRef<{ choose: (n: number) => void; save: () => void; next: () => void; prev: () => void; mark: () => void } | null>(null);
+  const latestWindows = useRef(windows);
+  latestWindows.current = windows;
   useEffect(() => {
     if (!inProgress) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const target = e.target as HTMLElement | null;
-      if (target !== null && (target.closest("input:not([type=radio]):not([type=checkbox]), textarea, select, [contenteditable=true], .cm-editor, .floating, [role=dialog]") !== null)) return;
+      if (target !== null && (target.closest("input:not([type=radio]):not([type=checkbox]), textarea, select, [contenteditable=true], .cm-editor, .tool-window, [role=dialog]") !== null)) return;
       const key = e.key.toLowerCase();
-      if (key === "?") setPanel((p) => (p === "shortcuts" ? null : "shortcuts"));
-      else if (key === "escape") setPanel(null);
+      if (key === "?") setWindows((open) => (open.includes("shortcuts") ? open.filter((w) => w !== "shortcuts") : [...open, "shortcuts"]));
+      else if (key === "escape") {
+        // The newest window first, one at a time.
+        const top = latestWindows.current[latestWindows.current.length - 1];
+        if (top === undefined) return;
+        closeWindow(top);
+      }
       else if (keys.current === null) return;
       else if ("abcd".includes(key) && key.length === 1) keys.current.choose("abcd".indexOf(key));
       else if (key === "s") keys.current.save();
@@ -597,23 +669,32 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [inProgress]);
+  }, [inProgress, closeWindow]);
 
   /**
-   * Time up: the page says so plainly and hands over what is waiting to be
-   * saved, then reads the attempt again — the server closes it at the next
-   * request, and the record opens in its place.
+   * Time up: the page says so plainly, hands over what is waiting to be saved,
+   * and submits — which, after the end, closes the attempt with only what was
+   * saved in time. The screen stays until that is done and a few seconds
+   * after, then the record opens in its place.
    */
-  const [timeUp, setTimeUp] = useState(false);
+  const [timeUpAt, setTimeUpAt] = useState<number | null>(null);
+  const [timeUpReady, setTimeUpReady] = useState(false);
   useEffect(() => {
     if (!inProgress || expiresAt === 0) return;
-    setTimeUp(false);
     const id = setTimeout(
       () => {
-        setTimeUp(true);
+        setTimeUpAt(expiresAt);
+        setTimeUpReady(false);
         void (async () => {
           await flushPending().catch(() => undefined);
+          // Submitting after the end closes the attempt with what was saved in time, and no more.
+          try {
+            await client.submit();
+          } catch {
+            // Closed already, or not reachable: the state read next says which.
+          }
           await queryClient.invalidateQueries({ queryKey: ["state"] });
+          setTimeUpReady(true);
         })();
       },
       Math.max(0, expiresAt - Date.now()),
@@ -627,6 +708,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   useEffect(() => {
     if (expired) onExpired?.();
   }, [expired, onExpired]);
+
+  if (timeUpAt !== null) {
+    return (
+      <TimeUpScreen
+        at={timeUpAt}
+        ready={timeUpReady && state.data?.state !== "in_progress"}
+        onContinue={() => setTimeUpAt(null)}
+      />
+    );
+  }
 
   if (state.isPending) {
     return (
@@ -708,7 +799,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               </p>
             </section>
           ) : null}
-          {ledger.data !== undefined ? <Receipt ledger={ledger.data} myData={() => client.myData()} /> : null}
+          {ledger.data !== undefined ? (
+            <Receipt
+              ledger={ledger.data}
+              myData={() => client.myData()}
+              numberOf={(id) => {
+                const at = exam.questions.findIndex((q) => q.id === id);
+                return at < 0 ? null : at + 1;
+              }}
+            />
+          ) : null}
         </main>
       </>
     );
@@ -769,6 +869,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     notVisited: items.filter((q) => !q.answered && !q.marked && !q.visited).length,
   };
   const lastPart = parts === null || nextPart === null;
+  // Where every part stands, for the summary before submitting: from what was saved, marked and opened.
+  const countsOf = (ids: readonly string[]): PaperCounts => {
+    const qs = ids.map((id) => ({ answered: (answered.get(id) ?? "") !== "", marked: review.has(id), visited: visited.has(id) || id === currentId }));
+    return {
+      answered: qs.filter((q) => q.answered && !q.marked).length,
+      answeredMarked: qs.filter((q) => q.answered && q.marked).length,
+      marked: qs.filter((q) => !q.answered && q.marked).length,
+      notAnswered: qs.filter((q) => !q.answered && !q.marked && q.visited).length,
+      notVisited: qs.filter((q) => !q.answered && !q.marked && !q.visited).length,
+    };
+  };
+  const groups = (parts ?? []).map((p) => ({ title: p.title, counts: countsOf(p.questionIds) }));
   // A coding question fills a wide screen, as a coding round's does; a laptop or phone keeps it in the card.
   const wide = typeof window !== "undefined" && window.innerWidth >= 1280;
   const canSubmit = !submit.isPending && (answered.size > 0 || Object.keys(drafts).length > 0);
@@ -815,13 +927,15 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
 
   // One word for the whole paper: anything unsent on this device, anything on its way, or all of it safe.
   const statuses = Object.values(status);
-  const paperSave: SaveState = statuses.includes("offline")
+  const paperSave: SaveState = statuses.includes("offline") || !online
     ? "offline"
     : saveAnswer.isPending || statuses.includes("saving")
       ? "saving"
-      : answered.size > 0 || statuses.length > 0
-        ? "saved"
-        : "idle";
+      : sentBack !== null
+        ? "back"
+        : answered.size > 0 || statuses.length > 0
+          ? "saved"
+          : "idle";
 
   // A section with its own time shows that time in the pill, in place of the test's.
   const sectionClock = currentPart !== null && currentPart.endsAt != null && !partTimeUp ? { title: currentPart.title, endsAt: currentPart.endsAt, durationMs: currentPart.durationMs } : null;
@@ -1076,8 +1190,9 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       />
       <ToolStrip
         save={paperSave}
-        panel={panel}
-        onPanel={setPanel}
+        sent={sentBack ?? 0}
+        open={windows}
+        onToggle={toggleWindow}
         calculator={exam.calculator ?? false}
         questions={shown.length > 0 ? { done: items.filter((i) => i.answered).length, total: items.length, onOpen: () => setPaletteOpen(true) } : undefined}
         display={<DisplayPanel offered={offered} reading={reading} />}
@@ -1089,35 +1204,43 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           {t("exam.swipeHint")}
         </p>
       ) : null}
-      {panel === "calculator" ? <Calculator onClose={() => setPanel(null)} /> : null}
-      {panel === "rough" ? <RoughWork attemptId={state.data.attemptId} onClose={() => setPanel(null)} /> : null}
-      {panel === "shortcuts" ? <ShortcutsPanel onClose={() => setPanel(null)} /> : null}
-      {panel === "paper" ? (
-        <PaperPanel onClose={() => setPanel(null)}>
-          <QuestionPaper
-            current={currentId}
-            onGo={(id) => {
-              setPanel(null);
-              goTo(id);
-            }}
-            entries={shown.map((q, i) => {
-              const translation = language === "en" || original.has(q.id) ? undefined : q.translations?.[language];
-              const stem = translation?.stem ?? q.stem;
-              return {
-                ...items[i]!,
-                stem: q.kind === "code" ? splitStem(stem).title || t("code.problem") : stem,
-                lang: translation === undefined ? "en" : language,
-                maxScore: q.maxScore,
-                kind: kindLabel(q, t),
-              };
-            })}
-          />
-        </PaperPanel>
-      ) : null}
-      {panel === "instructions" ? (
-        <InstructionsPanel onClose={() => setPanel(null)}>
-          <Instructions brief={briefingOfState(state.data)} />
-        </InstructionsPanel>
+      {windows.length > 0 ? (
+        <div className="tool-windows">
+          {windows.map((tool) =>
+            tool === "calculator" ? (
+              <Calculator key={tool} onClose={() => closeWindow(tool)} />
+            ) : tool === "rough" ? (
+              <RoughWork key={tool} attemptId={state.data.attemptId} onClose={() => closeWindow(tool)} />
+            ) : tool === "shortcuts" ? (
+              <ShortcutsPanel key={tool} onClose={() => closeWindow(tool)} />
+            ) : tool === "paper" ? (
+              <PaperPanel key={tool} onClose={() => closeWindow(tool)}>
+                <QuestionPaper
+                  current={currentId}
+                  onGo={(id) => {
+                    closeWindow("paper");
+                    goTo(id);
+                  }}
+                  entries={shown.map((q, i) => {
+                    const translation = language === "en" || original.has(q.id) ? undefined : q.translations?.[language];
+                    const stem = translation?.stem ?? q.stem;
+                    return {
+                      ...items[i]!,
+                      stem: q.kind === "code" ? splitStem(stem).title || t("code.problem") : stem,
+                      lang: translation === undefined ? "en" : language,
+                      maxScore: q.maxScore,
+                      kind: kindLabel(q, t),
+                    };
+                  })}
+                />
+              </PaperPanel>
+            ) : (
+              <InstructionsPanel key={tool} onClose={() => closeWindow(tool)}>
+                <Instructions brief={briefingOfState(state.data)} />
+              </InstructionsPanel>
+            ),
+          )}
+        </div>
       ) : null}
       <div className="cbt-body">
         <main className="cbt-main" {...swipe}>
@@ -1126,9 +1249,13 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               {t("camera.offBanner")}
             </p>
           ) : null}
-          {!online ? (
-            <p className="offline" role="status">
-              {t("exam.offline")}
+          {welcome !== null ? (
+            <p className="welcome-back" role="status">
+              <Hand aria-hidden="true" />
+              <span>{t("exam.welcomeBack", { n: welcome })}</span>
+              <button type="button" className="tool icon" aria-label={t("tools.close")} title={t("tools.close")} onClick={() => setWelcome(null)}>
+                <X aria-hidden="true" />
+              </button>
             </p>
           ) : null}
           <Announcements
@@ -1227,23 +1354,14 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       {confirming ? (
         <SubmitDialog
           counts={counts}
+          groups={groups}
           pending={submit.isPending}
           onCancel={() => setConfirming(false)}
           onConfirm={() => submit.mutate(undefined, { onSettled: () => setConfirming(false) })}
         />
       ) : null}
 
-      {timeUp ? (
-        <div className="scrim">
-          <div className="dialog time-up" role="alertdialog" aria-modal="true" aria-labelledby="time-up-title" aria-describedby="time-up-note">
-            <Hourglass aria-hidden="true" />
-            <h2 id="time-up-title">{t("tools.timeUpTitle")}</h2>
-            <p id="time-up-note" className="notice">
-              {t("tools.timeUpNote")}
-            </p>
-          </div>
-        </div>
-      ) : null}
+
     </div>
   );
 }

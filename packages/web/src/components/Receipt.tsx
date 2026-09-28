@@ -1,13 +1,45 @@
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ChevronDown, ShieldCheck } from "lucide-react";
 import { checkChainAsync, webcryptoSha256 } from "@parikshaa/core/browser";
 import type { CandidateData, CandidateLedger } from "../api.ts";
-import { usePreferences } from "../i18n.tsx";
+import { usePreferences, type MessageKey } from "../i18n.tsx";
 
 interface Props {
   readonly ledger: CandidateLedger;
   /** Everything held about the candidate, readable (DPDP Act, s.11). Offered once the attempt has closed. */
   readonly myData?: () => Promise<CandidateData>;
+  /** A question's number on the paper, to name it in the record. */
+  readonly numberOf?: (questionId: string) => number | null;
+}
+
+type Entry = NonNullable<CandidateLedger["entries"]>[number];
+
+/** What each kind of entry is, in words; one about a question says which. */
+const EVENT: Record<string, MessageKey> = {
+  attempt_started: "event.attempt_started",
+  consent_given: "event.consent_given",
+  identity_captured: "event.identity_captured",
+  identity_reviewed: "event.identity_reviewed",
+  section_started: "event.section_started",
+  section_closed: "event.section_closed",
+  answer_submitted: "event.answer_submitted",
+  code_tested: "event.code_tested",
+  viva_probed: "event.viva_probed",
+  viva_replied: "event.viva_replied",
+  viva_assessed: "event.viva_assessed",
+  question_scored: "event.question_scored",
+  attempt_graded: "event.attempt_graded",
+  attempt_voided: "event.attempt_voided",
+  time_extended: "event.time_extended",
+  attempt_reopened: "event.attempt_reopened",
+  attempt_submitted: "event.attempt_submitted",
+  data_erased: "event.data_erased",
+};
+
+function questionOf(event: Entry["event"]): string | null {
+  const e = event as { questionId?: unknown; response?: { questionId?: unknown } };
+  const id = e.questionId ?? e.response?.questionId;
+  return typeof id === "string" ? id : null;
 }
 
 /**
@@ -35,9 +67,17 @@ function save(value: unknown, name: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function Receipt({ ledger, myData }: Props) {
+export function Receipt({ ledger, myData, numberOf = () => null }: Props) {
   const { t } = usePreferences();
   const [check, setCheck] = useState<CheckState>({ status: "idle" });
+  const [showAll, setShowAll] = useState(false);
+  const described = (entry: Entry) => {
+    const key = EVENT[entry.event.type];
+    const name = key === undefined ? entry.event.type.replace(/_/g, " ") : t(key);
+    const id = questionOf(entry.event);
+    const n = id === null ? null : numberOf(id);
+    return n === null ? name : `${name} · ${t("event.question", { n })}`;
+  };
   const [fetching, setFetching] = useState<"idle" | "busy" | "failed">("idle");
 
   const downloadMyData = async () => {
@@ -88,17 +128,12 @@ export function Receipt({ ledger, myData }: Props) {
         {ledger.head ?? "—"}
       </p>
 
-      <div className="row">
+      <div className="receipt-actions">
         <button type="button" onClick={download} disabled={ledger.head === null}>
           {t("receipt.download")}
         </button>
         {ledger.entries === null ? null : (
-          <button
-            type="button"
-            className="secondary"
-            onClick={verify}
-            disabled={check.status === "checking"}
-          >
+          <button type="button" className="secondary" onClick={verify} disabled={check.status === "checking"}>
             {check.status === "checking" ? t("receipt.checking") : t("receipt.check")}
           </button>
         )}
@@ -107,11 +142,8 @@ export function Receipt({ ledger, myData }: Props) {
             {t("receipt.myData")}
           </button>
         ) : null}
-        <span className="notice">{t("receipt.entries", { n: ledger.length })}</span>
       </div>
-      {ledger.entries !== null ? (
-        <p className="notice">{t("receipt.sealedNote")}</p>
-      ) : null}
+      {ledger.entries !== null ? <p className="notice receipt-help">{t("receipt.sealedNote")}</p> : null}
       {fetching === "failed" ? (
         <p className="error" role="status">
           {t("receipt.myDataFailed")}
@@ -130,28 +162,34 @@ export function Receipt({ ledger, myData }: Props) {
       ) : null}
 
       {ledger.entries === null ? (
-        <p className="notice" style={{ marginTop: "1.5rem" }}>
-          {t("receipt.opensLater")}
-        </p>
+        <p className="notice receipt-later">{t("receipt.opensLater")}</p>
       ) : (
-        <table className="ledger">
-          <thead>
-            <tr>
-              <th scope="col">#</th>
-              <th scope="col">Event</th>
-              <th scope="col">Entry hash</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ledger.entries.map((entry) => (
-              <tr key={entry.hash}>
-                <td>{entry.seq}</td>
-                <td>{entry.event.type.replace(/_/g, " ")}</td>
-                <td className="mono">{entry.hash.slice(0, 16)}…</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <>
+          <button type="button" className="link entries-toggle" aria-expanded={showAll} aria-controls="receipt-entries" onClick={() => setShowAll(!showAll)}>
+            <ChevronDown aria-hidden="true" />
+            {showAll ? t("receipt.hideEntries") : t("receipt.showEntries", { n: ledger.length })}
+          </button>
+          {showAll ? (
+            <table className="ledger" id="receipt-entries">
+              <thead>
+                <tr>
+                  <th scope="col">#</th>
+                  <th scope="col">{t("receipt.event")}</th>
+                  <th scope="col">{t("receipt.entryHash")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledger.entries.map((entry) => (
+                  <tr key={entry.hash}>
+                    <td>{entry.seq}</td>
+                    <td>{described(entry)}</td>
+                    <td className="mono">{entry.hash.slice(0, 16)}…</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+        </>
       )}
     </section>
   );

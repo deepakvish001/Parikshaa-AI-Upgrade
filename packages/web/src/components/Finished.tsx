@@ -67,6 +67,14 @@ export function Finished({
           </div>
         ))}
       </dl>
+      <div className="next-steps">
+        <h3>{t("done.nextTitle")}</h3>
+        <ol>
+          <li>{t("done.step1")}</li>
+          <li>{t("done.step2")}</li>
+          <li>{t("done.step3")}</li>
+        </ol>
+      </div>
       <p className="notice">{t("done.next")}</p>
       <div className="finished-actions">
         <button type="button" className="secondary" onClick={() => window.print()}>

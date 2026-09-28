@@ -94,6 +94,15 @@ describe("App", () => {
     vi.unstubAllGlobals();
   });
 
+  it("goes back to where the candidate was when the page is opened again, and says so", async () => {
+    const { client, setState } = stubClient();
+    setState({ answers: [{ questionId: "q-mcq", answer: "1", submittedAt: 1 }] });
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByText("Welcome back. You were on question 2.")).toBeInTheDocument();
+    expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
+  });
+
   it("shows the paper one question at a time, as a computer-based test does", async () => {
     const { client } = stubClient();
     renderApp(<App client={client} />);
@@ -414,7 +423,11 @@ describe("nothing a candidate types is lost", () => {
     await userEvent.click(screen.getByRole("button", { name: "Submit attempt" }));
     // The last look: what is answered, left and marked, before anything is final.
     const summary = screen.getByRole("dialog", { name: "Submit your attempt?" });
-    expect(summary).toHaveTextContent(/questions have no answer yet/);
+    expect(summary).toHaveTextContent("1 question has no answer yet.");
+    // One row for the paper, each column headed by the palette's shape.
+    const totals = within(summary).getByRole("row", { name: /^All questions/ });
+    expect(within(totals).getAllByRole("cell").map((c) => c.textContent)).toEqual(["1", "1", "0", "0"]);
+    expect(within(summary).getByRole("button", { name: "Keep working" })).toHaveFocus();
     expect(client.submit).not.toHaveBeenCalled();
     await userEvent.click(within(summary).getByRole("button", { name: "Yes, submit" }));
 

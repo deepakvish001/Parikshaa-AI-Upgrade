@@ -1,8 +1,9 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * Two panes and a divider between them that the candidate can drag — or move
- * with the arrow keys, since a divider is a control like any other.
+ * with the arrow keys, since a divider is a control like any other. Given a
+ * name to `remember` it by, the split is kept on this device for next time.
  */
 export function SplitPane({
   direction,
@@ -12,6 +13,7 @@ export function SplitPane({
   min = 20,
   label,
   className,
+  remember,
 }: {
   /** "row": side by side; "column": one above the other. */
   readonly direction: "row" | "column";
@@ -23,8 +25,25 @@ export function SplitPane({
   /** What the divider resizes, for a screen reader. */
   readonly label: string;
   readonly className?: string;
+  readonly remember?: string;
 }) {
-  const [share, setShare] = useState(initial);
+  const key = remember === undefined ? null : `parikshaa.split.${remember}`;
+  const [share, setShare] = useState(() => {
+    try {
+      const stored = key === null ? null : Number(localStorage.getItem(key));
+      return stored !== null && Number.isFinite(stored) && stored >= min && stored <= 100 - min ? stored : initial;
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    if (key === null) return;
+    try {
+      localStorage.setItem(key, String(Math.round(share)));
+    } catch {
+      // Kept for this page only.
+    }
+  }, [key, share]);
   const box = useRef<HTMLDivElement>(null);
   const clamp = (value: number) => Math.min(100 - min, Math.max(min, value));
 

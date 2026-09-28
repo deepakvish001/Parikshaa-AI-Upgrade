@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Clock3 } from "lucide-react";
 import { Wordmark } from "@parikshaa/brand/react";
 import { usePreferences } from "../i18n.tsx";
 import type { CandidateState } from "../api.ts";
@@ -151,24 +152,45 @@ export function Tally({ counts }: { readonly counts: PaperCounts }) {
   );
 }
 
+/** A part of the paper and where its questions stand, for the submit summary. */
+export interface PaperGroup {
+  readonly title: string;
+  readonly counts: PaperCounts;
+}
+
+const plus = (a: PaperCounts, b: PaperCounts): PaperCounts => ({
+  answered: a.answered + b.answered,
+  notAnswered: a.notAnswered + b.notAnswered,
+  notVisited: a.notVisited + b.notVisited,
+  marked: a.marked + b.marked,
+  answeredMarked: a.answeredMarked + b.answeredMarked,
+});
+
 /**
- * The last look before submitting, as a CBT hall shows it: how many
- * questions are answered, left, never opened and marked, so nothing is
- * submitted by surprise. Escape or "Keep working" goes back to the paper.
+ * The last look before submitting, as a CBT hall shows it: a row for each
+ * section — answered, not answered, marked, never opened, each headed by its
+ * palette shape — and the whole paper's total, so nothing is submitted by
+ * surprise. Focus starts on "Keep working"; Submit is the saffron of the
+ * bar's button, so the one thing that cannot be undone looks the same both
+ * times. On a phone it is a sheet with the totals, and the sections a tap away.
  */
 export function SubmitDialog({
   counts,
+  groups = [],
   pending,
   onConfirm,
   onCancel,
 }: {
   readonly counts: PaperCounts;
+  /** The sections, when the paper has more than one; the totals are always shown. */
+  readonly groups?: readonly PaperGroup[];
   readonly pending: boolean;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
 }) {
   const { t } = usePreferences();
   const back = useRef<HTMLButtonElement>(null);
+  const [bySection, setBySection] = useState(false);
   // Focus goes to "Keep working" once, when the summary opens — not again on
   // every render behind it, which would pull it back from "Yes, submit".
   const cancel = useRef(onCancel);
@@ -181,26 +203,108 @@ export function SubmitDialog({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-  const left = counts.notAnswered + counts.notVisited + counts.marked;
+  const total = groups.length > 1 ? groups.map((g) => g.counts).reduce(plus) : counts;
+  const left = total.notAnswered + total.notVisited + total.marked;
+  const columns: readonly (readonly [string, string, (c: PaperCounts) => number])[] = [
+    ["answered", t("palette.answered"), (c) => c.answered + c.answeredMarked],
+    ["not-answered", t("palette.notAnswered"), (c) => c.notAnswered],
+    ["marked", t("palette.marked"), (c) => c.marked],
+    ["not-visited", t("palette.notVisited"), (c) => c.notVisited],
+  ];
+  const row = (title: string, c: PaperCounts, className: string) => (
+    <tr key={`${className}-${title}`} className={className}>
+      <th scope="row">{title}</th>
+      {columns.map(([status, , of]) => (
+        <td key={status}>{of(c)}</td>
+      ))}
+    </tr>
+  );
   return (
     <div className="scrim" onClick={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="submit-title" aria-describedby="submit-note">
+      <div className="dialog submit-dialog" role="dialog" aria-modal="true" aria-labelledby="submit-title" aria-describedby="submit-note">
         <h2 id="submit-title">{t("submit.title")}</h2>
-        <Tally counts={counts} />
-        {left > 0 ? <p className="dialog-warn">{t("submit.unanswered", { n: left })}</p> : null}
+        <table className={`submit-table${bySection ? "" : " folded"}`}>
+          <thead>
+            <tr>
+              <th scope="col">{groups.length > 1 ? t("brief.section") : <span className="visually-hidden">{t("brief.section")}</span>}</th>
+              {columns.map(([status, label]) => (
+                <th scope="col" key={status}>
+                  <span className={`pq ${status}`} aria-hidden="true" />
+                  <span className="col-label">{label}</span>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groups.length > 1 ? groups.map((g) => row(g.title, g.counts, "section-row")) : null}
+            {row(groups.length > 1 ? t("submit.total") : t("submit.allQuestions"), total, "total-row")}
+          </tbody>
+        </table>
+        {groups.length > 1 ? (
+          <button type="button" className="link show-sections" aria-expanded={bySection} onClick={() => setBySection(!bySection)}>
+            {bySection ? t("submit.hideSections") : t("submit.bySection")}
+          </button>
+        ) : null}
+        {left > 0 ? (
+          <p className="dialog-warn">{left === 1 ? t("submit.unansweredOne") : t("submit.unanswered", { n: left })}</p>
+        ) : null}
         <p className="notice" id="submit-note">
-          {counts.answeredMarked > 0 ? `${t("submit.markedNote")} ` : ""}
+          {total.answeredMarked > 0 ? `${t("submit.markedNote")} ` : ""}
           {t("exam.submitNote")}
         </p>
         <div className="dialog-actions">
           <button type="button" className="secondary" ref={back} onClick={onCancel}>
             {t("submit.back")}
           </button>
-          <button type="button" onClick={onConfirm} disabled={pending}>
+          <button type="button" className="submit-confirm" onClick={onConfirm} disabled={pending}>
             {pending ? t("exam.submitting") : t("submit.confirm")}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** How long the "time is up" screen stays before the record opens by itself. */
+export const TIME_UP_SECONDS = 5;
+
+/**
+ * The end of the time, without alarm: a clock, "Time is up", when the saved
+ * answers went in, and the record a few seconds later — by itself, counting
+ * down, or at once with Continue. No red: the moment is stressful enough.
+ */
+export function TimeUpScreen({ at, ready, onContinue }: { readonly at: number; readonly ready: boolean; readonly onContinue: () => void }) {
+  const { t, language } = usePreferences();
+  const [left, setLeft] = useState(TIME_UP_SECONDS);
+  const button = useRef<HTMLButtonElement>(null);
+  const done = useRef(onContinue);
+  done.current = onContinue;
+  useEffect(() => {
+    button.current?.focus();
+  }, [ready]);
+  useEffect(() => {
+    if (!ready) return;
+    if (left <= 0) {
+      done.current();
+      return;
+    }
+    const id = setTimeout(() => setLeft((n) => n - 1), 1000);
+    return () => clearTimeout(id);
+  }, [ready, left]);
+  const when = new Intl.DateTimeFormat(`${language}-IN`, { timeZone: "Asia/Kolkata", timeStyle: "short" }).format(new Date(at));
+  return (
+    <div className="time-up-screen">
+      <section className="time-up" role="alertdialog" aria-modal="true" aria-labelledby="time-up-title" aria-describedby="time-up-note">
+        <Clock3 aria-hidden="true" />
+        <h1 id="time-up-title">{t("tools.timeUpTitle")}</h1>
+        <p id="time-up-note">{ready ? t("timeup.submitted", { time: `${when} IST` }) : t("tools.timeUpNote")}</p>
+        <button type="button" ref={button} className="large" disabled={!ready} onClick={onContinue}>
+          {t("timeup.continue")}
+        </button>
+        <p className="notice" aria-live="off">
+          {ready ? t("timeup.auto", { n: left }) : "\u00a0"}
+        </p>
+      </section>
     </div>
   );
 }

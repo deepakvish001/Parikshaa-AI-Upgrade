@@ -132,6 +132,38 @@ describe("on a phone", () => {
   });
 });
 
+describe("the tool windows", () => {
+  it("open side by side in a stack; Escape closes the newest and puts focus back on its button", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    const calcButton = screen.getAllByRole("button", { name: "Calculator" })[0]!;
+    await userEvent.click(calcButton);
+    await userEvent.click(screen.getAllByRole("button", { name: "Rough work" })[0]!);
+    const stack = document.querySelector(".tool-windows")!;
+    expect(within(stack as HTMLElement).getAllByRole("dialog").map((d) => d.getAttribute("aria-label"))).toEqual(["Calculator", "Rough work"]);
+    expect(calcButton).toHaveAttribute("aria-pressed", "true");
+
+    // Escape in the newest closes only it.
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Rough work" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Calculator" })).toBeInTheDocument();
+    // Its own close button, then focus returns to the tool's button.
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Calculator" })).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(calcButton).toHaveFocus());
+  });
+
+  it("offers degrees and radians as a switch beside the keys", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    await userEvent.click(screen.getAllByRole("button", { name: "Calculator" })[0]!);
+    const calc = screen.getByRole("dialog", { name: "Calculator" });
+    const unit = within(calc).getByRole("group", { name: "Angle unit" });
+    expect(within(unit).getByRole("button", { name: "DEG" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(within(unit).getByRole("button", { name: "RAD" }));
+    expect(within(unit).getByRole("button", { name: "RAD" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
 describe("the palette's key", () => {
   it("shows \"Typed, not saved\" only while something is, and folds to a line of shapes on request", async () => {
     renderApp(<App client={stubClient()} />);
