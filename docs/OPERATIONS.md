@@ -61,6 +61,23 @@ with a low connection ceiling, put PgBouncer in transaction mode in front:
 every query runs inside a transaction that sets its own settings
 (`set_config(..., true)`), which transaction pooling supports.
 
+## Measuring what an attempt costs
+
+Once, before pricing, and again after any change to the prompts or the model:
+create an organisation that is doing nothing else, give it an API key with
+`exam:write`, `attempt:start`, `attempt:grade`, `attempt:assess` and
+`usage:read`, and run
+
+    PARIKSHAA_URL=https://<host>/api PARIKSHAA_TOKEN=<key> USD_INR=84 \
+      npm run cost-run -- --attempts 50 --seed 1 --out cost-run
+
+It sits the attempts one at a time (each one's cost is the difference in
+`/usage` either side of it, which is why the organisation must be otherwise
+idle) and writes `cost-run.md` and `cost-run.json`. `--dry-run` prints the
+paper and the candidates the seed draws, without calling anything. Fifty attempts are about
+four hundred model calls; set the organisation's spend cap first if you want
+a hard stop.
+
 ## Logs
 
 `LOG_LEVEL` (default `info`; `silent` turns them off). One JSON line per

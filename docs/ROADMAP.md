@@ -46,7 +46,7 @@ Then the levers, in the order they pay:
 **Exit criterion:** a measured cost per attempt, and a per-organisation spend
 cap that cannot be exceeded.
 
-**Status — instrumentation built, measurement not yet run.** Every model call
+**Status — instrumentation and the run built; the run not yet made with a real key.** Every model call
 now reports its tokens (input, output, cache read, cache write by TTL), speed
 and inference region, priced in integer micro-dollars and stored against its
 attempt. `GET /usage` reports spend by route, per-attempt p50/p90/max and
@@ -55,9 +55,17 @@ monthly cap stops probes quietly and refuses grading with 402 once reached. It
 is a soft ceiling — calls already in flight complete — which is the honest
 version of "cannot be exceeded" without serialising every call.
 
-What remains is the 50-attempt run itself. It spends real API budget, so it is
-run deliberately by the account holder, not by CI; the levers above follow
-from what it shows.
+The run itself is one command: `npm run cost-run` (`scripts/cost-run.mjs`)
+sits 50 attempts at a hiring-screen paper against a deployment with a real
+model key — four kinds of candidate, strong to weak and one answering in
+Hinglish, drawn by a seeded generator so reruns are comparable — taking each
+probe as it comes, then assessing and grading. It writes the per-attempt
+distribution (p10–p99, max, a histogram), the split by route and candidate,
+and whether the prompt cache is being read, as `cost-run.md` and
+`cost-run.json`. It has been exercised end to end against the fake model; the
+real run spends API budget, so it is the account holder's to start, not CI's,
+and the figure it produces — not the ₹20-25 estimate — is what pricing and the
+levers above follow from.
 
 ## 1. Multi-tenancy and identity
 
