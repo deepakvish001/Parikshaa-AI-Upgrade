@@ -287,6 +287,7 @@ export function Banner({
  */
 export function DropZone({
   label,
+  name,
   hint,
   accept,
   onFile,
@@ -294,6 +295,8 @@ export function DropZone({
   chosen,
 }: {
   label: string;
+  /** What the file is, as a screen reader names the control: "Candidate list (CSV)". */
+  name?: string;
   hint?: ReactNode;
   accept?: string;
   onFile: (file: File) => void;
@@ -331,6 +334,7 @@ export function DropZone({
         id={id}
         type="file"
         className="drop-input"
+        {...(name === undefined ? {} : { "aria-label": name })}
         {...(accept === undefined ? {} : { accept })}
         disabled={disabled !== undefined}
         onChange={(event) => {
@@ -394,4 +398,35 @@ export function ago(iso: string, now: number = Date.now()): string {
   if (hours < 24) return `${hours} h ago`;
   const days = Math.round(hours / 24);
   return days === 1 ? "yesterday" : `${days} days ago`;
+}
+
+// --- settings ------------------------------------------------------------------------------
+
+/**
+ * One group of settings, as every settings page lays them out: its title and
+ * a line on what it does in the left third, its controls in a card on the
+ * right. A group that removes or undoes something is a Danger zone, last.
+ */
+export function SettingsGroup({
+  id,
+  title,
+  description,
+  children,
+  danger = false,
+}: {
+  id: string;
+  title: string;
+  description: ReactNode;
+  children: ReactNode;
+  danger?: boolean;
+}) {
+  return (
+    <section id={id} className={`settings-group${danger ? " danger" : ""}`} aria-labelledby={`${id}-title`}>
+      <div className="settings-explain">
+        <h2 id={`${id}-title`}>{title}</h2>
+        <p className="notice">{description}</p>
+      </div>
+      <div className="card settings-card">{children}</div>
+    </section>
+  );
 }

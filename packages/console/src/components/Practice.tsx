@@ -10,6 +10,7 @@ import {
   type PracticeSiteSettings,
   type PracticeSimilarity,
 } from "../api.ts";
+import { DifficultyBadge } from "./Bank.tsx";
 
 /**
  * A practice site (ROADMAP §15): the organisation's problems at
@@ -389,7 +390,7 @@ function Problems({ client, canWrite, canReview }: { client: ConsoleClient; canW
                       </span>
                     </td>
                     <td>
-                      <span className={`difficulty ${p.difficulty}`}>{p.difficulty}</span>
+                      <DifficultyBadge difficulty={p.difficulty} />
                     </td>
                     <td>{p.published ? <span className="pill ok">Published</span> : <span className="pill">Hidden</span>}</td>
                     <td className="num">{p.submissions}</td>

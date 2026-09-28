@@ -153,7 +153,7 @@ function Distribution({ counts, cutoff }: { counts: readonly number[]; cutoff: n
             return (
               <li key={i} aria-label={`${i * 10}–${i * 10 + 10}%: ${n}`}>
                 <span className="count">{n === 0 ? "" : n}</span>
-                <span className="column" style={{ height: `${(n / most) * 100}%` }} />
+                <span className={`column${n === 0 ? " none" : ""}`} style={{ height: `${(n / most) * 100}%` }} />
                 <span className="band">
                   {i * 10}–{i * 10 + 10}
                 </span>

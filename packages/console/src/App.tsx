@@ -42,7 +42,7 @@ import { CommandPalette, useCommandKey, type PageLink } from "./components/Comma
 import { TryTest } from "./components/Preview.tsx";
 import { Home } from "./components/Home.tsx";
 import { Gallery } from "./components/Gallery.tsx";
-import { ToastProvider, useToast } from "@parikshaa/brand/ui";
+import { Dialog, ToastProvider, useToast } from "@parikshaa/brand/ui";
 import { ThemeSwitch, useTheme, type Theme } from "./components/ThemeSwitch.tsx";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { SignIn } from "./components/SignIn.tsx";
@@ -226,6 +226,7 @@ function Console({
         queryClient.invalidateQueries({ queryKey: ["exam"] }),
         queryClient.invalidateQueries({ queryKey: ["results"] }),
       ]);
+      setEditorDirty(false);
       setView({ name: "exams" });
     },
     // The server validates independently of the client; if it disagrees, show
@@ -343,7 +344,14 @@ function Console({
   ];
 
   const section = SECTION_OF[view.name];
+  // An exam with unsaved changes asks before it is left.
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [leaving, setLeaving] = useState<View | null>(null);
   const go = (next: View) => {
+    if (view.name === "editor" && editorDirty) {
+      setLeaving(next);
+      return;
+    }
     setView(next);
     window.scrollTo?.({ top: 0 });
   };
@@ -574,7 +582,8 @@ function Console({
                 saving={saveExam.isPending}
                 serverProblems={problems}
                 onSave={(exam) => saveExam.mutate(exam)}
-                onCancel={() => setView({ name: "exams" })}
+                onCancel={() => go({ name: "exams" })}
+                onDirtyChange={setEditorDirty}
                 {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
                 {...(can("exam:write") ? { uploadImage: (file: File) => client.uploadImage(file) } : {})}
               />
@@ -746,6 +755,30 @@ function Console({
               </>
             ) : null}
           </PageFrame>
+          {leaving === null ? null : (
+            <Dialog label="Leave without saving?" onClose={() => setLeaving(null)}>
+              <h2 className="dialog-title">Leave without saving?</h2>
+              <p className="notice">The changes to this exam have not been saved, and will be lost.</p>
+              <div className="dialog-actions">
+                <button type="button" className="quiet" onClick={() => setLeaving(null)}>
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    const next = leaving;
+                    setLeaving(null);
+                    setEditorDirty(false);
+                    setView(next);
+                    window.scrollTo?.({ top: 0 });
+                  }}
+                >
+                  Leave without saving
+                </button>
+              </div>
+            </Dialog>
+          )}
         </main>
       </div>
     </div>

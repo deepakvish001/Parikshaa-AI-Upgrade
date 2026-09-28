@@ -1,40 +1,97 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Download, Mail, MessageSquare, RotateCw, Send, UserX, Users } from "lucide-react";
 import type { ExamProblem } from "@parikshaa/core/browser";
-import { ConsoleError, type Channel, type ConsoleClient, type ImportResult, type InvitationRow } from "../api.ts";
+import { Tooltip, useToast } from "@parikshaa/brand/ui";
+import { ConsoleError, type Channel, type ConsoleClient, type Delivery, type ImportResult, type InvitationRow } from "../api.ts";
+import { Banner, DropZone, EmptyState, PageActions, RowMenu, SkeletonRows, StateBadge } from "./kit.tsx";
 
 /**
  * A sitting: when it runs, who is invited, and whether each has their link
  * (ROADMAP §5). Nobody clicks Start two thousand times.
  */
 
-const when = (iso: string) =>
-  new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+const IST = "Asia/Kolkata";
+const when = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: IST, dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 
-/** An ISO time as a datetime-local value, in the browser's own zone. */
-const toLocal = (iso: string) => {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+/** An instant as a datetime-local value on India's clock, whatever the browser's own zone. */
+const toIst = (iso: string) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", { timeZone: IST, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts["year"]}-${parts["month"]}-${parts["day"]}T${parts["hour"]}:${parts["minute"]}`;
 };
+/** A datetime-local value read as IST. */
+const fromIst = (local: string) => new Date(`${local}:00+05:30`).toISOString();
 
-const STATE: Record<InvitationRow["attemptState"], string> = {
-  not_started: "not started",
-  in_progress: "taking it",
-  submitted: "submitted",
-  graded: "graded",
-  void: "set aside",
-};
+const SAMPLE = [
+  "roll_number,name,email,phone,opens_at,closes_at",
+  "CS001,Ananya Iyer,ananya.iyer@college.edu.in,98765 43210,,",
+  "CS002,Rohan Das,rohan.das@college.edu.in,+91 91234 56780,,",
+  "CS003,Meera Pillai,,98450 12345,2026-10-01 14:00,2026-10-01 16:00",
+].join("\n");
 
-const deliveryLabel = (row: InvitationRow) => {
-  const parts = (["email", "sms"] as const)
-    .map((c) => (row.delivery[c] === null ? null : `${c === "email" ? "Email" : "SMS"} ${row.delivery[c]!.status}`))
-    .filter((p): p is string => p !== null);
-  return parts.length === 0 ? "—" : parts.join(" · ");
-};
+function save(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/** One line of a spreadsheet saved as CSV, quotes and all. */
+function cellsOf(line: string): string[] {
+  const cells: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i]!;
+    if (quoted) {
+      if (c === '"' && line[i + 1] === '"') {
+        cell += '"';
+        i++;
+      } else if (c === '"') quoted = false;
+      else cell += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") {
+      cells.push(cell);
+      cell = "";
+    } else cell += c;
+  }
+  return [...cells, cell];
+}
+
+const DELIVERY_WORDS: Record<string, string> = { sent: "sent", failed: "failed", skipped: "not sent", pending: "waiting", sending: "sending" };
+
+/** Email and SMS as two small icons, each coloured by how its delivery went; what went wrong is in a tooltip. */
+function DeliveryIcons({ row }: { row: InvitationRow }) {
+  const icon = (channel: Channel, d: Delivery) => {
+    const Icon = channel === "email" ? Mail : MessageSquare;
+    const tone = d.status === "sent" ? "ok" : d.status === "failed" || d.status === "skipped" ? "bad" : "pending";
+    const words = `${channel === "email" ? "Email" : "SMS"} ${DELIVERY_WORDS[d.status] ?? d.status}`;
+    const mark = (
+      <span className={`delivery-icon ${tone}`} role="img" aria-label={d.error === null ? words : `${words}: ${d.error}`} tabIndex={d.error === null ? undefined : 0}>
+        <Icon aria-hidden="true" />
+      </span>
+    );
+    return d.error === null ? (
+      <span key={channel}>{mark}</span>
+    ) : (
+      <Tooltip key={channel} text={d.error}>
+        {mark}
+      </Tooltip>
+    );
+  };
+  const shown = (["email", "sms"] as const).filter((c) => row.delivery[c] !== null);
+  return shown.length === 0 ? <span className="notice">—</span> : <span className="delivery">{shown.map((c) => icon(c, row.delivery[c]!))}</span>;
+}
 
 export function Candidates({ client, examId, canInvite }: { client: ConsoleClient; examId: string; canInvite: boolean }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const window = useQuery({ queryKey: ["window", examId], queryFn: () => client.getWindow(examId) });
   const invitations = useQuery({
     queryKey: ["invitations", examId],
@@ -43,88 +100,103 @@ export function Candidates({ client, examId, canInvite }: { client: ConsoleClien
   });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["invitations", examId] });
 
-  const resend = useMutation({ mutationFn: (id: string) => client.resendInvitation(id, ["email", "sms"]), onSettled: refresh });
-  const revoke = useMutation({ mutationFn: (id: string) => client.revokeInvitation(id), onSettled: refresh });
-  const download = useMutation({
-    mutationFn: () => client.invitationLinks(examId),
-    onSuccess: (blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${examId}-links.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-    },
+  const resend = useMutation({
+    mutationFn: (row: InvitationRow) => client.resendInvitation(row.id, ["email", "sms"]),
+    onSuccess: (_, row) => toast(`Link sent again to ${row.candidateRef}`, "success"),
+    onSettled: refresh,
   });
+  const revoke = useMutation({
+    mutationFn: (row: InvitationRow) => client.revokeInvitation(row.id),
+    onSuccess: (_, row) => toast(`${row.candidateRef}'s invitation withdrawn`, "success"),
+    onSettled: refresh,
+  });
+  const download = useMutation({ mutationFn: () => client.invitationLinks(examId), onSuccess: (blob) => save(blob, `${examId}-links.csv`) });
 
   const rows = invitations.data ?? [];
-  const counts = rows.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.attemptState]: (acc[r.attemptState] ?? 0) + 1 }), {});
+  const counts = rows.reduce<Record<string, number>>((acc, r) => {
+    const key = r.revoked ? "withdrawn" : r.attemptState;
+    return { ...acc, [key]: (acc[key] ?? 0) + 1 };
+  }, {});
+  const WORDS: Record<string, string> = { not_started: "not started", in_progress: "in progress", submitted: "to grade", graded: "graded", void: "set aside", withdrawn: "withdrawn" };
 
   return (
     <>
-      {window.data === undefined ? null : (
-        <WindowForm client={client} examId={examId} initial={window.data} canEdit={canInvite} />
-      )}
+      {canInvite && rows.length > 0 ? (
+        <PageActions>
+          <button type="button" className="secondary" disabled={download.isPending} onClick={() => download.mutate()}>
+            <Download aria-hidden="true" />
+            Download links
+          </button>
+        </PageActions>
+      ) : null}
+      {[resend.error, revoke.error, download.error].some((e) => e !== null) ? (
+        <Banner tone="danger" title="That did not go through.">
+          Try again; if it keeps failing, the audit log records what was attempted.
+        </Banner>
+      ) : null}
 
-      {canInvite ? <Importer client={client} examId={examId} onImported={refresh} hasWindow={window.data !== null} /> : null}
+      {window.data === undefined ? null : <WindowForm client={client} examId={examId} initial={window.data} canEdit={canInvite} />}
+
+      {canInvite ? <Importer client={client} examId={examId} onImported={refresh} hasWindow={window.data !== null && window.data !== undefined} /> : null}
 
       <section className="card" aria-label="Invited candidates">
         <div className="bar">
           <strong>Invited</strong>
           <span className="notice">
-            {rows.length} candidates · {Object.entries(counts).map(([k, n]) => `${n} ${STATE[k as InvitationRow["attemptState"]]}`).join(" · ")}
+            {rows.length} candidates
+            {Object.keys(counts).length === 0 ? "" : ` · ${Object.entries(counts).map(([k, n]) => `${n} ${WORDS[k] ?? k}`).join(" · ")}`}
           </span>
-          <span className="spacer" />
-          {canInvite && rows.length > 0 ? (
-            <button type="button" className="secondary" onClick={() => download.mutate()}>
-              Download links
-            </button>
-          ) : null}
         </div>
-        {rows.length === 0 ? (
-          <p className="notice">Nobody invited yet.</p>
+        {invitations.isPending ? (
+          <SkeletonRows columns={5} label="Loading invitations…" />
+        ) : rows.length === 0 ? (
+          <EmptyState icon={Users} compact>
+            Candidates appear here once invited from a spreadsheet, each with whether their link reached them.
+          </EmptyState>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Ref</th>
-                <th scope="col">Name</th>
-                <th scope="col">Window</th>
-                <th scope="col">Delivery</th>
-                <th scope="col">Progress</th>
-                <th scope="col" />
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td className="mono">{row.candidateRef}</td>
-                  <td>{row.name}</td>
-                  <td className="notice">
-                    {when(row.opensAt)} – {when(row.closesAt)}
-                  </td>
-                  <td className="notice" title={[row.delivery.email?.error, row.delivery.sms?.error].filter(Boolean).join("; ")}>
-                    {deliveryLabel(row)}
-                  </td>
-                  <td>
-                    <span className="pill" data-state={row.revoked ? "revoked" : row.attemptState}>{row.revoked ? "revoked" : STATE[row.attemptState]}</span>
-                  </td>
-                  <td>
-                    {canInvite && !row.revoked && row.attemptState === "not_started" ? (
-                      <>
-                        <button type="button" className="quiet" onClick={() => resend.mutate(row.id)}>
-                          Resend
-                        </button>{" "}
-                        <button type="button" className="quiet" onClick={() => revoke.mutate(row.id)}>
-                          Revoke
-                        </button>
-                      </>
-                    ) : null}
-                  </td>
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Roll no.</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Window (IST)</th>
+                  <th scope="col">Delivery</th>
+                  <th scope="col">State</th>
+                  <th scope="col">
+                    <span className="visually-hidden">Actions</span>
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className={row.revoked ? "withdrawn" : undefined}>
+                    <td className="mono">{row.candidateRef}</td>
+                    <td>{row.name}</td>
+                    <td className="notice">
+                      {when(row.opensAt)} – {when(row.closesAt)}
+                    </td>
+                    <td>
+                      <DeliveryIcons row={row} />
+                    </td>
+                    <td>{row.revoked ? <span className="pill">Withdrawn</span> : <StateBadge state={row.attemptState} />}</td>
+                    <td className="row-end">
+                      <RowMenu
+                        of={row.candidateRef}
+                        keepPlace
+                        items={[
+                          canInvite && !row.revoked && row.attemptState === "not_started" && { label: "Resend the link", icon: <RotateCw />, onSelect: () => resend.mutate(row) },
+                          canInvite &&
+                            !row.revoked &&
+                            row.attemptState === "not_started" && { label: "Withdraw the invitation", icon: <UserX />, onSelect: () => revoke.mutate(row), danger: true },
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </>
@@ -143,42 +215,43 @@ function WindowForm({
   canEdit: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [opensAt, setOpensAt] = useState(initial === null ? "" : toLocal(initial.opensAt));
-  const [closesAt, setClosesAt] = useState(initial === null ? "" : toLocal(initial.closesAt));
+  const toast = useToast();
+  const [opensAt, setOpensAt] = useState(initial === null ? "" : toIst(initial.opensAt));
+  const [closesAt, setClosesAt] = useState(initial === null ? "" : toIst(initial.closesAt));
   const [hardClose, setHardClose] = useState(initial?.hardClose ?? true);
   const save = useMutation({
-    mutationFn: () =>
-      client.setWindow(examId, {
-        opensAt: new Date(opensAt).toISOString(),
-        closesAt: new Date(closesAt).toISOString(),
-        hardClose,
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["window", examId] }),
+    mutationFn: () => client.setWindow(examId, { opensAt: fromIst(opensAt), closesAt: fromIst(closesAt), hardClose }),
+    onSuccess: async () => {
+      toast(initial === null ? "Scheduled" : "Rescheduled", "success");
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["window", examId] }), queryClient.invalidateQueries({ queryKey: ["exams"] })]);
+    },
   });
+  const backwards = opensAt !== "" && closesAt !== "" && closesAt <= opensAt;
 
   return (
     <section className="card" aria-label="Schedule">
-      <strong>When candidates can take it</strong>
-      <div className="grid" style={{ marginTop: ".6rem" }}>
+      <h2 className="card-title">When candidates can take it</h2>
+      <div className="grid">
         <div className="field">
-          <label htmlFor="opens-at">Opens</label>
+          <label htmlFor="opens-at">Opens (IST)</label>
           <input id="opens-at" type="datetime-local" value={opensAt} disabled={!canEdit} onChange={(e) => setOpensAt(e.target.value)} />
         </div>
         <div className="field">
-          <label htmlFor="closes-at">Closes</label>
-          <input id="closes-at" type="datetime-local" value={closesAt} disabled={!canEdit} onChange={(e) => setClosesAt(e.target.value)} />
+          <label htmlFor="closes-at">Closes (IST)</label>
+          <input id="closes-at" type="datetime-local" value={closesAt} disabled={!canEdit} onChange={(e) => setClosesAt(e.target.value)} aria-invalid={backwards} />
+          {backwards ? <p className="error">It must close after it opens.</p> : null}
         </div>
       </div>
       <label className="inline">
-        <input type="checkbox" checked={hardClose} disabled={!canEdit} onChange={(e) => setHardClose(e.target.checked)} style={{ width: "auto" }} /> End
-        every attempt when the window closes, however late it was started
+        <input type="checkbox" checked={hardClose} disabled={!canEdit} onChange={(e) => setHardClose(e.target.checked)} /> End every attempt when the window
+        closes, however late it was started
       </label>
       {canEdit ? (
         <div className="row">
-          <button type="button" disabled={save.isPending || opensAt === "" || closesAt === "" || closesAt <= opensAt} onClick={() => save.mutate()}>
+          <button type="button" disabled={save.isPending || opensAt === "" || closesAt === "" || backwards} onClick={() => save.mutate()}>
             {initial === null ? "Schedule" : "Reschedule"}
           </button>
-          {save.isSuccess ? <span className="notice">Saved.</span> : null}
+          {save.error === null ? null : <span className="error">{save.error instanceof ConsoleError ? (save.error.detail ?? "That did not save.") : "That did not save."}</span>}
         </div>
       ) : null}
     </section>
@@ -197,6 +270,7 @@ function Importer({
   hasWindow: boolean;
 }) {
   const [csv, setCsv] = useState<string | null>(null);
+  const [file, setFile] = useState<string | null>(null);
   const [channels, setChannels] = useState<readonly Channel[]>(["email", "sms"]);
   const [preview, setPreview] = useState<Extract<ImportResult, { dryRun: true }> | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -214,76 +288,116 @@ function Importer({
       if (!result.dryRun) setDone(`Invited ${result.invited}. Their links are on their way.`);
       setPreview(null);
       setCsv(null);
+      setFile(null);
       onImported();
     },
     onError: (error) => setProblems(error instanceof ConsoleError ? error.problems : []),
   });
 
   const toggle = (c: Channel) => setChannels(channels.includes(c) ? channels.filter((x) => x !== c) : [...channels, c]);
+  // The rows the check objected to, as the sheet has them, each with its reason.
+  const lines = csv === null ? [] : csv.split(/\r?\n/);
+  const flagged =
+    preview === null
+      ? []
+      : [...preview.problems.map((p) => ({ ...p, kind: "problem" as const })), ...preview.warnings.map((p) => ({ ...p, kind: "warning" as const }))].sort(
+          (a, b) => a.row - b.row,
+        );
 
   return (
     <section className="card" aria-label="Invite candidates">
-      <strong>Invite from a spreadsheet</strong>
+      <div className="bar">
+        <h2 className="card-title">Invite from a spreadsheet</h2>
+        <span className="spacer" />
+        <button type="button" className="quiet" onClick={() => save(new Blob([SAMPLE], { type: "text/csv" }), "candidates-sample.csv")}>
+          <Download aria-hidden="true" />
+          Download a sample sheet
+        </button>
+      </div>
       <p className="notice">
-        Save it as CSV with the columns <span className="mono">ref</span> (or roll_number), <span className="mono">name</span>,{" "}
-        <span className="mono">email</span>, <span className="mono">phone</span>, and optionally <span className="mono">opens_at</span> /{" "}
-        <span className="mono">closes_at</span> for a narrower window. Times are read as IST. Nothing is sent until you confirm.
+        One candidate per row: <span className="mono">roll_number</span> (or ref), <span className="mono">name</span>, <span className="mono">email</span>,{" "}
+        <span className="mono">phone</span>, and optionally <span className="mono">opens_at</span> / <span className="mono">closes_at</span> for a narrower window,
+        read as IST. Nothing is sent until you confirm.
         {hasWindow ? null : " Schedule the exam first, or give every candidate their own window."}
       </p>
-      <div className="row">
+      <DropZone
+        label="Choose a spreadsheet saved as CSV"
+        name="Candidate list (CSV)"
+        accept=".csv,text/csv"
+        chosen={file}
+        hint="Checked first: you see who would be invited, and any problems, before anything is sent."
+        onFile={async (chosen) => {
+          const text = await chosen.text();
+          setCsv(text);
+          setFile(chosen.name);
+          setDone(null);
+          setProblems([]);
+          check.mutate(text);
+        }}
+      />
+      <fieldset className="row channels">
+        <legend className="visually-hidden">Send the links by</legend>
+        <span className="notice">Send the links by</span>
         <label className="inline">
-          <input type="checkbox" style={{ width: "auto" }} checked={channels.includes("email")} onChange={() => toggle("email")} /> Email
+          <input type="checkbox" checked={channels.includes("email")} onChange={() => toggle("email")} /> Email
         </label>
         <label className="inline">
-          <input type="checkbox" style={{ width: "auto" }} checked={channels.includes("sms")} onChange={() => toggle("sms")} /> SMS
+          <input type="checkbox" checked={channels.includes("sms")} onChange={() => toggle("sms")} /> SMS
         </label>
-      </div>
-      <div className="field" style={{ marginTop: ".6rem" }}>
-        <label htmlFor="candidates-file">Candidate list (CSV)</label>
-        <input
-          id="candidates-file"
-          type="file"
-          accept=".csv,text/csv"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            e.target.value = "";
-            if (file === undefined) return;
-            const text = await file.text();
-            setCsv(text);
-            setDone(null);
-            setProblems([]);
-            check.mutate(text);
-          }}
-        />
-      </div>
+      </fieldset>
 
       {preview === null ? null : (
-        <div aria-label="Import preview" role="group">
-          <p>
-            {preview.problems.length > 0
-              ? `${preview.problems.length} problem${preview.problems.length === 1 ? "" : "s"}; fix the file and choose it again.`
-              : `${preview.candidates} candidates ready to invite.`}
-          </p>
-          {[...preview.problems.map((p) => ({ ...p, kind: "problem" })), ...preview.warnings.map((p) => ({ ...p, kind: "warning" }))].length === 0 ? null : (
-            <ul className="problems">
-              {preview.problems.map((p) => (
-                <li key={`p${p.row}${p.message}`}>
-                  <span className="mono">row {p.row}</span> — {p.message}
-                </li>
-              ))}
-              {preview.warnings.map((p) => (
-                <li key={`w${p.row}${p.message}`} className="warning">
-                  <span className="mono">row {p.row}</span> — {p.message}
-                </li>
-              ))}
-            </ul>
+        <div aria-label="Import preview" role="group" className="import-preview">
+          {preview.problems.length > 0 ? (
+            <Banner tone="danger" title={`${preview.problems.length} ${preview.problems.length === 1 ? "row needs" : "rows need"} fixing before anyone is invited.`}>
+              Fix the file and choose it again.
+            </Banner>
+          ) : (
+            <p>
+              <strong>{preview.candidates} candidates ready to invite.</strong>
+            </p>
+          )}
+          {flagged.length === 0 ? null : (
+            <div className="scroll">
+              <table className="import-rows">
+                <thead>
+                  <tr>
+                    <th scope="col" className="num">
+                      Row
+                    </th>
+                    <th scope="col">As the sheet has it</th>
+                    <th scope="col">What is wrong</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {flagged.map((p) => (
+                    <tr key={`${p.kind}${p.row}${p.message}`} className={p.kind}>
+                      <td className="num mono">{p.row}</td>
+                      <td className="mono sheet-cells">{p.row >= 2 && lines[p.row - 1] !== undefined ? cellsOf(lines[p.row - 1]!).filter((c) => c !== "").join(" · ") : "—"}</td>
+                      <td>
+                        <span className="visually-hidden">row {p.row} — </span>
+                        {p.message}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
           {preview.problems.length === 0 ? (
             <div className="row">
-              <button type="button" disabled={commit.isPending} onClick={() => commit.mutate()}>
+              <button type="button" disabled={commit.isPending || channels.length === 0} onClick={() => commit.mutate()}>
+                <Send aria-hidden="true" />
                 Invite {preview.candidates} and send their links
               </button>
-              <button type="button" className="quiet" onClick={() => setPreview(null)}>
+              <button
+                type="button"
+                className="quiet"
+                onClick={() => {
+                  setPreview(null);
+                  setFile(null);
+                }}
+              >
                 Cancel
               </button>
             </div>
@@ -299,7 +413,11 @@ function Importer({
           ))}
         </ul>
       )}
-      {done === null ? null : <p className="notice" role="status">{done}</p>}
+      {done === null ? null : (
+        <p className="notice" role="status">
+          {done}
+        </p>
+      )}
     </section>
   );
 }

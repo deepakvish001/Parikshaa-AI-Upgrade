@@ -177,14 +177,15 @@ test("every page of the console", async ({ page, browser, request }) => {
   await nav(page, "Exams");
   await editExam(page, "Aptitude Mock Test");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
-  await page.getByRole("button", { name: "Expand all" }).click();
-  await page.getByText("Passage — The monsoon").first().scrollIntoViewIfNeeded();
-  await shoot(page, "console-21-aptitude-editor");
+  // The question with a passage, chosen from the list and open beside it.
+  await page.getByRole("button", { name: "When does the monsoon usually reach Kerala?" }).click();
+  await expect(page.getByRole("region", { name: /^Editing question/ })).toBeVisible();
+  await shoot(page, "console-21-aptitude-editor", { fullPage: false });
 
   await nav(page, "Exams");
   await editExam(page, "LeetCode Round");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
-  await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("region", { name: "Question 1" }).locator("button.qitem-stem").click();
   await page.getByText("What candidates start from").first().click();
   await page.getByText("Input and output format, constraints (Markdown)").click();
   await shoot(page, "console-23-function-question");
@@ -264,11 +265,13 @@ test("every page of the console", async ({ page, browser, request }) => {
   const panel = page.getByRole("region", { name: /^Proctoring for/ });
   await expect(panel.getByRole("img", { name: /^Photo of/ }).first()).toBeVisible();
   await page.waitForTimeout(800);
-  await shoot(page, "console-10-proctoring-review");
+  await shoot(page, "console-10-proctoring-review", { fullPage: false });
+  await page.keyboard.press("Escape");
   await candidate.close();
 
   // The question bank: a Word paper, read first and shown before anything is added.
   await nav(page, "Question bank");
+  await page.getByRole("tab", { name: "Word document" }).click();
   const word = page.getByRole("region", { name: "Import from Word" });
   await word.getByLabel("Word file (.docx)").setInputFiles(SAMPLE);
   await word.getByRole("button", { name: /^Add \d+ questions? to the bank$/ }).click();
@@ -291,6 +294,9 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.getByLabel("Qualifying mark (% of the paper)").fill("65");
   await page.getByRole("heading", { name: "Qualifying mark" }).scrollIntoViewIfNeeded();
   await shoot(page, "console-31-exam-settings", { fullPage: false });
+  // Left without saving: the editor asks first.
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Leave without saving" }).click();
 
   for (const [label, name] of [
     ["Staff", "console-12-staff"],

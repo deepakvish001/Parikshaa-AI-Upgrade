@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -673,7 +673,7 @@ describe("exam editor", () => {
     await userEvent.type(screen.getByLabelText("Passage title"), "The monsoon");
     await userEvent.type(screen.getByLabelText("Passage"), "The monsoon reaches Kerala in early June.");
     await userEvent.click(screen.getByRole("button", { name: "Add question" }));
-    const second = screen.getByRole("region", { name: "Question 2" });
+    const second = screen.getByRole("region", { name: "Editing question 2" });
     await userEvent.type(within(second).getByLabelText("Question"), "Where does it arrive first?");
     await userEvent.type(within(second).getByLabelText("Option 1"), "Kerala");
     await userEvent.type(within(second).getByLabelText("Option 2"), "Delhi");
@@ -1054,6 +1054,30 @@ describe("the question bank", () => {
 
     expect(await within(bank).findByText("Train speed problem")).toBeInTheDocument();
     expect(within(bank).getAllByText("quant")).not.toHaveLength(0);
+    // Types in words, difficulty as a badge; the page's title is not repeated in a card.
+    const row = within(bank).getByText("Train speed problem").closest("tr")!;
+    expect(within(row).getByText("Multiple choice")).toBeInTheDocument();
+    expect(within(row).getByText("Easy")).toHaveClass("pill", "difficulty-easy");
+    expect(within(bank).queryByText("Question bank")).toBeNull();
+  });
+
+  it("acts on several questions at once", async () => {
+    const client = await openBank();
+    const bank = await screen.findByRole("region", { name: "Question bank" });
+    await userEvent.click(await within(bank).findByLabelText("Choose every question shown"));
+    const bulk = within(bank).getByRole("group", { name: "With the chosen questions" });
+    expect(bulk).toHaveTextContent("2 chosen");
+
+    await userEvent.click(within(bulk).getByRole("button", { name: "Change topic…" }));
+    const dialog = screen.getByRole("dialog", { name: "Change topic" });
+    await userEvent.type(within(dialog).getByLabelText("Topic"), "arithmetic");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Change topic" }));
+    await waitFor(() => expect(client.editQuestion).toHaveBeenCalledTimes(2));
+    expect(client.editQuestion).toHaveBeenCalledWith("b1", expect.objectContaining({ topic: "arithmetic", difficulty: "easy" }));
+
+    await userEvent.click(within(bank).getByLabelText("Choose “Work and time problem”"));
+    await userEvent.click(within(within(bank).getByRole("group", { name: "With the chosen questions" })).getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(client.archiveQuestion).toHaveBeenCalledWith("b2"));
   });
 
   it("imports a CSV file and lists every rejected row", async () => {
@@ -1072,6 +1096,7 @@ describe("the question bank", () => {
 
   it("reads a Word paper first, shows every question found, and adds them only when asked", async () => {
     const client = await openBank();
+    await userEvent.click(await screen.findByRole("tab", { name: "Word document" }));
     const file = new File(["PK fake docx"], "paper.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), file);
 
@@ -1091,6 +1116,7 @@ describe("the question bank", () => {
     (client.importDocx as unknown as { mockRejectedValueOnce: (e: unknown) => void }).mockRejectedValueOnce(
       new ConsoleError(422, "invalid_import", [{ path: "question 4 (numbered 2)", message: 'No answer: add an "Answer:" line.' }]),
     );
+    await userEvent.click(await screen.findByRole("tab", { name: "Word document" }));
     await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), new File(["x"], "paper.docx"));
     const problems = await screen.findByRole("list", { name: "Problems with this document" });
     expect(problems).toHaveTextContent("question 4 (numbered 2)");
@@ -1348,6 +1374,10 @@ describe("scheduling and inviting a cohort", () => {
     const preview = await screen.findByRole("group", { name: "Import preview" });
     expect(preview).toHaveTextContent("2 candidates ready to invite");
     expect(preview).toHaveTextContent(/row 3.*no email or phone/);
+    // The row as the sheet has it, beside what is wrong with it.
+    const flagged = within(preview).getByText(/no email or phone/).closest("tr")!;
+    expect(flagged).toHaveClass("warning");
+    expect(flagged).toHaveTextContent("CS002 · B");
     expect(client.importCandidates).toHaveBeenCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", true, ["email", "sms"]);
     expect(client.importCandidates).toHaveBeenCalledTimes(1);
 
@@ -1356,21 +1386,42 @@ describe("scheduling and inviting a cohort", () => {
     expect(client.importCandidates).toHaveBeenLastCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", false, ["email", "sms"]);
   });
 
+  it("schedules on India's clock, whatever the computer's own zone", async () => {
+    const client = await open();
+    const opens = await screen.findByLabelText("Opens (IST)");
+    // 04:30 UTC is 10:00 in India, and is shown so.
+    expect(opens).toHaveValue("2026-10-01T10:00");
+    await userEvent.clear(opens);
+    await userEvent.type(opens, "2026-10-01T10:00");
+    const closes = screen.getByLabelText("Closes (IST)");
+    await userEvent.clear(closes);
+    await userEvent.type(closes, "2026-10-01T13:00");
+    await userEvent.click(screen.getByRole("button", { name: /^(Schedule|Reschedule)$/ }));
+    await waitFor(() =>
+      expect(client.setWindow).toHaveBeenCalledWith("exam-1", { opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true }),
+    );
+  });
+
   it("shows each candidate's delivery, including what failed and why", async () => {
     await open();
     const table = await screen.findByRole("region", { name: "Invited candidates" });
 
     const row = (await within(table).findByText("CS001")).closest("tr")!;
-    expect(row).toHaveTextContent("Email sent · SMS failed");
-    expect(row.querySelector("[title]")?.getAttribute("title")).toContain("bad number");
+    expect(within(row).getByRole("img", { name: "Email sent" })).toBeInTheDocument();
+    const sms = within(row).getByRole("img", { name: "SMS failed: MSG91 400: bad number" });
+    // What went wrong is in a tooltip, on hover and on focus.
+    expect(within(row).getByRole("tooltip", { hidden: true })).toHaveTextContent("bad number");
+    expect(sms).toHaveAttribute("tabindex", "0");
   });
 
   it("resends and revokes a candidate who has not started", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Invited candidates" });
 
-    await userEvent.click(await within(table).findByRole("button", { name: "Resend" }));
-    await userEvent.click(within(table).getByRole("button", { name: "Revoke" }));
+    await userEvent.click(await within(table).findByRole("button", { name: "More actions for CS001" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Resend the link" }));
+    await userEvent.click(within(table).getByRole("button", { name: "More actions for CS001" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Withdraw the invitation" }));
 
     await waitFor(() => expect(client.resendInvitation).toHaveBeenCalledWith("i1", ["email", "sms"]));
     expect(client.revokeInvitation).toHaveBeenCalledWith("i1");
@@ -1976,7 +2027,7 @@ describe("the exam editor's question list", () => {
     await userEvent.type(screen.getByLabelText("Option 1"), "a");
     await userEvent.type(screen.getByLabelText("Option 2"), "b");
     await userEvent.click(screen.getByRole("button", { name: "Add question" }));
-    const second = screen.getByRole("region", { name: "Question 2" });
+    const second = screen.getByRole("region", { name: "Editing question 2" });
     await userEvent.type(within(second).getByLabelText("Question"), "Second?");
     await userEvent.type(within(second).getByLabelText("Option 1"), "c");
     await userEvent.type(within(second).getByLabelText("Option 2"), "d");
@@ -2006,9 +2057,45 @@ describe("the exam editor's question list", () => {
 
     const item = await screen.findByRole("region", { name: "Question 1" });
     expect(within(item).getByText("Multiple choice")).toBeInTheDocument();
-    expect(within(item).queryByLabelText("Option 1")).toBeNull();
-    await userEvent.click(within(item).getByRole("button", { name: "Edit" }));
-    expect(within(item).getByLabelText("Option 1")).toHaveValue("Merge sort");
+    expect(screen.queryByLabelText("Option 1")).toBeNull();
+    expect(screen.getByText(/Choose a question from the list to edit it here/)).toBeInTheDocument();
+    // Chosen from the list, it opens beside it.
+    await userEvent.click(within(item).getByRole("button", { name: "Which sort is stable?" }));
+    expect(within(item).getByRole("button", { name: "Which sort is stable?" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(screen.getByRole("region", { name: "Editing question 1" })).getByLabelText("Option 1")).toHaveValue("Merge sort");
+  });
+
+  it("says when there are unsaved changes, and asks before they are left behind", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    expect(screen.getByText("Not saved yet")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Title"), "Draft");
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Account" })).getByRole("button", { name: "Home" }));
+    const ask = screen.getByRole("dialog", { name: "Leave without saving?" });
+    await userEvent.click(within(ask).getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByLabelText("Title")).toHaveValue("Draft");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Leave without saving?" })).getByRole("button", { name: "Leave without saving" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Exams" })).toBeInTheDocument();
+  });
+
+  it("orders questions by dragging, as well as with the buttons", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Question"), "First?");
+    await userEvent.click(screen.getByRole("button", { name: "Add question" }));
+    await userEvent.type(within(screen.getByRole("region", { name: "Editing question 2" })).getByLabelText("Question"), "Second?");
+    const rows = screen.getAllByRole("region", { name: /^Question \d$/ });
+    const handle = rows[1]!.querySelector(".drag-handle")!;
+    fireEvent.dragStart(handle, { dataTransfer: { setData: () => undefined, effectAllowed: "" } });
+    fireEvent.dragOver(rows[0]!.closest("li")!);
+    fireEvent.drop(rows[0]!.closest("li")!);
+    expect(within(screen.getByRole("region", { name: "Question 1" })).getByRole("button", { name: "Second?" })).toBeInTheDocument();
   });
 
   it("saves a qualifying mark, overall and for a section", async () => {
@@ -2029,7 +2116,7 @@ describe("the exam editor's question list", () => {
     await userEvent.type(screen.getByLabelText("Qualifying mark (% of the paper)"), "55");
     await userEvent.type(screen.getByLabelText("Minimum in Quant (%)"), "40");
     // The whole exam's cut-off shows in the head.
-    expect(within(screen.getByLabelText("This paper")).getByText("55%")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("This paper")).getByText("qualifies at 55%")).toBeInTheDocument();
 
     // A section's minimum goes with the section.
     await userEvent.click(screen.getByRole("tab", { name: "Questions" }));

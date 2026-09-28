@@ -155,32 +155,6 @@ export function ProctoringReview({ client, attemptId, name, canDecide, onClose }
               by {identity.review.decidedBy} at {time(identity.review.at)} — {identity.review.reason}
             </p>
           )}
-          {canDecide ? (
-            <form
-              className="decision-bar"
-              aria-label="Decide on the identity photos"
-              onSubmit={(e) => {
-                e.preventDefault();
-              }}
-            >
-              <label htmlFor={`id-reason-${attemptId}`}>What you compared (goes on the candidate's record)</label>
-              <input
-                id={`id-reason-${attemptId}`}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="e.g. Face matches the college ID card"
-              />
-              <div className="row">
-                <button type="button" disabled={decide.isPending || reason.trim().length < 5} onClick={() => decide.mutate("verified")}>
-                  Confirm identity
-                </button>
-                <button type="button" className="secondary" disabled={decide.isPending || reason.trim().length < 5} onClick={() => decide.mutate("rejected")}>
-                  Does not match
-                </button>
-                {decide.error instanceof ConsoleError ? <span className="error">{decide.error.detail ?? "That did not work."}</span> : null}
-              </div>
-            </form>
-          ) : null}
         </>
       )}
 
@@ -219,6 +193,33 @@ export function ProctoringReview({ client, attemptId, name, canDecide, onClose }
           })}
         </ul>
       )}
+      {/* The decision stays at the foot of the drawer while the photos above are looked through. */}
+      {canDecide && identity.selfie !== null && identity.id !== null ? (
+        <form
+          className="decision-bar"
+          aria-label="Decide on the identity photos"
+          onSubmit={(e) => {
+            e.preventDefault();
+          }}
+        >
+          <label htmlFor={`id-reason-${attemptId}`}>What you compared (goes on the candidate's record)</label>
+          <input
+            id={`id-reason-${attemptId}`}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="e.g. Face matches the college ID card"
+          />
+          <div className="row">
+            <button type="button" disabled={decide.isPending || reason.trim().length < 5} onClick={() => decide.mutate("verified")}>
+              Confirm identity
+            </button>
+            <button type="button" className="secondary" disabled={decide.isPending || reason.trim().length < 5} onClick={() => decide.mutate("rejected")}>
+              Does not match
+            </button>
+            {decide.error instanceof ConsoleError ? <span className="error">{decide.error.detail ?? "That did not work."}</span> : null}
+          </div>
+        </form>
+      ) : null}
       {looking === null ? null : (
         <Lightbox client={client} attemptId={attemptId} name={name} photos={snapshots.slice(0, 24)} at={looking} onMove={setLooking} onClose={() => setLooking(null)} />
       )}
