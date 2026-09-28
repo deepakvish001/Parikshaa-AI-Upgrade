@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Hourglass, Pencil, Plus, SquareCheckBig, Trash2 } from "lucide-react";
+import { CircleDot, ClipboardList, Copy, Pencil, Plus, SquareCheckBig, Trash2, Users } from "lucide-react";
 import { LogoMark, Wordmark } from "@parikshaa/brand/react";
 import { Dialog, Drawer, TabPanel, Tabs, Tooltip, useToast } from "@parikshaa/brand/ui";
+import { Banner, DropZone, EmptyState, FigureStrip, OutcomeBadge, PhaseBadge, RowMenu, SkeletonRows, StatBar, StateBadge } from "./kit.tsx";
 
 /**
  * The design system on one page: tokens, type, the plain components and the
@@ -127,13 +128,22 @@ export function Gallery() {
           </button>
         </div>
         <div className="row">
-          <span className="pill ok">Graded</span>
-          <span className="pill live">Sitting</span>
-          <span className="pill attention">To grade</span>
-          <span className="pill bad">Set aside</span>
-          <span className="pill brand">Scheduled</span>
+          <StateBadge state="not_started" />
+          <StateBadge state="in_progress" />
+          <StateBadge state="submitted" />
+          <StateBadge state="graded" />
+          <StateBadge state="void" />
+          <OutcomeBadge qualified />
+          <OutcomeBadge qualified={false} />
+        </div>
+        <div className="row">
+          <PhaseBadge phase="draft" />
+          <PhaseBadge phase="scheduled" />
+          <PhaseBadge phase="open" />
+          <PhaseBadge phase="closed" />
           <span className="tag">Multiple choice</span>
         </div>
+        <p className="notice">Sentence case, one word per state. A dot only on what is live now; an icon only on an outcome; never both.</p>
       </section>
 
       <section className="card" aria-label="Fields">
@@ -158,23 +168,76 @@ export function Gallery() {
       </section>
 
       <section className="card" aria-label="Figures">
-        <h2 className="card-title">Figures</h2>
-        <section className="kpis" aria-label="Example figures">
-          <div className="kpi live">
-            <span className="kpi-icon" aria-hidden="true">
-              <Hourglass />
-            </span>
-            <span className="kpi-value">12</span>
-            <span className="kpi-label">Sitting now</span>
-          </div>
-          <div className="kpi attention">
-            <span className="kpi-icon" aria-hidden="true">
-              <SquareCheckBig />
-            </span>
-            <span className="kpi-value">4</span>
-            <span className="kpi-label">To grade</span>
-          </div>
-        </section>
+        <h2 className="card-title">Figures and the stat bar</h2>
+        <FigureStrip
+          label="Example figures"
+          figures={[
+            { label: "In progress", value: 12, icon: CircleDot, tone: "live" },
+            { label: "To grade", value: 4, icon: SquareCheckBig, tone: "attention" },
+            { label: "Exams", value: 9, icon: ClipboardList },
+            { label: "Candidates invited", value: 480, icon: Users },
+          ]}
+          line={[
+            { label: "Median", value: "62%" },
+            { label: "Set aside", value: 1 },
+          ]}
+        />
+        <StatBar
+          label="Example sitting"
+          segments={[
+            { id: "not_started", label: "Not started", value: 6 },
+            { id: "in_progress", label: "In progress", value: 31 },
+            { id: "away", label: "Away", value: 2 },
+            { id: "idle", label: "Idle", value: 3 },
+            { id: "submitted", label: "Submitted", value: 18 },
+          ]}
+        />
+      </section>
+
+      <section className="card" aria-label="Lists">
+        <h2 className="card-title">Rows, menus, empty and loading</h2>
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Exam</th>
+              <th scope="col" className="num">
+                To grade
+              </th>
+              <th scope="col">
+                <span className="visually-hidden">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Campus drive 2026</td>
+              <td className="num">4</td>
+              <td className="row-end">
+                <RowMenu
+                  of="Campus drive 2026"
+                  items={[
+                    { label: "Edit", icon: <Pencil />, onSelect: () => toast("Edit") },
+                    { label: "Make a copy", icon: <Copy />, onSelect: () => toast("Copied") },
+                    { label: "Archive", icon: <Trash2 />, onSelect: () => toast("Archived"), danger: true },
+                  ]}
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <EmptyState icon={Users} compact action={{ label: "Invite candidates", onClick: () => toast("Invite") }}>
+          Candidates appear here as they start.
+        </EmptyState>
+        <SkeletonRows rows={2} columns={3} label="Example loading" />
+      </section>
+
+      <section className="card" aria-label="Banners and the drop zone">
+        <h2 className="card-title">Banners and the drop zone</h2>
+        <Banner tone="danger" title="Could not load results.">
+          Check the connection, then reload the page.
+        </Banner>
+        <Banner tone="info" title="Candidates have sat this exam, so its questions are fixed." />
+        <DropZone label="Choose a spreadsheet" hint="CSV or Excel, one candidate per row." accept=".csv,.xlsx" onFile={(file) => toast(file.name)} />
       </section>
 
       <section className="card" aria-label="Tabs">

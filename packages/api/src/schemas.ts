@@ -212,6 +212,10 @@ export const cloneExamBody = z.object({
   title: z.string().optional().describe('Defaults to the original\'s title with " (copy)".'),
 });
 
+export const archiveExamBody = z.object({
+  archived: z.boolean().describe("True to put the exam away, false to bring it back."),
+});
+
 // --- the question bank -------------------------------------------------------
 
 const difficulty = z.enum(["easy", "medium", "hard"]);
@@ -305,9 +309,15 @@ export const examListResponse = z.object({
         sectionCount: z.number(),
         durationMs: z.number().nullable(),
         proctored: z.boolean(),
+        cutoffPercent: z.number().nullable().describe("The qualifying mark, as a percentage of the paper, or null if none is set."),
         attempts: z
           .object({ invited: z.number(), inProgress: z.number(), submitted: z.number(), graded: z.number(), void: z.number() })
           .describe("Invitations not revoked, and attempts by where they stand."),
+        window: z
+          .object({ opensAt: z.string(), closesAt: z.string() })
+          .nullable()
+          .describe("When it can be sat, or null before a window is set."),
+        archivedAt: z.string().nullable().describe("When it was put away, or null while it is current."),
       }),
     )
     .readonly(),
@@ -832,7 +842,18 @@ export const dashboardResponse = z.object({
     )
     .readonly(),
   activity: z
-    .array(z.object({ at: z.string(), actor: z.string(), action: z.string(), target: z.string().nullable() }))
+    .array(
+      z.object({
+        at: z.string(),
+        actor: z.string(),
+        action: z.string(),
+        target: z.string().nullable(),
+        exam: z
+          .object({ id: z.string(), title: z.string() })
+          .nullable()
+          .describe("The exam it concerns, if any: the target itself, or the exam of the attempt or invitation it names."),
+      }),
+    )
     .readonly()
     .nullable()
     .describe("The ten latest actions; null for an account that may not read the audit log."),

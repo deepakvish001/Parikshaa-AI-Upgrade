@@ -1,8 +1,8 @@
 import { mkdirSync } from "node:fs";
 import type { Page } from "@playwright/test";
 
-/** Where the pictures go: docs/screenshots, in the repository. */
-export const OUT = new URL("../../../docs/screenshots/", import.meta.url);
+/** Where the pictures go: docs/screenshots, in the repository, unless SCREENSHOTS_OUT names a folder for a look first. */
+export const OUT = process.env["SCREENSHOTS_OUT"] === undefined ? new URL("../../../docs/screenshots/", import.meta.url) : new URL(`file://${process.env["SCREENSHOTS_OUT"].replace(/\/?$/, "/")}`);
 mkdirSync(OUT, { recursive: true });
 
 /** Settle the page — fonts loaded, nothing animating, the caret hidden — and capture it. */

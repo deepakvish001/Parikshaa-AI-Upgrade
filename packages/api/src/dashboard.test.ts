@@ -74,6 +74,9 @@ describe("the dashboard", () => {
     expect(setup).toMatchObject({ exams: 4, scheduled: 4, invited: 2 });
     expect(activity[0]).toMatchObject({ actor: "Asha Rao" });
     expect(activity.length).toBeLessThanOrEqual(10);
+    // Named by the exam it concerns, not an id.
+    expect(activity.find((a: { action: string }) => a.action === "invitations.imported")).toMatchObject({ exam: { id: "open", title: "Open now" } });
+    expect(activity.find((a: { action: string }) => a.action === "auth.login")?.exam ?? null).toBeNull();
   });
 
   it("leaves the audit log out for an account that may not read it", async () => {

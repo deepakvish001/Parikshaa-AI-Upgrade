@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { Dashboard } from "../api.ts";
 import { describeAction, Home } from "./Home.tsx";
+import { PageFrame } from "./kit.tsx";
 
 const NOW = Date.parse("2026-10-01T06:00:00Z"); // 11:30 IST
 const dashboard: Dashboard = {
@@ -15,8 +16,37 @@ const dashboard: Dashboard = {
   setup: { exams: 3, bankQuestions: 0, scheduled: 3, invited: 300, staff: 1, privacyNotice: false },
 };
 
-const renderHome = (onExam = vi.fn()) =>
-  render(<Home dashboard={dashboard} exams={[]} name="Asha Rao" now={NOW} canWrite onExam={onExam} onGo={vi.fn()} />);
+const renderHome = (onExam = vi.fn(), onExams = vi.fn(), data: Dashboard = dashboard) =>
+  render(
+    <PageFrame title="Home" note="">
+      <Home
+        dashboard={data}
+        exams={[
+          { id: "now", title: "Campus drive", questionCount: 20, attempts: { invited: 40, inProgress: 12, submitted: 3, graded: 0, void: 0 } },
+          { id: "old", title: "Old", questionCount: 5, archivedAt: "2026-01-01T00:00:00Z", attempts: { invited: 0, inProgress: 0, submitted: 0, graded: 0, void: 0 } },
+        ]}
+        name="Asha Rao"
+        now={NOW}
+        canWrite
+        onExam={onExam}
+        onExams={onExams}
+        onGo={vi.fn()}
+      />
+    </PageFrame>,
+  );
+
+describe("the figures", () => {
+  it("counts in the glossary's words, and each opens the exams it counts", async () => {
+    const onExams = vi.fn();
+    renderHome(vi.fn(), onExams);
+    const glance = screen.getByRole("region", { name: "At a glance" });
+    expect(within(glance).getByRole("button", { name: "12 In progress" })).toBeInTheDocument();
+    // Archived exams are not counted among the organisation's exams.
+    expect(within(glance).getByRole("button", { name: "1 Exams" })).toBeInTheDocument();
+    await userEvent.click(within(glance).getByRole("button", { name: "3 To grade" }));
+    expect(onExams).toHaveBeenCalledWith("grading");
+  });
+});
 
 describe("the home calendar", () => {
   it("lays the sittings out by day, today's marked open, and greets by first name", () => {
@@ -52,7 +82,40 @@ describe("the home calendar", () => {
   });
 });
 
+describe("the week", () => {
+  it("draws each sitting as a block across its hours", async () => {
+    const onExam = vi.fn();
+    renderHome(onExam);
+    await userEvent.click(screen.getByRole("button", { name: "Week" }));
+    const week = screen.getByRole("group", { name: "Week of 28 September" });
+    const block = within(week).getByRole("button", { name: "Campus drive" }).closest("li")!;
+    expect(block).toHaveClass("open");
+    expect(block).toHaveTextContent("10:00 am – 1:00 pm");
+    await userEvent.click(within(week).getByRole("button", { name: "Scholarship test" }));
+    expect(onExam).toHaveBeenCalledWith("next");
+    await userEvent.click(screen.getByRole("button", { name: "Next week" }));
+    expect(screen.getByRole("group", { name: "Week of 5 October" })).toHaveTextContent("No sitting this week.");
+  });
+});
+
 describe("the activity feed", () => {
+  it("groups the latest actions by day, naming the exam each concerns", async () => {
+    const onExam = vi.fn();
+    renderHome(onExam, vi.fn(), {
+      ...dashboard,
+      activity: [
+        { at: "2026-10-01T05:50:00Z", actor: "Asha", action: "invitations.imported", target: "now", exam: { id: "now", title: "Campus drive" } },
+        { at: "2026-09-30T08:00:00Z", actor: "Ravi", action: "auth.login", target: null, exam: null },
+      ],
+    });
+    const feed = screen.getByRole("region", { name: "Recent activity" });
+    const today = within(feed).getByText("Today").closest(".activity-day") as HTMLElement;
+    expect(today).toHaveTextContent("Asha invited candidates · Campus drive10 min ago");
+    expect(within(feed).getByText("Yesterday").closest(".activity-day")).toHaveTextContent("Ravi signed in");
+    await userEvent.click(within(today).getByRole("button", { name: "Campus drive" }));
+    expect(onExam).toHaveBeenCalledWith("now");
+  });
+
   it("says what an action was in words", () => {
     expect(describeAction("exam.window_set")).toBe("scheduled a sitting");
     expect(describeAction("something.new_here")).toBe("something new here");

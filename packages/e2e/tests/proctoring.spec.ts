@@ -39,7 +39,7 @@ test("a proctored sitting: camera first, identity photos, then an invigilator co
   await staff.getByLabel("Email").fill(OWNER.email);
   await staff.getByLabel("Password").fill(OWNER.password);
   await staff.getByRole("button", { name: "Sign in", exact: true }).click();
-  await staff.getByRole("button", { name: sitting.title }).click();
+  await staff.getByRole("button", { name: sitting.title, exact: true }).click();
   await staff.getByRole("button", { name: "Live sitting" }).click();
   const row = staff.getByRole("row").filter({ hasText: "CS001" });
   await expect(row).toContainText("ID to check");

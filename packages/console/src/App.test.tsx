@@ -531,34 +531,71 @@ describe("console", () => {
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
   });
 
-  it("sums where candidates stand, and filters exams by it", async () => {
+  it("filters exams by where they stand, each filter with its count, and leaves the figures to Home", async () => {
     const counts = (inProgress: number, submitted: number, graded: number) => ({ invited: 0, inProgress, submitted, graded, void: 0 });
     const client = stubClient({
       listExams: vi.fn(async () => [
         { id: "live", title: "Campus Drive", questionCount: 20, durationMs: 3_600_000, totalMarks: 80, proctored: true, sectionCount: 2, attempts: counts(3, 1, 0) },
         { id: "done", title: "Mid-term", questionCount: 5, attempts: counts(0, 2, 7) },
         { id: "new", title: "Mock Test", questionCount: 10, attempts: counts(0, 0, 0) },
+        { id: "old", title: "Last year's drive", questionCount: 8, attempts: counts(0, 0, 4), archivedAt: "2026-01-01T00:00:00Z" },
       ]),
     });
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await screen.findByRole("button", { name: "Campus Drive" });
 
-    const glance = screen.getByRole("region", { name: "At a glance" });
-    expect(within(glance).getByText("Sitting now").previousSibling).toHaveTextContent("3");
-    expect(within(glance).getByText("To grade").previousSibling).toHaveTextContent("3");
+    // The figures are Home's; here they would only repeat it.
+    expect(screen.queryByRole("region", { name: "At a glance" })).not.toBeInTheDocument();
     expect(screen.getByText("60 min · 80 marks")).toBeInTheDocument();
     expect(screen.getByText("Proctored")).toBeInTheDocument();
+    const row = (title: string) => screen.getByRole("button", { name: title }).closest("tr")!;
+    expect(within(row("Campus Drive")).getByText("Open now")).toBeInTheDocument();
+    expect(within(row("Mid-term")).getByText("Closed")).toBeInTheDocument();
+    expect(within(row("Mock Test")).getByText("Draft")).toBeInTheDocument();
+    // Archived exams are kept out of the way.
+    expect(screen.queryByRole("button", { name: "Last year's drive" })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Sitting now" }));
-    expect(screen.queryByRole("button", { name: "Mid-term" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Not yet sat" }));
+    await userEvent.click(screen.getByRole("button", { name: "To grade 2" }));
+    expect(screen.getByRole("button", { name: "Mid-term" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mock Test" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Draft 1" }));
     expect(screen.getByRole("button", { name: "Mock Test" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Campus Drive" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "All" }));
+    await userEvent.click(screen.getByRole("button", { name: "Archived 1" }));
+    expect(screen.getByRole("button", { name: "Last year's drive" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "All 3" }));
     await userEvent.type(screen.getByRole("searchbox", { name: "Search exams" }), "mid");
     expect(screen.getByRole("button", { name: "Mid-term" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mock Test" })).not.toBeInTheDocument();
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search exams" }), "zzz");
+    await userEvent.click(screen.getByRole("button", { name: "Clear the search" }));
+    expect(screen.getByRole("button", { name: "Mock Test" })).toBeInTheDocument();
+  });
+
+  it("keeps an exam's other actions behind its ⋯, and archives from there", async () => {
+    const archiveExam = vi.fn(async () => undefined);
+    const client = stubClient({
+      listExams: vi.fn(async () => [{ id: "e1", title: "Campus Drive", questionCount: 2, attempts: { invited: 0, inProgress: 0, submitted: 1, graded: 0, void: 0 } }]),
+      archiveExam,
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Campus Drive" }));
+    const menu = screen.getByRole("menu", { name: "More actions for Campus Drive" });
+    // Sat, so fixed: Edit says why it cannot be chosen.
+    expect(within(menu).getByRole("menuitem", { name: /Edit/ })).toHaveAttribute("aria-disabled", "true");
+    expect(within(menu).getByText(/Make a copy to change it/)).toBeInTheDocument();
+    // Focus goes to the first item, disabled or not, and the arrows move on from it.
+    expect(within(menu).getByRole("menuitem", { name: /Edit/ })).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(menu).getByRole("menuitem", { name: "Copy to change" })).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(within(menu).getByRole("menuitem", { name: "Archive" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(archiveExam).toHaveBeenCalledWith("e1", true);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More actions for Campus Drive" })).toHaveFocus();
   });
 });
 
@@ -707,8 +744,12 @@ describe("attempts", () => {
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
 
-    await userEvent.type(await screen.findByLabelText(/Start an attempt/), "cand-9");
-    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    // Not a card on the overview: one of the exam's other actions.
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Start an attempt by reference…" }));
+    const dialog = screen.getByRole("dialog", { name: "Start an attempt by reference" });
+    await userEvent.type(within(dialog).getByLabelText("Candidate reference"), "cand-9");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Start" }));
 
     expect(await screen.findByLabelText("Access code")).toHaveValue("issued-token");
     expect(client.startAttempt).toHaveBeenCalledWith("exam-1", "cand-9");
@@ -824,8 +865,12 @@ describe("what a role is shown", () => {
     renderApp(<App client={client} />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    expect(await screen.findByLabelText(/Start an attempt/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Review" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "More actions for Algorithms" }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Start an attempt by reference…" })).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem", { name: /Edit|copy|Archive/ })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
 
     const nav = screen.getByRole("navigation", { name: "Account" });
     for (const tab of ["Staff", "API keys", "Spend", "Audit log"]) {
@@ -925,19 +970,22 @@ describe("the room, for an invigilator", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
 
     const row = (await screen.findByText("cand-3")).closest("tr")!;
-    expect(row).toHaveTextContent("here");
+    expect(row).toHaveTextContent("Here now");
+    expect(row).toHaveTextContent("In progress");
+    expect((await screen.findByText("cand-1")).closest("tr")).toHaveTextContent("Graded");
   });
 
   it("grants extra time with a reason", async () => {
     const client = invigilator();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Extra time…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for cand-3" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Extra time…" }));
 
     const form = screen.getByRole("form", { name: "Extra time for cand-3" });
     const grant = within(form).getByRole("button", { name: "Grant extra time" });
-    await userEvent.clear(within(form).getByLabelText("Minutes"));
-    await userEvent.type(within(form).getByLabelText("Minutes"), "15");
+    await userEvent.clear(within(form).getByLabelText("Extra minutes"));
+    await userEvent.type(within(form).getByLabelText("Extra minutes"), "15");
     await userEvent.type(within(form).getByLabelText("Reason"), "short");
     expect(grant).toBeDisabled();
 
@@ -947,6 +995,7 @@ describe("the room, for an invigilator", () => {
     await waitFor(() =>
       expect(client.extendTime).toHaveBeenCalledWith("attempt-3", 15, "short — power cut in hall B"),
     );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("offers extra time only to those who may grant it, and only on open attempts", async () => {
@@ -961,7 +1010,8 @@ describe("the room, for an invigilator", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
     await screen.findByText("cand-3");
 
-    expect(screen.queryByRole("button", { name: "Extra time…" })).not.toBeInTheDocument();
+    // Nothing else to do with the row, so no "⋯" at all.
+    expect(screen.queryByRole("button", { name: "More actions for cand-3" })).not.toBeInTheDocument();
   });
 });
 
@@ -1102,7 +1152,8 @@ describe("exams drawn from the bank", () => {
     const client = stubClient();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Copy" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Make a copy" }));
 
     await waitFor(() => expect(client.cloneExam).toHaveBeenCalledWith("exam-1", expect.stringMatching(/^exam-1-copy-/)));
   });
@@ -1121,7 +1172,8 @@ describe("exams drawn from the bank", () => {
     });
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add question" }));
     await userEvent.type(screen.getAllByLabelText("Question").at(-1)!, "One more");
     await userEvent.type(screen.getAllByLabelText("Option 1").at(-1)!, "a");
@@ -1762,7 +1814,16 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     analytics: { ...results.analytics, qualified: 1, failed: 1 },
   };
   const summary: ExamSummary[] = [
-    { id: "exam-1", title: "Algorithms", questionCount: 3, attempts: { invited: 12, inProgress: 2, submitted: 1, graded: 2, void: 0 } },
+    {
+      id: "exam-1",
+      title: "Algorithms",
+      questionCount: 3,
+      durationMs: 45 * 60_000,
+      totalMarks: 10,
+      cutoffPercent: 60,
+      window: { opensAt: "2020-10-01T04:30:00.000Z", closesAt: "2099-10-01T07:30:00.000Z" },
+      attempts: { invited: 12, inProgress: 2, submitted: 1, graded: 2, void: 0 },
+    },
   ];
   const client = (overrides: Record<string, unknown> = {}) =>
     stubClient({ listExams: vi.fn(async () => summary), loadExam: vi.fn(async () => paper), results: vi.fn(async () => withCutoff), ...overrides });
@@ -1775,12 +1836,23 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     expect(within(tabs).getAllByRole("button").map((b) => b.textContent)).toEqual(["Overview", "Questions", "Candidates", "Live sitting", "Results"]);
     expect(within(tabs).getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
 
+    // The header: where it is in its life, one line of facts, and what to do.
+    const title = screen.getByRole("heading", { level: 1, name: "Algorithms" });
+    const header = title.closest("header")!;
+    expect(within(header).getByText("Open now")).toBeInTheDocument();
+    expect(within(header).getByText(/^Open until .* IST · 45 min · 10 marks · qualifies at 60%$/)).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Try test" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Invite" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "More actions for Algorithms" })).toBeInTheDocument();
+    // One to grade: the next step says so.
+    expect(screen.getByRole("region", { name: "Next step" })).toHaveTextContent("1 answer sheet to grade");
+
     const side = screen.getByRole("complementary", { name: "Candidates at a glance" });
     const count = (label: string) => within(side).getByText(label).nextElementSibling?.textContent;
     expect(count("Invited")).toBe("12");
     expect(count("In progress")).toBe("2");
-    expect(count("Completed")).toBe("3");
-    expect(count("To evaluate")).toBe("1");
+    expect(count("Submitted")).toBe("3");
+    expect(count("To grade")).toBe("1");
     await waitFor(() => expect(count("Qualified")).toBe("1"));
     expect(count("Not qualified")).toBe("1");
     expect(within(side).getByText("45 min")).toBeInTheDocument();
@@ -1872,7 +1944,8 @@ describe("the exam editor's question list", () => {
     });
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
 
     const item = await screen.findByRole("region", { name: "Question 1" });
     expect(within(item).getByText("Multiple choice")).toBeInTheDocument();

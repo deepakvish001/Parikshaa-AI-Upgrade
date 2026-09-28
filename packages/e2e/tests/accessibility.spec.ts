@@ -82,7 +82,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
       await expect(page.getByRole("region", { name: "Sittings" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
-      await page.getByRole("button", { name: sitting.title }).click();
+      await page.getByRole("button", { name: sitting.title, exact: true }).click();
       await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
       await page.getByRole("button", { name: "Live sitting" }).click();

@@ -29,7 +29,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
-  await page.getByRole("button", { name: sitting.title }).click();
+  await page.getByRole("button", { name: sitting.title, exact: true }).click();
   await page.getByRole("button", { name: "Results", exact: true }).click();
 
   const candidates = page.getByRole("region", { name: "Candidates" });
@@ -75,12 +75,12 @@ test("an exam page: who qualified against the cut-off, the paper tried as a cand
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
-  await page.getByRole("button", { name: sitting.title }).click();
+  await page.getByRole("button", { name: sitting.title, exact: true }).click();
 
   const side = page.getByRole("complementary", { name: "Candidates at a glance" });
   await expect(side.getByRole("listitem").filter({ hasText: /^Qualified/ })).toContainText("1");
   await expect(side.getByRole("listitem").filter({ hasText: "Not qualified" })).toContainText("1");
-  await expect(side.getByRole("listitem").filter({ hasText: "Completed" })).toContainText("2");
+  await expect(side.getByRole("listitem").filter({ hasText: "Submitted" })).toContainText("2");
 
   // Tried as a candidate: nothing reaches the server, so the counts stay as they are.
   await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();

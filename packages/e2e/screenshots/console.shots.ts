@@ -34,6 +34,12 @@ async function signIn(page: Page, account: { email: string; password: string }) 
 
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "Account" }).getByRole("button", { name, exact: true }).click();
 
+/** Edit an exam from the list: Edit is behind the row's "⋯". */
+async function editExam(page: Page, title: string) {
+  await page.getByRole("row").filter({ hasText: title }).getByRole("button", { name: /^More actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+}
+
 /** A candidate sits the paper through the API; some reply to a follow-up. */
 async function sit(request: APIRequestContext, sitting: Sitting, ref: string, a: (typeof ANSWERS)[number], submit = true, withCode = true) {
   const code = decodeURIComponent(new URL(sitting.links[ref]!).searchParams.get("invite")!);
@@ -155,28 +161,28 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // --- the pages -----------------------------------------------------------
   await page.reload(); // the session is kept for the tab; what was seeded is fetched afresh
-  await expect(page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: TITLE })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: TITLE, exact: true })).toBeVisible();
   await page.waitForTimeout(500);
   await shoot(page, "console-32-home");
   await nav(page, "Exams");
-  await expect(page.getByRole("button", { name: TITLE })).toBeVisible();
+  await expect(page.getByRole("button", { name: TITLE, exact: true })).toBeVisible();
   await shoot(page, "console-02-exams");
 
-  await page.getByRole("row").filter({ hasText: "Java Developer Screening" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "Java Developer Screening");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
   await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Preview question 1" }).click();
   await shoot(page, "console-03-exam-editor");
 
 
   await nav(page, "Exams");
-  await page.getByRole("row").filter({ hasText: "Aptitude Mock Test" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "Aptitude Mock Test");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
   await page.getByRole("button", { name: "Expand all" }).click();
   await page.getByText("Passage — The monsoon").first().scrollIntoViewIfNeeded();
   await shoot(page, "console-21-aptitude-editor");
 
   await nav(page, "Exams");
-  await page.getByRole("row").filter({ hasText: "LeetCode Round" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "LeetCode Round");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
   await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Edit", exact: true }).click();
   await page.getByText("What candidates start from").first().click();
@@ -184,7 +190,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   await shoot(page, "console-23-function-question");
 
   await nav(page, "Exams");
-  await page.getByRole("button", { name: TITLE }).click();
+  await page.getByRole("button", { name: TITLE, exact: true }).click();
   await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Candidates at a glance" }).getByText("Qualified", { exact: true })).toBeVisible();
   await page.waitForTimeout(500);
@@ -193,7 +199,8 @@ test("every page of the console", async ({ page, browser, request }) => {
   // Its questions, one previewed, and the whole test tried as a candidate.
   await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
   await page.getByRole("button", { name: "Preview question 1" }).click();
-  await shoot(page, "console-27-exam-questions");
+  await shoot(page, "console-27-exam-questions", { fullPage: false });
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Try test" }).click();
   const trying = page.getByRole("dialog", { name: "Try test" });
   await trying.getByRole("radio").first().check();
@@ -212,7 +219,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.waitForTimeout(500);
   await shoot(page, "console-05-invite");
 
-  await page.getByRole("button", { name: TITLE }).click();
+  await page.getByRole("button", { name: TITLE, exact: true }).click();
   await page.getByRole("button", { name: "Results", exact: true }).click();
   await expect(page.getByRole("region", { name: "Candidates" })).toBeVisible();
   const similar = page.getByRole("region", { name: "Code similarity" });
@@ -226,14 +233,14 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.waitForTimeout(800);
   await shoot(page, "console-07-candidate-report");
 
-  await page.getByRole("button", { name: TITLE }).click();
+  await page.getByRole("button", { name: TITLE, exact: true }).click();
   await page.getByRole("row").filter({ hasText: REFS[1]! }).getByRole("button").first().click();
   await page.waitForTimeout(800);
   await shoot(page, "console-08-review");
 
   // A live sitting: three answering now.
   await nav(page, "Exams");
-  await page.getByRole("button", { name: "Semester 5 — Data Structures Mid-term" }).click();
+  await page.getByRole("button", { name: "Semester 5 — Data Structures Mid-term", exact: true }).click();
   await page.getByRole("button", { name: "Live sitting" }).click();
   await page.waitForTimeout(800);
   await shoot(page, "console-09-live");
@@ -251,7 +258,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   await expect(candidate.getByText("Camera on")).toBeVisible();
   await candidate.waitForTimeout(1500);
   await nav(page, "Exams");
-  await page.getByRole("button", { name: "Scholarship Test 2026 (proctored)" }).click();
+  await page.getByRole("button", { name: "Scholarship Test 2026 (proctored)", exact: true }).click();
   await page.getByRole("button", { name: "Live sitting" }).click();
   await page.getByRole("row").filter({ hasText: "SC001" }).getByRole("button", { name: "Review SC001" }).click();
   const panel = page.getByRole("region", { name: /^Proctoring for/ });
@@ -272,7 +279,7 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // The bank as a library, from an exam being written.
   await nav(page, "Exams");
-  await page.getByRole("row").filter({ hasText: "Java Developer Screening" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "Java Developer Screening");
   await page.getByRole("button", { name: "Add from bank" }).first().click();
   const library = page.getByRole("dialog", { name: "Add from the question bank" });
   await library.locator(".library input").first().check();

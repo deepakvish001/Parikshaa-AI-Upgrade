@@ -452,6 +452,12 @@ td {
   vertical-align: middle;
   border-bottom: 1px solid var(--border);
 }
+/* A header takes its column's alignment: text left, numbers right. */
+th.num,
+td.num {
+  text-align: right;
+}
+
 tbody th {
   font-weight: var(--weight-medium);
 }
@@ -459,7 +465,15 @@ tbody tr {
   transition: background var(--duration) var(--ease);
 }
 tbody tr:hover {
-  background: var(--surface-2);
+  background: var(--surface-sunken);
+}
+/* A row that opens its item when clicked; its link or button is still the way in for a keyboard. */
+tbody tr.opens {
+  cursor: pointer;
+}
+tbody tr[aria-selected="true"],
+tbody tr.selected {
+  background: var(--primary-soft);
 }
 tbody tr:last-child > * {
   border-bottom: none;
@@ -471,6 +485,11 @@ tbody tr:last-child > * {
 
 /* --- badges -------------------------------------------------------------- */
 
+/*
+ * Sentence case, one word per state (the glossary). A dot only on what is
+ * live now — in progress, open now — and an icon only on an outcome
+ * (qualified or not); never both.
+ */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -480,22 +499,26 @@ tbody tr:last-child > * {
   font-weight: var(--weight-semibold);
   line-height: 1.5;
   white-space: nowrap;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   background: var(--surface-sunken);
   border: 1px solid var(--border);
   border-radius: var(--radius-full);
 }
-.pill::before {
+.pill.live::before,
+.pill[data-state="in_progress"]::before {
   content: "";
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: currentColor;
-  opacity: 0.8;
+}
+.pill svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  stroke-width: 2.25;
 }
 .pill.ok,
 .pill.live,
-.pill[data-state="submitted"],
 .pill[data-state="graded"],
 .pill[data-state="delivered"] {
   color: var(--success);
@@ -503,7 +526,8 @@ tbody tr:last-child > * {
   border-color: var(--success-border);
 }
 .pill.attention,
-.pill.warn {
+.pill.warn,
+.pill[data-state="submitted"] {
   color: var(--warning);
   background: var(--warning-soft);
   border-color: var(--warning-border);
@@ -515,6 +539,11 @@ tbody tr:last-child > * {
   color: var(--danger);
   background: var(--danger-soft);
   border-color: var(--danger-border);
+}
+.pill.info {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: var(--info-border);
 }
 /* Attempt and delivery states, named by data-state so the words stay the page's own. */
 .pill[data-state="in_progress"],

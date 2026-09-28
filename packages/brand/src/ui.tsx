@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -16,7 +17,7 @@ import {
 /**
  * The interactive pieces every screen shares, built once so each behaves the
  * same everywhere: a dialog (and its side-sheet form, the drawer), tabs,
- * a tooltip and toasts. Styles are in `ui.css`.
+ * a tooltip, toasts and the "⋯" menu. Styles are in `ui.css`.
  *
  * Each follows the WAI-ARIA Authoring Practices pattern of its name: a dialog
  * keeps focus inside it and gives it back on closing; tabs move with the
@@ -205,6 +206,154 @@ export function Tooltip({ text, children }: { text: string; children: ReactEleme
       <span role="tooltip" id={id} className={`ui-tooltip${shown ? " shown" : ""}`}>
         {text}
       </span>
+    </span>
+  );
+}
+
+export interface MenuItem {
+  readonly label: string;
+  readonly icon?: ReactNode;
+  readonly onSelect: () => void;
+  /** Why it cannot be chosen now, shown under it. The item stays in the list, and is skipped by nothing. */
+  readonly disabled?: string;
+  /** Undoes or removes something: kept last, after a rule, in the danger colour. */
+  readonly danger?: boolean;
+}
+
+const Ellipsis = () => (
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">
+    <circle cx="5" cy="12" r="1.75" />
+    <circle cx="12" cy="12" r="1.75" />
+    <circle cx="19" cy="12" r="1.75" />
+  </svg>
+);
+
+/**
+ * A row's other actions behind "⋯" (the WAI-ARIA menu button). The arrow
+ * keys move through it, Home and End go to the ends, Escape closes it and
+ * gives focus back, Tab or a click elsewhere closes it. It is placed against
+ * the viewport, so a table that scrolls sideways never clips it, and opens
+ * upwards when there is no room below.
+ */
+export function Menu({ label, items, className }: { label: string; items: readonly MenuItem[]; className?: string }) {
+  const id = useId();
+  const [open, setOpen] = useState<false | "first" | "last">(false);
+  const [place, setPlace] = useState<{ top?: number; bottom?: number; right: number } | null>(null);
+  const wrap = useRef<HTMLSpanElement>(null);
+  const button = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLDivElement>(null);
+  const ordered = [...items.filter((item) => item.danger !== true), ...items.filter((item) => item.danger === true)];
+
+  const entries = () => [...(list.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
+  const close = useCallback((refocus: boolean) => {
+    setOpen(false);
+    setPlace(null);
+    if (refocus) button.current?.focus();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (open === false || button.current === null || list.current === null) return;
+    const at = button.current.getBoundingClientRect();
+    const height = list.current.offsetHeight;
+    const right = Math.max(8, window.innerWidth - at.right);
+    setPlace(at.bottom + 4 + height > window.innerHeight && at.top - 4 - height > 0 ? { bottom: window.innerHeight - at.top + 4, right } : { top: at.bottom + 4, right });
+    const all = entries();
+    (open === "last" ? all.at(-1) : all[0])?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (open === false) return;
+    const away = (event: Event) => {
+      if (!(event.target instanceof Node) || !wrap.current?.contains(event.target)) close(false);
+    };
+    const moved = (event: Event) => {
+      if (!(event.target instanceof Node) || !list.current?.contains(event.target)) close(false);
+    };
+    document.addEventListener("pointerdown", away);
+    window.addEventListener("scroll", moved, true);
+    window.addEventListener("resize", moved);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      window.removeEventListener("scroll", moved, true);
+      window.removeEventListener("resize", moved);
+    };
+  }, [open, close]);
+
+  const onListKey = (event: ReactKeyboardEvent) => {
+    const all = entries();
+    const at = all.indexOf(document.activeElement as HTMLElement);
+    const to =
+      event.key === "ArrowDown" ? (at + 1) % all.length
+      : event.key === "ArrowUp" ? (at - 1 + all.length) % all.length
+      : event.key === "Home" ? 0
+      : event.key === "End" ? all.length - 1
+      : null;
+    if (to !== null) {
+      event.preventDefault();
+      all[to]?.focus();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      close(true);
+    } else if (event.key === "Tab") {
+      close(false);
+    }
+  };
+
+  return (
+    <span ref={wrap} className={`ui-menu${className === undefined ? "" : ` ${className}`}`}>
+      <button
+        ref={button}
+        type="button"
+        className="ui-menu-button"
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={open !== false}
+        aria-controls={open === false ? undefined : id}
+        onClick={() => (open === false ? setOpen("first") : close(false))}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setOpen(event.key === "ArrowUp" ? "last" : "first");
+          }
+        }}
+      >
+        <Ellipsis />
+      </button>
+      {open === false ? null : (
+        <div
+          ref={list}
+          id={id}
+          role="menu"
+          aria-label={label}
+          className="ui-menu-list"
+          style={place === null ? { visibility: "hidden", top: 0, right: 0 } : place}
+          onKeyDown={onListKey}
+        >
+          {ordered.map((item, index) => [
+            item.danger === true && index > 0 && ordered[index - 1]!.danger !== true ? <div key="rule" role="separator" className="ui-menu-rule" /> : null,
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              className={`ui-menu-item${item.danger === true ? " danger" : ""}`}
+              aria-disabled={item.disabled === undefined ? undefined : true}
+              onClick={() => {
+                if (item.disabled !== undefined) return;
+                close(true);
+                item.onSelect();
+              }}
+            >
+              {item.icon === undefined ? null : <span className="ui-menu-icon" aria-hidden="true">{item.icon}</span>}
+              <span className="ui-menu-text">
+                {item.label}
+                {item.disabled === undefined ? null : <span className="ui-menu-reason">{item.disabled}</span>}
+              </span>
+            </button>,
+          ])}
+        </div>
+      )}
     </span>
   );
 }

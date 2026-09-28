@@ -1,24 +1,24 @@
-import { Fragment, useState } from "react";
+import { useRef, useState } from "react";
+import { Clock, Copy, Users } from "lucide-react";
+import { Dialog } from "@parikshaa/brand/ui";
 import type { AttemptSummary } from "../api.ts";
+import { TimeDialog } from "./Intervene.tsx";
+import { EmptyState, RowMenu, StateBadge, ago } from "./kit.tsx";
 
 interface Props {
   readonly attempts: readonly AttemptSummary[];
-  readonly issued: { candidateId: string; token: string } | null;
-  readonly starting: boolean;
-  readonly onStart: (candidateId: string) => void;
   readonly onReview: (attemptId: string) => void;
-  readonly canStart?: boolean;
   readonly canReview?: boolean;
   /** Present when this account may grant extra time. */
   readonly onExtend?: (attemptId: string, minutes: number, reason: string) => Promise<unknown>;
+  /** The one action that fills an empty list: inviting candidates. */
+  readonly onInvite?: () => void;
   /** For "last seen"; injectable so it can be tested. */
   readonly now?: number;
 }
 
 /** A page that checked in this recently is taken to be open in front of someone. */
 const LIVE_WITHIN_MS = 90_000;
-/** Mirrors the server's minimum; the reason is written into the attempt's ledger. */
-const MIN_REASON = 10;
 
 /**
  * Whether the candidate is here.
@@ -27,191 +27,157 @@ const MIN_REASON = 10;
  * nothing about what the candidate is doing, and is not evidence of anything —
  * a closed lid and a dropped connection look the same.
  */
-export function presence(lastSeenAt: string | null | undefined, now: number): string {
-  if (lastSeenAt == null) return "not yet";
-  const ago = now - Date.parse(lastSeenAt);
-  if (ago < LIVE_WITHIN_MS) return "here";
-  const minutes = Math.round(ago / 60_000);
-  return minutes < 60 ? `last seen ${minutes}m ago` : `last seen ${Math.round(minutes / 60)}h ago`;
+export function presence(lastSeenAt: string | null | undefined, now: number): { words: string; seen: "here" | "away" | "never" } {
+  if (lastSeenAt == null) return { words: "Not yet", seen: "never" };
+  if (now - Date.parse(lastSeenAt) < LIVE_WITHIN_MS) return { words: "Here now", seen: "here" };
+  return { words: ago(lastSeenAt, now), seen: "away" };
 }
 
-function ExtendForm({
-  candidateId,
-  onExtend,
-  onDone,
-}: {
-  candidateId: string;
-  onExtend: (minutes: number, reason: string) => Promise<unknown>;
-  onDone: () => void;
-}) {
-  const [minutes, setMinutes] = useState("10");
-  const [reason, setReason] = useState("");
-  const [sending, setSending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const valid = Number.isInteger(Number(minutes)) && Number(minutes) >= 1 && Number(minutes) <= 240;
+/** Everyone who has started the exam, where each stands, and whether they are here. */
+export function AttemptList({ attempts, onReview, canReview = true, onExtend, onInvite, now = Date.now() }: Props) {
+  const [extending, setExtending] = useState<AttemptSummary | null>(null);
 
   return (
-    <form
-      aria-label={`Extra time for ${candidateId}`}
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setSending(true);
-        setError(null);
-        try {
-          await onExtend(Number(minutes), reason.trim());
-          onDone();
-        } catch (failure) {
-          setError(failure instanceof Error ? failure.message : "That did not work.");
-          setSending(false);
-        }
-      }}
-    >
-      <div className="grid">
-        <div className="field">
-          <label htmlFor={`extend-minutes-${candidateId}`}>Minutes</label>
-          <input
-            id={`extend-minutes-${candidateId}`}
-            inputMode="numeric"
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
-          />
-        </div>
-        <div className="field">
-          <label htmlFor={`extend-reason-${candidateId}`}>Reason</label>
-          <input
-            id={`extend-reason-${candidateId}`}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="e.g. Power cut in hall B"
-          />
-        </div>
-      </div>
-      <p className="notice">Recorded in the attempt's ledger with your name, and shown on the candidate's receipt.</p>
-      {error === null ? null : (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      <div className="row">
-        <button type="submit" disabled={sending || !valid || reason.trim().length < MIN_REASON}>
-          Grant extra time
-        </button>
-        <button type="button" className="quiet" onClick={onDone}>
-          Cancel
-        </button>
-      </div>
-    </form>
-  );
-}
-
-export function AttemptList({
-  attempts,
-  issued,
-  starting,
-  onStart,
-  onReview,
-  canStart = true,
-  canReview = true,
-  onExtend,
-  now = Date.now(),
-}: Props) {
-  const [candidateId, setCandidateId] = useState("");
-  const [extending, setExtending] = useState<string | null>(null);
-
-  return (
-    <>
-      <section className="card" hidden={!canStart}>
-        <div className="field">
-          <label htmlFor="candidate">Start an attempt for a candidate</label>
-          <div className="row" style={{ marginTop: 0 }}>
-            <input
-              id="candidate"
-              value={candidateId}
-              onChange={(e) => setCandidateId(e.target.value)}
-              placeholder="Candidate reference"
-            />
-            <button
-              type="button"
-              disabled={starting || candidateId.trim() === ""}
-              onClick={() => {
-                onStart(candidateId.trim());
-                setCandidateId("");
-              }}
-            >
-              {starting ? "Starting…" : "Start"}
-            </button>
-          </div>
-        </div>
-
-        {issued === null ? null : (
-          <div className="field">
-            <label>Access code for {issued.candidateId}</label>
-            <textarea readOnly className="mono" value={issued.token} aria-label="Access code" />
-            <p className="notice">
-              Hand this to the candidate. It grants this one attempt and expires with
-              the exam window.
-            </p>
-          </div>
-        )}
-      </section>
-
-      <section className="card">
-        {attempts.length === 0 ? (
-          <p className="notice">No attempts yet.</p>
-        ) : (
+    <section className="card" aria-label="Attempts">
+      {attempts.length === 0 ? (
+        <EmptyState icon={Users} action={onInvite === undefined ? undefined : { label: "Invite candidates", onClick: onInvite }}>
+          Candidates appear here as they start, with whether they are here now.
+        </EmptyState>
+      ) : (
+        <div className="scroll">
           <table>
             <thead>
               <tr>
-                <th scope="col">Candidate</th>
+                <th scope="col">Roll no.</th>
                 <th scope="col">State</th>
-                <th scope="col">Here</th>
-                <th scope="col">Entries</th>
-                <th scope="col" />
+                <th scope="col">Last seen</th>
+                <th scope="col" className="num">
+                  Record entries
+                </th>
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {attempts.map((attempt) => (
-                <Fragment key={attempt.id}>
-                <tr>
-                  <td>{attempt.candidateId}</td>
-                  <td>
-                    <span className="pill" data-state={attempt.state}>{attempt.state.replace(/_/g, " ")}</span>
-                  </td>
-                  <td className="notice">{attempt.state === "in_progress" ? presence(attempt.lastSeenAt, now) : ""}</td>
-                  <td>{attempt.entries}</td>
-                  <td>
-                    <button
-                      type="button"
-                      className="crumb"
-                      disabled={!canReview}
-                      onClick={() => onReview(attempt.id)}
-                    >
-                      Review
-                    </button>
-                    {onExtend !== undefined && attempt.state === "in_progress" && extending !== attempt.id ? (
-                      <button type="button" className="quiet" onClick={() => setExtending(attempt.id)}>
-                        Extra time…
+              {attempts.map((attempt) => {
+                const seen = attempt.state === "in_progress" ? presence(attempt.lastSeenAt, now) : null;
+                return (
+                  <tr key={attempt.id}>
+                    <td className="mono">{attempt.candidateId}</td>
+                    <td>
+                      <StateBadge state={attempt.state} />
+                    </td>
+                    <td className="seen">
+                      {seen === null ? (
+                        <span className="notice">—</span>
+                      ) : (
+                        <span className={`seen-at ${seen.seen}`}>
+                          <span className="seen-dot" aria-hidden="true" />
+                          {seen.words}
+                        </span>
+                      )}
+                    </td>
+                    <td className="num">{attempt.entries}</td>
+                    <td className="row-end">
+                      <button type="button" className="quiet" disabled={!canReview} onClick={() => onReview(attempt.id)}>
+                        Review
                       </button>
-                    ) : null}
-                  </td>
-                </tr>
-                {onExtend !== undefined && extending === attempt.id ? (
-                  <tr>
-                    <td colSpan={5}>
-                      <ExtendForm
-                        candidateId={attempt.candidateId}
-                        onExtend={(minutes, reason) => onExtend(attempt.id, minutes, reason)}
-                        onDone={() => setExtending(null)}
+                      <RowMenu
+                        of={attempt.candidateId}
+                        keepPlace
+                        items={[
+                          onExtend !== undefined && attempt.state === "in_progress" && { label: "Extra time…", icon: <Clock />, onSelect: () => setExtending(attempt) },
+                        ]}
                       />
                     </td>
                   </tr>
-                ) : null}
-                </Fragment>
-              ))}
+                );
+              })}
             </tbody>
           </table>
-        )}
-      </section>
-    </>
+        </div>
+      )}
+      {extending === null || onExtend === undefined ? null : (
+        <TimeDialog kind="extend" who={extending.candidateId} onSubmit={(minutes, reason) => onExtend(extending.id, minutes, reason)} onClose={() => setExtending(null)} />
+      )}
+    </section>
+  );
+}
+
+/**
+ * One attempt started by hand, for a candidate without an invitation: the
+ * reference in, the access code out, to hand over.
+ */
+export function StartAttemptDialog({
+  starting,
+  issued,
+  error,
+  onStart,
+  onClose,
+}: {
+  starting: boolean;
+  issued: { candidateId: string; token: string } | null;
+  error: string | null;
+  onStart: (candidateId: string) => void;
+  onClose: () => void;
+}) {
+  const [candidateId, setCandidateId] = useState("");
+  const input = useRef<HTMLInputElement>(null);
+  const [copied, setCopied] = useState(false);
+  return (
+    <Dialog label="Start an attempt by reference" onClose={onClose} initialFocus={input}>
+      <h2 className="dialog-title">Start an attempt by reference</h2>
+      {issued === null ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            onStart(candidateId.trim());
+          }}
+        >
+          <p className="notice">For a candidate without an invitation. The attempt starts now, and its access code is shown once.</p>
+          <div className="field">
+            <label htmlFor="candidate">Candidate reference</label>
+            <input ref={input} id="candidate" className="mono" value={candidateId} onChange={(e) => setCandidateId(e.target.value)} placeholder="e.g. CS001" />
+          </div>
+          {error === null ? null : (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="dialog-actions">
+            <button type="button" className="quiet" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" disabled={starting || candidateId.trim() === ""}>
+              {starting ? "Starting…" : "Start"}
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <div className="field">
+            <label htmlFor="issued-code">Access code for {issued.candidateId}</label>
+            <textarea id="issued-code" readOnly className="mono" value={issued.token} aria-label="Access code" />
+            <p className="notice">Hand this to the candidate. It grants this one attempt, and is not shown again.</p>
+          </div>
+          <div className="dialog-actions">
+            <button
+              type="button"
+              className="secondary"
+              onClick={() => {
+                void navigator.clipboard?.writeText(issued.token).then(() => setCopied(true));
+              }}
+            >
+              <Copy aria-hidden="true" />
+              {copied ? "Copied" : "Copy code"}
+            </button>
+            <button type="button" onClick={onClose}>
+              Done
+            </button>
+          </div>
+        </>
+      )}
+    </Dialog>
   );
 }
