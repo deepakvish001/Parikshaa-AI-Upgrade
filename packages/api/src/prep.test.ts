@@ -1,0 +1,261 @@
+import type Anthropic from "@anthropic-ai/sdk";
+import type { PGlite } from "@electric-sql/pglite";
+import type { FastifyInstance } from "fastify";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { pgliteExecutor } from "@parikshaa/store";
+import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
+
+/**
+ * Prep (ROADMAP §16), through the HTTP API: staff build tracks of lessons and
+ * problems; a learner starts a study plan, works through it, and is paid coins,
+ * given revision and moved along when a day is missed. Runs as `parikshaa_app`,
+ * so row-level security is live. The clock is the test's: days pass on demand.
+ */
+
+const DAY = 86_400_000;
+// Monday 5 October 2026, 09:30 in India.
+let clock = Date.parse("2026-10-05T04:00:00Z");
+const PASSWORD = "a long enough password";
+
+const mcq = (stem: string, correct: number) => ({ kind: "mcq", stem, maxScore: 1, rubric: [], options: ["one", "two", "three"], correctIndex: correct });
+
+let db: PGlite;
+let app: FastifyInstance;
+let owner: string;
+let viewer: string;
+const problems: Record<string, { id: string; slug: string }> = {};
+
+function call(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", token: string | null, url: string, payload?: object) {
+  const headers = token === null ? {} : bearer(token);
+  return payload === undefined ? app.inject({ method, url, headers }) : app.inject({ method, url, headers, payload });
+}
+
+async function ok(method: "GET" | "POST" | "PUT" | "DELETE", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
+  const res = await call(method, token, url, payload);
+  expect(res.statusCode, res.payload).toBe(status);
+  return res.json();
+}
+
+beforeEach(async () => {
+  clock = Date.parse("2026-10-05T04:00:00Z");
+  db = await freshDatabase();
+  let identity;
+  ({ app, identity } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic, now: () => clock }));
+  const org = await addOrganisation(identity, "org-a", "NIT Trichy");
+  await addStaff(identity, org, "owner@nit.test", "owner", "Ravi Kumar");
+  await addStaff(identity, org, "viewer@nit.test", "viewer");
+  await db.exec(`SET ROLE parikshaa_app`);
+  owner = await signIn(app, "owner@nit.test");
+  viewer = await signIn(app, "viewer@nit.test");
+  await ok("PUT", owner, "/practice-admin/site", { slug: "nit-practice", title: "NIT Practice", welcome: "", open: true }, 200);
+  for (const [name, stem, difficulty] of [
+    ["arrays", "Arrays are stored how", "easy"],
+    ["search", "Binary search needs what", "medium"],
+    ["graphs", "BFS uses which structure", "hard"],
+  ] as const) {
+    const q = await ok("POST", owner, "/bank", { question: mcq(stem, 1), difficulty });
+    problems[name] = await ok("POST", owner, "/practice-admin/problems", { bankQuestionId: q.id });
+  }
+});
+
+afterEach(async () => {
+  await app.close();
+  await db.close();
+});
+
+async function buildTrack() {
+  const lesson = await ok("POST", owner, "/practice-admin/lessons", { title: "What an array is", body: "# Arrays\nContiguous memory.", videoUrl: "https://videos.example/arrays", estMinutes: 15, published: true });
+  const track = await ok("POST", owner, "/practice-admin/tracks", {
+    title: "DSA Basics",
+    description: "Start here.",
+    published: true,
+    modules: [
+      { title: "Arrays", items: [{ lessonId: lesson.id }, { problemId: problems.arrays!.id }] },
+      { title: "Searching", items: [{ problemId: problems.search!.id }, { problemId: problems.graphs!.id }] },
+    ],
+  });
+  return { lesson, track };
+}
+
+async function signUp(email = "asha@example.com", name = "Asha") {
+  return (await ok("POST", null, "/practice/nit-practice/signup", { name, email, password: PASSWORD })).token as string;
+}
+
+const S = "/practice/nit-practice";
+
+describe("content", () => {
+  it("is made by staff with the right to write, and read by anyone", async () => {
+    expect((await call("POST", viewer, "/practice-admin/lessons", { title: "x", body: "", estMinutes: 5, published: true })).statusCode).toBe(403);
+    expect((await call("POST", owner, "/practice-admin/lessons", { title: "Bad video", body: "", videoUrl: "http://insecure.example/v", estMinutes: 5, published: true })).statusCode).toBe(422);
+    expect(
+      (await call("POST", owner, "/practice-admin/tracks", { title: "Broken", description: "", published: true, modules: [{ title: "M", items: [{ problemId: "no-such" }] }] })).statusCode,
+    ).toBe(422);
+    const { track } = await buildTrack();
+    expect(track.slug).toBe("dsa-basics");
+    expect(track.modules.map((m: { items: unknown[] }) => m.items.length)).toEqual([2, 2]);
+
+    const list = await ok("GET", null, `${S}/tracks`);
+    expect(list.tracks).toEqual([{ slug: "dsa-basics", title: "DSA Basics", description: "Start here.", modules: 2, items: 4, done: 0 }]);
+    const view = await ok("GET", null, `${S}/tracks/dsa-basics`);
+    expect(view.modules[0].items.map((i: { kind: string; slug: string }) => [i.kind, i.slug])).toEqual([
+      ["lesson", "what-an-array-is"],
+      ["problem", problems.arrays!.slug],
+    ]);
+    const lesson = await ok("GET", null, `${S}/lessons/what-an-array-is`);
+    expect(lesson).toMatchObject({ title: "What an array is", videoUrl: "https://videos.example/arrays", done: false });
+
+    // A track taken off the site is gone for learners, not for staff.
+    await ok("PUT", owner, `/practice-admin/tracks/${track.id}`, { title: "DSA Basics", description: "", published: false, modules: [] });
+    expect((await ok("GET", null, `${S}/tracks`)).tracks).toEqual([]);
+    expect((await call("GET", null, `${S}/tracks/dsa-basics`)).statusCode).toBe(404);
+  });
+});
+
+describe("a learner's day", () => {
+  beforeEach(() => buildTrack());
+
+  it("pays a check-in coin once a day", async () => {
+    const asha = await signUp();
+    expect((await ok("GET", asha, `${S}/home`)).checkin).toBe(1);
+    expect((await ok("GET", asha, `${S}/home`)).checkin).toBe(0);
+    clock += DAY;
+    const home = await ok("GET", asha, `${S}/home`);
+    expect(home).toMatchObject({ checkin: 1, coins: 2, plan: null, continue: { slug: "dsa-basics", done: 0, items: 4, next: { kind: "lesson" } } });
+    expect((await call("GET", null, `${S}/home`)).statusCode).toBe(401);
+  });
+
+  it("finishes a lesson once, for coins, and counts it on the track", async () => {
+    const asha = await signUp();
+    expect(await ok("POST", asha, `${S}/lessons/what-an-array-is/done`, undefined, 200)).toEqual({ coins: 5, reasons: ["lesson"] });
+    expect(await ok("POST", asha, `${S}/lessons/what-an-array-is/done`, undefined, 200)).toEqual({ coins: 0, reasons: [] });
+    expect((await ok("GET", asha, `${S}/tracks/dsa-basics`)).done).toBe(1);
+  });
+
+  it("plans the track, marks work done as it happens, and moves on what was missed", async () => {
+    const asha = await signUp();
+    const input = { track: "dsa-basics", level: "intermediate", deadline: "2026-10-30", dailyMinutes: 75, offDays: [0] };
+    const preview = await ok("POST", asha, `${S}/plan/preview`, input, 200);
+    expect(preview).toMatchObject({ tasks: 4, totalMinutes: 15 + 20 + 40 + 60, finishOn: "2026-10-07", fits: true, dailyMinutesToFit: null });
+    // A deadline that is too near says how much a day it would take.
+    const tight = await ok("POST", asha, `${S}/plan/preview`, { ...input, deadline: "2026-10-11", dailyMinutes: 15, offDays: [0, 1, 2, 3, 4, 5] }, 200);
+    // Saturdays only: one study day before the deadline, and every item needs one of its own.
+    expect(tight).toMatchObject({ fits: false, finishOn: "2026-10-31", dailyMinutesToFit: 170 });
+    expect((await call("POST", asha, `${S}/plan/preview`, { ...input, deadline: "2026-10-06" })).statusCode).toBe(422);
+
+    const { plan } = await ok("POST", asha, `${S}/plan`, { ...input, goal: "SDE-1" });
+    expect(plan).toMatchObject({ goal: "SDE-1", finishOn: "2026-10-07", onTrack: true, done: 0, sprint: 1 });
+    expect(plan.today.map((t: { title: string }) => t.title)).toEqual(["What an array is", "Arrays are stored how"]);
+
+    // Solving the day's problem does its task, pays for it and makes a revision card.
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-05`, { problemId: problems.arrays!.id }, 200);
+    const verdict = await ok("POST", asha, `${S}/problems/${problems.arrays!.slug}/submit`, { answer: "1" }, 200);
+    expect(verdict).toMatchObject({ status: "passed", firstSolve: true, reward: { coins: 15, reasons: ["solve", "potd"] } });
+    const again = await ok("POST", asha, `${S}/problems/${problems.arrays!.slug}/submit`, { answer: "1" }, 200);
+    expect(again.reward).toEqual({ coins: 0, reasons: [] });
+    const wrong = await ok("POST", asha, `${S}/problems/${problems.search!.slug}/submit`, { answer: "0" }, 200);
+    expect(wrong.reward).toEqual({ coins: 0, reasons: [] });
+    let now = (await ok("GET", asha, `${S}/plan`)).plan;
+    expect(now.today.map((t: { done: boolean }) => t.done)).toEqual([false, true]);
+    expect((await ok("GET", asha, `${S}/revise`)).due).toEqual([]);
+
+    // Three days pass with nothing done. What was left is moved on, not dropped.
+    clock += 3 * DAY; // Thursday the 8th
+    now = (await ok("GET", asha, `${S}/plan`)).plan;
+    expect(now.moved).toBeGreaterThan(0);
+    const today = now.today.map((t: { title: string; movedFrom: string | null }) => [t.title, t.movedFrom]);
+    expect(today[0]).toEqual(["What an array is", "2026-10-05"]);
+    expect(now.total).toBe(5);
+
+    // The solved problem is due for revision now; remembering it well pushes it out.
+    const revise = await ok("GET", asha, `${S}/revise`);
+    expect(revise.due.map((d: { slug: string }) => d.slug)).toEqual([problems.arrays!.slug]);
+    expect(await ok("POST", asha, `${S}/revise/${problems.arrays!.slug}`, { grade: "good" }, 200)).toEqual({ dueOn: "2026-10-11", intervalDays: 3 });
+    expect((await ok("GET", asha, `${S}/revise`)).due).toEqual([]);
+    expect((await call("POST", asha, `${S}/revise/${problems.search!.slug}`, { grade: "good" })).statusCode).toBe(404);
+
+    // A task of the learner's own, then done by hand.
+    await ok("POST", asha, `${S}/plan/tasks`, { title: "Update my resume", estMinutes: 20 });
+    now = (await ok("GET", asha, `${S}/plan`)).plan;
+    const mine = now.today.find((t: { kind: string }) => t.kind === "custom");
+    await ok("PUT", asha, `${S}/plan/tasks/${mine.id}`, { done: true }, 200);
+    expect((await ok("GET", asha, `${S}/plan`)).plan.completed.map((t: { title: string }) => t.title)).toContain("Update my resume");
+
+    // Somebody else has no plan, and cannot touch this one.
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect((await ok("GET", ravi, `${S}/plan`)).plan).toBeNull();
+    expect((await call("PUT", ravi, `${S}/plan/tasks/${mine.id}`, { done: false })).statusCode).toBe(404);
+
+    await ok("DELETE", asha, `${S}/plan`, undefined, 200);
+    expect((await ok("GET", asha, `${S}/plan`)).plan).toBeNull();
+  });
+
+  it("times focus, and pays a module's milestone when it is finished", async () => {
+    const asha = await signUp();
+    const session = await ok("POST", asha, `${S}/focus`, {});
+    clock += 25 * 60_000;
+    expect(await ok("POST", asha, `${S}/focus/${session.id}/stop`, undefined, 200)).toEqual({ seconds: 1500 });
+    expect((await ok("GET", asha, `${S}/focus`)).days.at(-1)).toEqual({ day: "2026-10-05", minutes: 25 });
+
+    await ok("POST", asha, `${S}/lessons/what-an-array-is/done`, undefined, 200);
+    const solved = await ok("POST", asha, `${S}/problems/${problems.arrays!.slug}/submit`, { answer: "1" }, 200);
+    expect(solved.reward).toEqual({ coins: 110, reasons: ["solve", "module"] });
+    const coins = await ok("GET", asha, `${S}/coins`);
+    expect(coins.balance).toBe(115);
+    expect(coins.history.map((h: { rule: string }) => h.rule)).toEqual(expect.arrayContaining(["lesson", "solve", "module"]));
+    const leaders = await ok("GET", null, `${S}/coins/leaders`);
+    expect(leaders.leaders).toEqual([{ rank: 1, name: "Asha", coins: 115, you: false }]);
+  });
+});
+
+describe("lists, notes and the problem of the day", () => {
+  it("keeps a learner's lists and notes, theirs alone", async () => {
+    const asha = await signUp();
+    const slug = problems.search!.slug;
+    await ok("PUT", asha, `${S}/lists/Bookmarks/${slug}`, undefined, 200);
+    await ok("PUT", asha, `${S}/lists/Amazon%20prep/${slug}`, undefined, 200);
+    await ok("PUT", asha, `${S}/lists/Amazon%20prep/${problems.graphs!.slug}`, undefined, 200);
+    let lists = (await ok("GET", asha, `${S}/lists`)).lists;
+    expect(lists.map((l: { name: string; problems: unknown[] }) => [l.name, l.problems.length])).toEqual([
+      ["Bookmarks", 1],
+      ["Amazon prep", 2],
+    ]);
+    await ok("DELETE", asha, `${S}/lists/Amazon%20prep/${slug}`, undefined, 200);
+    lists = (await ok("GET", asha, `${S}/lists`)).lists;
+    expect(lists[1].problems.map((p: { slug: string }) => p.slug)).toEqual([problems.graphs!.slug]);
+    expect((await call("PUT", asha, `${S}/lists/%3Cscript%3E/${slug}`)).statusCode).toBe(422);
+    expect((await call("PUT", asha, `${S}/lists/Bookmarks/no-such-problem`)).statusCode).toBe(404);
+
+    await ok("PUT", asha, `${S}/notes/problem/${slug}`, { body: "lo, hi = 0, n - 1" }, 200);
+    await ok("PUT", asha, `${S}/notes/topic/Binary Search on answers`, { body: "Monotonic check." }, 200);
+    const notes = (await ok("GET", asha, `${S}/notes`)).notes;
+    expect(notes.map((n: { kind: string; ref: string; title: string }) => [n.kind, n.ref, n.title])).toEqual(
+      expect.arrayContaining([
+        ["problem", slug, "Binary search needs what"],
+        ["topic", "binary-search-on-answers", "Binary Search on answers"],
+      ]),
+    );
+    expect((await ok("GET", asha, `${S}/notes/problem/${slug}`)).body).toBe("lo, hi = 0, n - 1");
+    await ok("PUT", asha, `${S}/notes/problem/${slug}`, { body: "  " }, 200);
+    expect((await ok("GET", asha, `${S}/notes/problem/${slug}`)).updatedAt).toBeNull();
+
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect((await ok("GET", ravi, `${S}/notes`)).notes).toEqual([]);
+    expect((await ok("GET", ravi, `${S}/lists`)).lists).toEqual([{ name: "Bookmarks", problems: [], solved: 0 }]);
+  });
+
+  it("schedules a problem a day, and shows the last month's with who solved them", async () => {
+    expect((await call("PUT", viewer, `/practice-admin/potd/2026-10-05`, { problemId: problems.arrays!.id })).statusCode).toBe(403);
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-04`, { problemId: problems.graphs!.id }, 200);
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-05`, { problemId: problems.arrays!.id }, 200);
+    await ok("PUT", owner, `/practice-admin/potd/2026-10-06`, { problemId: problems.search!.id }, 200);
+    expect((await call("PUT", owner, `/practice-admin/potd/2026-10-07`, { problemId: "nope" })).statusCode).toBe(422);
+    const schedule = await ok("GET", owner, "/practice-admin/potd");
+    expect(schedule.today).toBe("2026-10-05");
+    expect(schedule.days).toHaveLength(3);
+
+    const potd = await ok("GET", null, `${S}/potd`);
+    // Tomorrow's is not shown before its day.
+    expect(potd.today).toMatchObject({ day: "2026-10-05", slug: problems.arrays!.slug, solved: false });
+    expect(potd.calendar.map((d: { day: string }) => d.day)).toEqual(["2026-10-05", "2026-10-04"]);
+  });
+});

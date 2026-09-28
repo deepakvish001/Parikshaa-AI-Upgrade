@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -10,6 +10,7 @@ import { InvitationService } from "./invitation-service.js";
 import { buildIntegrations } from "./integrations.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
+import { PrepService } from "./prep.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer } from "./server.js";
 import { ExamService } from "./service.js";
@@ -77,6 +78,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     media: new QuestionMedia(unusable),
     practice,
     practiceIdentity: new PracticeIdentity({ store: new PracticeStore(unusable), practice, secrets, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
+    prep: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
   });
 
   await app.ready();

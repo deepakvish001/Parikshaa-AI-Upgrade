@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -15,6 +15,7 @@ import type { Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
+import { PrepService } from "./prep.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer, type ServerOptions } from "./server.js";
 import { ExamService } from "./service.js";
@@ -143,6 +144,7 @@ export function assemble(o: AssembleOptions): {
     media: new QuestionMedia(o.sql),
     practice,
     practiceIdentity,
+    prep: new PrepService({ practice: practiceStore, store: new PrepStore(o.sql) }),
     ...o.server,
   });
 

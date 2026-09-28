@@ -19,6 +19,8 @@ import { registerAccountRoutes } from "./account-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import { registerPracticeRoutes } from "./practice-routes.js";
+import type { PrepService } from "./prep.js";
+import { registerPrepRoutes } from "./prep-routes.js";
 import type { PracticeIdentity } from "./practice-identity.js";
 import { registerPracticeIdentityRoutes } from "./practice-identity-routes.js";
 import type { InvitationService } from "./invitation-service.js";
@@ -64,6 +66,8 @@ export interface ServerOptions {
   readonly practice?: PracticeService;
   /** Practice learners' email verification and Google sign-in. */
   readonly practiceIdentity?: PracticeIdentity;
+  /** Tracks, the study plan, revision, notes, lists, the problem of the day and coins (ROADMAP §16). Needs `practice`. */
+  readonly prep?: PrepService;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -1070,7 +1074,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     const throttle = options.loginThrottle ?? new LoginThrottle();
     if (options.practice !== undefined) {
       const identity = options.practiceIdentity;
-      registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }) });
+      const prep = options.prep;
+      registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }), ...(prep === undefined ? {} : { prep }) });
+      if (prep !== undefined) registerPrepRoutes(routes, { practice: options.practice, prep, service, staff, bearer });
       if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
     }
 

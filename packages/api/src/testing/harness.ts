@@ -11,6 +11,7 @@ import {
   BillingStore,
   ProctorStore,
   PracticeStore,
+  PrepStore,
   QuestionBank,
   QuestionMedia,
   DataKeys,
@@ -33,6 +34,7 @@ import { buildIntegrations } from "../integrations.js";
 import type { SafeHttpOptions } from "../safe-http.js";
 import { ResultsService } from "../results.js";
 import { PracticeService } from "../practice.js";
+import { PrepService } from "../prep.js";
 import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
 import { ExamService } from "../service.js";
@@ -242,6 +244,7 @@ export async function wire(
     media: new QuestionMedia(sql),
     practice,
     practiceIdentity,
+    prep: new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), ...(options.now === undefined ? {} : { now: options.now }) }),
     ...options.server,
   });
   await app.ready();
