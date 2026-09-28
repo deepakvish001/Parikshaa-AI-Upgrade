@@ -521,7 +521,36 @@ describe("console", () => {
   it("lists exams", async () => {
     renderApp(<App client={stubClient()} />);
     expect(await screen.findByRole("button", { name: "Algorithms" })).toBeInTheDocument();
-    expect(screen.getByText("2")).toBeInTheDocument();
+    expect(screen.getAllByText("2").length).toBeGreaterThan(0);
+  });
+
+  it("sums where candidates stand, and filters exams by it", async () => {
+    const counts = (inProgress: number, submitted: number, graded: number) => ({ invited: 0, inProgress, submitted, graded, void: 0 });
+    const client = stubClient({
+      listExams: vi.fn(async () => [
+        { id: "live", title: "Campus Drive", questionCount: 20, durationMs: 3_600_000, totalMarks: 80, proctored: true, sectionCount: 2, attempts: counts(3, 1, 0) },
+        { id: "done", title: "Mid-term", questionCount: 5, attempts: counts(0, 2, 7) },
+        { id: "new", title: "Mock Test", questionCount: 10, attempts: counts(0, 0, 0) },
+      ]),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("button", { name: "Campus Drive" });
+
+    const glance = screen.getByRole("region", { name: "At a glance" });
+    expect(within(glance).getByText("Sitting now").previousSibling).toHaveTextContent("3");
+    expect(within(glance).getByText("To grade").previousSibling).toHaveTextContent("3");
+    expect(screen.getByText("60 min · 80 marks")).toBeInTheDocument();
+    expect(screen.getByText("Proctored")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Sitting now" }));
+    expect(screen.queryByRole("button", { name: "Mid-term" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Not yet sat" }));
+    expect(screen.getByRole("button", { name: "Mock Test" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Campus Drive" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "All" }));
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search exams" }), "mid");
+    expect(screen.getByRole("button", { name: "Mid-term" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mock Test" })).not.toBeInTheDocument();
   });
 });
 

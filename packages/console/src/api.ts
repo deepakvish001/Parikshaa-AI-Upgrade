@@ -4,6 +4,19 @@ export interface ExamSummary {
   readonly id: string;
   readonly title: string;
   readonly questionCount: number;
+  /** The rest arrived later; an older server leaves them out. */
+  readonly createdAt?: string;
+  readonly totalMarks?: number | null;
+  readonly sectionCount?: number;
+  readonly durationMs?: number | null;
+  readonly proctored?: boolean;
+  readonly attempts?: {
+    readonly invited: number;
+    readonly inProgress: number;
+    readonly submitted: number;
+    readonly graded: number;
+    readonly void: number;
+  };
 }
 
 export interface AttemptSummary {

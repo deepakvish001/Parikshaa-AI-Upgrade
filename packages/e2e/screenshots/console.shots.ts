@@ -248,7 +248,8 @@ test("every page of the console", async ({ page, browser, request }) => {
     ["Audit log", "console-15-audit-log"],
     ["Integrations", "console-16-integrations"],
     ["Privacy", "console-17-privacy"],
-    ["Password", "console-19-password"],
+    ["Sign-in", "console-20-sign-in-security"],
+    ["Account", "console-19-password"],
   ] as const) {
     await nav(page, label);
     await page.waitForTimeout(700);

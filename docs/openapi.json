@@ -2319,12 +2319,69 @@
                           },
                           "questionCount": {
                             "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "totalMarks": {
+                            "description": "Marks on the paper: each section counted at its draw of its first question's marks.",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "sectionCount": {
+                            "type": "number"
+                          },
+                          "durationMs": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "proctored": {
+                            "type": "boolean"
+                          },
+                          "attempts": {
+                            "type": "object",
+                            "properties": {
+                              "invited": {
+                                "type": "number"
+                              },
+                              "inProgress": {
+                                "type": "number"
+                              },
+                              "submitted": {
+                                "type": "number"
+                              },
+                              "graded": {
+                                "type": "number"
+                              },
+                              "void": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "invited",
+                              "inProgress",
+                              "submitted",
+                              "graded",
+                              "void"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Invitations not revoked, and attempts by where they stand."
                           }
                         },
                         "required": [
                           "id",
                           "title",
-                          "questionCount"
+                          "questionCount",
+                          "createdAt",
+                          "totalMarks",
+                          "sectionCount",
+                          "durationMs",
+                          "proctored",
+                          "attempts"
                         ],
                         "additionalProperties": false
                       }

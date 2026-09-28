@@ -80,20 +80,20 @@ Variants are classes:
 
 Each app adds its own layout on top:
 
-- **Candidate app** (`packages/web/src/styles.css`): the top bar with the clock, question cards, option tiles, the follow-up panel, the section stepper and the receipt.
-- **Console** (`packages/console/src/styles.css`): the sidebar shell, sign-in, review, results, live sitting, proctoring and invoices.
+- **Candidate app** (`packages/web/src/styles.css`): the sitting as a computer-based test — an ink exam bar with the clock as HH:MM:SS, section tabs, one question at a time with its kind and marks, the palette in the five shapes candidates know from JEE and NEET (not visited, not answered, answered, marked, answered and marked, each counted), Previous · Clear response · Mark for review & next · Save & next pinned under the question, and a summary before submitting. Full-screen code opens under the bar so the clock stays in sight; the dark editor darkens the whole workspace. Also the follow-up panel and the receipt.
+- **Console** (`packages/console/src/styles.css`): the sidebar shell, the exams overview (totals, filters, search, and each exam's candidates sitting, to grade and graded), sign-in, review, results, live sitting, proctoring and invoices.
 
 ## Pages
 
 | | Candidate app | | Console |
 | --- | --- | --- | --- |
 | 01 | [Access code](screenshots/candidate-01-access-code.png) | 01 | [Sign in](screenshots/console-01-sign-in.png) |
-| 02 | [Privacy notice (DPDP)](screenshots/candidate-02-privacy-notice.png) | 02 | [Exams](screenshots/console-02-exams.png) |
+| 02 | [Privacy notice (DPDP)](screenshots/candidate-02-privacy-notice.png) | 02 | [Exams: totals, filters and where candidates stand](screenshots/console-02-exams.png) |
 | 03 | [Link opened early](screenshots/candidate-03-not-open-yet.png) | 03 | [Exam editor](screenshots/console-03-exam-editor.png) |
 | 04 | [Camera notice](screenshots/candidate-04-camera-notice.png) | 04 | [An exam's attempts](screenshots/console-04-exam-attempts.png) |
 | 05 | [Camera check](screenshots/candidate-05-camera-check.png) | 05 | [Schedule and invite](screenshots/console-05-invite.png) |
 | 06 | [Identity photos](screenshots/candidate-06-identity.png) | 06 | [Results and exports](screenshots/console-06-results.png) |
-| 07 | [Answering, with autosave](screenshots/candidate-07-exam.png) | 07 | [Candidate report](screenshots/console-07-candidate-report.png) |
+| 07 | [One question at a time: the exam bar, the palette, Save & next](screenshots/candidate-07-exam.png) | 07 | [Candidate report](screenshots/console-07-candidate-report.png) |
 | 08 | [A follow-up question](screenshots/candidate-08-follow-up.png) | 08 | [Review an attempt](screenshots/console-08-review.png) |
 | 09 | [In Hindi](screenshots/candidate-09-hindi.png) | 09 | [Live sitting](screenshots/console-09-live.png) |
 | 10 | [Leaving a section](screenshots/candidate-10-section-leave.png) | 10 | [Proctoring review](screenshots/console-10-proctoring-review.png) |
@@ -104,8 +104,9 @@ Each app adds its own layout on top:
 | 15 | [A coding question: the workspace and Run](screenshots/candidate-15-coding.png) | 15 | [Audit log](screenshots/console-15-audit-log.png) |
 | 16 | [Full screen, after Submit](screenshots/candidate-16-workspace.png) | 16 | [Integrations](screenshots/console-16-integrations.png) |
 | 17 | [A wrong answer on a hidden test, dark editor](screenshots/candidate-17-wrong-answer.png) | 17 | [Privacy](screenshots/console-17-privacy.png) |
-| | | 18 | [Billing](screenshots/console-18-billing.png) · [GST invoice](screenshots/console-18b-gst-invoice.png) |
-| | | 19 | [Password](screenshots/console-19-password.png) |
+| 18 | [The summary before submitting](screenshots/candidate-18-submit-summary.png) | 18 | [Billing](screenshots/console-18-billing.png) · [GST invoice](screenshots/console-18b-gst-invoice.png) |
+| 19 | [A chart to read, in the paper](screenshots/candidate-19-chart.png) | 19 | [Account: password and two-step sign-in](screenshots/console-19-password.png) |
+| | | 20 | [Sign-in: single sign-on and owners' two-step](screenshots/console-20-sign-in-security.png) |
 | | | 21 | [Aptitude exam editor](screenshots/console-21-aptitude-editor.png) |
 | | | 22 | [Code similarity](screenshots/console-22-code-similarity.png) |
 | | | 23 | [A function question in the editor](screenshots/console-23-function-question.png) |

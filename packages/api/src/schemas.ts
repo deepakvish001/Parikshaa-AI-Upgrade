@@ -283,7 +283,23 @@ export const bankDocxProblems = z.object({
 });
 
 export const examListResponse = z.object({
-  exams: z.array(z.object({ id: z.string(), title: z.string(), questionCount: z.number() })).readonly(),
+  exams: z
+    .array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        questionCount: z.number(),
+        createdAt: z.string(),
+        totalMarks: z.number().nullable().describe("Marks on the paper: each section counted at its draw of its first question's marks."),
+        sectionCount: z.number(),
+        durationMs: z.number().nullable(),
+        proctored: z.boolean(),
+        attempts: z
+          .object({ invited: z.number(), inProgress: z.number(), submitted: z.number(), graded: z.number(), void: z.number() })
+          .describe("Invitations not revoked, and attempts by where they stand."),
+      }),
+    )
+    .readonly(),
 });
 
 export const attemptListResponse = z.object({

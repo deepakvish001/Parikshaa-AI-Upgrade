@@ -207,20 +207,68 @@ export class LedgerStore {
   /** Exams, newest first, for an authoring console. */
   async listExams(scope: Scope): Promise<readonly ExamSummary[]> {
     return this.#scoped(scope, async (tx) => {
-      const rows = await tx.query<{ id: string; title: string; question_count: number | string }>(
+      const rows = await tx.query<{
+        id: string;
+        title: string;
+        created_at: string | Date;
+        question_count: number | string;
+        total_marks: number | string | null;
+        section_count: number | string;
+        duration_ms: number | string | null;
+        proctored: boolean;
+        invited: number | string;
+        in_progress: number | string;
+        submitted: number | string;
+        graded: number | string;
+        voided: number | string;
+      }>(
         // Questions per paper: the fixed ones, plus what each section draws.
-        `SELECT id, title,
-                jsonb_array_length(definition -> 'questions')
+        // Attempts by where they stand, from the same closing events the attempt list reads.
+        `SELECT e.id, e.title, e.created_at,
+                jsonb_array_length(e.definition -> 'questions')
                   + coalesce((SELECT sum((s ->> 'pick')::int)
-                                FROM jsonb_array_elements(coalesce(definition -> 'sections', '[]'::jsonb)) s), 0)
-                  AS question_count
-           FROM exams WHERE org_id = $1 ORDER BY created_at DESC`,
+                                FROM jsonb_array_elements(coalesce(e.definition -> 'sections', '[]'::jsonb)) s), 0)
+                  AS question_count,
+                (SELECT sum((q ->> 'maxScore')::numeric) FROM jsonb_array_elements(e.definition -> 'questions') q)
+                  + coalesce((SELECT sum((s ->> 'pick')::int * (s -> 'pool' -> 0 ->> 'maxScore')::numeric)
+                                FROM jsonb_array_elements(coalesce(e.definition -> 'sections', '[]'::jsonb)) s), 0)
+                  AS total_marks,
+                jsonb_array_length(coalesce(e.definition -> 'sections', '[]'::jsonb)) AS section_count,
+                (e.definition -> 'policy' ->> 'durationMs')::bigint AS duration_ms,
+                (e.definition -> 'policy' -> 'proctoring') IS NOT NULL
+                  AND jsonb_typeof(e.definition -> 'policy' -> 'proctoring') = 'object' AS proctored,
+                (SELECT count(*) FROM invitations i WHERE i.org_id = e.org_id AND i.exam_id = e.id AND i.revoked_at IS NULL) AS invited,
+                count(*) FILTER (WHERE a.id IS NOT NULL AND a.lifecycle IS DISTINCT FROM 'attempt_submitted'
+                                  AND a.lifecycle IS DISTINCT FROM 'attempt_graded' AND a.lifecycle IS DISTINCT FROM 'attempt_voided') AS in_progress,
+                count(*) FILTER (WHERE a.lifecycle = 'attempt_submitted') AS submitted,
+                count(*) FILTER (WHERE a.lifecycle = 'attempt_graded') AS graded,
+                count(*) FILTER (WHERE a.lifecycle = 'attempt_voided') AS voided
+           FROM exams e
+           LEFT JOIN LATERAL (
+             SELECT att.id, ${lifecycleSql("att.org_id", "att.id")} AS lifecycle
+               FROM attempts att WHERE att.org_id = e.org_id AND att.exam_id = e.id
+           ) a ON true
+          WHERE e.org_id = $1
+          GROUP BY e.org_id, e.id, e.title, e.created_at, e.definition
+          ORDER BY e.created_at DESC`,
         [scope.orgId],
       );
       return rows.map((row) => ({
         id: row.id as ExamId,
         title: row.title,
         questionCount: Number(row.question_count),
+        createdAt: new Date(row.created_at).toISOString(),
+        totalMarks: row.total_marks === null ? null : Number(row.total_marks),
+        sectionCount: Number(row.section_count),
+        durationMs: row.duration_ms === null ? null : Number(row.duration_ms),
+        proctored: row.proctored === true,
+        attempts: {
+          invited: Number(row.invited),
+          inProgress: Number(row.in_progress),
+          submitted: Number(row.submitted),
+          graded: Number(row.graded),
+          void: Number(row.voided),
+        },
       }));
     });
   }
@@ -831,6 +879,20 @@ export interface ExamSummary {
   readonly id: ExamId;
   readonly title: string;
   readonly questionCount: number;
+  readonly createdAt: string;
+  /** Marks on the paper: the fixed questions', and each section's draw at its first question's marks. */
+  readonly totalMarks: number | null;
+  readonly sectionCount: number;
+  readonly durationMs: number | null;
+  readonly proctored: boolean;
+  /** Where its candidates stand: invitations not revoked, and attempts by state. */
+  readonly attempts: {
+    readonly invited: number;
+    readonly inProgress: number;
+    readonly submitted: number;
+    readonly graded: number;
+    readonly void: number;
+  };
 }
 
 export interface AttemptSummary {
