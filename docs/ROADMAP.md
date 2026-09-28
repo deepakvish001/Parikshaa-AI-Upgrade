@@ -387,7 +387,8 @@ Zoho, Darwinbox). `docs/openapi.json` already gives an integrator the contract.
 **Universities later:** Moodle via LTI 1.3, and CSV exchange for SIS and ERP
 systems that have no API worth using.
 
-**Status — webhooks, Greenhouse, Lever, Zoho Recruit and Darwinbox built.** Every start, submission, grade and voiding is announced by the ledger in
+**Status — webhooks, Greenhouse, Lever, Zoho Recruit, Darwinbox and LTI 1.3 (Moodle) built.**
+Every start, submission, grade and voiding is announced by the ledger in
 the same transaction that records it, so an integration hears of everything
 that happened and nothing that did not. The worker fans each announcement out,
 one delivery per interested webhook under a fixed id — a fan-out repeated after
