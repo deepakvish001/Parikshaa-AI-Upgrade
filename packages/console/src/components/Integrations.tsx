@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConsoleError, WEBHOOK_EVENTS, type AtsConnector, type AtsProvider, type ConsoleClient, type Webhook } from "../api.ts";
+import { ConsoleError, WEBHOOK_EVENTS, type AtsConnector, type AtsProvider, type ConsoleClient, type LtiPlatform, type Webhook } from "../api.ts";
 
 /**
  * Integrations (ROADMAP §7): webhooks to the organisation's own systems, and
@@ -15,6 +15,7 @@ export function IntegrationsPanel({ client }: { client: ConsoleClient }) {
       <Webhooks client={client} />
       <Greenhouse client={client} />
       <AtsConnectors client={client} />
+      <LtiPlatforms client={client} />
     </>
   );
 }
@@ -472,6 +473,126 @@ function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsC
           </>
         ) : null}
       </div>
+    </section>
+  );
+}
+
+// --- Moodle and other LMSs, through LTI 1.3 --------------------------------------------
+
+function LtiPlatforms({ client }: { client: ConsoleClient }) {
+  const queryClient = useQueryClient();
+  const platforms = useQuery({ queryKey: ["lti"], queryFn: () => client.ltiPlatforms() });
+  const [site, setSite] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [deployment, setDeployment] = useState("");
+  const register = useMutation({
+    mutationFn: () => {
+      const root = site.trim().replace(/\/+$/, "");
+      return client.registerLti({
+        name: new URL(root).hostname,
+        issuer: root,
+        clientId: clientId.trim(),
+        deploymentIds: deployment.trim() === "" ? [] : [deployment.trim()],
+        authLoginUrl: `${root}/mod/lti/auth.php`,
+        authTokenUrl: `${root}/mod/lti/token.php`,
+        jwksUrl: `${root}/mod/lti/certs.php`,
+      });
+    },
+    onSuccess: async () => {
+      setClientId("");
+      setDeployment("");
+      await queryClient.invalidateQueries({ queryKey: ["lti"] });
+    },
+  });
+  const toggle = useMutation({
+    mutationFn: (p: LtiPlatform) => client.updateLti(p.id, { ...p, enabled: !p.enabled }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ["lti"] }),
+  });
+  let validSite = false;
+  try {
+    validSite = /^https?:$/.test(new URL(site.trim()).protocol);
+  } catch {
+    validSite = false;
+  }
+  return (
+    <section className="card" aria-label="Moodle (LTI 1.3)">
+      <strong>Moodle and other LMSs</strong> <span className="pill">LTI 1.3</span>
+      <p className="notice">
+        Put an exam in a Moodle course as an activity. Each student who opens it gets their own attempt — no link to email — and their grade goes back
+        to the course's grade book once the attempt is graded. Canvas and Blackboard work the same way.
+      </p>
+      {(platforms.data ?? []).map((p) => (
+        <div key={p.id} className="lti-platform">
+          <p>
+            <strong>{p.name}</strong> <span className="pill">{p.enabled ? "on" : "off"}</span>{" "}
+            <button type="button" className="quiet" onClick={() => toggle.mutate(p)}>
+              {p.enabled ? "Turn off" : "Turn on"}
+            </button>
+          </p>
+          <p className="notice">In Moodle, Site administration → Plugins → External tool → Manage tools → configure a tool manually, LTI 1.3, with:</p>
+          <dl className="viva">
+            <div>
+              <dt>Tool URL</dt>
+              <dd className="mono">{p.tool.toolUrl}</dd>
+            </div>
+            <div>
+              <dt>Initiate login URL</dt>
+              <dd className="mono">{p.tool.loginUrl}</dd>
+            </div>
+            <div>
+              <dt>Redirection URI</dt>
+              <dd className="mono">{p.tool.redirectUrl}</dd>
+            </div>
+            <div>
+              <dt>Public keyset URL</dt>
+              <dd className="mono">{p.tool.jwksUrl}</dd>
+            </div>
+            <div>
+              <dt>Custom parameters (per activity)</dt>
+              <dd className="mono">{p.tool.customParameters}</dd>
+            </div>
+          </dl>
+          <p className="notice">
+            Tick “IMS LTI Assignment and Grade Services” (use this service for grade sync only), and set the default launch container to “New window”:
+            Parikshaa's pages do not load inside a frame.
+          </p>
+        </div>
+      ))}
+      <details open={(platforms.data ?? []).length === 0}>
+        <summary className="notice">Register a Moodle site</summary>
+        <p className="notice">Register the tool in Moodle first to get its client ID and deployment ID, then enter them here.</p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            register.mutate();
+          }}
+        >
+          <div className="grid">
+            <div className="field">
+              <label htmlFor="lti-site">Moodle site address</label>
+              <input id="lti-site" placeholder="https://lms.college.ac.in" value={site} onChange={(e) => setSite(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="lti-client">Client ID</label>
+              <input id="lti-client" value={clientId} onChange={(e) => setClientId(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="lti-deployment">Deployment ID</label>
+              <input id="lti-deployment" value={deployment} onChange={(e) => setDeployment(e.target.value)} />
+            </div>
+          </div>
+          {register.error === null ? null : (
+            <p className="error" role="alert">
+              {register.error instanceof ConsoleError ? (register.error.detail ?? register.error.message) : "Not registered."}
+            </p>
+          )}
+          <div className="row">
+            <button type="submit" disabled={register.isPending || !validSite || clientId.trim() === ""}>
+              Register
+            </button>
+          </div>
+        </form>
+      </details>
     </section>
   );
 }

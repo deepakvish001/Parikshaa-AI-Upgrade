@@ -450,6 +450,24 @@ Not verified here: Lever and Zoho Recruit follow their published APIs;
 Darwinbox's partner API is not public, so its shapes are this connector's own
 and are shown in the console. None has been run against a live account.
 
+**Moodle, through LTI 1.3,** is built too — Canvas and Blackboard speak the same
+protocol. An owner registers the Moodle site (its address, and the client and
+deployment IDs Moodle gives the tool); the console shows the four URLs to enter
+in Moodle. A course activity names its exam with the custom parameter
+`exam=<exam id>`. The launch is an OpenID Connect third-party login with a
+nonce and sealed state; the ID token is checked against Moodle's published
+keys, issuer, client, deployment and expiry. A student becomes an invitation
+like any candidate — the same one each launch — and lands on their personal
+link, so consent, the window and resuming work as they do by email; a teacher
+sees what the activity sets. Once graded, the score goes to the course's grade
+book through Assignment and Grade Services: the tool signs a client assertion
+with its own key (made per platform, sealed at rest, its public half served as
+a JWKS), buys a token for the score scope, and posts the score. A set-aside
+attempt sends none. The activity must open in a new window: the pages refuse
+to be framed. Not verified here: tested against a stand-in platform speaking
+the protocol, not a live Moodle; CSV exchange for SIS and ERP systems is
+already covered by the results export.
+
 ## 8. Live invigilation
 
 - A dashboard showing who has started, where they are, who has submitted.

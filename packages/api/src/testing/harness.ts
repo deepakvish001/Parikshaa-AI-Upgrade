@@ -217,6 +217,7 @@ export async function wire(
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
     ats: integrations.ats,
+    lti: integrations.lti,
     invigilation: new InvigilationService({
       store,
       proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),

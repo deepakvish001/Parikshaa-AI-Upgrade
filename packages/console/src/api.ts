@@ -844,6 +844,18 @@ export class ConsoleClient {
     return (await this.#request<{ deliveries: WebhookDelivery[] }>(`/webhooks/${encodeURIComponent(id)}/deliveries`)).deliveries;
   }
 
+  async ltiPlatforms(): Promise<readonly LtiPlatform[]> {
+    return (await this.#request<{ platforms: LtiPlatform[] }>("/lti/platforms")).platforms;
+  }
+
+  registerLti(platform: LtiPlatformInput): Promise<LtiPlatform> {
+    return this.#request("/lti/platforms", { method: "POST", body: JSON.stringify(platform) });
+  }
+
+  updateLti(id: string, platform: LtiPlatformInput): Promise<LtiPlatform> {
+    return this.#request(`/lti/platforms/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(platform) });
+  }
+
   async atsConnectors(): Promise<readonly AtsConnector[]> {
     return (await this.#request<{ connectors: AtsConnector[] }>("/integrations/ats")).connectors;
   }
@@ -1208,4 +1220,21 @@ export interface AtsConnector {
   readonly enabled: boolean;
   readonly settings: Record<string, unknown>;
   readonly credentialsSet: boolean;
+}
+
+export interface LtiPlatformInput {
+  readonly name: string;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly deploymentIds: readonly string[];
+  readonly authLoginUrl: string;
+  readonly authTokenUrl: string;
+  readonly jwksUrl: string;
+  readonly enabled?: boolean;
+}
+
+export interface LtiPlatform extends LtiPlatformInput {
+  readonly id: string;
+  readonly enabled: boolean;
+  readonly tool: { readonly toolUrl: string; readonly loginUrl: string; readonly redirectUrl: string; readonly jwksUrl: string; readonly customParameters: string };
 }

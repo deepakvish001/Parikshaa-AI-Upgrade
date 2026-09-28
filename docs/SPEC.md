@@ -289,6 +289,7 @@ sitting is over.
 | Function questions, checkers, Run and Submit | implemented: `packages/core/src/signature.ts` (starters and callers for five languages), `packages/runner/src/judge.ts`, `POST /attempts/me/code/submit`; a hidden test reaches the candidate as its verdict alone |
 | Code similarity | implemented — `packages/core/src/similarity.ts` (winnowing), `GET /exams/:id/similarity`; evidence for a person, never a mark |
 | Presence and extra time | implemented — `POST /attempts/me/heartbeat`; `POST /attempts/:id/extend`, recorded as `time_extended` |
+| Applicant-tracking systems and LMSs | implemented — Greenhouse (`greenhouse.ts`), Lever, Zoho Recruit and Darwinbox (`ats.ts`), Moodle and other LMSs through LTI 1.3 with grades back (`lti.ts`) |
 | Live invigilation | implemented — `GET /exams/:id/live`, announcements, `POST /attempts/:id/reopen` recorded as `attempt_reopened` |
 | Hindi, translated questions, low bandwidth, accessibility | implemented — `translations` on a question; the candidate page in English and Hindi; `GET /attempts/me/probe?stream=0`; compression; axe in the browser suite |
 | Billing | implemented — prepaid credits spent atomically per attempt; `POST /billing/orders`, `/billing/payments/verify`, the Razorpay webhook; GST tax invoices; `billing-cli` |

@@ -28,6 +28,8 @@ import { registerResultsRoutes } from "./results-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
+import type { LtiService } from "./lti.js";
+import { registerLtiRoutes } from "./lti-routes.js";
 import { UnsafeUrl } from "./safe-http.js";
 import type { WebhookService } from "./webhooks.js";
 import type { InvigilationService } from "./invigilation.js";
@@ -68,6 +70,8 @@ export interface ServerOptions {
   readonly greenhouse: GreenhouseService;
   /** Lever, Zoho Recruit and Darwinbox. Absent: no routes for them. */
   readonly ats?: AtsService;
+  /** Moodle and other LMSs, through LTI 1.3. */
+  readonly lti?: LtiService;
   readonly invigilation: InvigilationService;
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
@@ -204,6 +208,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Billing", description: "Prepaid attempt credits, Razorpay payments and GST tax invoices." },
         { name: "Practice", description: "An institution's practice site, as its learners use it: problems, Run and Submit, progress, contests and discussion. No answer key reaches it." },
         { name: "Practice (staff)", description: "Running a practice site: publishing problems from the bank, editorials, contests, learners and moderation." },
+        { name: "LTI", description: "Moodle and other LMSs through LTI 1.3: registering the LMS, the launch, and grades back to its grade book." },
         { name: "Proctoring", description: "Camera proctoring an exam's author turns on: identity photos, webcam photos, browser events. Observations, never verdicts." },
         {
           name: "Greenhouse",
@@ -1054,6 +1059,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerResultsRoutes(routes, { results: options.results, staff });
     registerIntegrationRoutes(routes, { webhooks: options.webhooks, greenhouse: options.greenhouse, throttle, staff });
     if (options.ats !== undefined) registerAtsRoutes(routes, { ats: options.ats, throttle, staff });
+    if (options.lti !== undefined) registerLtiRoutes(routes, { lti: options.lti, staff });
     registerInvigilationRoutes(routes, { invigilation: options.invigilation, service, staff, candidate: requireAttempt });
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });

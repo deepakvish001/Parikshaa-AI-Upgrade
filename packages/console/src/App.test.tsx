@@ -351,6 +351,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     saveAts: vi.fn(async (provider: string) => ({ provider, label: "Lever", configured: true, enabled: true, settings: {}, credentialsSet: true })),
     issueAtsHook: vi.fn(async () => ({ key: "atk.acme.lever.2.x", hookUrl: "https://exam.test/api/integrations/ats/lever/hook/atk.acme.lever.2.x" })),
     disableAts: vi.fn(async () => undefined),
+    ltiPlatforms: vi.fn(async () => []),
+    registerLti: vi.fn(async (p: object) => ({ ...p, id: "p1", enabled: true, tool: { toolUrl: "t", loginUrl: "l", redirectUrl: "r", jwksUrl: "j", customParameters: "exam=<exam id>" } })),
+    updateLti: vi.fn(async () => undefined),
     issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
     disableGreenhouse: vi.fn(async () => undefined),
     live: vi.fn(async () => liveView),
@@ -1415,6 +1418,26 @@ describe("integrations", () => {
     );
     expect(screen.getByRole("region", { name: "Zoho Recruit" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Darwinbox" })).toBeInTheDocument();
+  });
+
+  it("registers a Moodle site from its address, client ID and deployment", async () => {
+    const client = await open();
+    const moodle = await screen.findByRole("region", { name: "Moodle (LTI 1.3)" });
+    await userEvent.type(within(moodle).getByLabelText("Moodle site address"), "https://lms.college.ac.in/");
+    await userEvent.type(within(moodle).getByLabelText("Client ID"), "abc123");
+    await userEvent.type(within(moodle).getByLabelText("Deployment ID"), "4");
+    await userEvent.click(within(moodle).getByRole("button", { name: "Register" }));
+    await waitFor(() =>
+      expect(client.registerLti).toHaveBeenCalledWith({
+        name: "lms.college.ac.in",
+        issuer: "https://lms.college.ac.in",
+        clientId: "abc123",
+        deploymentIds: ["4"],
+        authLoginUrl: "https://lms.college.ac.in/mod/lti/auth.php",
+        authTokenUrl: "https://lms.college.ac.in/mod/lti/token.php",
+        jwksUrl: "https://lms.college.ac.in/mod/lti/certs.php",
+      }),
+    );
   });
 
   it("is not offered to anyone but the owner", async () => {

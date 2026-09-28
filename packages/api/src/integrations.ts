@@ -1,4 +1,5 @@
-import { IntegrationStore, OutboxStore, type InvitationStore, type LedgerStore, type SqlExecutor } from "@parikshaa/store";
+import { IntegrationStore, LtiStore, OutboxStore, type InvitationStore, type LedgerStore, type SqlExecutor } from "@parikshaa/store";
+import { LtiService } from "./lti.js";
 import { AtsService, type AtsBaseUrls } from "./ats.js";
 import type { ItemHandler } from "./delivery.js";
 import { StaffSecrets } from "./staff-secrets.js";
@@ -28,7 +29,8 @@ export function buildIntegrations(o: {
   webhooks: WebhookService;
   greenhouse: GreenhouseService;
   ats: AtsService;
-  handlers: { webhook: ItemHandler; greenhouse: ItemHandler; ats: ItemHandler };
+  lti: LtiService;
+  handlers: { webhook: ItemHandler; greenhouse: ItemHandler; ats: ItemHandler; lti: ItemHandler };
 } {
   const integrations = new IntegrationStore(o.sql);
   const secrets = new IntegrationSecrets(o.secret);
@@ -53,12 +55,24 @@ export function buildIntegrations(o: {
     sealer: new StaffSecrets(o.secret),
     ...(o.atsBases === undefined ? {} : { bases: o.atsBases }),
   });
+  const lti = new LtiService({
+    lti: new LtiStore(o.sql),
+    outbox: integrations,
+    invitationService: o.invitations,
+    invitations: o.invitationStore,
+    store: o.store,
+    exams: o.exams,
+    secrets: new StaffSecrets(o.secret),
+    publicUrl: o.publicUrl,
+    ...(o.http === undefined ? {} : { http: o.http }),
+    ...(o.now === undefined ? {} : { now: o.now }),
+  });
   const webhooks = new WebhookService({
     ...common,
     invitations: o.invitationStore,
     outbox: new OutboxStore(o.sql),
-    listeners: [greenhouse.listener, ats.listener],
+    listeners: [greenhouse.listener, ats.listener, lti.listener],
     ...(o.now === undefined ? {} : { now: o.now }),
   });
-  return { webhooks, greenhouse, ats, handlers: { webhook: webhooks.handle, greenhouse: greenhouse.handle, ats: ats.handle } };
+  return { webhooks, greenhouse, ats, lti, handlers: { webhook: webhooks.handle, greenhouse: greenhouse.handle, ats: ats.handle, lti: lti.handle } };
 }

@@ -37624,6 +37624,952 @@
         }
       }
     },
+    "/lti/platforms": {
+      "get": {
+        "summary": "Registered LMSs",
+        "tags": [
+          "LTI"
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "platforms": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "issuer": {
+                            "type": "string"
+                          },
+                          "clientId": {
+                            "type": "string"
+                          },
+                          "deploymentIds": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "authLoginUrl": {
+                            "type": "string"
+                          },
+                          "authTokenUrl": {
+                            "type": "string"
+                          },
+                          "jwksUrl": {
+                            "type": "string"
+                          },
+                          "toolKid": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "tool": {
+                            "type": "object",
+                            "properties": {
+                              "toolUrl": {
+                                "type": "string"
+                              },
+                              "loginUrl": {
+                                "type": "string"
+                              },
+                              "redirectUrl": {
+                                "type": "string"
+                              },
+                              "jwksUrl": {
+                                "type": "string"
+                              },
+                              "customParameters": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "toolUrl",
+                              "loginUrl",
+                              "redirectUrl",
+                              "jwksUrl",
+                              "customParameters"
+                            ],
+                            "additionalProperties": false,
+                            "description": "What to type into the LMS when registering the tool."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "issuer",
+                          "clientId",
+                          "deploymentIds",
+                          "authLoginUrl",
+                          "authTokenUrl",
+                          "jwksUrl",
+                          "toolKid",
+                          "enabled",
+                          "tool"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "platforms"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Register an LMS (Moodle, Canvas, …) as an LTI 1.3 platform",
+        "tags": [
+          "LTI"
+        ],
+        "description": "Makes the tool's key pair for this platform. Answers with the URLs to enter in the LMS.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "issuer": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The LMS's issuer: for Moodle, its site address, e.g. https://lms.college.ac.in"
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "deploymentIds": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "description": "Empty: any deployment."
+                  },
+                  "authLoginUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Moodle: <site>/mod/lti/auth.php"
+                  },
+                  "authTokenUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Moodle: <site>/mod/lti/token.php"
+                  },
+                  "jwksUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Moodle: <site>/mod/lti/certs.php"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "issuer",
+                  "clientId",
+                  "deploymentIds",
+                  "authLoginUrl",
+                  "authTokenUrl",
+                  "jwksUrl"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "issuer": {
+                      "type": "string"
+                    },
+                    "clientId": {
+                      "type": "string"
+                    },
+                    "deploymentIds": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "authLoginUrl": {
+                      "type": "string"
+                    },
+                    "authTokenUrl": {
+                      "type": "string"
+                    },
+                    "jwksUrl": {
+                      "type": "string"
+                    },
+                    "toolKid": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "tool": {
+                      "type": "object",
+                      "properties": {
+                        "toolUrl": {
+                          "type": "string"
+                        },
+                        "loginUrl": {
+                          "type": "string"
+                        },
+                        "redirectUrl": {
+                          "type": "string"
+                        },
+                        "jwksUrl": {
+                          "type": "string"
+                        },
+                        "customParameters": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "toolUrl",
+                        "loginUrl",
+                        "redirectUrl",
+                        "jwksUrl",
+                        "customParameters"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What to type into the LMS when registering the tool."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "issuer",
+                    "clientId",
+                    "deploymentIds",
+                    "authLoginUrl",
+                    "authTokenUrl",
+                    "jwksUrl",
+                    "toolKid",
+                    "enabled",
+                    "tool"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lti/platforms/{platformId}": {
+      "put": {
+        "summary": "Change or switch off a registered LMS",
+        "tags": [
+          "LTI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "issuer": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The LMS's issuer: for Moodle, its site address, e.g. https://lms.college.ac.in"
+                  },
+                  "clientId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "deploymentIds": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    "description": "Empty: any deployment."
+                  },
+                  "authLoginUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Moodle: <site>/mod/lti/auth.php"
+                  },
+                  "authTokenUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Moodle: <site>/mod/lti/token.php"
+                  },
+                  "jwksUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "Moodle: <site>/mod/lti/certs.php"
+                  },
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "issuer",
+                  "clientId",
+                  "deploymentIds",
+                  "authLoginUrl",
+                  "authTokenUrl",
+                  "jwksUrl"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "platformId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "issuer": {
+                      "type": "string"
+                    },
+                    "clientId": {
+                      "type": "string"
+                    },
+                    "deploymentIds": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "authLoginUrl": {
+                      "type": "string"
+                    },
+                    "authTokenUrl": {
+                      "type": "string"
+                    },
+                    "jwksUrl": {
+                      "type": "string"
+                    },
+                    "toolKid": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "tool": {
+                      "type": "object",
+                      "properties": {
+                        "toolUrl": {
+                          "type": "string"
+                        },
+                        "loginUrl": {
+                          "type": "string"
+                        },
+                        "redirectUrl": {
+                          "type": "string"
+                        },
+                        "jwksUrl": {
+                          "type": "string"
+                        },
+                        "customParameters": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "toolUrl",
+                        "loginUrl",
+                        "redirectUrl",
+                        "jwksUrl",
+                        "customParameters"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What to type into the LMS when registering the tool."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "issuer",
+                    "clientId",
+                    "deploymentIds",
+                    "authLoginUrl",
+                    "authTokenUrl",
+                    "jwksUrl",
+                    "toolKid",
+                    "enabled",
+                    "tool"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lti/{platformId}/jwks": {
+      "get": {
+        "summary": "The tool's public key, for the LMS",
+        "tags": [
+          "LTI"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "platformId",
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "keys": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "keys"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/exams/{examId}/live": {
       "get": {
         "summary": "The sitting, live",
@@ -48254,6 +49200,131 @@
         }
       }
     },
+    "/lti/login": {
+      "get": {
+        "summary": "The LMS starts a launch (OpenID Connect third-party login)",
+        "tags": [
+          "LTI"
+        ],
+        "parameters": [
+          {
+            "schema": "object",
+            "in": "query",
+            "name": "type"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "query",
+            "name": "propertyNames"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              ]
+            },
+            "in": "query",
+            "name": "additionalProperties"
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "summary": "The LMS starts a launch, by form post",
+        "tags": [
+          "LTI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/lti/launch": {
+      "post": {
+        "summary": "The LMS posts the signed launch",
+        "tags": [
+          "LTI"
+        ],
+        "description": "A learner is sent to their personal link for the exam the activity names (`exam=<exam id>` as a custom parameter); a teacher sees what the activity sets. Set the activity to open in a new window: Parikshaa's pages will not load inside a frame.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id_token": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 20000
+                  },
+                  "state": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "id_token",
+                  "state"
+                ],
+                "additionalProperties": {}
+              }
+            }
+          }
+        },
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/billing/razorpay/webhook": {
       "post": {
         "summary": "Razorpay's webhook",
@@ -48384,6 +49455,10 @@
     {
       "name": "Practice (staff)",
       "description": "Running a practice site: publishing problems from the bank, editorials, contests, learners and moderation."
+    },
+    {
+      "name": "LTI",
+      "description": "Moodle and other LMSs through LTI 1.3: registering the LMS, the launch, and grades back to its grade book."
     },
     {
       "name": "Proctoring",

@@ -117,6 +117,7 @@ export function assemble(o: AssembleOptions): { app: FastifyInstance; worker: De
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
     ats: integrations.ats,
+    lti: integrations.lti,
     invigilation: new InvigilationService({
       store,
       invitations: invitationStore,
