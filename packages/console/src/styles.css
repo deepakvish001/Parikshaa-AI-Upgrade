@@ -2324,6 +2324,7 @@ button.month-day.picked::after {
   gap: 2px;
 }
 .setup-text .crumb {
+  justify-self: start;
   font-weight: var(--weight-medium);
   text-align: left;
 }

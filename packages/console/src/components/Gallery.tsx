@@ -218,9 +218,11 @@ export function Gallery() {
         <Drawer label="Example drawer" onClose={() => setOpen(null)}>
           <h2 style={{ marginTop: 0 }}>A drawer</h2>
           <p className="notice">For choosing from a list beside the page, as the question library does.</p>
-          <button type="button" onClick={() => setOpen(null)}>
-            Close
-          </button>
+          <div className="row">
+            <button type="button" onClick={() => setOpen(null)}>
+              Close
+            </button>
+          </div>
         </Drawer>
       ) : null}
     </div>

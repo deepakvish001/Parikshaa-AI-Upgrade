@@ -361,7 +361,6 @@ function Activity({ activity, now }: { activity: NonNullable<Dashboard["activity
               <span className="activity-dot" aria-hidden="true" />
               <span className="activity-text">
                 <strong>{a.actor}</strong> {describeAction(a.action)}
-                {a.target === null || a.action.startsWith("auth.") ? null : <span className="mono notice"> {a.target.length > 28 ? `${a.target.slice(0, 28)}…` : a.target}</span>}
               </span>
               <time className="activity-time" dateTime={a.at}>
                 {ago(a.at, now)}
