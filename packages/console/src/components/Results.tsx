@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, CircleCheck, CircleX, Printer } from "lucide-react";
+import { Award, CircleCheck, CircleX, Download, Printer, Search, Users } from "lucide-react";
 import type { CandidateReport, ConsoleClient, Outcome, QuestionStats, ResultRow, Results, SectionScore, Similarity, Verdict } from "../api.ts";
+import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge } from "./kit.tsx";
 import { EraseCard } from "./Privacy.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
@@ -20,10 +21,10 @@ const when = (ms: number) =>
 const minutes = (ms: number | null) => (ms === null ? "—" : `${Math.round(ms / 60_000)} min`);
 
 const STATE: Record<ResultRow["state"], string> = {
-  in_progress: "taking it",
-  submitted: "to grade",
-  graded: "graded",
-  void: "set aside",
+  in_progress: "In progress",
+  submitted: "To grade",
+  graded: "Graded",
+  void: "Set aside",
 };
 
 const VERDICTS: readonly Verdict[] = ["consistent", "shallow", "inconsistent", "inconclusive"];
@@ -57,45 +58,62 @@ export function ResultsPanel({ client, examId, onReport }: { client: ConsoleClie
   const download = useMutation({
     mutationFn: async (format: "csv" | "xlsx") => save(await client.resultsFile(examId, format), `${examId}-results.${format}`),
   });
+  const empty = results.data === undefined || results.data.rows.length === 0;
+  const downloads = (
+    <PageActions>
+      <button type="button" className="secondary" disabled={empty || download.isPending} onClick={() => download.mutate("xlsx")}>
+        <Download aria-hidden="true" />
+        Download Excel
+      </button>
+      <button type="button" className="secondary" disabled={empty || download.isPending} onClick={() => download.mutate("csv")}>
+        <Download aria-hidden="true" />
+        Download CSV
+      </button>
+    </PageActions>
+  );
 
-  if (results.isPending) return <p className="notice">Loading…</p>;
-  if (results.error !== null) return <p className="error">Could not load the results.</p>;
+  if (results.isPending)
+    return (
+      <>
+        {downloads}
+        <section className="card">
+          <SkeletonRows columns={6} label="Loading the results…" />
+        </section>
+      </>
+    );
+  if (results.error !== null) return <Banner tone="danger" title="Could not load the results.">Check the connection, then reload the page.</Banner>;
   const { rows, analytics } = results.data;
+  const cutoff = results.data.exam.cutoff?.percent ?? null;
+  const outcomes = analytics.qualified !== null && analytics.qualified !== undefined;
+  const percent = (x: number | null) => (x === null ? "—" : `${x}%`);
 
   return (
     <>
-      <section className="card" aria-label="Summary">
-        <div className="bar" style={{ marginBottom: ".4rem" }}>
-          <strong>{results.data.exam.title}</strong>
-          <span className="spacer" />
-          <button type="button" className="secondary" disabled={rows.length === 0 || download.isPending} onClick={() => download.mutate("xlsx")}>
-            Download Excel
-          </button>
-          <button type="button" className="secondary" disabled={rows.length === 0 || download.isPending} onClick={() => download.mutate("csv")}>
-            Download CSV
-          </button>
-        </div>
-        {download.error !== null ? <p className="error">The download failed; try again.</p> : null}
-        <dl className="figures">
-          <Figure label="Sat" value={analytics.candidates} />
-          <Figure label="Graded" value={analytics.graded} />
-          <Figure label="Set aside" value={analytics.setAside} />
-          <Figure label="Mean" value={analytics.meanPercent === null ? "—" : `${analytics.meanPercent}%`} />
-          <Figure label="Median" value={analytics.medianPercent === null ? "—" : `${analytics.medianPercent}%`} />
-          <Figure label="Median time" value={analytics.time.medianMinutes === null ? "—" : `${analytics.time.medianMinutes} min`} />
-          {analytics.qualified === null || analytics.qualified === undefined ? null : (
-            <>
-              <Figure label="Qualified" value={analytics.qualified} />
-              <Figure label="Not qualified" value={analytics.failed ?? 0} />
-            </>
-          )}
-        </dl>
-        {analytics.graded > 0 ? <Distribution counts={analytics.distribution} /> : null}
-      </section>
+      {downloads}
+      {download.error === null ? null : <Banner tone="danger" title="The download failed.">Try again in a moment.</Banner>}
+      <FigureStrip
+        figures={[
+          { label: "Sat", value: analytics.candidates },
+          { label: "Graded", value: analytics.graded },
+          { label: "Mean", value: percent(analytics.meanPercent) },
+          outcomes ? { label: "Qualified", value: analytics.qualified!, tone: "ok" } : { label: "Median", value: percent(analytics.medianPercent) },
+        ]}
+        line={[
+          ...(outcomes ? [{ label: "Median", value: percent(analytics.medianPercent) }] : []),
+          { label: "Median time", value: analytics.time.medianMinutes === null ? "—" : `${analytics.time.medianMinutes} min` },
+          { label: "Set aside", value: analytics.setAside },
+          ...(outcomes ? [{ label: "Not qualified", value: analytics.failed ?? 0 }] : []),
+        ]}
+      />
+      {analytics.graded > 0 ? (
+        <section className="card" aria-label="How the marks fell">
+          <Distribution counts={analytics.distribution} cutoff={cutoff} />
+        </section>
+      ) : null}
 
       <CandidateTable rows={rows} onReport={onReport} />
-      <QuestionTable questions={analytics.questions} graded={analytics.graded} />
-      <Integrity integrity={analytics.integrity} />
+      {rows.length === 0 ? null : <QuestionTable questions={analytics.questions} graded={analytics.graded} />}
+      {rows.length === 0 ? null : <Integrity integrity={analytics.integrity} />}
       <CodeSimilarity client={client} examId={examId} />
     </>
   );
@@ -110,21 +128,45 @@ function Figure({ label, value }: { label: string; value: string | number }) {
   );
 }
 
-/** Graded candidates by tenth of the mark range, as bars with their counts written on. */
-function Distribution({ counts }: { counts: readonly number[] }) {
-  const most = Math.max(1, ...counts);
+/**
+ * Graded candidates by tenth of the mark range, as bars with their counts
+ * written on. Bands no one reached at either end are left out; the
+ * qualifying mark is a dashed line with its label.
+ */
+function Distribution({ counts, cutoff }: { counts: readonly number[]; cutoff: number | null }) {
+  const reached = counts.flatMap((n, i) => (n > 0 ? [i] : []));
+  const cutBand = cutoff === null ? null : Math.min(counts.length - 1, Math.floor(cutoff / 10));
+  const first = Math.min(...reached, ...(cutBand === null ? [] : [cutBand]));
+  const last = Math.max(...reached, ...(cutBand === null ? [] : [cutBand]));
+  const shown = counts.slice(first, last + 1);
+  const most = Math.max(1, ...shown);
+  const at = cutoff === null ? null : ((cutoff - first * 10) / ((last + 1 - first) * 10)) * 100;
   return (
     <figure className="histogram" aria-label="How the marks fell">
-      <figcaption className="notice">How the marks fell (graded candidates per 10% band)</figcaption>
-      <ol>
-        {counts.map((n, i) => (
-          <li key={i} aria-label={`${i * 10}–${i * 10 + 10}%: ${n}`}>
-            <span className="count">{n === 0 ? "" : n}</span>
-            <span className="column" style={{ height: `${(n / most) * 100}%` }} />
-            <span className="band">{i * 10}</span>
-          </li>
-        ))}
-      </ol>
+      <figcaption>
+        <strong>How the marks fell</strong> <span className="notice">graded candidates per 10% band</span>
+      </figcaption>
+      <div className="histogram-plot">
+        <ol style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(2.5rem, 1fr))` }}>
+          {shown.map((n, j) => {
+            const i = first + j;
+            return (
+              <li key={i} aria-label={`${i * 10}–${i * 10 + 10}%: ${n}`}>
+                <span className="count">{n === 0 ? "" : n}</span>
+                <span className="column" style={{ height: `${(n / most) * 100}%` }} />
+                <span className="band">
+                  {i * 10}–{i * 10 + 10}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        {at === null ? null : (
+          <div className="cutoff-line" style={{ left: `${at}%` }} aria-hidden="true">
+            <span>Qualifies at {cutoff}%</span>
+          </div>
+        )}
+      </div>
     </figure>
   );
 }
@@ -149,8 +191,8 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
       });
   }, [rows, filter, state, sort]);
 
-  const header = (key: SortKey, label: string) => (
-    <th scope="col" aria-sort={sort.key === key ? (sort.descending ? "descending" : "ascending") : "none"}>
+  const header = (key: SortKey, label: string, numeric = false) => (
+    <th scope="col" className={numeric ? "num" : undefined} aria-sort={sort.key === key ? (sort.descending ? "descending" : "ascending") : "none"}>
       <button
         type="button"
         className="crumb"
@@ -164,17 +206,14 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
 
   return (
     <section className="card" aria-label="Candidates">
-      <div className="row" style={{ marginTop: 0 }}>
+      <div className="bar filter-bar">
         <strong>Candidates</strong>
-        <span className="spacer" style={{ flex: 1 }} />
-        <input
-          aria-label="Find a candidate"
-          placeholder="Roll number, name or email"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          style={{ maxWidth: "16rem" }}
-        />
-        <select aria-label="Show" value={state} onChange={(e) => setState(e.target.value as typeof state)} style={{ width: "auto" }}>
+        <span className="spacer" />
+        <label className="search">
+          <Search aria-hidden="true" />
+          <input type="search" aria-label="Find a candidate" placeholder="Roll number, name or email" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        </label>
+        <select aria-label="Show" value={state} onChange={(e) => setState(e.target.value as typeof state)}>
           <option value="all">Everyone</option>
           {(Object.keys(STATE) as ResultRow["state"][]).map((s) => (
             <option key={s} value={s}>
@@ -190,19 +229,21 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
         </select>
       </div>
       {rows.length === 0 ? (
-        <p className="notice">Nobody has sat this exam yet.</p>
+        <EmptyState icon={Users}>Results appear here as candidates submit, with their marks and the spreadsheet to download.</EmptyState>
       ) : (
         <div className="scroll">
           <table>
             <thead>
               <tr>
-                {header("ref", "Ref")}
+                {header("ref", "Roll no.")}
                 {header("name", "Name")}
-                {header("percent", "Marks")}
-                {header("minutes", "Time")}
+                {header("percent", "Marks", true)}
+                {header("minutes", "Time", true)}
                 <th scope="col">State</th>
                 {cutoff ? <th scope="col">Outcome</th> : null}
-                <th scope="col" />
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -210,17 +251,17 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
                 <tr key={r.attemptId}>
                   <td className="mono">{r.ref}</td>
                   <td>{r.name}</td>
-                  <td>{r.total === null ? "—" : `${r.total} / ${r.maxTotal} (${r.percent}%)`}</td>
-                  <td>{minutes(r.durationMs)}</td>
+                  <td className="num">{r.total === null ? "—" : `${r.total} / ${r.maxTotal} (${r.percent}%)`}</td>
+                  <td className="num">{minutes(r.durationMs)}</td>
                   <td>
-                    <span className="pill" data-state={r.state}>{STATE[r.state]}</span>
+                    <StateBadge state={r.state} />
                   </td>
                   {cutoff ? (
                     <td>
                       <OutcomeBadge outcome={r.outcome} />
                     </td>
                   ) : null}
-                  <td>
+                  <td className="row-end">
                     <button type="button" className="quiet" onClick={() => onReport(r.attemptId)}>
                       Scorecard
                     </button>
@@ -229,7 +270,11 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
               ))}
             </tbody>
           </table>
-          {shown.length === 0 ? <p className="notice">No one matches.</p> : null}
+          {shown.length === 0 ? (
+            <EmptyState icon={Search} compact action={{ label: "Show everyone", onClick: () => { setFilter(""); setState("all"); } }}>
+              No one matches.
+            </EmptyState>
+          ) : null}
         </div>
       )}
     </section>
@@ -259,24 +304,32 @@ function QuestionTable({ questions, graded }: { questions: readonly QuestionStat
         <table>
           <thead>
             <tr>
-              <th scope="col">#</th>
+              <th scope="col" className="num">
+                #
+              </th>
               <th scope="col">Question</th>
-              <th scope="col">Set to</th>
-              <th scope="col">Got</th>
-              <th scope="col">Separates</th>
+              <th scope="col" className="num">
+                Set to
+              </th>
+              <th scope="col" className="num">
+                Got
+              </th>
+              <th scope="col" className="num">
+                Separates
+              </th>
             </tr>
           </thead>
           <tbody>
             {questions.map((q, i) => (
               <tr key={q.questionId}>
-                <td className="mono">{i + 1}</td>
+                <td className="num mono">{i + 1}</td>
                 <td>
                   {q.stem}
                   {reading(q) === null ? null : <div className="notice">{reading(q)}</div>}
                 </td>
-                <td>{q.appeared}</td>
-                <td>{pct(q.facility)}</td>
-                <td>{q.discrimination === null ? "—" : q.discrimination.toFixed(2)}</td>
+                <td className="num">{q.appeared}</td>
+                <td className="num">{pct(q.facility)}</td>
+                <td className="num">{q.discrimination === null ? "—" : q.discrimination.toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -289,6 +342,7 @@ function QuestionTable({ questions, graded }: { questions: readonly QuestionStat
 function Integrity({ integrity }: { integrity: Results["analytics"]["integrity"] }) {
   return (
     <section className="card evidence" aria-label="Follow-up evidence">
+      <p className="evidence-label">Evidence · does not change marks</p>
       <h2>Follow-up questions across the cohort</h2>
       <p className="notice">
         Evidence for a person to weigh, not a finding about anyone. A follow-up is asked when an answer is strong enough to be worth hearing
@@ -314,16 +368,32 @@ function Integrity({ integrity }: { integrity: Results["analytics"]["integrity"]
  * separately, and marked as such — the follow-up evidence, then the record's
  * head so the paper copy can be checked against the ledger.
  */
-export function ReportPanel({ client, attemptId, canErase = false }: { client: ConsoleClient; attemptId: string; canErase?: boolean }) {
+export function ReportPanel({
+  client,
+  attemptId,
+  canErase = false,
+  organisation,
+}: {
+  client: ConsoleClient;
+  attemptId: string;
+  canErase?: boolean;
+  /** Printed at the top of every page. */
+  organisation?: string | undefined;
+}) {
   const queryClient = useQueryClient();
   const report = useQuery({ queryKey: ["report", attemptId], queryFn: () => client.report(attemptId) });
-  if (report.isPending) return <p className="notice">Loading…</p>;
-  if (report.error !== null) return <p className="error">Could not load the report.</p>;
+  if (report.isPending)
+    return (
+      <section className="card">
+        <SkeletonRows rows={5} columns={3} label="Loading the scorecard…" />
+      </section>
+    );
+  if (report.error !== null) return <Banner tone="danger" title="Could not load the scorecard." />;
   const { ref } = report.data.candidate;
   const erasable = canErase && report.data.result.state !== "in_progress" && !ref.startsWith("erased-") && ref !== "[erased]";
   return (
     <>
-      <Report report={report.data} />
+      <Report report={report.data} organisation={organisation} />
       {erasable ? (
         <EraseCard
           client={client}
@@ -352,17 +422,29 @@ const clockOf = (ms: number | null | undefined) => {
  * went, where they stand among the rest, each answer with when it was saved,
  * and — apart, as evidence — the follow-ups. Laid out to print as a PDF.
  */
-export function Report({ report }: { report: CandidateReport }) {
+export function Report({ report, organisation }: { report: CandidateReport; organisation?: string | undefined }) {
   const { candidate, result } = report;
   const standing = report.standing;
   const sections = result.sections ?? [];
+  const who = candidate.name === "" ? candidate.ref : candidate.name;
   return (
     <article className="report scorecard">
-      <div className="row no-print" style={{ marginTop: 0, marginBottom: ".85rem" }}>
+      <PageActions>
         <button type="button" className="secondary" onClick={() => window.print()}>
           <Printer aria-hidden="true" />
           Print or save as PDF
         </button>
+      </PageActions>
+      {/* On paper only: repeated at the top and foot of every A4 page. */}
+      <div className="print-head" aria-hidden="true">
+        <span>{organisation ?? "Parikshaa"}</span>
+        <span>Scorecard</span>
+      </div>
+      <div className="print-foot" aria-hidden="true">
+        <span>
+          {report.exam.title} · {who} ({candidate.ref})
+        </span>
+        <span className="mono">Record {report.ledger.head.slice(0, 16)}…</span>
       </div>
 
       <section className="card scorecard-head" aria-label="Scorecard">
@@ -400,7 +482,7 @@ export function Report({ report }: { report: CandidateReport }) {
         )}
       </section>
 
-      {sections.length === 0 ? null : <SectionTable sections={sections} />}
+      {sections.length === 0 ? null : <SectionTable sections={sections} minimums={report.exam.cutoff?.sections ?? {}} />}
 
       {report.proctoring === null || report.proctoring === undefined ? null : (
         <section className="card" aria-label="Proctoring">
@@ -454,6 +536,7 @@ export function Report({ report }: { report: CandidateReport }) {
       </section>
 
       <section className="card evidence" aria-label="Follow-up evidence">
+        <p className="evidence-label">Evidence · does not change marks</p>
         <h2>Follow-up questions</h2>
         <p className="notice">Evidence for a person to weigh. It did not change the marks above.</p>
         {report.vivas.length === 0 ? (
@@ -515,6 +598,7 @@ function CodeSimilarity({ client, examId }: { client: ConsoleClient; examId: str
   if (similarity.data === undefined || similarity.data.questions.length === 0) return null;
   return (
     <section className="card evidence" aria-label="Code similarity">
+      <p className="evidence-label">Evidence · does not change marks</p>
       <h2>Code similarity</h2>
       <p className="notice">
         Pairs of candidates whose code for the same question is alike once names, comments, layout and the starter code are set aside.
@@ -612,8 +696,11 @@ function Ring({ percent }: { percent: number | null }) {
   );
 }
 
-/** Marks section by section, with a bar for each. */
-function SectionTable({ sections }: { sections: readonly SectionScore[] }) {
+/**
+ * Marks section by section, with a bar for each in its own colour from the
+ * categorical ramp, and the section's qualifying minimum marked on it.
+ */
+function SectionTable({ sections, minimums }: { sections: readonly SectionScore[]; minimums: Readonly<Record<string, number>> }) {
   return (
     <section className="card" aria-label="Sections">
       <strong>
@@ -630,18 +717,23 @@ function SectionTable({ sections }: { sections: readonly SectionScore[] }) {
           </tr>
         </thead>
         <tbody>
-          {sections.map((section) => (
-            <tr key={section.id}>
-              <td>{section.title}</td>
-              <td className="num mono">{section.score === null ? `— / ${section.max}` : `${section.score} / ${section.max}`}</td>
-              <td>
-                <span className="bar-track" aria-hidden="true">
-                  <span className="bar-fill" style={{ width: `${Math.max(0, Math.min(100, section.percent ?? 0))}%` }} />
-                </span>{" "}
-                <span className="mono">{section.percent === null ? "—" : `${section.percent}%`}</span>
-              </td>
-            </tr>
-          ))}
+          {sections.map((section, i) => {
+            const minimum = minimums[section.id];
+            return (
+              <tr key={section.id}>
+                <td>{section.title}</td>
+                <td className="num mono">{section.score === null ? `— / ${section.max}` : `${section.score} / ${section.max}`}</td>
+                <td>
+                  <span className="bar-track" aria-hidden="true">
+                    <span className={`bar-fill series-${(i % 5) + 1}`} style={{ width: `${Math.max(0, Math.min(100, section.percent ?? 0))}%` }} />
+                    {minimum === undefined ? null : <span className="bar-minimum" style={{ left: `${minimum}%` }} />}
+                  </span>{" "}
+                  <span className="mono">{section.percent === null ? "—" : `${section.percent}%`}</span>
+                  {minimum === undefined ? null : <span className="notice small"> · needs {minimum}%</span>}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </section>

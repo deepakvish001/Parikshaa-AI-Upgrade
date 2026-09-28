@@ -47,7 +47,7 @@ export interface VivaReview {
 }
 
 export interface AttemptReview {
-  readonly state: string;
+  readonly state: "in_progress" | "submitted" | "graded" | "void";
   readonly total: number | null;
   readonly voidReason: string | null;
   readonly voidedBy?: { readonly userId: string; readonly name: string } | null;
@@ -294,8 +294,15 @@ export interface QuestionStats {
   readonly discrimination: number | null;
 }
 
+/** The exam a results page is about, with its qualifying mark; an older server leaves the mark out. */
+export interface ExamHead {
+  readonly id: string;
+  readonly title: string;
+  readonly cutoff?: { readonly percent: number; readonly sections?: Readonly<Record<string, number>> } | null;
+}
+
 export interface Results {
-  readonly exam: { readonly id: string; readonly title: string };
+  readonly exam: ExamHead;
   readonly rows: readonly ResultRow[];
   readonly analytics: {
     readonly candidates: number;
@@ -320,7 +327,7 @@ export interface Results {
 }
 
 export interface CandidateReport {
-  readonly exam: { readonly id: string; readonly title: string };
+  readonly exam: ExamHead;
   readonly candidate: { readonly ref: string; readonly name: string; readonly email: string | null };
   readonly result: Omit<ResultRow, "ref" | "name" | "email">;
   readonly questions: readonly {

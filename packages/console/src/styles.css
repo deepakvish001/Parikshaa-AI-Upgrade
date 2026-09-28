@@ -398,19 +398,30 @@
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
+/*
+ * Evidence, calmer: apart from the grade, but not the loudest thing on the
+ * page. A neutral panel, a saffron rule, and a label that says what it is.
+ */
 .evidence {
   position: relative;
-  background: var(--warning-soft);
-  border-color: var(--warning-border);
+  background: var(--surface);
+  border-color: var(--border);
 }
 .evidence::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--warning);
+  width: 3px;
+  background: var(--accent);
   border-radius: var(--radius-lg) 0 0 var(--radius-lg);
-  opacity: 0.7;
+}
+.evidence-label {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-text);
 }
 .evidence h2 {
   margin: 0 0 var(--space-1);
@@ -500,19 +511,39 @@ textarea.mono {
 
 .histogram {
   margin: 0;
-  padding: var(--space-4);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+}
+.histogram figcaption {
+  margin-bottom: var(--space-3);
+}
+/* The chart scrolls sideways inside itself on a narrow screen, never the page. */
+.histogram-plot {
+  position: relative;
+  overflow-x: auto;
 }
 .histogram ol {
   display: grid;
   grid-template-columns: repeat(10, 1fr);
   gap: 6px;
-  height: 9rem;
-  margin: var(--space-2) 0 0;
+  height: 10rem;
+  margin: var(--space-6) 0 0;
   padding: 0;
   list-style: none;
+}
+.cutoff-line {
+  position: absolute;
+  top: 0;
+  bottom: 1.4rem;
+  border-left: 1.5px dashed var(--text-muted);
+  pointer-events: none;
+}
+.cutoff-line span {
+  position: absolute;
+  top: 0;
+  left: var(--space-1);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 .histogram li {
   display: flex;
@@ -524,7 +555,7 @@ textarea.mono {
 }
 .histogram .column {
   min-height: 2px;
-  background: linear-gradient(180deg, var(--brand-500), var(--brand-700));
+  background: var(--chart-seq-4);
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
 }
 .histogram .count {
@@ -618,9 +649,241 @@ meter {
   border-radius: var(--radius-sm);
 }
 .timeline {
+  display: grid;
+  gap: var(--space-2);
   margin: 0;
-  padding-left: var(--space-5);
+  padding: 0;
   font-size: var(--text-sm);
+  list-style: none;
+}
+.timeline li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.timeline-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-full);
+}
+.timeline-icon svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/*
+ * Reviewing an attempt: answers and marks on the left, settled; the evidence
+ * on the right, in its own calmer panel, kept in view while the answers scroll.
+ */
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.review-main {
+  min-width: 0;
+}
+.review-evidence {
+  position: sticky;
+  top: 4.5rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+}
+.review-grade .grade {
+  margin: 0;
+}
+.review-answers {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.review-answer {
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.review-answer:last-child {
+  border-bottom: none;
+}
+.review-answer:focus-visible,
+.review-answer:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+@media (max-width: 64rem) {
+  .review-layout {
+    grid-template-columns: 1fr;
+  }
+  .review-evidence {
+    position: static;
+    max-height: none;
+  }
+}
+
+/* Proctoring beside the room: a wide drawer, photos four across, the decision kept in view. */
+.ui-dialog-side.proctoring-drawer {
+  width: min(52rem, 100vw);
+  padding: 0;
+}
+.proctoring-drawer .proctoring-review {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.proctoring-drawer .snapshots {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.thumb-button {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+}
+.thumb-button:hover:not(:disabled) {
+  background: transparent;
+  border-color: transparent;
+}
+.thumb-button:hover .thumb {
+  border-color: var(--primary);
+}
+/* Photos sit on sunken, never inverted, in either theme. */
+.lightbox.ui-dialog-center {
+  width: min(56rem, 100%);
+  padding: var(--space-4);
+}
+.lightbox-head,
+.lightbox-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.lightbox-nav {
+  justify-content: space-between;
+  margin-top: var(--space-3);
+}
+.lightbox-photo,
+.lightbox .photo-placeholder {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-3);
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+.decision-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: var(--space-4) calc(-1 * var(--space-5)) 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+}
+.decision-bar .row {
+  margin-bottom: 0;
+}
+
+/* The room: where everyone stands, and when the page last heard. */
+.freshness {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.refresh-ring {
+  width: 1rem;
+  height: 1rem;
+  transform: rotate(-90deg);
+}
+.refresh-ring circle {
+  fill: none;
+  stroke-width: 2.5;
+}
+.refresh-track {
+  stroke: var(--border);
+}
+.refresh-fill {
+  stroke: var(--primary);
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: refresh-fill var(--refresh) linear forwards;
+}
+@keyframes refresh-fill {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .refresh-fill {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}
+.live-line {
+  margin-top: var(--space-4);
+}
+.live-line .attention dd {
+  color: var(--warning);
+}
+.told-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.told-list li {
+  display: grid;
+  gap: 0.125rem;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+}
+.live-state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.progress-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.minutes-input {
+  width: 4.5rem;
+}
+.filter-bar label.inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+.filter-bar select {
+  width: auto;
+}
+@media (max-width: 40rem) {
+  .proctoring-drawer .snapshots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* --- pictures, passages, several right options ------------------------------- */
@@ -2417,6 +2680,7 @@ button.qitem-stem:hover {
   vertical-align: middle;
 }
 .bar-track {
+  position: relative;
   display: inline-block;
   width: 10rem;
   height: 0.5rem;
@@ -2430,10 +2694,79 @@ button.qitem-stem:hover {
   background: var(--primary);
   border-radius: inherit;
 }
+.bar-fill.series-1 {
+  background: var(--chart-cat-1);
+}
+.bar-fill.series-2 {
+  background: var(--chart-cat-2);
+}
+.bar-fill.series-3 {
+  background: var(--chart-cat-3);
+}
+.bar-fill.series-4 {
+  background: var(--chart-cat-4);
+}
+.bar-fill.series-5 {
+  background: var(--chart-cat-5);
+}
+/* A section's qualifying minimum, marked across its bar. */
+.bar-minimum {
+  position: absolute;
+  top: -0.2rem;
+  bottom: -0.2rem;
+  width: 2px;
+  background: var(--text);
+  border-radius: var(--radius-hair);
+}
+.print-head,
+.print-foot {
+  display: none;
+}
 .saved-line {
   margin: 0 0 var(--space-1);
 }
+/*
+ * The scorecard on A4: the organisation's name at the top of every page; the
+ * exam, the candidate and the record's head at the foot, with page numbers.
+ * Chromium repeats fixed elements on every printed page.
+ */
+@page {
+  size: A4;
+  margin: 22mm 16mm 22mm;
+
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+  }
+}
 @media print {
+  .page-head {
+    margin-bottom: var(--space-3);
+  }
+  .page-actions,
+  .page-note {
+    display: none !important;
+  }
+  .print-head,
+  .print-foot {
+    position: fixed;
+    right: 0;
+    left: 0;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+  }
+  .print-head {
+    top: -14mm;
+    font-weight: var(--weight-semibold);
+  }
+  .print-foot {
+    bottom: -14mm;
+    padding-right: 28mm;
+  }
   .scorecard-head {
     grid-template-columns: 1fr auto;
   }

@@ -851,6 +851,30 @@ describe("attempt review", () => {
     expect(screen.queryByRole("button", { name: "Set aside…" })).not.toBeInTheDocument();
   });
 
+  it("shows the answers and marks beside the evidence, and J and K move between them", async () => {
+    await openReview();
+    const answers = await screen.findByRole("region", { name: "Answers" });
+    const items = await within(answers).findAllByRole("listitem");
+    expect(items[1]).toHaveTextContent("4 / 5");
+    await userEvent.keyboard("j");
+    expect(items[0]).toHaveFocus();
+    await userEvent.keyboard("j");
+    expect(items[1]).toHaveFocus();
+    await userEvent.keyboard("k");
+    expect(items[0]).toHaveFocus();
+  });
+
+  it("sets an attempt aside only from its own decision, in a dialog", async () => {
+    await openReview();
+    const decision = await screen.findByRole("region", { name: "Decision" });
+    await userEvent.click(within(decision).getByRole("button", { name: "Set aside…" }));
+    const dialog = screen.getByRole("dialog", { name: "Set this attempt aside" });
+    expect(within(dialog).getByLabelText("Reason")).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(decision).getByRole("button", { name: "Set aside…" })).toHaveFocus();
+  });
+
   it("shows the staff-side rationale, which the candidate never sees", async () => {
     await openReview();
     const evidence = await screen.findByRole("region", { name: "Provenance evidence" });
@@ -1382,9 +1406,9 @@ describe("results and exports", () => {
     await within(table).findByText("CS001");
     expect(refs(table)).toEqual(["CS001", "CS002", "CS010"]);
 
-    await userEvent.click(within(table).getByRole("button", { name: "Ref" }));
+    await userEvent.click(within(table).getByRole("button", { name: "Roll no." }));
     expect(refs(table)).toEqual(["CS001", "CS002", "CS010"]);
-    await userEvent.click(within(table).getByRole("button", { name: /^Ref/ }));
+    await userEvent.click(within(table).getByRole("button", { name: /^Roll no\./ }));
     expect(refs(table)).toEqual(["CS010", "CS002", "CS001"]);
 
     await userEvent.type(within(table).getByLabelText("Find a candidate"), "rohan");
@@ -1396,13 +1420,28 @@ describe("results and exports", () => {
 
   it("shows the cohort's figures, and flags a question that does not separate", async () => {
     await open();
-    const summary = await screen.findByRole("region", { name: "Summary" });
-    expect(summary).toHaveTextContent("Mean65%");
-    expect(within(summary).getByLabelText("90–100%: 1")).toBeInTheDocument();
+    // No card repeats the page's title: the figures, then the chart.
+    const figures = await screen.findByRole("region", { name: "At a glance" });
+    expect(within(figures).getByText("Mean").previousSibling).toHaveTextContent("65%");
+    const chart = screen.getByRole("region", { name: "How the marks fell" });
+    expect(within(chart).getByLabelText("90–100%: 1")).toBeInTheDocument();
+    // Bands no one reached, below the lowest mark, are left out.
+    expect(within(chart).queryByLabelText("0–10%: 0")).toBeNull();
+    // The downloads are the page's own actions.
+    const header = screen.getByRole("heading", { level: 1 }).closest("header")!;
+    expect(within(header).getByRole("button", { name: "Download Excel" })).toBeEnabled();
 
     const questions = screen.getByRole("region", { name: "Questions" });
     expect(within(questions).getByText("Which sort is stable?").closest("tr")).toHaveTextContent(/worth a second look/);
     expect(within(questions).getByText("Trace the loop").closest("tr")).not.toHaveTextContent(/second look/);
+  });
+
+  it("draws the qualifying mark on the chart", async () => {
+    await open(stubClient({ results: vi.fn(async () => ({ ...results, exam: { ...results.exam, cutoff: { percent: 50 } } })) }));
+    const chart = await screen.findByRole("region", { name: "How the marks fell" });
+    expect(chart).toHaveTextContent("Qualifies at 50%");
+    // The band the mark falls in is kept, even if no one scored in it.
+    expect(within(chart).getByLabelText("50–60%: 0")).toBeInTheDocument();
   });
 
   it("keeps the follow-up figures apart, as evidence about no one in particular", async () => {
@@ -1560,12 +1599,17 @@ describe("the live sitting", () => {
   it("shows the room at a glance, and who has gone away", async () => {
     await open();
     const summary = await screen.findByRole("region", { name: "The sitting now" });
-    expect(summary).toHaveTextContent("Away1");
+    // One bar of where everyone stands, with its counts beneath.
+    const bar = within(summary).getByRole("region", { name: "Candidates by where they stand" });
+    expect(within(bar).getByText("Away").previousSibling).toHaveTextContent("1");
+    expect(summary).toHaveTextContent(/Updated (just now|\d+ s ago)/);
     const table = screen.getByRole("region", { name: "Candidates now" });
     const r2 = within(table).getByText("R2").closest("tr")!;
     expect(r2).toHaveTextContent("10 min ago");
-    expect(within(r2).getByText("away")).toBeInTheDocument();
-    expect(within(table).getByText("R1").closest("tr")).toHaveTextContent("here now");
+    expect(within(r2).getByText("Away")).toBeInTheDocument();
+    // Whoever needs someone is listed first.
+    expect(within(table).getAllByRole("row")[1]).toBe(r2);
+    expect(within(table).getByText("R1").closest("tr")).toHaveTextContent("Here now");
     expect(within(within(table).getByText("R1").closest("tr")!).getByLabelText("3 of 10 answered")).toBeInTheDocument();
   });
 
@@ -1580,15 +1624,20 @@ describe("the live sitting", () => {
   it("tells the room something, and shows what it was told", async () => {
     const client = await open();
     expect(await screen.findByRole("region", { name: "Told to the room" })).toHaveTextContent("assume sorted input");
-    await userEvent.type(screen.getByLabelText("Tell everyone sitting this exam"), "Ten minutes left.");
-    await userEvent.click(screen.getByRole("button", { name: "Send to everyone" }));
+    await userEvent.click(screen.getByRole("button", { name: "Announce" }));
+    const dialog = screen.getByRole("dialog", { name: "Tell the room" });
+    expect(within(dialog).getByLabelText("Tell everyone sitting this exam")).toHaveFocus();
+    await userEvent.type(within(dialog).getByLabelText("Tell everyone sitting this exam"), "Ten minutes left.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Send to everyone" }));
     await waitFor(() => expect(client.announce).toHaveBeenCalledWith("exam-1", "Ten minutes left."));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("reopens a submitted attempt with minutes and a reason", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Candidates now" });
-    await userEvent.click(within(within(table).getByText("R3").closest("tr")!).getByRole("button", { name: "Reopen…" }));
+    await userEvent.click(within(within(table).getByText("R3").closest("tr")!).getByRole("button", { name: "More actions for R3" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Reopen…" }));
     const form = screen.getByRole("form", { name: "Reopen R3" });
     await userEvent.clear(within(form).getByLabelText("Minutes from now"));
     await userEvent.type(within(form).getByLabelText("Minutes from now"), "20");
@@ -1600,9 +1649,8 @@ describe("the live sitting", () => {
   it("offers no interventions to someone who can only watch", async () => {
     await open(stubClient({ me: vi.fn(async () => who("viewer", ["exam:read", "attempt:read", "attempt:review"])) }));
     await screen.findByRole("region", { name: "Candidates now" });
-    expect(screen.queryByRole("region", { name: "Tell the room" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reopen…" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Extend…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Announce" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^More actions for R/ })).toBeNull();
   });
 });
 
@@ -1765,7 +1813,7 @@ describe("proctoring (ROADMAP §14)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Live sitting" }));
 
     const row = (await screen.findByText("R1")).closest("tr")!;
-    expect(row).toHaveTextContent("camera off");
+    expect(row).toHaveTextContent("Camera off");
     expect(row).toHaveTextContent("ID to check");
     expect(row).toHaveTextContent("2 browser events");
     await userEvent.click(within(row).getByRole("button", { name: "Review R1" }));
@@ -1779,6 +1827,15 @@ describe("proctoring (ROADMAP §14)", () => {
     await userEvent.type(within(panel).getByLabelText(/What you compared/), "Face matches the college ID");
     await userEvent.click(confirm);
     expect(client.reviewIdentity).toHaveBeenCalledWith("att-R1", "verified", "Face matches the college ID");
+
+    // Each webcam photo opens large, with the ones either side a button away.
+    await userEvent.click(within(panel).getAllByRole("button", { name: /^Open the webcam photo/ })[0]!);
+    const lightbox = screen.getByRole("dialog", { name: /^Webcam photo 1 of/ });
+    expect(within(lightbox).getByRole("button", { name: /Earlier/ })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: /^Webcam photo/ })).toBeNull();
+    // Escape closed the photo, not the review behind it.
+    expect(screen.getByRole("region", { name: "Proctoring for Candidate R1" })).toBeInTheDocument();
   });
 
   it("appears in the candidate's report as observations", async () => {

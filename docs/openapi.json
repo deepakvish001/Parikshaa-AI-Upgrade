@@ -33972,11 +33972,41 @@
                         },
                         "title": {
                           "type": "string"
+                        },
+                        "cutoff": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "percent": {
+                                  "type": "number"
+                                },
+                                "sections": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The qualifying mark, overall and per section, as percentages; null without one."
                         }
                       },
                       "required": [
                         "id",
-                        "title"
+                        "title",
+                        "cutoff"
                       ],
                       "additionalProperties": false
                     },
@@ -34819,11 +34849,41 @@
                         },
                         "title": {
                           "type": "string"
+                        },
+                        "cutoff": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "percent": {
+                                  "type": "number"
+                                },
+                                "sections": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The qualifying mark, overall and per section, as percentages; null without one."
                         }
                       },
                       "required": [
                         "id",
-                        "title"
+                        "title",
+                        "cutoff"
                       ],
                       "additionalProperties": false
                     },

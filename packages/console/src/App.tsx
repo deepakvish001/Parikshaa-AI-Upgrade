@@ -207,6 +207,13 @@ function Console({
     queryFn: () => client.review((view as { attemptId: string }).attemptId),
     enabled: view.name === "review",
   });
+  // The answers beside the evidence: the scorecard's, for an account that may read it.
+  const reviewAnswers = useQuery({
+    queryKey: ["report", view.name === "review" ? view.attemptId : null],
+    queryFn: () => client.report((view as { attemptId: string }).attemptId),
+    enabled: view.name === "review" && can("attempt:review"),
+    retry: false,
+  });
 
   const saveExam = useMutation({
     mutationFn: (exam: Exam) => client.saveExam(exam),
@@ -645,7 +652,7 @@ function Console({
             {view.name === "results" ? (
               <ResultsPanel client={client} examId={view.examId} onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })} />
             ) : null}
-            {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} /> : null}
+            {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} organisation={me.data?.organisation.name} /> : null}
             {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
 
             {view.name === "attempts" ? (
@@ -715,6 +722,7 @@ function Console({
                   onVoid={(reason) => voidAttempt.mutate({ attemptId: view.attemptId, reason })}
                   can={{ grade: can("attempt:grade"), assess: can("attempt:assess"), void: can("attempt:void") }}
                   failure={actionFailure === undefined ? null : actionFailure.message}
+                  answers={reviewAnswers.data}
                 />
               )
             ) : null}

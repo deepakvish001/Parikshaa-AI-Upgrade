@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConsoleError, type ConsoleClient, type IdentityState } from "../api.ts";
+import { Camera, CameraOff, ChevronLeft, ChevronRight, ClipboardPaste, Copy, EyeOff, Minimize2, type LucideIcon } from "lucide-react";
+import { Dialog } from "@parikshaa/brand/ui";
+import { ConsoleError, type ConsoleClient, type IdentityState, type ProctoringMedia } from "../api.ts";
+import { Banner, SkeletonRows } from "./kit.tsx";
 
 /**
  * Reviewing one candidate's proctoring (ROADMAP §14): the identity photos side
@@ -15,6 +18,14 @@ const EVENT_NAMES: Readonly<Record<string, string>> = {
   paste: "Pasted",
   camera_off: "Camera stopped",
   camera_on: "Camera back",
+};
+const EVENT_ICONS: Readonly<Record<string, LucideIcon>> = {
+  tab_hidden: EyeOff,
+  fullscreen_exit: Minimize2,
+  copy: Copy,
+  paste: ClipboardPaste,
+  camera_off: CameraOff,
+  camera_on: Camera,
 };
 
 export const IDENTITY_LABEL: Readonly<Record<IdentityState, string>> = {
@@ -47,10 +58,49 @@ function Photo({ client, attemptId, mediaId, alt, className }: { client: Console
   return url === null ? <div className={`photo-placeholder ${className ?? ""}`} aria-hidden="true" /> : <img src={url} alt={alt} className={className} />;
 }
 
+/** One webcam photo large, with the ones before and after it a key away. */
+function Lightbox({ client, attemptId, name, photos, at, onMove, onClose }: { client: ConsoleClient; attemptId: string; name: string; photos: readonly ProctoringMedia[]; at: number; onMove: (to: number) => void; onClose: () => void }) {
+  const photo = photos[at]!;
+  return (
+    <Dialog label={`Webcam photo ${at + 1} of ${photos.length}`} onClose={onClose} className="lightbox">
+      <div
+        className="lightbox-body"
+        onKeyDown={(event) => {
+          if (event.key === "ArrowLeft" && at > 0) onMove(at - 1);
+          if (event.key === "ArrowRight" && at < photos.length - 1) onMove(at + 1);
+        }}
+      >
+        <div className="lightbox-head">
+          <strong>
+            {at + 1} of {photos.length}
+          </strong>
+          <span className="notice">{time(photo.takenAt)} IST</span>
+          <span className="spacer" />
+          <button type="button" className="quiet" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <Photo key={photo.id} client={client} attemptId={attemptId} mediaId={photo.id} alt={`Webcam photo of ${name} at ${time(photo.takenAt)}`} className="lightbox-photo" />
+        <div className="lightbox-nav">
+          <button type="button" className="secondary" disabled={at === 0} onClick={() => onMove(at - 1)}>
+            <ChevronLeft aria-hidden="true" />
+            Earlier
+          </button>
+          <button type="button" className="secondary" disabled={at === photos.length - 1} onClick={() => onMove(at + 1)}>
+            Later
+            <ChevronRight aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 export function ProctoringReview({ client, attemptId, name, canDecide, onClose }: { client: ConsoleClient; attemptId: string; name: string; canDecide: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const view = useQuery({ queryKey: ["proctoring", attemptId], queryFn: () => client.proctoring(attemptId) });
   const [reason, setReason] = useState("");
+  const [looking, setLooking] = useState<number | null>(null);
   const decide = useMutation({
     mutationFn: (outcome: "verified" | "rejected") => client.reviewIdentity(attemptId, outcome, reason.trim()),
     onSuccess: async () => {
@@ -60,8 +110,8 @@ export function ProctoringReview({ client, attemptId, name, canDecide, onClose }
     },
   });
 
-  if (view.isPending) return <p className="notice">Loading…</p>;
-  if (view.error !== null) return <p className="error">Could not load the proctoring record.</p>;
+  if (view.isPending) return <SkeletonRows rows={4} columns={2} label="Loading the proctoring record…" />;
+  if (view.error !== null) return <Banner tone="danger" title="Could not load the proctoring record." />;
   const { identity, snapshots, events } = view.data;
 
   return (
@@ -95,18 +145,19 @@ export function ProctoringReview({ client, attemptId, name, canDecide, onClose }
           )}
           {identity.review === null ? (
             <p>
-              <span className="pill attention">To check</span>
+              <span className="pill attention">ID to check</span>
             </p>
           ) : (
             <p>
-              <span className={identity.review.outcome === "verified" ? "pill ok" : "pill attention"}>
-                {identity.review.outcome === "verified" ? "Confirmed" : "Not confirmed"}
+              <span className={identity.review.outcome === "verified" ? "pill ok" : "pill bad"}>
+                {identity.review.outcome === "verified" ? "ID confirmed" : "ID not confirmed"}
               </span>{" "}
               by {identity.review.decidedBy} at {time(identity.review.at)} — {identity.review.reason}
             </p>
           )}
           {canDecide ? (
             <form
+              className="decision-bar"
               aria-label="Decide on the identity photos"
               onSubmit={(e) => {
                 e.preventDefault();
@@ -138,9 +189,11 @@ export function ProctoringReview({ client, attemptId, name, canDecide, onClose }
         <p className="notice">None yet.</p>
       ) : (
         <ol className="snapshots">
-          {snapshots.slice(0, 24).map((s) => (
+          {snapshots.slice(0, 24).map((s, i) => (
             <li key={s.id}>
-              <Photo client={client} attemptId={attemptId} mediaId={s.id} alt={`Webcam photo at ${time(s.takenAt)}`} className="thumb" />
+              <button type="button" className="thumb-button" aria-label={`Open the webcam photo at ${time(s.takenAt)}`} onClick={() => setLooking(i)}>
+                <Photo client={client} attemptId={attemptId} mediaId={s.id} alt="" className="thumb" />
+              </button>
               <span className="notice">{time(s.takenAt)}</span>
             </li>
           ))}
@@ -153,12 +206,21 @@ export function ProctoringReview({ client, attemptId, name, canDecide, onClose }
         <p className="notice">Nothing reported.</p>
       ) : (
         <ul className="timeline">
-          {events.map((e, i) => (
-            <li key={i}>
-              <span className="mono">{time(e.at)}</span> {EVENT_NAMES[e.kind] ?? e.kind}
-            </li>
-          ))}
+          {events.map((e, i) => {
+            const Icon = EVENT_ICONS[e.kind];
+            return (
+              <li key={i}>
+                <span className="timeline-icon" aria-hidden="true">
+                  {Icon === undefined ? null : <Icon />}
+                </span>
+                <span className="mono">{time(e.at)}</span> {EVENT_NAMES[e.kind] ?? e.kind}
+              </li>
+            );
+          })}
         </ul>
+      )}
+      {looking === null ? null : (
+        <Lightbox client={client} attemptId={attemptId} name={name} photos={snapshots.slice(0, 24)} at={looking} onMove={setLooking} onClose={() => setLooking(null)} />
       )}
     </section>
   );
