@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import qrcode from "qrcode-generator";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ConsoleError, type ConsoleClient } from "../api.ts";
+import { SettingsGroup, SkeletonRows } from "./kit.tsx";
 
 /**
  * A second factor for one's own account, and — for an owner — how everyone
@@ -68,17 +69,20 @@ export function TwoFactorPanel({ client, onSignedOut, onEnrolled }: { client: Co
   // Every session ends when it is turned off, this one included.
   const disable = useMutation({ mutationFn: () => client.disableTwoFactor(password, offCode.trim()), onSuccess: onSignedOut });
 
-  if (status.data === undefined) return <p className="notice">Loading…</p>;
+  if (status.data === undefined) return <SkeletonRows rows={2} columns={2} label="Loading two-step sign-in…" />;
   const { enabled, recoveryCodesLeft, required } = status.data;
 
   return (
-    <section className="card" aria-label="Two-step sign-in">
-      <strong>Two-step sign-in</strong>
-      <p className="notice">
-        After your password, a six-digit code from an app on your phone — Google Authenticator, Microsoft Authenticator, or any
-        password manager. Someone who learns your password still cannot sign in.
-      </p>
-
+    <SettingsGroup
+      id="two-step"
+      title="Two-step sign-in"
+      description={
+        <>
+          After your password, a six-digit code from an app on your phone — Google Authenticator, Microsoft Authenticator, or any
+          password manager. Someone who learns your password still cannot sign in.
+        </>
+      }
+    >
       {recovery !== null ? (
         <div className="callout" role="status">
           <p>
@@ -197,7 +201,7 @@ export function TwoFactorPanel({ client, onSignedOut, onEnrolled }: { client: Co
           </div>
         </form>
       )}
-    </section>
+    </SettingsGroup>
   );
 }
 
@@ -238,12 +242,16 @@ export function OrgSignInPanel({ client, orgId }: { client: ConsoleClient; orgId
 
   return (
     <>
-      <section className="card" aria-label="Single sign-on">
-        <strong>Single sign-on</strong>
-        <p className="notice">
-          Let staff sign in with their institution account — Google Workspace, Microsoft Entra ID, Okta, Keycloak or any OpenID Connect
-          provider. Only people already on the Staff page can sign in this way; nobody is added automatically.
-        </p>
+      <SettingsGroup
+        id="sso"
+        title="Single sign-on"
+        description={
+          <>
+            Let staff sign in with their institution account — Google Workspace, Microsoft Entra ID, Okta, Keycloak or any OpenID Connect
+            provider. Only people already on the Staff page can sign in this way; nobody is added automatically.
+          </>
+        }
+      >
         {sso.data === undefined ? null : (
           <p className="notice">
             Register this as the redirect URI with your provider: <code>{sso.data.redirectUri}</code>
@@ -316,14 +324,19 @@ export function OrgSignInPanel({ client, orgId }: { client: ConsoleClient; orgId
             </button>
           </div>
         </form>
-      </section>
+      </SettingsGroup>
 
-      <section className="card" aria-label="Owners' second factor">
-        <strong>Owners' two-step sign-in</strong>
-        <p className="notice">
-          Owners can change anything, erase data and buy credits. Require them to use two-step sign-in; an owner without it will be asked
-          to set it up before anything else.
-        </p>
+      <SettingsGroup
+        id="owners-2fa"
+        title="Owners' two-step sign-in"
+        label="Owners' second factor"
+        description={
+          <>
+            Owners can change anything, erase data and buy credits. Require them to use two-step sign-in; an owner without it will be asked
+            to set it up before anything else.
+          </>
+        }
+      >
         {mine.data?.enabled === false ? (
           <p className="notice">Set up your own two-step sign-in first, on the Account page.</p>
         ) : null}
@@ -341,7 +354,7 @@ export function OrgSignInPanel({ client, orgId }: { client: ConsoleClient; orgId
             Leave it to each owner
           </button>
         </div>
-      </section>
+      </SettingsGroup>
     </>
   );
 }

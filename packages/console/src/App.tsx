@@ -45,7 +45,7 @@ import { Gallery } from "./components/Gallery.tsx";
 import { Dialog, ToastProvider, useToast } from "@parikshaa/brand/ui";
 import { ThemeSwitch, useTheme, type Theme } from "./components/ThemeSwitch.tsx";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
-import { SignIn } from "./components/SignIn.tsx";
+import { remembered, SignIn } from "./components/SignIn.tsx";
 
 type View =
   | { readonly name: "home" }
@@ -141,7 +141,7 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
   return (
     <ToastProvider>
-      <Console client={client} onSignedOut={signOut} theme={theme} onTheme={setTheme} />
+      <Console client={client} onSignedOut={signOut} theme={theme} onTheme={setTheme} arrivedBySso={arrived.sso !== null} />
     </ToastProvider>
   );
 }
@@ -151,11 +151,14 @@ function Console({
   onSignedOut,
   theme,
   onTheme,
+  arrivedBySso = false,
 }: {
   client: ConsoleClient;
   onSignedOut: () => void;
   theme: Theme;
   onTheme: (next: Theme) => void;
+  /** This session came from the organisation's own sign-in provider. */
+  arrivedBySso?: boolean;
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -169,6 +172,11 @@ function Console({
     return { name: "report", examId: "", attemptId: report };
   });
   const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
+  // Signed in through the organisation's provider: next time, offer it first, by name.
+  const cameBySso = arrivedBySso;
+  useEffect(() => {
+    if (cameBySso && me.data !== undefined) remembered.setSsoOrg({ id: me.data.organisation.id, name: me.data.organisation.name });
+  }, [cameBySso, me.data]);
   const can = (permission: string) => me.data?.permissions.includes(permission) ?? false;
 
   // A session that has ended — expired, revoked, the account disabled — shows
@@ -495,6 +503,23 @@ function Console({
               ...(me.data?.kind === "user" ? [{ label: "Account", go: () => go({ name: "account" }) }] : []),
               { label: "Design system", go: () => go({ name: "gallery" }) },
             ]}
+            actions={[
+              ...(can("exam:write")
+                ? [
+                    {
+                      label: "New exam",
+                      go: () => {
+                        setProblems([]);
+                        go({ name: "editor", examId: null });
+                      },
+                    },
+                  ]
+                : []),
+              ...(can("attempt:start")
+                ? [{ label: "Invite candidates", go: () => go(pageExamId === null ? { name: "exams" } : { name: "candidates", examId: pageExamId }) }]
+                : []),
+              ...(can("exam:read_key") ? [{ label: "Find a question in the bank", go: () => go({ name: "bank" }) }] : []),
+            ]}
             onExam={(examId) => go({ name: "attempts", examId })}
             onCandidate={(hit) =>
               go(
@@ -747,12 +772,16 @@ function Console({
             {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
             {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
             {view.name === "billing" ? <BillingPanel client={client} /> : null}
-            {view.name === "signin" && me.data !== undefined ? <OrgSignInPanel client={client} orgId={me.data.organisation.id} /> : null}
+            {view.name === "signin" && me.data !== undefined ? (
+              <div className="settings-page-groups">
+                <OrgSignInPanel client={client} orgId={me.data.organisation.id} />
+              </div>
+            ) : null}
             {view.name === "account" ? (
-              <>
+              <div className="settings-page-groups">
                 <AccountPanel client={client} onSignedOut={onSignedOut} />
                 <TwoFactorPanel client={client} onSignedOut={onSignedOut} />
-              </>
+              </div>
             ) : null}
           </PageFrame>
           {leaving === null ? null : (

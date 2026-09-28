@@ -250,6 +250,15 @@ button.ui-toast-close {
 button.ui-toast-close:hover:not(:disabled) {
   background: color-mix(in srgb, var(--gray-0) 15%, transparent);
 }
+/* On a phone, toasts sit at the bottom, full width. */
+@media (max-width: 40rem) {
+  .ui-toasts {
+    right: var(--space-3);
+    bottom: var(--space-3);
+    left: var(--space-3);
+    width: auto;
+  }
+}
 
 @keyframes ui-fade {
   from {

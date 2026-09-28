@@ -797,8 +797,12 @@ export function BankPicker({
         <p className="notice">What you add is a copy: editing the question in the bank later will not change this exam.</p>
         <Filters filter={filter} topics={bank.data?.topics ?? []} onChange={setFilter} />
         <div className="drawer-body">
-          {available.length === 0 ? (
-            <p className="notice">{bank.data === undefined ? "Loading…" : "No questions match."}</p>
+          {bank.data === undefined ? (
+            <SkeletonRows rows={4} columns={2} label="Loading the bank…" />
+          ) : available.length === 0 ? (
+            <EmptyState icon={Search} compact>
+              No questions match. Questions already on this exam are not listed again.
+            </EmptyState>
           ) : (
             <div className="row" style={{ marginTop: 0 }}>
               <button type="button" className="quiet" onClick={() => setChosen(new Set(available.map((e) => e.id)))}>

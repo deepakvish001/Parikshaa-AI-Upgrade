@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ConsoleError, type BillingAccount, type BillingOrder, type BuyerDetails, type ConsoleClient, type InvoiceDocument } from "../api.ts";
+import { Download } from "lucide-react";
+import { ConsoleError, type BillingAccount, type BillingOrder, type BillingSummary, type BuyerDetails, type ConsoleClient, type InvoiceDocument } from "../api.ts";
+import { Banner, SettingsGroup, SkeletonRows } from "./kit.tsx";
 import { QrCode } from "./Security.tsx";
 
 /**
@@ -54,64 +56,82 @@ export function BillingPanel({ client, checkout = loadCheckout }: { client: Cons
   const summary = useQuery({ queryKey: ["billing"], queryFn: () => client.billing() });
   const [open, setOpen] = useState<string | null>(null);
 
-  if (summary.isPending) return <p className="notice">Loading…</p>;
-  if (summary.error !== null) return <p className="error">Could not load billing.</p>;
+  if (summary.isPending)
+    return (
+      <section className="card">
+        <SkeletonRows rows={3} columns={3} label="Loading billing…" />
+      </section>
+    );
+  if (summary.error !== null) return <Banner tone="danger" title="Could not load billing." />;
   const { account, history, invoices } = summary.data;
 
   if (open !== null) return <InvoiceView client={client} id={open} onBack={() => setOpen(null)} />;
 
   return (
-    <>
-      <section className="card" aria-label="Plan and balance">
-        <h2 style={{ marginTop: 0 }}>Billing</h2>
+    <div className="settings-page-groups">
+      <SettingsGroup
+        id="billing-balance"
+        title={account?.mode === "prepaid" ? "Credits" : "Plan"}
+        label="Plan and balance"
+        description={
+          account === null
+            ? "This organisation is not billed: every attempt is allowed. Plans are set by Parikshaa — write to us to choose one."
+            : account.mode === "prepaid"
+              ? "One credit is spent when a candidate's attempt starts, once, however often they open their link. With none left, no new attempt starts; those already started carry on."
+              : "Attempts are counted and invoiced at the end of each month."
+        }
+      >
         {account === null ? (
-          <p className="notice">This organisation is not billed: every attempt is allowed. Plans are set by Parikshaa — write to us to choose one.</p>
+          <p className="notice">Not billed.</p>
         ) : (
-          <dl className="figures">
-            <div>
-              <dt>Plan</dt>
-              <dd>{account.mode === "prepaid" ? "Prepaid credits" : "Invoiced monthly"}</dd>
-            </div>
-            <div>
-              <dt>Per attempt</dt>
-              <dd>{rupees(account.pricePaise)} + GST</dd>
-            </div>
+          <div className="balance">
             {account.mode === "prepaid" ? (
-              <div>
-                <dt>Credits left</dt>
-                <dd className={account.credits === 0 ? "warn" : undefined}>{account.credits}</dd>
+              <div className="balance-figure">
+                <span className={`big-figure${account.credits === 0 ? " empty" : ""}`}>{account.credits}</span>
+                <span className="notice">credits left</span>
               </div>
             ) : null}
-          </dl>
+            <dl className="figure-line">
+              <div>
+                <dt>Plan</dt>
+                <dd>{account.mode === "prepaid" ? "Prepaid credits" : "Invoiced monthly"}</dd>
+              </div>
+              <div>
+                <dt>Per attempt</dt>
+                <dd>{rupees(account.pricePaise)} + GST</dd>
+              </div>
+            </dl>
+            <UsageChart history={history} />
+          </div>
         )}
-        {account?.mode === "prepaid" ? (
-          <p className="notice">
-            One credit is spent when a candidate's attempt starts, once, however often they open their link. With none left, no new
-            attempt starts; those already started carry on.
-          </p>
-        ) : null}
-      </section>
+      </SettingsGroup>
 
       {account === null ? null : <Details client={client} account={account} />}
       {account?.mode === "prepaid" ? (
         summary.data.checkout.available ? (
           <Buy client={client} account={account} supplierState={summary.data.supplier?.stateCode ?? null} checkout={checkout} />
         ) : (
-          <p className="notice card">Buying credits online is not set up on this server yet. Write to us and we will add them.</p>
+          <Banner tone="info" title="Buying credits online is not set up on this server yet.">
+            Write to us and we will add them.
+          </Banner>
         )
       ) : null}
 
       {invoices.length === 0 ? null : (
-        <section className="card" aria-label="Invoices">
-          <strong>Invoices</strong>
+        <SettingsGroup id="billing-invoices" title="Invoices" stacked description="GST tax invoices and credit notes, as issued. Open one to print it or save it as a PDF.">
+          <div className="scroll">
           <table>
             <thead>
               <tr>
                 <th scope="col">Number</th>
                 <th scope="col">For</th>
                 <th scope="col">Date</th>
-                <th scope="col">Total</th>
-                <th scope="col" />
+                <th scope="col" className="num">
+                  Total
+                </th>
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -120,28 +140,32 @@ export function BillingPanel({ client, checkout = loadCheckout }: { client: Cons
                   <td className="mono">{i.number}</td>
                   <td>{i.kind === "credits" ? "Credits" : i.kind === "credit_note" ? "Credit note: refund" : `Attempts, ${i.period}`}</td>
                   <td>{when(i.issuedAt)}</td>
-                  <td>{rupees(i.totalPaise)}</td>
-                  <td>
-                    <button type="button" className="quiet" onClick={() => setOpen(i.id)}>
-                      View {i.number}
+                  <td className="num">{rupees(i.totalPaise)}</td>
+                  <td className="row-end">
+                    <button type="button" className="quiet" aria-label={`View ${i.number}`} onClick={() => setOpen(i.id)}>
+                      <Download aria-hidden="true" />
+                      View and download
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </section>
+          </div>
+        </SettingsGroup>
       )}
 
       {history.length === 0 ? null : (
-        <section className="card" aria-label="Credit history">
-          <strong>Credit history</strong>
+        <SettingsGroup id="billing-history" title="Credit history" stacked description="Every credit bought, granted, spent or returned, newest first.">
+          <div className="scroll">
           <table>
             <thead>
               <tr>
                 <th scope="col">When</th>
                 <th scope="col">What</th>
-                <th scope="col">Credits</th>
+                <th scope="col" className="num">
+                  Credits
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -161,14 +185,39 @@ export function BillingPanel({ client, checkout = loadCheckout }: { client: Cons
                               ? "Restored: the refund did not go through"
                               : "Returned: the attempt did not start"}
                   </td>
-                  <td className="mono">{m.delta > 0 ? `+${m.delta}` : m.delta}</td>
+                  <td className="num mono">{m.delta > 0 ? `+${m.delta}` : m.delta}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </section>
+          </div>
+        </SettingsGroup>
       )}
-    </>
+    </div>
+  );
+}
+
+/** Credits spent each day over the last thirty, as small bars: how fast the balance goes. */
+function UsageChart({ history, now = Date.now() }: { history: BillingSummary["history"]; now?: number }) {
+  const DAY = 86_400_000;
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const from = now - (29 - i + 1) * DAY;
+    const to = from + DAY;
+    return history.filter((m) => m.reason === "attempt" && Date.parse(m.at) >= from && Date.parse(m.at) < to).reduce((n, m) => n - m.delta, 0);
+  });
+  const spent = days.reduce((a, b) => a + b, 0);
+  const most = Math.max(1, ...days);
+  return (
+    <figure className="usage-chart" aria-label={`${spent} credits spent in the last 30 days`}>
+      <div className="usage-bars" aria-hidden="true">
+        {days.map((n, i) => (
+          <span key={i} style={{ height: `${(n / most) * 100}%` }} className={n === 0 ? "none" : undefined} />
+        ))}
+      </div>
+      <figcaption className="notice">
+        {spent} credit{spent === 1 ? "" : "s"} spent in the last 30 days
+      </figcaption>
+    </figure>
   );
 }
 
@@ -185,8 +234,11 @@ function Details({ client, account }: { client: ConsoleClient; account: BillingA
     setDraft({ ...draft, [field]: e.target.value === "" ? null : e.target.value });
 
   return (
-    <section className="card" aria-label="Invoice details">
-      <strong>On your invoices</strong>
+    <SettingsGroup
+      id="billing-details"
+      title="On your invoices"
+      label="Invoice details"
+    >
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -234,7 +286,7 @@ function Details({ client, account }: { client: ConsoleClient; account: BillingA
           {save.error instanceof ConsoleError ? <span className="error">{save.error.detail ?? "That did not save."}</span> : null}
         </div>
       </form>
-    </section>
+    </SettingsGroup>
   );
 }
 
@@ -295,8 +347,10 @@ function Buy({
   });
 
   return (
-    <section className="card" aria-label="Buy credits">
-      <strong>Buy credits</strong>
+    <SettingsGroup
+      id="billing-buy"
+      title="Buy credits"
+    >
       <div className="row">
         {PACKS.map((n) => (
           <label className="inline" key={n}>
@@ -336,18 +390,18 @@ function Buy({
           {outcome.message}
         </p>
       ) : null}
-    </section>
+    </SettingsGroup>
   );
 }
 
 /** A tax invoice as issued, ready to print or save as PDF. */
 function InvoiceView({ client, id, onBack }: { client: ConsoleClient; id: string; onBack: () => void }) {
   const invoice = useQuery({ queryKey: ["invoice", id], queryFn: () => client.invoice(id) });
-  if (invoice.isPending) return <p className="notice">Loading…</p>;
-  if (invoice.error !== null) return <p className="error">Could not load the invoice.</p>;
+  if (invoice.isPending) return <SkeletonRows rows={6} columns={3} label="Loading the invoice…" />;
+  if (invoice.error !== null) return <Banner tone="danger" title="Could not load the invoice." />;
   const d: InvoiceDocument = invoice.data.document;
   return (
-    <article className="report" aria-label={`${d.title === "Credit Note" ? "Credit note" : "Tax invoice"} ${d.number}`}>
+    <article className="report invoice-doc" aria-label={`${d.title === "Credit Note" ? "Credit note" : "Tax invoice"} ${d.number}`}>
       <div className="row no-print" style={{ marginTop: 0 }}>
         <button type="button" className="secondary" onClick={onBack}>
           Back to billing

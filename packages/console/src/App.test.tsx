@@ -434,6 +434,31 @@ describe("signing in", () => {
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
   });
 
+  it("shows the password on request, and says why Sign in cannot be pressed yet", async () => {
+    renderApp(<App />);
+    const signIn = screen.getByRole("button", { name: "Sign in" });
+    expect(signIn).toBeDisabled();
+    expect(signIn).toHaveAccessibleDescription("Enter your email to sign in.");
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    expect(signIn).toHaveAccessibleDescription("Enter your password to sign in.");
+    await userEvent.type(screen.getByLabelText("Password"), "a secret");
+    await userEvent.click(screen.getByRole("button", { name: "Show the password" }));
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+    expect(signIn).toBeEnabled();
+  });
+
+  it("remembers the last email on this device, and the organisation's own sign-in first", async () => {
+    localStorage.setItem("parikshaa.console.email", "asha@acme.test");
+    localStorage.setItem("parikshaa.console.ssoOrg", JSON.stringify({ id: "nalanda", name: "Nalanda Institute" }));
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    renderApp(<App />);
+    expect(screen.getByLabelText("Email")).toHaveValue("asha@acme.test");
+    await userEvent.click(screen.getByRole("button", { name: "Continue with Nalanda Institute" }));
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining("nalanda"));
+    localStorage.clear();
+  });
+
   it("signs in, and says only that the pair was not accepted when it is not", async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ error: "invalid_credentials" }), { status: 401 }));
     vi.stubGlobal("fetch", fetch);
@@ -1557,7 +1582,10 @@ describe("integrations", () => {
     await userEvent.click(within(form).getByRole("button", { name: "Add" }));
 
     expect(client.addWebhook).toHaveBeenCalledWith("https://hr.example.com/in", ["attempt.graded"], "");
-    expect(await screen.findByRole("status", { name: /Signing secret/ })).toHaveTextContent("whsec_c2VjcmV0");
+    const secret = await screen.findByRole("status", { name: /Signing secret/ });
+    // Shown once, in a field to copy from, with the warning.
+    expect(within(secret).getByRole("textbox")).toHaveValue("whsec_c2VjcmV0");
+    expect(secret).toHaveTextContent("will not be shown again");
   });
 
   it("says why an address was refused", async () => {
@@ -1584,7 +1612,7 @@ describe("integrations", () => {
     expect(greenhouse).toHaveTextContent("list_tests");
     await userEvent.click(within(greenhouse).getByRole("button", { name: "Turn on and issue a key" }));
     expect(client.issueGreenhouseKey).toHaveBeenCalled();
-    expect(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).toHaveTextContent("ghk.acme.1.abc");
+    expect(within(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).getByRole("textbox")).toHaveValue("ghk.acme.1.abc");
   });
 
   it("sets up Lever with a stage-to-exam map and its secrets", async () => {
@@ -2166,6 +2194,23 @@ describe("Ctrl+K", () => {
     await userEvent.type(screen.getByRole("combobox"), "audit");
     await userEvent.keyboard("{Enter}");
     expect(await screen.findByRole("heading", { name: "Audit log" })).toBeInTheDocument();
+  });
+
+  it("offers actions beside the pages, and what was opened lately when nothing is typed", async () => {
+    localStorage.removeItem("parikshaa.console.recent");
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    await userEvent.click(screen.getByRole("button", { name: /Search/ }));
+    const actions = screen.getByRole("group", { name: "Actions" });
+    expect(within(actions).getByRole("option", { name: /New exam/ })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Recent" })).toBeNull();
+    await userEvent.type(screen.getByRole("combobox"), "algo");
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { level: 1, name: "Algorithms" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Search/ }));
+    expect(within(screen.getByRole("group", { name: "Recent" })).getByRole("option", { name: /Algorithms/ })).toBeInTheDocument();
+    localStorage.removeItem("parikshaa.console.recent");
   });
 });
 

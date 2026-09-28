@@ -413,20 +413,64 @@ export function SettingsGroup({
   description,
   children,
   danger = false,
+  label,
+  stacked = false,
+  actions,
 }: {
   id: string;
   title: string;
-  description: ReactNode;
+  description?: ReactNode;
   children: ReactNode;
   danger?: boolean;
+  /** The group's name for a screen reader, when it should differ from its visible title. */
+  label?: string;
+  /** A list or table that needs the width: the explanation above it rather than beside it. */
+  stacked?: boolean;
+  /** The group's own actions, beside its title: "Add a webhook". */
+  actions?: ReactNode;
 }) {
   return (
-    <section id={id} className={`settings-group${danger ? " danger" : ""}`} aria-labelledby={`${id}-title`}>
+    <section
+      id={id}
+      className={`settings-group${danger ? " danger" : ""}${stacked ? " stacked" : ""}`}
+      {...(label === undefined ? { "aria-labelledby": `${id}-title` } : { "aria-label": label })}
+    >
       <div className="settings-explain">
-        <h2 id={`${id}-title`}>{title}</h2>
-        <p className="notice">{description}</p>
+        <div className="settings-title">
+          <h2 id={`${id}-title`}>{title}</h2>
+          {actions === undefined ? null : <div className="settings-actions">{actions}</div>}
+        </div>
+        {description === undefined ? null : <p className="notice">{description}</p>}
       </div>
       <div className="card settings-card">{children}</div>
     </section>
+  );
+}
+
+/**
+ * A secret shown once — an API key, a webhook's signing secret — in a field
+ * to copy from, with the warning that it will not be shown again.
+ */
+export function SecretField({ id, label, value }: { id: string; label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="secret-field">
+      <Banner tone="warning" title="Copy it now. It will not be shown again.">
+        Only a digest is kept, so no one — us included — can show it to you later.
+      </Banner>
+      <label htmlFor={id}>{label}</label>
+      <div className="secret-row">
+        <input id={id} readOnly className="mono" value={value} onFocus={(e) => e.currentTarget.select()} />
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            void navigator.clipboard?.writeText(value).then(() => setCopied(true));
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+    </div>
   );
 }

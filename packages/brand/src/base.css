@@ -233,7 +233,8 @@ button.crumb:hover:not(:disabled) {
 
 /* --- forms --------------------------------------------------------------- */
 
-label {
+label,
+.field-label {
   display: block;
   margin-bottom: var(--space-1);
   font-size: var(--text-sm);

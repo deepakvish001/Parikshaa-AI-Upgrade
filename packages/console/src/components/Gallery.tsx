@@ -267,6 +267,7 @@ export function Gallery() {
 
       <section className="card" aria-label="Overlays">
         <h2 className="card-title">Tooltips, dialogs, drawers and toasts</h2>
+        <p className="notice">A toast only confirms something done. Anything that went wrong is a banner where it happened.</p>
         <div className="row" style={{ alignItems: "center" }}>
           <Tooltip text="Edit the question">
             <button type="button" className="quiet icon" aria-label="Edit">
@@ -286,9 +287,6 @@ export function Gallery() {
           </button>
           <button type="button" className="secondary" onClick={() => toast("Saved “Campus drive 2026”", "success")}>
             Show a toast
-          </button>
-          <button type="button" className="secondary" onClick={() => toast("The download failed; try again.", "error")}>
-            Show an error toast
           </button>
         </div>
       </section>
