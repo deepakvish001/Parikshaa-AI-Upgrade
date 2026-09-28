@@ -261,7 +261,7 @@ test("a practice site: problems, the workspace, a contest, progress and the cons
   await page.goto("/console/");
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Practice", exact: true }).click();
   await expect(page.getByRole("region", { name: "Practice site" })).toContainText("/practice/nit-practice");
   await shoot(page, "console-24-practice-site", { fullPage: false });

@@ -28,7 +28,7 @@ async function signIn(page: Page, account: { email: string; password: string }) 
   await page.goto("/console/");
   await page.getByLabel("Email").fill(account.email);
   await page.getByLabel("Password").fill(account.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByRole("navigation", { name: "Account" })).toBeVisible();
 }
 

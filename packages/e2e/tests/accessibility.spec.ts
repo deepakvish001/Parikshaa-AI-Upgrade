@@ -79,7 +79,7 @@ test("the console's results and live pages pass WCAG 2.1 AA", async ({ page, req
   expect(await violations(page)).toEqual([]);
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("button", { name: sitting.title }).click();
   await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
   expect(await violations(page)).toEqual([]);

@@ -26,7 +26,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await page.goto("/console/");
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
   await page.getByRole("button", { name: sitting.title }).click();
   await page.getByRole("button", { name: "Results and exports" }).click();
@@ -58,7 +58,7 @@ test("a report link from a webhook or Greenhouse opens straight on that candidat
   await page.goto(`/console/?report=${attemptId}`);
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
   await expect(page.getByRole("heading", { name: /Candidate 1/ })).toBeVisible();
   await expect(page.getByRole("button", { name: "Print or save as PDF" })).toBeVisible();

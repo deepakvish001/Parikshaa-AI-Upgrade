@@ -38,7 +38,7 @@ test("an owner out of credits buys more through Checkout, gets a tax invoice, an
   await page.goto("/console/");
   await page.getByLabel("Email").fill(BILLED_OWNER.email);
   await page.getByLabel("Password").fill(BILLED_OWNER.password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("button", { name: "Billing" }).click();
 
   const buy = page.getByRole("region", { name: "Buy credits" });
