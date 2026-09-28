@@ -108,7 +108,7 @@ describe("the page in Hindi", () => {
     renderApp(<App client={stubClient()} />);
     await screen.findByRole("heading", { name: "Algorithms" });
     await userEvent.selectOptions(screen.getByLabelText("Language"), "ta");
-    await userEvent.click(screen.getByRole("button", { name: /^கேள்வி 2:/ }));
+    await userEvent.click(await screen.findByRole("button", { name: /^கேள்வி 2:/ }));
     expect(screen.getByRole("heading", { name: /ஏன் நிற்கிறது\?/ })).toHaveAttribute("lang", "ta");
     expect(screen.getByRole("button", { name: "முயற்சியைச் சமர்ப்பி" })).toBeInTheDocument();
   });

@@ -9,6 +9,7 @@ import {
   ConsoleError,
   type AttemptReview,
   type CandidateReport,
+  type Dashboard,
   type ExamSummary,
   type LiveRow,
   type LiveView,
@@ -18,6 +19,11 @@ import {
 } from "./api.ts";
 
 const exams: ExamSummary[] = [{ id: "exam-1", title: "Algorithms", questionCount: 2 }];
+const dashboardView: Dashboard = {
+  sittings: [{ examId: "exam-1", title: "Algorithms", opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", invited: 40, started: 12 }],
+  activity: [{ at: "2026-10-01T04:00:00.000Z", actor: "Asha", action: "invitations.imported", target: "exam-1" }],
+  setup: { exams: 1, bankQuestions: 0, scheduled: 1, invited: 40, staff: 1, privacyNotice: false },
+};
 
 const review: AttemptReview = {
   state: "graded",
@@ -265,6 +271,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
       monthlyCapMicroUsd: 50_000_000,
     })),
     listExams: vi.fn(async () => exams),
+    dashboard: vi.fn(async () => dashboardView),
     loadExam: vi.fn(async () => ({
       id: "exam-1",
       title: "Algorithms",
@@ -534,6 +541,7 @@ describe("console", () => {
       ]),
     });
     renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await screen.findByRole("button", { name: "Campus Drive" });
 
     const glance = screen.getByRole("region", { name: "At a glance" });
@@ -1093,6 +1101,7 @@ describe("exams drawn from the bank", () => {
   it("copies an exam, which is how a sat exam is changed", async () => {
     const client = stubClient();
     renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await userEvent.click(await screen.findByRole("button", { name: "Copy" }));
 
     await waitFor(() => expect(client.cloneExam).toHaveBeenCalledWith("exam-1", expect.stringMatching(/^exam-1-copy-/)));
@@ -1111,6 +1120,7 @@ describe("exams drawn from the bank", () => {
       }),
     });
     renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add question" }));
     await userEvent.type(screen.getAllByLabelText("Question").at(-1)!, "One more");
@@ -1861,6 +1871,7 @@ describe("the exam editor's question list", () => {
       })),
     });
     renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
 
     const item = await screen.findByRole("region", { name: "Question 1" });
@@ -1973,5 +1984,73 @@ describe("the scorecard", () => {
     expect(within(sections).getByText("80%")).toBeInTheDocument();
     expect(screen.getByText(/First saved at 1:30 \(minutes/)).toBeInTheDocument();
     expect(screen.getByText(/First saved at 3:00, last at 6:40 · saved 2 times/)).toBeInTheDocument();
+  });
+});
+
+describe("home", () => {
+  it("opens on the sittings, the latest activity and what is left to set up", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByRole("heading", { name: "Home" })).toBeInTheDocument();
+    const sittings = await screen.findByRole("region", { name: "Sittings" });
+    expect(within(sittings).getByRole("button", { name: "Algorithms" })).toBeInTheDocument();
+    expect(within(sittings).getByText("12 of 40 started")).toBeInTheDocument();
+    expect(within(sittings).getByRole("button", { name: "Next month" })).toBeInTheDocument();
+
+    const activity = screen.getByRole("region", { name: "Recent activity" });
+    expect(activity).toHaveTextContent("Asha invited candidates");
+
+    const setup = screen.getByRole("region", { name: "Get started" });
+    expect(within(setup).getByText("3 of 6 done")).toBeInTheDocument();
+    expect(within(setup).getByRole("progressbar")).toHaveAttribute("aria-valuenow", "3");
+    await userEvent.click(within(setup).getByRole("button", { name: "Add questions to the bank" }));
+    expect(await screen.findByRole("heading", { name: "Question bank" })).toBeInTheDocument();
+  });
+
+  it("goes from a sitting to its exam, and says so when an exam is saved", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    expect(await screen.findByRole("navigation", { name: "Exam" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Home" }));
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Mechanics");
+    await userEvent.type(screen.getByLabelText("Question"), "Which?");
+    await userEvent.type(screen.getByLabelText("Option 1"), "a");
+    await userEvent.type(screen.getByLabelText("Option 2"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Save exam" }));
+    expect(await within(screen.getByRole("region", { name: "Notifications" })).findByText("Saved “Mechanics”")).toBeInTheDocument();
+  });
+
+  it("hides the first steps once they are done, and the activity from those who may not read the audit log", async () => {
+    const client = stubClient({
+      dashboard: vi.fn(async () => ({
+        ...dashboardView,
+        activity: null,
+        setup: { exams: 3, bankQuestions: 20, scheduled: 2, invited: 90, staff: 4, privacyNotice: true },
+      })),
+    });
+    renderApp(<App client={client} />);
+    await screen.findByRole("region", { name: "Sittings" });
+    expect(screen.queryByRole("region", { name: "Get started" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Recent activity" })).toBeNull();
+  });
+});
+
+describe("the design system page", () => {
+  it("is found from Ctrl+K and shows the shared pieces live", async () => {
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("region", { name: "Sittings" });
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await userEvent.type(screen.getByRole("combobox"), "design");
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { name: "Design system" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Open a dialog" }));
+    expect(screen.getByRole("dialog", { name: "Submit your attempt?" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Show a toast" }));
+    expect(screen.getByRole("region", { name: "Notifications" })).toHaveTextContent("Saved “Campus drive 2026”");
   });
 });

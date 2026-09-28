@@ -1,4 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { Dialog } from "@parikshaa/brand/ui";
 import { ChevronLeft, ChevronRight, Eye, Flag, RotateCcw, X } from "lucide-react";
 import { paperOf, resolvePaper, scoreDeterministic, type AttemptId, type Exam, type Question } from "@parikshaa/core/browser";
 import { KIND_NAME } from "./Bank.tsx";
@@ -179,21 +180,11 @@ export function TryTest({ exam, onClose }: { exam: Exam; onClose: () => void }) 
   const [started] = useState(() => Date.now());
   const [now, setNow] = useState(() => Date.now());
   const [finished, setFinished] = useState(false);
-  const dialog = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const tick = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(tick);
   }, []);
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    dialog.current?.focus();
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const question = paper[current];
   useEffect(() => {
     if (question !== undefined) setVisited((v) => (v.has(question.id) ? v : new Set([...v, question.id])));
@@ -217,8 +208,7 @@ export function TryTest({ exam, onClose }: { exam: Exam; onClose: () => void }) 
   };
 
   return (
-    <div className="try-scrim">
-      <div className="try" role="dialog" aria-modal="true" aria-label="Try test" tabIndex={-1} ref={dialog}>
+    <Dialog label="Try test" variant="full" className="try" onClose={onClose}>
         <header className="try-bar">
           <span className="try-badge">
             <Eye aria-hidden="true" />
@@ -327,8 +317,7 @@ export function TryTest({ exam, onClose }: { exam: Exam; onClose: () => void }) 
             </aside>
           </div>
         )}
-      </div>
-    </div>
+    </Dialog>
   );
 }
 

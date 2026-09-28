@@ -7,6 +7,7 @@ import {
   GraduationCap,
   KeyRound,
   KeySquare,
+  LayoutDashboard,
   LockKeyhole,
   Library,
   LogOut,
@@ -38,10 +39,15 @@ import { ExamList } from "./components/ExamList.tsx";
 import { ExamOverview, ExamSide, ExamTabs, QuestionsTab, type ExamTab } from "./components/ExamPage.tsx";
 import { CommandPalette, useCommandKey, type PageLink } from "./components/CommandPalette.tsx";
 import { TryTest } from "./components/Preview.tsx";
+import { Home } from "./components/Home.tsx";
+import { Gallery } from "./components/Gallery.tsx";
+import { ToastProvider, useToast } from "@parikshaa/brand/ui";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { SignIn } from "./components/SignIn.tsx";
 
 type View =
+  | { readonly name: "home" }
+  | { readonly name: "gallery" }
   | { readonly name: "exams" }
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
@@ -130,15 +136,22 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   };
 
   if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
-  return <Console client={client} onSignedOut={signOut} />;
+  return (
+    <ToastProvider>
+      <Console client={client} onSignedOut={signOut} />
+    </ToastProvider>
+  );
 }
 
 function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
   const [view, setView] = useState<View>(() => {
-    const report = new URLSearchParams(window.location.search).get("report");
-    if (report === null || report === "") return { name: "exams" };
+    const query = new URLSearchParams(window.location.search);
+    if (query.has("gallery")) return { name: "gallery" };
+    const report = query.get("report");
+    if (report === null || report === "") return { name: "home" };
     window.history.replaceState(null, "", window.location.pathname);
     return { name: "report", examId: "", attemptId: report };
   });
@@ -160,6 +173,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   const [problems, setProblems] = useState<ConsoleError["problems"]>([]);
 
   const exams = useQuery({ queryKey: ["exams"], queryFn: () => client.listExams() });
+  const dashboard = useQuery({ queryKey: ["dashboard"], queryFn: () => client.dashboard(), enabled: view.name === "home" });
 
   const editing = useQuery({
     queryKey: ["exam", view.name === "editor" ? view.examId : null],
@@ -183,8 +197,9 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
 
   const saveExam = useMutation({
     mutationFn: (exam: Exam) => client.saveExam(exam),
-    onSuccess: async () => {
+    onSuccess: async (_, exam) => {
       setProblems([]);
+      toast(`Saved “${exam.title}”`, "success");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["exams"] }),
         // The exam page reads the paper and its results; both follow the edit.
@@ -211,6 +226,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       return client.cloneExam(examId, id).then(() => id);
     },
     onSuccess: async (id) => {
+      toast("Copy made. Change it, then save.", "success");
       await queryClient.invalidateQueries({ queryKey: ["exams"] });
       setProblems([]);
       setView({ name: "editor", examId: id });
@@ -360,6 +376,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             </div>
           )}
           <nav className="side-nav account" aria-label="Account">
+            {navItem({ name: "home" }, "Home", LayoutDashboard)}
             <p className="nav-group">Assess</p>
             {navItem({ name: "exams" }, "Exams", ClipboardList)}
             {visible.filter((tab) => tab.group === "assess").map((tab) => navItem(tab.view, tab.label, tab.icon))}
@@ -397,7 +414,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
                 Exams
               </button>
             ) : (
-              <span>{visible.find((tab) => tab.view.name === section)?.label ?? (section === "account" ? "Account" : "")}</span>
+              <span>{visible.find((tab) => tab.view.name === section)?.label ?? OTHER_PAGES[section] ?? ""}</span>
             )}
             {onExam ? (
               <>
@@ -433,9 +450,11 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             exams={exams.data ?? []}
             canSearchCandidates={can("attempt:read")}
             pages={[
+              { label: "Home", go: () => go({ name: "home" }) },
               { label: "Exams", go: () => go({ name: "exams" }) },
               ...visible.map((tab): PageLink => ({ label: tab.label, go: () => go(tab.view) })),
               ...(me.data?.kind === "user" ? [{ label: "Account", go: () => go({ name: "account" }) }] : []),
+              { label: "Design system", go: () => go({ name: "gallery" }) },
             ]}
             onExam={(examId) => go({ name: "attempts", examId })}
             onCandidate={(hit) =>
@@ -454,6 +473,25 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             <h1>{pageTitle(view, examTitle)}</h1>
             <p className="notice">{PAGE_NOTE[view.name]}</p>
           </header>
+
+      {view.name === "home" ? (
+        <Home
+          dashboard={dashboard.data}
+          exams={exams.data ?? []}
+          name={me.data?.name}
+          canWrite={can("exam:write")}
+          onExam={(examId) => go({ name: "attempts", examId })}
+          onGo={(target) => {
+            if (target === "search") return setSearching(true);
+            if (target === "new-exam") {
+              setProblems([]);
+              return go({ name: "editor", examId: null });
+            }
+            go({ name: target });
+          }}
+        />
+      ) : null}
+      {view.name === "gallery" ? <Gallery /> : null}
 
       {view.name === "exams" ? (
         exams.isPending ? (
@@ -606,6 +644,8 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
 
 /** Which sidebar entry a view belongs under. */
 const SECTION_OF: Record<View["name"], View["name"]> = {
+  home: "home",
+  gallery: "gallery",
   exams: "exams",
   editor: "exams",
   attempts: "exams",
@@ -630,6 +670,10 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
 
 function pageTitle(view: View, examTitle: (id: string) => string): string {
   switch (view.name) {
+    case "home":
+      return "Home";
+    case "gallery":
+      return "Design system";
     case "exams":
       return "Exams";
     case "editor":
@@ -673,7 +717,12 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
 const PAGE_FALLBACK = { candidates: "Schedule and invite", results: "Results and exports", live: "Live sitting" } as const;
 
 /** One line under each page's title: what the page is for. */
+/** Breadcrumb labels for the pages not in the sidebar's permission-gated list. */
+const OTHER_PAGES: Partial<Record<View["name"], string>> = { home: "Home", gallery: "Design system", account: "Account" };
+
 const PAGE_NOTE: Record<View["name"], string> = {
+  home: "What is sitting now and next, what has just happened, and what is left to set up.",
+  gallery: "Parikshaa's design system: colour, type, and every shared component, live.",
   exams: "Every assessment your organisation runs. Open one to invite candidates, watch a sitting or read results.",
   editor: "Questions, sections drawn per candidate, timing, and what the camera does. A sat exam is frozen; copy it to change it.",
   attempts: "Everyone who has started this exam, whether they are here now, and what is left to grade.",

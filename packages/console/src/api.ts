@@ -187,6 +187,28 @@ export interface InvitationRow {
   readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
 }
 
+/** The console's home page. */
+export interface Dashboard {
+  readonly sittings: readonly {
+    readonly examId: string;
+    readonly title: string;
+    readonly opensAt: string;
+    readonly closesAt: string;
+    readonly invited: number;
+    readonly started: number;
+  }[];
+  /** Null for an account that may not read the audit log. */
+  readonly activity: readonly { readonly at: string; readonly actor: string; readonly action: string; readonly target: string | null }[] | null;
+  readonly setup: {
+    readonly exams: number;
+    readonly bankQuestions: number;
+    readonly scheduled: number;
+    readonly invited: number;
+    readonly staff: number;
+    readonly privacyNotice: boolean;
+  };
+}
+
 export interface CandidateHit {
   readonly invitationId: string;
   readonly examId: string;
@@ -819,6 +841,10 @@ export class ConsoleClient {
       }
       throw error;
     }
+  }
+
+  dashboard(): Promise<Dashboard> {
+    return this.#request<Dashboard>("/dashboard");
   }
 
   /** Candidates across every exam matching `q` (at least two characters). */

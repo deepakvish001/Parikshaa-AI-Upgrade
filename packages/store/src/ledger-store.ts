@@ -757,6 +757,84 @@ export class LedgerStore {
     });
   }
 
+  /**
+   * What the console's home page shows: the sittings around now — open, and
+   * scheduled, with those closed in the last week — the latest actions, and
+   * which first steps the organisation has taken.
+   */
+  async dashboard(scope: Scope, now: Date, options: { readonly activity: boolean }): Promise<Dashboard> {
+    return this.#scoped(scope, async (tx) => {
+      const windows = await tx.query<{
+        exam_id: string;
+        title: string | null;
+        opens_at: string | Date;
+        closes_at: string | Date;
+        invited: string | number;
+        started: string | number;
+      }>(
+        `SELECT w.exam_id, e.definition ->> 'title' AS title, w.opens_at, w.closes_at,
+                (SELECT count(*) FROM invitations i WHERE i.org_id = w.org_id AND i.exam_id = w.exam_id AND i.revoked_at IS NULL) AS invited,
+                (SELECT count(*) FROM invitations i WHERE i.org_id = w.org_id AND i.exam_id = w.exam_id AND i.attempt_id IS NOT NULL) AS started
+           FROM exam_windows w
+           JOIN exams e ON e.org_id = w.org_id AND e.id = w.exam_id
+          WHERE w.org_id = $1 AND w.closes_at > $2::timestamptz - interval '7 days'
+          -- The sixty nearest now: open ones first, then the soonest to come, then the latest closed.
+          ORDER BY (w.opens_at <= $2::timestamptz AND w.closes_at > $2::timestamptz) DESC,
+                   (w.opens_at > $2::timestamptz) DESC,
+                   abs(extract(epoch FROM w.opens_at - $2::timestamptz))
+          LIMIT 60`,
+        [scope.orgId, now.toISOString()],
+      );
+      const activity = options.activity
+        ? await tx.query<{ at: string | Date; actor_kind: AuditEntry["actorKind"]; actor_name: string | null; action: string; target: string | null }>(
+            `SELECT a.at, a.actor_kind, s.name AS actor_name, a.action, a.target
+               FROM audit_log a
+               LEFT JOIN staff_users s ON a.actor_kind = 'user' AND s.id = a.actor_id AND s.org_id = a.org_id
+              WHERE a.org_id = $1
+              ORDER BY a.at DESC, a.id DESC
+              LIMIT 10`,
+            [scope.orgId],
+          )
+        : null;
+      const [facts] = await tx.query<{ exams: string | number; bank: string | number; windows: string | number; invited: string | number; staff: string | number; notice: boolean }>(
+        `SELECT (SELECT count(*) FROM exams WHERE org_id = $1) AS exams,
+                (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL) AS bank,
+                (SELECT count(*) FROM exam_windows WHERE org_id = $1) AS windows,
+                (SELECT count(*) FROM invitations WHERE org_id = $1) AS invited,
+                (SELECT count(*) FROM staff_users WHERE org_id = $1 AND disabled_at IS NULL) AS staff,
+                EXISTS (SELECT 1 FROM privacy_settings WHERE org_id = $1) AS notice`,
+        [scope.orgId],
+      );
+      return {
+        sittings: [...windows].sort((a, b) => new Date(a.opens_at).getTime() - new Date(b.opens_at).getTime()).map((w) => ({
+          examId: w.exam_id,
+          title: w.title ?? w.exam_id,
+          opensAt: new Date(w.opens_at).toISOString(),
+          closesAt: new Date(w.closes_at).toISOString(),
+          invited: Number(w.invited),
+          started: Number(w.started),
+        })),
+        activity:
+          activity === null
+            ? null
+            : activity.map((a) => ({
+                at: new Date(a.at).toISOString(),
+                actor: a.actor_kind === "user" ? (a.actor_name ?? "A former member of staff") : a.actor_kind === "api_key" ? "An API key" : "Parikshaa",
+                action: a.action,
+                target: a.target,
+              })),
+        setup: {
+          exams: Number(facts!.exams),
+          bankQuestions: Number(facts!.bank),
+          scheduled: Number(facts!.windows),
+          invited: Number(facts!.invited),
+          staff: Number(facts!.staff),
+          privacyNotice: facts!.notice,
+        },
+      };
+    });
+  }
+
   // --- model usage (ROADMAP §0) ----------------------------------------------
 
   async recordUsage(scope: Scope, usage: UsageRecord): Promise<void> {
@@ -916,6 +994,28 @@ export interface AuditEntry {
   readonly action: string;
   readonly target?: string;
   readonly detail?: Record<string, unknown>;
+}
+
+/** The console's home page: see `LedgerStore.dashboard`. */
+export interface Dashboard {
+  readonly sittings: readonly {
+    readonly examId: string;
+    readonly title: string;
+    readonly opensAt: string;
+    readonly closesAt: string;
+    readonly invited: number;
+    readonly started: number;
+  }[];
+  /** Null for an account that may not read the audit log. */
+  readonly activity: readonly { readonly at: string; readonly actor: string; readonly action: string; readonly target: string | null }[] | null;
+  readonly setup: {
+    readonly exams: number;
+    readonly bankQuestions: number;
+    readonly scheduled: number;
+    readonly invited: number;
+    readonly staff: number;
+    readonly privacyNotice: boolean;
+  };
 }
 
 export interface AuditRecord {

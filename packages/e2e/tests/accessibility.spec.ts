@@ -100,6 +100,8 @@ test("the console's exam page â€” overview, live, questions, try test, editor â€
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Sittings" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
   await page.getByRole("button", { name: sitting.title }).click();
   await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
   expect(await violations(page)).toEqual([]);
@@ -123,5 +125,15 @@ test("the console's exam page â€” overview, live, questions, try test, editor â€
   await page.keyboard.press("Control+k");
   await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("cs0");
   await expect(page.getByRole("option").first()).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+
+  // The design system, with a dialog open and a toast showing.
+  await page.keyboard.press("Escape");
+  await page.goto("/console/?gallery");
+  await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+  await page.getByRole("button", { name: "Show a toast" }).click();
+  await page.getByRole("button", { name: "Open a dialog" }).click();
+  await expect(page.getByRole("dialog", { name: "Submit your attempt?" })).toBeVisible();
   expect(await violations(page)).toEqual([]);
 });

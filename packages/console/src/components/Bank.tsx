@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { Drawer } from "@parikshaa/brand/ui";
 import { Library, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { validateQuestion, type ExamProblem, type Question } from "@parikshaa/core/browser";
@@ -473,20 +474,11 @@ export function BankPicker({
   const bank = useQuery({ queryKey: ["bank-picker", filter], queryFn: () => load(filter) });
   const available = (bank.data?.questions ?? []).filter((e) => !exclude.has(e.id));
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []);
   const marks = available.filter((e) => chosen.has(e.id)).reduce((sum, e) => sum + e.question.maxScore, 0);
 
   return (
-    <div className="drawer-scrim" onClick={(event) => event.target === event.currentTarget && onClose()}>
-      <div className="drawer" role="dialog" aria-modal="true" aria-label="Add from the question bank">
+    <Drawer label="Add from the question bank" onClose={onClose} initialFocus={heading} className="drawer">
         <header className="drawer-head">
           <Library aria-hidden="true" />
           <h2 ref={heading} tabIndex={-1}>
@@ -547,7 +539,6 @@ export function BankPicker({
             Add {chosen.size} question{chosen.size === 1 ? "" : "s"}
           </button>
         </footer>
-      </div>
-    </div>
+    </Drawer>
   );
 }

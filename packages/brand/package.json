@@ -9,7 +9,9 @@
     "./base.css": "./src/base.css",
     "./fonts.css": "./src/fonts.css",
     "./react": "./src/react.tsx",
-    "./markdown": "./src/markdown.tsx"
+    "./markdown": "./src/markdown.tsx",
+    "./ui": "./src/ui.tsx",
+    "./ui.css": "./src/ui.css"
   },
   "peerDependencies": {
     "react": "^18.3.1"

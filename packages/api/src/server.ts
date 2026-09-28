@@ -567,6 +567,25 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     );
 
     routes.get(
+      "/dashboard",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "The console's home page",
+          description:
+            "Sittings open now, scheduled, and closed in the last week; the latest actions, for an account that may read the audit log; and which first steps the organisation has taken.",
+          security: [{ staffAuth: [] }],
+          response: { 200: S.dashboardResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:read");
+        if (actor === null) return;
+        return reply.send(await service.dashboard(actor));
+      },
+    );
+
+    routes.get(
       "/exams/:examId",
       {
         schema: {

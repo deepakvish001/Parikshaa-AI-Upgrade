@@ -1,14 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { bn } from "./locales/bn.ts";
-import { gu } from "./locales/gu.ts";
-import { kn } from "./locales/kn.ts";
-import { ml } from "./locales/ml.ts";
-import { mr } from "./locales/mr.ts";
-import { or } from "./locales/or.ts";
-import { pa } from "./locales/pa.ts";
-import { ta } from "./locales/ta.ts";
-import { te } from "./locales/te.ts";
 
 /**
  * The candidate's language and bandwidth preferences (ROADMAP §9).
@@ -944,18 +935,43 @@ const hi: Record<MessageKey, string> = {
 /** A language's strings: any it lacks are shown in English. */
 export type Messages = Partial<Record<MessageKey, string>>;
 
-const MESSAGES: Record<UiLocale, Messages> = { en, hi, bn, ta, te, mr, gu, kn, ml, pa, or };
+/**
+ * English and Hindi, the two a page starts in, come with it. Every other
+ * language's table is fetched when someone chooses it, so a candidate on a
+ * slow connection does not download nine languages to read one.
+ */
+const MESSAGES: Partial<Record<UiLocale, Messages>> = { en, hi };
+const LOADERS: Record<Exclude<UiLocale, "en" | "hi">, () => Promise<Messages>> = {
+  bn: () => import("./locales/bn.ts").then((m) => m.bn),
+  ta: () => import("./locales/ta.ts").then((m) => m.ta),
+  te: () => import("./locales/te.ts").then((m) => m.te),
+  mr: () => import("./locales/mr.ts").then((m) => m.mr),
+  gu: () => import("./locales/gu.ts").then((m) => m.gu),
+  kn: () => import("./locales/kn.ts").then((m) => m.kn),
+  ml: () => import("./locales/ml.ts").then((m) => m.ml),
+  pa: () => import("./locales/pa.ts").then((m) => m.pa),
+  or: () => import("./locales/or.ts").then((m) => m.or),
+};
+
+/** Whether a language's table is here yet. */
+export const isLoaded = (locale: UiLocale): boolean => MESSAGES[locale] !== undefined;
+
+/** Fetch a language's table, once. Until it arrives, its strings are shown in English. */
+export async function loadLocale(locale: UiLocale): Promise<void> {
+  if (isLoaded(locale)) return;
+  MESSAGES[locale] = await LOADERS[locale as keyof typeof LOADERS]();
+}
 
 /** The interface's language for a chosen language: the same one, now that every language has a table. */
 export const uiLocaleOf = (language: Language): UiLocale => language;
 
 export function translate(locale: UiLocale, key: MessageKey, vars: Record<string, string | number> = {}): string {
-  const text = MESSAGES[locale][key] ?? en[key];
+  const text = MESSAGES[locale]?.[key] ?? en[key];
   return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in vars ? String(vars[name]) : whole));
 }
 
 /** How far each language's table covers the interface, 0–1: for the tests, and for anyone adding a language. */
-export const coverage = (locale: UiLocale): number => Object.keys(MESSAGES[locale]).filter((k) => k in en).length / Object.keys(en).length;
+export const coverage = (locale: UiLocale): number => Object.keys(MESSAGES[locale] ?? {}).filter((k) => k in en).length / Object.keys(en).length;
 
 const LANGUAGE_KEY = "parikshaa.language";
 const LITE_KEY = "parikshaa.lite";
@@ -1027,7 +1043,21 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Screen readers pronounce the page by this.
-  const ui = uiLocaleOf(language);
+  const chosen = uiLocaleOf(language);
+  const [ready, setReady] = useState(() => isLoaded(chosen));
+  useEffect(() => {
+    if (isLoaded(chosen)) return setReady(true);
+    setReady(false);
+    let current = true;
+    loadLocale(chosen)
+      .then(() => current && setReady(true))
+      // Offline before the table came: stay in English rather than show nothing.
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, [chosen]);
+  const ui: UiLocale = ready && isLoaded(chosen) ? chosen : "en";
   useEffect(() => {
     document.documentElement.lang = ui;
   }, [ui]);

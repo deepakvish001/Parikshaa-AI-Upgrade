@@ -817,3 +817,31 @@ export const ssoCallbackQuery = z.object({
   state: z.string().max(4000).optional(),
   error: z.string().max(200).optional(),
 });
+
+export const dashboardResponse = z.object({
+  sittings: z
+    .array(
+      z.object({
+        examId: z.string(),
+        title: z.string(),
+        opensAt: z.string(),
+        closesAt: z.string(),
+        invited: z.number().int(),
+        started: z.number().int().describe("Invited candidates who have begun."),
+      }),
+    )
+    .readonly(),
+  activity: z
+    .array(z.object({ at: z.string(), actor: z.string(), action: z.string(), target: z.string().nullable() }))
+    .readonly()
+    .nullable()
+    .describe("The ten latest actions; null for an account that may not read the audit log."),
+  setup: z.object({
+    exams: z.number().int(),
+    bankQuestions: z.number().int(),
+    scheduled: z.number().int(),
+    invited: z.number().int(),
+    staff: z.number().int(),
+    privacyNotice: z.boolean(),
+  }),
+});

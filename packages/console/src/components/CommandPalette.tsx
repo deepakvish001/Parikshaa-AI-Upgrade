@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Dialog } from "@parikshaa/brand/ui";
 import { ClipboardList, CornerDownLeft, LayoutGrid, Search, UserRound } from "lucide-react";
 import type { CandidateHit, ConsoleClient, ExamSummary } from "../api.ts";
 
@@ -62,7 +63,6 @@ export function CommandPalette({
   const [typed, setTyped] = useState("");
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => input.current?.focus(), []);
   // Ask the server once typing pauses, not on every key.
   useEffect(() => {
     const wait = window.setTimeout(() => setTyped(query.trim()), 180);
@@ -157,8 +157,7 @@ export function CommandPalette({
   };
 
   return (
-    <div className="palette-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="palette" role="dialog" aria-modal="true" aria-label="Search">
+    <Dialog label="Search" variant="top" className="palette" onClose={onClose} initialFocus={input}>
         <label className="palette-input">
           <Search aria-hidden="true" />
           <input
@@ -181,9 +180,6 @@ export function CommandPalette({
               } else if (e.key === "Enter") {
                 e.preventDefault();
                 choose(items[active]);
-              } else if (e.key === "Escape") {
-                e.preventDefault();
-                onClose();
               }
             }}
           />
@@ -200,7 +196,6 @@ export function CommandPalette({
         <p className="palette-foot notice small">
           <kbd>↑</kbd> <kbd>↓</kbd> to move · <kbd>Enter</kbd> to open · <kbd>Ctrl</kbd> <kbd>K</kbd> from anywhere
         </p>
-      </div>
-    </div>
+    </Dialog>
   );
 }

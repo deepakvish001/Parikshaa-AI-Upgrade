@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Eye, Library, Play, Plus, Trash2 } from "lucide-react";
 import { validateExam, type Exam, type ExamCutoff, type ExamProblem, type ProctoringPolicy, type Question } from "@parikshaa/core/browser";
+import { TabPanel, Tabs, Tooltip } from "@parikshaa/brand/ui";
 import { BankPicker, KIND_NAME, type BankLoader } from "./Bank.tsx";
 import { QuestionView, TryTest } from "./Preview.tsx";
 import { QuestionFields, blankQuestion, type ImageUploader } from "./QuestionFields.tsx";
@@ -142,29 +143,18 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
       </section>
       {trying ? <TryTest exam={exam} onClose={() => setTrying(false)} /> : null}
 
-      <div className="tabs" role="tablist" aria-label="Exam editor">
-        {(
-          [
-            ["questions", "Questions"],
-            ["settings", "Settings"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`editor-tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls={`editor-panel-${id}`}
-            className={`tab${tab === id ? " on" : ""}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="Exam editor"
+        idBase="editor"
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "questions", label: "Questions" },
+          { id: "settings", label: "Settings" },
+        ]}
+      />
 
-      <div role="tabpanel" id="editor-panel-settings" aria-labelledby="editor-tab-settings" hidden={tab !== "settings"}>
+      <TabPanel idBase="editor" id="settings" value={tab}>
         <section className="card">
           <h2 className="card-title">Timing and answers</h2>
           <div className="grid">
@@ -250,9 +240,9 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
             }}
           />
         </section>
-      </div>
+      </TabPanel>
 
-      <div role="tabpanel" id="editor-panel-questions" aria-labelledby="editor-tab-questions" hidden={tab !== "questions"}>
+      <TabPanel idBase="editor" id="questions" value={tab}>
         <div className="qlist-head">
           <strong>Every candidate gets</strong>
           <span className="notice">
@@ -285,10 +275,13 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                       {question.maxScore} mark{question.maxScore === 1 ? "" : "s"}
                     </span>
                     <span className="qitem-actions">
-                      <button type="button" className="quiet icon" aria-label={`Move question ${index + 1} up`} disabled={index === 0} onClick={() => move(index, -1)}>
+                      <Tooltip text="Move up">
+<button type="button" className="quiet icon" aria-label={`Move question ${index + 1} up`} disabled={index === 0} onClick={() => move(index, -1)}>
                         <ArrowUp aria-hidden="true" />
                       </button>
-                      <button
+</Tooltip>
+                      <Tooltip text="Move down">
+<button
                         type="button"
                         className="quiet icon"
                         aria-label={`Move question ${index + 1} down`}
@@ -297,7 +290,9 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                       >
                         <ArrowDown aria-hidden="true" />
                       </button>
-                      <button
+</Tooltip>
+                      <Tooltip text="Preview as the candidate sees it">
+<button
                         type="button"
                         className="quiet icon"
                         aria-label={`Preview question ${index + 1}`}
@@ -306,11 +301,13 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                       >
                         <Eye aria-hidden="true" />
                       </button>
+</Tooltip>
                       <button type="button" className="quiet" onClick={() => setOpen(toggle(open, id))}>
                         {editing ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
                         {editing ? "Done" : "Edit"}
                       </button>
-                      <button
+                      <Tooltip text="Remove from the paper">
+<button
                         type="button"
                         className="quiet icon danger-quiet"
                         aria-label={`Remove question ${index + 1}`}
@@ -319,6 +316,7 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                       >
                         <Trash2 aria-hidden="true" />
                       </button>
+</Tooltip>
                     </span>
                   </div>
 
@@ -480,7 +478,7 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
             Add a section drawn per candidate
           </button>
         </div>
-      </div>
+      </TabPanel>
 
       {showProblems && problems.length > 0 ? (
         <ul className="problems" aria-label="Problems with this exam">

@@ -28,6 +28,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
   await page.getByRole("button", { name: sitting.title }).click();
   await page.getByRole("button", { name: "Results", exact: true }).click();
 
@@ -73,6 +74,7 @@ test("an exam page: who qualified against the cut-off, the paper tried as a cand
   await page.getByLabel("Email").fill(OWNER.email);
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
   await page.getByRole("button", { name: sitting.title }).click();
 
   const side = page.getByRole("complementary", { name: "Candidates at a glance" });

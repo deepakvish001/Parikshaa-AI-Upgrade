@@ -49,7 +49,7 @@ change only this file.
 | Canvas | `--bg` | `#f6f7fb` | Page background |
 | Surface | `--surface` | `#ffffff` | Cards, inputs |
 | Text | `--text` / `--text-muted` | `#131a2e` / `#5f687c` | Body / secondary (≥ 4.5:1 on every surface) |
-| Success | `--success` | `#12805c` | Saved, graded, verified |
+| Success | `--success` | `#117a57` | Saved, graded, verified |
 | Warning | `--warning` | `#9a5800` | Evidence, attention, offline |
 | Danger | `--danger` | `#c23a2b` | Errors, set aside, failed |
 | Chrome | `--chrome` | `#0b1033` | The console sidebar, in both themes |

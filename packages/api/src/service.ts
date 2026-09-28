@@ -39,6 +39,7 @@ import {
 import type {
   AttemptSummary,
   AuditRecord,
+  Dashboard,
   Draft,
   ExamSummary,
   IdentityStore,
@@ -1405,6 +1406,11 @@ export class ExamService {
       spentThisMonthMicroUsd: spentThisMonth,
       monthlyCapMicroUsd: org?.monthlySpendCapMicroUsd ?? null,
     };
+  }
+
+  /** The console's home page. The latest actions only for an account that may read the audit log. */
+  dashboard(actor: Actor): Promise<Dashboard> {
+    return this.#store.dashboard(this.#require(actor, "exam:read"), new Date(this.#now()), { activity: can(actor, "audit:read") });
   }
 
   audit(actor: Actor, limit?: number): Promise<readonly AuditRecord[]> {

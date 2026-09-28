@@ -10,6 +10,7 @@
 @import "@parikshaa/brand/fonts.css";
 @import "@parikshaa/brand/tokens.css";
 @import "@parikshaa/brand/base.css";
+@import "@parikshaa/brand/ui.css";
 
 :root {
   --text-body: 0.875rem;
@@ -1636,28 +1637,6 @@ button.qitem-stem:hover {
 }
 
 /* The library drawer */
-.drawer-scrim,
-.try-scrim,
-.palette-scrim {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  background: color-mix(in srgb, var(--gray-900) 45%, transparent);
-  animation: fade-in var(--duration) var(--ease);
-}
-.drawer {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  width: min(36rem, 100vw);
-  padding: var(--space-5);
-  background: var(--surface);
-  box-shadow: var(--shadow-lg);
-  animation: slide-in 180ms var(--ease);
-}
 .drawer-head {
   display: flex;
   align-items: center;
@@ -1722,34 +1701,10 @@ button.qitem-stem:hover {
   background: var(--surface-2);
   border-top: 1px solid var(--border);
 }
-@keyframes slide-in {
-  from {
-    transform: translateX(2rem);
-    opacity: 0;
-  }
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-}
 
 /* Try test */
-.try-scrim {
-  display: grid;
-  padding: var(--space-4);
-}
-.try {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+.ui-dialog.try {
   background: var(--bg);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-}
-.try:focus {
-  outline: none;
 }
 .try-bar {
   display: flex;
@@ -1918,12 +1873,6 @@ button.qitem-stem:hover {
   margin-top: 0;
 }
 @media (max-width: 900px) {
-  .try-scrim {
-    padding: 0;
-  }
-  .try {
-    border-radius: 0;
-  }
   .try-body {
     grid-template-columns: 1fr;
   }
@@ -2033,22 +1982,10 @@ button.qitem-stem:hover {
 }
 
 /* Ctrl+K */
-.palette-scrim {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 12vh var(--space-4) var(--space-4);
-}
-.palette {
+.ui-dialog.palette {
   display: flex;
   flex-direction: column;
-  width: min(40rem, 100%);
-  max-height: 70vh;
   overflow: hidden;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
 }
 .palette-input {
   display: flex;
@@ -2152,4 +2089,306 @@ button.qitem-stem:hover {
   .search-trigger kbd {
     display: none;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * Home: the greeting, figures, the calendar of sittings, first steps and the
+ * latest activity. And the design system's gallery.
+ * ------------------------------------------------------------------------- */
+
+.home-hello {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.home-greeting {
+  flex: 1;
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.home-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.home-actions svg {
+  width: 1rem;
+  height: 1rem;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21rem;
+  gap: var(--space-5);
+  align-items: start;
+  margin-top: var(--space-5);
+}
+.home-side {
+  display: grid;
+  gap: var(--space-4);
+}
+.home-side .card,
+.home-calendar {
+  margin: 0;
+}
+@media (max-width: 1100px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.calendar-layout {
+  display: grid;
+  grid-template-columns: 16rem minmax(0, 1fr);
+  gap: var(--space-6);
+  margin-top: var(--space-3);
+}
+@media (max-width: 760px) {
+  .calendar-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.month-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.month-dow {
+  padding: var(--space-1) 0;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-align: center;
+}
+button.month-day {
+  position: relative;
+  min-width: 0;
+  min-height: 2.1rem;
+  padding: 0;
+  font-weight: var(--weight-medium);
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+button.month-day:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-2);
+}
+button.month-day.today {
+  color: var(--primary);
+  font-weight: var(--weight-bold);
+  box-shadow: inset 0 0 0 1px var(--primary-soft-border);
+}
+button.month-day.busy::after {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  content: "";
+  background: var(--accent);
+  border-radius: var(--radius-full);
+  transform: translateX(-50%);
+}
+button.month-day.picked,
+button.month-day.picked:hover:not(:disabled) {
+  color: var(--text-on-primary);
+  background: var(--primary);
+}
+button.month-day.picked::after {
+  background: var(--text-on-primary);
+}
+
+.agenda {
+  min-width: 0;
+}
+.agenda-clear {
+  margin-bottom: var(--space-2);
+}
+.agenda-day + .agenda-day {
+  margin-top: var(--space-4);
+}
+.agenda-date {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.agenda-day ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.agenda-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "time meta" "title title";
+  gap: var(--space-1) var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+.agenda-item.open {
+  border-left-color: var(--primary);
+}
+.agenda-item.upcoming {
+  border-left-color: var(--accent);
+}
+.agenda-time {
+  grid-area: time;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.agenda-title {
+  grid-area: title;
+  justify-self: start;
+  max-width: 100%;
+  overflow: hidden;
+  font-weight: var(--weight-semibold);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agenda-meta {
+  grid-area: meta;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+.progress {
+  height: 6px;
+  margin: var(--space-2) 0 var(--space-3);
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-full);
+}
+.progress span {
+  display: block;
+  height: 100%;
+  background: var(--success);
+  border-radius: inherit;
+}
+.setup-steps {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.setup-steps li {
+  display: flex;
+  gap: var(--space-2);
+}
+.setup-steps svg {
+  flex: none;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 2px;
+  color: var(--border-strong);
+}
+.setup-steps li.done svg {
+  color: var(--success);
+}
+.setup-steps li.done .setup-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+.setup-text {
+  display: grid;
+  gap: 2px;
+}
+.setup-text .crumb {
+  font-weight: var(--weight-medium);
+  text-align: left;
+}
+
+.activity-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.activity-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-size: var(--text-sm);
+}
+.activity-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--primary);
+  border-radius: var(--radius-full);
+  transform: translateY(-1px);
+}
+.activity-time {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* The gallery */
+.gallery-chrome {
+  display: inline-flex;
+  padding: var(--space-3) var(--space-4);
+  color: var(--chrome-text-strong);
+  background: var(--chrome);
+  border-radius: var(--radius);
+}
+.gallery .card {
+  margin-bottom: var(--space-4);
+}
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.swatches li {
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-sm);
+}
+.swatch {
+  height: 3rem;
+  margin-bottom: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.type-scale {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
