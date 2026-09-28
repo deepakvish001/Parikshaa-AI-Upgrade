@@ -174,23 +174,6 @@ header.exam h1 {
   border-color: var(--primary-soft-border);
   box-shadow: var(--shadow-sm), 0 0 0 4px var(--primary-soft);
 }
-.q-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-4);
-}
-.q-head h2 {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
-  margin: 0;
-  font-size: var(--text-md);
-  font-weight: var(--weight-semibold);
-  line-height: 1.5;
-  letter-spacing: -0.005em;
-}
 .q-num {
   display: inline-grid;
   place-items: center;
@@ -364,9 +347,6 @@ label.option:has(input:checked) .opt-key {
 .passage p:not(.eyebrow) {
   max-width: 68ch;
   line-height: 1.7;
-}
-.card.question.in-passage {
-  margin-left: var(--space-5);
 }
 .card.question.marked {
   border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
@@ -1778,10 +1758,6 @@ body.workspace-open {
   header.exam h1 {
     font-size: var(--text-xl);
   }
-  .q-head {
-    flex-direction: column;
-    gap: var(--space-2);
-  }
   /* On a phone the full-screen workspace stacks: problem, then editor, then console, scrolling. */
   .workspace.full {
     overflow: auto;
@@ -2728,6 +2704,8 @@ button.pq[aria-current="step"] {
 .submit-table .col-label {
   display: block;
   line-height: 1.3;
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 .submit-table .total-row th,
 .submit-table .total-row td {
@@ -2946,12 +2924,6 @@ button.tool[aria-pressed="true"] {
   color: var(--primary);
   background: var(--primary-soft);
   border-color: var(--primary-soft-border);
-}
-.tool-group {
-  display: inline-flex;
-  padding-left: var(--space-1);
-  margin-left: var(--space-1);
-  border-left: 1px solid var(--border);
 }
 .save-status {
   display: inline-flex;
@@ -3832,7 +3804,10 @@ button.tools-grid-item svg {
   margin: 0;
   color: var(--text-muted);
 }
+/* When, on a line of its own under the lead. */
 .finished-lead strong {
+  display: block;
+  margin-top: var(--space-1);
   color: var(--text);
 }
 .finished-figures {
@@ -4259,8 +4234,18 @@ button.paper-row.current {
   }
   .qfoot button.save-next,
   .qfoot button.foot-next {
-    flex: 1 1 auto;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 3rem;
+  }
+  /* A long label (Tamil's, Malayalam's) wraps to two lines rather than running off the screen. */
+  .qfoot button {
+    line-height: 1.2;
+    white-space: normal;
+    text-align: center;
+  }
+  .qfoot button.review-next {
+    min-width: 0;
   }
 }
 

@@ -140,6 +140,62 @@ Each app adds its own layout on top:
 - **Scorecard** (`components/Results.tsx`): one candidate's page, laid out to print or save as a PDF — the percentage as a ring, Qualified or Not qualified, percentile and rank among the graded, marks by section, each answer with when it was first and last saved, then the follow-ups kept apart as evidence.
 - **Ctrl+K** (`components/CommandPalette.tsx`): from anywhere in the console, find an exam, a candidate across every exam by roll number, name or email (`GET /candidates/search`), or a page, and go there with the keyboard.
 
+## The candidate's side
+
+What a candidate meets, from the link to the receipt, follows one set of
+patterns. Each is built once and used everywhere it applies.
+
+**Before the clock.** Every step before the test is a *Gate* page: a plain
+bar (the ink is for the exam) aligned to a single column — a card at 30rem,
+reading at 45rem, the instructions at 76rem — and the same stepper on each
+step: *Your data · Camera · Instructions · Begin*, with only the steps a test
+needs. The briefing API says in advance whether a privacy notice or a camera
+is coming, so the order is fixed and every button is honest. None of them
+starts the clock; only *I am ready to begin* does. Opening a link early
+counts down to the opening and lets the candidate in by itself.
+
+**The exam bar.** One 56 px ink bar (52 px on a tablet or phone). It holds
+only what changes during the test: the timer pill in the middle and the way
+out on the right. Language, text size, theme and low-bandwidth mode live
+behind one *Display* (Aa) menu. The timer pill warns from 15 minutes (the
+last quarter of a short section) and turns to danger in the last minute,
+with one pulse at each. A section with its own time shows it there, under
+the section's name.
+
+**The paper.** The tool strip (44 px) shows the save status on the left.
+It is the only place a dropped connection shows: a quiet pill, never a
+dialog. When the connection returns, it says how many answers went. The
+question card has the number, type, marks and negative-marks chips and
+*Mark for review*. Options are 56 px cards; keyboard focus is the card's
+ring, separate from its being chosen. The footer sticks. The palette's key
+shows *Typed, not saved* only while something is, and folds to a line of
+shapes after the first minute. Sections sit above the palette as tabs; the
+ones already left stay in sight, locked.
+
+**Tools.** Every tool is a *Tool window*: 360 px, docked to the right of the
+question, and stacked when several are open. The title bar moves it. Escape
+closes the newest, and focus goes back to the tool's button.
+
+**On a phone.** One bar, and a strip with *Questions* and *Tools*. Tools
+open a bottom sheet in a 3 × 2 grid, with Display among them, and each tool
+opens as a sheet the height of the screen. The palette is a sheet, six
+questions to a row, half height or full from its handle. The footer is one
+64 px row: Previous (an arrow), "⋯" for Clear response, Mark, and a wide
+Save & next. Short labels are always part of the long ones, which remain
+the accessible names. A long label wraps to two lines; it is never clipped.
+
+**The end.** The submit summary is a table with a row per section and the
+total. Each column is headed by its palette shape. Focus starts on *Keep
+working*, and Submit is the same saffron as the bar's button. When time
+runs out, a calm full screen (no red) says when the saved answers went in,
+then opens the record after five seconds. The receipt names each entry in
+words (*Answer saved · question 3*), folded behind *Show all N entries*.
+
+**Every language.** All of the above is in the eleven interface languages
+and is checked by eye in Hindi and Tamil (see *Guarding the look*). Indic
+scripts get no capitals and no tracking, a 1.75 line height, and emphasis
+by weight. Components grow to fit rather than truncate.
+
 ## Pages
 
 | | Candidate app | | Console |
@@ -203,13 +259,18 @@ webcam when the screenshots are taken.
 
 Three checks in CI keep the detail from drifting:
 
-- **Visual regression** (`packages/e2e/visual`): the console's sign-in, the
-  candidate's first page, a question in the exam, a new exam in the editor,
-  and the design system in light and dark, compared pixel by pixel with the
-  images committed in `visual/__screenshots__` (the clock masked). At most 100
-  pixels may differ, with a tight per-pixel tolerance, so a shift of colour or
-  a new control is caught, not only a broken layout. A change to
-  how any of them looks fails until the images are updated on purpose:
+- **Visual regression** (`packages/e2e/visual`): every page a candidate
+  meets, compared pixel by pixel with the images committed in
+  `visual/__screenshots__`. That is the access code, the privacy notice, a
+  link opened early, the instructions, a question, the submit summary and
+  the record, each on a laptop (1440) and a phone (390), in light and dark,
+  and in English, Hindi and Tamil: 84 images. Beside them are the console's
+  sign-in, a new exam in the editor, and the design system in both themes.
+  Only what changes from run to run is masked: the clocks, the dates, the
+  hashes and the measured connection. At most 100 pixels may differ, with a
+  tight per-pixel tolerance, so a shift of colour or a new control is
+  caught, not only a broken layout. A change to how any of them looks fails
+  until the images are updated on purpose: run
   `npm run visual:update -w @parikshaa/e2e`, then review and commit the
   images with the change.
 - **Lighthouse** (`packages/e2e/perf`): its mobile run — a mid-range phone
@@ -218,8 +279,9 @@ Three checks in CI keep the detail from drifting:
   at 95.
 - **Bundle budget** (`bundle-budget.json`, `npm run budget`): every built
   JavaScript and CSS file against a gzipped cap; a file with no budget fails
-  too. The candidate's entry is about 107 KB: English and Hindi come with the
-  page, and the other nine languages load when chosen.
+  too. The candidate's entry is about 119 KB of script and 18 KB of style:
+  English and Hindi come with the page, and the other nine languages load
+  when chosen.
 
 The browser tests run in Chromium, Firefox and WebKit in CI.
 

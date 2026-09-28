@@ -1,11 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
-import { MCQ, OWNER, beginSitting, seedSitting, SHORT } from "../tests/support.js";
+import { OWNER } from "../tests/support.js";
 
 /**
- * The screens that set the look — sign-in, the candidate's first page and
- * the exam itself, the editor, and the design system in both themes — held
- * to their committed images. Anything that changes from run to run (the
- * clock) is masked.
+ * The console's screens that set the look — sign-in, the editor, and the
+ * design system in both themes — held to their committed images. The
+ * candidate's pages are in candidate.visual.ts.
  */
 
 async function signIn(page: Page) {
@@ -27,21 +26,6 @@ test("the console's sign-in", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await settle(page);
   await expect(page).toHaveScreenshot("console-sign-in.png");
-});
-
-test("the candidate's access page", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("button").first()).toBeVisible();
-  await settle(page);
-  await expect(page).toHaveScreenshot("candidate-access.png");
-});
-
-test("a question in the exam, with the palette", async ({ page, request }) => {
-  const sitting = await seedSitting(request, { title: "Visual check — Algorithms", questions: [MCQ, SHORT], names: ["Ananya Iyer"] });
-  await beginSitting(page, sitting.links["CS001"]!);
-  await expect(page.getByRole("heading", { name: "Which sort is stable?" })).toBeVisible();
-  await settle(page);
-  await expect(page).toHaveScreenshot("candidate-exam.png", { mask: [page.getByRole("timer")] });
 });
 
 test("a new exam in the editor", async ({ page }) => {

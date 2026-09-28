@@ -2,7 +2,7 @@
   "$comment": "Gzipped kilobytes each built file may reach (scripts/bundle-budget.mjs). Raise one only on purpose, in the same change that needs it.",
   "packages/web/dist": {
     "index-*.js": 125,
-    "index-*.css": 16,
+    "index-*.css": 19,
     "CodeEditor-*.js": 240,
     "PracticeApp-*.js": 14,
     "PracticeApp-*.css": 5,
