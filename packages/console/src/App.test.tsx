@@ -2054,3 +2054,25 @@ describe("the design system page", () => {
     expect(screen.getByRole("region", { name: "Notifications" })).toHaveTextContent("Saved “Campus drive 2026”");
   });
 });
+
+describe("the theme", () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.clear();
+  });
+
+  it("follows the computer until someone chooses, then remembers the choice", async () => {
+    renderApp(<App client={stubClient()} />);
+    const theme = await screen.findByRole("group", { name: "Theme" });
+    expect(within(theme).getByRole("button", { name: "Match the computer" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
+
+    await userEvent.click(within(theme).getByRole("button", { name: "Dark" }));
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(localStorage.getItem("parikshaa.console.theme")).toBe("dark");
+
+    await userEvent.click(within(theme).getByRole("button", { name: "Match the computer" }));
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
+    expect(localStorage.getItem("parikshaa.console.theme")).toBeNull();
+  });
+});

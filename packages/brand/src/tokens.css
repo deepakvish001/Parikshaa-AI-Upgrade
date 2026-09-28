@@ -1,14 +1,24 @@
 /*
- * Parikshaa design tokens.
+ * Parikshaa design tokens, v2.
  *
  * One source for colour, type, space, shape and depth, shared by the
- * candidate app and the console. Components never name a hex value; they
- * name a token, so dark mode and any later re-theme change here only.
+ * candidate app and the console. Components never name a colour; they name a
+ * token, so the dark theme and any later re-theme change here only. Stylelint
+ * fails the build on a literal colour anywhere else.
  *
  * The palette: an ink indigo that reads as trustworthy and institutional
  * (the ledger, the record), and saffron used sparingly as the accent — the
- * bindu in the mark, a highlight, never a warning. Status colours are kept
- * apart from both, so "failed" never looks like "brand".
+ * bindu in the mark, the eyebrow, and the one action that ends a test. Status
+ * colours are kept apart from both, so "failed" never looks like "brand".
+ *
+ * Every status comes as a set: text (on a surface), soft (a tint behind
+ * text), border, solid (a fill) and on-solid (text on that fill). Solid and
+ * on-solid are separate from the text colour because a colour light enough
+ * to read on a dark surface is too light to carry white text: that is what
+ * made the question palette unreadable in the dark theme.
+ *
+ * `tokens.test.ts` in the console checks every pair below meets WCAG AA in
+ * both themes, and that the two dark blocks are identical.
  */
 
 :root {
@@ -35,70 +45,160 @@
   --gray-200: #e2e6ef;
   --gray-300: #cdd3df;
   --gray-400: #9aa3b5;
-  --gray-500: #5f687c; /* muted text: at least 4.5:1 on every light surface, WCAG AA */
+  --gray-500: #5f687c;
   --gray-600: #4f586c;
   --gray-700: #373f52;
   --gray-800: #222938;
   --gray-900: #131a2e;
 
-  /* --- semantic: surfaces and text -------------------------------------- */
+  /* --- surfaces ---------------------------------------------------------- */
   --bg: var(--gray-50);
   --surface: var(--gray-0);
   --surface-2: var(--gray-25);
   --surface-sunken: var(--gray-100);
-  --border: var(--gray-200);
-  --border-strong: var(--gray-300);
+  --scrim: rgb(8 11 25 / 0.55);
+
+  /* --- text ------------------------------------------------------------- */
   --text: var(--gray-900);
-  --text-muted: var(--gray-500);
-  --text-subtle: var(--gray-400);
+  --text-secondary: var(--gray-600); /* descriptions, long helper text */
+  --text-muted: var(--gray-500); /* labels, meta, timestamps, placeholders */
+  --text-subtle: var(--gray-400); /* decoration only, never words */
+  --text-disabled: #8a93a6; /* disabled controls, which always say why beside them */
   --text-on-primary: #ffffff;
 
+  /* --- lines ------------------------------------------------------------ */
+  --border: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --focus-color: var(--brand-600);
+  --focus-ring: 0 0 0 3px rgb(51 70 196 / 0.28);
+
+  /* --- action ----------------------------------------------------------- */
   --primary: var(--brand-600);
   --primary-hover: var(--brand-700);
   --primary-active: var(--brand-800);
   --primary-soft: var(--brand-50);
   --primary-soft-border: var(--brand-200);
+  --on-primary: var(--text-on-primary);
+
   --accent: var(--saffron-500);
   --accent-soft: var(--saffron-100);
+  --accent-text: #a35200; /* saffron dark enough to be words */
+  --accent-solid: var(--saffron-500);
+  --accent-solid-hover: #f59b43;
+  --on-accent-solid: #1b1203;
 
+  --disabled-bg: var(--gray-100);
+  --disabled-border: var(--gray-200);
+
+  /* --- status ----------------------------------------------------------- */
   --success: #117a57;
   --success-soft: #e7f6ef;
   --success-border: #b9e2cf;
+  --success-solid: #117a57;
+  --on-success-solid: #ffffff;
+
   --warning: #9a5800;
   --warning-soft: #fff5e3;
   --warning-border: #f3d59f;
+  --warning-solid: #f3b23a;
+  --on-warning-solid: #1b1203;
+
   --danger: #c23a2b;
   --danger-soft: #fdeeec;
   --danger-border: #f3c5bf;
+  --danger-solid: #c23a2b;
+  --on-danger-solid: #ffffff;
 
-  --focus-ring: 0 0 0 3px rgb(51 70 196 / 0.28);
+  /* Marked for review: in the exam and in Try test, nowhere else. */
+  --review: #6b3fd4;
+  --review-soft: #f1ebff;
+  --review-border: #d6c7fb;
+  --review-solid: #6b3fd4;
+  --on-review-solid: #ffffff;
 
-  /* --- the sidebar: always ink, in both themes --------------------------- */
+  /* Announcements and tips, so the brand indigo stays for actions. */
+  --info: #1f63b8;
+  --info-soft: #eaf2fc;
+  --info-border: #bcd4f2;
+  --info-solid: #1f63b8;
+  --on-info-solid: #ffffff;
+
+  /* The tick on an answered-and-marked palette cell, drawn in on-success-solid. */
+  --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%23ffffff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  /* A question not yet visited: a quiet fill, not a status. */
+  --neutral-solid: var(--gray-100);
+  --on-neutral-solid: var(--gray-600);
+
+  /* --- charts: one family for histograms, heatmaps and section bars ------ */
+  --chart-seq-1: #e3e7fd;
+  --chart-seq-2: #c9cffa;
+  --chart-seq-3: #7482ee;
+  --chart-seq-4: #3346c4;
+  --chart-seq-5: #1d2770;
+  --chart-cat-1: #3346c4;
+  --chart-cat-2: #d9730f;
+  --chart-cat-3: #0f7c86;
+  --chart-cat-4: #c2416b;
+  --chart-cat-5: #6b3fd4;
+  --chart-cat-6: #5f687c;
+
+  /* Practice leaderboard places: fills with their own text, the same in both themes. */
+  --medal-gold: #f6d365;
+  --on-medal-gold: #5b4200;
+  --medal-silver: #dfe3ea;
+  --on-medal-silver: #37404d;
+  --medal-bronze: #efc39c;
+  --on-medal-bronze: #5a3314;
+
+  /* --- chrome: the exam bar and the console sidebar, ink in both themes --- */
   --chrome: var(--brand-950);
   --chrome-2: #121946;
   --chrome-text: #c9cff0;
   --chrome-text-strong: #ffffff;
+  --chrome-text-muted: rgb(201 207 240 / 0.62);
   --chrome-hover: rgb(255 255 255 / 0.06);
   --chrome-active: rgb(116 130 238 / 0.18);
+  --chrome-fill: rgb(255 255 255 / 0.05);
   --chrome-border: rgb(255 255 255 / 0.08);
+  --chrome-border-strong: rgb(255 255 255 / 0.16);
+  --chrome-glow: rgb(74 92 224 / 0.35);
+  --chrome-warm-glow: rgb(242 140 40 / 0.18);
+  --chrome-success: #7ee2b3;
+  --chrome-success-fill: rgb(83 199 148 / 0.12);
+  --chrome-success-border: rgb(83 199 148 / 0.3);
+  --chrome-warning: #ffc978;
+  --chrome-danger: #ffb4a8;
+  --chrome-danger-fill: rgb(242 128 111 / 0.14);
+  --chrome-danger-border: rgb(242 128 111 / 0.45);
+  --chrome-accent-tint: rgb(242 140 40 / 0.14);
 
   /* --- type ------------------------------------------------------------- */
-  --font-sans: "Inter Variable", "Inter", "Noto Sans Devanagari", "Segoe UI", system-ui, -apple-system, Roboto, "Nirmala UI", "Mangal", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
-  --text-xs: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.875rem;
-  --text-md: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
-  --text-3xl: 2.25rem;
+  --font-sans: "Inter Variable", "Inter", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu",
+    "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Oriya", "Segoe UI", system-ui,
+    -apple-system, Roboto, "Nirmala UI", "Mangal", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
+  --text-2xs: 0.6875rem; /* 11: overline labels only, Latin only */
+  --text-xs: 0.75rem; /* 12 */
+  --text-sm: 0.8125rem; /* 13 */
+  --text-base: 0.875rem; /* 14 */
+  --text-md: 1rem; /* 16 */
+  --text-lg: 1.125rem; /* 18 */
+  --text-xl: 1.375rem; /* 22 */
+  --text-timer: 1.5rem; /* 24 */
+  --text-2xl: 1.75rem; /* 28 */
+  --text-3xl: 2.25rem; /* 36 */
   --leading: 1.55;
+  --leading-tight: 1.25;
+  --leading-indic: 1.75;
+  --tracking-overline: 0.06em;
+  --tracking-display: -0.02em;
+  --weight-regular: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
 
   /* --- space (4px grid), shape, depth, motion ----------------------------- */
+  --space-0-5: 0.125rem;
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -108,34 +208,55 @@
   --space-8: 2rem;
   --space-10: 2.5rem;
   --space-12: 3rem;
+  --space-16: 4rem;
+  --radius-hair: 2px;
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-full: 999px;
+  --icon-stroke: 1.75;
   --shadow-xs: 0 1px 2px rgb(19 26 46 / 0.05);
   --shadow-sm: 0 1px 3px rgb(19 26 46 / 0.07), 0 1px 2px rgb(19 26 46 / 0.04);
   --shadow-md: 0 6px 16px rgb(19 26 46 / 0.08), 0 2px 4px rgb(19 26 46 / 0.04);
   --shadow-lg: 0 20px 48px rgb(19 26 46 / 0.14), 0 4px 12px rgb(19 26 46 / 0.06);
+  --shadow-bar: 0 1px 0 rgb(0 0 0 / 0.2), 0 8px 24px rgb(8 11 25 / 0.18);
+  --shadow-accent: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 16px rgb(242 140 40 / 0.28);
+  --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.12);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration: 140ms;
+  --duration-fast: 120ms;
+  --duration-enter: 180ms;
+  --duration-sheet: 240ms;
 
   color-scheme: light;
 }
 
-/* Dark: the same roles, re-valued. Chosen by the system unless the page says otherwise. */
+/*
+ * Dark: the same roles, re-valued. Chosen by the system unless the page says
+ * otherwise; and any element with data-theme="dark" takes it for itself and
+ * everything inside it (the dark code editor in a light page). The two blocks
+ * below are the same list and must stay so; a test compares them.
+ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0c1020;
     --surface: #141a2c;
     --surface-2: #171e32;
     --surface-sunken: #10152a;
-    --border: #252d45;
-    --border-strong: #343d58;
+    --scrim: rgb(0 0 0 / 0.6);
     --text: #e8ebf5;
+    --text-secondary: #b7bed1;
     --text-muted: #a1a9bf;
     --text-subtle: #737c95;
+    --text-disabled: #6b748c;
     --text-on-primary: #0c1020;
+    --on-primary: #0c1020;
+    --border: #252d45;
+    --border-strong: #343d58;
+    --focus-color: #8b98fa;
+    --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
     --primary: #8b98fa;
     --primary-hover: #a3adfb;
     --primary-active: #b9c1fc;
@@ -143,36 +264,77 @@
     --primary-soft-border: #2f3a78;
     --accent: #f7a04a;
     --accent-soft: #3a2712;
+    --accent-text: #f7a04a;
+    --accent-solid: #f7a04a;
+    --accent-solid-hover: #f9b068;
+    --disabled-bg: #1a2136;
+    --disabled-border: #252d45;
     --success: #53c794;
     --success-soft: #11291f;
     --success-border: #1f4a37;
+    --success-solid: #2fa874;
+    --on-success-solid: #04130c;
+    --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%2304130c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     --warning: #f1b65c;
     --warning-soft: #2a2011;
     --warning-border: #4d3a17;
+    --warning-solid: #f1b65c;
     --danger: #f2806f;
     --danger-soft: #2e1715;
     --danger-border: #5a2923;
-    --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
-    --chrome: #080b19;
-    --chrome-2: #0d1127;
+    --danger-solid: #e5604e;
+    --on-danger-solid: #1a0604;
+    --review: #b69cff;
+    --review-soft: #241a3f;
+    --review-border: #3f2f6d;
+    --review-solid: #9c7bf0;
+    --on-review-solid: #12072e;
+    --info: #7fb4f5;
+    --info-soft: #12233a;
+    --info-border: #1f3d63;
+    --info-solid: #7fb4f5;
+    --on-info-solid: #0c1020;
+    --neutral-solid: #232b43;
+    --on-neutral-solid: #c4cadb;
+    --chart-seq-1: #1b2248;
+    --chart-seq-2: #2f3a78;
+    --chart-seq-3: #5a68d8;
+    --chart-seq-4: #8b98fa;
+    --chart-seq-5: #c9cffa;
+    --chart-cat-1: #8b98fa;
+    --chart-cat-2: #f7a04a;
+    --chart-cat-3: #4cc3cc;
+    --chart-cat-4: #f08aac;
+    --chart-cat-5: #b69cff;
+    --chart-cat-6: #a1a9bf;
+    --chrome: #10163d;
+    --chrome-2: #151c4a;
     --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
     --shadow-md: 0 6px 16px rgb(0 0 0 / 0.4);
     --shadow-lg: 0 20px 48px rgb(0 0 0 / 0.5);
+    --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
     color-scheme: dark;
   }
 }
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+[data-theme="dark"] {
   --bg: #0c1020;
   --surface: #141a2c;
   --surface-2: #171e32;
   --surface-sunken: #10152a;
-  --border: #252d45;
-  --border-strong: #343d58;
+  --scrim: rgb(0 0 0 / 0.6);
   --text: #e8ebf5;
+  --text-secondary: #b7bed1;
   --text-muted: #a1a9bf;
   --text-subtle: #737c95;
+  --text-disabled: #6b748c;
   --text-on-primary: #0c1020;
+  --on-primary: #0c1020;
+  --border: #252d45;
+  --border-strong: #343d58;
+  --focus-color: #8b98fa;
+  --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
   --primary: #8b98fa;
   --primary-hover: #a3adfb;
   --primary-active: #b9c1fc;
@@ -180,27 +342,80 @@
   --primary-soft-border: #2f3a78;
   --accent: #f7a04a;
   --accent-soft: #3a2712;
+  --accent-text: #f7a04a;
+  --accent-solid: #f7a04a;
+  --accent-solid-hover: #f9b068;
+  --disabled-bg: #1a2136;
+  --disabled-border: #252d45;
   --success: #53c794;
   --success-soft: #11291f;
   --success-border: #1f4a37;
+  --success-solid: #2fa874;
+  --on-success-solid: #04130c;
+  --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%2304130c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   --warning: #f1b65c;
   --warning-soft: #2a2011;
   --warning-border: #4d3a17;
+  --warning-solid: #f1b65c;
   --danger: #f2806f;
   --danger-soft: #2e1715;
   --danger-border: #5a2923;
-  --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
-  --chrome: #080b19;
-  --chrome-2: #0d1127;
+  --danger-solid: #e5604e;
+  --on-danger-solid: #1a0604;
+  --review: #b69cff;
+  --review-soft: #241a3f;
+  --review-border: #3f2f6d;
+  --review-solid: #9c7bf0;
+  --on-review-solid: #12072e;
+  --info: #7fb4f5;
+  --info-soft: #12233a;
+  --info-border: #1f3d63;
+  --info-solid: #7fb4f5;
+  --on-info-solid: #0c1020;
+  --neutral-solid: #232b43;
+  --on-neutral-solid: #c4cadb;
+  --chart-seq-1: #1b2248;
+  --chart-seq-2: #2f3a78;
+  --chart-seq-3: #5a68d8;
+  --chart-seq-4: #8b98fa;
+  --chart-seq-5: #c9cffa;
+  --chart-cat-1: #8b98fa;
+  --chart-cat-2: #f7a04a;
+  --chart-cat-3: #4cc3cc;
+  --chart-cat-4: #f08aac;
+  --chart-cat-5: #b69cff;
+  --chart-cat-6: #a1a9bf;
+  --chrome: #10163d;
+  --chrome-2: #151c4a;
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
   --shadow-md: 0 6px 16px rgb(0 0 0 / 0.4);
   --shadow-lg: 0 20px 48px rgb(0 0 0 / 0.5);
+  --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.06);
   color-scheme: dark;
+}
+
+/* Paper is white whatever the screen's theme. */
+@media print {
+  :root,
+  [data-theme="dark"] {
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #ffffff;
+    --text: #000000;
+    --text-secondary: #333333;
+    --text-muted: #444444;
+    --border: #bbbbbb;
+    --border-strong: #999999;
+    color-scheme: light;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --duration: 0ms;
+    --duration-fast: 0ms;
+    --duration-enter: 0ms;
+    --duration-sheet: 0ms;
   }
 }

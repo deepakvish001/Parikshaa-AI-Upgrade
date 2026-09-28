@@ -97,9 +97,9 @@ td.num {
 }
 
 :focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  border-radius: var(--radius-sm);
+  /* An outline, not a shadow: Windows High Contrast keeps outlines. */
+  outline: 2px solid var(--focus-color);
+  outline-offset: 2px;
 }
 
 ::selection {
@@ -126,7 +126,7 @@ button,
   background: var(--primary);
   border: 1px solid var(--primary);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-xs), inset 0 1px 0 rgb(255 255 255 / 0.12);
+  box-shadow: var(--shadow-xs), var(--shadow-inset-highlight);
   cursor: pointer;
   transition:
     background var(--duration) var(--ease),
@@ -141,13 +141,29 @@ button:hover:not(:disabled) {
 button:active:not(:disabled) {
   background: var(--primary-active);
 }
-button:focus-visible {
-  box-shadow: var(--focus-ring);
-  border-radius: var(--radius);
-}
 button:disabled {
-  opacity: 0.45;
   cursor: not-allowed;
+}
+/*
+ * Not yet, rather than a lighter primary: a sunken fill and quiet text. The
+ * specificity is deliberate, so a variant's own colours never show on a
+ * disabled button. Always say why beside it.
+ */
+button:disabled:not(.quiet):not(.ghost):not(.crumb):not(.link):not(.pq),
+.button[aria-disabled="true"] {
+  color: var(--text-disabled);
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  box-shadow: none;
+  filter: none;
+  opacity: 1;
+}
+button.quiet:disabled,
+button.ghost:disabled,
+button.crumb:disabled,
+button.link:disabled {
+  color: var(--text-disabled);
+  background: transparent;
   box-shadow: none;
 }
 button svg {
@@ -180,14 +196,14 @@ button.quiet:hover:not(:disabled) {
   border-color: transparent;
 }
 button.danger {
-  color: #fff;
-  background: var(--danger);
-  border-color: var(--danger);
+  color: var(--on-danger-solid);
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
 }
 button.danger:hover:not(:disabled) {
   filter: brightness(0.94);
-  background: var(--danger);
-  border-color: var(--danger);
+  background: var(--danger-solid);
+  border-color: var(--danger-solid);
 }
 button.large {
   min-height: 2.75rem;
@@ -244,7 +260,7 @@ textarea {
 }
 input::placeholder,
 textarea::placeholder {
-  color: var(--text-subtle);
+  color: var(--text-muted);
 }
 input:hover:not(:disabled),
 select:hover:not(:disabled),
@@ -254,15 +270,16 @@ textarea:hover:not(:disabled) {
 input:focus,
 select:focus,
 textarea:focus {
-  outline: none;
+  outline: 2px solid var(--focus-color);
+  outline-offset: 1px;
   border-color: var(--primary);
-  box-shadow: var(--focus-ring);
 }
 input:disabled,
 select:disabled,
 textarea:disabled {
-  color: var(--text-muted);
-  background: var(--surface-sunken);
+  color: var(--text-disabled);
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
   cursor: not-allowed;
 }
 select {
@@ -588,18 +605,130 @@ tbody tr:last-child > * {
 }
 
 @media print {
-  :root {
-    --bg: #fff;
-    --surface: #fff;
-    --surface-2: #fff;
-    --text: #000;
-    --text-muted: #444;
-    --border: #bbb;
-  }
   body {
-    background: #fff;
+    background: var(--surface);
   }
   .card {
     box-shadow: none;
+  }
+}
+
+
+/* --- type roles (docs/DESIGN.md) ------------------------------------------ */
+
+.t-display {
+  font-size: var(--text-3xl);
+  line-height: 1.22;
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-display);
+}
+.t-title {
+  font-size: var(--text-2xl);
+  line-height: 1.29;
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.015em;
+}
+.t-section {
+  font-size: var(--text-xl);
+  line-height: 1.36;
+  font-weight: var(--weight-semibold);
+  letter-spacing: -0.01em;
+}
+.t-card {
+  font-size: var(--text-lg);
+  line-height: 1.55;
+  font-weight: var(--weight-semibold);
+}
+.t-body-lg {
+  font-size: var(--text-md);
+  line-height: 1.625;
+}
+.t-small {
+  font-size: var(--text-sm);
+  line-height: 1.54;
+  color: var(--text-secondary);
+}
+.t-caption {
+  font-size: var(--text-xs);
+  line-height: 1.33;
+  font-weight: var(--weight-medium);
+}
+.t-overline {
+  font-size: var(--text-2xs);
+  line-height: 1.45;
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+}
+.t-figure {
+  font-size: var(--text-2xl);
+  line-height: 1.14;
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.t-timer {
+  font-size: var(--text-timer);
+  line-height: 1.17;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/*
+ * Indian scripts stack vowel signs above and below the letter: they need more
+ * line height, and must never be uppercased or letter-spaced, which pulls
+ * conjuncts apart. Emphasis is weight, never italic (most Indic faces have
+ * none, so browsers slant them).
+ */
+:lang(hi),
+:lang(mr),
+:lang(bn),
+:lang(ta),
+:lang(te),
+:lang(gu),
+:lang(kn),
+:lang(ml),
+:lang(pa),
+:lang(or) {
+  --leading: var(--leading-indic);
+}
+:is(:lang(hi), :lang(mr), :lang(bn), :lang(ta), :lang(te), :lang(gu), :lang(kn), :lang(ml), :lang(pa), :lang(or)) :is(*, *::before, *::after) {
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+:is(:lang(hi), :lang(mr), :lang(bn), :lang(ta), :lang(te), :lang(gu), :lang(kn), :lang(ml), :lang(pa), :lang(or)) :is(em, i) {
+  font-style: normal;
+  font-weight: var(--weight-semibold);
+}
+:is(:lang(hi), :lang(mr), :lang(bn), :lang(ta), :lang(te), :lang(gu), :lang(kn), :lang(ml), :lang(pa), :lang(or)) body {
+  line-height: var(--leading-indic);
+}
+
+/* --- icons ---------------------------------------------------------------- */
+
+/* Lucide's 2px stroke is heavier than Inter at 14–16px; 1.75 matches it. */
+svg.lucide {
+  stroke-width: var(--icon-stroke);
+}
+
+/* --- loading ------------------------------------------------------------ */
+
+/* A placeholder the size of what is coming, in place of "Loading…". */
+.skeleton {
+  display: block;
+  min-height: 0.875rem;
+  background: linear-gradient(90deg, var(--surface-sunken) 25%, var(--surface-2) 50%, var(--surface-sunken) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: skeleton 1.4s var(--ease) infinite;
+}
+@keyframes skeleton {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
   }
 }

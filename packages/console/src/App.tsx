@@ -42,6 +42,7 @@ import { TryTest } from "./components/Preview.tsx";
 import { Home } from "./components/Home.tsx";
 import { Gallery } from "./components/Gallery.tsx";
 import { ToastProvider, useToast } from "@parikshaa/brand/ui";
+import { ThemeSwitch, useTheme, type Theme } from "./components/ThemeSwitch.tsx";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { SignIn } from "./components/SignIn.tsx";
 
@@ -113,6 +114,7 @@ function arrival(): { sso: string | null; ssoError: string | null; reset: string
 
 export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   const queryClient = useQueryClient();
+  const [theme, setTheme] = useTheme();
   const [arrived] = useState(arrival);
   const [token, setToken] = useState<string | null>(() => {
     if (injected !== undefined) return null;
@@ -138,12 +140,22 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
   return (
     <ToastProvider>
-      <Console client={client} onSignedOut={signOut} />
+      <Console client={client} onSignedOut={signOut} theme={theme} onTheme={setTheme} />
     </ToastProvider>
   );
 }
 
-function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
+function Console({
+  client,
+  onSignedOut,
+  theme,
+  onTheme,
+}: {
+  client: ConsoleClient;
+  onSignedOut: () => void;
+  theme: Theme;
+  onTheme: (next: Theme) => void;
+}) {
   const queryClient = useQueryClient();
   const toast = useToast();
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
@@ -443,6 +455,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             <span>Search</span>
             <kbd>Ctrl K</kbd>
           </button>
+          <ThemeSwitch theme={theme} onChange={onTheme} />
         </header>
         {searching ? (
           <CommandPalette

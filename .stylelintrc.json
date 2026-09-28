@@ -1,0 +1,63 @@
+{
+  "rules": {
+    "color-no-hex": [
+      true,
+      {
+        "message": "Use a token from packages/brand/src/tokens.css, not a literal colour"
+      }
+    ],
+    "color-named": [
+      "never",
+      {
+        "message": "Use a token from packages/brand/src/tokens.css, not a named colour"
+      }
+    ],
+    "function-disallowed-list": [
+      [
+        "rgb",
+        "rgba",
+        "hsl",
+        "hsla"
+      ],
+      {
+        "message": "Use a token from packages/brand/src/tokens.css, not a literal colour"
+      }
+    ],
+    "declaration-property-value-disallowed-list": [
+      {
+        "font-size": [
+          "/^[0-9.]+(px|rem)$/"
+        ],
+        "font-weight": [
+          "/^[0-9]+$/"
+        ],
+        "border-radius": [
+          "/[0-9.]+px/"
+        ]
+      },
+      {
+        "message": "Use a type, weight or radius token from packages/brand/src/tokens.css"
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "packages/brand/src/tokens.css"
+      ],
+      "rules": {
+        "color-no-hex": null,
+        "function-disallowed-list": null,
+        "declaration-property-value-disallowed-list": null
+      }
+    },
+    {
+      "files": [
+        "packages/brand/src/fonts.css"
+      ],
+      "rules": {
+        "declaration-property-value-disallowed-list": null
+      }
+    }
+  ]
+}

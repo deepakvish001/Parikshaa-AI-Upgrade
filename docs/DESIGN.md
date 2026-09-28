@@ -26,8 +26,9 @@ taken from the real app over seeded data, not mocked up; see
 - **Nothing observed that is not said.** The typefaces are bundled with the
   app. No font, script or image is fetched from a third party at runtime.
 - **Accessible by construction.** Every pair of text and background colours
-  meets WCAG 2.1 AA. Every control shows a focus ring. The axe checks in
-  `packages/e2e/tests/accessibility.spec.ts` run on every change.
+  meets WCAG 2.1 AA, in both themes. Every control shows a focus ring. The axe
+  checks in `packages/e2e/tests/accessibility.spec.ts` run on every change, in
+  light and again in dark.
 
 ## The mark
 
@@ -39,29 +40,62 @@ is beside it, so screen readers read the name once.
 
 ## Tokens (`packages/brand/src/tokens.css`)
 
-Components use tokens, never hex values. Dark mode and any later re-theme
-change only this file.
+Components use tokens, never a literal colour, font size, weight or radius:
+`npm run lint:css` (Stylelint, in CI) fails the build on one anywhere but the
+tokens file. Dark mode and any later re-theme change only this file.
 
-| Role | Token | Light | Use |
-| --- | --- | --- | --- |
-| Primary | `--primary` | `#3346c4` ink indigo | Buttons, links, the current step, focus |
-| Accent | `--accent` | `#f28c28` saffron | The bindu, the active nav marker, avatars — sparingly |
-| Canvas | `--bg` | `#f6f7fb` | Page background |
-| Surface | `--surface` | `#ffffff` | Cards, inputs |
-| Text | `--text` / `--text-muted` | `#131a2e` / `#5f687c` | Body / secondary (≥ 4.5:1 on every surface) |
-| Success | `--success` | `#117a57` | Saved, graded, verified |
-| Warning | `--warning` | `#9a5800` | Evidence, attention, offline |
-| Danger | `--danger` | `#c23a2b` | Errors, set aside, failed |
-| Chrome | `--chrome` | `#0b1033` | The console sidebar, in both themes |
+| Role | Token | Light | Dark | Use |
+| --- | --- | --- | --- | --- |
+| Canvas · surface | `--bg` · `--surface` | `#f6f7fb` · `#ffffff` | `#0c1020` · `#141a2c` | Page · cards, inputs, the question |
+| Text | `--text` | `#131a2e` | `#e8ebf5` | Body and headings |
+| Secondary text | `--text-secondary` | `#4f586c` | `#b7bed1` | Descriptions, long helper text |
+| Muted text | `--text-muted` | `#5f687c` | `#a1a9bf` | Labels, meta, timestamps, placeholders |
+| Disabled | `--text-disabled` · `--disabled-bg` | `#8a93a6` · `#eef0f6` | `#6b748c` · `#1a2136` | Disabled controls, which always say why beside them |
+| Primary | `--primary` | `#3346c4` ink indigo | `#8b98fa` | Buttons, links, the current step, focus |
+| Accent | `--accent-solid` · `--accent-text` | `#f28c28` · `#a35200` | `#f7a04a` | The bindu, eyebrows, Submit attempt — one saffron action per screen |
+| Success | `--success` · `--success-solid` | `#117a57` | `#53c794` · `#2fa874` | Saved, answered, graded, qualified, Save & next |
+| Warning | `--warning` | `#9a5800` | `#f1b65c` | Offline, typed but not saved, to grade |
+| Danger | `--danger` · `--danger-solid` | `#c23a2b` | `#f2806f` · `#e5604e` | Errors, not answered, not qualified, set aside |
+| Review | `--review` · `--review-solid` | `#6b3fd4` | `#b69cff` · `#9c7bf0` | Marked for review, in the exam and Try test only |
+| Info | `--info` | `#1f63b8` | `#7fb4f5` | Announcements, tips |
+| Chrome | `--chrome` | `#0b1033` | `#10163d` | The exam bar and the console sidebar: ink in both themes |
 
-Status colours are kept apart from the brand colours, so "failed" never looks
-like "brand".
+Every status is a set: text (`--success`), soft (`--success-soft`), border,
+**solid** (a fill) and **on-solid** (text on that fill). The solid pair is
+separate from the text colour because a colour light enough to read on the
+dark surface is too light to carry white text — which is what once made the
+exam palette's numbers unreadable in dark (2.1:1). Charts have their own ramps,
+`--chart-seq-1…5` and `--chart-cat-1…6`.
 
-- **Type:** Inter (variable, Latin), with Noto Sans Devanagari for Hindi and
-  Marathi. The scale runs 12 · 13 · 14 · 16 · 18 · 22 · 28 · 36px.
-- **Space:** a 4px grid (`--space-1` … `--space-12`).
-- **Shape:** radii of 6, 8, 12 and 16px.
-- **Depth:** four shadows, from `--shadow-xs` to `--shadow-lg`.
+`packages/console/src/tokens.test.ts` checks every text and fill pair a
+component may use meets WCAG AA in both themes, and that the dark palette is
+written once: the system's (`prefers-color-scheme`) and the switch's
+(`data-theme="dark"`) blocks are the same list. Any element can carry
+`data-theme="dark"` to take the dark palette for itself; the dark code editor
+does, inside a light page.
+
+- **Type:** Inter (variable) for Latin; Noto Sans for every Indian script an
+  interface language uses (Devanagari 400–700; Bengali, Tamil, Telugu,
+  Gujarati, Kannada, Malayalam, Gurmukhi and Oriya 400 and 600); JetBrains
+  Mono for code, roll numbers and hashes. All bundled, each face with its
+  `unicode-range`, so a page downloads only the scripts it shows. The scale
+  runs 11 · 12 · 13 · 14 · 16 · 18 · 22 · 24 · 28 · 36px, each with a role
+  (`.t-display`, `.t-title`, `.t-section`, `.t-card`, `.t-body-lg`, `.t-small`,
+  `.t-caption`, `.t-overline`, `.t-figure`, `.t-timer`). Numbers that line up
+  use tabular figures; the exam clock is Inter, not monospace.
+- **Indian scripts:** under `:lang(hi, mr, bn, ta, te, gu, kn, ml, pa, or)`
+  nothing is uppercased or letter-spaced (it pulls conjuncts apart), line
+  height is 1.75, and emphasis is weight, never italic.
+- **Space:** a 4px grid (`--space-0-5` … `--space-16`).
+- **Shape:** radii of 2, 4, 6, 8, 12 and 16px, and full.
+- **Depth:** `--shadow-xs` to `--shadow-lg`, plus the bar and accent shadows.
+- **Icons:** Lucide at a 1.75 stroke (`--icon-stroke`), which matches Inter at
+  14–16px better than the default 2.
+- **Focus:** a 2px outline in `--focus-color`, offset 2px — an outline, so
+  Windows High Contrast keeps it — and white on the ink bars.
+- **Theme:** the candidate app follows the computer, with a light/dark switch
+  in the exam's tool strip; the console has System · Light · Dark beside
+  Search, remembered on the device.
 
 ## Components (`packages/brand/src/base.css`)
 
@@ -172,7 +206,9 @@ Three checks in CI keep the detail from drifting:
 - **Visual regression** (`packages/e2e/visual`): the console's sign-in, the
   candidate's first page, a question in the exam, a new exam in the editor,
   and the design system in light and dark, compared pixel by pixel with the
-  images committed in `visual/__screenshots__` (the clock masked). A change to
+  images committed in `visual/__screenshots__` (the clock masked). At most 100
+  pixels may differ, with a tight per-pixel tolerance, so a shift of colour or
+  a new control is caught, not only a broken layout. A change to
   how any of them looks fails until the images are updated on purpose:
   `npm run visual:update -w @parikshaa/e2e`, then review and commit the
   images with the change.

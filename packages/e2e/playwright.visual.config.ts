@@ -23,7 +23,7 @@ export default defineConfig({
   reporter: process.env["CI"] === undefined ? "list" : [["list"], ["html", { open: "never", outputFolder: "visual-report" }]],
   expect: {
     ...base.expect,
-    toHaveScreenshot: { maxDiffPixelRatio: 0.005, animations: "disabled", caret: "hide", scale: "css" },
+    toHaveScreenshot: { maxDiffPixels: 100, threshold: 0.1, animations: "disabled", caret: "hide", scale: "css" },
   },
   use: {
     ...base.use,

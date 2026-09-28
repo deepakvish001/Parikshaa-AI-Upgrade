@@ -12,16 +12,30 @@ import { Dialog, Drawer, TabPanel, Tabs, Tooltip, useToast } from "@parikshaa/br
 const COLOURS: readonly (readonly [string, string])[] = [
   ["--primary", "Primary"],
   ["--accent", "Accent"],
+  ["--accent-text", "Accent text"],
+  ["--chrome", "Chrome"],
   ["--text", "Text"],
+  ["--text-secondary", "Secondary text"],
   ["--text-muted", "Muted text"],
   ["--success", "Success"],
   ["--warning", "Warning"],
   ["--danger", "Danger"],
-  ["--chrome", "Chrome"],
+  ["--review", "Review"],
+  ["--info", "Info"],
   ["--bg", "Canvas"],
   ["--surface", "Surface"],
   ["--surface-2", "Surface 2"],
+  ["--surface-sunken", "Sunken"],
   ["--border", "Border"],
+  ["--border-strong", "Strong border"],
+];
+
+/** The exam palette's fills, from the solid tokens, as a candidate sees them. */
+const PALETTE: readonly (readonly [string, string, string])[] = [
+  ["Not visited", "--neutral-solid", "--on-neutral-solid"],
+  ["Not answered", "--danger-solid", "--on-danger-solid"],
+  ["Answered", "--success-solid", "--on-success-solid"],
+  ["Marked for review", "--review-solid", "--on-review-solid"],
 ];
 
 const TYPE: readonly (readonly [string, string])[] = [
@@ -60,6 +74,22 @@ export function Gallery() {
               <span className="swatch" style={{ background: `var(${token})` }} aria-hidden="true" />
               <span>{name}</span>
               <code className="notice small">{token}</code>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="card" aria-label="Solid fills">
+        <h2 className="card-title">Solid fills</h2>
+        <p className="notice">A fill carries its own text colour, so it reads in both themes: these are the exam palette's.</p>
+        <ul className="swatches">
+          {PALETTE.map(([name, fill, on], i) => (
+            <li key={fill}>
+              <span className="swatch solid" style={{ background: `var(${fill})`, color: `var(${on})` }}>
+                {i + 1}
+              </span>
+              <span>{name}</span>
+              <code className="notice small">{fill}</code>
             </li>
           ))}
         </ul>

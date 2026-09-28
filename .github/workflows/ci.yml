@@ -28,6 +28,9 @@ jobs:
       # Typechecks every package, test files included.
       - run: npm run typecheck
 
+      # Every colour, font size, weight and radius comes from the design tokens.
+      - run: npm run lint:css
+
       # The store and api suites run against Postgres in process (PGlite), so
       # no service container is needed.
       - run: npm test

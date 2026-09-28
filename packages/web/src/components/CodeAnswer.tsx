@@ -365,7 +365,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (aside !== undefined) {
     return (
-      <div className={`workspace standalone${prefs.dark && !lite ? " ws-dark" : ""}`}>
+      <div className={`workspace standalone${prefs.dark && !lite ? " ws-dark" : ""}`} {...(prefs.dark && !lite ? { "data-theme": "dark" } : {})}>
         <SplitPane
           direction="row"
           initial={44}
@@ -394,7 +394,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
 
   if (full) {
     return (
-      <div className={`workspace full${prefs.dark && !lite ? " ws-dark" : ""}${rail === undefined ? "" : " with-rail"}`} role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
+      <div className={`workspace full${prefs.dark && !lite ? " ws-dark" : ""}${rail === undefined ? "" : " with-rail"}`} {...(prefs.dark && !lite ? { "data-theme": "dark" } : {})} role="dialog" aria-modal="true" aria-labelledby={headingId} style={{ top }}>
         {rail === undefined ? null : <div className="ws-rail">{rail}</div>}
         {toolbar}
         <SplitPane

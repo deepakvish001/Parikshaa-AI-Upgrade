@@ -17,9 +17,13 @@
     "verify": "node packages/verify/dist/cli.js",
     "openapi": "npm run build && npm run openapi -w @parikshaa/api",
     "cost-run": "node scripts/cost-run.mjs",
-    "budget": "node scripts/bundle-budget.mjs"
+    "budget": "node scripts/bundle-budget.mjs",
+    "lint:css": "stylelint \"packages/*/src/**/*.css\""
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "stylelint": "^16.26.1"
   }
 }
