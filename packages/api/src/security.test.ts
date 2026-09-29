@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
-import { SignJWT, exportJWK, generateKeyPair, type KeyLike } from "jose";
+import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { OrgId } from "@parikshaa/core";
 import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor, type IdentityStore as Identity } from "@parikshaa/store";
@@ -206,7 +206,7 @@ describe("a second factor", () => {
 describe("single sign-on", () => {
   let idp: Server;
   let issuer: string;
-  let privateKey: KeyLike;
+  let privateKey: CryptoKey;
   /** What the provider will say the person signing in is. */
   let claims: Record<string, unknown>;
   let lastNonce = "";

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   Building2,
   ChevronRight,
@@ -29,7 +29,6 @@ import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { IntegrationsPanel } from "./components/Integrations.tsx";
 import { PrivacyPanel } from "./components/Privacy.tsx";
-import { PracticePanel } from "./components/Practice.tsx";
 import { BillingPanel } from "./components/Billing.tsx";
 import { LivePanel } from "./components/Live.tsx";
 import { AttemptList, StartAttemptDialog } from "./components/AttemptList.tsx";
@@ -46,6 +45,9 @@ import { Dialog, ToastProvider, useToast } from "@parikshaa/brand/ui";
 import { ThemeSwitch, useTheme, type Theme } from "./components/ThemeSwitch.tsx";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { remembered, SignIn } from "./components/SignIn.tsx";
+
+/** The practice site's admin is opened by few, so it loads when opened. */
+const PracticePanel = lazy(() => import("./components/Practice.tsx").then((m) => ({ default: m.PracticePanel })));
 
 type View =
   | { readonly name: "home" }
@@ -763,7 +765,9 @@ function Console({
 
             {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
             {view.name === "practice" ? (
-              <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
+              <Suspense fallback={<SkeletonRows rows={5} columns={3} label="Loading the practice site…" />}>
+                <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
+              </Suspense>
             ) : null}
             {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
             {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}

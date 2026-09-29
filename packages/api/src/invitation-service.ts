@@ -152,7 +152,7 @@ export class InvitationService {
       const remindAt = new Date(new Date(draft.opensAt).getTime() - this.#lead);
       const remind = remindAt.getTime() > this.#now() + 5 * 60 * 1000;
       return reachable.flatMap((kind) => [
-        { kind, subject: { invitationId }, purpose: "invite" },
+        { kind, subject: { invitationId }, purpose: "invite", sendAfter: new Date(this.#now()) },
         ...(remind ? [{ kind, subject: { invitationId }, purpose: "reminder", sendAfter: remindAt }] : []),
       ]);
     };
@@ -230,7 +230,7 @@ export class InvitationService {
     if (invitation === null || invitation.revoked) throw new AttemptError("not_found", "No such invitation");
     const drafts: OutboxDraft[] = channels
       .filter((c) => (c === "email" ? invitation.email !== null : invitation.phone !== null))
-      .map((kind) => ({ kind, subject: { invitationId }, purpose: "invite" }));
+      .map((kind) => ({ kind, subject: { invitationId }, purpose: "invite", sendAfter: new Date(this.#now()) }));
     await this.#o.invitations.enqueue(scope, drafts);
     await this.#audit(actor, "invitations.resent", invitationId, { channels });
   }

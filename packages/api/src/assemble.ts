@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -15,6 +15,11 @@ import type { Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
+import { PrepService } from "./prep.js";
+import { PrepPlus } from "./prep-plus.js";
+import { PrepCommunity } from "./prep-community.js";
+import { StarterPacks } from "./starter-packs.js";
+import { Sahayak } from "./sahayak.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer, type ServerOptions } from "./server.js";
 import { ExamService } from "./service.js";
@@ -44,6 +49,8 @@ export interface AssembleOptions {
   readonly dataKey: string;
   /** Razorpay, to sell prepaid credits. Without it credits are still spent; they can only be granted. */
   readonly gateway?: PaymentGateway | null;
+  /** The practice tutor's model; Claude Opus 5.5 unless set. */
+  readonly tutorModel?: string;
   /** Who Parikshaa's tax invoices are issued by. */
   readonly supplier?: Supplier | null;
   readonly mailer?: Mailer | null;
@@ -116,6 +123,9 @@ export function assemble(o: AssembleOptions): {
     publicUrl: o.publicUrl,
     mailer: o.mailer ?? null,
   });
+  const prepStore = new PrepStore(o.sql);
+  const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
+  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
   const app = buildServer({
     service,
     invitations,
@@ -143,6 +153,10 @@ export function assemble(o: AssembleOptions): {
     media: new QuestionMedia(o.sql),
     practice,
     practiceIdentity,
+    prep: prepService,
+    starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
+    prepCommunity: new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus }),
+    prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus }) },
     ...o.server,
   });
 

@@ -90,7 +90,7 @@ export function FigureStrip({ figures, line, label = "At a glance" }: { figures:
                   <Icon />
                 </span>
               )}
-              <span className="figure-value">{value}</span>
+              <span className="figure-value">{value}</span>{" "}
               <span className="figure-label">{name}</span>
             </>
           );

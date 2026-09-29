@@ -81,6 +81,8 @@ async function main(): Promise<void> {
     // database and its backups, and never lose it: `openssl rand -base64 32`.
     dataKey: required("PARIKSHAA_DATA_KEY"),
     gateway,
+    // The practice tutor's model (ROADMAP §16); Claude Opus 5.5 when unset.
+    ...(process.env["TUTOR_MODEL"] === undefined || process.env["TUTOR_MODEL"] === "" ? {} : { tutorModel: process.env["TUTOR_MODEL"] }),
     supplier: supplierFromEnv(process.env),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),

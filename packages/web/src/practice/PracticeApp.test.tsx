@@ -231,6 +231,7 @@ describe("a problem", () => {
         firstSolve: false,
       },
     });
+    localStorage.setItem("parikshaa.practice.nit-practice.draft.sum-of-two", JSON.stringify({ language: "python", source: "print(5)" }));
     open("/practice/nit-practice/problems/sum-of-two");
 
     expect(await screen.findByRole("heading", { name: "Sum of two" })).toBeInTheDocument();
@@ -239,11 +240,10 @@ describe("a problem", () => {
     // No full-screen toggle: the page is the workspace.
     expect(screen.queryByRole("button", { name: "Full screen" })).not.toBeInTheDocument();
 
-    // The editor arrives after the page: type once it has.
-    await waitFor(() => expect(document.querySelector(".cm-content")).not.toBeNull());
-    await userEvent.click(screen.getByRole("textbox", { name: "Code for question 1" }));
-    await userEvent.keyboard("print(5)");
-    await waitFor(() => expect(localStorage.getItem("parikshaa.practice.nit-practice.draft.sum-of-two")).toContain("print(5)"));
+    // The draft kept on this device is back in the editor. (Typing into the
+    // editor is checked in a real browser, in e2e's practice.spec.ts: jsdom
+    // cannot drive CodeMirror's contenteditable.)
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Code for question 1" })).toHaveTextContent("print(5)"));
 
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
     const results = await screen.findByRole("region", { name: "Submission results" });

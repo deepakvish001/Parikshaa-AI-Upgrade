@@ -104,7 +104,7 @@ export interface ApiKey {
 }
 
 export interface RouteUsage {
-  readonly route: "probe" | "assess" | "grade";
+  readonly route: "probe" | "assess" | "grade" | "tutor";
   readonly calls: number;
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -826,6 +826,108 @@ export class ConsoleClient {
     return this.#request<PracticeSimilarity>(`/practice-admin/problems/${encodeURIComponent(problemId)}/similarity`);
   }
 
+  // --- prep (ROADMAP §16) -----------------------------------------------------------
+
+  async prepTracks(): Promise<readonly PrepTrack[]> {
+    return (await this.#request<{ tracks: PrepTrack[] }>("/practice-admin/tracks")).tracks;
+  }
+
+  saveTrack(id: string | null, draft: PrepTrackDraft): Promise<PrepTrack> {
+    return id === null
+      ? this.#request("/practice-admin/tracks", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/tracks/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async prepLessons(): Promise<readonly PrepLesson[]> {
+    return (await this.#request<{ lessons: PrepLesson[] }>("/practice-admin/lessons")).lessons;
+  }
+
+  saveLesson(id: string | null, draft: PrepLessonDraft): Promise<PrepLesson> {
+    return id === null
+      ? this.#request("/practice-admin/lessons", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/lessons/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  potdSchedule(): Promise<{ readonly today: string; readonly days: readonly { readonly day: string; readonly problemId: string }[] }> {
+    return this.#request("/practice-admin/potd");
+  }
+
+  async setPotd(day: string, problemId: string | null): Promise<void> {
+    await this.#request(`/practice-admin/potd/${encodeURIComponent(day)}`, { method: "PUT", body: JSON.stringify({ problemId }) });
+  }
+
+  plusAdmin(): Promise<{ readonly settings: PlusSettings; readonly products: readonly PlusProduct[] }> {
+    return this.#request("/practice-admin/plus");
+  }
+
+  savePlusSettings(settings: Partial<PlusSettings>): Promise<PlusSettings> {
+    return this.#request("/practice-admin/plus", { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  savePlusProduct(id: string | null, draft: Omit<PlusProduct, "id" | "position">): Promise<PlusProduct> {
+    return id === null
+      ? this.#request("/practice-admin/plus/products", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/plus/products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  async plusOrders(): Promise<readonly PlusOrder[]> {
+    return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
+  }
+
+  grantPlus(learnerId: string, days: number): Promise<{ readonly until: string }> {
+    return this.#request(`/practice-admin/learners/${encodeURIComponent(learnerId)}/plus`, { method: "POST", body: JSON.stringify({ days }) });
+  }
+
+  async starterPacks(): Promise<readonly StarterPack[]> {
+    return (await this.#request<{ packs: StarterPack[] }>("/practice-admin/starter-packs")).packs;
+  }
+
+  importStarterPack(name: StarterPack["name"]): Promise<{ readonly track: string; readonly lessons: number; readonly problems: number }> {
+    return this.#request(`/practice-admin/starter-packs/${encodeURIComponent(name)}`, { method: "POST" });
+  }
+
+  async companies(): Promise<readonly StaffCompany[]> {
+    return (await this.#request<{ companies: StaffCompany[] }>("/practice-admin/companies")).companies;
+  }
+
+  saveCompany(id: string | null, draft: { name: string; about: string }): Promise<Omit<StaffCompany, "reports">> {
+    return this.#request(id === null ? "/practice-admin/companies" : `/practice-admin/companies/${encodeURIComponent(id)}`, { method: id === null ? "POST" : "PUT", body: JSON.stringify(draft) });
+  }
+
+  async reportProblems(companyId: string, problemIds: readonly string[], reportedOn: string): Promise<number> {
+    return (
+      await this.#request<{ added: number }>(`/practice-admin/companies/${encodeURIComponent(companyId)}/reports`, { method: "POST", body: JSON.stringify({ problemIds, reportedOn }) })
+    ).added;
+  }
+
+  async deleteReport(id: string): Promise<void> {
+    await this.#request(`/practice-admin/company-reports/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  async experiences(status?: StaffExperience["status"]): Promise<readonly StaffExperience[]> {
+    return (await this.#request<{ experiences: StaffExperience[] }>(`/practice-admin/experiences${status === undefined ? "" : `?status=${status}`}`)).experiences;
+  }
+
+  async decideExperience(id: string, status: "published" | "rejected"): Promise<void> {
+    await this.#request(`/practice-admin/experiences/${encodeURIComponent(id)}/decision`, { method: "POST", body: JSON.stringify({ status }) });
+  }
+
+  async storeItems(): Promise<readonly StoreItem[]> {
+    return (await this.#request<{ items: StoreItem[] }>("/practice-admin/store/items")).items;
+  }
+
+  saveStoreItem(id: string | null, draft: Omit<StoreItem, "id">): Promise<StoreItem> {
+    return this.#request(id === null ? "/practice-admin/store/items" : `/practice-admin/store/items/${encodeURIComponent(id)}`, { method: id === null ? "POST" : "PUT", body: JSON.stringify(draft) });
+  }
+
+  async storeOrders(): Promise<readonly StoreOrder[]> {
+    return (await this.#request<{ orders: StoreOrder[] }>("/practice-admin/store/orders")).orders;
+  }
+
+  async closeStoreOrder(id: string, status: "fulfilled" | "cancelled", note: string): Promise<void> {
+    await this.#request(`/practice-admin/store/orders/${encodeURIComponent(id)}/close`, { method: "POST", body: JSON.stringify({ status, note }) });
+  }
+
   async practiceLearners(): Promise<readonly PracticeLearner[]> {
     return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
   }
@@ -1351,4 +1453,141 @@ export interface LtiPlatform extends LtiPlatformInput {
   readonly id: string;
   readonly enabled: boolean;
   readonly tool: { readonly toolUrl: string; readonly loginUrl: string; readonly redirectUrl: string; readonly jwksUrl: string; readonly customParameters: string };
+}
+
+// --- prep (ROADMAP §16) ---------------------------------------------------------------
+
+export interface PrepTrack {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly description: string;
+  readonly position: number;
+  readonly published: boolean;
+  readonly updatedAt: string;
+  readonly modules: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly position: number;
+    readonly items: readonly { readonly id: string; readonly position: number; readonly problemId: string | null; readonly lessonId: string | null }[];
+  }[];
+}
+
+export interface PrepTrackDraft {
+  readonly title: string;
+  readonly slug?: string;
+  readonly description: string;
+  readonly published: boolean;
+  readonly modules: readonly { readonly title: string; readonly items: readonly ({ readonly problemId: string } | { readonly lessonId: string })[] }[];
+}
+
+export interface PrepLesson {
+  readonly id: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly body: string;
+  readonly videoUrl: string;
+  readonly estMinutes: number;
+  readonly published: boolean;
+  readonly updatedAt: string;
+}
+
+export type PrepLessonDraft = Omit<PrepLesson, "id" | "slug" | "updatedAt"> & { readonly slug?: string };
+
+export interface PlusSettings {
+  readonly plusEnabled: boolean;
+  readonly freeModules: number;
+  readonly monthlyCredits: number;
+  readonly tutorEnabled: boolean;
+}
+
+export interface PlusProduct {
+  readonly id: string;
+  readonly title: string;
+  readonly kind: "plus" | "credits";
+  readonly days: number;
+  readonly credits: number;
+  readonly pricePaise: number;
+  readonly active: boolean;
+  readonly position: number;
+}
+
+export interface PlusOrder {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly title: string;
+  readonly days: number;
+  readonly credits: number;
+  readonly amountPaise: number;
+  readonly taxPaise: number;
+  readonly status: "created" | "paid";
+  readonly createdAt: string;
+  readonly paidAt: string | null;
+}
+
+export interface StarterPack {
+  readonly name: "cs-fundamentals" | "sql-starter";
+  readonly title: string;
+  readonly description: string;
+  readonly lessons: number;
+  readonly problems: number;
+  readonly imported: boolean;
+}
+
+export interface StaffCompany {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly about: string;
+  readonly reports: readonly {
+    readonly id: string;
+    readonly problemId: string;
+    readonly problemTitle: string;
+    readonly reportedOn: string;
+    readonly source: "staff" | "experience";
+    readonly experienceId: string | null;
+  }[];
+}
+
+export interface StaffExperience {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly company: { readonly slug: string; readonly name: string };
+  readonly role: string;
+  readonly interviewed: string;
+  readonly verdict: "offer" | "reject" | "waiting";
+  readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[] }[];
+  readonly tips: string;
+  readonly author: string;
+  readonly status: "pending" | "published" | "rejected";
+  readonly votes: number;
+  readonly at: string;
+}
+
+export interface StoreItem {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly kind: "plus" | "digital" | "physical";
+  readonly plusDays: number;
+  readonly priceCoins: number;
+  /** Null: no limit. */
+  readonly stock: number | null;
+  readonly perLearner: number;
+  readonly active: boolean;
+}
+
+export interface StoreOrder {
+  readonly id: string;
+  readonly itemId: string;
+  readonly title: string;
+  readonly priceCoins: number;
+  readonly address: string;
+  readonly status: "placed" | "fulfilled" | "cancelled";
+  readonly note: string;
+  readonly createdAt: string;
+  readonly closedAt: string | null;
+  readonly learnerId: string;
+  readonly learnerName: string;
+  readonly learnerEmail: string;
 }

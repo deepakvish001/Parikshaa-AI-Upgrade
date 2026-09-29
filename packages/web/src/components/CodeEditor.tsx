@@ -4,6 +4,7 @@ import { cpp } from "@codemirror/lang-cpp";
 import { java } from "@codemirror/lang-java";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
+import { SQLite, sql } from "@codemirror/lang-sql";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { HighlightStyle, bracketMatching, defaultHighlightStyle, indentOnInput, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, EditorState, Prec, type Extension } from "@codemirror/state";
@@ -37,6 +38,8 @@ const syntax = (language: string): Extension => {
       return cpp();
     case "java":
       return java();
+    case "sql":
+      return sql({ dialect: SQLite });
     default:
       return [];
   }

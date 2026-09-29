@@ -38,7 +38,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await expect(rows.nth(1)).toContainText("CS001");
   await expect(rows.nth(1)).toContainText("4 / 10 (40%)");
   await expect(rows.nth(2)).toContainText("CS002");
-  await expect(page.getByRole("region", { name: "At a glance" })).toContainText("2Graded");
+  await expect(page.getByRole("region", { name: "At a glance" })).toContainText("2 Graded");
 
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV" }).click()]);
   expect(download.suggestedFilename()).toBe(`${sitting.examId}-results.csv`);

@@ -805,7 +805,94 @@ candidate's record. The console's **Practice** page runs it all.
   pairs of learners whose latest accepted answers are alike by the exam's
   winnowing measure, side by side. It changes nothing a learner sees.
 
-Not in it: badges and premium problems.
+Not in it: badges and premium problems — both came with §16.
+
+## 16. Prep: a practice site to prepare on
+
+A problem set is where a student practises; preparing for placements takes
+more — a path through the topics, a plan for the weeks left, revision of what
+was solved, a reason to come back each day, and a sense of what companies
+ask. §16 makes a practice site that, in the manner of takeUforward and its
+peers, while staying the institution's own. The plan behind it is at
+`claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh`; the content of its first packs
+is from Parikshaa-New.
+
+**Status — built.** Four parts, each in its own migration.
+
+*Learning (0019).*
+
+- **Tracks** are sheets: modules of lessons and problems in the order to learn
+  them. **Lessons** are Markdown with an optional video link, marked done by the
+  learner. Staff build both in the console, and set a **problem of the day**.
+- **A study plan**: a learner picks a track, a level, a deadline, minutes a day
+  and days off; the planner puts every item on a day, in seven-day sprints each
+  ending in a revision day, keeping a fifth of each day spare. A missed day is
+  moved forward when the plan is next read, and the finish date says whether it
+  still fits. A focus timer counts minutes studied.
+- **Revision**: every solved problem becomes a card, due again on a spacing of
+  days (SM-2, simplified); a learner grades each recall.
+- **Lists** of saved problems, and **notes** on a problem, a lesson or a topic.
+- **Coins**: a visit 1 a day, a solve 10, 15 or 20 by difficulty (5 more on the
+  problem of the day), a lesson 5; up to 300 a day. Finishing a module pays 100,
+  a track 1,000, streaks of 7, 30, 100 and 365 days 50 to 5,000, outside the cap.
+  Every payment has a key, so none is paid twice.
+
+*Plus and Sahayak (0020).*
+
+- **Plus**, per site: off, nothing is locked; on, each track's first modules
+  stay free and the rest of its lessons, and the study plan, need Plus. Plus is
+  bought through Razorpay Checkout (believed only on a verified signature, or
+  the webhook's), given by staff — a campus licence — or bought with coins.
+- **Sahayak**, the tutor: hints in four rungs (the last, a full solution, only
+  after three wrong submissions), a review of the learner's last submission, and
+  answers to a doubt about a problem or lesson, in English or Hindi. It never
+  sees hidden tests, and is closed while a contest with the problem runs. Each
+  answer costs credits (Plus brings them monthly), taken before the model is
+  asked and returned if it fails; its cost counts toward the organisation's
+  monthly spend cap. The model is set by `TUTOR_MODEL`.
+
+*Together (0021).*
+
+- **Companies**: a company's page lists the problems it asked by how often in
+  30, 60 and 180 days, with topics and difficulty — counted from reports, never
+  typed in. Staff add reports; so does every published interview experience.
+  With Plus on sale, the five most asked are free.
+- **Interview experiences**: learners write up their rounds and name the
+  site's problems they met; staff publish or reject them. Publishing pays 100
+  coins and adds reports. Others mark them helpful. At most five wait per
+  learner.
+- **A coin store**: staff list items (days of Plus, digital, posted); accounts
+  14 days old spend coins on them. The coins, the stock, the order and any Plus
+  are taken in one transaction, so the last one sells once; a cancelled order
+  gives both back. The coin table ranks by coins earned, not spent.
+- **Ratings**: each contest, once ended, is rated once, in order — Elo against
+  every other contestant from 1500 — with titles (Newbie to Grandmaster) and
+  achievements counted from what a learner has done.
+
+*Content and SQL.*
+
+- **SQL problems** run on SQLite, through the runner's Python: a test's input
+  makes the tables, the answer is a query, the output its rows (a tab between
+  columns, `NULL` as `NULL`), judged in order or not. The answer may not attach
+  a file. Function questions stay in the five other languages.
+- **Editorials in approaches**: an editorial with `## Brute force`, `## Better`
+  and `## Optimal` headings is shown as tabs.
+- **Starter packs**, one click each in the console: *CS fundamentals* — 80
+  questions from Parikshaa-New's bank as a lesson per topic, each question a
+  practice MCQ with its answer as the editorial, and a track by subject
+  (`scripts/cs-fundamentals-pack.mjs` rebuilds it) — and *SQL*, eight problems
+  from `SELECT` to window functions, each with its approaches, whose reference
+  queries the tests run on the real runner.
+
+Row-level security covers every new table: a learner reads their own plan,
+cards, notes, lists, credits, orders and tutor history, and what is published;
+coins, credits, Plus and store orders are written by the server alone.
+Deleting an account now also deletes a learner's notes, tutor history and
+votes, blanks a store address, and leaves a published write-up under no name.
+
+Not in it: Parikshaa-New's other sheets (they link out to LeetCode rather
+than carry problems that run here), company tags for its problems (made up
+there from a hash of the slug, so not taken), a mobile app, and live classes.
 
 ## Sequencing
 

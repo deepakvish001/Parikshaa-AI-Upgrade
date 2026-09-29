@@ -108,11 +108,15 @@ describe("the OpenAPI document", () => {
     expect(tagged("Practice").length).toBeGreaterThan(10);
     expect(tagged("Practice").every((p) => p.startsWith("/practice/{site}"))).toBe(true);
     expect(tagged("Practice (staff)").every((p) => p.startsWith("/practice-admin/"))).toBe(true);
+    // Prep sits beside it, under the same two roots.
+    expect(tagged("Prep").length).toBeGreaterThan(10);
+    expect(tagged("Prep").every((p) => p.startsWith("/practice/{site}/"))).toBe(true);
+    expect(tagged("Prep (staff)").every((p) => p.startsWith("/practice-admin/"))).toBe(true);
   });
 
   it("puts no answer key anywhere in a candidate-facing or learner-facing response", () => {
     // A practice learner is served the same projection of a question a candidate is.
-    const candidate = operations().filter(({ operation }) => operation.tags?.some((t) => t === "Candidate" || t === "Practice") === true);
+    const candidate = operations().filter(({ operation }) => operation.tags?.some((t) => t === "Candidate" || t === "Practice" || t === "Prep") === true);
     expect(candidate.length).toBeGreaterThan(0);
 
     const names = propertyNames(candidate);

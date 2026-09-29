@@ -1498,7 +1498,7 @@ describe("results and exports", () => {
     await open();
     // No card repeats the page's title: the figures, then the chart.
     const figures = await screen.findByRole("region", { name: "At a glance" });
-    expect(within(figures).getByText("Mean").previousSibling).toHaveTextContent("65%");
+    expect(within(figures).getByText("Mean").previousElementSibling).toHaveTextContent("65%");
     const chart = screen.getByRole("region", { name: "How the marks fell" });
     expect(within(chart).getByLabelText("90–100%: 1")).toBeInTheDocument();
     // Bands no one reached, below the lowest mark, are left out.
@@ -1680,7 +1680,7 @@ describe("the live sitting", () => {
     const summary = await screen.findByRole("region", { name: "The sitting now" });
     // One bar of where everyone stands, with its counts beneath.
     const bar = within(summary).getByRole("region", { name: "Candidates by where they stand" });
-    expect(within(bar).getByText("Away").previousSibling).toHaveTextContent("1");
+    expect(within(bar).getByText("Away").previousElementSibling).toHaveTextContent("1");
     expect(summary).toHaveTextContent(/Updated (just now|\d+ s ago)/);
     const table = screen.getByRole("region", { name: "Candidates now" });
     const r2 = within(table).getByText("R2").closest("tr")!;

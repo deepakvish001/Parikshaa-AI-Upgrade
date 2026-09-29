@@ -31,7 +31,8 @@ const statuses = (result: Awaited<ReturnType<typeof run>>) =>
   result.compiled ? result.tests.map((t) => t.status) : ["compile_error"];
 
 describe("every language", () => {
-  const solutions: Record<RunRequest["language"], string> = {
+  // SQL reads tables, not numbers: it has its own cases below.
+  const solutions: Record<Exclude<RunRequest["language"], "sql">, string> = {
     python: "a, b = map(int, input().split())\nprint(a + b)\n",
     javascript: "const [a, b] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconsole.log(a + b);\n",
     c: '#include <stdio.h>\nint main(void){long a,b;scanf("%ld %ld",&a,&b);printf("%ld\\n",a+b);return 0;}\n',
@@ -44,6 +45,43 @@ describe("every language", () => {
       expect(statuses(await run(language as RunRequest["language"], source))).toEqual(["passed", "passed"]);
     }, 30_000);
   }
+});
+
+describe("SQL", () => {
+  const tables =
+    "CREATE TABLE employee (id INTEGER, name TEXT, salary INTEGER, manager INTEGER);\n" +
+    "INSERT INTO employee VALUES (1, 'Asha', 90000, NULL), (2, 'Ravi', 60000, 1), (3, 'Meena', 75000, 1);\n";
+  const sql = (source: string, expected: string, checker?: RunRequest["checker"]) =>
+    execute({ language: "sql", source, tests: [{ id: "t", input: tables, expected }], ...(checker === undefined ? {} : { checker }) }, options);
+
+  it("prints a query's rows, a tab between columns and NULL as NULL", async () => {
+    expect(statuses(await sql("SELECT name, manager FROM employee ORDER BY id;", "Asha\tNULL\nRavi\t1\nMeena\t1\n"))).toEqual(["passed"]);
+  });
+
+  it("judges rows in any order with the unordered checker, and in order without it", async () => {
+    const query = "-- highest paid first\nSELECT name FROM employee WHERE salary > 70000 ORDER BY salary DESC;";
+    expect(statuses(await sql(query, "Meena\nAsha\n"))).toEqual(["wrong_answer"]);
+    expect(statuses(await sql(query, "Meena\nAsha\n", { kind: "unordered" }))).toEqual(["passed"]);
+  });
+
+  it("runs several statements and prints the last rows, as for a CTE after a temporary table", async () => {
+    const source = "CREATE TEMP TABLE rich AS SELECT * FROM employee WHERE salary >= 75000;\nWITH n AS (SELECT count(*) AS c FROM rich) SELECT c FROM n;";
+    expect(statuses(await sql(source, "2\n"))).toEqual(["passed"]);
+  });
+
+  it("reports a mistake in the query as a runtime error, with SQLite's message", async () => {
+    const result = await sql("SELECT nme FROM employee;", "");
+    if (!result.compiled) throw new Error("expected to run");
+    expect(result.tests[0]!.status).toBe("runtime_error");
+    expect(result.tests[0]!.stderr).toContain("no such column: nme");
+  });
+
+  it("may not attach a file", async () => {
+    const result = await sql("ATTACH DATABASE 'x.db' AS x;\nSELECT 1;", "1\n");
+    if (!result.compiled) throw new Error("expected to run");
+    expect(result.tests[0]!.status).toBe("runtime_error");
+    expect(result.tests[0]!.stderr).toContain("not authorized");
+  });
 });
 
 describe("judging", () => {

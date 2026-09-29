@@ -98,7 +98,7 @@ export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true, onClon
             <div className="chips" role="group" aria-label="Show">
               {FILTERS.filter(([id]) => id === "all" || id === filter || count(id) > 0).map(([id, label]) => (
                 <button key={id} type="button" className="chip" aria-pressed={filter === id} onClick={() => setFilter(id)}>
-                  {label}
+                  {label}{" "}
                   <span className="chip-count">{count(id)}</span>
                 </button>
               ))}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type TouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type CandidateState } from "./api.ts";
@@ -978,7 +978,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     </button>
   );
 
-  let question: JSX.Element | null = null;
+  let question: ReactElement | null = null;
   if (original_ !== null) {
     const index = exam.questions.indexOf(original_);
     // The question as this candidate reads it: in their language when it

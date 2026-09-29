@@ -263,7 +263,7 @@ export function ToolStrip({
         {questions === undefined ? null : (
           <button type="button" className="tool compact questions-open" onClick={questions.onOpen}>
             <Grid3x3 aria-hidden="true" />
-            <span>{t("palette.region")}</span>
+            <span>{t("palette.region")}</span>{" "}
             <span className="compact-count">
               {questions.done}/{questions.total}
             </span>
