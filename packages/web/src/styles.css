@@ -2721,8 +2721,8 @@ button.pq[aria-current="step"] {
 .submit-table .col-label {
   display: block;
   line-height: 1.3;
+  /* Broken where it must, never hyphenated: hyphenation depends on the dictionaries a browser has, so the same summary would wrap differently from device to device. */
   overflow-wrap: anywhere;
-  hyphens: auto;
 }
 .submit-table .total-row th,
 .submit-table .total-row td {
