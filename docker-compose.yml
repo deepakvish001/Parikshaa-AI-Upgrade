@@ -54,6 +54,14 @@ services:
       PARIKSHAA_SUPPLIER_NAME: ${PARIKSHAA_SUPPLIER_NAME:-}
       PARIKSHAA_SUPPLIER_GSTIN: ${PARIKSHAA_SUPPLIER_GSTIN:-}
       PARIKSHAA_SUPPLIER_ADDRESS: ${PARIKSHAA_SUPPLIER_ADDRESS:-}
+      # Optional: institutions signing themselves up, for a pilot (docs/PILOT.md).
+      # SELF_SIGNUP=on needs SIGNUP_PRICE_RUPEES and SMTP_URL.
+      SELF_SIGNUP: ${SELF_SIGNUP:-}
+      SIGNUP_PRICE_RUPEES: ${SIGNUP_PRICE_RUPEES:-}
+      SIGNUP_TRIAL_CREDITS: ${SIGNUP_TRIAL_CREDITS:-}
+      SIGNUP_NOTIFY_EMAIL: ${SIGNUP_NOTIFY_EMAIL:-}
+      # Behind a reverse proxy on the same host (as in docs/PILOT.md): the client's address comes from it.
+      TRUST_PROXY: ${TRUST_PROXY:-}
       RUNNER_URL: http://runner:4000
       RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
       PORT: "3000"

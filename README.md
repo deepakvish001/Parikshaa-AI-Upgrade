@@ -143,7 +143,8 @@ The candidate interface is then at `/` and the console at `/console`, where
 staff sign in with their own accounts. For a pilot, `SELF_SIGNUP=on` (with
 `SIGNUP_PRICE_RUPEES` and `SMTP_URL`) lets an institution make its own account
 there instead, with trial credits, a sample exam and a tour; its owner confirms
-their email before inviting anyone (see `docs/OPERATIONS.md`).
+their email before inviting anyone (see `docs/OPERATIONS.md`). Running a
+pilot, from the server to exam day: `docs/PILOT.md`.
 
 Without Docker:
 
