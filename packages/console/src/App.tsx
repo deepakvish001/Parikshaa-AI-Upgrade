@@ -206,12 +206,8 @@ function Console({
     if (emailVerified === null || emailVerified === "pending") return;
     if (emailVerified === "done") {
       toast("Your email address is confirmed. You can invite candidates and colleagues now.", "success");
-      // Asked for alongside the link's check, the account may have been read
-      // before it counted: say so at once, then read it again for what it may now do.
-      queryClient.setQueryData<WhoAmI>(["me"], (was) => (was === undefined ? was : { ...was, emailVerified: true }));
-      void queryClient.refetchQueries({ queryKey: ["me"], type: "all" });
     } else toast(emailVerified, "error");
-  }, [emailVerified, toast, queryClient]);
+  }, [emailVerified, toast]);
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
   const [view, setView] = useState<View>(() => {
     const query = new URLSearchParams(window.location.search);
@@ -221,7 +217,8 @@ function Console({
     window.history.replaceState(null, "", window.location.pathname);
     return { name: "report", examId: "", attemptId: report };
   });
-  const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
+  // Opened with a confirmation link, the account is read once the link is checked, not alongside it.
+  const me = useQuery({ queryKey: ["me"], queryFn: () => client.me(), enabled: emailVerified !== "pending" });
   // Signed in through the organisation's provider: next time, offer it first, by name.
   const cameBySso = arrivedBySso;
   useEffect(() => {

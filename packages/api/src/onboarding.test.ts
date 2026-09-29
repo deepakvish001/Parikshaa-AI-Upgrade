@@ -153,7 +153,10 @@ describe("confirming a new owner's address", () => {
     // Opening it twice is harmless.
     expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link) } })).statusCode).toBe(200);
 
-    expect((await as("GET", "/auth/me")).json().emailVerified).toBe(true);
+    const confirmed = await as("GET", "/auth/me");
+    expect(confirmed.json().emailVerified).toBe(true);
+    // What the account may do changes under it: no browser keeps an old answer.
+    expect(confirmed.headers["cache-control"]).toBe("no-store");
     const after = await as("POST", "/exams/drive/invitations/import", { csv: "ref,name\nCS001,A", dryRun: false, channels: [] });
     // Past the gate: what stops it now is only that the exam has no window yet.
     expect(after.json().error).toBe("invalid_import");
