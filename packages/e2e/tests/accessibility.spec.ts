@@ -10,6 +10,8 @@ import { beginSitting, chooseLanguage, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, 
  */
 
 async function violations(page: Page): Promise<string[]> {
+  // Colours are checked as they settle: a button fading in from disabled is, mid-way, neither.
+  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== "running"));
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
@@ -74,6 +76,8 @@ for (const colorScheme of ["light", "dark"] as const) {
     });
 
     test("the console's exam page — overview, live, questions, try test, editor — and search pass WCAG 2.1 AA", async ({ page, request }) => {
+      // Some twenty scans: past a minute in WebKit.
+      test.slow();
       const sitting = await seedSitting(request);
       await page.goto("/console/");
       expect(await violations(page)).toEqual([]);

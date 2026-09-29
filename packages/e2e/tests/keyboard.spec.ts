@@ -21,10 +21,14 @@ async function focusShows(page: Page): Promise<{ tag: string; name: string; show
   });
 }
 
-/** Tab forward until `target` has focus, checking each stop on the way shows its focus. */
-async function tabTo(page: Page, target: Locator, most = 80): Promise<void> {
+/**
+ * Tab until `target` has focus, checking each stop on the way shows its focus.
+ * Back (Shift+Tab) for a control above the focus: past the page's end,
+ * Firefox takes the focus into its own toolbar, and it never comes back.
+ */
+async function tabTo(page: Page, target: Locator, most = 80, back = false): Promise<void> {
   for (let i = 0; i < most; i++) {
-    await page.keyboard.press("Tab");
+    await page.keyboard.press(back ? "Shift+Tab" : "Tab");
     const stop = await focusShows(page);
     expect(stop.shows, `focus on ${stop.tag} "${stop.name}" cannot be seen`).toBe(true);
     if (await target.evaluate((el) => el === document.activeElement)) return;
@@ -67,8 +71,8 @@ test("a candidate sits the whole paper with the keyboard alone, and always sees 
   await page.keyboard.press("Enter");
   await expect(page.locator(".qfoot")).toContainText("Saved");
 
-  // Submit: the summary opens on "Keep working"; Tab to "Yes, submit".
-  await tabTo(page, page.getByRole("button", { name: "Submit attempt" }));
+  // Submit, back up in the bar: the summary opens on "Keep working"; Tab to "Yes, submit".
+  await tabTo(page, page.getByRole("button", { name: "Submit attempt" }), 80, true);
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "Submit your attempt?" });
   await expect(dialog).toBeVisible();
@@ -127,9 +131,9 @@ test("an examiner signs in, opens an exam and works its menu with the keyboard a
   await page.keyboard.press("Enter");
   await expect(page.getByRole("heading", { level: 1, name: sitting.title })).toBeVisible();
 
-  // The exam's "⋯": Enter opens it on its first item, arrows move, Escape closes it and gives focus back.
+  // The exam's "⋯", back up in its header: Enter opens it on its first item, arrows move, Escape closes it and gives focus back.
   const more = page.getByRole("button", { name: `More actions for ${sitting.title}` });
-  await tabTo(page, more, 120);
+  await tabTo(page, more, 120, true);
   await page.keyboard.press("Enter");
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
