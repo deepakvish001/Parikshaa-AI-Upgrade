@@ -886,6 +886,12 @@ export const signupBody = z.object({
 
 export const sampleResponse = z.object({ examId: z.string() });
 
+export const gradeSubmittedResponse = z.object({
+  graded: z.number().int().describe("Attempts graded by this call."),
+  failed: z.array(z.object({ attemptId: z.string(), message: z.string() })).describe("Attempts that could not be graded; they stay submitted."),
+  remaining: z.number().int().describe("Submitted attempts still ungraded, the failed ones included."),
+});
+
 export const verifyEmailBody = z.object({ token: z.string().min(10).max(300).describe("From the link sent to the address.") });
 
 export const resendResponse = z.object({ sent: z.boolean().describe("False when the address is confirmed already.") });

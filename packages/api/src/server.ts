@@ -736,6 +736,26 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     );
 
     routes.post(
+      "/exams/:examId/grade-submitted",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Grade the exam's submitted attempts, a batch at a time",
+          description:
+            "Grades up to 20 submitted attempts, a few at once, each as `POST /attempts/{attemptId}/grade` would. One that cannot be graded is listed in `failed` and left submitted. Call again while `remaining` is above zero and the last call graded any. 402 `spend_cap_reached` stops it.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          response: { 200: S.gradeSubmittedResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "attempt:grade");
+        if (actor === null) return;
+        return reply.send(await service.gradeSubmitted(actor, examId(request.params.examId)));
+      },
+    );
+
+    routes.post(
       "/attempts/:attemptId/assess/:probeId",
       {
         schema: {

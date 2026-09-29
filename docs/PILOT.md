@@ -116,8 +116,8 @@ Do the college's whole first day, as them, with an address of your own:
    yourself with a two-line spreadsheet, and open the link from the email **on
    a phone**. Sit it; answer the written question properly, so a follow-up
    question is likely.
-6. Back in the console: the attempt is on the exam's page. Open it, press
-   **Grade**, and read the result and the report.
+6. Back in the console: the exam's **Results** tab says one attempt is to
+   grade. **Grade all**, then open the scorecard and read the report.
 7. The home page shows the credits you have left.
 8. Delete nothing — put the sample away from Home, and note the organisation's
    id in the audit log's first line, to remove it later if you wish.
@@ -181,10 +181,10 @@ What to do when:
 
 ### After
 
-- [ ] **Grade** each submitted attempt: open it from the exam's page and
-      press **Grade**. Multiple-choice and numeric answers are marked at once;
-      written answers are read by the model, a few seconds each. (Grading is
-      one attempt at a time for now: allow for it with a large batch.)
+- [ ] Results tab → **Grade all**: every submitted attempt, a few at a
+      time, with progress as it goes. Multiple-choice and numeric answers are
+      marked at once; written answers are read by the model, a few seconds
+      each. Any it cannot grade are named, to open one by one.
 - [ ] Read a few reports end to end, follow-ups included.
 - [ ] Results tab → **Download Excel** (or CSV), and send it to the pilot owner.
 - [ ] Note every question anyone asked you: each is a gap in the product or

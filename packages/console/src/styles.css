@@ -4007,3 +4007,18 @@ button.month-day.picked::after {
     animation: none;
   }
 }
+
+/* Results → Grade all: how far it has got, and what it could not grade. */
+.grade-all .bar {
+  align-items: center;
+}
+.grade-all .progress {
+  margin-top: var(--space-3);
+}
+.grade-all .notice.small {
+  margin: var(--space-2) 0 0;
+}
+.grade-all-failed ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}

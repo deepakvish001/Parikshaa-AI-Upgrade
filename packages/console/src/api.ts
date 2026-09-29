@@ -1024,6 +1024,11 @@ export class ConsoleClient {
     return this.#request("/auth/verify-email/resend", { method: "POST" });
   }
 
+  /** Grade up to a batch of the exam's submitted attempts; call again while some remain. */
+  gradeSubmitted(examId: string): Promise<{ readonly graded: number; readonly failed: readonly { readonly attemptId: string; readonly message: string }[]; readonly remaining: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/grade-submitted`, { method: "POST" });
+  }
+
   /** A short aptitude paper to look around with, in the bank and among the exams. */
   loadSample(): Promise<{ readonly examId: string }> {
     return this.#request("/onboarding/sample", { method: "POST" });

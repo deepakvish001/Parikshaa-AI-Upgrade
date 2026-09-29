@@ -67,9 +67,9 @@ still connected.
 
 ## 6. Results
 
-Open each submitted attempt from the exam's page and press **Grade**:
-objective questions are marked at once, written answers within seconds. The
-**Results** tab shows scores, who qualified, and how the batch did;
+On the exam's **Results** tab, press **Grade all**: objective questions are
+marked at once, written answers within seconds each, with progress as it
+goes. The same tab shows scores, who qualified, and how the batch did;
 **Download Excel** or **CSV** for your records. Each student's report shows
 their answers, marks and any follow-up, with the reasoning behind every mark.
 

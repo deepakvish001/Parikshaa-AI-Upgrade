@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, CircleCheck, CircleX, Download, Printer, Search, Users } from "lucide-react";
-import type { CandidateReport, ConsoleClient, Outcome, QuestionStats, ResultRow, Results, SectionScore, Similarity, Verdict } from "../api.ts";
+import { Award, CircleCheck, CircleX, Download, ListChecks, Printer, Search, Users } from "lucide-react";
+import { ConsoleError, type CandidateReport, type ConsoleClient, type Outcome, type QuestionStats, type ResultRow, type Results, type SectionScore, type Similarity, type Verdict } from "../api.ts";
 import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge } from "./kit.tsx";
 import { EraseCard } from "./Privacy.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
@@ -53,7 +53,18 @@ function save(blob: Blob, name: string) {
 
 type SortKey = "ref" | "name" | "percent" | "minutes";
 
-export function ResultsPanel({ client, examId, onReport }: { client: ConsoleClient; examId: string; onReport: (attemptId: string) => void }) {
+export function ResultsPanel({
+  client,
+  examId,
+  onReport,
+  canGrade = false,
+}: {
+  client: ConsoleClient;
+  examId: string;
+  onReport: (attemptId: string) => void;
+  /** This account grades: the attempts waiting can be graded from here, all at once. */
+  canGrade?: boolean;
+}) {
   const results = useQuery({ queryKey: ["results", examId], queryFn: () => client.results(examId) });
   const download = useMutation({
     mutationFn: async (format: "csv" | "xlsx") => save(await client.resultsFile(examId, format), `${examId}-results.${format}`),
@@ -91,6 +102,7 @@ export function ResultsPanel({ client, examId, onReport }: { client: ConsoleClie
     <>
       {downloads}
       {download.error === null ? null : <Banner tone="danger" title="The download failed.">Try again in a moment.</Banner>}
+      {canGrade ? <GradeAll client={client} examId={examId} waiting={rows.filter((r) => r.state === "submitted").length} /> : null}
       <FigureStrip
         figures={[
           { label: "Sat", value: analytics.candidates },
@@ -736,6 +748,98 @@ function SectionTable({ sections, minimums }: { sections: readonly SectionScore[
           })}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+/**
+ * Every submitted attempt graded in one go, a batch at a time, saying how far
+ * it has got. One that cannot be graded is named and left for a person; the
+ * rest go on.
+ */
+function GradeAll({ client, examId, waiting }: { client: ConsoleClient; examId: string; waiting: number }) {
+  const queryClient = useQueryClient();
+  const [progress, setProgress] = useState<{ done: number; of: number } | null>(null);
+  const [failed, setFailed] = useState<readonly { attemptId: string; message: string }[]>([]);
+  const run = useMutation({
+    mutationFn: async () => {
+      const of = waiting;
+      let done = 0;
+      let problems: { attemptId: string; message: string }[] = [];
+      setFailed([]);
+      setProgress({ done, of });
+      for (;;) {
+        const round = await client.gradeSubmitted(examId);
+        done += round.graded;
+        problems = [...problems.filter((p) => !round.failed.some((f) => f.attemptId === p.attemptId)), ...round.failed];
+        setProgress({ done, of: Math.max(of, done + round.remaining) });
+        await queryClient.invalidateQueries({ queryKey: ["results", examId] });
+        // Stop when nothing is left, or when a round could grade none of what is.
+        if (round.remaining === 0 || round.graded === 0) break;
+      }
+      setFailed(problems);
+      return done;
+    },
+    onSettled: async () => {
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["exams"] }), queryClient.invalidateQueries({ queryKey: ["attempts"] })]);
+    },
+  });
+
+  if (waiting === 0 && !run.isPending && !run.isSuccess && failed.length === 0) return null;
+  const error = run.error;
+  return (
+    <section className="card grade-all" aria-label="Grade all">
+      <div className="bar">
+        <ListChecks aria-hidden="true" className="inline-icon" />
+        {run.isPending && progress !== null ? (
+          <strong role="status">
+            Grading… {progress.done} of {progress.of} graded
+          </strong>
+        ) : run.isSuccess ? (
+          <strong role="status">
+            {run.data === 0 ? "Nothing more could be graded." : `Graded ${run.data} attempt${run.data === 1 ? "" : "s"}.`}
+            {waiting > 0 ? ` ${waiting} still to grade.` : ""}
+          </strong>
+        ) : (
+          <strong>
+            {waiting} attempt{waiting === 1 ? "" : "s"} to grade
+          </strong>
+        )}
+        <span className="spacer" />
+        {waiting > 0 ? (
+          <button type="button" disabled={run.isPending} onClick={() => run.mutate()}>
+            {run.isPending ? "Grading…" : `Grade all ${waiting}`}
+          </button>
+        ) : null}
+      </div>
+      {run.isPending && progress !== null ? (
+        <div className="progress" role="progressbar" aria-label="Grading" aria-valuemin={0} aria-valuemax={progress.of} aria-valuenow={progress.done}>
+          <span style={{ width: `${progress.of === 0 ? 0 : (progress.done / progress.of) * 100}%` }} />
+        </div>
+      ) : (
+        <p className="notice small">
+          Each is graded as it would be one at a time: choices and numbers at once, written answers by the model against their rubric, a few seconds each.
+        </p>
+      )}
+      {error === null ? null : (
+        <p className="error" role="alert">
+          {error instanceof ConsoleError && error.code === "spend_cap_reached"
+            ? "This month's spending limit is reached, so grading stopped. An owner can raise it on the Spend page."
+            : "Grading stopped: the server could not be reached. What was graded stays graded; press again to go on."}
+        </p>
+      )}
+      {failed.length === 0 ? null : (
+        <div className="grade-all-failed">
+          <p className="notice">These could not be graded and are left for you to open one by one:</p>
+          <ul>
+            {failed.map((f) => (
+              <li key={f.attemptId}>
+                <code>{f.attemptId.slice(0, 8)}</code> — {f.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

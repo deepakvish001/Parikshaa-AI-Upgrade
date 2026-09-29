@@ -1396,6 +1396,40 @@ export class ExamService {
     return total;
   }
 
+  /**
+   * Grade an exam's submitted attempts, a batch at a time (Results → Grade
+   * all). Each is graded exactly as one graded by hand; a few run at once, as
+   * the model allows. One that cannot be graded is reported and left as it
+   * was, never stopping the rest — except running out of budget, which stops
+   * everything. The caller asks again while any remain.
+   */
+  async gradeSubmitted(
+    actor: Actor,
+    examId: ExamId,
+    options: { readonly limit?: number; readonly concurrency?: number } = {},
+  ): Promise<{ graded: number; failed: { attemptId: string; message: string }[]; remaining: number }> {
+    this.#require(actor, "attempt:grade");
+    const submitted = (await this.listAttempts(actor, examId)).filter((a) => a.state === "submitted");
+    const batch = submitted.slice(0, options.limit ?? 20);
+    const failed: { attemptId: string; message: string }[] = [];
+    let graded = 0;
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < batch.length) {
+        const attempt = batch[next++]!;
+        try {
+          await this.grade(actor, attempt.id);
+          graded++;
+        } catch (error) {
+          if (error instanceof SpendCapReached) throw error;
+          failed.push({ attemptId: attempt.id, message: error instanceof Error ? error.message : String(error) });
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(options.concurrency ?? 4, batch.length) }, worker));
+    return { graded, failed, remaining: submitted.length - graded };
+  }
+
   // --- the organisation -----------------------------------------------------
 
   /**

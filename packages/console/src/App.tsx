@@ -774,7 +774,12 @@ function Console({
             {view.name === "candidates" ? <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} /> : null}
 
             {view.name === "results" ? (
-              <ResultsPanel client={client} examId={view.examId} onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })} />
+              <ResultsPanel
+                client={client}
+                examId={view.examId}
+                canGrade={can("attempt:grade")}
+                onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
+              />
             ) : null}
             {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} organisation={me.data?.organisation.name} /> : null}
             {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
