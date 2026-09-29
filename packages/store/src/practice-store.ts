@@ -433,7 +433,15 @@ export class PracticeStore {
         [orgId, learnerId],
       );
       await tx.query(`UPDATE learner_sessions SET revoked_at = now() WHERE learner_id = $1 AND revoked_at IS NULL`, [learnerId]);
-    });
+      // What prep kept that is theirs to say or where they live (ROADMAP §16):
+      // notes and what they asked the tutor go; a postal address is blanked; an
+      // interview write-up stays for others to read, under no one's name.
+      await tx.query(`DELETE FROM prep_notes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_tutor WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_experience_votes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`UPDATE prep_store_orders SET address = '' WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`UPDATE prep_experiences SET author_name = 'Anonymous' WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+    }, { "parikshaa.org_id": orgId, "parikshaa.actor": "staff", "parikshaa.attempt_id": "", "parikshaa.learner_id": "" });
   }
 
   /** Every learner, with how much they have done. Staff only. */

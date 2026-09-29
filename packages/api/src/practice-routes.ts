@@ -4,6 +4,8 @@ import { z } from "zod";
 import type { Learner, PracticeSite } from "@parikshaa/store";
 import type { PracticeService } from "./practice.js";
 import type { PracticeIdentity } from "./practice-identity.js";
+import type { PrepService } from "./prep.js";
+import { reward } from "./prep-routes.js";
 import * as S from "./schemas.js";
 import type { ExamService } from "./service.js";
 import { RateLimiter } from "./rate-limit.js";
@@ -20,6 +22,8 @@ export interface PracticeRouteDeps {
   readonly throttle: LoginThrottle;
   /** Email verification and Google sign-in. Absent: neither. */
   readonly identity?: PracticeIdentity;
+  /** What a solve earns: coins, a revision card, a plan task done. Absent: nothing more. */
+  readonly prep?: PrepService;
 }
 
 /** Accounts made from one address: enough for a lab full of students, not for a script. */
@@ -110,6 +114,7 @@ const verdict = z.object({
     .readonly(),
   submissionId: z.string(),
   firstSolve: z.boolean(),
+  reward: reward.optional(),
 });
 
 const submission = z.object({
@@ -235,7 +240,7 @@ const staffComment = z.object({
  * and the staff's under `/practice-admin`.
  */
 export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps): void {
-  const { practice, service, staff, bearer, throttle, identity } = deps;
+  const { practice, service, staff, bearer, throttle, identity, prep } = deps;
   const signups = new RateLimiter(SIGNUPS);
   const tooMany = (reply: FastifyReply) => reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
 
@@ -399,7 +404,9 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
       if (learner === null) return;
       await identity?.assertMayContribute(site, learner);
       const { answer, language, contest } = request.body;
-      return reply.send(await practice.submit(site, learner, request.params.problem, answer, language ?? null, contest));
+      const judged = await practice.submit(site, learner, request.params.problem, answer, language ?? null, contest);
+      if (prep === undefined) return reply.send(judged);
+      return reply.send({ ...judged, reward: await prep.afterSubmit(site, learner, request.params.problem, judged) });
     },
   );
 

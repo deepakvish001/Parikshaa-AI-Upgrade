@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
-  CODE_LANGUAGES,
+  FUNCTION_LANGUAGES,
   functionChecker,
   programFor,
   RESULT_MARKER,
@@ -97,7 +97,7 @@ function identity(type: ValueType, language: string): string {
 describe("every type, in every language", () => {
   it("passes each value in and gets it back unchanged", async () => {
     const jobs = VALUE_TYPES.flatMap((type) =>
-      CODE_LANGUAGES.map((language) => async (worker: number) => {
+      FUNCTION_LANGUAGES.map((language) => async (worker: number) => {
         const signature: Signature = { name: "same", params: [{ name: "x", type }], returns: type };
         const result = await run(signature, language, identity(type, language), [{ id: "t", input: `${VALUES[type]}\n`, expected: VALUES[type] }], worker);
         const outcome = result.compiled ? result.tests[0]! : null;
@@ -182,12 +182,12 @@ describe("problems as candidates meet them", () => {
     ];
     const results = await limited(
       4,
-      CODE_LANGUAGES.map((language) => async (worker: number) => {
+      FUNCTION_LANGUAGES.map((language) => async (worker: number) => {
         const result = await run(twoSum, language, twoSumSolutions[language]!, tests, worker);
         return [language, result.compiled ? result.tests.map((t) => t.status) : [result.compileOutput]] as const;
       }),
     );
-    expect(Object.fromEntries(results)).toEqual(Object.fromEntries(CODE_LANGUAGES.map((l) => [l, ["passed", "passed"]])));
+    expect(Object.fromEntries(results)).toEqual(Object.fromEntries(FUNCTION_LANGUAGES.map((l) => [l, ["passed", "passed"]])));
   }, 120_000);
 
   it("groups in any order, all the way down, when the question says so", async () => {

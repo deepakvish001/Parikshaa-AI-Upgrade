@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   CODE_LANGUAGES,
+  FUNCTION_LANGUAGES,
   functionTestProblems,
   signatureProblems,
   starterFor,
@@ -19,6 +20,7 @@ const NAMES: Record<string, string> = {
   c: "C",
   cpp: "C++17",
   java: "Java",
+  sql: "SQL (SQLite)",
 };
 
 const TYPE_NAMES: Record<ValueType, string> = {
@@ -97,10 +99,15 @@ export function CodeFields({ question, onChange }: { question: CodeQuestion; onC
   const setMode = (mode: "function" | "program") => {
     if (mode === "function") {
       // A function question's starters are written from its signature; its answers are compared as values.
+      // SQL is answered with a query, not a function: a function question drops it.
       const base = without(question, "starter", "starters");
+      const kept = languages.filter((l) => (FUNCTION_LANGUAGES as readonly string[]).includes(l));
+      const offered = kept.length === 0 ? ["python"] : kept;
       onChange({
         ...(question.checker?.kind === "custom" ? base : without(base, "checker")),
         signature: signature ?? DEFAULT_SIGNATURE,
+        languages: offered,
+        language: offered.includes(question.language) ? question.language : offered[0]!,
       });
     } else onChange(without(question, "signature"));
   };
@@ -144,7 +151,7 @@ export function CodeFields({ question, onChange }: { question: CodeQuestion; onC
       <fieldset className="field">
         <legend>Languages the candidate may use</legend>
         <div className="row" style={{ marginTop: ".2rem" }}>
-          {CODE_LANGUAGES.map((l) => (
+          {(functionMode ? FUNCTION_LANGUAGES : CODE_LANGUAGES).map((l) => (
             <label key={l} className="inline">
               <input type="checkbox" checked={languages.includes(l)} onChange={(e) => toggle(l, e.target.checked)} style={{ width: "auto" }} />{" "}
               {NAMES[l]}
