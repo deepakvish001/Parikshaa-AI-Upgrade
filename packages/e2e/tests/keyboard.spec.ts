@@ -23,6 +23,8 @@ async function focusShows(page: Page): Promise<{ tag: string; name: string; show
 
 /**
  * Tab until `target` has focus, checking each stop on the way shows its focus.
+ * A control the page has already put the focus on (the follow-up's reply box)
+ * counts as reached: tabbing on would take Firefox off the page's end.
  * Back (Shift+Tab) when the control is above the focus: past the page's end,
  * Firefox takes the focus into its own toolbar, and it never comes back.
  * `back` says so where nothing has focus but the browser still starts from
@@ -33,6 +35,11 @@ async function tabTo(page: Page, target: Locator, most = 80, back?: boolean): Pr
     const from = document.activeElement;
     return from !== null && from !== document.body && (el.compareDocumentPosition(from) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
   });
+  if (await target.evaluate((el) => el === document.activeElement)) {
+    const here = await focusShows(page);
+    expect(here.shows, `focus on ${here.tag} "${here.name}" cannot be seen`).toBe(true);
+    return;
+  }
   for (let i = 0; i < most; i++) {
     await page.keyboard.press(back ? "Shift+Tab" : "Tab");
     const stop = await focusShows(page);
