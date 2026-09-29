@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StarterPack, type StoreItem } from "../api.ts";
 
+/** How an interview ended, in words. */
+const VERDICT_WORDS: Record<"offer" | "reject" | "waiting", string> = { offer: "Offer", reject: "No offer", waiting: "Waiting to hear" };
+
 /**
  * Companies, interview experiences and the coin store (ROADMAP §16), for staff.
  * A company's page is counted from reports, so staff add reports — a problem,
@@ -272,7 +275,7 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
             <li key={e.id}>
               <article aria-label={`${e.company.name}, ${e.role}, by ${e.author}`}>
                 <p>
-                  <strong>{e.company.name}</strong> · {e.role} · {e.interviewed} · {e.verdict} · by {e.author}
+                  <strong>{e.company.name}</strong> · {e.role} · {e.interviewed} · {VERDICT_WORDS[e.verdict]} · by {e.author}
                 </p>
                 <ol>
                   {e.rounds.map((r, i) => (

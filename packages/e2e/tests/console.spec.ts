@@ -43,7 +43,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV" }).click()]);
   expect(download.suggestedFilename()).toBe(`${sitting.examId}-results.csv`);
   const csv = await readFile((await download.path())!, "utf8");
-  expect(csv).toContain('"CS001","Candidate 1","cs001@college.test","graded",4,10,40');
+  expect(csv).toContain('"CS001","Candidate 1","cs001@college.test","Graded",4,10,40');
 
   await rows.nth(1).getByRole("button", { name: "Scorecard" }).click();
   await expect(page.getByRole("heading", { name: /Candidate 1/ })).toBeVisible();

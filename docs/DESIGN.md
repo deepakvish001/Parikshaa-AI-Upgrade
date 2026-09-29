@@ -18,8 +18,8 @@ taken from the real app over seeded data, not mocked up; see
   warning colours (SPEC §4). Being offline is a quiet amber note, not a red
   error.
 - **The grade and the evidence never look alike.** In the console, a score is a
-  settled number on a white card. The micro-viva's evidence sits beside it in an
-  amber, left-ruled card, with a stated boundary (SPEC §6.1).
+  settled number on a white card. What the follow-up questions found sits
+  beside it in an amber, left-ruled card, with a stated boundary (SPEC §6.1).
 - **Dense where it is used all day, generous where it is read under stress.**
   Console body text is 14px; the candidate app's is 16px, with larger touch
   targets.
@@ -93,9 +93,9 @@ does, inside a light page.
   14–16px better than the default 2.
 - **Focus:** a 2px outline in `--focus-color`, offset 2px — an outline, so
   Windows High Contrast keeps it — and white on the ink bars.
-- **Theme:** the candidate app follows the computer, with a light/dark switch
-  in the exam's tool strip; the console has System · Light · Dark beside
-  Search, remembered on the device.
+- **Theme:** the candidate app and the practice site follow the computer, with
+  light and dark in their Display (Aa) menu; the console has System · Light ·
+  Dark beside Search. Each is remembered on the device.
 
 ## Components (`packages/brand/src/base.css`)
 
@@ -264,6 +264,58 @@ loads, in place of a bare "no results" or a spinner. Warnings sit in a
   (`stacked`), and a group that removes or undoes something is a *Danger
   zone*, last. Secrets shown once are a `SecretField`.
 
+## One word per thing
+
+The same thing has one name on every page of both apps, in the spreadsheet
+exports and in the audit log. Stored values ("void", "mcq", "in_progress")
+never reach a screen or a spreadsheet as they are.
+
+| Thing | Say | Not |
+| --- | --- | --- |
+| An attempt that is running | In progress | Sitting now, taking it |
+| Submitted, not yet graded | To grade | To evaluate |
+| A voided attempt | Set aside | void |
+| A candidate's identifier | Roll number (header "Roll no.") | Ref, candidate reference |
+| One candidate's page | Scorecard | Report |
+| Question types (console) | Multiple choice, Numeric, Written, Coding | mcq, numeric, short, code |
+| Question types (candidate) | Single correct, Multiple correct, Numerical answer, Written answer, Coding | (the terms of JEE papers, kept) |
+| When a test is open | Window | Sitting window, slot |
+| The follow-up | Follow-up question | viva, probe |
+| An outcome | Qualified, Not qualified | passed, failed |
+| An invitation taken back | Withdraw | Revoke |
+
+The results spreadsheet (CSV and Excel) heads its first column "Roll no." and
+writes states and outcomes in these words. Every action the API can record has
+its words in the audit log (`describeAction` in the console's `Home.tsx`), and
+`components/actions.test.ts` reads the API's source to fail on one that has
+none. A candidate's receipt names each entry in words too ("Answer saved ·
+question 3", "Follow-up question answered").
+
+## The practice site
+
+A learner's site (`/practice/<site>`) is the exam's workspace with progress
+around it, on the same tokens and components.
+
+- **The bar** is the exam's structure on a light surface: the name, the site,
+  the menu, the learner and Display, within the page's width on every page, so
+  the bar and the page start and end at the same edges. The menu scrolls rather
+  than overlapping when the row is short.
+- **Problems:** topic chips with their counts, filters that say what they
+  filter, a header over every column. On a phone each problem is a two-line
+  card and the progress one line.
+- **The workspace** is the exam's `CodeAnswer`, so a learner practises on what
+  they will be tested on. Its editorial and discussion read at 45rem, and code
+  blocks there have a Copy button (`Markdown`'s `copy`; exam questions have
+  none).
+- **Contests:** Live, Upcoming or Ended as a chip, a dot only on Live. The
+  scoreboard has three states from tokens (first to solve on the success fill,
+  solved, tried), each cell said in words to a screen reader, and rank and name
+  stay put while the problems scroll on a phone.
+- **Progress:** the year as a heatmap on the sequential chart ramp, the last 16
+  weeks on a phone, with the days and counts also said in words. The
+  leaderboard's top three wear accent rank chips, not medals, and the learner's
+  own row stays in sight.
+
 ## Pages
 
 | | Candidate app | | Console |
@@ -319,6 +371,8 @@ A practice site (ROADMAP §15), as a learner sees it at `/practice/<site>`:
 | 07 | [Progress: solved, streak, a year's activity](screenshots/practice-07-progress.png) |
 | 08 | [The leaderboard](screenshots/practice-08-leaderboard.png) |
 | 09 | [Signing up](screenshots/practice-09-sign-up.png) |
+| 10 | [On a phone: the problems as cards](screenshots/practice-10-phone-problems.png) |
+| 11 | [On a phone: the scoreboard, rank and name held](screenshots/practice-11-phone-scoreboard.png) |
 
 The green camera images are Chromium's fake camera, which stands in for a
 webcam when the screenshots are taken.
@@ -351,11 +405,25 @@ Three checks in CI keep the detail from drifting:
   at 95.
 - **Bundle budget** (`bundle-budget.json`, `npm run budget`): every built
   JavaScript and CSS file against a gzipped cap; a file with no budget fails
-  too. The candidate's entry is about 119 KB of script and 18 KB of style:
-  English and Hindi come with the page, and the other nine languages load
-  when chosen. The console is about 161 KB of script and 17 KB of style.
+  too. The candidate's entry is about 136 KB of script (with React 19) and
+  18 KB of style: English and Hindi come with the page, and the other nine
+  languages load when chosen. The console is about 174 KB of script and
+  17 KB of style; its practice admin loads when opened.
 
-The browser tests run in Chromium, Firefox and WebKit in CI.
+Two more checks keep the pages usable without a mouse or a screen:
+
+- **Keyboard** (`packages/e2e/tests/keyboard.spec.ts`): a candidate sits a
+  whole paper with the keyboard alone (the declaration, the A–D and S
+  shortcuts, a follow-up reply, a written answer, the submit summary), and an
+  examiner signs in, reaches an exam and works its "⋯" menu. At every Tab
+  stop the test checks the focus can be seen.
+- **Screen reader** (the same file): the exam's landmarks, the question as a
+  heading with a named group of options, a palette that says each question's
+  state in words, and a clock read out as time left.
+
+axe runs on every page in both themes (`accessibility.spec.ts`, and the
+practice site in `practice.spec.ts`). The browser tests run in Chromium,
+Firefox and WebKit in CI.
 
 ## Regenerating the screenshots
 

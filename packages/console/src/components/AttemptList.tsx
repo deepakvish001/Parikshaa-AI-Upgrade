@@ -126,8 +126,8 @@ export function StartAttemptDialog({
   const input = useRef<HTMLInputElement>(null);
   const [copied, setCopied] = useState(false);
   return (
-    <Dialog label="Start an attempt by reference" onClose={onClose} initialFocus={input}>
-      <h2 className="dialog-title">Start an attempt by reference</h2>
+    <Dialog label="Start an attempt by roll number" onClose={onClose} initialFocus={input}>
+      <h2 className="dialog-title">Start an attempt by roll number</h2>
       {issued === null ? (
         <form
           onSubmit={(event) => {
@@ -137,7 +137,7 @@ export function StartAttemptDialog({
         >
           <p className="notice">For a candidate without an invitation. The attempt starts now, and its access code is shown once.</p>
           <div className="field">
-            <label htmlFor="candidate">Candidate reference</label>
+            <label htmlFor="candidate">Roll number</label>
             <input ref={input} id="candidate" className="mono" value={candidateId} onChange={(e) => setCandidateId(e.target.value)} placeholder="e.g. CS001" />
           </div>
           {error === null ? null : (

@@ -207,7 +207,7 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                   </select>
                 </div>
                 <div className="field">
-                  <label htmlFor="ratio">Viva trigger ratio</label>
+                  <label htmlFor="ratio">Follow-up from this share of the marks</label>
                   <input
                     id="ratio"
                     type="number"

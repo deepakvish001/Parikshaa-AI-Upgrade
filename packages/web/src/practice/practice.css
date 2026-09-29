@@ -788,16 +788,16 @@
   color: var(--text);
   text-decoration: none;
 }
-.countdown {
+.contest-countdown {
   margin: var(--space-2) 0 0;
   font-family: var(--font-mono);
   font-weight: var(--weight-semibold);
   color: var(--primary);
 }
-.countdown.live {
+.contest-countdown.live {
   color: var(--success);
 }
-.countdown.big {
+.contest-countdown.big {
   margin: 0;
   font-size: var(--text-lg);
 }

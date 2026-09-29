@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { hashPassword } from "@parikshaa/api";
+// The password hash alone: the whole API would load Fastify into the test runner.
+import { hashPassword } from "@parikshaa/api/passwords";
 import { seedBilledOrganisation } from "../src/database.js";
 import { local, MCQ, readyToBegin, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";

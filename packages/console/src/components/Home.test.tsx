@@ -117,7 +117,7 @@ describe("the activity feed", () => {
   });
 
   it("says what an action was in words", () => {
-    expect(describeAction("exam.window_set")).toBe("scheduled a sitting");
+    expect(describeAction("exam.window_set")).toBe("set when an exam is open");
     expect(describeAction("something.new_here")).toBe("something new here");
   });
 });

@@ -138,12 +138,14 @@ test("code typed in a practice problem's editor is still there after a reload", 
   expect(published.status(), await published.text()).toBe(201);
 
   await page.goto(`/practice/${SITE}/problems/${(await published.json()).slug}`);
+  // The editor's code arrives after the page, with a plain box in its place until then: type into the editor itself.
+  await expect(page.locator(".cm-content")).toBeVisible();
   const editor = page.getByRole("textbox", { name: "Code for question 1" });
   await editor.click();
   await page.keyboard.type("print(input())");
   await expect(editor).toContainText("print(input())");
   await page.reload();
-  await expect(page.getByRole("textbox", { name: "Code for question 1" })).toContainText("print(input())");
+  await expect(page.locator(".cm-content")).toContainText("print(input())");
 });
 
 test.describe("in the dark theme", () => {

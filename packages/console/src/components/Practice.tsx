@@ -10,7 +10,7 @@ import {
   type PracticeSiteSettings,
   type PracticeSimilarity,
 } from "../api.ts";
-import { DifficultyBadge } from "./Bank.tsx";
+import { DifficultyBadge, KIND_NAME } from "./Bank.tsx";
 import { EmptyState, SkeletonRows } from "./kit.tsx";
 import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
 import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
@@ -413,7 +413,7 @@ function Problems({ client, canWrite, canReview }: { client: ConsoleClient; canW
                       )}
                       <span className="notice small">
                         {" "}
-                        · {p.question.kind}
+                        · {KIND_NAME[p.question.kind as keyof typeof KIND_NAME] ?? p.question.kind}
                         {p.tags.length > 0 ? ` · ${p.tags.join(", ")}` : ""}
                         {p.editorial.trim() === "" ? " · no editorial" : ""}
                       </span>

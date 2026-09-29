@@ -91,6 +91,8 @@ for (const [size, viewport] of SIZES) {
 
           await page.locator(".submit-confirm").click();
           await expect(page.locator(".receipt")).toBeVisible();
+          // When it went in is masked, but its length (the hour, the month) would move the page under it.
+          await page.locator(".finished-lead strong").evaluate((el) => (el.textContent = "1 Oct 2026, 10:00 am IST"));
           await settle(page);
           await expect(page).toHaveScreenshot(name("receipt"), {
             fullPage: true,

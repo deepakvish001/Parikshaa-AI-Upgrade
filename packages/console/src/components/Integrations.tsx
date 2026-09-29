@@ -9,6 +9,14 @@ import { EmptyState, RowMenu, SettingsGroup, SkeletonRows } from "./kit.tsx";
  * Greenhouse, Lever, Zoho Recruit and Darwinbox. Owner only.
  */
 
+/** What each webhook event is, in words; its name, for the receiving system, beside it. */
+const EVENT_WORDS: Record<(typeof WEBHOOK_EVENTS)[number], string> = {
+  "attempt.started": "An attempt starts",
+  "attempt.submitted": "An attempt is submitted",
+  "attempt.graded": "An attempt is graded",
+  "attempt.voided": "An attempt is set aside",
+};
+
 const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
 
 export function IntegrationsPanel({ client }: { client: ConsoleClient }) {
@@ -151,7 +159,8 @@ function Webhooks({ client }: { client: ConsoleClient }) {
         <div className="row" role="group" aria-label="Events">
           {WEBHOOK_EVENTS.map((e) => (
             <label key={e} className="inline">
-              <input type="checkbox" style={{ width: "auto" }} checked={events.includes(e)} onChange={() => toggle(e)} /> {e}
+              <input type="checkbox" style={{ width: "auto" }} checked={events.includes(e)} onChange={() => toggle(e)} /> {EVENT_WORDS[e]}{" "}
+              <span className="mono notice">{e}</span>
             </label>
           ))}
         </div>
@@ -196,7 +205,7 @@ function HookRow({
         <td className="mono" style={{ wordBreak: "break-all" }}>
           {hook.url}
         </td>
-        <td className="notice">{hook.events.length === 0 ? "every event" : hook.events.join(", ")}</td>
+        <td className="notice">{hook.events.length === 0 ? "Every event" : hook.events.map((e) => EVENT_WORDS[e as keyof typeof EVENT_WORDS] ?? e).join(", ")}</td>
         <td className="row-end">
           {hook.disabled ? (
             <span className="pill">Stopped</span>
@@ -231,7 +240,9 @@ function HookRow({
                   {deliveries.data.map((d) => (
                     <tr key={d.id}>
                       <td className="notice">{when(d.createdAt)}</td>
-                      <td className="mono">{d.event}</td>
+                      <td>
+                        {EVENT_WORDS[d.event as keyof typeof EVENT_WORDS] ?? d.event} <span className="mono notice">{d.event}</span>
+                      </td>
                       <td>
                         <span className="pill" data-state={d.status}>{d.status}</span>
                         {d.attempts > 1 ? <span className="notice"> after {d.attempts} tries</span> : null}

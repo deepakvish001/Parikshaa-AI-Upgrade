@@ -1313,9 +1313,9 @@ function ContestsPage({ client, nav, site }: Context) {
                     {t("practice.problemsN", { n: c.problems })}
                   </p>
                   {c.state === "upcoming" ? (
-                    <p className="countdown">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
+                    <p className="contest-countdown">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
                   ) : c.state === "running" ? (
-                    <p className="countdown live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
+                    <p className="contest-countdown live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
                   ) : null}
                 </li>
               ))}
@@ -1381,9 +1381,9 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
         <div className="contest-when">
           <ContestState state={c.state} />
           {c.state === "upcoming" ? (
-            <p className="countdown big">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
+            <p className="contest-countdown big">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
           ) : c.state === "running" ? (
-            <p className="countdown big live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
+            <p className="contest-countdown big live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
           ) : null}
         </div>
       </header>

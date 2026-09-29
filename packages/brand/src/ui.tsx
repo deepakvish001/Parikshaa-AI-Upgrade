@@ -242,6 +242,8 @@ export function Menu({ label, items, className }: { label: string; items: readon
   const wrap = useRef<HTMLSpanElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  // Focus moves in once the list is placed: while it is still hidden, measuring, nothing in it can take focus.
+  const toFocus = useRef<false | "first" | "last">(false);
   const ordered = [...items.filter((item) => item.danger !== true), ...items.filter((item) => item.danger === true)];
 
   const entries = () => [...(list.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -257,9 +259,15 @@ export function Menu({ label, items, className }: { label: string; items: readon
     const height = list.current.offsetHeight;
     const right = Math.max(8, window.innerWidth - at.right);
     setPlace(at.bottom + 4 + height > window.innerHeight && at.top - 4 - height > 0 ? { bottom: window.innerHeight - at.top + 4, right } : { top: at.bottom + 4, right });
-    const all = entries();
-    (open === "last" ? all.at(-1) : all[0])?.focus();
+    toFocus.current = open;
   }, [open]);
+
+  useLayoutEffect(() => {
+    if (place === null || toFocus.current === false) return;
+    const all = entries();
+    (toFocus.current === "last" ? all.at(-1) : all[0])?.focus();
+    toFocus.current = false;
+  }, [place]);
 
   useEffect(() => {
     if (open === false) return;

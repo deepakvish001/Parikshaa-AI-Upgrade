@@ -75,7 +75,7 @@ export interface ExamActions {
   readonly onEdit?: () => void;
   readonly onCopy?: () => void;
   readonly onArchive?: (archived: boolean) => void;
-  /** Start one attempt by reference, and hand over its access code. */
+  /** Start one attempt by roll number, and hand over its access code. */
   readonly onStartDirect?: () => void;
 }
 
@@ -133,7 +133,7 @@ export function ExamHeader({
           items={[
             actions.onEdit !== undefined && !frozen && { label: "Edit", icon: <Pencil />, onSelect: actions.onEdit },
             actions.onCopy !== undefined && { label: frozen ? "Copy to change" : "Make a copy", icon: <Copy />, onSelect: actions.onCopy },
-            actions.onStartDirect !== undefined && { label: "Start an attempt by reference…", icon: <UserPlus />, onSelect: actions.onStartDirect },
+            actions.onStartDirect !== undefined && { label: "Start an attempt by roll number…", icon: <UserPlus />, onSelect: actions.onStartDirect },
             actions.onArchive !== undefined &&
               (archived
                 ? { label: "Bring back from the archive", icon: <ArchiveRestore />, onSelect: () => actions.onArchive!(false) }

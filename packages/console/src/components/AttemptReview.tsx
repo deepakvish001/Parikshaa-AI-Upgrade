@@ -180,7 +180,7 @@ export function AttemptReview({
 
           {review.vivas.length === 0 ? (
             <p className="notice">
-              No follow-up was raised on this attempt. That is the ordinary case: a probe is only worth asking when an answer scored well enough that
+              No follow-up was raised on this attempt. That is the ordinary case: a follow-up question is only worth asking when an answer scored well enough that
               where it came from matters.
             </p>
           ) : (

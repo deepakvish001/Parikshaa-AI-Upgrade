@@ -771,9 +771,9 @@ describe("attempts", () => {
 
     // Not a card on the overview: one of the exam's other actions.
     await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Start an attempt by reference…" }));
-    const dialog = screen.getByRole("dialog", { name: "Start an attempt by reference" });
-    await userEvent.type(within(dialog).getByLabelText("Candidate reference"), "cand-9");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Start an attempt by roll number…" }));
+    const dialog = screen.getByRole("dialog", { name: "Start an attempt by roll number" });
+    await userEvent.type(within(dialog).getByLabelText("Roll number"), "cand-9");
     await userEvent.click(within(dialog).getByRole("button", { name: "Start" }));
 
     expect(await screen.findByLabelText("Access code")).toHaveValue("issued-token");
@@ -917,7 +917,7 @@ describe("what a role is shown", () => {
     expect(await screen.findByRole("button", { name: "Review" })).toBeDisabled();
     await userEvent.click(screen.getByRole("button", { name: "More actions for Algorithms" }));
     const menu = screen.getByRole("menu");
-    expect(within(menu).getByRole("menuitem", { name: "Start an attempt by reference…" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Start an attempt by roll number…" })).toBeInTheDocument();
     expect(within(menu).queryByRole("menuitem", { name: /Edit|copy|Archive/ })).not.toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
 
@@ -1578,7 +1578,7 @@ describe("integrations", () => {
     const client = await open();
     const form = await screen.findByRole("region", { name: "Add a webhook" });
     await userEvent.type(within(form).getByLabelText("Address (https)"), "https://hr.example.com/in");
-    await userEvent.click(within(form).getByLabelText("attempt.graded"));
+    await userEvent.click(within(form).getByLabelText(/An attempt is graded/));
     await userEvent.click(within(form).getByRole("button", { name: "Add" }));
 
     expect(client.addWebhook).toHaveBeenCalledWith("https://hr.example.com/in", ["attempt.graded"], "");

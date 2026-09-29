@@ -482,7 +482,7 @@ function SpreadsheetImport({ client, onImported }: { client: ConsoleClient; onIm
     <>
       <div className="bar import-head">
         <p className="notice">
-          One question per row under a header row: <span className="mono">kind</span> (mcq, numeric or short), <span className="mono">question</span>,{" "}
+          One question per row under a header row: <span className="mono">kind</span> (<span className="mono">mcq</span> for multiple choice, <span className="mono">numeric</span>, or <span className="mono">short</span> for written), <span className="mono">question</span>,{" "}
           <span className="mono">options</span> (separated by |), <span className="mono">answer</span>, <span className="mono">marks</span>,{" "}
           <span className="mono">topic</span>, <span className="mono">difficulty</span>, <span className="mono">tags</span>. Any problem imports nothing, and every
           problem is listed by row.

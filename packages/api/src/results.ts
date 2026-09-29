@@ -118,6 +118,10 @@ export function istStamp(ms: number): string {
   return `${parts["year"]}-${parts["month"]}-${parts["day"]} ${parts["hour"]}:${parts["minute"]}`;
 }
 
+/** The spreadsheet says what the console says: the glossary's words, never the stored values. */
+const STATE_WORDS: Record<string, string> = { not_started: "Not started", in_progress: "In progress", submitted: "To grade", graded: "Graded", void: "Set aside" };
+const OUTCOME_WORDS: Record<string, string> = { qualified: "Qualified", failed: "Not qualified" };
+
 export class ResultsService {
   readonly #store: LedgerStore;
   readonly #invitations: InvitationStore;
@@ -170,7 +174,7 @@ export class ResultsService {
     const questions = allQuestions(definition);
     const cutoff = definition.policy.cutoff !== undefined;
     const header: Cell[] = [
-      "Ref",
+      "Roll no.",
       "Name",
       "Email",
       "State",
@@ -190,11 +194,11 @@ export class ResultsService {
       r.ref,
       r.name,
       r.email,
-      r.state,
+      STATE_WORDS[r.state] ?? r.state,
       r.total,
       r.maxTotal,
       r.percent,
-      ...(cutoff ? [r.outcome] : []),
+      ...(cutoff ? [r.outcome === null ? null : (OUTCOME_WORDS[r.outcome] ?? r.outcome)] : []),
       istStamp(r.startedAt),
       r.submittedAt === null ? null : istStamp(r.submittedAt),
       r.durationMs === null ? null : Math.round(r.durationMs / 6000) / 10,
