@@ -146,8 +146,8 @@ test("code typed in a practice problem's editor is still there after a reload", 
   // The editor's code arrives after the page, with a plain box in its place until then: type into the editor itself.
   await expect(page.locator(".cm-content")).toBeVisible();
   const editor = page.getByRole("textbox", { name: "Code for question 1" });
-  await editor.click();
-  await page.keyboard.type("print(input())");
+  // Filled in one input: keys typed faster than a frame into an empty editor can lose one in Firefox.
+  await editor.fill("print(input())");
   await expect(editor).toContainText("print(input())");
   await page.reload();
   await expect(page.locator(".cm-content")).toContainText("print(input())");
