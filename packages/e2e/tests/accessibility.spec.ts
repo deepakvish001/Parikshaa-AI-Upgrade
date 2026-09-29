@@ -10,8 +10,9 @@ import { beginSitting, chooseLanguage, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, 
  */
 
 async function violations(page: Page): Promise<string[]> {
-  // Colours are checked as they settle: a button fading in from disabled is, mid-way, neither.
-  await page.waitForFunction(() => document.getAnimations().every((a) => !(a instanceof CSSTransition) || a.playState !== "running"));
+  // Colours are checked as they settle: a button fading in from disabled, or a menu fading in, is mid-way neither.
+  // Endless ones (a loading shimmer) never settle and are left to run.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity));
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
