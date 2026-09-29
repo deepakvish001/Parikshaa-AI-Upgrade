@@ -1024,6 +1024,16 @@ export class ConsoleClient {
     return this.#request("/auth/verify-email/resend", { method: "POST" });
   }
 
+  /** Email the results workbook to this account's own address. */
+  emailResults(examId: string): Promise<{ readonly to: string }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/results/email`, { method: "POST" });
+  }
+
+  /** The same extra time for every attempt still open on an exam. */
+  extendOpen(examId: string, minutes: number, reason: string): Promise<{ readonly extended: number; readonly failed: readonly { readonly attemptId: string; readonly message: string }[] }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/extend-open`, { method: "POST", body: JSON.stringify({ minutes, reason }) });
+  }
+
   /** Grade up to a batch of the exam's submitted attempts; call again while some remain. */
   gradeSubmitted(examId: string): Promise<{ readonly graded: number; readonly failed: readonly { readonly attemptId: string; readonly message: string }[]; readonly remaining: number }> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/grade-submitted`, { method: "POST" });

@@ -275,6 +275,26 @@ export function registerResultsRoutes(routes: Routes, deps: ResultsRouteDeps): v
     );
   }
 
+  routes.post(
+    "/exams/:examId/results/email",
+    {
+      schema: {
+        tags: RESULTS,
+        summary: "Email the results workbook to the member of staff asking",
+        description:
+          "The Excel workbook `results.xlsx` would download, made when it is sent and sent only to the asker's own address. Needs email set up on the server (409 otherwise). Exporting is audited when it is made.",
+        security: SECURED,
+        params: S.examParams,
+        response: { 202: S.emailWorkbookResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.code(202).send(await results.emailWorkbook(actor, examId(request.params.examId)));
+    },
+  );
+
   routes.get(
     "/attempts/:attemptId/report",
     {

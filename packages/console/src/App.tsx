@@ -22,7 +22,7 @@ import {
 import { Avatar, Wordmark } from "@parikshaa/brand/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Exam } from "@parikshaa/core/browser";
-import { ConsoleClient, ConsoleError } from "./api.ts";
+import { ConsoleClient, ConsoleError, type WhoAmI } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { BankPanel } from "./components/Bank.tsx";
 import { Candidates } from "./components/Candidates.tsx";
@@ -206,8 +206,10 @@ function Console({
     if (emailVerified === null || emailVerified === "pending") return;
     if (emailVerified === "done") {
       toast("Your email address is confirmed. You can invite candidates and colleagues now.", "success");
-      // Asked for alongside the link's check, the account may have been read before it counted.
-      void queryClient.invalidateQueries({ queryKey: ["me"] });
+      // Asked for alongside the link's check, the account may have been read
+      // before it counted: say so at once, then read it again for what it may now do.
+      queryClient.setQueryData<WhoAmI>(["me"], (was) => (was === undefined ? was : { ...was, emailVerified: true }));
+      void queryClient.refetchQueries({ queryKey: ["me"], type: "all" });
     } else toast(emailVerified, "error");
   }, [emailVerified, toast, queryClient]);
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
@@ -613,6 +615,7 @@ function Console({
                 onExams={(filter) => go({ name: "exams", filter })}
                 onTour={() => setTouring(true)}
                 canBuy={can("org:manage")}
+                {...(can("attempt:grade") ? { onResults: (examId: string) => go({ name: "results", examId }) } : {})}
                 {...(can("exam:write")
                   ? {
                       sample: {

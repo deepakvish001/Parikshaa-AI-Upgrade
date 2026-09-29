@@ -141,10 +141,11 @@ export function assemble(o: AssembleOptions): {
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null });
   const app = buildServer({
     service,
     invitations,
-    results: new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore }),
+    results,
     webhooks: integrations.webhooks,
     greenhouse: integrations.greenhouse,
     ats: integrations.ats,
@@ -184,7 +185,8 @@ export function assemble(o: AssembleOptions): {
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
-    handlers: { ...integrations.handlers, staff_email: (item) => (item.purpose === "password_reset" ? security.resetMail(item) : onboarding.mail(item)), learner_email: practiceIdentity.verificationMail },
+    handlers: { ...integrations.handlers, staff_email: (item) =>
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: practiceIdentity.verificationMail },
   });
 
   return { app, worker, privacy, billing, identity };

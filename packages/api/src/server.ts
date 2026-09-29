@@ -736,6 +736,27 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     );
 
     routes.post(
+      "/exams/:examId/extend-open",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Give every candidate still sitting the same extra time",
+          description:
+            "For a power cut or a fault everyone sat through. Each open attempt is extended as `POST /attempts/{attemptId}/extend` would, with the reason in its ledger and the audit. An attempt that closes meanwhile is listed in `failed`.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          body: S.extendBody,
+          response: { 200: S.extendOpenResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "attempt:extend");
+        if (actor === null) return;
+        return reply.send(await service.extendOpen(actor, examId(request.params.examId), request.body.minutes, request.body.reason));
+      },
+    );
+
+    routes.post(
       "/exams/:examId/grade-submitted",
       {
         schema: {

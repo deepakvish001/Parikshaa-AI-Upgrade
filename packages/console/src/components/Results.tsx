@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, CircleCheck, CircleX, Download, ListChecks, Printer, Search, Users } from "lucide-react";
+import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Users } from "lucide-react";
+import { useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type CandidateReport, type ConsoleClient, type Outcome, type QuestionStats, type ResultRow, type Results, type SectionScore, type Similarity, type Verdict } from "../api.ts";
 import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge } from "./kit.tsx";
 import { EraseCard } from "./Privacy.tsx";
@@ -69,9 +70,19 @@ export function ResultsPanel({
   const download = useMutation({
     mutationFn: async (format: "csv" | "xlsx") => save(await client.resultsFile(examId, format), `${examId}-results.${format}`),
   });
+  const toast = useToast();
+  const email = useMutation({
+    mutationFn: () => client.emailResults(examId),
+    onSuccess: ({ to }) => toast(`The results are on their way to ${to}.`, "success"),
+    onError: (error) => toast(error instanceof ConsoleError && error.detail !== undefined ? error.detail : "The email could not be sent. Download the results instead.", "error"),
+  });
   const empty = results.data === undefined || results.data.rows.length === 0;
   const downloads = (
     <PageActions>
+      <button type="button" className="secondary" disabled={empty || email.isPending} onClick={() => email.mutate()}>
+        <Mail aria-hidden="true" />
+        Email to me
+      </button>
       <button type="button" className="secondary" disabled={empty || download.isPending} onClick={() => download.mutate("xlsx")}>
         <Download aria-hidden="true" />
         Download Excel

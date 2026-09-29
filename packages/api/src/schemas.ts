@@ -886,6 +886,13 @@ export const signupBody = z.object({
 
 export const sampleResponse = z.object({ examId: z.string() });
 
+export const emailWorkbookResponse = z.object({ to: z.string().describe("The address it goes to: the asker's own.") });
+
+export const extendOpenResponse = z.object({
+  extended: z.number().int().describe("Attempts given the extra time."),
+  failed: z.array(z.object({ attemptId: z.string(), message: z.string() })),
+});
+
 export const gradeSubmittedResponse = z.object({
   graded: z.number().int().describe("Attempts graded by this call."),
   failed: z.array(z.object({ attemptId: z.string(), message: z.string() })).describe("Attempts that could not be graded; they stay submitted."),

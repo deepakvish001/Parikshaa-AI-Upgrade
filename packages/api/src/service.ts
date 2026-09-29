@@ -1280,6 +1280,36 @@ export class ExamService {
   }
 
   /**
+   * The same extra time for every attempt still open on an exam: a power cut
+   * in the hall, a server hiccup everyone sat through. Each is extended as
+   * `extendTime` would, with the same reason in each ledger and the audit;
+   * one that closes meanwhile is named, never stopping the rest.
+   */
+  async extendOpen(
+    actor: Actor,
+    examId: ExamId,
+    minutes: number,
+    reason: string,
+  ): Promise<{ extended: number; failed: { attemptId: string; message: string }[] }> {
+    this.#require(actor, "attempt:extend");
+    if (actor.kind !== "user") throw new Forbidden("attempt:extend");
+    const open = (await this.listAttempts(actor, examId)).filter((a) => a.state === "in_progress");
+    const failed: { attemptId: string; message: string }[] = [];
+    let extended = 0;
+    for (const attempt of open) {
+      try {
+        await this.extendTime(actor, attempt.id, minutes, reason);
+        extended++;
+      } catch (error) {
+        // A reason or a length that is refused is refused for every one of them: say so once.
+        if (error instanceof AttemptError && (error.code === "reason_required" || error.code === "invalid_extension")) throw error;
+        failed.push({ attemptId: attempt.id, message: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return { extended, failed };
+  }
+
+  /**
    * Open a submitted attempt again (ROADMAP §8): the laptop crashed and
    * submitted, the power went, submit was pressed by mistake.
    *

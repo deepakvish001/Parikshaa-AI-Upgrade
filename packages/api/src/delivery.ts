@@ -26,6 +26,8 @@ export interface EmailMessage {
   readonly subject: string;
   readonly text: string;
   readonly html: string;
+  /** Files sent with it: the results workbook a member of staff asked for. */
+  readonly attachments?: readonly { readonly filename: string; readonly content: Uint8Array; readonly contentType: string }[];
 }
 
 export interface SmsMessage {
@@ -66,7 +68,12 @@ export class SmtpMailer implements Mailer {
 
   async send(message: EmailMessage): Promise<void> {
     try {
-      await this.#transport.sendMail({ from: this.#from, ...message });
+      const { attachments, ...rest } = message;
+      await this.#transport.sendMail({
+        from: this.#from,
+        ...rest,
+        ...(attachments === undefined ? {} : { attachments: attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content), contentType: a.contentType })) }),
+      });
     } catch (error) {
       const code = (error as { responseCode?: number }).responseCode;
       // 5xx is the server saying no for good: no such mailbox, policy refusal.

@@ -62,7 +62,8 @@ still connected.
 - **A student's connection drops**: nothing is lost. They open the same link
   again — on any device — and carry on.
 - **A student needs more time**: their row's **⋯ → Extra time…**, with a
-  reason.
+  reason. For a power cut, **Extra time for everyone** gives everyone still
+  sitting the same minutes at once.
 - **Tell everyone something**: **Announce**. It appears on every open test.
 
 ## 6. Results
@@ -70,7 +71,8 @@ still connected.
 On the exam's **Results** tab, press **Grade all**: objective questions are
 marked at once, written answers within seconds each, with progress as it
 goes. The same tab shows scores, who qualified, and how the batch did;
-**Download Excel** or **CSV** for your records. Each student's report shows
+**Download Excel** or **CSV** for your records, or **Email to me** to get
+the workbook in your inbox. Each student's report shows
 their answers, marks and any follow-up, with the reasoning behind every mark.
 
 ## Need help?

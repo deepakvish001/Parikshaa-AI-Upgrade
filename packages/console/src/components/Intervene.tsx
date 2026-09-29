@@ -6,9 +6,10 @@ import { ConsoleError } from "../api.ts";
 export const MIN_REASON = 10;
 
 /**
- * Extra time for a candidate still sitting, or reopening one who has
- * submitted: minutes and a reason, both recorded in the candidate's ledger
- * with the person's name and shown on their receipt.
+ * Extra time for a candidate still sitting, or for everyone still sitting at
+ * once, or reopening one who has submitted: minutes and a reason, both
+ * recorded in each candidate's ledger with the person's name and shown on
+ * their receipt.
  */
 export function TimeDialog({
   kind,
@@ -16,13 +17,14 @@ export function TimeDialog({
   onSubmit,
   onClose,
 }: {
-  kind: "extend" | "reopen";
-  /** The candidate, as the page names them: a roll number or a name. */
+  kind: "extend" | "reopen" | "everyone";
+  /** The candidate, as the page names them: a roll number or a name; for everyone, how many. */
   who: string;
   onSubmit: (minutes: number, reason: string) => Promise<unknown>;
   onClose: () => void;
 }) {
   const [minutes, setMinutes] = useState(kind === "reopen" ? "15" : "10");
+  const extending = kind !== "reopen";
   const [reason, setReason] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export function TimeDialog({
   const n = Number(minutes);
   const validMinutes = Number.isInteger(n) && n >= 1 && n <= 240;
   const short = reason.trim().length > 0 && reason.trim().length < MIN_REASON;
-  const title = kind === "extend" ? `Extra time for ${who}` : `Reopen ${who}`;
+  const title = kind === "extend" ? `Extra time for ${who}` : kind === "everyone" ? "Extra time for everyone still sitting" : `Reopen ${who}`;
 
   return (
     <Dialog label={title} onClose={onClose} initialFocus={first} dismissable={!sending}>
@@ -53,11 +55,13 @@ export function TimeDialog({
         <p className="notice">
           {kind === "extend"
             ? "Added to the candidate's clock now."
-            : "The candidate can go back in and carry on until this many minutes from now."}{" "}
-          Recorded in the attempt's ledger with your name, and shown on the candidate's receipt.
+            : kind === "everyone"
+              ? `Added now to the clock of each of the ${who} still sitting; those who have submitted are left as they are.`
+              : "The candidate can go back in and carry on until this many minutes from now."}{" "}
+          Recorded in {kind === "everyone" ? "each attempt's" : "the attempt's"} ledger with your name, and shown on the candidate's receipt.
         </p>
         <div className="field">
-          <label htmlFor="time-minutes">{kind === "extend" ? "Extra minutes" : "Minutes from now"}</label>
+          <label htmlFor="time-minutes">{extending ? "Extra minutes" : "Minutes from now"}</label>
           <input ref={first} id="time-minutes" inputMode="numeric" value={minutes} onChange={(e) => setMinutes(e.target.value)} aria-invalid={!validMinutes} />
           {validMinutes ? null : <p className="error">Between 1 and 240 minutes.</p>}
         </div>
@@ -67,11 +71,11 @@ export function TimeDialog({
             id="time-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
-            placeholder={kind === "extend" ? "e.g. Power cut in hall B" : "e.g. Laptop crashed and submitted"}
+            placeholder={extending ? "e.g. Power cut in hall B" : "e.g. Laptop crashed and submitted"}
             aria-describedby="time-reason-hint"
           />
           <p id="time-reason-hint" className={short ? "error" : "notice small"}>
-            {short ? `At least ${MIN_REASON} characters.` : "Goes on the candidate's record."}
+            {short ? `At least ${MIN_REASON} characters.` : kind === "everyone" ? "Goes on every candidate's record." : "Goes on the candidate's record."}
           </p>
         </div>
         {error === null ? null : (
@@ -84,7 +88,7 @@ export function TimeDialog({
             Cancel
           </button>
           <button type="submit" disabled={sending || !validMinutes || reason.trim().length < MIN_REASON}>
-            {kind === "extend" ? "Grant extra time" : "Reopen"}
+            {kind === "extend" ? "Grant extra time" : kind === "everyone" ? `Grant extra time to ${who}` : "Reopen"}
           </button>
         </div>
       </form>

@@ -56,6 +56,8 @@ test("an institution signs itself up, takes the tour, and tries the sample exam 
   await expect(welcome).toBeVisible();
   expect(await violations(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: "dark" });
+  // Colours fade into the dark theme: measure them once they have arrived, not halfway.
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
   expect(await violations(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: "light" });
 

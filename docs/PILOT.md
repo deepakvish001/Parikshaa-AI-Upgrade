@@ -172,7 +172,8 @@ What to do when:
 |---|---|
 | A candidate's connection drops | Nothing is lost: answers are saved as they type. They reopen the same link, on any device, and carry on. |
 | A candidate lost their link | Candidates tab → the candidate's ⋯ → **Resend the link**; or give them the access code to type at the site's address. |
-| A candidate needs more time (a power cut, a fault) | Live → the candidate's ⋯ → **Extra time…**, with the reason. It is recorded. |
+| A candidate needs more time (a fault at one desk) | Live → the candidate's ⋯ → **Extra time…**, with the reason. It is recorded. |
+| The whole hall lost time (a power cut) | Live → **Extra time for everyone**: the same minutes, with one reason, for everyone still sitting. Each is recorded. |
 | A candidate submitted too early by mistake | Live → the candidate's ⋯ → **Reopen…**, for a few minutes, with the reason. |
 | Everyone needs to know something | Live → **Announce** → **Send to everyone**: it appears on every open page. |
 | "No attempts left" when a candidate starts | `billing grant` as above; they try again at once. |
@@ -186,7 +187,9 @@ What to do when:
       marked at once; written answers are read by the model, a few seconds
       each. Any it cannot grade are named, to open one by one.
 - [ ] Read a few reports end to end, follow-ups included.
-- [ ] Results tab → **Download Excel** (or CSV), and send it to the pilot owner.
+- [ ] Results tab → **Email to me** sends the Excel workbook to your own
+      address (or **Download Excel**); forward it to the pilot owner. Home
+      says whenever attempts are waiting to be graded.
 - [ ] Note every question anyone asked you: each is a gap in the product or
       in the guide.
 

@@ -3907,7 +3907,8 @@ button.month-day.picked::after {
   }
 }
 .sample-line,
-.credits-line {
+.credits-line,
+.to-grade-line {
   margin-top: var(--space-5);
 }
 .confirm-email {
