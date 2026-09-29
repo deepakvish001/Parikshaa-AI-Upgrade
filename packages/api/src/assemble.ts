@@ -18,6 +18,7 @@ import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepPlus } from "./prep-plus.js";
 import { PrepCommunity } from "./prep-community.js";
+import { StarterPacks } from "./starter-packs.js";
 import { Sahayak } from "./sahayak.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer, type ServerOptions } from "./server.js";
@@ -124,6 +125,7 @@ export function assemble(o: AssembleOptions): {
   });
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
+  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
   const app = buildServer({
     service,
     invitations,
@@ -151,7 +153,8 @@ export function assemble(o: AssembleOptions): {
     media: new QuestionMedia(o.sql),
     practice,
     practiceIdentity,
-    prep: new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus }),
+    prep: prepService,
+    starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
     prepCommunity: new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus }),
     prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus }) },
     ...o.server,

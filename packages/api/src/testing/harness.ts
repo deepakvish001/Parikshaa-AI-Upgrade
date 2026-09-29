@@ -39,6 +39,7 @@ import { PracticeService } from "../practice.js";
 import { PrepService } from "../prep.js";
 import { PrepPlus } from "../prep-plus.js";
 import { PrepCommunity } from "../prep-community.js";
+import { StarterPacks } from "../starter-packs.js";
 import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
@@ -207,6 +208,7 @@ export async function wire(
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, ...(options.now === undefined ? {} : { now: options.now }) });
+  const prepService = new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) });
   const practiceIdentity = new PracticeIdentity({
     store: new PracticeStore(sql),
     practice,
@@ -250,7 +252,8 @@ export async function wire(
     media: new QuestionMedia(sql),
     practice,
     practiceIdentity,
-    prep: new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+    prep: prepService,
+    starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
     prepCommunity: new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
     prepPlus: {
       plus: prepPlus,

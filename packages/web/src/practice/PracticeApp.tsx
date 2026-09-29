@@ -26,6 +26,7 @@ import {
   type Submission,
   type Verdict,
 } from "./client.ts";
+import { approachesOf } from "./editorial.ts";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context, type Nav } from "./parts.tsx";
 import { navWord } from "./prep-nav.ts";
 
@@ -820,6 +821,26 @@ function ContestBanner({ nav, contest }: { readonly nav: Nav; readonly contest: 
 
 function Editorial({ problem }: { readonly problem: Problem }) {
   const { t } = usePreferences();
+  const [shown, setShown] = useState(0);
+  const split = useMemo(() => (problem.editorial === null ? null : approachesOf(problem.editorial)), [problem.editorial]);
+  if (split !== null) {
+    const approach = split.approaches[Math.min(shown, split.approaches.length - 1)]!;
+    return (
+      <div className="approaches">
+        {split.intro === "" ? null : <Markdown source={split.intro} />}
+        <div className="problem-tabs" role="tablist" aria-label={t("practice.tab.editorial")}>
+          {split.approaches.map((a, i) => (
+            <button key={a.title} type="button" role="tab" aria-selected={a === approach} className={a === approach ? "tab on" : "tab"} onClick={() => setShown(i)}>
+              {a.title}
+            </button>
+          ))}
+        </div>
+        <div role="tabpanel" aria-label={approach.title}>
+          <Markdown source={approach.body} />
+        </div>
+      </div>
+    );
+  }
   if (problem.editorial !== null) return <Markdown source={problem.editorial} />;
   if (!problem.editorialLocked) return <p className="notice">{t("practice.noEditorial")}</p>;
   return (

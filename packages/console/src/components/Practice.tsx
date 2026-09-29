@@ -10,7 +10,7 @@ import {
   type PracticeSiteSettings,
   type PracticeSimilarity,
 } from "../api.ts";
-import { CoinStore, Companies, Experiences } from "./CommunityAdmin.tsx";
+import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
 import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
 
 /**
@@ -65,7 +65,12 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
         </>
       ) : null}
       {tab === "problems" ? <Problems client={client} canWrite={can.write} canReview={can.review === true} /> : null}
-      {tab === "tracks" ? <Tracks client={client} canWrite={can.write} /> : null}
+      {tab === "tracks" ? (
+        <>
+          <StarterPacks client={client} canWrite={can.write} />
+          <Tracks client={client} canWrite={can.write} />
+        </>
+      ) : null}
       {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
       {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
       {tab === "plus" ? <PlusAdmin client={client} canManage={can.manage} /> : null}

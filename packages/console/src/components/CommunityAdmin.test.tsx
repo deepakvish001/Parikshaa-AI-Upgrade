@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ConsoleClient, StaffExperience, StoreItem, StoreOrder } from "../api.ts";
-import { CoinStore, Companies, Experiences } from "./CommunityAdmin.tsx";
+import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
 
 /** Companies, experiences and the coin store in the console (ROADMAP §16), against a stub of its client. */
 
@@ -74,6 +74,29 @@ describe("experiences", () => {
     await user.click(within(item).getByRole("button", { name: "Publish" }));
     await waitFor(() => expect(client.decideExperience).toHaveBeenCalledWith("e1", "published"));
     expect(client.experiences).toHaveBeenCalledWith("pending");
+  });
+});
+
+describe("starter packs", () => {
+  it("adds a pack once, and says so", async () => {
+    let imported = false;
+    const client = {
+      starterPacks: vi.fn(async () => [
+        { name: "cs-fundamentals", title: "CS fundamentals", description: "OS, DBMS, CN.", lessons: 36, problems: 80, imported: true },
+        { name: "sql-starter", title: "SQL", description: "Queries that run.", lessons: 0, problems: 8, imported },
+      ]),
+      importStarterPack: vi.fn(async () => {
+        imported = true;
+        return { track: "sql-starter", lessons: 0, problems: 8 };
+      }),
+    };
+    const user = userEvent.setup();
+    show(<StarterPacks client={client as unknown as ConsoleClient} canWrite />);
+    expect(await screen.findByText("(36 lessons, 80 problems)")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add CS fundamentals" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Add SQL" }));
+    await waitFor(() => expect(client.importStarterPack).toHaveBeenCalledWith("sql-starter"));
+    expect(await screen.findByText("Added 8 problems, and the track.")).toBeTruthy();
   });
 });
 

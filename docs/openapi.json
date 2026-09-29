@@ -49203,6 +49203,502 @@
         }
       }
     },
+    "/practice-admin/starter-packs": {
+      "get": {
+        "summary": "Starter content this site can take in",
+        "tags": [
+          "Prep (staff)"
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "packs": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "enum": [
+                              "cs-fundamentals",
+                              "sql-starter"
+                            ]
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "lessons": {
+                            "type": "number"
+                          },
+                          "problems": {
+                            "type": "number"
+                          },
+                          "imported": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "title",
+                          "description",
+                          "lessons",
+                          "problems",
+                          "imported"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "packs"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/practice-admin/starter-packs/{name}": {
+      "post": {
+        "summary": "Take in a starter pack: its lessons, problems and track",
+        "tags": [
+          "Prep (staff)"
+        ],
+        "description": "Once per site. Everything it adds is the site's own afterwards.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cs-fundamentals",
+                "sql-starter"
+              ]
+            },
+            "in": "path",
+            "name": "name",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "track": {
+                      "type": "string"
+                    },
+                    "lessons": {
+                      "type": "number"
+                    },
+                    "problems": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "track",
+                    "lessons",
+                    "problems"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/practice-admin/store/items": {
       "get": {
         "summary": "The coin store's items",

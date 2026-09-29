@@ -1,5 +1,5 @@
 import { CONTENT_LOCALES, type Exam, type Question } from "./domain.js";
-import { CODE_LANGUAGES, languagesOf } from "./code.js";
+import { CODE_LANGUAGES, FUNCTION_LANGUAGES, languagesOf } from "./code.js";
 import { functionTestProblems, signatureProblems } from "./signature.js";
 import { allQuestions } from "./paper.js";
 
@@ -180,6 +180,9 @@ export function validateQuestion(question: Question, at: string): ExamProblem[] 
         });
       }
       if (question.signature !== undefined) {
+        if (languagesOf(question).some((l) => !(FUNCTION_LANGUAGES as readonly string[]).includes(l))) {
+          problems.push({ path: `${at}.languages`, message: `A function question is answered in ${FUNCTION_LANGUAGES.join(", ")}; SQL is answered with a query over tables.` });
+        }
         for (const message of signatureProblems(question.signature)) problems.push({ path: `${at}.signature`, message });
         if (signatureProblems(question.signature).length === 0) {
           tests.forEach((test, j) => {

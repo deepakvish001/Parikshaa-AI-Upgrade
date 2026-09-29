@@ -5,6 +5,7 @@ import type { Learner, PracticeSite } from "@parikshaa/store";
 import type { PracticeService } from "./practice.js";
 import type { PrepCommunity } from "./prep-community.js";
 import * as S from "./schemas.js";
+import { PACKS, type StarterPacks } from "./starter-packs.js";
 import type { ExamService } from "./service.js";
 import type { Actor, Permission } from "./staff-auth.js";
 
@@ -13,6 +14,8 @@ type Routes = FastifyInstance<RawServerDefault, RawRequestDefaultExpression, Raw
 export interface PrepCommunityRouteDeps {
   readonly practice: PracticeService;
   readonly community: PrepCommunity;
+  /** Starter content a site takes in with one click. */
+  readonly packs?: StarterPacks | undefined;
   readonly service: ExamService;
   readonly staff: (request: FastifyRequest, reply: FastifyReply, permission: Permission | null) => Promise<Actor | null>;
   readonly bearer: (request: FastifyRequest) => string | null;
@@ -164,7 +167,7 @@ const companyBody = z.object({ name: z.string().trim().min(1).max(120), about: z
  * under `/practice/<site>` for learners, `/practice-admin` for staff.
  */
 export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityRouteDeps): void {
-  const { practice, community, service, staff, bearer } = deps;
+  const { practice, community, packs, service, staff, bearer } = deps;
 
   const siteOf = async (request: FastifyRequest): Promise<PracticeSite> => {
     const site = await practice.site((request.params as { site: string }).site);
@@ -434,6 +437,46 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
       return reply.send({ id: decided.id, status: decided.status });
     },
   );
+
+  if (packs !== undefined) {
+    const pack = z.object({
+      name: z.enum(PACKS),
+      title: z.string(),
+      description: z.string(),
+      lessons: z.number(),
+      problems: z.number(),
+      imported: z.boolean(),
+    });
+    routes.get(
+      "/practice-admin/starter-packs",
+      { schema: { tags: ADMIN, summary: "Starter content this site can take in", security: STAFF, response: { 200: z.object({ packs: z.array(pack).readonly() }), ...refusals } } },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:read");
+        if (actor === null) return;
+        return reply.send({ packs: await packs.list(actor.orgId) });
+      },
+    );
+    routes.post(
+      "/practice-admin/starter-packs/:name",
+      {
+        schema: {
+          tags: ADMIN,
+          summary: "Take in a starter pack: its lessons, problems and track",
+          description: "Once per site. Everything it adds is the site's own afterwards.",
+          security: STAFF,
+          params: z.object({ name: z.enum(PACKS) }),
+          response: { 201: z.object({ track: z.string(), lessons: z.number(), problems: z.number() }), ...refusals },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
+        const added = await packs.import(actor.orgId, request.params.name);
+        await service.recordAudit(actor, "prep.starter_pack_imported", request.params.name, { ...added });
+        return reply.code(201).send(added);
+      },
+    );
+  }
 
   routes.get("/practice-admin/store/items", { schema: { tags: ADMIN, summary: "The coin store's items", security: STAFF, response: { 200: z.object({ items: z.array(staffItem).readonly() }), ...refusals } } }, async (request, reply) => {
     const actor = await staff(request, reply, "exam:read");

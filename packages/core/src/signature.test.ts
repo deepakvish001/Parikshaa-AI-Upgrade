@@ -199,6 +199,23 @@ describe("validating function questions", () => {
     if (!result.ok) expect(result.problems.map((p) => p.path)).toEqual(["questions.0.checker"]);
   });
 
+  it("refuses SQL on a function question, and takes it on a whole-program one", () => {
+    const result = validateExam(exam({ ...question, language: "python", languages: ["python", "sql"] }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.problems.map((p) => p.path)).toEqual(["questions.0.languages"]);
+    const query: CodeQuestion = {
+      ...program,
+      language: "sql",
+      languages: ["sql"],
+      tests: [
+        { id: "s", input: "CREATE TABLE t (x INTEGER); INSERT INTO t VALUES (1);", expected: "1", hidden: false, weight: 1 },
+        { id: "h", input: "CREATE TABLE t (x INTEGER); INSERT INTO t VALUES (2);", expected: "2", hidden: true, weight: 1 },
+      ],
+      checker: { kind: "unordered" },
+    };
+    expect(validateExam(exam(query))).toEqual({ ok: true });
+  });
+
   it("checks a whole-program question's checker and starters", () => {
     const whole: CodeQuestion = {
       ...program,

@@ -41,7 +41,12 @@ Between drives, an institution can open a **practice site** at
 `/practice/<site>`: its learners sign up, solve problems published from the
 question bank in the same workspace, read editorials once they have solved
 them, keep a streak, climb a leaderboard and take timed contests with an ICPC
-scoreboard (ROADMAP §15).
+scoreboard (ROADMAP §15). The site is also a place to prepare (§16): tracks of
+lessons and problems, a study plan that moves what was missed, spaced
+revision, notes, coins and a coin store, Plus through Razorpay, Sahayak — an
+AI tutor that hints before it tells — company pages counted from interview
+reports, learners' interview experiences, contest ratings, SQL problems that
+run, and starter packs of CS fundamentals and SQL.
 
 ![A practice problem, solved in the workspace](docs/screenshots/practice-02-workspace.png)
 

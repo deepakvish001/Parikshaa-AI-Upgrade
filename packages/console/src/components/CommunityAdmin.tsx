@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StoreItem } from "../api.ts";
+import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StarterPack, type StoreItem } from "../api.ts";
 
 /**
  * Companies, interview experiences and the coin store (ROADMAP §16), for staff.
@@ -14,6 +14,55 @@ import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperien
 const failure = (error: unknown, fallback: string) =>
   error instanceof ConsoleError ? (error.detail ?? (error.problems[0]?.message ?? fallback)) : fallback;
 const today = () => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+
+// --- starter packs ------------------------------------------------------------------------------
+
+export function StarterPacks({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const packs = useQuery({ queryKey: ["prep", "starter-packs"], queryFn: () => client.starterPacks() });
+  const take = useMutation({
+    mutationFn: (name: StarterPack["name"]) => client.importStarterPack(name),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["prep"] });
+      void queryClient.invalidateQueries({ queryKey: ["practice", "problems"] });
+    },
+  });
+  if ((packs.data ?? []).length === 0) return null;
+  return (
+    <section className="card" aria-label="Starter packs">
+      <div className="bar">
+        <strong>Starter packs</strong>
+      </div>
+      <p className="notice">Content to open a site with. Each adds its lessons, problems and a track, once; afterwards they are yours to change or hide.</p>
+      <ul className="stack">
+        {(packs.data ?? []).map((p) => (
+          <li key={p.name} className="row">
+            <span>
+              <strong>{p.title}</strong> — {p.description}{" "}
+              <span className="notice">
+                ({p.lessons > 0 ? `${p.lessons} lessons, ` : ""}
+                {p.problems} problems)
+              </span>
+            </span>
+            {p.imported ? (
+              <span className="notice">Added</span>
+            ) : canWrite ? (
+              <button type="button" disabled={take.isPending} onClick={() => take.mutate(p.name)}>
+                Add {p.title}
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {take.isSuccess ? (
+        <p role="status">
+          Added {take.data.problems} problems{take.data.lessons > 0 ? ` and ${take.data.lessons} lessons` : ""}, and the track.
+        </p>
+      ) : null}
+      {take.isError ? <p className="error">{failure(take.error, "That pack could not be added")}</p> : null}
+    </section>
+  );
+}
 
 // --- companies --------------------------------------------------------------------------------
 

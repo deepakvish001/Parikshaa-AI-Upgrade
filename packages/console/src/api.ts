@@ -851,6 +851,14 @@ export class ConsoleClient {
     return this.#request(`/practice-admin/learners/${encodeURIComponent(learnerId)}/plus`, { method: "POST", body: JSON.stringify({ days }) });
   }
 
+  async starterPacks(): Promise<readonly StarterPack[]> {
+    return (await this.#request<{ packs: StarterPack[] }>("/practice-admin/starter-packs")).packs;
+  }
+
+  importStarterPack(name: StarterPack["name"]): Promise<{ readonly track: string; readonly lessons: number; readonly problems: number }> {
+    return this.#request(`/practice-admin/starter-packs/${encodeURIComponent(name)}`, { method: "POST" });
+  }
+
   async companies(): Promise<readonly StaffCompany[]> {
     return (await this.#request<{ companies: StaffCompany[] }>("/practice-admin/companies")).companies;
   }
@@ -1488,6 +1496,15 @@ export interface PlusOrder {
   readonly status: "created" | "paid";
   readonly createdAt: string;
   readonly paidAt: string | null;
+}
+
+export interface StarterPack {
+  readonly name: "cs-fundamentals" | "sql-starter";
+  readonly title: string;
+  readonly description: string;
+  readonly lessons: number;
+  readonly problems: number;
+  readonly imported: boolean;
 }
 
 export interface StaffCompany {

@@ -13,6 +13,7 @@ import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepPlus } from "./prep-plus.js";
 import { PrepCommunity } from "./prep-community.js";
+import { StarterPacks } from "./starter-packs.js";
 import { Sahayak } from "./sahayak.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer } from "./server.js";
@@ -82,6 +83,11 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     practice,
     practiceIdentity: new PracticeIdentity({ store: new PracticeStore(unusable), practice, secrets, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     prep: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
+    starterPacks: new StarterPacks({
+      practice: new PracticeStore(unusable),
+      prep: new PrepStore(unusable),
+      service: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
+    }),
     prepCommunity: new PrepCommunity({ practice: new PracticeStore(unusable), prep: new PrepStore(unusable), store: new PrepCommunityStore(unusable) }),
     prepPlus: (() => {
       const plus = new PrepPlus({ store: new PrepPlusStore(unusable), practice: new PracticeStore(unusable) });
