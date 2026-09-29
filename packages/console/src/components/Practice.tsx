@@ -10,6 +10,8 @@ import {
   type PracticeSiteSettings,
   type PracticeSimilarity,
 } from "../api.ts";
+import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
+import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
 
 /**
  * A practice site (ROADMAP §15): the organisation's problems at
@@ -18,7 +20,7 @@ import {
  * nothing published.
  */
 
-type Tab = "site" | "problems" | "contests" | "learners" | "discussion";
+type Tab = "site" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "companies" | "experiences" | "store" | "contests" | "learners" | "discussion";
 
 export interface PracticeCan {
   readonly manage: boolean;
@@ -36,6 +38,13 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
   const tabs: [Tab, string][] = [
     ["site", "Site"],
     ["problems", "Problems"],
+    ["tracks", "Tracks"],
+    ["lessons", "Lessons"],
+    ["potd", "Problem of the day"],
+    ["plus", "Plus"],
+    ["companies", "Companies"],
+    ["experiences", "Experiences"],
+    ["store", "Coin store"],
     ["contests", "Contests"],
     ...(can.readLearners ? ([["learners", "Learners"]] as [Tab, string][]) : []),
     ["discussion", "Discussion"],
@@ -56,6 +65,18 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
         </>
       ) : null}
       {tab === "problems" ? <Problems client={client} canWrite={can.write} canReview={can.review === true} /> : null}
+      {tab === "tracks" ? (
+        <>
+          <StarterPacks client={client} canWrite={can.write} />
+          <Tracks client={client} canWrite={can.write} />
+        </>
+      ) : null}
+      {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
+      {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
+      {tab === "plus" ? <PlusAdmin client={client} canManage={can.manage} /> : null}
+      {tab === "companies" ? <Companies client={client} canWrite={can.write} /> : null}
+      {tab === "experiences" ? <Experiences client={client} canWrite={can.write} /> : null}
+      {tab === "store" ? <CoinStore client={client} canManage={can.manage} /> : null}
       {tab === "contests" ? <Contests client={client} canWrite={can.write} /> : null}
       {tab === "learners" ? <Learners client={client} /> : null}
       {tab === "discussion" ? <Discussion client={client} canWrite={can.write} /> : null}

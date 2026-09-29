@@ -99,6 +99,9 @@ describe("serving the clients", () => {
     // The console's Billing page opens Razorpay Checkout; the candidate's page never can.
     const staff = await app.inject({ method: "GET", url: "/console/", headers: html });
     expect(String(staff.headers["content-security-policy"])).toContain("script-src 'self' https://*.razorpay.com");
+    // So does a practice site's page, where learners buy Plus.
+    const practice = await app.inject({ method: "GET", url: "/practice/nit-practice/plus", headers: html });
+    expect(String(practice.headers["content-security-policy"])).toContain("frame-src https://*.razorpay.com");
 
     // JSON carries the plain headers, not a page's policy.
     const api = await app.inject({ method: "GET", url: "/health" });

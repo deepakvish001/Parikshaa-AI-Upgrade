@@ -7,6 +7,7 @@ export const LANGUAGE_NAMES: Record<string, string> = {
   c: "C (GCC)",
   cpp: "C++17 (GCC)",
   java: "Java 17",
+  sql: "SQL (SQLite)",
 };
 
 /** The starter in a language, read defensively: a server from before per-language starters sends only one. */

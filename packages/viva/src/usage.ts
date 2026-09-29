@@ -16,7 +16,7 @@
  * tokens is exactly 5 micro-dollars per token.
  */
 
-export type ModelRoute = "probe" | "assess" | "grade";
+export type ModelRoute = "probe" | "assess" | "grade" | "tutor";
 
 export interface ModelUsage {
   readonly route: ModelRoute;

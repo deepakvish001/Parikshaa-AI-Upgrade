@@ -9,8 +9,15 @@ import { functionChecker, programFor, RESULT_MARKER, starterFor } from "./signat
  * package with no dependency on this one — and a test in the API checks the two
  * agree.
  */
-export const CODE_LANGUAGES = ["python", "javascript", "c", "cpp", "java"] as const;
+export const CODE_LANGUAGES = ["python", "javascript", "c", "cpp", "java", "sql"] as const;
 export type CodeLanguage = (typeof CODE_LANGUAGES)[number];
+
+/**
+ * The languages a function question is written in: every one but SQL, whose
+ * answer is a query over tables, not a function called on values. A question
+ * that offers SQL gives each test's tables as its input.
+ */
+export const FUNCTION_LANGUAGES = ["python", "javascript", "c", "cpp", "java"] as const satisfies readonly CodeLanguage[];
 
 /**
  * What a candidate submits for a code question: the source, and which of the
