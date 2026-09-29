@@ -23,10 +23,16 @@ async function focusShows(page: Page): Promise<{ tag: string; name: string; show
 
 /**
  * Tab until `target` has focus, checking each stop on the way shows its focus.
- * Back (Shift+Tab) for a control above the focus: past the page's end,
+ * Back (Shift+Tab) when the control is above the focus: past the page's end,
  * Firefox takes the focus into its own toolbar, and it never comes back.
+ * `back` says so where nothing has focus but the browser still starts from
+ * below, as Firefox does from a control that has just gone.
  */
-async function tabTo(page: Page, target: Locator, most = 80, back = false): Promise<void> {
+async function tabTo(page: Page, target: Locator, most = 80, back?: boolean): Promise<void> {
+  back ??= await target.evaluate((el) => {
+    const from = document.activeElement;
+    return from !== null && from !== document.body && (el.compareDocumentPosition(from) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  });
   for (let i = 0; i < most; i++) {
     await page.keyboard.press(back ? "Shift+Tab" : "Tab");
     const stop = await focusShows(page);
@@ -72,7 +78,7 @@ test("a candidate sits the whole paper with the keyboard alone, and always sees 
   await expect(page.locator(".qfoot")).toContainText("Saved");
 
   // Submit, back up in the bar: the summary opens on "Keep working"; Tab to "Yes, submit".
-  await tabTo(page, page.getByRole("button", { name: "Submit attempt" }), 80, true);
+  await tabTo(page, page.getByRole("button", { name: "Submit attempt" }));
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "Submit your attempt?" });
   await expect(dialog).toBeVisible();
