@@ -79,8 +79,11 @@ jobs:
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
 
+      # GitHub offers dependency review on public repositories, or on private
+      # ones with Advanced Security; elsewhere the action refuses to run. The
+      # audit above still gates production dependencies.
       - name: Dependency review
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && !github.event.repository.private
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
