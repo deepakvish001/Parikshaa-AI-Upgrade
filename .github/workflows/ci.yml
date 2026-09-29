@@ -76,8 +76,13 @@ jobs:
       - name: Dependency audit
         run: npm audit --omit=dev --audit-level=high
 
+      # Dependency review needs GitHub Advanced Security on a private
+      # repository, and errors out without it. It runs on public repositories,
+      # or once the repository variable DEPENDENCY_REVIEW is set to 'true'.
       - name: Dependency review
-        if: github.event_name == 'pull_request'
+        if: >-
+          github.event_name == 'pull_request' &&
+          (!github.event.repository.private || vars.DEPENDENCY_REVIEW == 'true')
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
