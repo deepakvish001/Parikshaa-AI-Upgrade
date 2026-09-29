@@ -68,7 +68,11 @@ export class PracticeError extends Error {
       | "tutor_closed"
       | "unavailable"
       | "payment_invalid"
-      | "not_configured",
+      | "not_configured"
+      | "no_coins"
+      | "sold_out"
+      | "limit_reached"
+      | "too_new",
     message: string,
   ) {
     super(message);

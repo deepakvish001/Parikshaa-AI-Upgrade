@@ -16,3 +16,4 @@ export * from "./practice-store.js";
 export * from "./lti-store.js";
 export * from "./prep-store.js";
 export * from "./prep-plus-store.js";
+export * from "./prep-community-store.js";

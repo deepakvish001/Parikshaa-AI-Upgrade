@@ -12,6 +12,7 @@ import {
   ProctorStore,
   PracticeStore,
   PrepStore,
+  PrepCommunityStore,
   PrepPlusStore,
   QuestionBank,
   QuestionMedia,
@@ -37,6 +38,7 @@ import { ResultsService } from "../results.js";
 import { PracticeService } from "../practice.js";
 import { PrepService } from "../prep.js";
 import { PrepPlus } from "../prep-plus.js";
+import { PrepCommunity } from "../prep-community.js";
 import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
 import { buildServer, type ServerOptions } from "../server.js";
@@ -249,6 +251,7 @@ export async function wire(
     practice,
     practiceIdentity,
     prep: new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+    prepCommunity: new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
     prepPlus: {
       plus: prepPlus,
       tutor: new Sahayak({ client: options.client, practice: new PracticeStore(sql), prep: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),

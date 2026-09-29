@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -12,6 +12,7 @@ import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepPlus } from "./prep-plus.js";
+import { PrepCommunity } from "./prep-community.js";
 import { Sahayak } from "./sahayak.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer } from "./server.js";
@@ -81,6 +82,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     practice,
     practiceIdentity: new PracticeIdentity({ store: new PracticeStore(unusable), practice, secrets, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     prep: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
+    prepCommunity: new PrepCommunity({ practice: new PracticeStore(unusable), prep: new PrepStore(unusable), store: new PrepCommunityStore(unusable) }),
     prepPlus: (() => {
       const plus = new PrepPlus({ store: new PrepPlusStore(unusable), practice: new PracticeStore(unusable) });
       return { plus, tutor: new Sahayak({ client: null, practice: new PracticeStore(unusable), prep: new PrepStore(unusable), plus }) };

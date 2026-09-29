@@ -45,7 +45,8 @@ export const COINS = {
   ]),
 } as const;
 export const DAILY_COIN_CAP = 300;
-const MILESTONES = ["module", "track", "streak"];
+// Paid outside the daily cap: milestones, a published interview experience, and coins a cancelled order gives back.
+const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant"];
 /** Cards shown for revision in a day, oldest first; the rest wait. */
 export const REVISE_PER_DAY = 15;
 const LIST_NAME = /^[\p{L}\p{N} _\-'&()]{1,60}$/u;

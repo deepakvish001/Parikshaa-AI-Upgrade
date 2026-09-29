@@ -8,7 +8,10 @@
     "PracticeApp-*.css": 5,
     "PrepPages-*.js": 12,
     "Tutor-*.js": 10,
-    "PrepPages-*.css": 3,
+    "prep-*.css": 3,
+    "prep-*.js": 1,
+    "CommunityPages-*.js": 9,
+    "CommunityPages-*.css": 2,
     "??-*.js": 11
   },
   "packages/console/dist": {

@@ -1,0 +1,229 @@
+/* Companies, interview experiences, the coin store and ratings (ROADMAP §16). */
+
+.company-name,
+.store-item > strong {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-lg);
+}
+.company-name svg,
+.store-item > strong svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--saffron-600);
+}
+.window-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.chip {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+.chip.on {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary, #fff);
+}
+.chip .count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.8;
+}
+.company-problems .asked {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.company-problems .solved {
+  display: inline-flex;
+  gap: var(--space-1);
+  align-items: center;
+  color: var(--success, var(--text-muted));
+  font-size: var(--text-sm);
+}
+.company-problems .solved svg {
+  width: 1rem;
+  height: 1rem;
+}
+.locked-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin: var(--space-3) 0 0;
+}
+.locked-row svg {
+  width: 1rem;
+  height: 1rem;
+}
+.difficulty-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.topic-bars,
+.experience-list,
+.badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.topic-bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 8rem) 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-sm);
+}
+.topic-bars .bar {
+  display: block;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-muted, var(--border));
+  overflow: hidden;
+}
+.topic-bars .bar span {
+  display: block;
+  height: 100%;
+  background: var(--saffron-500);
+}
+.experience-list {
+  gap: var(--space-4);
+}
+.experience {
+  display: grid;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.experience-list li:last-child .experience {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.experience header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.experience h3 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.experience .rounds {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+.round-problems {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+}
+.verdict {
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  background: var(--surface-muted, var(--border));
+}
+.verdict.offer {
+  background: var(--saffron-100);
+}
+.experience button.on {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.experience-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.experience-form label {
+  display: grid;
+  gap: var(--space-1);
+}
+.form-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+}
+.round-fields {
+  display: grid;
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+.store-item {
+  display: grid;
+  gap: var(--space-2);
+  align-content: start;
+}
+.store-item p {
+  margin: 0;
+}
+.order-status.cancelled {
+  color: var(--text-muted);
+}
+.rating-badge {
+  display: inline-flex;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--saffron-500);
+  border-radius: var(--radius-full);
+  background: var(--saffron-100);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.rating-badge svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--saffron-600);
+}
+.rating-badge .title {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+.badges {
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+}
+.badges li {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.badges li.earned {
+  border-style: solid;
+  border-color: var(--saffron-500);
+  background: var(--saffron-100);
+  color: var(--text);
+}
+.badges svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.badges li.earned svg {
+  color: var(--saffron-600);
+}

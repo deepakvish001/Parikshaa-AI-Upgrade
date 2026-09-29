@@ -851,6 +851,48 @@ export class ConsoleClient {
     return this.#request(`/practice-admin/learners/${encodeURIComponent(learnerId)}/plus`, { method: "POST", body: JSON.stringify({ days }) });
   }
 
+  async companies(): Promise<readonly StaffCompany[]> {
+    return (await this.#request<{ companies: StaffCompany[] }>("/practice-admin/companies")).companies;
+  }
+
+  saveCompany(id: string | null, draft: { name: string; about: string }): Promise<Omit<StaffCompany, "reports">> {
+    return this.#request(id === null ? "/practice-admin/companies" : `/practice-admin/companies/${encodeURIComponent(id)}`, { method: id === null ? "POST" : "PUT", body: JSON.stringify(draft) });
+  }
+
+  async reportProblems(companyId: string, problemIds: readonly string[], reportedOn: string): Promise<number> {
+    return (
+      await this.#request<{ added: number }>(`/practice-admin/companies/${encodeURIComponent(companyId)}/reports`, { method: "POST", body: JSON.stringify({ problemIds, reportedOn }) })
+    ).added;
+  }
+
+  async deleteReport(id: string): Promise<void> {
+    await this.#request(`/practice-admin/company-reports/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  async experiences(status?: StaffExperience["status"]): Promise<readonly StaffExperience[]> {
+    return (await this.#request<{ experiences: StaffExperience[] }>(`/practice-admin/experiences${status === undefined ? "" : `?status=${status}`}`)).experiences;
+  }
+
+  async decideExperience(id: string, status: "published" | "rejected"): Promise<void> {
+    await this.#request(`/practice-admin/experiences/${encodeURIComponent(id)}/decision`, { method: "POST", body: JSON.stringify({ status }) });
+  }
+
+  async storeItems(): Promise<readonly StoreItem[]> {
+    return (await this.#request<{ items: StoreItem[] }>("/practice-admin/store/items")).items;
+  }
+
+  saveStoreItem(id: string | null, draft: Omit<StoreItem, "id">): Promise<StoreItem> {
+    return this.#request(id === null ? "/practice-admin/store/items" : `/practice-admin/store/items/${encodeURIComponent(id)}`, { method: id === null ? "POST" : "PUT", body: JSON.stringify(draft) });
+  }
+
+  async storeOrders(): Promise<readonly StoreOrder[]> {
+    return (await this.#request<{ orders: StoreOrder[] }>("/practice-admin/store/orders")).orders;
+  }
+
+  async closeStoreOrder(id: string, status: "fulfilled" | "cancelled", note: string): Promise<void> {
+    await this.#request(`/practice-admin/store/orders/${encodeURIComponent(id)}/close`, { method: "POST", body: JSON.stringify({ status, note }) });
+  }
+
   async practiceLearners(): Promise<readonly PracticeLearner[]> {
     return (await this.#request<{ learners: PracticeLearner[] }>("/practice-admin/learners")).learners;
   }
@@ -1446,4 +1488,62 @@ export interface PlusOrder {
   readonly status: "created" | "paid";
   readonly createdAt: string;
   readonly paidAt: string | null;
+}
+
+export interface StaffCompany {
+  readonly id: string;
+  readonly slug: string;
+  readonly name: string;
+  readonly about: string;
+  readonly reports: readonly {
+    readonly id: string;
+    readonly problemId: string;
+    readonly problemTitle: string;
+    readonly reportedOn: string;
+    readonly source: "staff" | "experience";
+    readonly experienceId: string | null;
+  }[];
+}
+
+export interface StaffExperience {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly company: { readonly slug: string; readonly name: string };
+  readonly role: string;
+  readonly interviewed: string;
+  readonly verdict: "offer" | "reject" | "waiting";
+  readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[] }[];
+  readonly tips: string;
+  readonly author: string;
+  readonly status: "pending" | "published" | "rejected";
+  readonly votes: number;
+  readonly at: string;
+}
+
+export interface StoreItem {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly kind: "plus" | "digital" | "physical";
+  readonly plusDays: number;
+  readonly priceCoins: number;
+  /** Null: no limit. */
+  readonly stock: number | null;
+  readonly perLearner: number;
+  readonly active: boolean;
+}
+
+export interface StoreOrder {
+  readonly id: string;
+  readonly itemId: string;
+  readonly title: string;
+  readonly priceCoins: number;
+  readonly address: string;
+  readonly status: "placed" | "fulfilled" | "cancelled";
+  readonly note: string;
+  readonly createdAt: string;
+  readonly closedAt: string | null;
+  readonly learnerId: string;
+  readonly learnerName: string;
+  readonly learnerEmail: string;
 }

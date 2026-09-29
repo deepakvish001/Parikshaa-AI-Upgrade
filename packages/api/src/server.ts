@@ -22,6 +22,8 @@ import { registerPracticeRoutes } from "./practice-routes.js";
 import type { PrepService } from "./prep.js";
 import { registerPrepRoutes } from "./prep-routes.js";
 import type { PrepPlus } from "./prep-plus.js";
+import type { PrepCommunity } from "./prep-community.js";
+import { registerPrepCommunityRoutes } from "./prep-community-routes.js";
 import { registerPrepPlusRoutes } from "./prep-plus-routes.js";
 import type { Sahayak } from "./sahayak.js";
 import type { PracticeIdentity } from "./practice-identity.js";
@@ -73,6 +75,8 @@ export interface ServerOptions {
   readonly prep?: PrepService;
   /** Plus, credits and the tutor (ROADMAP §16). Needs `practice`. */
   readonly prepPlus?: { readonly plus: PrepPlus; readonly tutor: Sahayak };
+  /** Companies, interview experiences, the coin store and ratings (ROADMAP §16). Needs `practice`. */
+  readonly prepCommunity?: PrepCommunity;
   readonly invitations: InvitationService;
   readonly results: ResultsService;
   readonly webhooks: WebhookService;
@@ -410,6 +414,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         unavailable: 503,
         payment_invalid: 400,
         not_configured: 409,
+        no_coins: 402,
+        sold_out: 409,
+        limit_reached: 409,
+        too_new: 403,
       }[error.code];
       return reply.code(status).send({ error: error.code, message: error.message });
     }
@@ -1091,6 +1099,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }), ...(prep === undefined ? {} : { prep }) });
       if (prep !== undefined) registerPrepRoutes(routes, { practice: options.practice, prep, service, staff, bearer });
       if (options.prepPlus !== undefined) registerPrepPlusRoutes(routes, { practice: options.practice, ...options.prepPlus, service, staff, bearer });
+      if (options.prepCommunity !== undefined) registerPrepCommunityRoutes(routes, { practice: options.practice, community: options.prepCommunity, service, staff, bearer });
       if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
     }
 

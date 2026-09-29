@@ -446,6 +446,40 @@ export class PracticeClient {
   async coinLeaders(): Promise<readonly { readonly rank: number; readonly name: string; readonly coins: number; readonly you: boolean }[]> {
     return (await this.#request<{ leaders: { rank: number; name: string; coins: number; you: boolean }[] }>("/coins/leaders")).leaders;
   }
+
+  // --- companies, experiences, the store, ratings ------------------------------------------------
+
+  async companies(): Promise<readonly CompanyCard[]> {
+    return (await this.#request<{ companies: CompanyCard[] }>("/companies")).companies;
+  }
+
+  company(slug: string, window: CompanyWindow): Promise<CompanyPage> {
+    return this.#request(`/companies/${encodeURIComponent(slug)}?window=${window}`);
+  }
+
+  async experiences(company?: string): Promise<readonly InterviewExperience[]> {
+    return (await this.#request<{ experiences: InterviewExperience[] }>(`/experiences${company === undefined ? "" : `?company=${encodeURIComponent(company)}`}`)).experiences;
+  }
+
+  shareExperience(draft: ExperienceDraft): Promise<InterviewExperience> {
+    return this.#post("/experiences", draft);
+  }
+
+  async vote(id: string, on: boolean): Promise<void> {
+    await this.#request(`/experiences/${encodeURIComponent(id)}/vote`, { method: on ? "PUT" : "DELETE" });
+  }
+
+  coinStore(): Promise<CoinStore> {
+    return this.#request("/store");
+  }
+
+  redeem(itemId: string, address: string): Promise<{ readonly order: StoreOrder; readonly balance: number }> {
+    return this.#post(`/store/${encodeURIComponent(itemId)}/redeem`, { address });
+  }
+
+  rating(): Promise<RatingView> {
+    return this.#request("/rating");
+  }
 }
 
 const contestQuery = (contest: string | undefined) => (contest === undefined ? "" : `?contest=${encodeURIComponent(contest)}`);
@@ -695,4 +729,116 @@ export interface TutorHistory {
   readonly nextHint: { readonly level: number; readonly credits: number; readonly available: boolean } | null;
   readonly failures: number;
   readonly costs: { readonly hint1: number; readonly hint: number; readonly review: number; readonly doubt: number };
+}
+
+// --- companies, experiences, the store, ratings ------------------------------------------------
+
+export type CompanyWindow = "30" | "60" | "180" | "all";
+
+export interface CompanyCard {
+  readonly slug: string;
+  readonly name: string;
+  /** Problems asked in the last 180 days. */
+  readonly problems: number;
+  readonly experiences: number;
+}
+
+export interface InterviewRound {
+  readonly kind: string;
+  readonly asked: string;
+  readonly problemSlugs: readonly string[];
+}
+
+export interface InterviewExperience {
+  readonly id: string;
+  readonly company: { readonly slug: string; readonly name: string };
+  readonly role: string;
+  readonly interviewed: string;
+  readonly verdict: "offer" | "reject" | "waiting";
+  readonly rounds: readonly InterviewRound[];
+  readonly tips: string;
+  readonly author: string;
+  readonly status: "pending" | "published" | "rejected";
+  readonly votes: number;
+  readonly voted: boolean;
+  readonly mine: boolean;
+  readonly at: string;
+}
+
+export interface ExperienceDraft {
+  readonly company: string;
+  readonly role: string;
+  readonly interviewed: string;
+  readonly verdict: InterviewExperience["verdict"];
+  readonly rounds: readonly InterviewRound[];
+  readonly tips: string;
+  readonly anonymous: boolean;
+}
+
+export interface CompanyPage {
+  readonly slug: string;
+  readonly name: string;
+  readonly about: string;
+  readonly window: string;
+  readonly counts: Readonly<Record<string, number>>;
+  readonly problems: readonly {
+    readonly slug: string;
+    readonly title: string;
+    readonly difficulty: Difficulty;
+    readonly tags: readonly string[];
+    readonly times: number;
+    readonly lastAsked: string;
+    readonly solved: boolean;
+  }[];
+  /** More problems in the window, which come with Plus. */
+  readonly locked: number;
+  readonly topics: readonly { readonly tag: string; readonly problems: number }[];
+  readonly difficulty: { readonly easy: number; readonly medium: number; readonly hard: number };
+  readonly experiences: readonly InterviewExperience[];
+}
+
+export interface StoreOrder {
+  readonly id: string;
+  readonly title: string;
+  readonly priceCoins: number;
+  readonly status: "placed" | "fulfilled" | "cancelled";
+  readonly note: string;
+  readonly createdAt: string;
+  readonly closedAt: string | null;
+}
+
+export interface CoinStore {
+  readonly balance: number;
+  readonly opensAt: string | null;
+  readonly items: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly description: string;
+    readonly kind: "plus" | "digital" | "physical";
+    readonly plusDays: number;
+    readonly priceCoins: number;
+    readonly soldOut: boolean;
+    readonly left: number | null;
+    readonly bought: number;
+    readonly perLearner: number;
+  }[];
+  readonly orders: readonly StoreOrder[];
+}
+
+export interface Achievement {
+  readonly id: string;
+  readonly have: number;
+  readonly need: number;
+  readonly earned: boolean;
+}
+
+export interface RatingView {
+  readonly board: readonly { readonly rank: number; readonly name: string; readonly rating: number; readonly title: string; readonly contests: number; readonly you: boolean }[];
+  readonly me: {
+    readonly rating: number | null;
+    readonly title: string;
+    readonly contests: number;
+    readonly history: readonly { readonly contest: string; readonly slug: string; readonly rank: number; readonly field: number; readonly before: number; readonly after: number; readonly at: string }[];
+    readonly achievements: readonly Achievement[];
+  } | null;
 }

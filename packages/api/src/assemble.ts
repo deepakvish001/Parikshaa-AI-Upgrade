@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -17,6 +17,7 @@ import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepPlus } from "./prep-plus.js";
+import { PrepCommunity } from "./prep-community.js";
 import { Sahayak } from "./sahayak.js";
 import { PracticeIdentity } from "./practice-identity.js";
 import { buildServer, type ServerOptions } from "./server.js";
@@ -151,6 +152,7 @@ export function assemble(o: AssembleOptions): {
     practice,
     practiceIdentity,
     prep: new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus }),
+    prepCommunity: new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus }),
     prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus }) },
     ...o.server,
   });

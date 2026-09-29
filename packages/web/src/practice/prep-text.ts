@@ -163,6 +163,11 @@ const en = {
   "coins.rule.module": "Module finished",
   "coins.rule.track": "Track finished",
   "coins.rule.streak": "Streak",
+  "coins.rule.experience": "Interview experience published",
+  "coins.rule.store": "Spent in the store",
+  "coins.rule.store_refund": "Order cancelled, returned",
+  "coins.rule.grant": "Given by staff",
+  "coins.store": "Spend coins",
 
   "common.loading": "Loading…",
   "common.failed": "That did not work. Try again.",
@@ -370,6 +375,11 @@ const hi: Record<PrepKey, string> = {
   "coins.rule.module": "मॉड्यूल पूरा",
   "coins.rule.track": "ट्रैक पूरा",
   "coins.rule.streak": "लगातार पढ़ाई",
+  "coins.rule.experience": "इंटरव्यू अनुभव प्रकाशित",
+  "coins.rule.store": "दुकान में ख़र्च",
+  "coins.rule.store_refund": "ऑर्डर रद्द, वापस",
+  "coins.rule.grant": "स्टाफ़ ने दिए",
+  "coins.store": "सिक्के ख़र्च करें",
 
   "common.loading": "लोड हो रहा है…",
   "common.failed": "यह नहीं हो पाया। फिर कोशिश करें।",

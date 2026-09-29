@@ -45,6 +45,12 @@ const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
 const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
 const PlusPage = lazy(() => prep().then((m) => ({ default: m.PlusPage })));
+const community = () => import("./CommunityPages.tsx");
+const CompaniesPage = lazy(() => community().then((m) => ({ default: m.CompaniesPage })));
+const CompanyPage = lazy(() => community().then((m) => ({ default: m.CompanyPage })));
+const ExperiencesPage = lazy(() => community().then((m) => ({ default: m.ExperiencesPage })));
+const StorePage = lazy(() => community().then((m) => ({ default: m.StorePage })));
+const RatingPage = lazy(() => community().then((m) => ({ default: m.RatingPage })));
 const TutorPanel = lazy(() => import("./Tutor.tsx").then((m) => ({ default: m.TutorPanel })));
 import "./practice.css";
 
@@ -75,6 +81,11 @@ export type Route =
   | { readonly page: "potd" }
   | { readonly page: "coins" }
   | { readonly page: "plus" }
+  | { readonly page: "companies" }
+  | { readonly page: "company"; readonly slug: string }
+  | { readonly page: "experiences"; readonly company: string | undefined }
+  | { readonly page: "store" }
+  | { readonly page: "rating" }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -118,6 +129,14 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "coins" };
     case "plus":
       return { page: "plus" };
+    case "companies":
+      return second === undefined ? { page: "companies" } : { page: "company", slug: second };
+    case "experiences":
+      return { page: "experiences", company: query.get("company") ?? undefined };
+    case "store":
+      return { page: "store" };
+    case "rating":
+      return { page: "rating" };
     case "signin":
       return { page: "signin", next };
     case "signup":
@@ -296,7 +315,10 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
                 </Link>
               </>
             )}
-            <Link nav={nav} to="/contests" current={here("/contests")}>
+            <Link nav={nav} to="/companies" current={here("/companies") || here("/experiences")}>
+              {p("companies")}
+            </Link>
+            <Link nav={nav} to="/contests" current={here("/contests") || here("/rating")}>
               {t("practice.contests")}
             </Link>
             <Link nav={nav} to="/leaderboard" current={here("/leaderboard")}>
@@ -358,6 +380,16 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <PotdPage {...context} />
         ) : route.page === "plus" ? (
           <PlusPage {...context} />
+        ) : route.page === "companies" ? (
+          <CompaniesPage {...context} />
+        ) : route.page === "company" ? (
+          <CompanyPage {...context} slug={route.slug} />
+        ) : route.page === "experiences" ? (
+          <ExperiencesPage {...context} company={route.company} />
+        ) : route.page === "store" ? (
+          <StorePage {...context} />
+        ) : route.page === "rating" ? (
+          <RatingPage {...context} />
         ) : route.page === "home" || route.page === "plan" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
@@ -1175,7 +1207,7 @@ function LeaderboardPage({ client, learner, site }: Context) {
 // --- contests -----------------------------------------------------------------------------------------
 
 function ContestsPage({ client, nav, site }: Context) {
-  const { t } = usePreferences();
+  const { t, language } = usePreferences();
   const when = useWhen();
   const contests = useQuery({ queryKey: ["practice", site, "contests"], queryFn: () => client.contests() });
   const now = useNow((contests.data ?? []).some((c) => c.state !== "ended"));
@@ -1188,7 +1220,12 @@ function ContestsPage({ client, nav, site }: Context) {
   return (
     <div className="contests-page">
       <h1>{t("practice.contests")}</h1>
-      <p className="notice">{t("practice.contestsHint")}</p>
+      <p className="notice">
+        {t("practice.contestsHint")}{" "}
+        <Link nav={nav} to="/rating">
+          {navWord(language, "rating")}
+        </Link>
+      </p>
       {all.length === 0 ? <p className="card notice empty">{contests.isPending ? t("practice.loading") : t("practice.noContests")}</p> : null}
       {groups.map(([state, label]) => {
         const list = all.filter((c) => c.state === state);

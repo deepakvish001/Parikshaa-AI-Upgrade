@@ -535,14 +535,14 @@ export class PrepStore {
     });
   }
 
-  /** Learners by coins. Read in the staff scope; published as names and totals. */
+  /** Learners by coins earned (spending in the store does not lower a place). Read in the staff scope; published as names and totals. */
   async coinLeaders(orgId: OrgId, limit = 100): Promise<readonly { readonly learnerId: string; readonly name: string; readonly coins: number }[]> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
       (
         await tx.query<{ learner_id: string; name: string; coins: string }>(
           `SELECT c.learner_id, l.name, sum(c.amount) AS coins
              FROM prep_coins c JOIN learners l ON l.id = c.learner_id
-            WHERE c.org_id = $1 AND l.erased_at IS NULL
+            WHERE c.org_id = $1 AND l.erased_at IS NULL AND c.rule NOT IN ('store', 'store_refund')
             GROUP BY c.learner_id, l.name
            HAVING sum(c.amount) > 0
             ORDER BY coins DESC, min(c.created_at)

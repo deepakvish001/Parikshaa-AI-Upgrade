@@ -1145,12 +1145,12 @@ export function PotdPage({ client, nav, learner, site }: Context) {
   );
 }
 
-export function CoinsPage({ client, learner, site }: Signed) {
+export function CoinsPage({ client, nav, learner, site }: Signed) {
   const p = usePrepText();
   const when = useWhen();
   const coins = useQuery({ queryKey: key(site, "coins", learner.id), queryFn: () => client.coins() });
   const leaders = useQuery({ queryKey: key(site, "coin-leaders", learner.id), queryFn: () => client.coinLeaders() });
-  const ruleName = (rule: string) => (["checkin", "solve", "potd", "lesson", "module", "track", "streak"].includes(rule) ? p(`coins.rule.${rule}` as PrepKey) : rule);
+  const ruleName = (rule: string) => (["checkin", "solve", "potd", "lesson", "module", "track", "streak", "experience", "store", "store_refund", "grant"].includes(rule) ? p(`coins.rule.${rule}` as PrepKey) : rule);
   return (
     <div className="prep-page">
       <header className="prep-head">
@@ -1160,6 +1160,9 @@ export function CoinsPage({ client, learner, site }: Signed) {
         <span className="coin-balance">
           <Coins aria-hidden="true" /> {coins.data?.balance.toLocaleString("en-IN") ?? "—"}
         </span>
+        <Link nav={nav} to="/store" className="button secondary">
+          {p("coins.store")}
+        </Link>
       </header>
       <section className="card">
         <h2>{p("coins.how")}</h2>
