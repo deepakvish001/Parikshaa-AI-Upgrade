@@ -603,7 +603,7 @@ function Console({
         ) : null}
 
         <main className="content">
-          {me.data?.emailVerified === false && me.data.email !== null ? <ConfirmEmail client={client} email={me.data.email} /> : null}
+          {me.data?.emailVerified === false && me.data.email !== null && emailVerified !== "done" ? <ConfirmEmail client={client} email={me.data.email} /> : null}
           <PageFrame title={pageTitle(view, examTitle)} note={PAGE_NOTE[view.name]}>
             {view.name === "home" ? (
               <Home

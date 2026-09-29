@@ -84,10 +84,12 @@ test("an institution signs itself up, takes the tour, and tries the sample exam 
   // The link, as the email carries it.
   await page.goto(`/console/?verify=${encodeURIComponent(new StaffSecrets(SECRET).emailToken(me.id, email))}`);
   await expect(page.getByText("Your email address is confirmed.")).toBeVisible();
+  // The server's word first, then the page's: a failure then says which is behind.
+  const after = await (await page.request.get("/api/auth/me", { headers: { authorization: `Bearer ${session}` } })).json();
+  expect(after.emailVerified).toBe(true);
+  expect(after.permissions).toContain("attempt:start");
   await expect(page.locator(".confirm-email")).toHaveCount(0);
   await expect(page).toHaveURL(/\/console\/$/);
-  const after = await (await page.request.get("/api/auth/me", { headers: { authorization: `Bearer ${session}` } })).json();
-  expect(after.permissions).toContain("attempt:start");
   await expect(page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Staff", exact: true })).toBeVisible();
 
   // It is among the exams, and the first steps still wait for the institution's own.
