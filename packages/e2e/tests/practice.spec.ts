@@ -87,12 +87,17 @@ test("a learner signs up on a practice site, solves a problem, reads its editori
 
   // A question in the discussion, which staff can hide.
   await page.getByRole("tab", { name: "Discussion" }).click();
-  await page.getByPlaceholder("Write a comment").fill("Is insertion sort stable too?");
-  await page.getByRole("button", { name: "Post" }).click();
-  await expect(page.getByText("Is insertion sort stable too?")).toBeVisible();
+  const question = `Is insertion sort stable too? (${name})`;
+  await page.getByPlaceholder("Write a comment").fill(question);
+  // The comment's id from its own post: runs side by side post alike, and each hides only its own.
+  const [posted] = await Promise.all([
+    page.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith(`/comments`) && r.url().includes("/practice/")),
+    page.getByRole("button", { name: "Post" }).click(),
+  ]);
+  expect(posted.status()).toBe(201);
+  const mine = (await posted.json()) as { id: string };
+  await expect(page.getByText(question)).toBeVisible();
   const staff = { authorization: `Bearer ${token}` };
-  const comments = await (await request.get("/api/practice-admin/comments", { headers: staff })).json();
-  const mine = comments.comments.find((c: { body: string }) => c.body === "Is insertion sort stable too?");
   expect((await request.put(`/api/practice-admin/comments/${mine.id}`, { headers: staff, data: { hidden: true } })).status()).toBe(200);
   await page.reload();
   await page.getByRole("tab", { name: "Discussion" }).click();
