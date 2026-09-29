@@ -284,6 +284,12 @@ describe("contests", () => {
     expect(rows[2]).toHaveClass("you");
     expect(rows[2]).toHaveTextContent("−2");
     expect(rows[1]).toHaveTextContent("+1");
+    // Ravi solved each problem first; Asha solved the first one later, and tried the second.
+    expect(within(rows[1]!).getAllByRole("cell")[4]).toHaveClass("cell-first");
+    expect(within(rows[1]!).getAllByRole("cell")[4]).toHaveTextContent("First to solve: solved at 5 min, after 0 wrong tries");
+    expect(within(rows[2]!).getAllByRole("cell")[4]).toHaveClass("cell-ok");
+    expect(within(rows[2]!).getAllByRole("cell")[5]).toHaveTextContent("not solved, 2 wrong tries");
+    expect(screen.getByText("Live")).toHaveClass("pill", "live");
   });
 
   it("do not name their problems before they start", async () => {
@@ -335,7 +341,11 @@ describe("progress", () => {
     expect(screen.getByText("4 days")).toBeInTheDocument();
     expect(screen.getByText("1 day")).toBeInTheDocument();
     expect(screen.getByText("1-day streak")).toBeInTheDocument();
-    expect(screen.getByTitle(`${today}: 3 submitted, 1 accepted`)).toHaveClass("l2");
+    // The squares are a picture; the days with activity are also said in words.
+    const said = `${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(Date.parse(`${today}T00:00:00Z`))}: 3 submitted, 1 accepted`;
+    expect(screen.getByTitle(said)).toHaveClass("l2");
+    expect(screen.getByText("Submissions: 3, on 1 of the last 365 days")).toBeInTheDocument();
+    expect(screen.getAllByText(said).some((el) => el.tagName === "LI")).toBe(true);
     expect(screen.getByRole("link", { name: "Stable sort" })).toBeInTheDocument();
 
     vi.spyOn(window, "confirm").mockReturnValue(true);

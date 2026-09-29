@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 
 /**
  * Markdown for problem statements, as React elements.
@@ -137,7 +137,37 @@ export function inline(text: string, key = "i"): ReactNode[] {
   return nodes;
 }
 
-export function Markdown({ source, className }: { readonly source: string; readonly className?: string }) {
+/** A code block with a button that copies it, for reading a solution rather than sitting a test. */
+function CopyableCode({ text, language, copy }: { readonly text: string; readonly language: string; readonly copy: Copy }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="md-code-wrap">
+      <pre className="md-code" data-language={language || undefined}>
+        <code>{text}</code>
+      </pre>
+      <button
+        type="button"
+        className="md-copy quiet"
+        onClick={() => {
+          void navigator.clipboard?.writeText(text).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+          });
+        }}
+      >
+        {copied ? copy.done : copy.label}
+      </button>
+    </div>
+  );
+}
+
+/** The words on a code block's copy button; without them, code blocks have none. */
+export interface Copy {
+  readonly label: string;
+  readonly done: string;
+}
+
+export function Markdown({ source, className, copy }: { readonly source: string; readonly className?: string; readonly copy?: Copy }) {
   return (
     <div className={className === undefined ? "markdown" : `markdown ${className}`}>
       {blocks(source).map((block, i) => {
@@ -149,6 +179,7 @@ export function Markdown({ source, className }: { readonly source: string; reado
             return <Tag key={key}>{inline(block.text, key)}</Tag>;
           }
           case "code":
+            if (copy !== undefined) return <CopyableCode key={key} text={block.text} language={block.language} copy={copy} />;
             return (
               <pre key={key} className="md-code" data-language={block.language || undefined}>
                 <code>{block.text}</code>

@@ -119,3 +119,46 @@ test("a reload anywhere on a practice site opens that page, not the API's answer
   await page.goto("/practice/no-such-site");
   await expect(page.getByRole("heading", { name: "There is no practice site here" })).toBeVisible();
 });
+
+test("code typed in a practice problem's editor is still there after a reload", async ({ page, request }) => {
+  const token = await ownerToken(request);
+  const headers = { authorization: `Bearer ${token}` };
+  await seedPractice(request);
+  const title = `Echo ${Math.random().toString(36).slice(2, 8)}`;
+  const filed = await request.post("/api/bank", {
+    headers,
+    data: {
+      question: { kind: "code", stem: `${title}\n\nPrint what you read.`, maxScore: 1, rubric: [], language: "python", languages: ["python"], starter: "", samples: [], tests: [{ id: "t1", input: "1\n", expected: "1\n", weight: 1, hidden: true }] },
+      difficulty: "easy",
+      tags: [],
+    },
+  });
+  expect(filed.status(), await filed.text()).toBe(201);
+  const published = await request.post("/api/practice-admin/problems", { headers, data: { bankQuestionId: (await filed.json()).id } });
+  expect(published.status(), await published.text()).toBe(201);
+
+  await page.goto(`/practice/${SITE}/problems/${(await published.json()).slug}`);
+  const editor = page.getByRole("textbox", { name: "Code for question 1" });
+  await editor.click();
+  await page.keyboard.type("print(input())");
+  await expect(editor).toContainText("print(input())");
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Code for question 1" })).toContainText("print(input())");
+});
+
+test.describe("in the dark theme", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("the problem set, a problem and its discussion pass WCAG 2.1 AA", async ({ page, request }) => {
+    const { title } = await seedPractice(request);
+    await page.goto(`/practice/${SITE}`);
+    await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.getByRole("link", { name: new RegExp(title) }).click();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.getByRole("button", { name: "Display" }).click();
+    await expect(page.getByRole("group", { name: "Display" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
+});

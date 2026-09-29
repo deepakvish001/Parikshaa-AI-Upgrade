@@ -1256,6 +1256,23 @@ button.small {
   background: none;
   border: 0;
 }
+/* A solution to read has a Copy button in its corner; a question does not. */
+.markdown .md-code-wrap {
+  position: relative;
+}
+.markdown .md-code-wrap pre.md-code {
+  padding-right: 5.5rem;
+}
+.markdown button.md-copy {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  min-height: 1.75rem;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
 .markdown h3,
 .markdown h4,
 .markdown h5,
