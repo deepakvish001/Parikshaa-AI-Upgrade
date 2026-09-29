@@ -422,6 +422,13 @@ function renderApp(element: ReactElement) {
   return render(<QueryClientProvider client={queryClient}>{element}</QueryClientProvider>);
 }
 
+
+/** Answers the sign-in page's question whether institutions may sign up here (no), and passes everything else to `inner`. */
+const signupClosed =
+  (inner: (url: string, init?: RequestInit) => Promise<Response>) =>
+  async (url: string, init?: RequestInit): Promise<Response> =>
+    url === "/api/auth/signup" && init?.method === undefined ? new Response(JSON.stringify({ open: false, trialCredits: 0 })) : inner(url, init);
+
 describe("signing in", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -477,7 +484,7 @@ describe("signing in", () => {
       .fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: "second_factor_required" }), { status: 401 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ error: "invalid_credentials" }), { status: 401 }));
-    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("fetch", signupClosed(fetch));
     renderApp(<App />);
 
     await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
@@ -509,7 +516,7 @@ describe("signing in", () => {
   it("opens a reset link on choosing a new password, and clears it from the address bar", async () => {
     window.history.replaceState(null, "", "/console/?reset=abc.def");
     const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
-    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("fetch", signupClosed(fetch));
     renderApp(<App />);
 
     expect(window.location.search).toBe("");

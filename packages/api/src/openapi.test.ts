@@ -75,6 +75,8 @@ describe("the OpenAPI document", () => {
       "get /health",
       "get /openapi.json",
       "post /auth/login",
+      "get /auth/signup",
+      "post /auth/signup",
       "post /invitations/redeem",
       "post /invitations/briefing",
       "get /media/{sha256}",

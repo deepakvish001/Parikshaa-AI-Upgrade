@@ -47,6 +47,8 @@ import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { remembered, SignIn } from "./components/SignIn.tsx";
 
 /** The practice site's admin is opened by few, so it loads when opened. */
+/** The tour, taken once or twice by each account, likewise. */
+const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const PracticePanel = lazy(() => import("./components/Practice.tsx").then((m) => ({ default: m.PracticePanel })));
 
 type View =
@@ -81,6 +83,26 @@ type View =
  * (private windows, blocked site data), in which case a reload signs out.
  */
 const SESSION_KEY = "parikshaa.console.session";
+/** Set by signing up, for this tab only: the console opens with its tour, once. */
+const TOUR_KEY = "parikshaa.console.tour";
+const tourPending = {
+  take: (): boolean => {
+    try {
+      const pending = sessionStorage.getItem(TOUR_KEY) === "1";
+      sessionStorage.removeItem(TOUR_KEY);
+      return pending;
+    } catch {
+      return false;
+    }
+  },
+  set: (): void => {
+    try {
+      sessionStorage.setItem(TOUR_KEY, "1");
+    } catch {
+      // No tour on arriving; it is a button away on Home.
+    }
+  },
+};
 const stored = {
   get: (): string | null => {
     try {
@@ -129,8 +151,9 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   });
   const client = injected ?? (token === null ? null : new ConsoleClient(token));
 
-  const signIn = (next: string) => {
+  const signIn = (next: string, fresh = false) => {
     stored.set(next);
+    if (fresh) tourPending.set();
     setToken(next);
   };
   const signOut = () => {
@@ -264,6 +287,25 @@ function Console({
     },
   });
 
+  // The sample exam (see Home's welcome).
+  const [touring, setTouring] = useState(tourPending.take);
+  const loadSample = useMutation({
+    mutationFn: () => client.loadSample(),
+    onSuccess: async () => {
+      toast("The sample exam is in: try it as a candidate, or open it to look around.", "success");
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["dashboard"] }), queryClient.invalidateQueries({ queryKey: ["exams"] })]);
+    },
+    onError: () => toast("The sample exam could not be loaded. Try again.", "error"),
+  });
+  const removeSample = useMutation({
+    mutationFn: () => client.removeSample(),
+    onSuccess: async () => {
+      toast("The sample exam is put away.", "success");
+      await Promise.all([queryClient.invalidateQueries({ queryKey: ["dashboard"] }), queryClient.invalidateQueries({ queryKey: ["exams"] })]);
+    },
+    onError: () => toast("The sample exam could not be put away. Try again.", "error"),
+  });
+
   const archiveExam = useMutation({
     mutationFn: ({ examId, archived }: { examId: string; archived: boolean }) => client.archiveExam(examId, archived),
     onSuccess: async (_, { examId, archived }) => {
@@ -371,6 +413,7 @@ function Console({
       type="button"
       className={`nav-item${section === target.name ? " active" : ""}`}
       aria-current={section === target.name ? "page" : undefined}
+      data-tour={target.name}
       onClick={() => go(target)}
     >
       <Icon aria-hidden="true" />
@@ -486,7 +529,7 @@ function Console({
             ) : null}
           </nav>
           <span className="spacer" />
-          <button type="button" className="search-trigger" onClick={() => setSearching(true)} aria-keyshortcuts="Control+K">
+          <button type="button" className="search-trigger" data-tour="search" onClick={() => setSearching(true)} aria-keyshortcuts="Control+K">
             <Search aria-hidden="true" />
             <span>Search</span>
             <kbd>Ctrl K</kbd>
@@ -544,6 +587,21 @@ function Console({
                 canWrite={can("exam:write")}
                 onExam={(examId) => go({ name: "attempts", examId })}
                 onExams={(filter) => go({ name: "exams", filter })}
+                onTour={() => setTouring(true)}
+                {...(can("exam:write")
+                  ? {
+                      sample: {
+                        onLoad: () => loadSample.mutate(),
+                        onTry: (examId: string) => {
+                          go({ name: "attempts", examId });
+                          setTrying(true);
+                        },
+                        onOpen: (examId: string) => go({ name: "attempts", examId }),
+                        onRemove: () => removeSample.mutate(),
+                        busy: loadSample.isPending || removeSample.isPending,
+                      },
+                    }
+                  : {})}
                 onGo={(target) => {
                   if (target === "search") return setSearching(true);
                   if (target === "new-exam") {
@@ -670,6 +728,11 @@ function Console({
               )
             ) : null}
             {trying && examDefinition.data !== undefined ? <TryTest exam={examDefinition.data} onClose={() => setTrying(false)} /> : null}
+            {touring && me.data !== undefined ? (
+              <Suspense fallback={null}>
+                <ConsoleTour can={can} onClose={() => setTouring(false)} />
+              </Suspense>
+            ) : null}
             {startingDirect && pageExamId !== null ? (
               <StartAttemptDialog
                 starting={startAttempt.isPending}

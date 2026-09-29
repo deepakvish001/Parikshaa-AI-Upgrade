@@ -16,6 +16,8 @@ import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@
 import { RunnerUnavailable } from "@parikshaa/runner";
 import { ExamFrozen, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
+import type { Onboarding } from "./onboarding.js";
+import { registerOnboardingRoutes } from "./onboarding-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import { registerPracticeRoutes } from "./practice-routes.js";
@@ -95,6 +97,10 @@ export interface ServerOptions {
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
+  /** Institutions signing themselves up, and the sample exam. Absent: neither's routes. */
+  readonly onboarding?: Onboarding;
+  /** Sign-ups from one address (`SIGNUPS`: five an hour, unless given). */
+  readonly signupLimit?: RateLimit;
   /**
    * Send Strict-Transport-Security: browsers then refuse plain HTTP to this
    * host. On when the deployment is served over HTTPS (`PUBLIC_URL`).
@@ -1147,6 +1153,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       staff,
     });
     if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
+    if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
   });
 
   if (options.clients !== undefined) {

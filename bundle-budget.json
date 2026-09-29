@@ -16,8 +16,11 @@
     "??-*.js": 11
   },
   "packages/console/dist": {
-    "index-*.js": 176,
+    "index-*.js": 174,
     "index-*.css": 18,
-    "Practice-*.js": 14
+    "Practice-*.js": 14,
+    "Signup-*.js": 2,
+    "Tour-*.js": 3,
+    "createLucideIcon-*.js": 5
   }
 }

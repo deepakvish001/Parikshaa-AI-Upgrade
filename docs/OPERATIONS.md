@@ -203,6 +203,19 @@ npm run billing -w @parikshaa/api -- grant acme 25 "pilot drive"
 npm run billing -w @parikshaa/api -- show acme
 ```
 
+**Institutions signing themselves up** (for a pilot) is off unless turned on:
+
+| Variable | |
+|---|---|
+| `SELF_SIGNUP` | `on` lets anyone make an institution's account from the console's sign-in page. Off otherwise: organisations are made with `admin-cli` only. |
+| `SIGNUP_PRICE_RUPEES` | Required with `SELF_SIGNUP=on`: the price per attempt, before GST, once the trial credits are spent. |
+| `SIGNUP_TRIAL_CREDITS` | Attempts a new organisation starts with. Default 25. |
+
+Every organisation made this way is prepaid, so a stranger's account can
+start no more attempts than its trial credits until its owner buys more. One
+network may make five accounts an hour. The owner's email is not verified
+before the account works; watch the audit log (`org.created`) during a pilot.
+
 An organisation with no plan is not metered. A prepaid one starts no attempt
 without a credit; its owner buys more on the console's Billing page.
 

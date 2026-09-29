@@ -65,7 +65,22 @@ async function main(): Promise<void> {
           webhookSecret: required("RAZORPAY_WEBHOOK_SECRET"),
         });
 
+  // Institutions signing themselves up (pilot readiness): off unless asked
+  // for. Every organisation made this way starts prepaid, with a few trial
+  // credits, at the price per attempt given here.
+  const signup =
+    process.env["SELF_SIGNUP"] === "on"
+      ? {
+          pricePaise: Math.round(Number(required("SIGNUP_PRICE_RUPEES")) * 100),
+          trialCredits: Number.parseInt(process.env["SIGNUP_TRIAL_CREDITS"] ?? "25", 10),
+        }
+      : null;
+  if (signup !== null && !(signup.pricePaise > 0 && Number.isInteger(signup.trialCredits) && signup.trialCredits >= 0)) {
+    throw new Error("SIGNUP_PRICE_RUPEES must be a positive amount and SIGNUP_TRIAL_CREDITS a whole number");
+  }
+
   const { app, worker, privacy, billing, identity } = assemble({
+    signup,
     sql,
     ...(runner === undefined ? {} : { runner }),
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`

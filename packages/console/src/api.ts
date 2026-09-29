@@ -221,6 +221,8 @@ export interface Dashboard {
     readonly invited: number;
     readonly staff: number;
     readonly privacyNotice: boolean;
+    /** The sample exam, while it is loaded and not put away. Absent from an older server. */
+    readonly sampleExamId?: string | null;
   };
 }
 
@@ -567,6 +569,30 @@ export class ConsoleClient {
       const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
       throw new ConsoleError(response.status, body.error ?? "request_failed", [], body.message);
     }
+  }
+
+  /** Whether institutions may make their own accounts on this server. */
+  static async signupStatus(baseUrl = "/api"): Promise<{ readonly open: boolean; readonly trialCredits: number }> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/signup`);
+    if (!response.ok) return { open: false, trialCredits: 0 };
+    return (await response.json()) as { open: boolean; trialCredits: number };
+  }
+
+  /** Make an institution's account: its organisation and first owner, signed in. */
+  static async signUp(
+    details: { readonly organisation: string; readonly name: string; readonly email: string; readonly password: string },
+    baseUrl = "/api",
+  ): Promise<{ readonly token: string; readonly user: StaffUser }> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/signup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(details),
+    });
+    const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string; token?: string; user?: StaffUser };
+    if (!response.ok || body.token === undefined || body.user === undefined) {
+      throw new ConsoleError(response.status, body.error ?? "sign_up_failed", [], body.message);
+    }
+    return { token: body.token, user: body.user };
   }
 
   /** Where the browser goes to sign in through the organisation's own provider. */
@@ -974,6 +1000,15 @@ export class ConsoleClient {
 
   dashboard(): Promise<Dashboard> {
     return this.#request<Dashboard>("/dashboard");
+  }
+
+  /** A short aptitude paper to look around with, in the bank and among the exams. */
+  loadSample(): Promise<{ readonly examId: string }> {
+    return this.#request("/onboarding/sample", { method: "POST" });
+  }
+
+  async removeSample(): Promise<void> {
+    await this.#request("/onboarding/sample", { method: "DELETE" });
   }
 
   /** Candidates across every exam matching `q` (at least two characters). */

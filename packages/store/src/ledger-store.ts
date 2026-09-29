@@ -840,14 +840,25 @@ export class LedgerStore {
             [scope.orgId],
           )
         : null;
-      const [facts] = await tx.query<{ exams: string | number; bank: string | number; windows: string | number; invited: string | number; staff: string | number; notice: boolean }>(
-        `SELECT (SELECT count(*) FROM exams WHERE org_id = $1) AS exams,
-                (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL) AS bank,
+      // The sample exam and its questions are there to look at: they do not
+      // count as the organisation's own first exam or first questions.
+      const [facts] = await tx.query<{
+        exams: string | number;
+        bank: string | number;
+        windows: string | number;
+        invited: string | number;
+        staff: string | number;
+        notice: boolean;
+        sample: boolean;
+      }>(
+        `SELECT (SELECT count(*) FROM exams WHERE org_id = $1 AND id <> $2) AS exams,
+                (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL AND NOT ($3 = ANY (tags))) AS bank,
                 (SELECT count(*) FROM exam_windows WHERE org_id = $1) AS windows,
                 (SELECT count(*) FROM invitations WHERE org_id = $1) AS invited,
                 (SELECT count(*) FROM staff_users WHERE org_id = $1 AND disabled_at IS NULL) AS staff,
-                EXISTS (SELECT 1 FROM privacy_settings WHERE org_id = $1) AS notice`,
-        [scope.orgId],
+                EXISTS (SELECT 1 FROM privacy_settings WHERE org_id = $1) AS notice,
+                EXISTS (SELECT 1 FROM exams WHERE org_id = $1 AND id = $2 AND archived_at IS NULL) AS sample`,
+        [scope.orgId, SAMPLE_EXAM_ID, SAMPLE_TAG],
       );
       return {
         sittings: [...windows].sort((a, b) => new Date(a.opens_at).getTime() - new Date(b.opens_at).getTime()).map((w) => ({
@@ -875,6 +886,7 @@ export class LedgerStore {
           invited: Number(facts!.invited),
           staff: Number(facts!.staff),
           privacyNotice: facts!.notice,
+          sampleExamId: facts!.sample ? SAMPLE_EXAM_ID : null,
         },
       };
     });
@@ -1075,8 +1087,15 @@ export interface Dashboard {
     readonly invited: number;
     readonly staff: number;
     readonly privacyNotice: boolean;
+    /** The sample exam, while it is loaded and not put away. */
+    readonly sampleExamId: string | null;
   };
 }
+
+/** The sample exam a new organisation can load to look around (see the API's `onboarding.ts`): one per organisation, at this id. */
+export const SAMPLE_EXAM_ID = "sample-aptitude";
+/** The tag on the sample's questions in the bank. */
+export const SAMPLE_TAG = "sample";
 
 export interface AuditRecord {
   readonly at: string;

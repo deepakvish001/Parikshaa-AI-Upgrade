@@ -346,6 +346,31 @@ Companies, Experiences, Coin store) use the kit's empty and loading states,
 quiet row actions, and a hidden comment is marked by its pill and a warning
 rule rather than faded text. The tab row scrolls on a narrow screen.
 
+## A new institution's first day
+
+What a pilot institution sees before it has anything of its own:
+
+- **Making the account.** Where the operator allows it, the sign-in page
+  offers "Make your institution's account": the institution's name, the
+  owner's name, a work email and a password. It says how many attempts are
+  free before anything is asked for. Which step blocks the button is said
+  under it, as on every form.
+- **The welcome.** An organisation with no exam and no question of its own
+  opens on three ways to begin — try the sample exam, write an exam, bring a
+  question paper — each a card with one action. It gives way to the first
+  steps once the organisation has made something. The sample does not count:
+  it is there to look at, and a line on Home offers to put it away.
+- **The sample exam.** A 20-minute campus aptitude round, one of each kind of
+  question, loaded in one click and tried as a candidate would sit it in the
+  preview, where nothing is recorded.
+- **The tour.** Six stops (fewer for a role that cannot reach them), each a
+  ring round the thing it is about and a card beside it; in the middle when
+  the thing is not on screen, as on a phone. It is a dialog: focus moves in,
+  Tab stays within it, the arrow keys step, Escape ends it and focus returns
+  to what opened it. It opens by itself once, after signing up, and is a
+  button away on Home after that. The tour and the sign-up form are loaded
+  only when opened.
+
 ## Pages
 
 | | Candidate app | | Console |
@@ -428,6 +453,18 @@ Prep, as a learner sees it, and as the institution runs it:
 | 18 | [On a phone: the plan](screenshots/prep-18-phone-plan.png) | | |
 | 19 | [On a phone: a track](screenshots/prep-19-phone-track.png) | | |
 
+A new institution's first day:
+
+| | Console |
+| --- | --- |
+| 01 | [Making the institution's account](screenshots/onboarding-01-sign-up.png) |
+| 02 | [The tour: a stop](screenshots/onboarding-02-tour.png) |
+| 03 | [The tour's last stop, at the welcome](screenshots/onboarding-03-tour-last-stop.png) |
+| 04 | [The welcome: three ways to begin](screenshots/onboarding-04-welcome.png) |
+| 05 | [The sample exam loaded](screenshots/onboarding-05-sample-loaded.png) |
+| 06 | [The sample, sat as a candidate would in the preview](screenshots/onboarding-06-sample-as-a-candidate.png) |
+| 07 | [On a phone: making the account](screenshots/onboarding-07-phone-sign-up.png) |
+
 The green camera images are Chromium's fake camera, which stands in for a
 webcam when the screenshots are taken.
 
@@ -463,8 +500,9 @@ Three checks in CI keep the detail from drifting:
   JavaScript and CSS file against a gzipped cap; a file with no budget fails
   too. The candidate's entry is about 136 KB of script (with React 19) and
   18 KB of style: English and Hindi come with the page, and the other nine
-  languages load when chosen. The console is about 174 KB of script and
-  17 KB of style; its practice admin loads when opened.
+  languages load when chosen. The console is about 177 KB of script and
+  18 KB of style; its practice admin, the tour and the sign-up form load
+  when opened.
 
 Two more checks keep the pages usable without a mouse or a screen:
 

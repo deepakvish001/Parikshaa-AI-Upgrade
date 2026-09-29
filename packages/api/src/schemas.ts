@@ -864,5 +864,22 @@ export const dashboardResponse = z.object({
     invited: z.number().int(),
     staff: z.number().int(),
     privacyNotice: z.boolean(),
+    sampleExamId: z.string().nullable().describe("The sample exam, while it is loaded and not put away."),
   }),
 });
+
+// --- a new institution's first day ------------------------------------------
+
+export const signupStatus = z.object({
+  open: z.boolean(),
+  trialCredits: z.number().int().describe("Attempt credits a new organisation starts with."),
+});
+
+export const signupBody = z.object({
+  organisation: z.string().min(1).max(120).describe("The institution's name, as candidates will see it."),
+  name: z.string().min(1).max(120),
+  email: z.string().min(3).max(320),
+  password: z.string().min(1).max(200).describe("At least 12 characters."),
+});
+
+export const sampleResponse = z.object({ examId: z.string() });

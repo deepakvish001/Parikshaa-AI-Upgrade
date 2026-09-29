@@ -1,3 +1,4 @@
+import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
@@ -129,6 +130,8 @@ export async function wire(
     readonly atsBases?: AtsBaseUrls;
     /** Stands in for Google in a test of signing in with it. */
     readonly googleIssuer?: string;
+    /** Institutions may sign themselves up, on these terms. */
+    readonly signup?: SignupPolicy;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -247,6 +250,7 @@ export async function wire(
     tokens,
     auth,
     security,
+    onboarding: new Onboarding({ identity, auth, billing: new BillingStore(sql), bank: new QuestionBank(sql), exams: service, signup: options.signup ?? null }),
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),

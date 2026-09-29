@@ -1490,6 +1490,17 @@ article.report.scorecard {
 
 /* --- signing in: reset, two-step, the organisation's provider (ROADMAP §1) --- */
 
+.signin-new {
+  margin: var(--space-5) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  text-align: center;
+}
+.field-error {
+  color: var(--danger);
+}
+
 .signin-links {
   display: flex;
   flex-wrap: wrap;
@@ -3838,4 +3849,154 @@ button.month-day.picked::after {
 .item-drafts svg {
   width: 0.9rem;
   height: 0.9rem;
+}
+
+/* --- a new organisation's first day: the welcome, the sample, the tour ------- */
+
+.welcome {
+  margin-top: var(--space-5);
+  background:
+    radial-gradient(40rem 12rem at 100% 0%, var(--accent-soft), transparent 70%),
+    var(--surface);
+}
+.welcome-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.welcome-head h2 {
+  margin: 0 0 var(--space-1);
+}
+.welcome-paths {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.welcome-paths li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.welcome-paths h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.welcome-paths p {
+  flex: 1;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.welcome-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: var(--accent-text);
+}
+@media (max-width: 900px) {
+  .welcome-paths {
+    grid-template-columns: 1fr;
+  }
+}
+.sample-line {
+  margin-top: var(--space-5);
+}
+.sample-line .banner-action {
+  display: flex;
+  gap: var(--space-2);
+}
+.setup-tour {
+  margin-top: var(--space-3);
+}
+
+/* The tour: a ring around what a stop is about, the rest dimmed, and a card beside it. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.tour-scrim {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+}
+.tour-spot {
+  position: fixed;
+  border-radius: var(--radius);
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 0 0 100vmax var(--scrim);
+  transition:
+    top 200ms var(--ease),
+    left 200ms var(--ease),
+    width 200ms var(--ease),
+    height 200ms var(--ease);
+  pointer-events: none;
+}
+.tour-card {
+  position: fixed;
+  width: min(21.25rem, calc(100vw - 1.5rem));
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: ui-rise 160ms var(--ease);
+}
+.tour-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.tour-card h2 {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+.tour-card h2:focus {
+  outline: none;
+}
+.tour-card p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.tour-steps {
+  display: flex;
+  gap: var(--space-1);
+  margin: var(--space-4) 0;
+}
+.tour-steps span {
+  width: 1.25rem;
+  height: 4px;
+  background: var(--border);
+  border-radius: var(--radius-hair);
+}
+.tour-steps .seen {
+  background: var(--border-strong);
+}
+.tour-steps .on {
+  background: var(--accent);
+}
+.tour-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.tour-actions .spacer {
+  flex: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot,
+  .tour-card {
+    transition: none;
+    animation: none;
+  }
 }
