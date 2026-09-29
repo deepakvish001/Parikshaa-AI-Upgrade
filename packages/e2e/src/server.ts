@@ -50,6 +50,11 @@ const { app } = assemble({
   server: {
     // Every browser's tests sign up from this one address.
     signupLimit: { perSecond: 1, burst: 100 },
+    // Firefox under Playwright now and then never finishes a new tab's first
+    // navigation to a page sending Cross-Origin-Opener-Policy — each time a
+    // different test, always that first goto, never in Chromium or WebKit.
+    // The API's own tests hold the header to production.
+    openerPolicy: false,
     clients: {
       web: fileURLToPath(new URL("../../web/dist", import.meta.url)),
       console: fileURLToPath(new URL("../../console/dist", import.meta.url)),

@@ -70,7 +70,12 @@ test("a candidate sits the whole paper with the keyboard alone, and always sees 
   // The follow-up: its reply box, then Send.
   const probe = page.getByRole("region", { name: "Follow-up question" });
   await expect(probe).toBeVisible();
-  await tabTo(page, probe.getByLabel("Your reply to the follow-up"));
+  // The reply box opens once the question is written out, and the page puts
+  // the focus in it then: tabbing before would race that.
+  const replyBox = probe.getByLabel("Your reply to the follow-up");
+  await expect(replyBox).toBeEnabled();
+  await expect(replyBox).toBeFocused();
+  await tabTo(page, replyBox);
   await page.keyboard.type("Merging never swaps equal elements.");
   await tabTo(page, probe.getByRole("button", { name: "Send reply" }));
   await page.keyboard.press("Enter");

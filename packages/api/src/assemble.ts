@@ -58,7 +58,7 @@ export interface AssembleOptions {
   readonly sms?: SmsSender | null;
   /** Institutions may sign themselves up, on these terms. Absent: only the admin CLI makes organisations. */
   readonly signup?: SignupPolicy | null;
-  readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit">;
+  readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy">;
 }
 
 export function assemble(o: AssembleOptions): {

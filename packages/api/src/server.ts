@@ -99,6 +99,13 @@ export interface ServerOptions {
   readonly loginThrottle?: LoginThrottle;
   /** Institutions signing themselves up, and the sample exam. Absent: neither's routes. */
   readonly onboarding?: Onboarding;
+  /**
+   * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
+   * opened a page of ours can reach into it. On unless set false, which only
+   * the browser suite does: Playwright's Firefox loses a new tab's first
+   * navigation when the policy moves it to another process.
+   */
+  readonly openerPolicy?: boolean;
   /** Sign-ups from one address (`SIGNUPS`: five an hour, unless given). */
   readonly signupLimit?: RateLimit;
   /**
@@ -287,7 +294,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.header("referrer-policy", "no-referrer");
-    reply.header("cross-origin-opener-policy", "same-origin");
+    if (options.openerPolicy !== false) reply.header("cross-origin-opener-policy", "same-origin");
     reply.header("permissions-policy", "camera=(self), microphone=(), geolocation=(), payment=(self)");
     if (options.hsts === true) reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
   });
