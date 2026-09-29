@@ -40,7 +40,7 @@ export function Tracks({ client, canWrite }: { client: ConsoleClient; canWrite: 
           </button>
         </div>
       ) : null}
-      <section className="card" aria-label="Tracks">
+      <section className="card prep-card" aria-label="Tracks">
         <div className="bar">
           <strong>Tracks</strong>
         </div>
@@ -256,7 +256,7 @@ export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite:
           </button>
         </div>
       ) : null}
-      <section className="card" aria-label="Lessons">
+      <section className="card prep-card" aria-label="Lessons">
         <div className="bar">
           <strong>Lessons</strong>
         </div>
@@ -317,7 +317,7 @@ function LessonForm({ client, lesson, onDone }: { client: ConsoleClient; lesson:
   });
   return (
     <form
-      className="card"
+      className="card prep-card"
       aria-label={lesson === null ? "New lesson" : `Edit ${lesson.title}`}
       onSubmit={(e) => {
         e.preventDefault();
@@ -382,7 +382,7 @@ export function ProblemOfTheDay({ client, canWrite }: { client: ConsoleClient; c
   const days = Array.from({ length: 21 }, (_, i) => addDays(schedule.data.today, i));
   const shown = (problems.data ?? []).filter((p) => p.published);
   return (
-    <section className="card" aria-label="Problem of the day">
+    <section className="card prep-card" aria-label="Problem of the day">
       <div className="bar">
         <strong>Problem of the day</strong>
       </div>
@@ -473,7 +473,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
   const nameOf = new Map((learners.data ?? []).map((l) => [l.id, l.name]));
   return (
     <>
-      <section className="card" aria-label="Plus and the tutor">
+      <section className="card prep-card" aria-label="Plus and the tutor">
         <div className="bar">
           <strong>Plus and the tutor</strong>
         </div>
@@ -507,7 +507,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
         ) : null}
       </section>
 
-      <section className="card" aria-label="Plans">
+      <section className="card prep-card" aria-label="Plans">
         <div className="bar">
           <strong>Plans</strong>
         </div>
@@ -596,7 +596,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
       </section>
 
       {canManage ? (
-        <section className="card" aria-label="Give Plus">
+        <section className="card prep-card" aria-label="Give Plus">
           <div className="bar">
             <strong>Give Plus</strong>
           </div>
@@ -637,7 +637,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
       ) : null}
 
       {canManage && (orders.data ?? []).length > 0 ? (
-        <section className="card" aria-label="Plans bought">
+        <section className="card prep-card" aria-label="Plans bought">
           <div className="bar">
             <strong>Plans bought</strong>
           </div>

@@ -13,6 +13,10 @@
     "./testing": {
       "types": "./dist/fake-model.d.ts",
       "default": "./dist/fake-model.js"
+    },
+    "./passwords": {
+      "types": "./dist/staff-auth.d.ts",
+      "default": "./dist/staff-auth.js"
     }
   },
   "files": [

@@ -18,3 +18,6 @@ if (typeof Blob.prototype.text !== "function") {
     });
   };
 }
+
+// jsdom lacks object URLs' revocation; photos revoke theirs when they leave the page.
+if (typeof URL.revokeObjectURL !== "function") URL.revokeObjectURL = () => undefined;

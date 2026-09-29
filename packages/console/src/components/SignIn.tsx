@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Building2, Languages, MessageCircleQuestion, ShieldCheck } from "lucide-react";
+import { Building2, Eye, EyeOff, Languages, MessageCircleQuestion, ShieldCheck } from "lucide-react";
 import { Wordmark } from "@parikshaa/brand/react";
 import { useMutation } from "@tanstack/react-query";
 import { ConsoleClient, ConsoleError } from "../api.ts";
@@ -11,6 +11,46 @@ import { ConsoleClient, ConsoleError } from "../api.ts";
  */
 
 type Mode = "password" | "forgot" | "reset" | "sso";
+
+/**
+ * What this device remembers between visits: the last email that signed in,
+ * and the organisation whose own sign-in was last used. Neither is a secret;
+ * storage can be unavailable, and then nothing is remembered.
+ */
+const EMAIL_KEY = "parikshaa.console.email";
+const SSO_KEY = "parikshaa.console.ssoOrg";
+export const remembered = {
+  email: (): string => {
+    try {
+      return localStorage.getItem(EMAIL_KEY) ?? "";
+    } catch {
+      return "";
+    }
+  },
+  setEmail: (email: string): void => {
+    try {
+      localStorage.setItem(EMAIL_KEY, email);
+    } catch {
+      // Not remembered.
+    }
+  },
+  ssoOrg: (): { id: string; name: string } | null => {
+    try {
+      const raw = localStorage.getItem(SSO_KEY);
+      const parsed = raw === null ? null : (JSON.parse(raw) as { id?: unknown; name?: unknown });
+      return parsed !== null && typeof parsed.id === "string" && parsed.id !== "" ? { id: parsed.id, name: typeof parsed.name === "string" && parsed.name !== "" ? parsed.name : parsed.id } : null;
+    } catch {
+      return null;
+    }
+  },
+  setSsoOrg: (org: { id: string; name: string }): void => {
+    try {
+      localStorage.setItem(SSO_KEY, JSON.stringify(org));
+    } catch {
+      // Not remembered.
+    }
+  },
+};
 
 /** What the provider's round trip came back with, said in plain words. */
 const SSO_ERRORS: Record<string, string> = {
@@ -82,13 +122,18 @@ function PasswordForm({
   onMode: (mode: Mode) => void;
   ssoError: string | null;
 }) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(remembered.email);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [code, setCode] = useState("");
   const [needsCode, setNeedsCode] = useState(false);
+  const [sso] = useState(remembered.ssoOrg);
   const signIn = useMutation({
     mutationFn: () => ConsoleClient.signIn(email.trim(), password, needsCode ? code.trim() : undefined),
-    onSuccess: ({ token }) => onSignedIn(token),
+    onSuccess: ({ token }) => {
+      remembered.setEmail(email.trim());
+      onSignedIn(token);
+    },
     onError: (error) => {
       if (error instanceof ConsoleError && error.code === "second_factor_required") setNeedsCode(true);
     },
@@ -111,10 +156,23 @@ function PasswordForm({
           : (SSO_ERRORS[ssoError] ?? SSO_ERRORS["invalid_sso"]!)
         : "Could not reach the server.";
 
+  const missing = email.trim() === "" ? "Enter your email" : password === "" ? "Enter your password" : needsCode && code.trim() === "" ? "Enter the code from your app" : null;
+
   return (
     <>
       <h1>Sign in to the console</h1>
       <p className="notice">For examiners, invigilators and administrators.</p>
+      {sso === null ? null : (
+        <>
+          <button type="button" className="block large" onClick={() => window.location.assign(ConsoleClient.ssoStartUrl(sso.id, email.trim()))}>
+            <Building2 aria-hidden="true" />
+            Continue with {sso.name}
+          </button>
+          <p className="or-divider">
+            <span>or</span>
+          </p>
+        </>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -127,13 +185,24 @@ function PasswordForm({
         </div>
         <div className="field">
           <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <div className="password-row">
+            <input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="quiet icon reveal"
+              aria-label={showPassword ? "Hide what you typed" : "Show what you typed"}
+              aria-pressed={showPassword}
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+            </button>
+          </div>
         </div>
         {needsCode ? (
           <div className="field">
@@ -156,11 +225,17 @@ function PasswordForm({
         )}
         <button
           type="submit"
-          className="block large"
-          disabled={signIn.isPending || email.trim() === "" || password === "" || (needsCode && code.trim() === "")}
+          className={`block large${sso === null ? "" : " secondary"}`}
+          disabled={signIn.isPending || missing !== null}
+          aria-describedby={missing === null ? undefined : "signin-missing"}
         >
           {signIn.isPending ? "Signing in…" : "Sign in"}
         </button>
+        {missing === null ? null : (
+          <p className="notice small disabled-reason" id="signin-missing">
+            {missing} to sign in.
+          </p>
+        )}
       </form>
       <div className="signin-links">
         <button type="button" className="link" onClick={() => onMode("forgot")}>
@@ -299,7 +374,9 @@ function SsoForm({ onBack }: { onBack: () => void }) {
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          window.location.assign(ConsoleClient.ssoStartUrl(org, email));
+          const known = remembered.ssoOrg();
+          remembered.setSsoOrg({ id: org.trim(), name: known?.id === org.trim() ? known.name : org.trim() });
+          window.location.assign(ConsoleClient.ssoStartUrl(org.trim(), email));
         }}
       >
         <div className="field">

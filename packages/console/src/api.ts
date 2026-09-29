@@ -10,6 +10,8 @@ export interface ExamSummary {
   readonly sectionCount?: number;
   readonly durationMs?: number | null;
   readonly proctored?: boolean;
+  /** The qualifying mark, as a percentage of the paper, if one is set. */
+  readonly cutoffPercent?: number | null;
   readonly attempts?: {
     readonly invited: number;
     readonly inProgress: number;
@@ -17,6 +19,10 @@ export interface ExamSummary {
     readonly graded: number;
     readonly void: number;
   };
+  /** When it can be sat, if a window has been set. */
+  readonly window?: { readonly opensAt: string; readonly closesAt: string } | null;
+  /** When it was put away, or null while it is current. */
+  readonly archivedAt?: string | null;
 }
 
 export interface AttemptSummary {
@@ -41,7 +47,7 @@ export interface VivaReview {
 }
 
 export interface AttemptReview {
-  readonly state: string;
+  readonly state: "in_progress" | "submitted" | "graded" | "void";
   readonly total: number | null;
   readonly voidReason: string | null;
   readonly voidedBy?: { readonly userId: string; readonly name: string } | null;
@@ -198,7 +204,16 @@ export interface Dashboard {
     readonly started: number;
   }[];
   /** Null for an account that may not read the audit log. */
-  readonly activity: readonly { readonly at: string; readonly actor: string; readonly action: string; readonly target: string | null }[] | null;
+  readonly activity:
+    | readonly {
+        readonly at: string;
+        readonly actor: string;
+        readonly action: string;
+        readonly target: string | null;
+        /** The exam it concerns, if any; an older server leaves it out. */
+        readonly exam?: { readonly id: string; readonly title: string } | null;
+      }[]
+    | null;
   readonly setup: {
     readonly exams: number;
     readonly bankQuestions: number;
@@ -279,8 +294,15 @@ export interface QuestionStats {
   readonly discrimination: number | null;
 }
 
+/** The exam a results page is about, with its qualifying mark; an older server leaves the mark out. */
+export interface ExamHead {
+  readonly id: string;
+  readonly title: string;
+  readonly cutoff?: { readonly percent: number; readonly sections?: Readonly<Record<string, number>> } | null;
+}
+
 export interface Results {
-  readonly exam: { readonly id: string; readonly title: string };
+  readonly exam: ExamHead;
   readonly rows: readonly ResultRow[];
   readonly analytics: {
     readonly candidates: number;
@@ -305,7 +327,7 @@ export interface Results {
 }
 
 export interface CandidateReport {
-  readonly exam: { readonly id: string; readonly title: string };
+  readonly exam: ExamHead;
   readonly candidate: { readonly ref: string; readonly name: string; readonly email: string | null };
   readonly result: Omit<ResultRow, "ref" | "name" | "email">;
   readonly questions: readonly {
@@ -750,6 +772,11 @@ export class ConsoleClient {
       method: "POST",
       body: JSON.stringify(title === undefined ? { id } : { id, title }),
     });
+  }
+
+  /** Put an exam away, or bring it back: only whether it is listed among current exams changes. */
+  async archiveExam(examId: string, archived: boolean): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/archived`, { method: "PUT", body: JSON.stringify({ archived }) });
   }
 
   // --- practice sites (ROADMAP §15) --------------------------------------------

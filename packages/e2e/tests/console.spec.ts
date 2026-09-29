@@ -29,7 +29,7 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
-  await page.getByRole("button", { name: sitting.title }).click();
+  await page.getByRole("button", { name: sitting.title, exact: true }).click();
   await page.getByRole("button", { name: "Results", exact: true }).click();
 
   const candidates = page.getByRole("region", { name: "Candidates" });
@@ -38,12 +38,12 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await expect(rows.nth(1)).toContainText("CS001");
   await expect(rows.nth(1)).toContainText("4 / 10 (40%)");
   await expect(rows.nth(2)).toContainText("CS002");
-  await expect(page.getByRole("region", { name: "Summary" })).toContainText("Graded2");
+  await expect(page.getByRole("region", { name: "At a glance" })).toContainText("2 Graded");
 
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Download CSV" }).click()]);
   expect(download.suggestedFilename()).toBe(`${sitting.examId}-results.csv`);
   const csv = await readFile((await download.path())!, "utf8");
-  expect(csv).toContain('"CS001","Candidate 1","cs001@college.test","graded",4,10,40');
+  expect(csv).toContain('"CS001","Candidate 1","cs001@college.test","Graded",4,10,40');
 
   await rows.nth(1).getByRole("button", { name: "Scorecard" }).click();
   await expect(page.getByRole("heading", { name: /Candidate 1/ })).toBeVisible();
@@ -75,12 +75,12 @@ test("an exam page: who qualified against the cut-off, the paper tried as a cand
   await page.getByLabel("Password").fill(OWNER.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
-  await page.getByRole("button", { name: sitting.title }).click();
+  await page.getByRole("button", { name: sitting.title, exact: true }).click();
 
   const side = page.getByRole("complementary", { name: "Candidates at a glance" });
   await expect(side.getByRole("listitem").filter({ hasText: /^Qualified/ })).toContainText("1");
   await expect(side.getByRole("listitem").filter({ hasText: "Not qualified" })).toContainText("1");
-  await expect(side.getByRole("listitem").filter({ hasText: "Completed" })).toContainText("2");
+  await expect(side.getByRole("listitem").filter({ hasText: "Submitted" })).toContainText("2");
 
   // Tried as a candidate: nothing reaches the server, so the counts stay as they are.
   await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();

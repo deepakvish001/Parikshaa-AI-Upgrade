@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog } from "@parikshaa/brand/ui";
-import { ClipboardList, CornerDownLeft, LayoutGrid, Search, UserRound } from "lucide-react";
+import { ClipboardList, CornerDownLeft, History, LayoutGrid, Search, UserRound, Zap } from "lucide-react";
 import type { CandidateHit, ConsoleClient, ExamSummary } from "../api.ts";
+import { ATTEMPT_WORDS } from "./kit.tsx";
 
 /**
  * Ctrl+K (⌘K on a Mac): find an exam, a candidate across every exam, or a
@@ -16,16 +17,32 @@ export interface PageLink {
 }
 
 type Item =
-  | { readonly kind: "exam"; readonly id: string; readonly exam: ExamSummary }
-  | { readonly kind: "candidate"; readonly id: string; readonly hit: CandidateHit }
+  | { readonly kind: "exam"; readonly id: string; readonly exam: ExamSummary; readonly recent?: boolean }
+  | { readonly kind: "candidate"; readonly id: string; readonly hit: CandidateHit; readonly recent?: boolean }
+  | { readonly kind: "action"; readonly id: string; readonly page: PageLink }
   | { readonly kind: "page"; readonly id: string; readonly page: PageLink };
 
-const STATE: Record<CandidateHit["attemptState"], string> = {
-  not_started: "not started",
-  in_progress: "taking it",
-  submitted: "to grade",
-  graded: "graded",
-  void: "set aside",
+/** What was opened from here lately, on this device: offered first when nothing is typed. */
+const RECENT_KEY = "parikshaa.console.recent";
+type Recent = { readonly kind: "exam"; readonly examId: string } | { readonly kind: "candidate"; readonly hit: CandidateHit };
+const recents = {
+  read: (): readonly Recent[] => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]") as unknown;
+      return Array.isArray(parsed) ? (parsed as Recent[]) : [];
+    } catch {
+      return [];
+    }
+  },
+  add: (item: Recent): void => {
+    try {
+      const key = (r: Recent) => (r.kind === "exam" ? `exam:${r.examId}` : `cand:${r.hit.invitationId}`);
+      const next = [item, ...recents.read().filter((r) => key(r) !== key(item))].slice(0, 5);
+      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+    } catch {
+      // Not remembered.
+    }
+  },
 };
 
 /** Opens on Ctrl+K or ⌘K, wherever focus is. */
@@ -46,6 +63,7 @@ export function CommandPalette({
   client,
   exams,
   pages,
+  actions = [],
   canSearchCandidates,
   onExam,
   onCandidate,
@@ -54,6 +72,8 @@ export function CommandPalette({
   client: ConsoleClient;
   exams: readonly ExamSummary[];
   pages: readonly PageLink[];
+  /** Things to do, offered beside the pages: "New exam", "Invite candidates". */
+  actions?: readonly PageLink[];
   canSearchCandidates: boolean;
   onExam: (examId: string) => void;
   onCandidate: (hit: CandidateHit) => void;
@@ -77,7 +97,19 @@ export function CommandPalette({
   });
 
   const needle = query.trim().toLowerCase();
+  const [recent] = useState(recents.read);
   const items = useMemo<readonly Item[]>(() => {
+    const recentItems: Item[] =
+      needle !== ""
+        ? []
+        : recent.flatMap((r): Item[] => {
+            if (r.kind === "candidate") return [{ kind: "candidate", id: `recent-cand:${r.hit.invitationId}`, hit: r.hit, recent: true }];
+            const exam = exams.find((e) => e.id === r.examId);
+            return exam === undefined ? [] : [{ kind: "exam", id: `recent-exam:${exam.id}`, exam, recent: true }];
+          });
+    const actionItems: Item[] = actions
+      .filter((a) => needle === "" || a.label.toLowerCase().includes(needle))
+      .map((page) => ({ kind: "action", id: `action:${page.label}`, page }));
     const examItems: Item[] = exams
       .filter((e) => needle === "" || e.title.toLowerCase().includes(needle))
       .slice(0, needle === "" ? 5 : 8)
@@ -87,20 +119,24 @@ export function CommandPalette({
     const pageItems: Item[] = pages
       .filter((p) => needle === "" || p.label.toLowerCase().includes(needle))
       .map((page) => ({ kind: "page", id: `page:${page.label}`, page }));
-    return [...examItems, ...candidateItems, ...pageItems];
-  }, [exams, candidates.data, pages, needle]);
+    return [...recentItems, ...actionItems, ...examItems, ...candidateItems, ...pageItems];
+  }, [exams, candidates.data, pages, actions, recent, needle]);
 
   useEffect(() => setActive(0), [needle]);
   const choose = (item: Item | undefined) => {
     if (item === undefined) return;
     onClose();
-    if (item.kind === "exam") onExam(item.exam.id);
-    else if (item.kind === "candidate") onCandidate(item.hit);
-    else item.page.go();
+    if (item.kind === "exam") {
+      recents.add({ kind: "exam", examId: item.exam.id });
+      onExam(item.exam.id);
+    } else if (item.kind === "candidate") {
+      recents.add({ kind: "candidate", hit: item.hit });
+      onCandidate(item.hit);
+    } else item.page.go();
   };
 
-  const group = (kind: Item["kind"], title: string) => {
-    const shown = items.filter((i) => i.kind === kind);
+  const group = (kind: Item["kind"] | "recent", title: string) => {
+    const shown = items.filter((i) => (kind === "recent" ? "recent" in i && i.recent === true : i.kind === kind && !("recent" in i && i.recent === true)));
     if (shown.length === 0) return null;
     return (
       <li role="presentation">
@@ -123,22 +159,28 @@ export function CommandPalette({
               >
                 {item.kind === "exam" ? (
                   <>
-                    <ClipboardList aria-hidden="true" />
+                    {"recent" in item && item.recent === true ? <History aria-hidden="true" /> : <ClipboardList aria-hidden="true" />}
                     <span className="palette-main">{item.exam.title}</span>
                     <span className="palette-meta">
                       {item.exam.questionCount} questions
-                      {item.exam.attempts === undefined ? "" : ` · ${item.exam.attempts.inProgress} sitting · ${item.exam.attempts.submitted} to grade`}
+                      {item.exam.attempts === undefined ? "" : ` · ${item.exam.attempts.inProgress} in progress · ${item.exam.attempts.submitted} to grade`}
                     </span>
                   </>
                 ) : item.kind === "candidate" ? (
                   <>
-                    <UserRound aria-hidden="true" />
+                    {"recent" in item && item.recent === true ? <History aria-hidden="true" /> : <UserRound aria-hidden="true" />}
                     <span className="palette-main">
                       {item.hit.name || item.hit.candidateRef} <span className="mono notice">{item.hit.candidateRef}</span>
                     </span>
                     <span className="palette-meta">
-                      {item.hit.examTitle} · {STATE[item.hit.attemptState]}
+                      {item.hit.examTitle} · {ATTEMPT_WORDS[item.hit.attemptState]}
                     </span>
+                  </>
+                ) : item.kind === "action" ? (
+                  <>
+                    <Zap aria-hidden="true" />
+                    <span className="palette-main">{item.page.label}</span>
+                    <span className="palette-meta">Action</span>
                   </>
                 ) : (
                   <>
@@ -186,6 +228,8 @@ export function CommandPalette({
           <kbd>Esc</kbd>
         </label>
         <ul className="palette-list" id="palette-list" role="listbox" aria-label="Results">
+          {group("recent", "Recent")}
+          {group("action", "Actions")}
           {group("exam", "Exams")}
           {group("candidate", "Candidates")}
           {group("page", "Pages")}

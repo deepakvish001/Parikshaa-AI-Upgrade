@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -434,6 +434,31 @@ describe("signing in", () => {
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "password");
   });
 
+  it("shows the password on request, and says why Sign in cannot be pressed yet", async () => {
+    renderApp(<App />);
+    const signIn = screen.getByRole("button", { name: "Sign in" });
+    expect(signIn).toBeDisabled();
+    expect(signIn).toHaveAccessibleDescription("Enter your email to sign in.");
+    await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
+    expect(signIn).toHaveAccessibleDescription("Enter your password to sign in.");
+    await userEvent.type(screen.getByLabelText("Password"), "a secret");
+    await userEvent.click(screen.getByRole("button", { name: "Show what you typed" }));
+    expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
+    expect(signIn).toBeEnabled();
+  });
+
+  it("remembers the last email on this device, and the organisation's own sign-in first", async () => {
+    localStorage.setItem("parikshaa.console.email", "asha@acme.test");
+    localStorage.setItem("parikshaa.console.ssoOrg", JSON.stringify({ id: "nalanda", name: "Nalanda Institute" }));
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign });
+    renderApp(<App />);
+    expect(screen.getByLabelText("Email")).toHaveValue("asha@acme.test");
+    await userEvent.click(screen.getByRole("button", { name: "Continue with Nalanda Institute" }));
+    expect(assign).toHaveBeenCalledWith(expect.stringContaining("nalanda"));
+    localStorage.clear();
+  });
+
   it("signs in, and says only that the pair was not accepted when it is not", async () => {
     const fetch = vi.fn(async () => new Response(JSON.stringify({ error: "invalid_credentials" }), { status: 401 }));
     vi.stubGlobal("fetch", fetch);
@@ -531,34 +556,71 @@ describe("console", () => {
     expect(screen.getAllByText("2").length).toBeGreaterThan(0);
   });
 
-  it("sums where candidates stand, and filters exams by it", async () => {
+  it("filters exams by where they stand, each filter with its count, and leaves the figures to Home", async () => {
     const counts = (inProgress: number, submitted: number, graded: number) => ({ invited: 0, inProgress, submitted, graded, void: 0 });
     const client = stubClient({
       listExams: vi.fn(async () => [
         { id: "live", title: "Campus Drive", questionCount: 20, durationMs: 3_600_000, totalMarks: 80, proctored: true, sectionCount: 2, attempts: counts(3, 1, 0) },
         { id: "done", title: "Mid-term", questionCount: 5, attempts: counts(0, 2, 7) },
         { id: "new", title: "Mock Test", questionCount: 10, attempts: counts(0, 0, 0) },
+        { id: "old", title: "Last year's drive", questionCount: 8, attempts: counts(0, 0, 4), archivedAt: "2026-01-01T00:00:00Z" },
       ]),
     });
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
     await screen.findByRole("button", { name: "Campus Drive" });
 
-    const glance = screen.getByRole("region", { name: "At a glance" });
-    expect(within(glance).getByText("Sitting now").previousSibling).toHaveTextContent("3");
-    expect(within(glance).getByText("To grade").previousSibling).toHaveTextContent("3");
+    // The figures are Home's; here they would only repeat it.
+    expect(screen.queryByRole("region", { name: "At a glance" })).not.toBeInTheDocument();
     expect(screen.getByText("60 min · 80 marks")).toBeInTheDocument();
     expect(screen.getByText("Proctored")).toBeInTheDocument();
+    const row = (title: string) => screen.getByRole("button", { name: title }).closest("tr")!;
+    expect(within(row("Campus Drive")).getByText("Open now")).toBeInTheDocument();
+    expect(within(row("Mid-term")).getByText("Closed")).toBeInTheDocument();
+    expect(within(row("Mock Test")).getByText("Draft")).toBeInTheDocument();
+    // Archived exams are kept out of the way.
+    expect(screen.queryByRole("button", { name: "Last year's drive" })).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Sitting now" }));
-    expect(screen.queryByRole("button", { name: "Mid-term" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Not yet sat" }));
+    await userEvent.click(screen.getByRole("button", { name: "To grade 2" }));
+    expect(screen.getByRole("button", { name: "Mid-term" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mock Test" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Draft 1" }));
     expect(screen.getByRole("button", { name: "Mock Test" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Campus Drive" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "All" }));
+    await userEvent.click(screen.getByRole("button", { name: "Archived 1" }));
+    expect(screen.getByRole("button", { name: "Last year's drive" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "All 3" }));
     await userEvent.type(screen.getByRole("searchbox", { name: "Search exams" }), "mid");
     expect(screen.getByRole("button", { name: "Mid-term" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Mock Test" })).not.toBeInTheDocument();
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search exams" }), "zzz");
+    await userEvent.click(screen.getByRole("button", { name: "Clear the search" }));
+    expect(screen.getByRole("button", { name: "Mock Test" })).toBeInTheDocument();
+  });
+
+  it("keeps an exam's other actions behind its ⋯, and archives from there", async () => {
+    const archiveExam = vi.fn(async () => undefined);
+    const client = stubClient({
+      listExams: vi.fn(async () => [{ id: "e1", title: "Campus Drive", questionCount: 2, attempts: { invited: 0, inProgress: 0, submitted: 1, graded: 0, void: 0 } }]),
+      archiveExam,
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Campus Drive" }));
+    const menu = screen.getByRole("menu", { name: "More actions for Campus Drive" });
+    // Sat, so fixed: Edit says why it cannot be chosen.
+    expect(within(menu).getByRole("menuitem", { name: /Edit/ })).toHaveAttribute("aria-disabled", "true");
+    expect(within(menu).getByText(/Make a copy to change it/)).toBeInTheDocument();
+    // Focus goes to the first item, disabled or not, and the arrows move on from it.
+    expect(within(menu).getByRole("menuitem", { name: /Edit/ })).toHaveFocus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(within(menu).getByRole("menuitem", { name: "Copy to change" })).toHaveFocus();
+    await userEvent.keyboard("{End}");
+    expect(within(menu).getByRole("menuitem", { name: "Archive" })).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    expect(archiveExam).toHaveBeenCalledWith("e1", true);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More actions for Campus Drive" })).toHaveFocus();
   });
 });
 
@@ -636,7 +698,7 @@ describe("exam editor", () => {
     await userEvent.type(screen.getByLabelText("Passage title"), "The monsoon");
     await userEvent.type(screen.getByLabelText("Passage"), "The monsoon reaches Kerala in early June.");
     await userEvent.click(screen.getByRole("button", { name: "Add question" }));
-    const second = screen.getByRole("region", { name: "Question 2" });
+    const second = screen.getByRole("region", { name: "Editing question 2" });
     await userEvent.type(within(second).getByLabelText("Question"), "Where does it arrive first?");
     await userEvent.type(within(second).getByLabelText("Option 1"), "Kerala");
     await userEvent.type(within(second).getByLabelText("Option 2"), "Delhi");
@@ -707,8 +769,12 @@ describe("attempts", () => {
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
 
-    await userEvent.type(await screen.findByLabelText(/Start an attempt/), "cand-9");
-    await userEvent.click(screen.getByRole("button", { name: "Start" }));
+    // Not a card on the overview: one of the exam's other actions.
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Start an attempt by roll number…" }));
+    const dialog = screen.getByRole("dialog", { name: "Start an attempt by roll number" });
+    await userEvent.type(within(dialog).getByLabelText("Roll number"), "cand-9");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Start" }));
 
     expect(await screen.findByLabelText("Access code")).toHaveValue("issued-token");
     expect(client.startAttempt).toHaveBeenCalledWith("exam-1", "cand-9");
@@ -810,6 +876,30 @@ describe("attempt review", () => {
     expect(screen.queryByRole("button", { name: "Set aside…" })).not.toBeInTheDocument();
   });
 
+  it("shows the answers and marks beside the evidence, and J and K move between them", async () => {
+    await openReview();
+    const answers = await screen.findByRole("region", { name: "Answers" });
+    const items = await within(answers).findAllByRole("listitem");
+    expect(items[1]).toHaveTextContent("4 / 5");
+    await userEvent.keyboard("j");
+    expect(items[0]).toHaveFocus();
+    await userEvent.keyboard("j");
+    expect(items[1]).toHaveFocus();
+    await userEvent.keyboard("k");
+    expect(items[0]).toHaveFocus();
+  });
+
+  it("sets an attempt aside only from its own decision, in a dialog", async () => {
+    await openReview();
+    const decision = await screen.findByRole("region", { name: "Decision" });
+    await userEvent.click(within(decision).getByRole("button", { name: "Set aside…" }));
+    const dialog = screen.getByRole("dialog", { name: "Set this attempt aside" });
+    expect(within(dialog).getByLabelText("Reason")).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(within(decision).getByRole("button", { name: "Set aside…" })).toHaveFocus();
+  });
+
   it("shows the staff-side rationale, which the candidate never sees", async () => {
     await openReview();
     const evidence = await screen.findByRole("region", { name: "Provenance evidence" });
@@ -824,8 +914,12 @@ describe("what a role is shown", () => {
     renderApp(<App client={client} />);
 
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    expect(await screen.findByLabelText(/Start an attempt/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Review" })).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Review" })).toBeDisabled();
+    await userEvent.click(screen.getByRole("button", { name: "More actions for Algorithms" }));
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByRole("menuitem", { name: "Start an attempt by roll number…" })).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitem", { name: /Edit|copy|Archive/ })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
 
     const nav = screen.getByRole("navigation", { name: "Account" });
     for (const tab of ["Staff", "API keys", "Spend", "Audit log"]) {
@@ -925,19 +1019,22 @@ describe("the room, for an invigilator", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
 
     const row = (await screen.findByText("cand-3")).closest("tr")!;
-    expect(row).toHaveTextContent("here");
+    expect(row).toHaveTextContent("Here now");
+    expect(row).toHaveTextContent("In progress");
+    expect((await screen.findByText("cand-1")).closest("tr")).toHaveTextContent("Graded");
   });
 
   it("grants extra time with a reason", async () => {
     const client = invigilator();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Extra time…" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for cand-3" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Extra time…" }));
 
     const form = screen.getByRole("form", { name: "Extra time for cand-3" });
     const grant = within(form).getByRole("button", { name: "Grant extra time" });
-    await userEvent.clear(within(form).getByLabelText("Minutes"));
-    await userEvent.type(within(form).getByLabelText("Minutes"), "15");
+    await userEvent.clear(within(form).getByLabelText("Extra minutes"));
+    await userEvent.type(within(form).getByLabelText("Extra minutes"), "15");
     await userEvent.type(within(form).getByLabelText("Reason"), "short");
     expect(grant).toBeDisabled();
 
@@ -947,6 +1044,7 @@ describe("the room, for an invigilator", () => {
     await waitFor(() =>
       expect(client.extendTime).toHaveBeenCalledWith("attempt-3", 15, "short — power cut in hall B"),
     );
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("offers extra time only to those who may grant it, and only on open attempts", async () => {
@@ -961,7 +1059,8 @@ describe("the room, for an invigilator", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
     await screen.findByText("cand-3");
 
-    expect(screen.queryByRole("button", { name: "Extra time…" })).not.toBeInTheDocument();
+    // Nothing else to do with the row, so no "⋯" at all.
+    expect(screen.queryByRole("button", { name: "More actions for cand-3" })).not.toBeInTheDocument();
   });
 });
 
@@ -980,6 +1079,30 @@ describe("the question bank", () => {
 
     expect(await within(bank).findByText("Train speed problem")).toBeInTheDocument();
     expect(within(bank).getAllByText("quant")).not.toHaveLength(0);
+    // Types in words, difficulty as a badge; the page's title is not repeated in a card.
+    const row = within(bank).getByText("Train speed problem").closest("tr")!;
+    expect(within(row).getByText("Multiple choice")).toBeInTheDocument();
+    expect(within(row).getByText("Easy")).toHaveClass("pill", "difficulty-easy");
+    expect(within(bank).queryByText("Question bank")).toBeNull();
+  });
+
+  it("acts on several questions at once", async () => {
+    const client = await openBank();
+    const bank = await screen.findByRole("region", { name: "Question bank" });
+    await userEvent.click(await within(bank).findByLabelText("Choose every question shown"));
+    const bulk = within(bank).getByRole("group", { name: "With the chosen questions" });
+    expect(bulk).toHaveTextContent("2 chosen");
+
+    await userEvent.click(within(bulk).getByRole("button", { name: "Change topic…" }));
+    const dialog = screen.getByRole("dialog", { name: "Change topic" });
+    await userEvent.type(within(dialog).getByLabelText("Topic"), "arithmetic");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Change topic" }));
+    await waitFor(() => expect(client.editQuestion).toHaveBeenCalledTimes(2));
+    expect(client.editQuestion).toHaveBeenCalledWith("b1", expect.objectContaining({ topic: "arithmetic", difficulty: "easy" }));
+
+    await userEvent.click(within(bank).getByLabelText("Choose “Work and time problem”"));
+    await userEvent.click(within(within(bank).getByRole("group", { name: "With the chosen questions" })).getByRole("button", { name: "Archive" }));
+    await waitFor(() => expect(client.archiveQuestion).toHaveBeenCalledWith("b2"));
   });
 
   it("imports a CSV file and lists every rejected row", async () => {
@@ -998,6 +1121,7 @@ describe("the question bank", () => {
 
   it("reads a Word paper first, shows every question found, and adds them only when asked", async () => {
     const client = await openBank();
+    await userEvent.click(await screen.findByRole("tab", { name: "Word document" }));
     const file = new File(["PK fake docx"], "paper.docx", { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
     await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), file);
 
@@ -1017,6 +1141,7 @@ describe("the question bank", () => {
     (client.importDocx as unknown as { mockRejectedValueOnce: (e: unknown) => void }).mockRejectedValueOnce(
       new ConsoleError(422, "invalid_import", [{ path: "question 4 (numbered 2)", message: 'No answer: add an "Answer:" line.' }]),
     );
+    await userEvent.click(await screen.findByRole("tab", { name: "Word document" }));
     await userEvent.upload(await screen.findByLabelText("Word file (.docx)"), new File(["x"], "paper.docx"));
     const problems = await screen.findByRole("list", { name: "Problems with this document" });
     expect(problems).toHaveTextContent("question 4 (numbered 2)");
@@ -1102,7 +1227,8 @@ describe("exams drawn from the bank", () => {
     const client = stubClient();
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Copy" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Make a copy" }));
 
     await waitFor(() => expect(client.cloneExam).toHaveBeenCalledWith("exam-1", expect.stringMatching(/^exam-1-copy-/)));
   });
@@ -1121,7 +1247,8 @@ describe("exams drawn from the bank", () => {
     });
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add question" }));
     await userEvent.type(screen.getAllByLabelText("Question").at(-1)!, "One more");
     await userEvent.type(screen.getAllByLabelText("Option 1").at(-1)!, "a");
@@ -1272,6 +1399,10 @@ describe("scheduling and inviting a cohort", () => {
     const preview = await screen.findByRole("group", { name: "Import preview" });
     expect(preview).toHaveTextContent("2 candidates ready to invite");
     expect(preview).toHaveTextContent(/row 3.*no email or phone/);
+    // The row as the sheet has it, beside what is wrong with it.
+    const flagged = within(preview).getByText(/no email or phone/).closest("tr")!;
+    expect(flagged).toHaveClass("warning");
+    expect(flagged).toHaveTextContent("CS002 · B");
     expect(client.importCandidates).toHaveBeenCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", true, ["email", "sms"]);
     expect(client.importCandidates).toHaveBeenCalledTimes(1);
 
@@ -1280,21 +1411,42 @@ describe("scheduling and inviting a cohort", () => {
     expect(client.importCandidates).toHaveBeenLastCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", false, ["email", "sms"]);
   });
 
+  it("schedules on India's clock, whatever the computer's own zone", async () => {
+    const client = await open();
+    const opens = await screen.findByLabelText("Opens (IST)");
+    // 04:30 UTC is 10:00 in India, and is shown so.
+    expect(opens).toHaveValue("2026-10-01T10:00");
+    await userEvent.clear(opens);
+    await userEvent.type(opens, "2026-10-01T10:00");
+    const closes = screen.getByLabelText("Closes (IST)");
+    await userEvent.clear(closes);
+    await userEvent.type(closes, "2026-10-01T13:00");
+    await userEvent.click(screen.getByRole("button", { name: /^(Schedule|Reschedule)$/ }));
+    await waitFor(() =>
+      expect(client.setWindow).toHaveBeenCalledWith("exam-1", { opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true }),
+    );
+  });
+
   it("shows each candidate's delivery, including what failed and why", async () => {
     await open();
     const table = await screen.findByRole("region", { name: "Invited candidates" });
 
     const row = (await within(table).findByText("CS001")).closest("tr")!;
-    expect(row).toHaveTextContent("Email sent · SMS failed");
-    expect(row.querySelector("[title]")?.getAttribute("title")).toContain("bad number");
+    expect(within(row).getByRole("img", { name: "Email sent" })).toBeInTheDocument();
+    const sms = within(row).getByRole("img", { name: "SMS failed: MSG91 400: bad number" });
+    // What went wrong is in a tooltip, on hover and on focus.
+    expect(within(row).getByRole("tooltip", { hidden: true })).toHaveTextContent("bad number");
+    expect(sms).toHaveAttribute("tabindex", "0");
   });
 
   it("resends and revokes a candidate who has not started", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Invited candidates" });
 
-    await userEvent.click(await within(table).findByRole("button", { name: "Resend" }));
-    await userEvent.click(within(table).getByRole("button", { name: "Revoke" }));
+    await userEvent.click(await within(table).findByRole("button", { name: "More actions for CS001" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Resend the link" }));
+    await userEvent.click(within(table).getByRole("button", { name: "More actions for CS001" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Withdraw the invitation" }));
 
     await waitFor(() => expect(client.resendInvitation).toHaveBeenCalledWith("i1", ["email", "sms"]));
     expect(client.revokeInvitation).toHaveBeenCalledWith("i1");
@@ -1330,9 +1482,9 @@ describe("results and exports", () => {
     await within(table).findByText("CS001");
     expect(refs(table)).toEqual(["CS001", "CS002", "CS010"]);
 
-    await userEvent.click(within(table).getByRole("button", { name: "Ref" }));
+    await userEvent.click(within(table).getByRole("button", { name: "Roll no." }));
     expect(refs(table)).toEqual(["CS001", "CS002", "CS010"]);
-    await userEvent.click(within(table).getByRole("button", { name: /^Ref/ }));
+    await userEvent.click(within(table).getByRole("button", { name: /^Roll no\./ }));
     expect(refs(table)).toEqual(["CS010", "CS002", "CS001"]);
 
     await userEvent.type(within(table).getByLabelText("Find a candidate"), "rohan");
@@ -1344,13 +1496,28 @@ describe("results and exports", () => {
 
   it("shows the cohort's figures, and flags a question that does not separate", async () => {
     await open();
-    const summary = await screen.findByRole("region", { name: "Summary" });
-    expect(summary).toHaveTextContent("Mean65%");
-    expect(within(summary).getByLabelText("90–100%: 1")).toBeInTheDocument();
+    // No card repeats the page's title: the figures, then the chart.
+    const figures = await screen.findByRole("region", { name: "At a glance" });
+    expect(within(figures).getByText("Mean").previousElementSibling).toHaveTextContent("65%");
+    const chart = screen.getByRole("region", { name: "How the marks fell" });
+    expect(within(chart).getByLabelText("90–100%: 1")).toBeInTheDocument();
+    // Bands no one reached, below the lowest mark, are left out.
+    expect(within(chart).queryByLabelText("0–10%: 0")).toBeNull();
+    // The downloads are the page's own actions.
+    const header = screen.getByRole("heading", { level: 1 }).closest("header")!;
+    expect(within(header).getByRole("button", { name: "Download Excel" })).toBeEnabled();
 
     const questions = screen.getByRole("region", { name: "Questions" });
     expect(within(questions).getByText("Which sort is stable?").closest("tr")).toHaveTextContent(/worth a second look/);
     expect(within(questions).getByText("Trace the loop").closest("tr")).not.toHaveTextContent(/second look/);
+  });
+
+  it("draws the qualifying mark on the chart", async () => {
+    await open(stubClient({ results: vi.fn(async () => ({ ...results, exam: { ...results.exam, cutoff: { percent: 50 } } })) }));
+    const chart = await screen.findByRole("region", { name: "How the marks fell" });
+    expect(chart).toHaveTextContent("Qualifies at 50%");
+    // The band the mark falls in is kept, even if no one scored in it.
+    expect(within(chart).getByLabelText("50–60%: 0")).toBeInTheDocument();
   });
 
   it("keeps the follow-up figures apart, as evidence about no one in particular", async () => {
@@ -1411,11 +1578,14 @@ describe("integrations", () => {
     const client = await open();
     const form = await screen.findByRole("region", { name: "Add a webhook" });
     await userEvent.type(within(form).getByLabelText("Address (https)"), "https://hr.example.com/in");
-    await userEvent.click(within(form).getByLabelText("attempt.graded"));
+    await userEvent.click(within(form).getByLabelText(/An attempt is graded/));
     await userEvent.click(within(form).getByRole("button", { name: "Add" }));
 
     expect(client.addWebhook).toHaveBeenCalledWith("https://hr.example.com/in", ["attempt.graded"], "");
-    expect(await screen.findByRole("status", { name: /Signing secret/ })).toHaveTextContent("whsec_c2VjcmV0");
+    const secret = await screen.findByRole("status", { name: /Signing secret/ });
+    // Shown once, in a field to copy from, with the warning.
+    expect(within(secret).getByRole("textbox")).toHaveValue("whsec_c2VjcmV0");
+    expect(secret).toHaveTextContent("will not be shown again");
   });
 
   it("says why an address was refused", async () => {
@@ -1442,7 +1612,7 @@ describe("integrations", () => {
     expect(greenhouse).toHaveTextContent("list_tests");
     await userEvent.click(within(greenhouse).getByRole("button", { name: "Turn on and issue a key" }));
     expect(client.issueGreenhouseKey).toHaveBeenCalled();
-    expect(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).toHaveTextContent("ghk.acme.1.abc");
+    expect(within(await within(greenhouse).findByRole("status", { name: "Your Greenhouse key" })).getByRole("textbox")).toHaveValue("ghk.acme.1.abc");
   });
 
   it("sets up Lever with a stage-to-exam map and its secrets", async () => {
@@ -1508,12 +1678,17 @@ describe("the live sitting", () => {
   it("shows the room at a glance, and who has gone away", async () => {
     await open();
     const summary = await screen.findByRole("region", { name: "The sitting now" });
-    expect(summary).toHaveTextContent("Away1");
+    // One bar of where everyone stands, with its counts beneath.
+    const bar = within(summary).getByRole("region", { name: "Candidates by where they stand" });
+    expect(within(bar).getByText("Away").previousElementSibling).toHaveTextContent("1");
+    expect(summary).toHaveTextContent(/Updated (just now|\d+ s ago)/);
     const table = screen.getByRole("region", { name: "Candidates now" });
     const r2 = within(table).getByText("R2").closest("tr")!;
     expect(r2).toHaveTextContent("10 min ago");
-    expect(within(r2).getByText("away")).toBeInTheDocument();
-    expect(within(table).getByText("R1").closest("tr")).toHaveTextContent("here now");
+    expect(within(r2).getByText("Away")).toBeInTheDocument();
+    // Whoever needs someone is listed first.
+    expect(within(table).getAllByRole("row")[1]).toBe(r2);
+    expect(within(table).getByText("R1").closest("tr")).toHaveTextContent("Here now");
     expect(within(within(table).getByText("R1").closest("tr")!).getByLabelText("3 of 10 answered")).toBeInTheDocument();
   });
 
@@ -1528,15 +1703,20 @@ describe("the live sitting", () => {
   it("tells the room something, and shows what it was told", async () => {
     const client = await open();
     expect(await screen.findByRole("region", { name: "Told to the room" })).toHaveTextContent("assume sorted input");
-    await userEvent.type(screen.getByLabelText("Tell everyone sitting this exam"), "Ten minutes left.");
-    await userEvent.click(screen.getByRole("button", { name: "Send to everyone" }));
+    await userEvent.click(screen.getByRole("button", { name: "Announce" }));
+    const dialog = screen.getByRole("dialog", { name: "Tell the room" });
+    expect(within(dialog).getByLabelText("Tell everyone sitting this exam")).toHaveFocus();
+    await userEvent.type(within(dialog).getByLabelText("Tell everyone sitting this exam"), "Ten minutes left.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Send to everyone" }));
     await waitFor(() => expect(client.announce).toHaveBeenCalledWith("exam-1", "Ten minutes left."));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("reopens a submitted attempt with minutes and a reason", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Candidates now" });
-    await userEvent.click(within(within(table).getByText("R3").closest("tr")!).getByRole("button", { name: "Reopen…" }));
+    await userEvent.click(within(within(table).getByText("R3").closest("tr")!).getByRole("button", { name: "More actions for R3" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Reopen…" }));
     const form = screen.getByRole("form", { name: "Reopen R3" });
     await userEvent.clear(within(form).getByLabelText("Minutes from now"));
     await userEvent.type(within(form).getByLabelText("Minutes from now"), "20");
@@ -1548,9 +1728,8 @@ describe("the live sitting", () => {
   it("offers no interventions to someone who can only watch", async () => {
     await open(stubClient({ me: vi.fn(async () => who("viewer", ["exam:read", "attempt:read", "attempt:review"])) }));
     await screen.findByRole("region", { name: "Candidates now" });
-    expect(screen.queryByRole("region", { name: "Tell the room" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Reopen…" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Extend…" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Announce" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^More actions for R/ })).toBeNull();
   });
 });
 
@@ -1713,7 +1892,7 @@ describe("proctoring (ROADMAP §14)", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Live sitting" }));
 
     const row = (await screen.findByText("R1")).closest("tr")!;
-    expect(row).toHaveTextContent("camera off");
+    expect(row).toHaveTextContent("Camera off");
     expect(row).toHaveTextContent("ID to check");
     expect(row).toHaveTextContent("2 browser events");
     await userEvent.click(within(row).getByRole("button", { name: "Review R1" }));
@@ -1727,6 +1906,15 @@ describe("proctoring (ROADMAP §14)", () => {
     await userEvent.type(within(panel).getByLabelText(/What you compared/), "Face matches the college ID");
     await userEvent.click(confirm);
     expect(client.reviewIdentity).toHaveBeenCalledWith("att-R1", "verified", "Face matches the college ID");
+
+    // Each webcam photo opens large, with the ones either side a button away.
+    await userEvent.click(within(panel).getAllByRole("button", { name: /^Open the webcam photo/ })[0]!);
+    const lightbox = screen.getByRole("dialog", { name: /^Webcam photo 1 of/ });
+    expect(within(lightbox).getByRole("button", { name: /Earlier/ })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: /^Webcam photo/ })).toBeNull();
+    // Escape closed the photo, not the review behind it.
+    expect(screen.getByRole("region", { name: "Proctoring for Candidate R1" })).toBeInTheDocument();
   });
 
   it("appears in the candidate's report as observations", async () => {
@@ -1762,7 +1950,16 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     analytics: { ...results.analytics, qualified: 1, failed: 1 },
   };
   const summary: ExamSummary[] = [
-    { id: "exam-1", title: "Algorithms", questionCount: 3, attempts: { invited: 12, inProgress: 2, submitted: 1, graded: 2, void: 0 } },
+    {
+      id: "exam-1",
+      title: "Algorithms",
+      questionCount: 3,
+      durationMs: 45 * 60_000,
+      totalMarks: 10,
+      cutoffPercent: 60,
+      window: { opensAt: "2020-10-01T04:30:00.000Z", closesAt: "2099-10-01T07:30:00.000Z" },
+      attempts: { invited: 12, inProgress: 2, submitted: 1, graded: 2, void: 0 },
+    },
   ];
   const client = (overrides: Record<string, unknown> = {}) =>
     stubClient({ listExams: vi.fn(async () => summary), loadExam: vi.fn(async () => paper), results: vi.fn(async () => withCutoff), ...overrides });
@@ -1775,12 +1972,23 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     expect(within(tabs).getAllByRole("button").map((b) => b.textContent)).toEqual(["Overview", "Questions", "Candidates", "Live sitting", "Results"]);
     expect(within(tabs).getByRole("button", { name: "Overview" })).toHaveAttribute("aria-current", "page");
 
+    // The header: where it is in its life, one line of facts, and what to do.
+    const title = screen.getByRole("heading", { level: 1, name: "Algorithms" });
+    const header = title.closest("header")!;
+    expect(within(header).getByText("Open now")).toBeInTheDocument();
+    expect(within(header).getByText(/^Open until .* IST · 45 min · 10 marks · qualifies at 60%$/)).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Try test" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Invite" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "More actions for Algorithms" })).toBeInTheDocument();
+    // One to grade: the next step says so.
+    expect(screen.getByRole("region", { name: "Next step" })).toHaveTextContent("1 answer sheet to grade");
+
     const side = screen.getByRole("complementary", { name: "Candidates at a glance" });
     const count = (label: string) => within(side).getByText(label).nextElementSibling?.textContent;
     expect(count("Invited")).toBe("12");
     expect(count("In progress")).toBe("2");
-    expect(count("Completed")).toBe("3");
-    expect(count("To evaluate")).toBe("1");
+    expect(count("Submitted")).toBe("3");
+    expect(count("To grade")).toBe("1");
     await waitFor(() => expect(count("Qualified")).toBe("1"));
     expect(count("Not qualified")).toBe("1");
     expect(within(side).getByText("45 min")).toBeInTheDocument();
@@ -1847,7 +2055,7 @@ describe("the exam editor's question list", () => {
     await userEvent.type(screen.getByLabelText("Option 1"), "a");
     await userEvent.type(screen.getByLabelText("Option 2"), "b");
     await userEvent.click(screen.getByRole("button", { name: "Add question" }));
-    const second = screen.getByRole("region", { name: "Question 2" });
+    const second = screen.getByRole("region", { name: "Editing question 2" });
     await userEvent.type(within(second).getByLabelText("Question"), "Second?");
     await userEvent.type(within(second).getByLabelText("Option 1"), "c");
     await userEvent.type(within(second).getByLabelText("Option 2"), "d");
@@ -1872,13 +2080,50 @@ describe("the exam editor's question list", () => {
     });
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    await userEvent.click(await screen.findByRole("button", { name: "More actions for Algorithms" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Edit" }));
 
     const item = await screen.findByRole("region", { name: "Question 1" });
     expect(within(item).getByText("Multiple choice")).toBeInTheDocument();
-    expect(within(item).queryByLabelText("Option 1")).toBeNull();
-    await userEvent.click(within(item).getByRole("button", { name: "Edit" }));
-    expect(within(item).getByLabelText("Option 1")).toHaveValue("Merge sort");
+    expect(screen.queryByLabelText("Option 1")).toBeNull();
+    expect(screen.getByText(/Choose a question from the list to edit it here/)).toBeInTheDocument();
+    // Chosen from the list, it opens beside it.
+    await userEvent.click(within(item).getByRole("button", { name: "Which sort is stable?" }));
+    expect(within(item).getByRole("button", { name: "Which sort is stable?" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(screen.getByRole("region", { name: "Editing question 1" })).getByLabelText("Option 1")).toHaveValue("Merge sort");
+  });
+
+  it("says when there are unsaved changes, and asks before they are left behind", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    expect(screen.getByText("Not saved yet")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Title"), "Draft");
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Account" })).getByRole("button", { name: "Home" }));
+    const ask = screen.getByRole("dialog", { name: "Leave without saving?" });
+    await userEvent.click(within(ask).getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByLabelText("Title")).toHaveValue("Draft");
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Leave without saving?" })).getByRole("button", { name: "Leave without saving" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Exams" })).toBeInTheDocument();
+  });
+
+  it("orders questions by dragging, as well as with the buttons", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "New exam" }));
+    await userEvent.type(screen.getByLabelText("Question"), "First?");
+    await userEvent.click(screen.getByRole("button", { name: "Add question" }));
+    await userEvent.type(within(screen.getByRole("region", { name: "Editing question 2" })).getByLabelText("Question"), "Second?");
+    const rows = screen.getAllByRole("region", { name: /^Question \d$/ });
+    const handle = rows[1]!.querySelector(".drag-handle")!;
+    fireEvent.dragStart(handle, { dataTransfer: { setData: () => undefined, effectAllowed: "" } });
+    fireEvent.dragOver(rows[0]!.closest("li")!);
+    fireEvent.drop(rows[0]!.closest("li")!);
+    expect(within(screen.getByRole("region", { name: "Question 1" })).getByRole("button", { name: "Second?" })).toBeInTheDocument();
   });
 
   it("saves a qualifying mark, overall and for a section", async () => {
@@ -1899,7 +2144,7 @@ describe("the exam editor's question list", () => {
     await userEvent.type(screen.getByLabelText("Qualifying mark (% of the paper)"), "55");
     await userEvent.type(screen.getByLabelText("Minimum in Quant (%)"), "40");
     // The whole exam's cut-off shows in the head.
-    expect(within(screen.getByLabelText("This paper")).getByText("55%")).toBeInTheDocument();
+    expect(within(screen.getByLabelText("This paper")).getByText("qualifies at 55%")).toBeInTheDocument();
 
     // A section's minimum goes with the section.
     await userEvent.click(screen.getByRole("tab", { name: "Questions" }));
@@ -1949,6 +2194,23 @@ describe("Ctrl+K", () => {
     await userEvent.type(screen.getByRole("combobox"), "audit");
     await userEvent.keyboard("{Enter}");
     expect(await screen.findByRole("heading", { name: "Audit log" })).toBeInTheDocument();
+  });
+
+  it("offers actions beside the pages, and what was opened lately when nothing is typed", async () => {
+    localStorage.removeItem("parikshaa.console.recent");
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    await userEvent.click(screen.getByRole("button", { name: /Search/ }));
+    const actions = screen.getByRole("group", { name: "Actions" });
+    expect(within(actions).getByRole("option", { name: /New exam/ })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Recent" })).toBeNull();
+    await userEvent.type(screen.getByRole("combobox"), "algo");
+    await userEvent.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { level: 1, name: "Algorithms" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /Search/ }));
+    expect(within(screen.getByRole("group", { name: "Recent" })).getByRole("option", { name: /Algorithms/ })).toBeInTheDocument();
+    localStorage.removeItem("parikshaa.console.recent");
   });
 });
 
@@ -2052,5 +2314,27 @@ describe("the design system page", () => {
     await userEvent.keyboard("{Escape}");
     await userEvent.click(screen.getByRole("button", { name: "Show a toast" }));
     expect(screen.getByRole("region", { name: "Notifications" })).toHaveTextContent("Saved “Campus drive 2026”");
+  });
+});
+
+describe("the theme", () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.clear();
+  });
+
+  it("follows the computer until someone chooses, then remembers the choice", async () => {
+    renderApp(<App client={stubClient()} />);
+    const theme = await screen.findByRole("group", { name: "Theme" });
+    expect(within(theme).getByRole("button", { name: "Match the computer" })).toHaveAttribute("aria-pressed", "true");
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
+
+    await userEvent.click(within(theme).getByRole("button", { name: "Dark" }));
+    expect(document.documentElement).toHaveAttribute("data-theme", "dark");
+    expect(localStorage.getItem("parikshaa.console.theme")).toBe("dark");
+
+    await userEvent.click(within(theme).getByRole("button", { name: "Match the computer" }));
+    expect(document.documentElement).not.toHaveAttribute("data-theme");
+    expect(localStorage.getItem("parikshaa.console.theme")).toBeNull();
   });
 });

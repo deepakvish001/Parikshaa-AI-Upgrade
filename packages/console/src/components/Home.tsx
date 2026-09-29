@@ -1,20 +1,8 @@
 import { useMemo, useState } from "react";
-import {
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  CircleCheck,
-  Circle,
-  ClipboardList,
-  Hourglass,
-  Library,
-  Plus,
-  Search,
-  SquareCheckBig,
-  Users,
-  type LucideIcon,
-} from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, CircleCheck, Circle, CircleDot, ClipboardList, History, Library, Plus, Search, SquareCheckBig, Users } from "lucide-react";
 import type { Dashboard, ExamSummary } from "../api.ts";
+import type { ExamFilter } from "./ExamList.tsx";
+import { EmptyState, FigureStrip, PageActions, PageMeta, PhaseBadge, SkeletonRows, ago, type Phase as ExamPhase } from "./kit.tsx";
 
 /**
  * The console's home page, as a test platform's dashboard: what is sitting
@@ -37,23 +25,33 @@ const dayName = (key: string, today: string) => {
 };
 
 type Sitting = Dashboard["sittings"][number];
-type Phase = "open" | "upcoming" | "closed";
-const phaseOf = (s: Sitting, now: number): Phase =>
-  Date.parse(s.opensAt) > now ? "upcoming" : Date.parse(s.closesAt) > now ? "open" : "closed";
-const PHASE: Record<Phase, string> = { open: "Open now", upcoming: "Scheduled", closed: "Closed" };
+const phaseOf = (s: Sitting, now: number): ExamPhase => (Date.parse(s.opensAt) > now ? "scheduled" : Date.parse(s.closesAt) > now ? "open" : "closed");
+/** Hours of the day in IST, as a fraction: 10:30 is 10.5. */
+const hourOf = (at: number) => {
+  const [h, m] = new Intl.DateTimeFormat("en-GB", { timeZone: IST, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(at)).split(":").map(Number) as [number, number];
+  return h + m / 60;
+};
+const addDays = (key: string, by: number) => {
+  const d = new Date(`${key}T12:00:00+05:30`);
+  d.setUTCDate(d.getUTCDate() + by);
+  return dayKey(d);
+};
 
-/** What an audit entry means, in words. */
-const ACTIONS: Record<string, string> = {
+/** What an audit entry means, in words: every action the API records has its own. */
+export const ACTIONS: Record<string, string> = {
   "exam.saved": "saved an exam",
-  "exam.window_set": "scheduled a sitting",
+  "exam.archived": "archived an exam",
+  "exam.restored": "brought an exam back from the archive",
+  "exam.window_set": "set when an exam is open",
   "invitations.imported": "invited candidates",
   "invitations.created": "invited a candidate",
   "invitations.resent": "resent an invitation",
   "invitations.revoked": "withdrew an invitation",
   "invitations.links_exported": "downloaded candidates' links",
   "attempt.started": "started an attempt",
+  "attempt.submitted": "submitted an attempt",
   "attempt.graded": "graded an attempt",
-  "attempt.assessed": "read a follow-up",
+  "attempt.assessed": "read a follow-up question",
   "attempt.voided": "set an attempt aside",
   "attempt.extended": "gave a candidate extra time",
   "attempt.reopened": "reopened an attempt",
@@ -67,24 +65,58 @@ const ACTIONS: Record<string, string> = {
   "staff.role_changed": "changed someone's role",
   "staff.disabled": "disabled an account",
   "auth.login": "signed in",
+  "auth.sso_login": "signed in through their organisation",
   "auth.password_changed": "changed their password",
+  "auth.password_reset": "reset their password",
+  "auth.password_reset_requested": "asked to reset their password",
+  "org.sso_configured": "set up signing in through the organisation",
+  "org.spend_cap_set": "set the spending limit",
   "privacy.saved": "updated the privacy notice",
+  "billing.details_saved": "saved the billing details",
+  "billing.order_created": "started a purchase",
   "billing.paid": "bought attempt credits",
+  "billing.refunded": "issued a refund",
   "sitting.announced": "made an announcement",
   "apikey.issued": "issued an API key",
+  "apikey.revoked": "revoked an API key",
   "webhook.created": "added a webhook",
+  "webhook.disabled": "turned a webhook off",
+  "webhook.rotated": "changed a webhook's secret",
+  "webhook.secret_shown": "looked at a webhook's secret",
+  "webhook.test": "sent a test to a webhook",
+  "ats.configured": "connected an ATS",
+  "ats.disabled": "disconnected an ATS",
+  "ats.key_issued": "issued a key for an ATS",
+  "greenhouse.key_issued": "issued a key for Greenhouse",
+  "greenhouse.disabled": "disconnected Greenhouse",
+  "greenhouse.response_error": "got an error back from Greenhouse",
+  "lti.platform_registered": "connected an LMS",
+  "lti.platform_updated": "changed an LMS connection",
+  "practice.site_saved": "saved the practice site",
+  "practice.site_opened": "opened the practice site",
+  "practice.sign_in_saved": "changed how learners sign in",
+  "practice.problem_published": "published a practice problem",
+  "practice.problem_edited": "edited a practice problem",
+  "practice.contest_scheduled": "scheduled a contest",
+  "practice.contest_changed": "changed a contest",
+  "practice.comment_hidden": "hid a comment",
+  "practice.comment_shown": "showed a hidden comment again",
+  "practice.similarity_viewed": "compared learners' code",
+  "prep.track_created": "added a track",
+  "prep.track_changed": "changed a track",
+  "prep.lesson_created": "added a lesson",
+  "prep.lesson_changed": "changed a lesson",
+  "prep.plan_created": "added a study plan",
+  "prep.plan_changed": "changed a study plan",
+  "prep.potd_set": "set the problem of the day",
+  "prep.plus_settings": "changed the Plus settings",
+  "prep.plus_granted": "gave a learner Plus",
+  "prep.company_created": "added a company",
+  "prep.starter_pack_imported": "imported a starter pack",
+  "prep.store_item_created": "added an item to the coin store",
+  "prep.store_item_changed": "changed an item in the coin store",
 };
 export const describeAction = (action: string) => ACTIONS[action] ?? action.replace(/[._]/g, " ");
-
-const ago = (iso: string, now: number) => {
-  const minutes = Math.round((now - Date.parse(iso)) / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes} min ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} h ago`;
-  const days = Math.round(hours / 24);
-  return days === 1 ? "yesterday" : `${days} days ago`;
-};
 
 export function Home({
   dashboard,
@@ -93,6 +125,7 @@ export function Home({
   now = Date.now(),
   canWrite,
   onExam,
+  onExams,
   onGo,
 }: {
   dashboard: Dashboard | undefined;
@@ -101,6 +134,8 @@ export function Home({
   now?: number;
   canWrite: boolean;
   onExam: (examId: string) => void;
+  /** The exam list, filtered to what a figure counts. */
+  onExams?: (filter: ExamFilter) => void;
   onGo: (target: HomeTarget) => void;
 }) {
   const totals = exams.reduce(
@@ -110,57 +145,49 @@ export function Home({
     },
     { sitting: 0, grade: 0, candidates: 0 },
   );
-  const tiles: readonly { label: string; value: number; icon: LucideIcon; tone: string }[] = [
-    { label: "Sitting now", value: totals.sitting, icon: Hourglass, tone: totals.sitting > 0 ? " live" : "" },
-    { label: "To grade", value: totals.grade, icon: SquareCheckBig, tone: totals.grade > 0 ? " attention" : "" },
-    { label: "Exams", value: exams.length, icon: ClipboardList, tone: "" },
-    { label: "Candidates invited", value: totals.candidates, icon: Users, tone: "" },
-  ];
+  const open = (filter: ExamFilter) => (onExams === undefined ? {} : { onOpen: () => onExams(filter) });
   const hour = Number(new Intl.DateTimeFormat("en-IN", { timeZone: IST, hour: "numeric", hourCycle: "h23" }).format(new Date(now)));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
     <div className="home">
-      <div className="home-hello">
-        <p className="home-greeting">
+      <PageMeta>
+        <span className="home-greeting">
           {greeting}
           {name === undefined ? "" : `, ${name.split(" ")[0]}`}.
-        </p>
-        <div className="home-actions">
-          {canWrite ? (
-            <button type="button" onClick={() => onGo("new-exam")}>
-              <Plus aria-hidden="true" />
-              New exam
-            </button>
-          ) : null}
-          <button type="button" className="secondary" onClick={() => onGo("bank")}>
-            <Library aria-hidden="true" />
-            Question bank
+        </span>
+      </PageMeta>
+      <PageActions>
+        <button type="button" className="secondary" onClick={() => onGo("search")}>
+          <Search aria-hidden="true" />
+          Find a candidate
+        </button>
+        <button type="button" className="secondary" onClick={() => onGo("bank")}>
+          <Library aria-hidden="true" />
+          Question bank
+        </button>
+        {canWrite ? (
+          <button type="button" onClick={() => onGo("new-exam")}>
+            <Plus aria-hidden="true" />
+            New exam
           </button>
-          <button type="button" className="secondary" onClick={() => onGo("search")}>
-            <Search aria-hidden="true" />
-            Find a candidate
-          </button>
-        </div>
-      </div>
+        ) : null}
+      </PageActions>
 
-      <section className="kpis" aria-label="At a glance">
-        {tiles.map(({ label, value, icon: Icon, tone }) => (
-          <div className={`kpi${tone}`} key={label}>
-            <span className="kpi-icon" aria-hidden="true">
-              <Icon />
-            </span>
-            <span className="kpi-value">{value}</span>
-            <span className="kpi-label">{label}</span>
-          </div>
-        ))}
-      </section>
+      <FigureStrip
+        figures={[
+          { label: "In progress", value: totals.sitting, icon: CircleDot, ...(totals.sitting > 0 ? { tone: "live" as const } : {}), ...open("open") },
+          { label: "To grade", value: totals.grade, icon: SquareCheckBig, ...(totals.grade > 0 ? { tone: "attention" as const } : {}), ...open("grading") },
+          { label: "Exams", value: exams.filter((e) => (e.archivedAt ?? null) === null).length, icon: ClipboardList, ...open("all") },
+          { label: "Candidates invited", value: totals.candidates, icon: Users },
+        ]}
+      />
 
       <div className="home-grid">
-        <Calendar sittings={dashboard?.sittings} now={now} onExam={onExam} />
+        <Calendar sittings={dashboard?.sittings} now={now} onExam={onExam} onSchedule={() => onGo("exams")} />
         <div className="home-side">
           {dashboard === undefined ? null : <Setup setup={dashboard.setup} onGo={onGo} />}
-          {dashboard?.activity == null ? null : <Activity activity={dashboard.activity} now={now} />}
+          {dashboard?.activity == null ? null : <Activity activity={dashboard.activity} now={now} onExam={onExam} />}
         </div>
       </div>
     </div>
@@ -171,10 +198,23 @@ export function Home({
  * A month of days, those with a sitting marked, beside the sittings
  * themselves by day. Choosing a day shows only its sittings.
  */
-function Calendar({ sittings, now, onExam }: { sittings: Dashboard["sittings"] | undefined; now: number; onExam: (examId: string) => void }) {
+function Calendar({
+  sittings,
+  now,
+  onExam,
+  onSchedule,
+}: {
+  sittings: Dashboard["sittings"] | undefined;
+  now: number;
+  onExam: (examId: string) => void;
+  onSchedule: () => void;
+}) {
   const today = dayKey(new Date(now));
+  const [mode, setMode] = useState<"month" | "week">("month");
   const [month, setMonth] = useState(() => today.slice(0, 7));
   const [picked, setPicked] = useState<string | null>(null);
+  // Monday of the week shown.
+  const [week, setWeek] = useState(() => addDays(today, -((new Date(`${today}T12:00:00+05:30`).getUTCDay() + 6) % 7)));
 
   const byDay = useMemo(() => {
     const days = new Map<string, Sitting[]>();
@@ -215,7 +255,19 @@ function Calendar({ sittings, now, onExam }: { sittings: Dashboard["sittings"] |
         <CalendarDays aria-hidden="true" className="inline-icon" />
         <strong>Sittings</strong>
         <span className="notice">open now, scheduled, and closed in the last week</span>
+        <span className="spacer" />
+        <div className="segmented" role="group" aria-label="Show the calendar by">
+          <button type="button" aria-pressed={mode === "month"} onClick={() => setMode("month")}>
+            Month
+          </button>
+          <button type="button" aria-pressed={mode === "week"} onClick={() => setMode("week")}>
+            Week
+          </button>
+        </div>
       </div>
+      {mode === "week" ? (
+        <Week sittings={sittings ?? []} start={week} today={today} now={now} onShift={(by) => setWeek(addDays(week, 7 * by))} onExam={onExam} />
+      ) : (
       <div className="calendar-layout">
         <div className="month" role="group" aria-label={new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric", timeZone: "UTC" }).format(first)}>
           <div className="month-head">
@@ -259,13 +311,11 @@ function Calendar({ sittings, now, onExam }: { sittings: Dashboard["sittings"] |
             </button>
           )}
           {sittings === undefined ? (
-            <p className="notice">Loading…</p>
+            <SkeletonRows rows={3} columns={2} label="Loading sittings…" />
           ) : listed.length === 0 ? (
-            <div className="empty">
-              <CalendarDays aria-hidden="true" />
-              <p>{picked === null ? "Nothing scheduled." : "No sitting that day."}</p>
-              <p className="notice">Schedule a window for an exam from its Candidates tab.</p>
-            </div>
+            <EmptyState icon={CalendarDays} compact action={picked === null ? { label: "Schedule a sitting", onClick: onSchedule } : undefined}>
+              {picked === null ? "Sittings appear here once an exam has a window: set one from the exam's Candidates tab." : "No sitting that day."}
+            </EmptyState>
           ) : (
             [...groups].map(([key, list]) => (
               <div key={key} className="agenda-day">
@@ -282,7 +332,7 @@ function Calendar({ sittings, now, onExam }: { sittings: Dashboard["sittings"] |
                           {s.title}
                         </button>
                         <span className="agenda-meta">
-                          <span className={`pill ${phase === "open" ? "live" : phase === "upcoming" ? "brand" : ""}`}>{PHASE[phase]}</span>
+                          <PhaseBadge phase={phase} />
                           <span className="notice">
                             {s.started} of {s.invited} started
                           </span>
@@ -296,7 +346,94 @@ function Calendar({ sittings, now, onExam }: { sittings: Dashboard["sittings"] |
           )}
         </div>
       </div>
+      )}
     </section>
+  );
+}
+
+const HOURS_DEFAULT: readonly [number, number] = [9, 18];
+
+/**
+ * A week, Monday first, with each sitting drawn as a block across its hours
+ * (IST), so a clash or a gap between two sittings shows at once.
+ */
+function Week({
+  sittings,
+  start,
+  today,
+  now,
+  onShift,
+  onExam,
+}: {
+  sittings: readonly Sitting[];
+  start: string;
+  today: string;
+  now: number;
+  onShift: (by: number) => void;
+  onExam: (examId: string) => void;
+}) {
+  const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
+  const dayStart = (key: string) => Date.parse(`${key}T00:00:00+05:30`);
+  const blocks = days.map((key) =>
+    sittings
+      .filter((s) => Date.parse(s.opensAt) < dayStart(key) + 86_400_000 && Date.parse(s.closesAt) > dayStart(key))
+      .map((s) => {
+        const from = Math.max(Date.parse(s.opensAt), dayStart(key));
+        const to = Math.min(Date.parse(s.closesAt), dayStart(key) + 86_400_000);
+        return { sitting: s, from: hourOf(from), to: to >= dayStart(key) + 86_400_000 ? 24 : hourOf(to) };
+      }),
+  );
+  const all = blocks.flat();
+  const first = Math.max(0, Math.min(HOURS_DEFAULT[0], ...all.map((b) => Math.floor(b.from))));
+  const last = Math.min(24, Math.max(HOURS_DEFAULT[1], ...all.map((b) => Math.ceil(b.to))));
+  const span = last - first;
+  const hours = Array.from({ length: span }, (_, i) => first + i);
+  const label = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${start}T00:00:00Z`));
+  const hourName = (h: number) => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 || h === 24 ? "am" : "pm"}`;
+
+  return (
+    <div className="week" role="group" aria-label={`Week of ${label}`}>
+      <div className="month-head">
+        <button type="button" className="quiet icon" aria-label="Previous week" onClick={() => onShift(-1)}>
+          <ChevronLeft aria-hidden="true" />
+        </button>
+        <strong>Week of {label}</strong>
+        <button type="button" className="quiet icon" aria-label="Next week" onClick={() => onShift(1)}>
+          <ChevronRight aria-hidden="true" />
+        </button>
+      </div>
+      <div className="week-grid" style={{ ["--hours" as string]: span }}>
+        <div className="week-hours" aria-hidden="true">
+          {hours.map((h) => (
+            <span key={h}>{hourName(h)}</span>
+          ))}
+        </div>
+        {days.map((key, i) => (
+          <div key={key} className={`week-day${key === today ? " today" : ""}`}>
+            <p className="week-date">
+              {new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${key}T00:00:00Z`))}
+            </p>
+            <ul className="week-track">
+              {blocks[i]!.map(({ sitting, from, to }) => (
+                <li
+                  key={sitting.examId}
+                  className={`week-block ${phaseOf(sitting, now)}`}
+                  style={{ top: `${((from - first) / span) * 100}%`, height: `${Math.max(((to - from) / span) * 100, 6)}%` }}
+                >
+                  <button type="button" className="crumb" onClick={() => onExam(sitting.examId)}>
+                    {sitting.title}
+                  </button>
+                  <span className="week-time">
+                    {time(sitting.opensAt)} – {time(sitting.closesAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+      {all.length === 0 ? <p className="notice week-empty">No sitting this week.</p> : null}
+    </div>
   );
 }
 
@@ -348,26 +485,48 @@ function Setup({ setup, onGo }: { setup: Dashboard["setup"]; onGo: (target: Home
   );
 }
 
-function Activity({ activity, now }: { activity: NonNullable<Dashboard["activity"]>; now: number }) {
+/** The latest actions, by day, each naming the exam it concerns. */
+function Activity({ activity, now, onExam }: { activity: NonNullable<Dashboard["activity"]>; now: number; onExam: (examId: string) => void }) {
+  const today = dayKey(new Date(now));
+  const days = new Map<string, (typeof activity)[number][]>();
+  for (const a of activity) {
+    const key = dayKey(new Date(a.at));
+    days.set(key, [...(days.get(key) ?? []), a]);
+  }
   return (
     <section className="card activity" aria-label="Recent activity">
       <strong>Recent activity</strong>
       {activity.length === 0 ? (
-        <p className="notice">Nothing yet.</p>
+        <EmptyState icon={History} compact>
+          What your staff do — saving exams, inviting, grading — appears here.
+        </EmptyState>
       ) : (
-        <ol className="activity-list">
-          {activity.map((a, i) => (
-            <li key={`${a.at}-${i}`}>
-              <span className="activity-dot" aria-hidden="true" />
-              <span className="activity-text">
-                <strong>{a.actor}</strong> {describeAction(a.action)}
-              </span>
-              <time className="activity-time" dateTime={a.at}>
-                {ago(a.at, now)}
-              </time>
-            </li>
-          ))}
-        </ol>
+        [...days].map(([key, list]) => (
+          <div key={key} className="activity-day">
+            <p className="agenda-date">{dayName(key, today)}</p>
+            <ol className="activity-list">
+              {list.map((a, i) => (
+                <li key={`${a.at}-${i}`}>
+                  <span className="activity-dot" aria-hidden="true" />
+                  <span className="activity-text">
+                    <strong>{a.actor}</strong> {describeAction(a.action)}
+                    {a.exam == null ? null : (
+                      <>
+                        {" · "}
+                        <button type="button" className="crumb" onClick={() => onExam(a.exam!.id)}>
+                          {a.exam.title}
+                        </button>
+                      </>
+                    )}
+                  </span>
+                  <time className="activity-time" dateTime={a.at}>
+                    {key === today ? ago(a.at, now) : time(a.at)}
+                  </time>
+                </li>
+              ))}
+            </ol>
+          </div>
+        ))
       )}
     </section>
   );

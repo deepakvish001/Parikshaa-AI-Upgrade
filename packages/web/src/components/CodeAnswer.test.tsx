@@ -233,13 +233,21 @@ describe("the coding workspace", () => {
     expect(document.body).not.toHaveClass("workspace-open");
   });
 
-  it("lets a divider be moved with the keyboard", async () => {
-    render(<CodeAnswer question={twoSum} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
+  it("lets a divider be moved with the keyboard, and keeps where it was left", async () => {
+    localStorage.removeItem("parikshaa.split.code-problem");
+    const { unmount } = render(<CodeAnswer question={twoSum} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
     await userEvent.click(screen.getByRole("button", { name: "Full screen" }));
     const [divider] = screen.getAllByRole("separator");
     divider!.focus();
     await userEvent.keyboard("{ArrowRight}");
-    expect(divider).toHaveAttribute("aria-valuenow", "47");
+    expect(divider).toHaveAttribute("aria-valuenow", "45");
+    unmount();
+
+    // The next time the workspace opens, the problem is as wide as it was left.
+    render(<CodeAnswer question={twoSum} value={answer("x")} disabled={false} onChange={vi.fn()} onRun={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Full screen" }));
+    expect(screen.getAllByRole("separator")[0]).toHaveAttribute("aria-valuenow", "45");
+    localStorage.removeItem("parikshaa.split.code-problem");
   });
 
   it("offers no Run or Submit once the attempt is closed", () => {

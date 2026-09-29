@@ -2369,6 +2369,13 @@
                           "proctored": {
                             "type": "boolean"
                           },
+                          "cutoffPercent": {
+                            "description": "The qualifying mark, as a percentage of the paper, or null if none is set.",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
                           "attempts": {
                             "type": "object",
                             "properties": {
@@ -2397,6 +2404,37 @@
                             ],
                             "additionalProperties": false,
                             "description": "Invitations not revoked, and attempts by where they stand."
+                          },
+                          "window": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "opensAt": {
+                                    "type": "string"
+                                  },
+                                  "closesAt": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "opensAt",
+                                  "closesAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "When it can be sat, or null before a window is set."
+                          },
+                          "archivedAt": {
+                            "description": "When it was put away, or null while it is current.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -2408,7 +2446,10 @@
                           "sectionCount",
                           "durationMs",
                           "proctored",
-                          "attempts"
+                          "cutoffPercent",
+                          "attempts",
+                          "window",
+                          "archivedAt"
                         ],
                         "additionalProperties": false
                       }
@@ -2952,6 +2993,278 @@
         }
       }
     },
+    "/exams/{examId}/archived": {
+      "put": {
+        "summary": "Put an exam away, or bring it back",
+        "tags": [
+          "Institution"
+        ],
+        "description": "An archived exam is left out of the console's current exams. Nothing else changes: its window, invitations, attempts and results stay as they were.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "archived": {
+                    "type": "boolean",
+                    "description": "True to put the exam away, false to bring it back."
+                  }
+                },
+                "required": [
+                  "archived"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/dashboard": {
       "get": {
         "summary": "The console's home page",
@@ -3035,13 +3348,38 @@
                                   "string",
                                   "null"
                                 ]
+                              },
+                              "exam": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "title"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The exam it concerns, if any: the target itself, or the exam of the attempt or invitation it names."
                               }
                             },
                             "required": [
                               "at",
                               "actor",
                               "action",
-                              "target"
+                              "target",
+                              "exam"
                             ],
                             "additionalProperties": false
                           }
@@ -54391,7 +54729,7 @@
         "tags": [
           "Candidate"
         ],
-        "description": "The paper's shape and marking, for the instructions a candidate reads before beginning. Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
+        "description": "The paper's shape and marking, for the instructions a candidate reads before beginning, and what opening it will ask for (the privacy notice, the camera). Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
         "requestBody": {
           "required": true,
           "content": {
@@ -54510,6 +54848,150 @@
                     },
                     "proctored": {
                       "type": "boolean"
+                    },
+                    "proctoring": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "identity": {
+                              "type": "boolean",
+                              "description": "A photo of the candidate and of their photo ID before they begin, checked by an invigilator."
+                            },
+                            "snapshotEverySeconds": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "A webcam photo this often while the attempt is open; null for none."
+                            },
+                            "browserEvents": {
+                              "type": "boolean",
+                              "description": "Record leaving the tab or full screen, and copying or pasting."
+                            }
+                          },
+                          "required": [
+                            "identity",
+                            "snapshotEverySeconds",
+                            "browserEvents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "What a proctored test's camera will do; null when it has none."
+                    },
+                    "notice": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number"
+                            },
+                            "hash": {
+                              "type": "string",
+                              "description": "SHA-256 of the notice's canonical form; the consent in the ledger records it."
+                            },
+                            "controllerName": {
+                              "type": "string"
+                            },
+                            "purpose": {
+                              "type": "string"
+                            },
+                            "retentionDays": {
+                              "type": "number"
+                            },
+                            "grievance": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "email": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "name",
+                                "email"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "collected": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "rights": {
+                              "readOnly": true,
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "translations": {
+                              "type": "object",
+                              "properties": {
+                                "hi": {
+                                  "type": "object",
+                                  "properties": {
+                                    "collected": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "rights": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "collected",
+                                    "rights"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "hi"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "hash",
+                            "controllerName",
+                            "purpose",
+                            "retentionDays",
+                            "grievance",
+                            "collected",
+                            "rights",
+                            "translations"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The privacy notice opening will ask agreement to, so it can be shown first; null when there is none or the attempt has begun."
                     }
                   },
                   "required": [
@@ -54526,7 +55008,9 @@
                     "negativeMarks",
                     "allowRevision",
                     "calculator",
-                    "proctored"
+                    "proctored",
+                    "proctoring",
+                    "notice"
                   ],
                   "additionalProperties": false
                 }
@@ -54997,11 +55481,41 @@
                         },
                         "title": {
                           "type": "string"
+                        },
+                        "cutoff": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "percent": {
+                                  "type": "number"
+                                },
+                                "sections": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The qualifying mark, overall and per section, as percentages; null without one."
                         }
                       },
                       "required": [
                         "id",
-                        "title"
+                        "title",
+                        "cutoff"
                       ],
                       "additionalProperties": false
                     },
@@ -55844,11 +56358,41 @@
                         },
                         "title": {
                           "type": "string"
+                        },
+                        "cutoff": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "percent": {
+                                  "type": "number"
+                                },
+                                "sections": {
+                                  "type": "object",
+                                  "propertyNames": {
+                                    "type": "string"
+                                  },
+                                  "additionalProperties": {
+                                    "type": "number"
+                                  }
+                                }
+                              },
+                              "required": [
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The qualifying mark, overall and per section, as percentages; null without one."
                         }
                       },
                       "required": [
                         "id",
-                        "title"
+                        "title",
+                        "cutoff"
                       ],
                       "additionalProperties": false
                     },

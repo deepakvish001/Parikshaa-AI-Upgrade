@@ -12,8 +12,70 @@
 .practice .topbar-inner {
   max-width: var(--practice-width);
 }
+/* The bar's content starts and ends where the page's does, on every page. */
 .practice.wide .topbar-inner {
   max-width: none;
+  padding-inline: var(--space-4);
+}
+.practice-bar .topbar-inner {
+  flex-wrap: nowrap;
+}
+.practice-bar .site-name {
+  flex: 0 1 auto;
+  max-width: 11rem;
+}
+.practice-bar .divider,
+.practice-bar .home {
+  flex: none;
+}
+/* Only the menu gives way when the row is short: it scrolls, nothing overlaps. */
+.practice-nav {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.practice-nav a {
+  white-space: nowrap;
+}
+.practice-bar .me {
+  flex: none;
+  max-width: 10rem;
+}
+/* In this bar Display is its icon; the word stays for screen readers. */
+.practice-bar .display-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.practice-bar button.display-toggle {
+  min-width: 2.25rem;
+  padding: 0 var(--space-2);
+}
+.practice-bar .me-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.practice-bar .spacer {
+  flex: 1 1 0;
+}
+.practice-bar .display-menu {
+  flex: none;
+}
+/* The exam's Display menu, on a light bar rather than the ink one. */
+.practice-bar button.display-toggle {
+  min-height: 2.25rem;
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+.practice-bar button.display-toggle:hover:not(:disabled),
+.practice-bar button.display-toggle[aria-expanded="true"] {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
 }
 .practice-bar .home {
   display: inline-flex;
@@ -66,6 +128,11 @@
   background: var(--primary);
   border-radius: var(--radius-full);
 }
+.avatar-dot.small {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: var(--text-xs);
+}
 .avatar-dot.big {
   width: 3.5rem;
   height: 3.5rem;
@@ -81,12 +148,29 @@
   max-width: none;
   padding: var(--space-3) var(--space-4) var(--space-4);
 }
+/* Editorials and discussion read at a book's width, whatever the pane. */
+.approaches,
+.discussion,
+.problem-panel > .markdown {
+  max-width: 45rem;
+}
 .practice-main h1 {
   margin: 0 0 var(--space-2);
   font-size: var(--text-2xl);
 }
 .practice-main .card {
   margin-bottom: var(--space-4);
+}
+/* A wide table scrolls inside its card; the page never scrolls sideways. */
+.practice .scroll {
+  /* Positioned, so words hidden for screen readers stay inside it too. */
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.practice .scoreboard table {
+  min-width: 36rem;
 }
 .practice .empty {
   padding: var(--space-6) 0;
@@ -154,6 +238,14 @@
 }
 .problem-table table td {
   vertical-align: middle;
+}
+.tag-row .chip .count {
+  margin-left: var(--space-1);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+.tag-row .chip[aria-pressed="true"] .count {
+  color: inherit;
 }
 .problem-table tr.striped td {
   background: var(--surface-2);
@@ -319,49 +411,54 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .heatmap {
-  --cell: 0.8rem;
   margin: 0;
-  overflow-x: auto;
 }
+/* A column per week, as wide as the card allows; each day a square. */
 .heatmap-grid {
   display: grid;
   grid-auto-flow: column;
-  grid-template-rows: repeat(7, var(--cell));
+  grid-template-rows: repeat(7, auto);
   gap: 3px;
-  width: max-content;
 }
 .heatmap .cell {
-  display: inline-block;
-  width: var(--cell);
-  height: var(--cell);
+  display: block;
+  aspect-ratio: 1;
   background: var(--surface-sunken);
-  border-radius: 2px;
+  border-radius: var(--radius-hair);
 }
 .heatmap .cell.future {
   visibility: hidden;
 }
+/* The sequential ramp, light to dark in either theme. */
 .heatmap .cell.l1 {
-  background: color-mix(in srgb, var(--success) 30%, var(--surface));
+  background: var(--chart-seq-2);
 }
 .heatmap .cell.l2 {
-  background: color-mix(in srgb, var(--success) 55%, var(--surface));
+  background: var(--chart-seq-3);
 }
 .heatmap .cell.l3 {
-  background: color-mix(in srgb, var(--success) 78%, var(--surface));
+  background: var(--chart-seq-4);
 }
 .heatmap .cell.l4 {
-  background: var(--success);
+  background: var(--chart-seq-5);
 }
 .heatmap figcaption {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  margin-top: var(--space-2);
-  font-size: var(--text-xs);
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
 }
-.heatmap figcaption .cell {
-  --cell: 0.7rem;
+.heatmap-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.heatmap-key .cell {
+  width: 0.75rem;
 }
 .recent {
   margin: 0;
@@ -674,22 +771,33 @@
 .contest-card.upcoming {
   border-top-color: var(--primary);
 }
+.contest-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.contest-when {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
 .contest-title {
   font-size: var(--text-md);
   font-weight: var(--weight-semibold);
   color: var(--text);
   text-decoration: none;
 }
-.countdown {
+.contest-countdown {
   margin: var(--space-2) 0 0;
   font-family: var(--font-mono);
   font-weight: var(--weight-semibold);
   color: var(--primary);
 }
-.countdown.live {
+.contest-countdown.live {
   color: var(--success);
 }
-.countdown.big {
+.contest-countdown.big {
   margin: 0;
   font-size: var(--text-lg);
 }
@@ -706,6 +814,11 @@
 .label-col {
   width: 2.5rem;
 }
+/* Solved first, solved, tried: each a state of its own, in both themes. */
+.scoreboard td.cell-first {
+  color: var(--on-success-solid);
+  background: var(--success-solid);
+}
 .scoreboard td.cell-ok {
   color: var(--success);
   background: var(--success-soft);
@@ -714,6 +827,33 @@
   color: var(--danger);
   background: var(--danger-soft);
 }
+.scoreboard td .minutes {
+  opacity: 0.85;
+}
+/* Rank and name stay put while the problems scroll under them. */
+.scoreboard .sticky-rank,
+.scoreboard .sticky-name {
+  position: sticky;
+  z-index: 1;
+  background: var(--surface);
+}
+.scoreboard .sticky-rank {
+  left: 0;
+  min-width: 3.5rem;
+}
+.scoreboard .sticky-name {
+  left: 3.5rem;
+  min-width: 10rem;
+  box-shadow: 1px 0 0 var(--border);
+}
+.scoreboard thead .sticky-rank,
+.scoreboard thead .sticky-name {
+  background: var(--surface-2);
+}
+.scoreboard tr.you .sticky-rank,
+.scoreboard tr.you .sticky-name {
+  background: var(--primary-soft);
+}
 tr.you td {
   background: var(--primary-soft);
 }
@@ -721,25 +861,24 @@ tr.you .pill,
 td .pill {
   margin-left: var(--space-2);
 }
-.medal {
+/* The top three: a chip in the accent, no medals. */
+.rank-chip {
   display: inline-grid;
   place-items: center;
-  width: 1.6rem;
-  height: 1.6rem;
+  min-width: 1.75rem;
+  height: 1.75rem;
+  padding: 0 var(--space-1);
   font-weight: var(--weight-bold);
+  color: var(--accent-text);
+  background: var(--accent-soft);
   border-radius: var(--radius-full);
 }
-.medal.m1 {
-  background: #f6d365;
-  color: #5b4200;
-}
-.medal.m2 {
-  background: #dfe3ea;
-  color: #37404d;
-}
-.medal.m3 {
-  background: #efc39c;
-  color: #5a3314;
+/* The learner's own row stays in sight at the top or bottom of a long board. */
+.leaderboard-page tr.you td {
+  position: sticky;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
 }
 
 /* --- accounts ------------------------------------------------------------------ */
@@ -819,13 +958,21 @@ td .pill {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.5rem 1rem;
-  margin: 0 0 1rem;
-  padding: 0.7rem 1rem;
+  gap: var(--space-2) var(--space-3);
+  margin: 0 0 var(--space-4);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
   border-left: 3px solid var(--primary);
-  border-radius: 8px;
+  border-radius: var(--radius);
   background: var(--surface);
+}
+.practice-notice > svg {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.practice-notice .grow {
+  flex: 1 1 20rem;
 }
 
 .practice-notice.ok {
@@ -837,7 +984,12 @@ td .pill {
 }
 
 .practice-notice.verify {
+  border-color: var(--warning-border);
   border-left-color: var(--warning);
+  background: var(--warning-soft);
+}
+.practice-notice.verify > svg {
+  color: var(--warning);
 }
 
 .account-form a.google {
@@ -853,7 +1005,7 @@ td .pill {
   gap: 0.75rem;
   margin: 0.25rem 0;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 
 .account-form .or::before,
@@ -861,4 +1013,60 @@ td .pill {
   content: "";
   flex: 1;
   border-top: 1px solid var(--border);
+}
+
+/* A phone: each problem is a card of two lines, and the progress one line. */
+@media (max-width: 40rem) {
+  .problem-table thead {
+    display: none;
+  }
+  .problem-table tr {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-3) var(--space-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .problem-table tr.striped td,
+  .problem-table tr td {
+    padding: 0;
+    background: none;
+    border: 0;
+  }
+  .problem-table td.status-col {
+    grid-row: span 2;
+    width: auto;
+  }
+  .problem-table td:nth-child(2) {
+    grid-column: 2 / 4;
+  }
+  .problem-table td.num {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    text-align: right;
+  }
+  .problem-table td.num::before {
+    content: attr(data-label) " ";
+  }
+  .problem-table td.num:last-child {
+    display: none;
+  }
+  .solved-summary.compact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-3);
+    min-width: 0;
+    width: 100%;
+  }
+  .solved-summary.compact .by-difficulty {
+    display: none;
+  }
+  .solved-summary.compact .streak {
+    margin: 0;
+  }
+  .practice-bar .me-name {
+    display: none;
+  }
 }

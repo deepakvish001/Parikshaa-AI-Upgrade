@@ -65,13 +65,42 @@ function renderApp(element: ReactElement) {
 }
 
 describe("App", () => {
-  it("asks for an access code when the URL carries no token", () => {
+  it("asks for an access code when the URL carries no token", async () => {
     renderApp(<App />);
 
-    expect(screen.getByRole("heading", { name: "Parikshaa" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Access code")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Start your test" })).toBeInTheDocument();
+    const code = screen.getByLabelText("Access code");
+    // Not yet, and why: the button says what it is waiting for.
+    expect(screen.getByRole("button", { name: "Begin" })).toBeDisabled();
+    expect(code).toHaveAccessibleDescription("Paste your code to continue");
     // The candidate is told what the exam does and does not do, up front.
-    expect(screen.getByText(/If a test uses your camera, it says so before it starts/)).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "What to expect" })).toHaveTextContent(/If a test uses your camera, it says so before it starts/);
+
+    // A code pasted from an email comes with spaces and line breaks; they are not part of it.
+    await userEvent.type(code, " eyJ.abc \n");
+    await userEvent.tab();
+    expect(code).toHaveValue("eyJ.abc");
+  });
+
+  it("says so when a code typed in opens nothing, and asks again", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: "invalid_attempt_token" }), { status: 401 })));
+    renderApp(<App />);
+
+    await userEvent.type(screen.getByLabelText("Access code"), "eyJ.expired");
+    await userEvent.click(screen.getByRole("button", { name: "Begin" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("This code has expired or does not work. Ask your institution for a new link.");
+    expect(screen.getByLabelText("Access code")).toHaveAttribute("aria-invalid", "true");
+    vi.unstubAllGlobals();
+  });
+
+  it("goes back to where the candidate was when the page is opened again, and says so", async () => {
+    const { client, setState } = stubClient();
+    setState({ answers: [{ questionId: "q-mcq", answer: "1", submittedAt: 1 }] });
+    renderApp(<App client={client} />);
+
+    expect(await screen.findByText("Welcome back. You were on question 2.")).toBeInTheDocument();
+    expect(screen.getByText("Question 2 of 2")).toBeInTheDocument();
   });
 
   it("shows the paper one question at a time, as a computer-based test does", async () => {
@@ -147,11 +176,18 @@ describe("App", () => {
 
     const probe = await screen.findByRole("region", { name: "Follow-up question" });
     expect(probe).toHaveTextContent("Which quantity decreases each round?");
+    // The candidate is taken to the reply box, and a screen reader is told once, not word by word.
+    const box = screen.getByLabelText("Your reply to the follow-up");
+    await waitFor(() => expect(box).toHaveFocus());
+    expect(screen.getAllByRole("status").some((s) => s.textContent === "A follow-up on your answer: Which quantity decreases each round?")).toBe(true);
 
-    await userEvent.type(screen.getByLabelText("Your reply to the follow-up"), "The potential.");
+    await userEvent.type(box, "The potential.");
     await userEvent.click(screen.getByRole("button", { name: "Send reply" }));
 
     await waitFor(() => expect(client.replyToProbe).toHaveBeenCalledWith("p1", "The potential."));
+    // The panel folds to one line: sent, and thanks.
+    expect(await screen.findByText("Reply sent. Thank you.", { selector: ".probe-sent" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Follow-up question" })).not.toBeInTheDocument();
   });
 
   it("presents the probe as a follow-up, never as an accusation", async () => {
@@ -387,7 +423,11 @@ describe("nothing a candidate types is lost", () => {
     await userEvent.click(screen.getByRole("button", { name: "Submit attempt" }));
     // The last look: what is answered, left and marked, before anything is final.
     const summary = screen.getByRole("dialog", { name: "Submit your attempt?" });
-    expect(summary).toHaveTextContent(/questions have no answer yet/);
+    expect(summary).toHaveTextContent("1 question has no answer yet.");
+    // One row for the paper, each column headed by the palette's shape.
+    const totals = within(summary).getByRole("row", { name: /^All questions/ });
+    expect(within(totals).getAllByRole("cell").map((c) => c.textContent)).toEqual(["1", "1", "0", "0"]);
+    expect(within(summary).getByRole("button", { name: "Keep working" })).toHaveFocus();
     expect(client.submit).not.toHaveBeenCalled();
     await userEvent.click(within(summary).getByRole("button", { name: "Yes, submit" }));
 
@@ -512,7 +552,10 @@ describe("a test taken section by section", () => {
     expect(screen.queryByRole("button", { name: "Submit attempt" })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Finish General and go on" }));
-    expect(screen.getByText("You cannot come back to General once you leave it.")).toBeInTheDocument();
+    // What leaving means, with the part's own counts.
+    const leave = screen.getByRole("alertdialog", { name: "Leave General?" });
+    expect(leave).toHaveAccessibleDescription("You cannot come back to General once you leave it.");
+    expect(within(leave).getByText("Not answered").closest("div")).toHaveTextContent("Not answered1");
     await userEvent.click(screen.getByRole("button", { name: "Stay" }));
     expect(client.nextSection).not.toHaveBeenCalled();
 
@@ -522,7 +565,11 @@ describe("a test taken section by section", () => {
 
     expect(await screen.findByText(/Why does it terminate\?/)).toBeInTheDocument();
     expect(screen.queryByText(/Which sort is stable\?/)).not.toBeInTheDocument();
-    expect(screen.getByText(/(9:5\d|10:00) left in this section/)).toHaveAttribute("role", "timer");
+    // The section's own time is in the pill in the bar, under the section's name.
+    expect(screen.getByRole("timer", { name: /(9:5\d|10:00) left in this section/ })).toHaveTextContent(/^Aptitude(9:5\d|10:00)$/);
+    // The part left behind stays in sight, locked.
+    const tabs = screen.getByRole("navigation", { name: "Sections" });
+    expect(within(tabs).getByText("General").closest("li")).toHaveClass("done");
     // The last part: now it can be submitted.
     expect(screen.getByRole("button", { name: "Submit attempt" })).toBeInTheDocument();
   });
@@ -719,6 +766,6 @@ describe("a coding question", () => {
     await userEvent.click(within(card).getByRole("button", { name: "Submit" }));
     expect(client.submitCode).toHaveBeenCalledWith("q-sum", "python", codeExam.questions[0]!.starter);
     expect(await within(card).findByRole("region", { name: "Submission results" })).toHaveTextContent("2/2 tests passed");
-    await waitFor(() => expect(screen.getByText("Saved")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("Saved", { selector: ".qfoot .saved" })).toBeInTheDocument());
   });
 });

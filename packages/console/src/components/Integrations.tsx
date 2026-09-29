@@ -1,38 +1,58 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CircleStop, KeyRound, RotateCw, Send, Webhook as WebhookIcon } from "lucide-react";
 import { ConsoleError, WEBHOOK_EVENTS, type AtsConnector, type AtsProvider, type ConsoleClient, type LtiPlatform, type Webhook } from "../api.ts";
+import { EmptyState, RowMenu, SettingsGroup, SkeletonRows } from "./kit.tsx";
 
 /**
  * Integrations (ROADMAP §7): webhooks to the organisation's own systems, and
  * Greenhouse, Lever, Zoho Recruit and Darwinbox. Owner only.
  */
 
-const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+/** What each webhook event is, in words; its name, for the receiving system, beside it. */
+const EVENT_WORDS: Record<(typeof WEBHOOK_EVENTS)[number], string> = {
+  "attempt.started": "An attempt starts",
+  "attempt.submitted": "An attempt is submitted",
+  "attempt.graded": "An attempt is graded",
+  "attempt.voided": "An attempt is set aside",
+};
+
+const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" });
 
 export function IntegrationsPanel({ client }: { client: ConsoleClient }) {
   return (
-    <>
+    <div className="settings-page-groups">
       <Webhooks client={client} />
       <Greenhouse client={client} />
       <AtsConnectors client={client} />
       <LtiPlatforms client={client} />
-    </>
+    </div>
   );
 }
 
-/** A secret shown once, to copy now. */
+/** A secret shown once, in a field to copy from, with the warning that it will not be shown again. */
 function Secret({ label, value, onDone }: { label: string; value: string; onDone: () => void }) {
+  const [copied, setCopied] = useState(false);
   return (
-    <div className="card evidence" role="status" aria-label={label}>
-      <p style={{ marginTop: 0 }}>
-        <strong>{label}</strong> — copy it now into the receiving system.
+    <div className="secret-once" role="status" aria-label={label}>
+      <p>
+        <strong>{label}</strong> — copy it now into the receiving system. It will not be shown again here.
       </p>
-      <p className="mono" style={{ wordBreak: "break-all" }}>
-        {value}
-      </p>
-      <button type="button" className="quiet" onClick={onDone}>
-        Done
-      </button>
+      <div className="secret-row">
+        <input readOnly className="mono" aria-label={label} value={value} onFocus={(e) => e.currentTarget.select()} />
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            void navigator.clipboard?.writeText(value).then(() => setCopied(true));
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+        <button type="button" className="quiet" onClick={onDone}>
+          Done
+        </button>
+      </div>
     </div>
   );
 }
@@ -79,23 +99,34 @@ function Webhooks({ client }: { client: ConsoleClient }) {
 
   return (
     <>
-      <section className="card" aria-label="Webhooks">
-        <strong>Webhooks</strong>
-        <p className="notice">
-          Your systems are told when an attempt starts, is submitted, is graded or is set aside. Each delivery is signed as{" "}
-          <a href="https://www.standardwebhooks.com/">Standard Webhooks</a> describes, so any of its libraries can check it, and is retried,
-          backing off, for about two hours if your end is down.
-        </p>
+      <SettingsGroup
+        id="webhooks"
+        title="Webhooks"
+        stacked
+        description={
+          <>
+            Your systems are told when an attempt starts, is submitted, is graded or is set aside. Each delivery is signed as{" "}
+            <a href="https://www.standardwebhooks.com/">Standard Webhooks</a> describes, so any of its libraries can check it, and is retried,
+            backing off, for about two hours if your end is down.
+          </>
+        }
+      >
         {shown === null ? null : <Secret label={shown.label} value={shown.value} onDone={() => setShown(null)} />}
-        {hooks.data === undefined ? null : hooks.data.length === 0 ? (
-          <p className="notice">None yet.</p>
+        {hooks.data === undefined ? (
+          <SkeletonRows columns={3} label="Loading webhooks…" />
+        ) : hooks.data.length === 0 ? (
+          <EmptyState icon={WebhookIcon} compact>
+            Webhooks you add appear here, each with a log of what was sent.
+          </EmptyState>
         ) : (
           <table>
             <thead>
               <tr>
                 <th scope="col">Address</th>
                 <th scope="col">Events</th>
-                <th scope="col" />
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -115,10 +146,12 @@ function Webhooks({ client }: { client: ConsoleClient }) {
             </tbody>
           </table>
         )}
-      </section>
+      </SettingsGroup>
 
-      <section className="card" aria-label="Add a webhook">
-        <strong>Add a webhook</strong>
+      <SettingsGroup
+        id="webhook-add"
+        title="Add a webhook"
+      >
         <div className="field" style={{ marginTop: ".6rem" }}>
           <label htmlFor="webhook-url">Address (https)</label>
           <input id="webhook-url" type="url" placeholder="https://ats.example.com/parikshaa" value={url} onChange={(e) => setUrl(e.target.value)} />
@@ -126,7 +159,8 @@ function Webhooks({ client }: { client: ConsoleClient }) {
         <div className="row" role="group" aria-label="Events">
           {WEBHOOK_EVENTS.map((e) => (
             <label key={e} className="inline">
-              <input type="checkbox" style={{ width: "auto" }} checked={events.includes(e)} onChange={() => toggle(e)} /> {e}
+              <input type="checkbox" style={{ width: "auto" }} checked={events.includes(e)} onChange={() => toggle(e)} /> {EVENT_WORDS[e]}{" "}
+              <span className="mono notice">{e}</span>
             </label>
           ))}
         </div>
@@ -135,7 +169,7 @@ function Webhooks({ client }: { client: ConsoleClient }) {
           Add
         </button>
         {refused === null ? null : <p className="error">{refused}</p>}
-      </section>
+      </SettingsGroup>
     </>
   );
 }
@@ -171,28 +205,25 @@ function HookRow({
         <td className="mono" style={{ wordBreak: "break-all" }}>
           {hook.url}
         </td>
-        <td className="notice">{hook.events.length === 0 ? "every event" : hook.events.join(", ")}</td>
-        <td>
+        <td className="notice">{hook.events.length === 0 ? "Every event" : hook.events.map((e) => EVENT_WORDS[e as keyof typeof EVENT_WORDS] ?? e).join(", ")}</td>
+        <td className="row-end">
           {hook.disabled ? (
-            <span className="pill">stopped</span>
+            <span className="pill">Stopped</span>
           ) : (
-            <span className="row" style={{ marginTop: 0 }}>
-              <button type="button" className="quiet" onClick={onToggle}>
+            <>
+              <button type="button" className="quiet" aria-expanded={open} onClick={onToggle}>
                 {open ? "Hide log" : "Log"}
               </button>
-              <button type="button" className="quiet" onClick={onTest}>
-                Send test
-              </button>
-              <button type="button" className="quiet" onClick={onReveal}>
-                Secret
-              </button>
-              <button type="button" className="quiet" onClick={onRotate}>
-                Rotate
-              </button>
-              <button type="button" className="quiet" onClick={onDisable}>
-                Stop
-              </button>
-            </span>
+              <RowMenu
+                of={hook.url}
+                items={[
+                  { label: "Send a test", icon: <Send />, onSelect: onTest },
+                  { label: "Show the signing secret", icon: <KeyRound />, onSelect: onReveal },
+                  { label: "Rotate the secret", icon: <RotateCw />, onSelect: onRotate },
+                  { label: "Stop deliveries", icon: <CircleStop />, onSelect: onDisable, danger: true },
+                ]}
+              />
+            </>
           )}
         </td>
       </tr>
@@ -200,7 +231,7 @@ function HookRow({
         <tr>
           <td colSpan={3}>
             {deliveries.data === undefined ? (
-              <p className="notice">Loading…</p>
+              <SkeletonRows rows={2} columns={4} label="Loading deliveries…" />
             ) : deliveries.data.length === 0 ? (
               <p className="notice">Nothing sent yet.</p>
             ) : (
@@ -209,7 +240,9 @@ function HookRow({
                   {deliveries.data.map((d) => (
                     <tr key={d.id}>
                       <td className="notice">{when(d.createdAt)}</td>
-                      <td className="mono">{d.event}</td>
+                      <td>
+                        {EVENT_WORDS[d.event as keyof typeof EVENT_WORDS] ?? d.event} <span className="mono notice">{d.event}</span>
+                      </td>
                       <td>
                         <span className="pill" data-state={d.status}>{d.status}</span>
                         {d.attempts > 1 ? <span className="notice"> after {d.attempts} tries</span> : null}
@@ -244,12 +277,17 @@ function Greenhouse({ client }: { client: ConsoleClient }) {
   if (settings.data === undefined) return null;
   const { enabled, endpoints } = settings.data;
   return (
-    <section className="card" aria-label="Greenhouse">
-      <strong>Greenhouse</strong> <span className="pill">{enabled ? "on" : "off"}</span>
-      <p className="notice">
-        Recruiters send a test from a candidate's Greenhouse profile; the candidate gets their link from here, and Greenhouse is told the moment
-        the attempt is graded, with the score and a link to the report. Greenhouse sees marks, never answers or follow-ups.
-      </p>
+    <SettingsGroup
+      id="greenhouse"
+      title="Greenhouse"
+      description={
+        <>
+          Recruiters send a test from a candidate's Greenhouse profile; the candidate gets their link from here, and Greenhouse is told the moment
+          the attempt is graded, with the score and a link to the report. Greenhouse sees marks, never answers or follow-ups.
+        </>
+      }
+      actions={<span className={`pill${enabled ? " ok" : ""}`}>{enabled ? "On" : "Off"}</span>}
+    >
       {key === null ? null : <Secret label="Your Greenhouse key" value={key} onDone={() => setKey(null)} />}
       <details>
         <summary className="notice">What to send Greenhouse</summary>
@@ -274,7 +312,7 @@ function Greenhouse({ client }: { client: ConsoleClient }) {
         ) : null}
       </div>
       {enabled ? <p className="notice">A new key stops the old one at once: send Greenhouse the new one straight away.</p> : null}
-    </section>
+    </SettingsGroup>
   );
 }
 
@@ -381,9 +419,16 @@ function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsC
   const problem = save.error ?? issue.error ?? disable.error;
 
   return (
-    <section className="card" aria-label={connector.label}>
-      <strong>{connector.label}</strong> <span className="pill">{connector.enabled ? "on" : "off"}</span>
-      <p className="notice">{fields.help} It sees marks and a link to the report, never answers or follow-ups.</p>
+    <SettingsGroup
+      id={`ats-${connector.provider}`}
+      title={connector.label}
+      description={
+        <>
+          {fields.help} It sees marks and a link to the report, never answers or follow-ups.
+        </>
+      }
+      actions={<span className={`pill${connector.enabled ? " ok" : ""}`}>{connector.enabled ? "On" : "Off"}</span>}
+    >
       {hook === null ? null : (
         <>
           <Secret label={`${connector.label} hook URL`} value={hook} onDone={() => setHook(null)} />
@@ -473,7 +518,7 @@ function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsC
           </>
         ) : null}
       </div>
-    </section>
+    </SettingsGroup>
   );
 }
 
@@ -515,16 +560,22 @@ function LtiPlatforms({ client }: { client: ConsoleClient }) {
     validSite = false;
   }
   return (
-    <section className="card" aria-label="Moodle (LTI 1.3)">
-      <strong>Moodle and other LMSs</strong> <span className="pill">LTI 1.3</span>
-      <p className="notice">
-        Put an exam in a Moodle course as an activity. Each student who opens it gets their own attempt — no link to email — and their grade goes back
-        to the course's grade book once the attempt is graded. Canvas and Blackboard work the same way.
-      </p>
+    <SettingsGroup
+      id="lti"
+      title="Moodle and other LMSs"
+      label="Moodle (LTI 1.3)"
+      description={
+        <>
+          Put an exam in a Moodle course as an activity. Each student who opens it gets their own attempt — no link to email — and their grade goes back
+          to the course's grade book once the attempt is graded. Canvas and Blackboard work the same way.
+        </>
+      }
+      actions={<span className="pill">LTI 1.3</span>}
+    >
       {(platforms.data ?? []).map((p) => (
         <div key={p.id} className="lti-platform">
           <p>
-            <strong>{p.name}</strong> <span className="pill">{p.enabled ? "on" : "off"}</span>{" "}
+            <strong>{p.name}</strong> <span className={`pill${p.enabled ? " ok" : ""}`}>{p.enabled ? "On" : "Off"}</span>{" "}
             <button type="button" className="quiet" onClick={() => toggle.mutate(p)}>
               {p.enabled ? "Turn off" : "Turn on"}
             </button>
@@ -593,6 +644,6 @@ function LtiPlatforms({ client }: { client: ConsoleClient }) {
           </div>
         </form>
       </details>
-    </section>
+    </SettingsGroup>
   );
 }

@@ -10,6 +10,7 @@ import {
   type RubricCriterion,
 } from "@parikshaa/core/browser";
 import { CodeFields } from "./CodeFields.tsx";
+import { DropZone } from "./kit.tsx";
 
 /** Swap a question's kind, replacing the fields that do not carry across. */
 export function changeKind(question: Question, kind: QuestionKind): Question {
@@ -416,7 +417,9 @@ function PictureFields({
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="field">
-      <label htmlFor={id}>{label}</label>
+      <span className="field-label" id={`${id}-label`}>
+        {label}
+      </span>
       {images.length === 0 ? null : (
         <ul className="picture-list">
           {images.map((image, i) => (
@@ -435,15 +438,13 @@ function PictureFields({
           ))}
         </ul>
       )}
-      <input
-        id={id}
-        type="file"
+      <DropZone
+        label={images.length === 0 ? "Add a picture" : "Add another picture"}
+        name={label}
         accept="image/png,image/jpeg,image/gif,image/webp"
-        disabled={busy}
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file === undefined) return;
+        {...(busy ? { disabled: "Uploading…" } : {})}
+        hint="PNG, JPEG, GIF or WebP, up to 2 MB. Describe each one for candidates who cannot see it."
+        onFile={async (file) => {
           setBusy(true);
           setError(null);
           try {
@@ -456,7 +457,6 @@ function PictureFields({
           }
         }}
       />
-      <p className="notice">PNG, JPEG, GIF or WebP, up to 2 MB. Describe each one for candidates who cannot see it.</p>
       {error === null ? null : <p className="error">{error}</p>}
     </div>
   );

@@ -577,6 +577,28 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       },
     );
 
+    routes.put(
+      "/exams/:examId/archived",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Put an exam away, or bring it back",
+          description:
+            "An archived exam is left out of the console's current exams. Nothing else changes: its window, invitations, attempts and results stay as they were.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          body: S.archiveExamBody,
+          response: { 200: S.okResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
+        await service.archiveExam(actor, examId(request.params.examId), request.body.archived);
+        return reply.send({ ok: true });
+      },
+    );
+
     routes.get(
       "/exams",
       {

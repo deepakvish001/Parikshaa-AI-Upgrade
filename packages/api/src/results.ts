@@ -36,14 +36,27 @@ export interface ResultRow extends AttemptResult {
   readonly email: string | null;
 }
 
+/** The exam, with its qualifying mark for the charts to draw. */
+export interface ExamHead {
+  readonly id: string;
+  readonly title: string;
+  readonly cutoff: { readonly percent: number; readonly sections?: Readonly<Record<string, number>> } | null;
+}
+
+const examHead = (definition: Exam): ExamHead => ({
+  id: definition.id,
+  title: definition.title,
+  cutoff: definition.policy.cutoff === undefined ? null : { percent: definition.policy.cutoff.percent, ...(definition.policy.cutoff.sections === undefined ? {} : { sections: definition.policy.cutoff.sections }) },
+});
+
 export interface Results {
-  readonly exam: { readonly id: string; readonly title: string };
+  readonly exam: ExamHead;
   readonly rows: readonly ResultRow[];
   readonly analytics: CohortAnalytics;
 }
 
 export interface CandidateReport {
-  readonly exam: { readonly id: string; readonly title: string };
+  readonly exam: ExamHead;
   readonly candidate: { readonly ref: string; readonly name: string; readonly email: string | null };
   readonly result: AttemptResult;
   readonly questions: readonly {
@@ -105,6 +118,10 @@ export function istStamp(ms: number): string {
   return `${parts["year"]}-${parts["month"]}-${parts["day"]} ${parts["hour"]}:${parts["minute"]}`;
 }
 
+/** The spreadsheet says what the console says: the glossary's words, never the stored values. */
+const STATE_WORDS: Record<string, string> = { not_started: "Not started", in_progress: "In progress", submitted: "To grade", graded: "Graded", void: "Set aside" };
+const OUTCOME_WORDS: Record<string, string> = { qualified: "Qualified", failed: "Not qualified" };
+
 export class ResultsService {
   readonly #store: LedgerStore;
   readonly #invitations: InvitationStore;
@@ -147,7 +164,7 @@ export class ResultsService {
         email: invitation?.email ?? null,
       });
     }
-    return { exam: { id: definition.id, title: definition.title }, rows, analytics: cohortAnalytics(rows, definition) };
+    return { exam: examHead(definition), rows, analytics: cohortAnalytics(rows, definition) };
   }
 
   /** The results as a table: one row per candidate, one column per question the exam could set. */
@@ -157,7 +174,7 @@ export class ResultsService {
     const questions = allQuestions(definition);
     const cutoff = definition.policy.cutoff !== undefined;
     const header: Cell[] = [
-      "Ref",
+      "Roll no.",
       "Name",
       "Email",
       "State",
@@ -177,11 +194,11 @@ export class ResultsService {
       r.ref,
       r.name,
       r.email,
-      r.state,
+      STATE_WORDS[r.state] ?? r.state,
       r.total,
       r.maxTotal,
       r.percent,
-      ...(cutoff ? [r.outcome] : []),
+      ...(cutoff ? [r.outcome === null ? null : (OUTCOME_WORDS[r.outcome] ?? r.outcome)] : []),
       istStamp(r.startedAt),
       r.submittedAt === null ? null : istStamp(r.submittedAt),
       r.durationMs === null ? null : Math.round(r.durationMs / 6000) / 10,
@@ -278,7 +295,7 @@ export class ResultsService {
     }
 
     return {
-      exam: { id: definition.id, title: definition.title },
+      exam: examHead(definition),
       candidate: {
         ref: invitation?.candidateRef ?? projection.attempt.candidateId,
         name: invitation?.name ?? "",

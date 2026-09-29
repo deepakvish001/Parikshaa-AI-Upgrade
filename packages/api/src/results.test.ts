@@ -124,6 +124,9 @@ describe("the cohort's results", () => {
 
     const csv = (await call("GET", owner, "/exams/drive/results.csv")).payload;
     expect(csv.split("\n")[0]).toContain('"Outcome"');
+    // The glossary's words, not the stored values.
+    expect(csv).toContain('"Not qualified"');
+    expect(csv).not.toContain('"failed"');
   });
 
   it("includes a candidate started from the console, under their candidate id", async () => {
@@ -170,10 +173,12 @@ describe("the spreadsheet", () => {
     expect(res.payload.startsWith("﻿")).toBe(true);
     const lines = res.payload.slice(1).trim().split("\r\n");
     expect(lines[0]).toContain('"Q1 Which sort is stable?"');
+    expect(lines[0]!.startsWith('"Roll no."')).toBe(true);
     const ananya = lines.find((l) => l.startsWith('"007"'))!;
     expect(ananya).toContain(`"${istStamp(OPENS + 60_000)}"`);
     expect(ananya).toContain('"2026-10-01 10:01"');
     expect(ananya).toMatch(/,3,3,100,/);
+    expect(ananya).toContain('"Graded"');
     const hostile = lines.find((l) => l.startsWith('"008"'))!;
     expect(hostile).toContain(`"'=HYPERLINK(""http://evil.test"")"`);
   });

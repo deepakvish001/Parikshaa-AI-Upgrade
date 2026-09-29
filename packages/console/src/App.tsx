@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   Building2,
   ChevronRight,
@@ -29,26 +29,30 @@ import { Candidates } from "./components/Candidates.tsx";
 import { ReportPanel, ResultsPanel } from "./components/Results.tsx";
 import { IntegrationsPanel } from "./components/Integrations.tsx";
 import { PrivacyPanel } from "./components/Privacy.tsx";
-import { PracticePanel } from "./components/Practice.tsx";
 import { BillingPanel } from "./components/Billing.tsx";
 import { LivePanel } from "./components/Live.tsx";
-import { AttemptList } from "./components/AttemptList.tsx";
+import { AttemptList, StartAttemptDialog } from "./components/AttemptList.tsx";
 import { AttemptReview } from "./components/AttemptReview.tsx";
 import { ExamEditor } from "./components/ExamEditor.tsx";
-import { ExamList } from "./components/ExamList.tsx";
-import { ExamOverview, ExamSide, ExamTabs, QuestionsTab, type ExamTab } from "./components/ExamPage.tsx";
+import { ExamList, type ExamFilter } from "./components/ExamList.tsx";
+import { ExamHeader, ExamOverview, ExamSide, ExamTabs, NextStep, QuestionsTab, type ExamTab } from "./components/ExamPage.tsx";
+import { Banner, PageFrame, SkeletonRows } from "./components/kit.tsx";
 import { CommandPalette, useCommandKey, type PageLink } from "./components/CommandPalette.tsx";
 import { TryTest } from "./components/Preview.tsx";
 import { Home } from "./components/Home.tsx";
 import { Gallery } from "./components/Gallery.tsx";
-import { ToastProvider, useToast } from "@parikshaa/brand/ui";
+import { Dialog, ToastProvider, useToast } from "@parikshaa/brand/ui";
+import { ThemeSwitch, useTheme, type Theme } from "./components/ThemeSwitch.tsx";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
-import { SignIn } from "./components/SignIn.tsx";
+import { remembered, SignIn } from "./components/SignIn.tsx";
+
+/** The practice site's admin is opened by few, so it loads when opened. */
+const PracticePanel = lazy(() => import("./components/Practice.tsx").then((m) => ({ default: m.PracticePanel })));
 
 type View =
   | { readonly name: "home" }
   | { readonly name: "gallery" }
-  | { readonly name: "exams" }
+  | { readonly name: "exams"; readonly filter?: ExamFilter }
   | { readonly name: "editor"; readonly examId: string | null }
   | { readonly name: "attempts"; readonly examId: string }
   | { readonly name: "questions"; readonly examId: string }
@@ -113,6 +117,7 @@ function arrival(): { sso: string | null; ssoError: string | null; reset: string
 
 export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   const queryClient = useQueryClient();
+  const [theme, setTheme] = useTheme();
   const [arrived] = useState(arrival);
   const [token, setToken] = useState<string | null>(() => {
     if (injected !== undefined) return null;
@@ -138,12 +143,25 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
   if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
   return (
     <ToastProvider>
-      <Console client={client} onSignedOut={signOut} />
+      <Console client={client} onSignedOut={signOut} theme={theme} onTheme={setTheme} arrivedBySso={arrived.sso !== null} />
     </ToastProvider>
   );
 }
 
-function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: () => void }) {
+function Console({
+  client,
+  onSignedOut,
+  theme,
+  onTheme,
+  arrivedBySso = false,
+}: {
+  client: ConsoleClient;
+  onSignedOut: () => void;
+  theme: Theme;
+  onTheme: (next: Theme) => void;
+  /** This session came from the organisation's own sign-in provider. */
+  arrivedBySso?: boolean;
+}) {
   const queryClient = useQueryClient();
   const toast = useToast();
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
@@ -156,6 +174,11 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     return { name: "report", examId: "", attemptId: report };
   });
   const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
+  // Signed in through the organisation's provider: next time, offer it first, by name.
+  const cameBySso = arrivedBySso;
+  useEffect(() => {
+    if (cameBySso && me.data !== undefined) remembered.setSsoOrg({ id: me.data.organisation.id, name: me.data.organisation.name });
+  }, [cameBySso, me.data]);
   const can = (permission: string) => me.data?.permissions.includes(permission) ?? false;
 
   // A session that has ended — expired, revoked, the account disabled — shows
@@ -194,6 +217,13 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     queryFn: () => client.review((view as { attemptId: string }).attemptId),
     enabled: view.name === "review",
   });
+  // The answers beside the evidence: the scorecard's, for an account that may read it.
+  const reviewAnswers = useQuery({
+    queryKey: ["report", view.name === "review" ? view.attemptId : null],
+    queryFn: () => client.report((view as { attemptId: string }).attemptId),
+    enabled: view.name === "review" && can("attempt:review"),
+    retry: false,
+  });
 
   const saveExam = useMutation({
     mutationFn: (exam: Exam) => client.saveExam(exam),
@@ -206,6 +236,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         queryClient.invalidateQueries({ queryKey: ["exam"] }),
         queryClient.invalidateQueries({ queryKey: ["results"] }),
       ]);
+      setEditorDirty(false);
       setView({ name: "exams" });
     },
     // The server validates independently of the client; if it disagrees, show
@@ -230,6 +261,14 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
       await queryClient.invalidateQueries({ queryKey: ["exams"] });
       setProblems([]);
       setView({ name: "editor", examId: id });
+    },
+  });
+
+  const archiveExam = useMutation({
+    mutationFn: ({ examId, archived }: { examId: string; archived: boolean }) => client.archiveExam(examId, archived),
+    onSuccess: async (_, { examId, archived }) => {
+      toast(archived ? `Archived “${examTitle(examId)}”` : `Brought back “${examTitle(examId)}”`, "success");
+      await queryClient.invalidateQueries({ queryKey: ["exams"] });
     },
   });
 
@@ -278,10 +317,11 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     (view.name === "attempts" || view.name === "questions" || view.name === "candidates" || view.name === "live" || view.name === "results") && view.examId !== ""
       ? view.examId
       : null;
+  // The whole paper, for the questions tab, the side panel and Try test from any tab.
   const examDefinition = useQuery({
     queryKey: ["exam", pageExamId],
     queryFn: () => client.loadExam(pageExamId!),
-    enabled: pageExamId !== null && (view.name === "attempts" || view.name === "questions"),
+    enabled: pageExamId !== null && (view.name === "attempts" || view.name === "questions" || can("exam:read_key")),
   });
   const examResults = useQuery({
     queryKey: ["results", pageExamId],
@@ -289,6 +329,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
     enabled: pageExamId !== null && view.name === "attempts" && can("attempt:review"),
   });
   const [trying, setTrying] = useState(false);
+  const [startingDirect, setStartingDirect] = useState(false);
   const [searching, setSearching] = useState(false);
   useCommandKey(useCallback(() => setSearching(true), []));
   const actionFailure = [grade.error, assess.error, voidAttempt.error].find((e) => e !== null);
@@ -313,7 +354,14 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
   ];
 
   const section = SECTION_OF[view.name];
+  // An exam with unsaved changes asks before it is left.
+  const [editorDirty, setEditorDirty] = useState(false);
+  const [leaving, setLeaving] = useState<View | null>(null);
   const go = (next: View) => {
+    if (view.name === "editor" && editorDirty) {
+      setLeaving(next);
+      return;
+    }
     setView(next);
     window.scrollTo?.({ top: 0 });
   };
@@ -443,6 +491,7 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
             <span>Search</span>
             <kbd>Ctrl K</kbd>
           </button>
+          <ThemeSwitch theme={theme} onChange={onTheme} />
         </header>
         {searching ? (
           <CommandPalette
@@ -455,6 +504,23 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
               ...visible.map((tab): PageLink => ({ label: tab.label, go: () => go(tab.view) })),
               ...(me.data?.kind === "user" ? [{ label: "Account", go: () => go({ name: "account" }) }] : []),
               { label: "Design system", go: () => go({ name: "gallery" }) },
+            ]}
+            actions={[
+              ...(can("exam:write")
+                ? [
+                    {
+                      label: "New exam",
+                      go: () => {
+                        setProblems([]);
+                        go({ name: "editor", examId: null });
+                      },
+                    },
+                  ]
+                : []),
+              ...(can("attempt:start")
+                ? [{ label: "Invite candidates", go: () => go(pageExamId === null ? { name: "exams" } : { name: "candidates", examId: pageExamId }) }]
+                : []),
+              ...(can("exam:read_key") ? [{ label: "Find a question in the bank", go: () => go({ name: "bank" }) }] : []),
             ]}
             onExam={(examId) => go({ name: "attempts", examId })}
             onCandidate={(hit) =>
@@ -469,173 +535,283 @@ function Console({ client, onSignedOut }: { client: ConsoleClient; onSignedOut: 
         ) : null}
 
         <main className="content">
-          <header className="page-head">
-            <h1>{pageTitle(view, examTitle)}</h1>
-            <p className="notice">{PAGE_NOTE[view.name]}</p>
-          </header>
+          <PageFrame title={pageTitle(view, examTitle)} note={PAGE_NOTE[view.name]}>
+            {view.name === "home" ? (
+              <Home
+                dashboard={dashboard.data}
+                exams={exams.data ?? []}
+                name={me.data?.name}
+                canWrite={can("exam:write")}
+                onExam={(examId) => go({ name: "attempts", examId })}
+                onExams={(filter) => go({ name: "exams", filter })}
+                onGo={(target) => {
+                  if (target === "search") return setSearching(true);
+                  if (target === "new-exam") {
+                    setProblems([]);
+                    return go({ name: "editor", examId: null });
+                  }
+                  go({ name: target });
+                }}
+              />
+            ) : null}
+            {view.name === "gallery" ? <Gallery /> : null}
 
-      {view.name === "home" ? (
-        <Home
-          dashboard={dashboard.data}
-          exams={exams.data ?? []}
-          name={me.data?.name}
-          canWrite={can("exam:write")}
-          onExam={(examId) => go({ name: "attempts", examId })}
-          onGo={(target) => {
-            if (target === "search") return setSearching(true);
-            if (target === "new-exam") {
-              setProblems([]);
-              return go({ name: "editor", examId: null });
-            }
-            go({ name: target });
-          }}
-        />
-      ) : null}
-      {view.name === "gallery" ? <Gallery /> : null}
+            {view.name === "exams" ? (
+              exams.isPending ? (
+                <section className="card">
+                  <SkeletonRows columns={6} label="Loading exams…" />
+                </section>
+              ) : exams.error !== null ? (
+                <Banner tone="danger" title="Could not load exams.">
+                  Check the connection, then reload the page.
+                </Banner>
+              ) : (
+                <ExamList
+                  key={view.filter ?? "all"}
+                  exams={exams.data}
+                  initialFilter={view.filter ?? "all"}
+                  canWrite={can("exam:write")}
+                  onClone={(examId) => cloneExam.mutate(examId)}
+                  {...(can("exam:read_key")
+                    ? {
+                        onTry: (examId: string) => {
+                          go({ name: "attempts", examId });
+                          setTrying(true);
+                        },
+                      }
+                    : {})}
+                  onArchive={(examId, archived) => archiveExam.mutate({ examId, archived })}
+                  onOpen={(examId) => go({ name: "attempts", examId })}
+                  onEdit={(examId) => {
+                    setProblems([]);
+                    go({ name: "editor", examId });
+                  }}
+                  onNew={() => {
+                    setProblems([]);
+                    go({ name: "editor", examId: null });
+                  }}
+                />
+              )
+            ) : null}
 
-      {view.name === "exams" ? (
-        exams.isPending ? (
-          <p className="notice">Loading…</p>
-        ) : exams.error !== null ? (
-          <p className="error">Could not load exams.</p>
-        ) : (
-          <ExamList
-            exams={exams.data}
-            canWrite={can("exam:write")}
-            onClone={(examId) => cloneExam.mutate(examId)}
-            onOpen={(examId) => {
-              setIssued(null);
-              setView({ name: "attempts", examId });
-            }}
-            onEdit={(examId) => setView({ name: "editor", examId })}
-            onNew={() => {
-              setProblems([]);
-              setView({ name: "editor", examId: null });
-            }}
-          />
-        )
-      ) : null}
+            {view.name === "editor" && view.examId !== null && editing.data === undefined ? (
+              editing.error === null ? (
+                <section className="card">
+                  <SkeletonRows rows={6} columns={3} label="Loading the exam…" />
+                </section>
+              ) : (
+                <Banner tone="danger" title="Could not load the exam." />
+              )
+            ) : null}
+            {view.name === "editor" && (view.examId === null || editing.data !== undefined) ? (
+              <ExamEditor
+                {...(editing.data === undefined ? {} : { initial: editing.data })}
+                saving={saveExam.isPending}
+                serverProblems={problems}
+                onSave={(exam) => saveExam.mutate(exam)}
+                onCancel={() => go({ name: "exams" })}
+                onDirtyChange={setEditorDirty}
+                {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
+                {...(can("exam:write") ? { uploadImage: (file: File) => client.uploadImage(file) } : {})}
+              />
+            ) : null}
 
-      {view.name === "editor" && (view.examId === null || editing.data !== undefined) ? (
-        <ExamEditor
-          {...(editing.data === undefined ? {} : { initial: editing.data })}
-          saving={saveExam.isPending}
-          serverProblems={problems}
-          onSave={(exam) => saveExam.mutate(exam)}
-          onCancel={() => setView({ name: "exams" })}
-          {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
-          {...(can("exam:write") ? { uploadImage: (file: File) => client.uploadImage(file) } : {})}
-        />
-      ) : null}
+            {pageExamId !== null ? (
+              <>
+                <ExamHeader
+                  summary={exams.data?.find((e) => e.id === pageExamId)}
+                  frozen={frozen(pageExamId)}
+                  quiet={view.name === "results"}
+                  actions={{
+                    ...(can("exam:read_key") ? { onTry: () => setTrying(true) } : {}),
+                    ...(can("attempt:start") && view.name !== "candidates" ? { onInvite: () => go({ name: "candidates", examId: pageExamId }) } : {}),
+                    ...(can("attempt:start")
+                      ? {
+                          onStartDirect: () => {
+                            setIssued(null);
+                            startAttempt.reset();
+                            setStartingDirect(true);
+                          },
+                        }
+                      : {}),
+                    ...(can("exam:write")
+                      ? {
+                          onEdit: () => {
+                            setProblems([]);
+                            go({ name: "editor", examId: pageExamId });
+                          },
+                          onCopy: () => cloneExam.mutate(pageExamId),
+                          onArchive: (archived: boolean) => archiveExam.mutate({ examId: pageExamId, archived }),
+                        }
+                      : {}),
+                  }}
+                />
+                <ExamTabs current={view.name as ExamTab} canReview={can("attempt:review")} onGo={(tab) => go({ name: tab, examId: pageExamId })} />
+              </>
+            ) : null}
 
-      {pageExamId !== null ? (
-        <ExamTabs
-          current={view.name as ExamTab}
-          canReview={can("attempt:review")}
-          onGo={(tab) => {
-            if (tab === "attempts") setIssued(null);
-            go({ name: tab, examId: pageExamId });
-          }}
-        />
-      ) : null}
+            {view.name === "questions" ? (
+              examDefinition.data === undefined ? (
+                examDefinition.error === null ? (
+                  <section className="card">
+                    <SkeletonRows rows={5} columns={3} label="Loading the questions…" />
+                  </section>
+                ) : (
+                  <Banner tone="danger" title="Could not load the exam." />
+                )
+              ) : (
+                <QuestionsTab
+                  exam={examDefinition.data}
+                  frozen={frozen(view.examId)}
+                  {...(can("exam:write")
+                    ? { onEdit: () => (frozen(view.examId) ? cloneExam.mutate(view.examId) : setView({ name: "editor", examId: view.examId })) }
+                    : {})}
+                />
+              )
+            ) : null}
+            {trying && examDefinition.data !== undefined ? <TryTest exam={examDefinition.data} onClose={() => setTrying(false)} /> : null}
+            {startingDirect && pageExamId !== null ? (
+              <StartAttemptDialog
+                starting={startAttempt.isPending}
+                issued={issued}
+                error={startAttempt.error === null ? null : startAttempt.error instanceof ConsoleError ? (startAttempt.error.detail ?? startAttempt.error.message) : startAttempt.error.message}
+                onStart={(candidateId) => startAttempt.mutate({ examId: pageExamId, candidateId })}
+                onClose={() => {
+                  setStartingDirect(false);
+                  setIssued(null);
+                }}
+              />
+            ) : null}
 
-      {view.name === "questions" ? (
-        examDefinition.data === undefined ? (
-          <p className="notice">{examDefinition.error === null ? "Loading…" : "Could not load the exam."}</p>
-        ) : (
-          <QuestionsTab
-            exam={examDefinition.data}
-            frozen={frozen(view.examId)}
-            {...(can("exam:write")
-              ? { onEdit: () => (frozen(view.examId) ? cloneExam.mutate(view.examId) : setView({ name: "editor", examId: view.examId })) }
-              : {})}
-          />
-        )
-      ) : null}
-      {trying && examDefinition.data !== undefined ? <TryTest exam={examDefinition.data} onClose={() => setTrying(false)} /> : null}
+            {view.name === "candidates" ? <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} /> : null}
 
-      {view.name === "candidates" ? (
-        <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} />
-      ) : null}
+            {view.name === "results" ? (
+              <ResultsPanel client={client} examId={view.examId} onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })} />
+            ) : null}
+            {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} organisation={me.data?.organisation.name} /> : null}
+            {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
 
-      {view.name === "results" ? (
-        <ResultsPanel
-          client={client}
-          examId={view.examId}
-          onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
-        />
-      ) : null}
-      {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} /> : null}
-      {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
+            {view.name === "attempts" ? (
+              <ExamOverview
+                side={
+                  <ExamSide
+                    summary={exams.data?.find((e) => e.id === view.examId)}
+                    exam={examDefinition.data}
+                    results={examResults.data}
+                    {...(can("attempt:review") ? { onResults: () => go({ name: "results", examId: view.examId }) } : {})}
+                  />
+                }
+              >
+                <NextStep
+                  summary={exams.data?.find((e) => e.id === view.examId)}
+                  {...(can("attempt:start")
+                    ? { onSchedule: () => go({ name: "candidates", examId: view.examId }), onInvite: () => go({ name: "candidates", examId: view.examId }) }
+                    : {})}
+                  {...(can("attempt:review") ? { onGrade: () => go({ name: "results", examId: view.examId }) } : {})}
+                />
+                {attempts.data === undefined ? (
+                  attempts.error === null ? (
+                    <section className="card">
+                      <SkeletonRows columns={4} label="Loading attempts…" />
+                    </section>
+                  ) : (
+                    <Banner tone="danger" title="Could not load the attempts." />
+                  )
+                ) : (
+                  <AttemptList
+                    attempts={attempts.data}
+                    canReview={can("attempt:review")}
+                    {...(can("attempt:start") ? { onInvite: () => go({ name: "candidates", examId: view.examId }) } : {})}
+                    {...(can("attempt:extend")
+                      ? {
+                          onExtend: async (attemptId: string, minutes: number, reason: string) => {
+                            await client.extendTime(attemptId, minutes, reason);
+                            await queryClient.invalidateQueries({ queryKey: ["attempts"] });
+                            toast("Extra time given", "success");
+                          },
+                        }
+                      : {})}
+                    onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
+                  />
+                )}
+              </ExamOverview>
+            ) : null}
 
-      {view.name === "attempts" ? (
-        <ExamOverview
-          side={
-            <ExamSide
-              summary={exams.data?.find((e) => e.id === view.examId)}
-              exam={examDefinition.data}
-              results={examResults.data}
-              {...(can("attempt:review") ? { onResults: () => go({ name: "results", examId: view.examId }) } : {})}
-              {...(can("exam:write") ? { onEdit: () => setView({ name: "editor", examId: view.examId }) } : {})}
-              onTry={() => setTrying(true)}
-            />
-          }
-        >
-      {attempts.data !== undefined ? (
-        <AttemptList
-          attempts={attempts.data}
-          issued={issued}
-          starting={startAttempt.isPending}
-          canStart={can("attempt:start")}
-          canReview={can("attempt:review")}
-          {...(can("attempt:extend")
-            ? {
-                onExtend: async (attemptId: string, minutes: number, reason: string) => {
-                  await client.extendTime(attemptId, minutes, reason);
-                  await queryClient.invalidateQueries({ queryKey: ["attempts"] });
-                },
-              }
-            : {})}
-          onStart={(candidateId) => startAttempt.mutate({ examId: view.examId, candidateId })}
-          onReview={(attemptId) => setView({ name: "review", examId: view.examId, attemptId })}
-        />
-      ) : null}
-        </ExamOverview>
-      ) : null}
+            {view.name === "review" ? (
+              review.data === undefined ? (
+                review.error === null ? (
+                  <section className="card">
+                    <SkeletonRows rows={5} columns={2} label="Loading the attempt…" />
+                  </section>
+                ) : (
+                  <Banner tone="danger" title="Could not load the attempt." />
+                )
+              ) : (
+                <AttemptReview
+                  attemptId={view.attemptId}
+                  review={review.data}
+                  grading={grade.isPending}
+                  assessing={assess.isPending ? assess.variables.probeId : null}
+                  voiding={voidAttempt.isPending}
+                  onGrade={() => grade.mutate(view.attemptId)}
+                  onAssess={(probeId) => assess.mutate({ attemptId: view.attemptId, probeId })}
+                  onVoid={(reason) => voidAttempt.mutate({ attemptId: view.attemptId, reason })}
+                  can={{ grade: can("attempt:grade"), assess: can("attempt:assess"), void: can("attempt:void") }}
+                  failure={actionFailure === undefined ? null : actionFailure.message}
+                  answers={reviewAnswers.data}
+                />
+              )
+            ) : null}
 
-      {view.name === "review" && review.data !== undefined ? (
-        <AttemptReview
-          attemptId={view.attemptId}
-          review={review.data}
-          grading={grade.isPending}
-          assessing={assess.isPending ? assess.variables.probeId : null}
-          voiding={voidAttempt.isPending}
-          onGrade={() => grade.mutate(view.attemptId)}
-          onAssess={(probeId) => assess.mutate({ attemptId: view.attemptId, probeId })}
-          onVoid={(reason) => voidAttempt.mutate({ attemptId: view.attemptId, reason })}
-          can={{ grade: can("attempt:grade"), assess: can("attempt:assess"), void: can("attempt:void") }}
-          failure={actionFailure === undefined ? null : actionFailure.message}
-        />
-      ) : null}
-
-      {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
-      {view.name === "practice" ? (
-        <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
-      ) : null}
-      {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
-      {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
-      {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
-      {view.name === "audit" ? <AuditPanel client={client} /> : null}
-      {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
-      {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
-      {view.name === "billing" ? <BillingPanel client={client} /> : null}
-      {view.name === "signin" && me.data !== undefined ? <OrgSignInPanel client={client} orgId={me.data.organisation.id} /> : null}
-      {view.name === "account" ? (
-        <>
-          <AccountPanel client={client} onSignedOut={onSignedOut} />
-          <TwoFactorPanel client={client} onSignedOut={onSignedOut} />
-        </>
-      ) : null}
+            {view.name === "bank" ? <BankPanel client={client} canWrite={can("exam:write")} /> : null}
+            {view.name === "practice" ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={3} label="Loading the practice site…" />}>
+                <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
+              </Suspense>
+            ) : null}
+            {view.name === "staff" && me.data !== undefined ? <StaffPanel client={client} selfId={me.data.id} /> : null}
+            {view.name === "keys" ? <ApiKeysPanel client={client} /> : null}
+            {view.name === "usage" ? <UsagePanel client={client} canSetCap={can("org:manage")} /> : null}
+            {view.name === "audit" ? <AuditPanel client={client} /> : null}
+            {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
+            {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
+            {view.name === "billing" ? <BillingPanel client={client} /> : null}
+            {view.name === "signin" && me.data !== undefined ? (
+              <div className="settings-page-groups">
+                <OrgSignInPanel client={client} orgId={me.data.organisation.id} />
+              </div>
+            ) : null}
+            {view.name === "account" ? (
+              <div className="settings-page-groups">
+                <AccountPanel client={client} onSignedOut={onSignedOut} />
+                <TwoFactorPanel client={client} onSignedOut={onSignedOut} />
+              </div>
+            ) : null}
+          </PageFrame>
+          {leaving === null ? null : (
+            <Dialog label="Leave without saving?" onClose={() => setLeaving(null)}>
+              <h2 className="dialog-title">Leave without saving?</h2>
+              <p className="notice">The changes to this exam have not been saved, and will be lost.</p>
+              <div className="dialog-actions">
+                <button type="button" className="quiet" onClick={() => setLeaving(null)}>
+                  Keep editing
+                </button>
+                <button
+                  type="button"
+                  className="danger"
+                  onClick={() => {
+                    const next = leaving;
+                    setLeaving(null);
+                    setEditorDirty(false);
+                    setView(next);
+                    window.scrollTo?.({ top: 0 });
+                  }}
+                >
+                  Leave without saving
+                </button>
+              </div>
+            </Dialog>
+          )}
         </main>
       </div>
     </div>

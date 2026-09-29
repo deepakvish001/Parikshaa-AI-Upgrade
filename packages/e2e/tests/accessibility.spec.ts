@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { beginSitting, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "./support.js";
+import { beginSitting, chooseLanguage, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, setPrivacyNotice } from "./support.js";
 
 /**
  * ROADMAP §9: an exam a candidate cannot operate is an exam they failed for
@@ -10,54 +10,148 @@ import { beginSitting, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, seedSitting, set
  */
 
 async function violations(page: Page): Promise<string[]> {
+  // Colours are scored at rest: mid-way through a fade (a dialog, a menu, a
+  // button leaving disabled) they are neither, and WebKit catches them there.
+  await page.addStyleTag({ content: "*, *::before, *::after { animation: none !important; transition: none !important; }" });
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
 
-test("every screen a candidate meets passes WCAG 2.1 AA, in English and in Hindi", async ({ page, request }) => {
-  const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
-  await beginSitting(page, sitting.links["CS001"]!);
-  await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
 
-  // A follow-up open on the page.
-  await page.getByRole("radio", { name: "Merge sort" }).check();
-  await page.getByRole("button", { name: "Save & next" }).click();
-  await expect(page.getByRole("region", { name: "Follow-up question" })).toContainText("Walk me through");
-  expect(await violations(page)).toEqual([]);
+/*
+ * Every check runs in the light theme and again in the dark one: a colour that
+ * passes on white can fail on the dark surface (the palette once did).
+ */
+for (const colorScheme of ["light", "dark"] as const) {
+  test.describe(`in the ${colorScheme} theme`, () => {
+    test.use({ colorScheme });
 
-  await page.getByLabel("Language").selectOption("hi");
-  await expect(page.getByRole("button", { name: "प्रयास जमा करें" })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.lang)).toBe("hi");
-  expect(await violations(page)).toEqual([]);
+    test("every screen a candidate meets passes WCAG 2.1 AA, in English and in Hindi", async ({ page, request }) => {
+      const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
+      await beginSitting(page, sitting.links["CS001"]!);
+      await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
 
-  await page.getByLabel("भाषा").selectOption("en");
-  // The summary before submitting, over the paper.
-  await page.getByRole("button", { name: "Submit attempt" }).click();
-  const summary = page.getByRole("dialog", { name: "Submit your attempt?" });
-  await expect(summary).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-  await summary.getByRole("button", { name: "Yes, submit" }).click();
-  await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-});
+      // A follow-up open on the page.
+      await page.getByRole("radio", { name: "Merge sort" }).check();
+      await page.getByRole("button", { name: "Save & next" }).click();
+      await expect(page.getByRole("region", { name: "Follow-up question" })).toContainText("Walk me through");
+      expect(await violations(page)).toEqual([]);
 
-test("the instructions and system check, before the clock, pass WCAG 2.1 AA", async ({ page, request }) => {
-  const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
-  const link = local(sitting.links["CS001"]!);
-  await page.goto(link);
-  await expect(page.getByRole("heading", { name: "System check" })).toBeVisible();
-  await expect(page.getByText(/^Good \(\d+ ms\)$/)).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-});
+      // The Display menu open over the paper.
+      await page.getByRole("button", { name: "Display" }).click();
+      await expect(page.getByRole("group", { name: "Display" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
 
-test("the privacy notice passes WCAG 2.1 AA", async ({ page, request }) => {
-  const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ] });
-  await setPrivacyNotice(request, sitting.token);
-  await beginSitting(page, sitting.links["CS001"]!);
-  await expect(page.getByRole("heading", { name: "Before you start: your data" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-});
+      await chooseLanguage(page, "hi");
+      await expect(page.getByRole("button", { name: "प्रयास जमा करें" })).toBeVisible();
+      expect(await page.evaluate(() => document.documentElement.lang)).toBe("hi");
+      expect(await violations(page)).toEqual([]);
+
+      await chooseLanguage(page, "en");
+      // The summary before submitting, over the paper.
+      await page.getByRole("button", { name: "Submit attempt" }).click();
+      const summary = page.getByRole("dialog", { name: "Submit your attempt?" });
+      await expect(summary).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await summary.getByRole("button", { name: "Yes, submit" }).click();
+      await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test("the instructions and system check, before the clock, pass WCAG 2.1 AA", async ({ page, request }) => {
+      const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
+      const link = local(sitting.links["CS001"]!);
+      await page.goto(link);
+      await expect(page.getByRole("heading", { name: "System check" })).toBeVisible();
+      await expect(page.getByText(/^Good \(\d+ ms\)$/)).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test("the privacy notice passes WCAG 2.1 AA", async ({ page, request }) => {
+      const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ] });
+      await setPrivacyNotice(request, sitting.token);
+      await page.goto(local(sitting.links["CS001"]!));
+      await expect(page.getByRole("heading", { name: "Before you start: your data" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+
+    test("the console's exam page — overview, live, questions, try test, editor — and search pass WCAG 2.1 AA", async ({ page, request }) => {
+      // Some twenty scans: past a minute in WebKit.
+      test.slow();
+      const sitting = await seedSitting(request);
+      await page.goto("/console/");
+      expect(await violations(page)).toEqual([]);
+      await page.getByLabel("Email").fill(OWNER.email);
+      await page.getByLabel("Password").fill(OWNER.password);
+      await page.getByRole("button", { name: "Sign in", exact: true }).click();
+      await expect(page.getByRole("region", { name: "Sittings" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: sitting.title, exact: true }).click();
+      await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("button", { name: "Live sitting" }).click();
+      await expect(page.getByRole("region", { name: "Candidates now" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      // The exam's "⋯", open; its candidates and its results.
+      await page.getByRole("button", { name: `More actions for ${sitting.title}` }).click();
+      await expect(page.getByRole("menu")).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.keyboard.press("Escape");
+      await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Candidates" }).click();
+      await expect(page.getByRole("region", { name: "Invited candidates" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Results" }).click();
+      await expect(page.getByRole("region", { name: "Candidates" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+
+      // The questions, one previewed; the test tried; the editor's list and settings; Ctrl+K.
+      await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
+      await page.getByRole("button", { name: "Preview question 1" }).click();
+      await expect(page.getByRole("dialog", { name: "Question 1" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.keyboard.press("Escape");
+      await page.getByRole("button", { name: "Try test" }).click();
+      await expect(page.getByRole("dialog", { name: "Try test" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("button", { name: "End preview" }).click();
+      await page.getByRole("button", { name: "Copy to change" }).or(page.getByRole("button", { name: "Edit questions" })).click();
+      await expect(page.getByRole("heading", { name: /exam/ })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("tab", { name: "Settings" }).click();
+      expect(await violations(page)).toEqual([]);
+
+      // The exam list, the bank and the settings pages, each on the one template.
+      const nav = page.getByRole("navigation", { name: "Account" });
+      for (const [name, landmark] of [
+        ["Exams", "Exams"],
+        ["Question bank", "Question bank"],
+        ["Staff", "Staff"],
+        ["Audit log", "Audit log"],
+        ["Integrations", "Webhooks"],
+        ["Billing", "Plan and balance"],
+      ] as const) {
+        await nav.getByRole("button", { name, exact: true }).click();
+        await expect(page.getByRole("region", { name: landmark }).first()).toBeVisible();
+        expect(await violations(page)).toEqual([]);
+      }
+      await page.keyboard.press("Control+k");
+      await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("cs0");
+      await expect(page.getByRole("option").first()).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+
+      // The design system, with a dialog open and a toast showing.
+      await page.keyboard.press("Escape");
+      await page.goto("/console/?gallery");
+      await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("button", { name: "Show a toast" }).click();
+      await page.getByRole("button", { name: "Open a dialog" }).click();
+      await expect(page.getByRole("dialog", { name: "Submit your attempt?" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+    });
+  });
+}
 
 test("a candidate can sit the whole exam from the keyboard", async ({ page, request }) => {
   const sitting = await seedSitting(request, { vivaTriggerRatio: 1 });
@@ -91,49 +185,4 @@ test("a candidate can sit the whole exam from the keyboard", async ({ page, requ
   await expect(page.getByRole("button", { name: "Yes, submit" })).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
-});
-
-test("the console's exam page — overview, live, questions, try test, editor — and search pass WCAG 2.1 AA", async ({ page, request }) => {
-  const sitting = await seedSitting(request);
-  await page.goto("/console/");
-  expect(await violations(page)).toEqual([]);
-  await page.getByLabel("Email").fill(OWNER.email);
-  await page.getByLabel("Password").fill(OWNER.password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("region", { name: "Sittings" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-  await page.getByRole("button", { name: sitting.title }).click();
-  await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-  await page.getByRole("button", { name: "Live sitting" }).click();
-  await expect(page.getByRole("region", { name: "Candidates now" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-
-  // The questions, one previewed; the test tried; the editor's list and settings; Ctrl+K.
-  await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
-  await page.getByRole("button", { name: "Preview question 1" }).click();
-  expect(await violations(page)).toEqual([]);
-  await page.getByRole("button", { name: "Try test" }).click();
-  await expect(page.getByRole("dialog", { name: "Try test" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-  await page.getByRole("button", { name: "End preview" }).click();
-  await page.getByRole("button", { name: "Copy to change" }).or(page.getByRole("button", { name: "Edit questions" })).click();
-  await expect(page.getByRole("heading", { name: /exam/ })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-  await page.getByRole("tab", { name: "Settings" }).click();
-  expect(await violations(page)).toEqual([]);
-  await page.keyboard.press("Control+k");
-  await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("cs0");
-  await expect(page.getByRole("option").first()).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-
-  // The design system, with a dialog open and a toast showing.
-  await page.keyboard.press("Escape");
-  await page.goto("/console/?gallery");
-  await expect(page.getByRole("heading", { name: "Design system" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
-  await page.getByRole("button", { name: "Show a toast" }).click();
-  await page.getByRole("button", { name: "Open a dialog" }).click();
-  await expect(page.getByRole("dialog", { name: "Submit your attempt?" })).toBeVisible();
-  expect(await violations(page)).toEqual([]);
 });

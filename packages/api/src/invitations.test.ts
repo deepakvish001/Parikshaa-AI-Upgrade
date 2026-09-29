@@ -152,6 +152,31 @@ describe("importing a cohort", () => {
   });
 });
 
+describe("the exam list", () => {
+  it("carries each exam's window, and whether it has been put away", async () => {
+    const listed = async () => (await call("GET", owner, "/exams")).json().exams[0];
+    expect(await listed()).toMatchObject({
+      id: "drive-2026",
+      window: { opensAt: new Date(OPENS).toISOString(), closesAt: new Date(CLOSES).toISOString() },
+      archivedAt: null,
+    });
+
+    const put = await call("PUT", owner, "/exams/drive-2026/archived", { archived: true });
+    expect(put.statusCode, put.payload).toBe(200);
+    expect((await listed()).archivedAt).toBe(new Date(clock).toISOString());
+    // Archived is only where it is listed: the window still stands.
+    expect((await listed()).window).not.toBeNull();
+
+    await call("PUT", owner, "/exams/drive-2026/archived", { archived: false });
+    expect((await listed()).archivedAt).toBeNull();
+
+    const audit = (await call("GET", owner, "/audit")).json().entries.map((e: { action: string }) => e.action);
+    expect(audit).toEqual(expect.arrayContaining(["exam.archived", "exam.restored"]));
+
+    expect((await call("PUT", owner, "/exams/no-such-exam/archived", { archived: true })).statusCode).toBe(404);
+  });
+});
+
 describe("finding a candidate", () => {
   it("across exams, by reference, name or email, and only in this organisation", async () => {
     await inviteAll();
@@ -191,6 +216,8 @@ describe("a candidate opening their link", () => {
       negativeMarks: 0,
       calculator: false,
       proctored: false,
+      proctoring: null,
+      notice: null,
     });
 
     clock = OPENS + 60_000;

@@ -3,6 +3,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StarterPack, type StoreItem } from "../api.ts";
 
+/** How an interview ended, in words. */
+const VERDICT_WORDS: Record<"offer" | "reject" | "waiting", string> = { offer: "Offer", reject: "No offer", waiting: "Waiting to hear" };
+
 /**
  * Companies, interview experiences and the coin store (ROADMAP §16), for staff.
  * A company's page is counted from reports, so staff add reports — a problem,
@@ -29,7 +32,7 @@ export function StarterPacks({ client, canWrite }: { client: ConsoleClient; canW
   });
   if ((packs.data ?? []).length === 0) return null;
   return (
-    <section className="card" aria-label="Starter packs">
+    <section className="card prep-card" aria-label="Starter packs">
       <div className="bar">
         <strong>Starter packs</strong>
       </div>
@@ -86,7 +89,7 @@ export function Companies({ client, canWrite }: { client: ConsoleClient; canWrit
   };
   return (
     <>
-      <section className="card" aria-label="Companies">
+      <section className="card prep-card" aria-label="Companies">
         <div className="bar">
           <strong>Companies</strong>
         </div>
@@ -177,7 +180,7 @@ function CompanyReports({
     report.mutate();
   };
   return (
-    <section className="card" aria-label={`Reports for ${company.name}`}>
+    <section className="card prep-card" aria-label={`Reports for ${company.name}`}>
       <div className="bar">
         <strong>{company.name}: reports</strong>
       </div>
@@ -250,7 +253,7 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prep"] }),
   });
   return (
-    <section className="card" aria-label="Interview experiences">
+    <section className="card prep-card" aria-label="Interview experiences">
       <div className="bar">
         <strong>Interview experiences</strong>
         <label>
@@ -272,7 +275,7 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
             <li key={e.id}>
               <article aria-label={`${e.company.name}, ${e.role}, by ${e.author}`}>
                 <p>
-                  <strong>{e.company.name}</strong> · {e.role} · {e.interviewed} · {e.verdict} · by {e.author}
+                  <strong>{e.company.name}</strong> · {e.role} · {e.interviewed} · {VERDICT_WORDS[e.verdict]} · by {e.author}
                 </p>
                 <ol>
                   {e.rounds.map((r, i) => (
@@ -330,7 +333,7 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
   };
   return (
     <>
-      <section className="card" aria-label="Coin store">
+      <section className="card prep-card" aria-label="Coin store">
         <div className="bar">
           <strong>Coin store</strong>
         </div>
@@ -413,7 +416,7 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
         ) : null}
       </section>
       {canManage ? (
-        <section className="card" aria-label="Store orders">
+        <section className="card prep-card" aria-label="Store orders">
           <div className="bar">
             <strong>Orders</strong>
           </div>

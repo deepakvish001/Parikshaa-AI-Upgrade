@@ -87,12 +87,17 @@ test("a learner signs up on a practice site, solves a problem, reads its editori
 
   // A question in the discussion, which staff can hide.
   await page.getByRole("tab", { name: "Discussion" }).click();
-  await page.getByPlaceholder("Write a comment").fill("Is insertion sort stable too?");
-  await page.getByRole("button", { name: "Post" }).click();
-  await expect(page.getByText("Is insertion sort stable too?")).toBeVisible();
+  const question = `Is insertion sort stable too? (${name})`;
+  await page.getByPlaceholder("Write a comment").fill(question);
+  // The comment's id from its own post: runs side by side post alike, and each hides only its own.
+  const [posted] = await Promise.all([
+    page.waitForResponse((r) => r.request().method() === "POST" && r.url().endsWith(`/comments`) && r.url().includes("/practice/")),
+    page.getByRole("button", { name: "Post" }).click(),
+  ]);
+  expect(posted.status()).toBe(201);
+  const mine = (await posted.json()) as { id: string };
+  await expect(page.getByText(question)).toBeVisible();
   const staff = { authorization: `Bearer ${token}` };
-  const comments = await (await request.get("/api/practice-admin/comments", { headers: staff })).json();
-  const mine = comments.comments.find((c: { body: string }) => c.body === "Is insertion sort stable too?");
   expect((await request.put(`/api/practice-admin/comments/${mine.id}`, { headers: staff, data: { hidden: true } })).status()).toBe(200);
   await page.reload();
   await page.getByRole("tab", { name: "Discussion" }).click();
@@ -118,4 +123,49 @@ test("a reload anywhere on a practice site opens that page, not the API's answer
   await expect(page.getByRole("heading", { name: "Contests" })).toBeVisible();
   await page.goto("/practice/no-such-site");
   await expect(page.getByRole("heading", { name: "There is no practice site here" })).toBeVisible();
+});
+
+test("code typed in a practice problem's editor is still there after a reload", async ({ page, request }) => {
+  const token = await ownerToken(request);
+  const headers = { authorization: `Bearer ${token}` };
+  await seedPractice(request);
+  const title = `Echo ${Math.random().toString(36).slice(2, 8)}`;
+  const filed = await request.post("/api/bank", {
+    headers,
+    data: {
+      question: { kind: "code", stem: `${title}\n\nPrint what you read.`, maxScore: 1, rubric: [], language: "python", languages: ["python"], starter: "", samples: [], tests: [{ id: "t1", input: "1\n", expected: "1\n", weight: 1, hidden: true }] },
+      difficulty: "easy",
+      tags: [],
+    },
+  });
+  expect(filed.status(), await filed.text()).toBe(201);
+  const published = await request.post("/api/practice-admin/problems", { headers, data: { bankQuestionId: (await filed.json()).id } });
+  expect(published.status(), await published.text()).toBe(201);
+
+  await page.goto(`/practice/${SITE}/problems/${(await published.json()).slug}`);
+  // The editor's code arrives after the page, with a plain box in its place until then: type into the editor itself.
+  await expect(page.locator(".cm-content")).toBeVisible();
+  const editor = page.getByRole("textbox", { name: "Code for question 1" });
+  // Filled in one input: keys typed faster than a frame into an empty editor can lose one in Firefox.
+  await editor.fill("print(input())");
+  await expect(editor).toContainText("print(input())");
+  await page.reload();
+  await expect(page.locator(".cm-content")).toContainText("print(input())");
+});
+
+test.describe("in the dark theme", () => {
+  test.use({ colorScheme: "dark" });
+
+  test("the problem set, a problem and its discussion pass WCAG 2.1 AA", async ({ page, request }) => {
+    const { title } = await seedPractice(request);
+    await page.goto(`/practice/${SITE}`);
+    await expect(page.getByRole("link", { name: new RegExp(title) })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.getByRole("link", { name: new RegExp(title) }).click();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+    await page.getByRole("button", { name: "Display" }).click();
+    await expect(page.getByRole("group", { name: "Display" })).toBeVisible();
+    expect(await violations(page)).toEqual([]);
+  });
 });

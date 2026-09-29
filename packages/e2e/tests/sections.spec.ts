@@ -19,13 +19,15 @@ test("a candidate takes a sectioned test in order, and a section once left stays
 
   await page.getByRole("radio", { name: "Merge sort" }).check();
   await page.getByRole("button", { name: "Finish General and go on" }).click();
-  await expect(page.getByText("You cannot come back to General once you leave it.")).toBeVisible();
+  await expect(page.getByRole("alertdialog", { name: "Leave General?" })).toContainText("You cannot come back to General once you leave it.");
   await page.getByRole("button", { name: "Leave General" }).click();
 
   const box = page.getByRole("textbox", { name: SHORT.stem });
   await expect(box).toBeVisible();
   await expect(page.getByRole("radio", { name: "Merge sort" })).toBeHidden();
-  await expect(page.getByText(/\d+:\d\d left in this section/)).toHaveAttribute("role", "timer");
+  // The section's own time, in the pill in the bar; the part left behind stays in sight, locked.
+  await expect(page.getByRole("timer", { name: /\d+:\d\d left in this section/ })).toContainText("Aptitude");
+  await expect(steps.getByRole("listitem").filter({ hasText: "General" })).toHaveClass(/done/);
 
   // The server holds the line too: the left part can no longer be answered.
   const token = await page.evaluate(() => sessionStorage.getItem("parikshaa.attempt-token"));

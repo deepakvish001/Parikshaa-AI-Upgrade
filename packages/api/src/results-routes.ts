@@ -81,8 +81,18 @@ const similarityResponse = z.object({
     .readonly(),
 });
 
+/** The exam, with its qualifying mark for the charts to draw. */
+const examHead = z.object({
+  id: z.string(),
+  title: z.string(),
+  cutoff: z
+    .object({ percent: z.number(), sections: z.record(z.string(), z.number()).optional() })
+    .nullable()
+    .describe("The qualifying mark, overall and per section, as percentages; null without one."),
+});
+
 const resultsResponse = z.object({
-  exam: z.object({ id: z.string(), title: z.string() }),
+  exam: examHead,
   rows: z.array(result.extend({ ref: z.string(), name: z.string(), email: z.string().nullable() })).readonly(),
   analytics: z.object({
     candidates: z.number(),
@@ -122,7 +132,7 @@ const resultsResponse = z.object({
   }),
 });
 const reportResponse = z.object({
-  exam: z.object({ id: z.string(), title: z.string() }),
+  exam: examHead,
   candidate: z.object({ ref: z.string(), name: z.string(), email: z.string().nullable() }),
   result,
   questions: z

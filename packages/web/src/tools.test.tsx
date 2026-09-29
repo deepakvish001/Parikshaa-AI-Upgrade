@@ -95,6 +95,92 @@ describe("keyboard shortcuts", () => {
   });
 });
 
+describe("on a phone", () => {
+  it("keeps the tools in one sheet, the Display settings among them, and gives them back with Escape", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    const opener = screen.getByRole("button", { name: "Tools" });
+    await userEvent.click(opener);
+    const sheet = screen.getByRole("dialog", { name: "Tools" });
+    expect(within(sheet).getAllByRole("button").map((b) => b.textContent)).toEqual(
+      expect.arrayContaining(["Question paper", "Instructions", "Calculator", "Rough work", "Keyboard shortcuts", "Display"]),
+    );
+    await userEvent.click(within(sheet).getByRole("button", { name: "Display" }));
+    const display = screen.getByRole("dialog", { name: "Display" });
+    expect(within(display).getByLabelText("Language")).toBeInTheDocument();
+    await userEvent.click(within(display).getByRole("button", { name: "Back" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Tools" })).getByRole("button", { name: "Calculator" }));
+    // A tool chosen closes the sheet and opens the tool.
+    expect(screen.queryByRole("dialog", { name: "Tools" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Calculator" })).toBeInTheDocument();
+  });
+
+  it("opens the palette from the strip, and puts Clear response under More actions", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    await userEvent.click(screen.getByRole("button", { name: /^Questions 0\/\d+$/ }));
+    expect(screen.getByRole("navigation", { name: "Questions" })).toHaveClass("open");
+    // Focus goes to the question on screen, and Escape closes the sheet.
+    expect(screen.getByRole("button", { name: /^Question 1:/ })).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.getByRole("navigation", { name: "Questions" })).not.toHaveClass("open");
+
+    await userEvent.click(screen.getByLabelText("mergesort"));
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Clear response" }));
+    expect(screen.getByLabelText("mergesort")).not.toBeChecked();
+  });
+});
+
+describe("the tool windows", () => {
+  it("open side by side in a stack; Escape closes the newest and puts focus back on its button", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    const calcButton = screen.getAllByRole("button", { name: "Calculator" })[0]!;
+    await userEvent.click(calcButton);
+    await userEvent.click(screen.getAllByRole("button", { name: "Rough work" })[0]!);
+    const stack = document.querySelector(".tool-windows")!;
+    expect(within(stack as HTMLElement).getAllByRole("dialog").map((d) => d.getAttribute("aria-label"))).toEqual(["Calculator", "Rough work"]);
+    expect(calcButton).toHaveAttribute("aria-pressed", "true");
+
+    // Escape in the newest closes only it.
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Rough work" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Calculator" })).toBeInTheDocument();
+    // Its own close button, then focus returns to the tool's button.
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Calculator" })).getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(calcButton).toHaveFocus());
+  });
+
+  it("offers degrees and radians as a switch beside the keys", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    await userEvent.click(screen.getAllByRole("button", { name: "Calculator" })[0]!);
+    const calc = screen.getByRole("dialog", { name: "Calculator" });
+    const unit = within(calc).getByRole("group", { name: "Angle unit" });
+    expect(within(unit).getByRole("button", { name: "DEG" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(within(unit).getByRole("button", { name: "RAD" }));
+    expect(within(unit).getByRole("button", { name: "RAD" })).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+describe("the palette's key", () => {
+  it("shows \"Typed, not saved\" only while something is, and folds to a line of shapes on request", async () => {
+    renderApp(<App client={stubClient()} />);
+    await loaded();
+    const palette = screen.getByRole("navigation", { name: "Questions" });
+    expect(within(palette).queryByText("Typed, not saved")).not.toBeInTheDocument();
+    expect(within(palette).getByText("Not visited")).toBeInTheDocument();
+
+    const toggle = within(palette).getByRole("button", { name: "Hide the key" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(toggle);
+    expect(within(palette).getByRole("button", { name: "Show the key" })).toHaveAttribute("aria-expanded", "false");
+    // Folded, the words are still there for a screen reader.
+    expect(within(palette).getByText("Not visited")).toHaveClass("legend-label");
+  });
+});
+
 describe("the tools beside the paper", () => {
   it("offer a calculator where the exam allows one, and it works", async () => {
     renderApp(<App client={stubClient()} />);
@@ -129,7 +215,7 @@ describe("the tools beside the paper", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Instructions" }));
     const panel = screen.getByRole("dialog", { name: "Instructions" });
-    expect(panel).toHaveTextContent("A wrong answer can cost up to 1 marks.");
+    expect(panel).toHaveTextContent("A wrong answer can cost up to 1 mark.");
     expect(panel).toHaveTextContent("Not visited");
   });
 
@@ -144,11 +230,22 @@ describe("the tools beside the paper", () => {
   it("make the text larger and the page dark, and remember both", async () => {
     renderApp(<App client={stubClient()} />);
     await loaded();
-    await userEvent.click(screen.getByRole("button", { name: "Larger text" }));
+    // How the page reads is one menu on the bar, not buttons in the way of the tools.
+    const display = screen.getByRole("button", { name: "Display" });
+    expect(display).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(display);
+    const menu = screen.getByRole("group", { name: "Display" });
+    await userEvent.click(within(menu).getByRole("button", { name: "Larger text" }));
     expect(document.documentElement.style.fontSize).toBe("112%");
-    await userEvent.click(screen.getByRole("button", { name: /^(Dark|Light) theme$/ }));
-    expect(document.documentElement.getAttribute("data-theme")).toMatch(/^(dark|light)$/);
+    expect(menu).toHaveTextContent("112%");
+    await userEvent.click(within(menu).getByRole("button", { name: "Dark theme" }));
+    expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+    expect(within(menu).getByRole("button", { name: "Dark theme" })).toHaveAttribute("aria-pressed", "true");
     expect(localStorage.getItem("parikshaa.textSize")).toBe("112");
+    // Escape closes it, and focus goes back to its button.
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("group", { name: "Display" })).not.toBeInTheDocument();
+    expect(display).toHaveFocus();
   });
 });
 

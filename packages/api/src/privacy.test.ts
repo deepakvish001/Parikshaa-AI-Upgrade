@@ -123,6 +123,9 @@ describe("consent", () => {
     expect(notice).toMatchObject({ version: 1, grievance: { email: "privacy@acme.test" }, purpose: SETTINGS.purpose });
     expect(notice.collected.length).toBeGreaterThan(0);
     expect(notice.rights.length).toBeGreaterThan(0);
+    // The briefing shows the same notice first, so the page can ask before opening.
+    const brief = await call("POST", null, "/invitations/briefing", { code: await codeFor("ROLL-2231") });
+    expect(brief.json().notice).toEqual(notice);
     // Nothing started: the invitation is still unopened.
     const list = (await call("GET", owner, "/exams/drive/invitations")).json().invitations;
     expect(list.find((i: { candidateRef: string }) => i.candidateRef === "ROLL-2231").attemptState).toBe("not_started");
@@ -132,6 +135,7 @@ describe("consent", () => {
     expect(opened.statusCode, opened.payload).toBe(200);
 
     // Resuming does not ask again, even after the wording changes.
+    expect((await call("POST", null, "/invitations/briefing", { code: await codeFor("ROLL-2231") })).json().notice).toBeNull();
     await call("PUT", owner, "/privacy", { ...SETTINGS, purpose: "Something else entirely." });
     expect((await redeem("ROLL-2231")).statusCode).toBe(200);
 

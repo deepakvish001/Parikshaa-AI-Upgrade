@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
-import { beginSitting, MCQ, PRIVATE_OWNER, seedSitting, setPrivacyNotice, submitAttempt } from "./support.js";
+import { local, MCQ, PRIVATE_OWNER, readyToBegin, seedSitting, setPrivacyNotice, submitAttempt } from "./support.js";
 
 /** ROADMAP §11, in a real browser: consent before the clock, and the candidate's own data after. */
 
@@ -8,13 +8,15 @@ test("a candidate agrees to the privacy notice before starting, and can download
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ] });
   await setPrivacyNotice(request, sitting.token);
 
-  await beginSitting(page, sitting.links["CS001"]!);
+  // The notice is the first step, before the instructions; agreeing starts nothing.
+  await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "Before you start: your data" })).toBeVisible();
   await expect(page.getByText("E2E Private Ltd")).toBeVisible();
-  const start = page.getByRole("button", { name: "Agree and start the test" });
-  await expect(start).toBeDisabled();
+  const agree = page.getByRole("button", { name: "Agree and continue" });
+  await expect(agree).toBeDisabled();
   await page.getByRole("checkbox", { name: /agree to my data being used/ }).check();
-  await start.click();
+  await agree.click();
+  await readyToBegin(page);
 
   await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();
   await page.getByRole("radio", { name: "Merge sort" }).check();

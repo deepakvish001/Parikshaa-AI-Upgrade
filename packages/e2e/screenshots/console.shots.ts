@@ -1,8 +1,9 @@
 import { fileURLToPath } from "node:url";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { hashPassword } from "@parikshaa/api";
+// The password hash alone: the whole API would load Fastify into the test runner.
+import { hashPassword } from "@parikshaa/api/passwords";
 import { seedBilledOrganisation } from "../src/database.js";
-import { beginSitting, MCQ, SHORT, seedSitting, type Sitting } from "../tests/support.js";
+import { local, MCQ, readyToBegin, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
 import { aptitudePaper, CODE_QUESTION, codeAnswer, MERGE_INTERVALS, RUN_COPIED, RUN_GROUPBY, RUN_OFF_BY_ONE, RUN_ORIGINAL, RUN_WHILE } from "./fixtures.js";
 import { shoot, shootPart } from "./shoot.js";
@@ -33,6 +34,12 @@ async function signIn(page: Page, account: { email: string; password: string }) 
 }
 
 const nav = (page: Page, name: string) => page.getByRole("navigation", { name: "Account" }).getByRole("button", { name, exact: true }).click();
+
+/** Edit an exam from the list: Edit is behind the row's "⋯". */
+async function editExam(page: Page, title: string) {
+  await page.getByRole("row").filter({ hasText: title }).getByRole("button", { name: /^More actions for/ }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+}
 
 /** A candidate sits the paper through the API; some reply to a follow-up. */
 async function sit(request: APIRequestContext, sitting: Sitting, ref: string, a: (typeof ANSWERS)[number], submit = true, withCode = true) {
@@ -155,36 +162,37 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // --- the pages -----------------------------------------------------------
   await page.reload(); // the session is kept for the tab; what was seeded is fetched afresh
-  await expect(page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: TITLE })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: TITLE, exact: true })).toBeVisible();
   await page.waitForTimeout(500);
   await shoot(page, "console-32-home");
   await nav(page, "Exams");
-  await expect(page.getByRole("button", { name: TITLE })).toBeVisible();
+  await expect(page.getByRole("button", { name: TITLE, exact: true })).toBeVisible();
   await shoot(page, "console-02-exams");
 
-  await page.getByRole("row").filter({ hasText: "Java Developer Screening" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "Java Developer Screening");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
   await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Preview question 1" }).click();
   await shoot(page, "console-03-exam-editor");
 
 
   await nav(page, "Exams");
-  await page.getByRole("row").filter({ hasText: "Aptitude Mock Test" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "Aptitude Mock Test");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
-  await page.getByRole("button", { name: "Expand all" }).click();
-  await page.getByText("Passage — The monsoon").first().scrollIntoViewIfNeeded();
-  await shoot(page, "console-21-aptitude-editor");
+  // The question with a passage, chosen from the list and open beside it.
+  await page.getByRole("button", { name: "When does the monsoon usually reach Kerala?" }).click();
+  await expect(page.getByRole("region", { name: /^Editing question/ })).toBeVisible();
+  await shoot(page, "console-21-aptitude-editor", { fullPage: false });
 
   await nav(page, "Exams");
-  await page.getByRole("row").filter({ hasText: "LeetCode Round" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "LeetCode Round");
   await expect(page.getByRole("heading", { name: "Edit exam" })).toBeVisible();
-  await page.getByRole("region", { name: "Question 1" }).getByRole("button", { name: "Edit", exact: true }).click();
+  await page.getByRole("region", { name: "Question 1" }).locator("button.qitem-stem").click();
   await page.getByText("What candidates start from").first().click();
   await page.getByText("Input and output format, constraints (Markdown)").click();
   await shoot(page, "console-23-function-question");
 
   await nav(page, "Exams");
-  await page.getByRole("button", { name: TITLE }).click();
+  await page.getByRole("button", { name: TITLE, exact: true }).click();
   await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
   await expect(page.getByRole("complementary", { name: "Candidates at a glance" }).getByText("Qualified", { exact: true })).toBeVisible();
   await page.waitForTimeout(500);
@@ -193,7 +201,8 @@ test("every page of the console", async ({ page, browser, request }) => {
   // Its questions, one previewed, and the whole test tried as a candidate.
   await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
   await page.getByRole("button", { name: "Preview question 1" }).click();
-  await shoot(page, "console-27-exam-questions");
+  await shoot(page, "console-27-exam-questions", { fullPage: false });
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Try test" }).click();
   const trying = page.getByRole("dialog", { name: "Try test" });
   await trying.getByRole("radio").first().check();
@@ -212,7 +221,7 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.waitForTimeout(500);
   await shoot(page, "console-05-invite");
 
-  await page.getByRole("button", { name: TITLE }).click();
+  await page.getByRole("button", { name: TITLE, exact: true }).click();
   await page.getByRole("button", { name: "Results", exact: true }).click();
   await expect(page.getByRole("region", { name: "Candidates" })).toBeVisible();
   const similar = page.getByRole("region", { name: "Code similarity" });
@@ -226,40 +235,44 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.waitForTimeout(800);
   await shoot(page, "console-07-candidate-report");
 
-  await page.getByRole("button", { name: TITLE }).click();
+  await page.getByRole("button", { name: TITLE, exact: true }).click();
   await page.getByRole("row").filter({ hasText: REFS[1]! }).getByRole("button").first().click();
   await page.waitForTimeout(800);
   await shoot(page, "console-08-review");
 
   // A live sitting: three answering now.
   await nav(page, "Exams");
-  await page.getByRole("button", { name: "Semester 5 — Data Structures Mid-term" }).click();
+  await page.getByRole("button", { name: "Semester 5 — Data Structures Mid-term", exact: true }).click();
   await page.getByRole("button", { name: "Live sitting" }).click();
   await page.waitForTimeout(800);
   await shoot(page, "console-09-live");
 
   // A proctored candidate, in their own browser with Chromium's fake camera.
   const candidate = await browser.newPage();
-  await beginSitting(candidate, proctored.links["SC001"]!);
+  await candidate.goto(local(proctored.links["SC001"]!));
   await candidate.getByRole("button", { name: "Allow the camera" }).click();
-  await candidate.getByRole("button", { name: "My camera works — start the test" }).click();
+  await candidate.getByRole("button", { name: "My camera works" }).click();
+  await readyToBegin(candidate);
   await candidate.getByRole("button", { name: "Take my photo" }).click();
+  await candidate.getByRole("button", { name: "Use this photo" }).click();
   await candidate.getByRole("button", { name: "Take a photo of my ID" }).click();
   await candidate.getByRole("button", { name: "Send and start answering" }).click();
   await expect(candidate.getByText("Camera on")).toBeVisible();
   await candidate.waitForTimeout(1500);
   await nav(page, "Exams");
-  await page.getByRole("button", { name: "Scholarship Test 2026 (proctored)" }).click();
+  await page.getByRole("button", { name: "Scholarship Test 2026 (proctored)", exact: true }).click();
   await page.getByRole("button", { name: "Live sitting" }).click();
   await page.getByRole("row").filter({ hasText: "SC001" }).getByRole("button", { name: "Review SC001" }).click();
   const panel = page.getByRole("region", { name: /^Proctoring for/ });
   await expect(panel.getByRole("img", { name: /^Photo of/ }).first()).toBeVisible();
   await page.waitForTimeout(800);
-  await shoot(page, "console-10-proctoring-review");
+  await shoot(page, "console-10-proctoring-review", { fullPage: false });
+  await page.keyboard.press("Escape");
   await candidate.close();
 
   // The question bank: a Word paper, read first and shown before anything is added.
   await nav(page, "Question bank");
+  await page.getByRole("tab", { name: "Word document" }).click();
   const word = page.getByRole("region", { name: "Import from Word" });
   await word.getByLabel("Word file (.docx)").setInputFiles(SAMPLE);
   await word.getByRole("button", { name: /^Add \d+ questions? to the bank$/ }).click();
@@ -270,7 +283,7 @@ test("every page of the console", async ({ page, browser, request }) => {
 
   // The bank as a library, from an exam being written.
   await nav(page, "Exams");
-  await page.getByRole("row").filter({ hasText: "Java Developer Screening" }).getByRole("button", { name: "Edit" }).click();
+  await editExam(page, "Java Developer Screening");
   await page.getByRole("button", { name: "Add from bank" }).first().click();
   const library = page.getByRole("dialog", { name: "Add from the question bank" });
   await library.locator(".library input").first().check();
@@ -282,6 +295,9 @@ test("every page of the console", async ({ page, browser, request }) => {
   await page.getByLabel("Qualifying mark (% of the paper)").fill("65");
   await page.getByRole("heading", { name: "Qualifying mark" }).scrollIntoViewIfNeeded();
   await shoot(page, "console-31-exam-settings", { fullPage: false });
+  // Left without saving: the editor asks first.
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await page.getByRole("button", { name: "Leave without saving" }).click();
 
   for (const [label, name] of [
     ["Staff", "console-12-staff"],

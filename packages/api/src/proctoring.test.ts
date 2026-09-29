@@ -73,6 +73,9 @@ describe("starting a proctored exam", () => {
     const refused = await redeem("watched");
     expect(refused.statusCode).toBe(428);
     expect(refused.json()).toEqual({ error: "camera_required", proctoring: POLICY });
+    const list = (await call("GET", owner, "/exams/watched/invitations")).json().invitations as { id: string }[];
+    const brief = await call("POST", null, "/invitations/briefing", { code: new InviteCodes(TOKEN_SECRET).issue("org-a", list[0]!.id) });
+    expect(brief.json()).toMatchObject({ proctored: true, proctoring: POLICY });
     expect((await call("GET", owner, "/exams/watched/invitations")).json().invitations[0].attemptState).toBe("not_started");
 
     const { token } = await start();

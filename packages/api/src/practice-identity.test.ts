@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
-import { SignJWT, exportJWK, generateKeyPair, type KeyLike } from "jose";
+import { SignJWT, exportJWK, generateKeyPair } from "jose";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { execute, type CodeRunner } from "@parikshaa/runner";
 import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor } from "@parikshaa/store";
@@ -73,7 +73,7 @@ let clock: number;
 
 let idp: Server;
 let issuer: string;
-let privateKey: KeyLike;
+let privateKey: CryptoKey;
 let claims: Record<string, unknown>;
 let nonce = "";
 

@@ -249,6 +249,17 @@ test("a practice site: problems, the workspace, a contest, progress and the cons
   await expect(page.getByRole("row").filter({ hasText: "Asha Verma" })).toContainText("You");
   await shoot(page, "practice-08-leaderboard", { fullPage: false });
 
+  // --- on a phone: the problems as cards, the scoreboard with rank and name held ---------------
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("link", { name: "Problems" }).click();
+  await expect(page.getByRole("link", { name: "1. Two Sum" })).toBeVisible();
+  await shoot(page, "practice-10-phone-problems", { fullPage: false });
+  await page.goto(`/practice/${SITE}/contests`);
+  await page.getByRole("link", { name: "Weekly Contest 12" }).click();
+  await expect(page.getByRole("region", { name: "Scoreboard" })).toContainText("Priya Raman");
+  await shoot(page, "practice-11-phone-scoreboard");
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   // --- a visitor: signing up -------------------------------------------------------------------
   await page.evaluate((key) => localStorage.removeItem(key), `parikshaa.practice.${SITE}.session`);
   await page.addInitScript((key) => localStorage.removeItem(key), `parikshaa.practice.${SITE}.session`);

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CircleCheck, CircleDashed, Flame, Lock, LogIn, MessageSquare, Search, ShieldCheck, Trophy } from "lucide-react";
+import { CircleCheck, CircleDashed, Flame, Lock, LogIn, MailWarning, MessageSquare, Search, ShieldCheck, Trophy } from "lucide-react";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { Wordmark } from "@parikshaa/brand/react";
@@ -9,7 +9,8 @@ import { AnswerInput } from "../components/AnswerInput.tsx";
 import { CodeAnswer } from "../components/CodeAnswer.tsx";
 import { LANGUAGE_NAMES, memory } from "../components/code-meta.ts";
 import { ProblemStatement } from "../components/ProblemStatement.tsx";
-import { PreferencesBar, PreferencesProvider, usePreferences, type MessageKey } from "../i18n.tsx";
+import { DisplayMenu, useReadingPreferences } from "../components/Tools.tsx";
+import { PreferencesProvider, usePreferences, type MessageKey } from "../i18n.tsx";
 import {
   asSubmitOutcome,
   loadToken,
@@ -181,6 +182,7 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
   const p = (word: Parameters<typeof navWord>[1]) => navWord(language, word);
   const queryClient = useQueryClient();
   const [arrived] = useState(() => arrival(site));
+  const reading = useReadingPreferences();
   const [token, setToken] = useState<string | null>(() => loadToken(site));
   const client = useMemo(() => new PracticeClient(site, token, baseUrl), [site, token, baseUrl]);
   const [location, setLocation] = useState(() => ({ path: window.location.pathname, search: window.location.search }));
@@ -293,7 +295,9 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
             <Wordmark size={24} />
           </Link>
           <span className="divider" aria-hidden="true" />
-          <span className="exam-name">{info.data.title}</span>
+          <span className="exam-name site-name" title={info.data.title}>
+            {info.data.title}
+          </span>
           <nav aria-label={t("practice.nav")} className="practice-nav">
             {learner === null ? null : (
               <Link nav={nav} to="/home" current={here("/home")}>
@@ -332,14 +336,14 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
               <span className="avatar-dot" aria-hidden="true">
                 {learner.name.slice(0, 1).toUpperCase()}
               </span>
-              {learner.name}
+              <span className="me-name">{learner.name}</span>
             </Link>
           ) : route.page === "signin" || route.page === "signup" ? null : (
             <Link nav={nav} to="/signin" className="button quiet">
               <LogIn aria-hidden="true" /> {t("practice.signIn")}
             </Link>
           )}
-          <PreferencesBar />
+          <DisplayMenu offered={[]} reading={reading} />
         </div>
       </header>
       <main className={wide ? "practice-main wide" : "practice-main"}>
@@ -350,11 +354,12 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
         )}
         {learner === null || learner.emailVerified ? null : (
           <div className="practice-notice verify" role="status">
-            <span>{t(options.data?.requireVerified === true ? "practice.verifyRequired" : "practice.verifyBanner", { email: learner.email })}</span>
+            <MailWarning aria-hidden="true" />
+            <span className="grow">{t(options.data?.requireVerified === true ? "practice.verifyRequired" : "practice.verifyBanner", { email: learner.email })}</span>
             {resend.isSuccess ? (
               <span>{t("practice.resent")}</span>
             ) : (
-              <button type="button" className="quiet" disabled={resend.isPending} onClick={() => resend.mutate()}>
+              <button type="button" className="secondary" disabled={resend.isPending} onClick={() => resend.mutate()}>
                 {t("practice.resend")}
               </button>
             )}
@@ -478,6 +483,7 @@ function ProblemsPage({ client, nav, learner, site, welcome }: Context & { reado
 
   const all = problems.data ?? [];
   const tags = [...new Set(all.flatMap((p) => p.tags))].sort();
+  const tagged = (name: string) => all.filter((p) => p.tags.includes(name)).length;
   const shown = all.filter(
     (p) =>
       (text.trim() === "" || p.title.toLowerCase().includes(text.trim().toLowerCase())) &&
@@ -539,7 +545,8 @@ function ProblemsPage({ client, nav, learner, site, welcome }: Context & { reado
           <div className="tag-row" role="group" aria-label={t("practice.topics")}>
             {tags.map((name) => (
               <button key={name} type="button" className="chip" aria-pressed={tag === name} onClick={() => setTag(tag === name ? null : name)}>
-                {name}
+                {name}{" "}
+                <span className="count">{tagged(name)}</span>
               </button>
             ))}
           </div>
@@ -554,7 +561,7 @@ function ProblemsPage({ client, nav, learner, site, welcome }: Context & { reado
               <thead>
                 <tr>
                   <th scope="col" className="status-col">
-                    <span className="visually-hidden">{t("practice.status")}</span>
+                    {t("practice.status")}
                   </th>
                   <th scope="col">{t("practice.title")}</th>
                   <th scope="col">{t("practice.difficulty")}</th>
@@ -581,6 +588,7 @@ function ProblemsPage({ client, nav, learner, site, welcome }: Context & { reado
 }
 
 function ProblemRow({ problem, index, nav, striped }: { readonly problem: ProblemSummary; readonly index: number; readonly nav: Nav; readonly striped: boolean }) {
+  const { t } = usePreferences();
   return (
     <tr className={striped ? "striped" : undefined}>
       <td className="status-col">
@@ -595,8 +603,12 @@ function ProblemRow({ problem, index, nav, striped }: { readonly problem: Proble
       <td>
         <DifficultyPill difficulty={problem.difficulty} />
       </td>
-      <td className="num">{percent(problem.acceptance)}</td>
-      <td className="num">{problem.solvedBy}</td>
+      <td className="num" data-label={t("practice.acceptance")}>
+        {percent(problem.acceptance)}
+      </td>
+      <td className="num" data-label={t("practice.solvedBy")}>
+        {problem.solvedBy}
+      </td>
     </tr>
   );
 }
@@ -634,7 +646,13 @@ function saveDraft(site: string, slug: string, value: string): void {
 function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { readonly slug: string; readonly contest: string | undefined }) {
   const { t } = usePreferences();
   const queryClient = useQueryClient();
-  const problem = useQuery({ queryKey: ["practice", site, "problem", slug, contest ?? null, learner?.id ?? null], queryFn: () => client.problem(slug, contest) });
+  const problem = useQuery({
+    queryKey: ["practice", site, "problem", slug, contest ?? null, learner?.id ?? null],
+    queryFn: () => client.problem(slug, contest),
+    // Signing in or out asks again, for the learner's own status; the problem
+    // stays on the page meanwhile instead of flashing "Loading…".
+    placeholderData: (previous, query) => (query?.queryKey[3] === slug && query.queryKey[4] === (contest ?? null) ? previous : undefined),
+  });
   const [value, setValue] = useState(() => loadDraft(site, slug));
   const [tab, setTab] = useState<Tab>("description");
   const [solvedNow, setSolvedNow] = useState(false);
@@ -821,13 +839,14 @@ function ContestBanner({ nav, contest }: { readonly nav: Nav; readonly contest: 
 
 function Editorial({ problem }: { readonly problem: Problem }) {
   const { t } = usePreferences();
+  const copy = { label: t("practice.copy"), done: t("practice.copied") };
   const [shown, setShown] = useState(0);
   const split = useMemo(() => (problem.editorial === null ? null : approachesOf(problem.editorial)), [problem.editorial]);
   if (split !== null) {
     const approach = split.approaches[Math.min(shown, split.approaches.length - 1)]!;
     return (
       <div className="approaches">
-        {split.intro === "" ? null : <Markdown source={split.intro} />}
+        {split.intro === "" ? null : <Markdown source={split.intro} copy={copy} />}
         <div className="problem-tabs" role="tablist" aria-label={t("practice.tab.editorial")}>
           {split.approaches.map((a, i) => (
             <button key={a.title} type="button" role="tab" aria-selected={a === approach} className={a === approach ? "tab on" : "tab"} onClick={() => setShown(i)}>
@@ -836,12 +855,12 @@ function Editorial({ problem }: { readonly problem: Problem }) {
           ))}
         </div>
         <div role="tabpanel" aria-label={approach.title}>
-          <Markdown source={approach.body} />
+          <Markdown source={approach.body} copy={copy} />
         </div>
       </div>
     );
   }
-  if (problem.editorial !== null) return <Markdown source={problem.editorial} />;
+  if (problem.editorial !== null) return <Markdown source={problem.editorial} copy={copy} />;
   if (!problem.editorialLocked) return <p className="notice">{t("practice.noEditorial")}</p>;
   return (
     <div className="locked">
@@ -944,6 +963,9 @@ function Discussion({ client, nav, learner, site, slug, here }: Context & { read
           {comments.data!.map((c) => (
             <li key={c.id} className={c.fromStaff ? "staff" : undefined}>
               <p className="comment-by">
+                <span className="avatar-dot small" aria-hidden="true">
+                  {c.authorName.slice(0, 1).toUpperCase()}
+                </span>
                 <strong>{c.authorName}</strong>
                 {c.fromStaff ? (
                   <span className="pill brand">
@@ -952,7 +974,7 @@ function Discussion({ client, nav, learner, site, slug, here }: Context & { read
                 ) : null}
                 <span className="notice">{when(c.createdAt)}</span>
               </p>
-              <Markdown source={c.body} />
+              <Markdown source={c.body} copy={{ label: t("practice.copy"), done: t("practice.copied") }} />
             </li>
           ))}
         </ul>
@@ -1044,38 +1066,61 @@ const istDay = (ms: number) => new Date(ms + 5.5 * 3_600_000).toISOString().slic
 /** A year, as a column per week. */
 const WEEKS = 53;
 
+/** A phone shows the last 16 weeks; anything wider, the year. */
+function useWeeks(): number {
+  const query = "(max-width: 40rem)";
+  const [narrow, setNarrow] = useState(() => typeof matchMedia === "function" && matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof matchMedia !== "function") return;
+    const list = matchMedia(query);
+    const change = () => setNarrow(list.matches);
+    list.addEventListener("change", change);
+    return () => list.removeEventListener("change", change);
+  }, []);
+  return narrow ? 16 : WEEKS;
+}
+
 function Heatmap({ days }: { readonly days: Progress["days"] }) {
-  const { t } = usePreferences();
+  const { t, language } = usePreferences();
+  const weeks = useWeeks();
   const byDay = new Map(days.map((d) => [d.day, d]));
   const today = Date.parse(`${istDay(Date.now())}T00:00:00Z`);
   // Columns are weeks ending with this one; rows are Monday to Sunday.
   const weekday = (new Date(today).getUTCDay() + 6) % 7;
-  const start = today - (weekday + (WEEKS - 1) * 7) * 86_400_000;
-  const cells = Array.from({ length: WEEKS * 7 }, (_x, i) => {
+  const start = today - (weekday + (weeks - 1) * 7) * 86_400_000;
+  const cells = Array.from({ length: weeks * 7 }, (_x, i) => {
     const at = start + i * 86_400_000;
     const day = new Date(at).toISOString().slice(0, 10);
     const d = byDay.get(day);
     return { day, future: at > today, submitted: d?.submitted ?? 0, accepted: d?.accepted ?? 0 };
   });
   const level = (n: number) => (n === 0 ? 0 : n < 2 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
+  const dayName = new Intl.DateTimeFormat(language === "en" ? "en-IN" : language, { day: "numeric", month: "short", timeZone: "UTC" });
+  const active = days.filter((d) => d.submitted > 0);
+  // The squares are a picture; what they say is said in words beside them.
+  const said = (d: { day: string; submitted: number; accepted: number }) => t("practice.dayTitle", { day: dayName.format(Date.parse(`${d.day}T00:00:00Z`)), n: d.submitted, accepted: d.accepted });
   return (
-    <figure className="heatmap" aria-label={t("practice.activity")}>
-      <div className="heatmap-grid" style={{ gridTemplateColumns: `repeat(${WEEKS}, var(--cell))` }}>
-        {cells.map((c) =>
-          c.future ? (
-            <span key={c.day} className="cell future" />
-          ) : (
-            <span key={c.day} className={`cell l${level(c.submitted)}`} title={t("practice.dayTitle", { day: c.day, n: c.submitted, accepted: c.accepted })} />
-          ),
-        )}
+    <figure className="heatmap">
+      <div className="heatmap-grid" aria-hidden="true" style={{ gridTemplateColumns: `repeat(${weeks}, minmax(0, 1fr))` }}>
+        {cells.map((c) => (c.future ? <span key={c.day} className="cell future" /> : <span key={c.day} className={`cell l${level(c.submitted)}`} title={said(c)} />))}
       </div>
-      <figcaption className="notice">
-        {t("practice.less")}
-        {[0, 1, 2, 3, 4].map((l) => (
-          <span key={l} className={`cell l${l}`} aria-hidden="true" />
-        ))}
-        {t("practice.more")}
+      <figcaption>
+        <span>{t("practice.activitySummary", { n: active.reduce((sum, d) => sum + d.submitted, 0), days: active.length })}</span>
+        <span className="heatmap-key" aria-hidden="true">
+          {t("practice.less")}
+          {[0, 1, 2, 3, 4].map((l) => (
+            <span key={l} className={`cell l${l}`} />
+          ))}
+          {t("practice.more")}
+        </span>
       </figcaption>
+      {active.length === 0 ? null : (
+        <ul className="visually-hidden">
+          {active.map((d) => (
+            <li key={d.day}>{said(d)}</li>
+          ))}
+        </ul>
+      )}
     </figure>
   );
 }
@@ -1209,7 +1254,7 @@ function LeaderboardPage({ client, learner, site }: Context) {
             <tbody>
               {leaders.data!.map((l) => (
                 <tr key={`${l.rank}-${l.name}`} className={l.you ? "you" : undefined}>
-                  <td className="num">{l.rank <= 3 ? <span className={`medal m${l.rank}`}>{l.rank}</span> : l.rank}</td>
+                  <td className="num">{l.rank <= 3 ? <span className="rank-chip">{l.rank}</span> : l.rank}</td>
                   <td>
                     {l.name}
                     {l.you ? <span className="pill brand">{t("practice.you")}</span> : null}
@@ -1257,17 +1302,20 @@ function ContestsPage({ client, nav, site }: Context) {
             <ul className="contest-cards">
               {list.map((c) => (
                 <li key={c.slug} className={`card contest-card ${c.state}`}>
-                  <Link nav={nav} to={`/contests/${c.slug}`} className="contest-title">
-                    {c.title}
-                  </Link>
+                  <div className="contest-card-head">
+                    <Link nav={nav} to={`/contests/${c.slug}`} className="contest-title">
+                      {c.title}
+                    </Link>
+                    <ContestState state={c.state} />
+                  </div>
                   <p className="notice">
                     {when(c.startsAt)} · {t("practice.minutes", { n: Math.round((Date.parse(c.endsAt) - Date.parse(c.startsAt)) / 60_000) })} ·{" "}
                     {t("practice.problemsN", { n: c.problems })}
                   </p>
                   {c.state === "upcoming" ? (
-                    <p className="countdown">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
+                    <p className="contest-countdown">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
                   ) : c.state === "running" ? (
-                    <p className="countdown live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
+                    <p className="contest-countdown live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
                   ) : null}
                 </li>
               ))}
@@ -1276,6 +1324,18 @@ function ContestsPage({ client, nav, site }: Context) {
         );
       })}
     </div>
+  );
+}
+
+/** Live, Upcoming or Ended: a dot only on what is happening now. */
+function ContestState({ state }: { readonly state: ContestSummary["state"] }) {
+  const { t } = usePreferences();
+  return state === "running" ? (
+    <span className="pill live">{t("practice.live")}</span>
+  ) : state === "upcoming" ? (
+    <span className="pill info">{t("practice.upcoming")}</span>
+  ) : (
+    <span className="pill">{t("practice.ended")}</span>
   );
 }
 
@@ -1298,6 +1358,11 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
   if (contest.isPending) return <p className="notice">{t("practice.loading")}</p>;
   if (contest.isError) return <p className="card error">{t("practice.noContest")}</p>;
   const c = contest.data;
+  // The first to solve each problem: the least minutes among those who did.
+  const firsts = c.problems.map((_p, i) => {
+    const times = c.scoreboard.map((row) => row.problems[i]?.minutes).filter((m): m is number => m !== null && m !== undefined);
+    return times.length === 0 ? null : Math.min(...times);
+  });
   return (
     <div className="contest-page">
       <div className="crumbs">
@@ -1313,13 +1378,14 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
           </p>
         </div>
         <span className="spacer" />
-        {c.state === "upcoming" ? (
-          <p className="countdown big">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
-        ) : c.state === "running" ? (
-          <p className="countdown big live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
-        ) : (
-          <span className="pill">{t("practice.ended")}</span>
-        )}
+        <div className="contest-when">
+          <ContestState state={c.state} />
+          {c.state === "upcoming" ? (
+            <p className="contest-countdown big">{t("practice.startsIn", { time: span(Date.parse(c.startsAt) - now) })}</p>
+          ) : c.state === "running" ? (
+            <p className="contest-countdown big live">{t("practice.endsIn", { time: span(Date.parse(c.endsAt) - now) })}</p>
+          ) : null}
+        </div>
       </header>
       {c.description.trim() === "" ? null : (
         <div className="card">
@@ -1367,10 +1433,12 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
               <table>
                 <thead>
                   <tr>
-                    <th scope="col" className="num">
+                    <th scope="col" className="num sticky-rank">
                       {t("practice.rank")}
                     </th>
-                    <th scope="col">{t("practice.name")}</th>
+                    <th scope="col" className="sticky-name">
+                      {t("practice.name")}
+                    </th>
                     <th scope="col" className="num">
                       {t("practice.solved")}
                     </th>
@@ -1387,27 +1455,39 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
                 <tbody>
                   {c.scoreboard.map((row) => (
                     <tr key={`${row.rank}-${row.name}`} className={row.you ? "you" : undefined}>
-                      <td className="num">{row.rank}</td>
-                      <td>
+                      <td className="num sticky-rank">{row.rank}</td>
+                      <td className="sticky-name">
                         {row.name}
                         {row.you ? <span className="pill brand">{t("practice.you")}</span> : null}
                       </td>
                       <td className="num">{row.solved}</td>
                       <td className="num">{row.penalty}</td>
-                      {row.problems.map((cell, i) => (
-                        <td key={i} className={`num cell-${cell.minutes !== null ? "ok" : cell.wrong > 0 ? "bad" : "none"}`}>
-                          {cell.minutes !== null ? (
-                            <>
-                              <strong>{cell.wrong === 0 ? "+" : `+${cell.wrong}`}</strong>
-                              <span className="notice"> {cell.minutes}′</span>
-                            </>
-                          ) : cell.wrong > 0 ? (
-                            `−${cell.wrong}`
-                          ) : (
-                            ""
-                          )}
-                        </td>
-                      ))}
+                      {row.problems.map((cell, i) => {
+                        const first = cell.minutes !== null && cell.minutes === firsts[i];
+                        return (
+                          <td key={i} className={`num cell-${cell.minutes !== null ? (first ? "first" : "ok") : cell.wrong > 0 ? "bad" : "none"}`} title={first ? t("practice.firstSolve") : undefined}>
+                            {cell.minutes !== null ? (
+                              <>
+                                <span aria-hidden="true">
+                                  <strong>{cell.wrong === 0 ? "+" : `+${cell.wrong}`}</strong>
+                                  <span className="minutes"> {cell.minutes}′</span>
+                                </span>
+                                <span className="visually-hidden">
+                                  {first ? `${t("practice.firstSolve")}: ` : ""}
+                                  {t("practice.cellSolved", { minutes: cell.minutes, wrong: cell.wrong })}
+                                </span>
+                              </>
+                            ) : cell.wrong > 0 ? (
+                              <>
+                                <span aria-hidden="true">−{cell.wrong}</span>
+                                <span className="visually-hidden">{t("practice.cellTried", { wrong: cell.wrong })}</span>
+                              </>
+                            ) : (
+                              ""
+                            )}
+                          </td>
+                        );
+                      })}
                     </tr>
                   ))}
                 </tbody>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type ConsoleClient, type Notice, type PrivacyDraft } from "../api.ts";
+import { Banner, SettingsGroup, SkeletonRows } from "./kit.tsx";
 
 /**
  * Privacy (ROADMAP §11; the DPDP Act, 2023): the notice every candidate agrees
@@ -25,33 +27,42 @@ export function PrivacyPanel({ client }: { client: ConsoleClient }) {
       });
     }
   }, [current.data]);
+  const toast = useToast();
   const save = useMutation({
     mutationFn: () => client.savePrivacy(draft),
     onSuccess: async () => {
+      toast("Privacy notice saved", "success");
       await queryClient.invalidateQueries({ queryKey: ["privacy"] });
     },
   });
 
-  if (current.isPending) return <p className="notice">Loading…</p>;
-  if (current.error !== null) return <p className="error">Could not load the privacy settings.</p>;
+  if (current.isPending)
+    return (
+      <section className="card">
+        <SkeletonRows rows={4} columns={2} label="Loading the privacy settings…" />
+      </section>
+    );
+  if (current.error !== null) return <Banner tone="danger" title="Could not load the privacy settings." />;
   const set = (field: keyof PrivacyDraft) => (e: { target: { value: string } }) =>
     setDraft({ ...draft, [field]: field === "retentionDays" ? Number(e.target.value) : e.target.value });
 
   return (
-    <>
-      <section className="card" aria-label="Privacy settings">
-        <h2 style={{ marginTop: 0 }}>Privacy notice and retention</h2>
-        {current.data.settings === null ? (
-          <p className="notice">
-            Not set yet. Until it is, candidates are not shown a notice and nothing is erased automatically — which the
-            DPDP Act does not allow for real candidates.
-          </p>
-        ) : (
-          <p className="notice">
-            Notice version {current.data.settings.noticeVersion}. Changing the wording issues a new version; candidates
-            who have already started keep the one they agreed to.
-          </p>
-        )}
+    <div className="settings-page-groups">
+      {current.data.settings === null ? (
+        <Banner tone="warning" title="Not set yet.">
+          Until it is, candidates are not shown a notice and nothing is erased automatically — which the DPDP Act does not allow for real candidates.
+        </Banner>
+      ) : null}
+      <SettingsGroup
+        id="privacy-notice"
+        title="Privacy notice and retention"
+        label="Privacy settings"
+        description={
+          current.data.settings === null
+            ? "Who is responsible for candidates' data, why it is collected, and how long it is kept."
+            : `Notice version ${current.data.settings.noticeVersion}. Changing the wording issues a new version; candidates who have already started keep the one they agreed to.`
+        }
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -84,25 +95,23 @@ export function PrivacyPanel({ client }: { client: ConsoleClient }) {
             <button type="submit" disabled={save.isPending}>
               Save
             </button>
-            {save.isSuccess ? (
-              <span className="notice" role="status">
-                Saved.
-              </span>
-            ) : null}
             {save.error instanceof ConsoleError ? <span className="error">{save.error.detail ?? "That did not save."}</span> : null}
           </div>
         </form>
-      </section>
+      </SettingsGroup>
       {current.data.notice === null ? null : <NoticePreview notice={current.data.notice} />}
-    </>
+    </div>
   );
 }
 
 /** The notice as a candidate reads it, before they start. */
 function NoticePreview({ notice }: { notice: Notice }) {
   return (
-    <section className="card" aria-label="What candidates see">
-      <strong>What candidates see before they start</strong>
+    <SettingsGroup
+      id="privacy-preview"
+      title="What candidates see before they start"
+      label="What candidates see"
+    >
       <p>
         <strong>{notice.controllerName}</strong> — {notice.purpose}
       </p>
@@ -121,7 +130,7 @@ function NoticePreview({ notice }: { notice: Notice }) {
         Grievance officer: {notice.grievance.name} ({notice.grievance.email}) · version {notice.version} ·{" "}
         <span className="mono">{notice.hash.slice(0, 16)}…</span>
       </p>
-    </section>
+    </SettingsGroup>
   );
 }
 
@@ -143,7 +152,7 @@ export function EraseCard({ client, attemptId, reference, onErased }: { client: 
     );
   }
   return (
-    <section className="card evidence no-print" aria-label="Erase personal data">
+    <section className="card danger-zone no-print" aria-label="Erase personal data">
       <p style={{ marginTop: 0 }}>
         <strong>Erase this candidate's personal data?</strong> Their answers, replies, name, email, phone and reference
         become unreadable, permanently. The scores and the record's integrity stay. Use this when the candidate asks,
@@ -152,7 +161,7 @@ export function EraseCard({ client, attemptId, reference, onErased }: { client: 
       <label htmlFor="erase-confirm">Type {reference} to confirm</label>
       <input id="erase-confirm" value={typed} onChange={(e) => setTyped(e.target.value)} />
       <div className="row">
-        <button type="button" disabled={typed.trim() !== reference || erase.isPending} onClick={() => erase.mutate()}>
+        <button type="button" className="danger" disabled={typed.trim() !== reference || erase.isPending} onClick={() => erase.mutate()}>
           Erase permanently
         </button>
         <button type="button" className="quiet" onClick={() => setOpen(false)}>

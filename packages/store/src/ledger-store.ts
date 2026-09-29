@@ -216,15 +216,19 @@ export class LedgerStore {
         section_count: number | string;
         duration_ms: number | string | null;
         proctored: boolean;
+        cutoff_percent: number | string | null;
         invited: number | string;
         in_progress: number | string;
         submitted: number | string;
         graded: number | string;
         voided: number | string;
+        opens_at: string | Date | null;
+        closes_at: string | Date | null;
+        archived_at: string | Date | null;
       }>(
         // Questions per paper: the fixed ones, plus what each section draws.
         // Attempts by where they stand, from the same closing events the attempt list reads.
-        `SELECT e.id, e.title, e.created_at,
+        `SELECT e.id, e.title, e.created_at, e.archived_at, w.opens_at, w.closes_at,
                 jsonb_array_length(e.definition -> 'questions')
                   + coalesce((SELECT sum((s ->> 'pick')::int)
                                 FROM jsonb_array_elements(coalesce(e.definition -> 'sections', '[]'::jsonb)) s), 0)
@@ -237,6 +241,7 @@ export class LedgerStore {
                 (e.definition -> 'policy' ->> 'durationMs')::bigint AS duration_ms,
                 (e.definition -> 'policy' -> 'proctoring') IS NOT NULL
                   AND jsonb_typeof(e.definition -> 'policy' -> 'proctoring') = 'object' AS proctored,
+                (e.definition -> 'policy' -> 'cutoff' ->> 'percent')::numeric AS cutoff_percent,
                 (SELECT count(*) FROM invitations i WHERE i.org_id = e.org_id AND i.exam_id = e.id AND i.revoked_at IS NULL) AS invited,
                 count(*) FILTER (WHERE a.id IS NOT NULL AND a.lifecycle IS DISTINCT FROM 'attempt_submitted'
                                   AND a.lifecycle IS DISTINCT FROM 'attempt_graded' AND a.lifecycle IS DISTINCT FROM 'attempt_voided') AS in_progress,
@@ -248,8 +253,9 @@ export class LedgerStore {
              SELECT att.id, ${lifecycleSql("att.org_id", "att.id")} AS lifecycle
                FROM attempts att WHERE att.org_id = e.org_id AND att.exam_id = e.id
            ) a ON true
+           LEFT JOIN exam_windows w ON w.org_id = e.org_id AND w.exam_id = e.id
           WHERE e.org_id = $1
-          GROUP BY e.org_id, e.id, e.title, e.created_at, e.definition
+          GROUP BY e.org_id, e.id, e.title, e.created_at, e.definition, e.archived_at, w.opens_at, w.closes_at
           ORDER BY e.created_at DESC`,
         [scope.orgId],
       );
@@ -262,6 +268,7 @@ export class LedgerStore {
         sectionCount: Number(row.section_count),
         durationMs: row.duration_ms === null ? null : Number(row.duration_ms),
         proctored: row.proctored === true,
+        cutoffPercent: row.cutoff_percent === null ? null : Number(row.cutoff_percent),
         attempts: {
           invited: Number(row.invited),
           inProgress: Number(row.in_progress),
@@ -269,7 +276,28 @@ export class LedgerStore {
           graded: Number(row.graded),
           void: Number(row.voided),
         },
+        window:
+          row.opens_at === null || row.closes_at === null
+            ? null
+            : { opensAt: new Date(row.opens_at).toISOString(), closesAt: new Date(row.closes_at).toISOString() },
+        archivedAt: row.archived_at === null ? null : new Date(row.archived_at).toISOString(),
       }));
+    });
+  }
+
+  /**
+   * Put an exam away, or bring it back. Only whether the console lists it
+   * among current exams changes; returns false if there is no such exam.
+   */
+  async setExamArchived(scope: Scope, id: ExamId, archived: boolean, now: Date = new Date()): Promise<boolean> {
+    return this.#scoped(scope, async (tx) => {
+      const rows = await tx.query<{ id: string }>(
+        `UPDATE exams SET archived_at = CASE WHEN $3 THEN coalesce(archived_at, $4::timestamptz) ELSE NULL END
+          WHERE org_id = $1 AND id = $2
+          RETURNING id`,
+        [scope.orgId, id, archived, now.toISOString()],
+      );
+      return rows.length > 0;
     });
   }
 
@@ -786,10 +814,26 @@ export class LedgerStore {
         [scope.orgId, now.toISOString()],
       );
       const activity = options.activity
-        ? await tx.query<{ at: string | Date; actor_kind: AuditEntry["actorKind"]; actor_name: string | null; action: string; target: string | null }>(
-            `SELECT a.at, a.actor_kind, s.name AS actor_name, a.action, a.target
+        ? await tx.query<{
+            at: string | Date;
+            actor_kind: AuditEntry["actorKind"];
+            actor_name: string | null;
+            action: string;
+            target: string | null;
+            exam_id: string | null;
+            exam_title: string | null;
+          }>(
+            // The exam an action concerns, by name: the target is an exam, or
+            // an attempt or invitation on one.
+            `SELECT a.at, a.actor_kind, s.name AS actor_name, a.action, a.target,
+                    coalesce(ex.id, ae.id, ie.id) AS exam_id, coalesce(ex.title, ae.title, ie.title) AS exam_title
                FROM audit_log a
                LEFT JOIN staff_users s ON a.actor_kind = 'user' AND s.id = a.actor_id AND s.org_id = a.org_id
+               LEFT JOIN exams ex ON ex.org_id = a.org_id AND ex.id = a.target
+               LEFT JOIN attempts att ON att.org_id = a.org_id AND att.id = a.target
+               LEFT JOIN exams ae ON ae.org_id = att.org_id AND ae.id = att.exam_id
+               LEFT JOIN invitations inv ON inv.org_id = a.org_id AND inv.id = a.target
+               LEFT JOIN exams ie ON ie.org_id = inv.org_id AND ie.id = inv.exam_id
               WHERE a.org_id = $1
               ORDER BY a.at DESC, a.id DESC
               LIMIT 10`,
@@ -822,6 +866,7 @@ export class LedgerStore {
                 actor: a.actor_kind === "user" ? (a.actor_name ?? "A former member of staff") : a.actor_kind === "api_key" ? "An API key" : "Parikshaa",
                 action: a.action,
                 target: a.target,
+                exam: a.exam_id === null ? null : { id: a.exam_id, title: a.exam_title ?? a.exam_id },
               })),
         setup: {
           exams: Number(facts!.exams),
@@ -963,6 +1008,8 @@ export interface ExamSummary {
   readonly sectionCount: number;
   readonly durationMs: number | null;
   readonly proctored: boolean;
+  /** The qualifying mark, as a percentage of the paper, if one is set. */
+  readonly cutoffPercent: number | null;
   /** Where its candidates stand: invitations not revoked, and attempts by state. */
   readonly attempts: {
     readonly invited: number;
@@ -971,6 +1018,10 @@ export interface ExamSummary {
     readonly graded: number;
     readonly void: number;
   };
+  /** When it can be sat, if a window has been set. */
+  readonly window: { readonly opensAt: string; readonly closesAt: string } | null;
+  /** When it was put away, or null while it is current. */
+  readonly archivedAt: string | null;
 }
 
 export interface AttemptSummary {
@@ -1007,7 +1058,16 @@ export interface Dashboard {
     readonly started: number;
   }[];
   /** Null for an account that may not read the audit log. */
-  readonly activity: readonly { readonly at: string; readonly actor: string; readonly action: string; readonly target: string | null }[] | null;
+  readonly activity:
+    | readonly {
+        readonly at: string;
+        readonly actor: string;
+        readonly action: string;
+        readonly target: string | null;
+        /** The exam it concerns, if any: the target itself, or the exam of the attempt or invitation it names. */
+        readonly exam: { readonly id: string; readonly title: string } | null;
+      }[]
+    | null;
   readonly setup: {
     readonly exams: number;
     readonly bankQuestions: number;

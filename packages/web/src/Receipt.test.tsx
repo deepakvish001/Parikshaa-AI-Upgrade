@@ -31,6 +31,21 @@ const sealed = (entries: LedgerEntry[]): CandidateLedger => ({
 });
 
 describe("Receipt", () => {
+  it("names each entry in words, with its question, folded until asked for", async () => {
+    const entries = await chain(3);
+    const named = entries.map((e, i) =>
+      i === 1 ? ({ ...e, event: { type: "answer_submitted", attemptId: "a1", response: { questionId: "q-b", answer: "x" } } } as unknown as LedgerEntry) : e,
+    );
+    render(<Receipt ledger={sealed(named)} numberOf={(id) => (id === "q-b" ? 3 : null)} />);
+
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show all 3 entries" }));
+    const table = screen.getByRole("table");
+    expect(table).toHaveTextContent("Answer saved · question 3");
+    expect(table).toHaveTextContent("Test submitted");
+    expect(table).not.toHaveTextContent("answer_submitted");
+  });
+
   it("checks the record in the browser and says so", async () => {
     render(<Receipt ledger={sealed(await chain(4))} />);
 

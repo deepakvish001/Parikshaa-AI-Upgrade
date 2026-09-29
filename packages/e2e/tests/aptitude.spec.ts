@@ -8,6 +8,8 @@ import { FIGURE_SERIES, uploadPicture } from "./pictures.js";
  * palette with a question marked for review.
  */
 test("a candidate answers an aptitude paper from the palette, and negative marking is applied", async ({ page, browser, request }) => {
+  // A picture uploaded, a passage and a whole paper answered: WebKit takes most of a minute, and ran out of it at the last click.
+  test.slow();
   const token = await ownerToken(request, OWNER);
   const figure = await uploadPicture(browser, request, token, FIGURE_SERIES);
   const passage = { id: "monsoon", title: "The monsoon", text: "The south-west monsoon reaches Kerala in early June.\nIt covers the whole country by mid-July." };

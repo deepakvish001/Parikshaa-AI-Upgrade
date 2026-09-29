@@ -293,7 +293,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         tags: ["Candidate"],
         summary: "Read an invitation's instructions without opening it",
         description:
-          "The paper's shape and marking, for the instructions a candidate reads before beginning. Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
+          "The paper's shape and marking, for the instructions a candidate reads before beginning, and what opening it will ask for (the privacy notice, the camera). Starts nothing and claims nothing; opening the test is still POST /invitations/redeem. `started` says the attempt has begun, so the page can skip straight to it.",
         body: z.object({ code: z.string().min(1).max(512) }),
         response: {
           200: z.object({
@@ -311,6 +311,10 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
             allowRevision: z.boolean(),
             calculator: z.boolean(),
             proctored: z.boolean(),
+            proctoring: S.proctoringPolicy.nullable().describe("What a proctored test's camera will do; null when it has none."),
+            notice: noticeSchema
+              .nullable()
+              .describe("The privacy notice opening will ask agreement to, so it can be shown first; null when there is none or the attempt has begun."),
           }),
           404: S.errorResponse,
           429: S.errorResponse,

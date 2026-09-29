@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { hashPassword } from "@parikshaa/api";
+// The password hash alone: the whole API would load Fastify into the test runner.
+import { hashPassword } from "@parikshaa/api/passwords";
 import { seedBilledOrganisation } from "../src/database.js";
 import { beginSitting, MCQ, seedSitting } from "./support.js";
 

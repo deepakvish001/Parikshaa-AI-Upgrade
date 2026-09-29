@@ -54,6 +54,10 @@ const { app } = assemble({
     ...(process.env["RATE_LIMITS"] === "off" ? { rateLimits: false as const } : {}),
   },
 });
+// Firefox keeps an idle connection for 115 seconds, and hands one left by an
+// earlier test to the next; a server that hangs up first (Fastify's 72)
+// can do it just as a page's request arrives, which then never answers.
+app.server.keepAliveTimeout = 120_000;
 await app.listen({ port, host: "127.0.0.1" });
 process.stdout.write(`e2e server on http://localhost:${port}\n`);
 

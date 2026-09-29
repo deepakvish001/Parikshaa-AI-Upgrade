@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
 import { ChevronDown, FileText, X } from "lucide-react";
 import { usePreferences } from "../i18n.tsx";
 
@@ -42,6 +42,9 @@ export function PassageCard({
   );
 }
 
+/** How long the palette's key stays open before folding to one line. */
+export const LEGEND_FOLDS_AFTER_MS = 60_000;
+
 export interface PaletteItem {
   readonly id: string;
   readonly number: number;
@@ -79,31 +82,72 @@ export function Palette({
   current,
   onGo,
   footer,
+  header,
+  open: controlled,
+  onOpenChange,
 }: {
   readonly questions: readonly PaletteItem[];
   readonly current: string | null;
   readonly onGo: (id: string) => void;
   /** What sits under the grid: the way out of a section, or of the test. */
   readonly footer?: ReactNode;
+  /** What sits above it: a sectioned paper's sections. */
+  readonly header?: ReactNode;
+  /** Open as a sheet on a phone; the page may hold this, to open it from elsewhere. */
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
 }) {
   const { t } = usePreferences();
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
+  const open = controlled ?? own;
+  const setOpen = (next: boolean) => {
+    setOwn(next);
+    onOpenChange?.(next);
+  };
+  // On a phone the sheet opens half way, and a drag or a tap on its handle takes it to full height.
+  const [full, setFull] = useState(false);
+  const drag = useRef<{ y: number; moved: number } | null>(null);
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) {
+      setFull(false);
+      return;
+    }
+    // Opened as a sheet: focus goes to the question on screen, and Escape closes it.
+    body.current?.querySelector<HTMLElement>('[aria-current="step"]')?.focus();
+    const escape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", escape);
+    return () => window.removeEventListener("keydown", escape);
+    // setOpen is a fresh closure each render; the listener only needs to exist while open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const answered = questions.filter((q) => q.answered).length;
   const marked = questions.filter((q) => q.marked).length;
   const count = (status: Status) => questions.filter((q) => statusOf(q) === status).length;
   const stateOf = (q: PaletteItem) => stateLabel(q, t);
-  const legend: readonly [Status, string][] = [
+  // "Typed, not saved" only while something is; the rest always, so the shapes are learnt.
+  const legend: readonly (readonly [Status, string])[] = [
     ["answered", t("palette.answered")],
     ["not-answered", t("palette.notAnswered")],
     ["not-visited", t("palette.notVisited")],
     ["marked", t("palette.marked")],
     ["answered-marked", t("palette.answeredMarked")],
-    ["draft", t("palette.draft")],
+    ...(count("draft") > 0 ? [["draft", t("palette.draft")] as const] : []),
   ];
+  // After the first minute the key folds to one line of shapes and counts; the candidate can open it again.
+  const [keyOpen, setKeyOpen] = useState(true);
+  const [keyTouched, setKeyTouched] = useState(false);
+  useEffect(() => {
+    if (keyTouched) return;
+    const id = setTimeout(() => setKeyOpen(false), LEGEND_FOLDS_AFTER_MS);
+    return () => clearTimeout(id);
+  }, [keyTouched]);
   const summary = t("palette.summary", { answered, total: questions.length, marked });
 
   return (
-    <nav className={`palette${open ? " open" : ""}`} aria-label={t("palette.region")}>
+    <nav className={`palette${open ? " open" : ""}${full ? " full" : ""}`} aria-label={t("palette.region")}>
       <button type="button" className="palette-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span>{t("palette.region")}</span>
         <span className="palette-summary">{summary}</span>
@@ -111,7 +155,35 @@ export function Palette({
       </button>
       {/* On a phone the palette is a sheet over the paper; a tap beside it closes it. */}
       {open ? <div className="sheet-scrim" aria-hidden="true" onClick={() => setOpen(false)} /> : null}
-      <div className="palette-body">
+      <div className="palette-body" ref={body}>
+        <button
+          type="button"
+          className="sheet-handle"
+          aria-label={full ? t("palette.sheetHalf") : t("palette.sheetFull")}
+          onClick={() => {
+            if (drag.current !== null && Math.abs(drag.current.moved) > 8) return;
+            setFull(!full);
+          }}
+          onPointerDown={(e: PointerEvent) => {
+            drag.current = { y: e.clientY, moved: 0 };
+            (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          }}
+          onPointerMove={(e: PointerEvent) => {
+            if (drag.current !== null) drag.current.moved = e.clientY - drag.current.y;
+          }}
+          onPointerUp={() => {
+            const moved = drag.current?.moved ?? 0;
+            // Up opens it all the way; down lowers it to half, or closes it from half.
+            if (moved < -60) setFull(true);
+            else if (moved > 60) {
+              if (full) setFull(false);
+              else setOpen(false);
+            }
+            setTimeout(() => (drag.current = null), 0);
+          }}
+        >
+          <span aria-hidden="true" />
+        </button>
         <div className="sheet-head">
           <strong>{t("palette.region")}</strong>
           <span className="palette-summary">{summary}</span>
@@ -119,6 +191,7 @@ export function Palette({
             <X aria-hidden="true" />
           </button>
         </div>
+        {header}
         <div className="palette-head">
           <p className="palette-title">{t("palette.region")}</p>
           <p className="palette-summary">{summary}</p>
@@ -126,19 +199,33 @@ export function Palette({
             <span style={{ width: `${Math.round((answered / Math.max(1, questions.length)) * 100)}%` }} />
           </div>
         </div>
-        <ul className="palette-legend">
-          {legend.map(([status, label]) => (
-            <li key={status}>
-              <span className={`pq ${status}`} aria-hidden="true">
-                {count(status)}
-              </span>
-              <span>
-                {label}
-                {status === "answered-marked" ? <small> {t("palette.counted")}</small> : null}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className={`palette-key${keyOpen ? "" : " folded"}`}>
+          <ul className="palette-legend" id="palette-legend">
+            {legend.map(([status, label]) => (
+              <li key={status} className={`legend-${status}`} title={label}>
+                <span className={`pq ${status}`} aria-hidden="true">
+                  {count(status)}
+                </span>
+                <span className="legend-label">
+                  {label}
+                  {status === "answered-marked" ? <small> {t("palette.counted")}</small> : null}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            className="link key-toggle"
+            aria-expanded={keyOpen}
+            aria-controls="palette-legend"
+            onClick={() => {
+              setKeyTouched(true);
+              setKeyOpen(!keyOpen);
+            }}
+          >
+            {keyOpen ? t("palette.hideKey") : t("palette.showKey")}
+          </button>
+        </div>
         <ol className="palette-grid">
           {questions.map((q) => (
             <li key={q.id}>

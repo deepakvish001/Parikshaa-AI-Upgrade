@@ -621,7 +621,10 @@ describe("exam authoring", () => {
         questionCount: 2,
         proctored: false,
         sectionCount: 0,
+        cutoffPercent: null,
         attempts: { invited: 0, inProgress: 1, submitted: 0, graded: 0, void: 0 },
+        window: null,
+        archivedAt: null,
       }),
     ]);
 

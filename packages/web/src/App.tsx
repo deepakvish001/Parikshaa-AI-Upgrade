@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type TouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type CandidateState } from "./api.ts";
@@ -14,24 +14,27 @@ import { useProctoring } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
-import { ChevronLeft, ChevronRight, Eraser, Flag, Hourglass, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, CircleCheck, Ellipsis, Eraser, Flag, Hand, Lock, Send, X } from "lucide-react";
 import { briefingOfState, Instructions } from "./components/Instructions.tsx";
 import { Finished, submittedAt } from "./components/Finished.tsx";
 import { QuestionPaper, QuestionRail } from "./components/QuestionPaper.tsx";
 import {
   Calculator,
   clearRoughWork,
+  DisplayMenu,
+  DisplayPanel,
   InstructionsPanel,
   PaperPanel,
   RoughWork,
   ShortcutsPanel,
   TimeWarnings,
   ToolStrip,
-  type Panel,
+  useReadingPreferences,
   type SaveState,
+  type Tool,
 } from "./components/Tools.tsx";
 import { loadReview, loadVisited, saveReview, saveVisited } from "./review.ts";
-import { Countdown, ExamBar, kindLabel, SubmitDialog } from "./components/Cbt.tsx";
+import { Countdown, ExamBar, kindLabel, SubmitDialog, Tally, TimeUpScreen, type PaperCounts } from "./components/Cbt.tsx";
 import { Figures, Palette, PassageCard } from "./components/Paper.tsx";
 
 interface OpenProbe {
@@ -133,6 +136,13 @@ function Screens({ client: injected }: { client?: ParikshaaClient }) {
     rememberToken(null);
     setToken(null);
   }, []);
+  // A code typed in by hand that opened nothing: back to the box, saying so.
+  const [refused, setRefused] = useState(false);
+  const refuse = useCallback(() => {
+    rememberToken(null);
+    setToken(null);
+    setRefused(true);
+  }, []);
 
   if (client === null && invite !== null) {
     return (
@@ -149,7 +159,9 @@ function Screens({ client: injected }: { client?: ParikshaaClient }) {
   if (client === null) {
     return (
       <TokenGate
+        failed={refused}
         onToken={(next) => {
+          setRefused(false);
           if (isInviteCode(next)) {
             session.set(INVITE_KEY, next);
             setInvite(next);
@@ -159,7 +171,9 @@ function Screens({ client: injected }: { client?: ParikshaaClient }) {
     );
   }
   // A token that ran out, with the invitation still in hand: open it again.
-  return <Attempt client={client} {...(invite === null ? {} : { onExpired: expired })} />;
+  // Without one, the candidate is asked for a code once more.
+  const onExpired = invite !== null ? expired : injected === undefined ? refuse : undefined;
+  return <Attempt client={client} {...(onExpired === undefined ? {} : { onExpired })} />;
 }
 
 /** Where a question's unsent text stands. */
@@ -191,6 +205,35 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const restored = useRef(false);
   const online = useOnline();
   const { t, language, lite } = usePreferences();
+  // The candidate's reading size and theme, for as long as the attempt is open on this page.
+  const reading = useReadingPreferences();
+  // What a screen reader is told about the follow-up: that one is here, and that the reply went.
+  const [probeNote, setProbeNote] = useState("");
+  const [probeSent, setProbeSent] = useState(false);
+  // The palette as a sheet on a phone, opened from the strip under the bar.
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  // Clear response, under "⋯" in a phone's footer.
+  const [moreOpen, setMoreOpen] = useState(false);
+  // "Swipe to move", said once on a touch screen, the first time a paper opens there.
+  const [swipeHint, setSwipeHint] = useState(false);
+  useEffect(() => {
+    if (typeof matchMedia !== "function" || !matchMedia("(pointer: coarse)").matches) return;
+    try {
+      if (localStorage.getItem("parikshaa.swipeHint") !== null) return;
+      localStorage.setItem("parikshaa.swipeHint", "1");
+    } catch {
+      return;
+    }
+    setSwipeHint(true);
+    const hide = () => setSwipeHint(false);
+    const id = setTimeout(hide, 6000);
+    // Gone at the first touch too: it has been read, or it is in the way.
+    window.addEventListener("pointerdown", hide, { once: true });
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("pointerdown", hide);
+    };
+  }, []);
   const heartbeatMs = lite ? LITE_HEARTBEAT_MS : HEARTBEAT_MS;
   const autosaveMs = lite ? LITE_AUTOSAVE_DELAY_MS : AUTOSAVE_DELAY_MS;
   // Per question: the candidate asked to read the original rather than the translation.
@@ -325,6 +368,33 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     };
   }, [flushUnsent]);
 
+  /*
+   * Back online: once everything that waited has gone, the save status says
+   * how many answers were sent, for a few seconds. Nothing modal, ever.
+   */
+  const reconnecting = useRef<number | null>(null);
+  const waitingOffline = useRef(0);
+  const [sentBack, setSentBack] = useState<number | null>(null);
+  // Counted while offline: the moment the connection returns, sending starts and "offline" becomes "saving".
+  useEffect(() => {
+    if (!online) waitingOffline.current = Object.values(status).filter((s) => s === "offline").length;
+  }, [online, status]);
+  useEffect(() => {
+    if (!online || waitingOffline.current === 0) return;
+    reconnecting.current = waitingOffline.current;
+    waitingOffline.current = 0;
+  }, [online]);
+  useEffect(() => {
+    if (reconnecting.current === null || Object.values(status).some((s) => s === "offline" || s === "saving")) return;
+    setSentBack(reconnecting.current);
+    reconnecting.current = null;
+  }, [status]);
+  useEffect(() => {
+    if (sentBack === null) return;
+    const id = setTimeout(() => setSentBack(null), 5000);
+    return () => clearTimeout(id);
+  }, [sentBack]);
+
   const edit = (questionId: string, text: string) => {
     setDrafts((prior) => ({ ...prior, [questionId]: text }));
     if (attemptId !== null) saveLocalDraft(attemptId, expiresAt, questionId, { answer: text, synced: false });
@@ -418,6 +488,17 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     }
   }, [client, queryClient, lite]);
 
+  // Said once, when the follow-up is written out, rather than word by word as it streams.
+  useEffect(() => {
+    if (probe !== null && !probe.streaming && probe.prompt !== "") setProbeNote(`${t("probe.eyebrow")}: ${probe.prompt}`);
+  }, [probe, t]);
+  // "Reply sent" folds away after a few seconds.
+  useEffect(() => {
+    if (!probeSent) return;
+    const id = setTimeout(() => setProbeSent(false), 6000);
+    return () => clearTimeout(id);
+  }, [probeSent]);
+
   // Reopen a probe the candidate left unanswered, e.g. after a reload.
   useEffect(() => {
     const open = state.data?.openProbe;
@@ -496,6 +577,32 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   const focusStem = useRef(false);
   const paperNow = state.data === undefined ? null : paperOf(state.data, now);
   const currentId = paperNow === null ? null : (paperNow.shown.find((q) => q.id === current) ?? paperNow.shown[0])?.id ?? null;
+
+  /*
+   * Reopened — after a reload, or on another device — the page goes back to
+   * where the candidate was: the question with unsent work, or the one after
+   * the last saved. Said once, then out of the way.
+   */
+  const resumed = useRef(false);
+  const [welcome, setWelcome] = useState<number | null>(null);
+  useEffect(() => {
+    if (resumed.current || paperNow === null || state.data?.state !== "in_progress") return;
+    resumed.current = true;
+    const shownNow = paperNow.shown;
+    const saved = new Set(state.data.answers.map((a) => a.questionId));
+    const drafted = new Set((state.data.drafts ?? []).map((d) => d.questionId));
+    if (saved.size === 0 && drafted.size === 0) return;
+    const lastSaved = shownNow.reduce((at, q, i) => (saved.has(q.id) ? i : at), -1);
+    const target = shownNow.find((q) => drafted.has(q.id) && !saved.has(q.id)) ?? shownNow[Math.min(lastSaved + 1, shownNow.length - 1)];
+    if (target === undefined) return;
+    setCurrent(target.id);
+    setWelcome(state.data.exam.questions.indexOf(target) + 1);
+  }, [paperNow, state.data]);
+  useEffect(() => {
+    if (welcome === null) return;
+    const id = setTimeout(() => setWelcome(null), 8000);
+    return () => clearTimeout(id);
+  }, [welcome]);
   useEffect(() => {
     if (currentId === null || attemptId === null || !inProgress) return;
     setVisited((prior) => {
@@ -512,8 +619,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     }
   }, [currentId, attemptId, inProgress]);
 
-  // The tools beside the paper: one open at a time.
-  const [panel, setPanel] = useState<Panel>(null);
+  // The tools beside the paper, oldest first: several may be open, stacked, the newest on top.
+  const [windows, setWindows] = useState<readonly Tool[]>([]);
+  const toggleWindow = (tool: Tool) => setWindows((open) => (open.includes(tool) ? open.filter((w) => w !== tool) : [...open, tool]));
+  /** Close a tool's window, and put focus back on the button that opened it (or Tools, on a phone). */
+  const closeWindow = useCallback((tool: Tool) => {
+    setWindows((open) => open.filter((w) => w !== tool));
+    requestAnimationFrame(() => {
+      const shown = (el: HTMLElement | null) => el !== null && (typeof el.checkVisibility === "function" ? el.checkVisibility() : el.offsetParent !== null);
+      const button = document.querySelector<HTMLElement>(`.toolstrip-end [data-tool="${tool}"]`);
+      const tools = document.querySelector<HTMLElement>(".tools-open");
+      // The tool's own button where it is on screen; on a phone, Tools; failing both, the tool's.
+      (shown(button) ? button : shown(tools) ? tools : button)?.focus();
+    });
+  }, []);
   // Where a touch on the question began, for a swipe to the next or previous one.
   const touch = useRef<{ x: number; y: number } | null>(null);
 
@@ -523,15 +642,22 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
    * that letter — and never with a modifier held.
    */
   const keys = useRef<{ choose: (n: number) => void; save: () => void; next: () => void; prev: () => void; mark: () => void } | null>(null);
+  const latestWindows = useRef(windows);
+  latestWindows.current = windows;
   useEffect(() => {
     if (!inProgress) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const target = e.target as HTMLElement | null;
-      if (target !== null && (target.closest("input:not([type=radio]):not([type=checkbox]), textarea, select, [contenteditable=true], .cm-editor, .floating, [role=dialog]") !== null)) return;
+      if (target !== null && (target.closest("input:not([type=radio]):not([type=checkbox]), textarea, select, [contenteditable=true], .cm-editor, .tool-window, [role=dialog]") !== null)) return;
       const key = e.key.toLowerCase();
-      if (key === "?") setPanel((p) => (p === "shortcuts" ? null : "shortcuts"));
-      else if (key === "escape") setPanel(null);
+      if (key === "?") setWindows((open) => (open.includes("shortcuts") ? open.filter((w) => w !== "shortcuts") : [...open, "shortcuts"]));
+      else if (key === "escape") {
+        // The newest window first, one at a time.
+        const top = latestWindows.current[latestWindows.current.length - 1];
+        if (top === undefined) return;
+        closeWindow(top);
+      }
       else if (keys.current === null) return;
       else if ("abcd".includes(key) && key.length === 1) keys.current.choose("abcd".indexOf(key));
       else if (key === "s") keys.current.save();
@@ -543,23 +669,32 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [inProgress]);
+  }, [inProgress, closeWindow]);
 
   /**
-   * Time up: the page says so plainly and hands over what is waiting to be
-   * saved, then reads the attempt again — the server closes it at the next
-   * request, and the record opens in its place.
+   * Time up: the page says so plainly, hands over what is waiting to be saved,
+   * and submits — which, after the end, closes the attempt with only what was
+   * saved in time. The screen stays until that is done and a few seconds
+   * after, then the record opens in its place.
    */
-  const [timeUp, setTimeUp] = useState(false);
+  const [timeUpAt, setTimeUpAt] = useState<number | null>(null);
+  const [timeUpReady, setTimeUpReady] = useState(false);
   useEffect(() => {
     if (!inProgress || expiresAt === 0) return;
-    setTimeUp(false);
     const id = setTimeout(
       () => {
-        setTimeUp(true);
+        setTimeUpAt(expiresAt);
+        setTimeUpReady(false);
         void (async () => {
           await flushPending().catch(() => undefined);
+          // Submitting after the end closes the attempt with what was saved in time, and no more.
+          try {
+            await client.submit();
+          } catch {
+            // Closed already, or not reachable: the state read next says which.
+          }
           await queryClient.invalidateQueries({ queryKey: ["state"] });
+          setTimeUpReady(true);
         })();
       },
       Math.max(0, expiresAt - Date.now()),
@@ -573,6 +708,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   useEffect(() => {
     if (expired) onExpired?.();
   }, [expired, onExpired]);
+
+  if (timeUpAt !== null) {
+    return (
+      <TimeUpScreen
+        at={timeUpAt}
+        ready={timeUpReady && state.data?.state !== "in_progress"}
+        onContinue={() => setTimeUpAt(null)}
+      />
+    );
+  }
 
   if (state.isPending) {
     return (
@@ -654,7 +799,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               </p>
             </section>
           ) : null}
-          {ledger.data !== undefined ? <Receipt ledger={ledger.data} myData={() => client.myData()} /> : null}
+          {ledger.data !== undefined ? (
+            <Receipt
+              ledger={ledger.data}
+              myData={() => client.myData()}
+              numberOf={(id) => {
+                const at = exam.questions.findIndex((q) => q.id === id);
+                return at < 0 ? null : at + 1;
+              }}
+            />
+          ) : null}
         </main>
       </>
     );
@@ -676,6 +830,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     saveAnswer.mutate({ questionId, answer: value });
   };
   const goTo = (id: string) => {
+    setMoreOpen(false);
     if (original_ !== null && id !== original_.id) leave(original_.id);
     focusStem.current = true;
     setCurrent(id);
@@ -714,6 +869,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     notVisited: items.filter((q) => !q.answered && !q.marked && !q.visited).length,
   };
   const lastPart = parts === null || nextPart === null;
+  // Where every part stands, for the summary before submitting: from what was saved, marked and opened.
+  const countsOf = (ids: readonly string[]): PaperCounts => {
+    const qs = ids.map((id) => ({ answered: (answered.get(id) ?? "") !== "", marked: review.has(id), visited: visited.has(id) || id === currentId }));
+    return {
+      answered: qs.filter((q) => q.answered && !q.marked).length,
+      answeredMarked: qs.filter((q) => q.answered && q.marked).length,
+      marked: qs.filter((q) => !q.answered && q.marked).length,
+      notAnswered: qs.filter((q) => !q.answered && !q.marked && q.visited).length,
+      notVisited: qs.filter((q) => !q.answered && !q.marked && !q.visited).length,
+    };
+  };
+  const groups = (parts ?? []).map((p) => ({ title: p.title, counts: countsOf(p.questionIds) }));
   // A coding question fills a wide screen, as a coding round's does; a laptop or phone keeps it in the card.
   const wide = typeof window !== "undefined" && window.innerWidth >= 1280;
   const canSubmit = !submit.isPending && (answered.size > 0 || Object.keys(drafts).length > 0);
@@ -760,13 +927,18 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
 
   // One word for the whole paper: anything unsent on this device, anything on its way, or all of it safe.
   const statuses = Object.values(status);
-  const paperSave: SaveState = statuses.includes("offline")
+  const paperSave: SaveState = statuses.includes("offline") || !online
     ? "offline"
     : saveAnswer.isPending || statuses.includes("saving")
       ? "saving"
-      : answered.size > 0 || statuses.length > 0
-        ? "saved"
-        : "idle";
+      : sentBack !== null
+        ? "back"
+        : answered.size > 0 || statuses.length > 0
+          ? "saved"
+          : "idle";
+
+  // A section with its own time shows that time in the pill, in place of the test's.
+  const sectionClock = currentPart !== null && currentPart.endsAt != null && !partTimeUp ? { title: currentPart.title, endsAt: currentPart.endsAt, durationMs: currentPart.durationMs } : null;
 
   const action = !lastPart ? (
     currentPart !== null && !partTimeUp ? (
@@ -791,13 +963,22 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         setConfirming(true);
       }}
       disabled={!canSubmit}
+      // One name for it, whichever of its labels the width shows.
+      aria-label={submit.isPending ? undefined : t("exam.submit")}
     >
       <Send aria-hidden="true" />
-      {submit.isPending ? t("exam.submitting") : t("exam.submit")}
+      {submit.isPending ? (
+        t("exam.submitting")
+      ) : (
+        <>
+          <span className="label-long">{t("exam.submit")}</span>
+          <span className="label-short">{t("exam.submitShort")}</span>
+        </>
+      )}
     </button>
   );
 
-  let question: JSX.Element | null = null;
+  let question: ReactElement | null = null;
   if (original_ !== null) {
     const index = exam.questions.indexOf(original_);
     // The question as this candidate reads it: in their language when it
@@ -856,7 +1037,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           </span>
           <button type="button" className={`quiet review-toggle${marked ? " on" : ""}`} aria-pressed={marked} onClick={() => toggleReview(q.id)}>
             <Flag aria-hidden="true" />
-            {marked ? t("exam.marked") : t("exam.markReview")}
+            <span className="review-toggle-label">{marked ? t("exam.marked") : t("exam.markReview")}</span>
           </button>
         </div>
         <h2 className="q-stem" lang={shownIn} id={`q-${q.id}-stem`} tabIndex={-1}>
@@ -908,14 +1089,14 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           card
         )}
         <div className="qfoot" role="group" aria-label={t("exam.questionOf", { n: index + 1, total: exam.questions.length })}>
-          <button type="button" className="secondary" onClick={() => previous !== null && goTo(previous.id)} disabled={previous === null}>
+          <button type="button" className="secondary foot-prev" onClick={() => previous !== null && goTo(previous.id)} disabled={previous === null}>
             <ChevronLeft aria-hidden="true" />
-            {t("exam.prev")}
+            <span className="foot-label">{t("exam.prev")}</span>
           </button>
           {isCode ? null : (
             <button
               type="button"
-              className="ghost"
+              className="ghost foot-clear"
               onClick={() => {
                 edit(q.id, "");
                 if (committed !== "" && exam.allowRevision) saveAnswer.mutate({ questionId: q.id, answer: "" });
@@ -926,6 +1107,30 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               {t("exam.clear")}
             </button>
           )}
+          {isCode ? null : (
+            <div className="foot-more">
+              <button type="button" className="secondary" aria-label={t("exam.more")} title={t("exam.more")} aria-expanded={moreOpen} onClick={() => setMoreOpen(!moreOpen)}>
+                <Ellipsis aria-hidden="true" />
+              </button>
+              {moreOpen ? (
+                <div className="foot-menu" role="menu" aria-label={t("exam.more")}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    disabled={value === "" || (committed !== "" && !exam.allowRevision)}
+                    onClick={() => {
+                      setMoreOpen(false);
+                      edit(q.id, "");
+                      if (committed !== "" && exam.allowRevision) saveAnswer.mutate({ questionId: q.id, answer: "" });
+                    }}
+                  >
+                    <Eraser aria-hidden="true" />
+                    {t("exam.clear")}
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          )}
           <span className="saved" aria-live="polite">
             {saveState}
           </span>
@@ -934,17 +1139,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             <button
               type="button"
               className="review-next"
+              aria-label={t("exam.markNext")}
               onClick={() => {
                 if (!review.has(q.id)) toggleReview(q.id);
                 advanceFrom(q.id);
               }}
             >
-              {t("exam.markNext")}
+              <Flag aria-hidden="true" />
+              <span className="label-long">{t("exam.markNext")}</span>
+              <span className="label-short">{t("exam.markShort")}</span>
             </button>
           )}
           {isCode ? (
             next === null ? null : (
-              <button type="button" onClick={() => goTo(next.id)}>
+              <button type="button" className="foot-next" onClick={() => goTo(next.id)}>
                 {t("exam.next")}
                 <ChevronRight aria-hidden="true" />
               </button>
@@ -969,8 +1177,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     <div className="cbt">
       <ExamBar
         title={exam.title}
-        offered={offered}
-        clock={<Countdown expiresAt={state.data.expiresAt} />}
+        display={<DisplayMenu offered={offered} reading={reading} />}
+        clock={<Countdown expiresAt={state.data.expiresAt} section={sectionClock} />}
         status={
           cameraOn === true ? (
             <span className="camera-pill" role="status">
@@ -980,39 +1188,59 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
         }
         action={action}
       />
-      <ToolStrip save={paperSave} panel={panel} onPanel={setPanel} calculator={exam.calculator ?? false}>
-        {parts !== null ? <SectionSteps parts={parts} now={now} /> : null}
-      </ToolStrip>
+      <ToolStrip
+        save={paperSave}
+        sent={sentBack ?? 0}
+        open={windows}
+        onToggle={toggleWindow}
+        calculator={exam.calculator ?? false}
+        questions={shown.length > 0 ? { done: items.filter((i) => i.answered).length, total: items.length, onOpen: () => setPaletteOpen(true) } : undefined}
+        display={<DisplayPanel offered={offered} reading={reading} />}
+      />
       <TimeWarnings expiresAt={state.data.expiresAt} />
-      {panel === "calculator" ? <Calculator onClose={() => setPanel(null)} /> : null}
-      {panel === "rough" ? <RoughWork attemptId={state.data.attemptId} onClose={() => setPanel(null)} /> : null}
-      {panel === "shortcuts" ? <ShortcutsPanel onClose={() => setPanel(null)} /> : null}
-      {panel === "paper" ? (
-        <PaperPanel onClose={() => setPanel(null)}>
-          <QuestionPaper
-            current={currentId}
-            onGo={(id) => {
-              setPanel(null);
-              goTo(id);
-            }}
-            entries={shown.map((q, i) => {
-              const translation = language === "en" || original.has(q.id) ? undefined : q.translations?.[language];
-              const stem = translation?.stem ?? q.stem;
-              return {
-                ...items[i]!,
-                stem: q.kind === "code" ? splitStem(stem).title || t("code.problem") : stem,
-                lang: translation === undefined ? "en" : language,
-                maxScore: q.maxScore,
-                kind: kindLabel(q, t),
-              };
-            })}
-          />
-        </PaperPanel>
+      {swipeHint ? (
+        <p className="swipe-hint" role="status">
+          <Hand aria-hidden="true" />
+          {t("exam.swipeHint")}
+        </p>
       ) : null}
-      {panel === "instructions" ? (
-        <InstructionsPanel onClose={() => setPanel(null)}>
-          <Instructions brief={briefingOfState(state.data)} />
-        </InstructionsPanel>
+      {windows.length > 0 ? (
+        <div className="tool-windows">
+          {windows.map((tool) =>
+            tool === "calculator" ? (
+              <Calculator key={tool} onClose={() => closeWindow(tool)} />
+            ) : tool === "rough" ? (
+              <RoughWork key={tool} attemptId={state.data.attemptId} onClose={() => closeWindow(tool)} />
+            ) : tool === "shortcuts" ? (
+              <ShortcutsPanel key={tool} onClose={() => closeWindow(tool)} />
+            ) : tool === "paper" ? (
+              <PaperPanel key={tool} onClose={() => closeWindow(tool)}>
+                <QuestionPaper
+                  current={currentId}
+                  onGo={(id) => {
+                    closeWindow("paper");
+                    goTo(id);
+                  }}
+                  entries={shown.map((q, i) => {
+                    const translation = language === "en" || original.has(q.id) ? undefined : q.translations?.[language];
+                    const stem = translation?.stem ?? q.stem;
+                    return {
+                      ...items[i]!,
+                      stem: q.kind === "code" ? splitStem(stem).title || t("code.problem") : stem,
+                      lang: translation === undefined ? "en" : language,
+                      maxScore: q.maxScore,
+                      kind: kindLabel(q, t),
+                    };
+                  })}
+                />
+              </PaperPanel>
+            ) : (
+              <InstructionsPanel key={tool} onClose={() => closeWindow(tool)}>
+                <Instructions brief={briefingOfState(state.data)} />
+              </InstructionsPanel>
+            ),
+          )}
+        </div>
       ) : null}
       <div className="cbt-body">
         <main className="cbt-main" {...swipe}>
@@ -1021,15 +1249,22 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               {t("camera.offBanner")}
             </p>
           ) : null}
-          {!online ? (
-            <p className="offline" role="status">
-              {t("exam.offline")}
+          {welcome !== null ? (
+            <p className="welcome-back" role="status">
+              <Hand aria-hidden="true" />
+              <span>{t("exam.welcomeBack", { n: welcome })}</span>
+              <button type="button" className="tool icon" aria-label={t("tools.close")} title={t("tools.close")} onClick={() => setWelcome(null)}>
+                <X aria-hidden="true" />
+              </button>
             </p>
           ) : null}
           <Announcements
             items={(announcements.data ?? []).filter((a) => !dismissed.has(a.id))}
             onDismiss={(id) => setDismissed(new Set([...dismissed, id]))}
           />
+          <p className="visually-hidden" role="status">
+            {probeNote}
+          </p>
           {probe !== null ? (
             <ProbePanel
               prompt={probe.prompt}
@@ -1037,9 +1272,16 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
               onReply={async (reply) => {
                 await client.replyToProbe(probe.id, reply);
                 setProbe(null);
+                setProbeSent(true);
+                setProbeNote(t("probe.sent"));
                 await queryClient.invalidateQueries({ queryKey: ["state"] });
               }}
             />
+          ) : probeSent ? (
+            <p className="probe-sent">
+              <CircleCheck aria-hidden="true" />
+              {t("probe.sent")}
+            </p>
           ) : null}
 
           {currentPart !== null && partTimeUp ? (
@@ -1070,18 +1312,33 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           {question}
         </main>
 
-        {shown.length > 0 ? (
+        {shown.length > 0 || parts !== null ? (
           <aside className="cbt-side">
-            <Palette questions={items} current={currentId} onGo={goTo} />
+            {shown.length > 0 ? (
+              <Palette
+                questions={items}
+                current={currentId}
+                onGo={goTo}
+                open={paletteOpen}
+                onOpenChange={setPaletteOpen}
+                header={parts !== null ? <SectionTabs parts={parts} /> : undefined}
+              />
+            ) : parts !== null ? (
+              <SectionTabs parts={parts} />
+            ) : null}
           </aside>
         ) : null}
       </div>
 
       {leaving && currentPart !== null ? (
         <div className="scrim" onClick={(e) => e.target === e.currentTarget && setLeaving(false)}>
-          <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="leave-section">
-            <h2 id="leave-section">{t("section.confirm", { title: currentPart.title })}</h2>
-            <p className="notice">{t("section.lockNote")}</p>
+          <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby="leave-section" aria-describedby="leave-section-note">
+            <h2 id="leave-section">{t("section.leaveTitle", { title: currentPart.title })}</h2>
+            <Tally counts={counts} />
+            <p className="dialog-warn" id="leave-section-note">
+              <Lock aria-hidden="true" />
+              {t("section.confirm", { title: currentPart.title })}
+            </p>
             <div className="dialog-actions">
               <button type="button" className="secondary" onClick={() => setLeaving(false)} autoFocus>
                 {t("section.stay")}
@@ -1097,23 +1354,14 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
       {confirming ? (
         <SubmitDialog
           counts={counts}
+          groups={groups}
           pending={submit.isPending}
           onCancel={() => setConfirming(false)}
           onConfirm={() => submit.mutate(undefined, { onSettled: () => setConfirming(false) })}
         />
       ) : null}
 
-      {timeUp ? (
-        <div className="scrim">
-          <div className="dialog time-up" role="alertdialog" aria-modal="true" aria-labelledby="time-up-title" aria-describedby="time-up-note">
-            <Hourglass aria-hidden="true" />
-            <h2 id="time-up-title">{t("tools.timeUpTitle")}</h2>
-            <p id="time-up-note" className="notice">
-              {t("tools.timeUpNote")}
-            </p>
-          </div>
-        </div>
-      ) : null}
+
     </div>
   );
 }
@@ -1148,36 +1396,31 @@ function useNow(running: boolean): number {
   return now;
 }
 
-const clockOf = (ms: number): string => {
-  const seconds = Math.ceil(ms / 1000);
-  const m = Math.floor(seconds / 60);
-  return `${m}:${String(seconds % 60).padStart(2, "0")}`;
-};
-
 /**
- * Where a sectioned test stands: each part, done, now or to come, and the
- * current part's own time, to the second: a section is short enough for
- * seconds to matter.
+ * Where a sectioned test stands, above the palette: every part, done and
+ * locked, now, or to come, each with its number of questions. The parts left
+ * behind stay in sight, so the candidate sees the whole paper. The current
+ * part's own time is in the pill in the bar.
  */
-function SectionSteps({ parts, now }: { parts: readonly CandidatePart[]; now: number }) {
+function SectionTabs({ parts }: { parts: readonly CandidatePart[] }) {
   const { t } = usePreferences();
-  const current = parts.find((p) => p.state === "current");
-  const left = current?.endsAt == null ? null : Math.max(0, current.endsAt - now);
   return (
-    <nav className="sections card" aria-label={t("section.region")}>
+    <nav className="section-tabs" aria-label={t("section.region")}>
       <ol>
         {parts.map((p) => (
-          <li key={p.sectionId ?? "fixed"} className={`step ${p.state}`} aria-current={p.state === "current" ? "step" : undefined}>
-            <span className="step-title">{p.title}</span>
-            <span className="step-state">{t(`section.${p.state}`)}</span>
+          <li key={p.sectionId ?? "fixed"} className={`section-tab ${p.state}`} aria-current={p.state === "current" ? "step" : undefined}>
+            {p.state === "done" ? <Lock aria-hidden="true" /> : null}
+            <span className="section-tab-title">{p.title}</span>
+            <span className="section-tab-count" aria-hidden="true">
+              {p.questionIds.length}
+            </span>
+            <span className="visually-hidden">
+              {" "}
+              ({t("section.questions", { n: p.questionIds.length })}, {t(`section.${p.state}`)})
+            </span>
           </li>
         ))}
       </ol>
-      {left !== null && left > 0 ? (
-        <p className={`section-clock${left < 60_000 ? " urgent" : ""}`} role="timer">
-          {t("section.timeLeft", { time: clockOf(left) })}
-        </p>
-      ) : null}
     </nav>
   );
 }

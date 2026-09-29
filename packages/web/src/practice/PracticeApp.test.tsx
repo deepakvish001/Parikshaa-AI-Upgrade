@@ -231,6 +231,7 @@ describe("a problem", () => {
         firstSolve: false,
       },
     });
+    localStorage.setItem("parikshaa.practice.nit-practice.draft.sum-of-two", JSON.stringify({ language: "python", source: "print(5)" }));
     open("/practice/nit-practice/problems/sum-of-two");
 
     expect(await screen.findByRole("heading", { name: "Sum of two" })).toBeInTheDocument();
@@ -239,11 +240,10 @@ describe("a problem", () => {
     // No full-screen toggle: the page is the workspace.
     expect(screen.queryByRole("button", { name: "Full screen" })).not.toBeInTheDocument();
 
-    // The editor arrives after the page: type once it has.
-    await waitFor(() => expect(document.querySelector(".cm-content")).not.toBeNull());
-    await userEvent.click(screen.getByRole("textbox", { name: "Code for question 1" }));
-    await userEvent.keyboard("print(5)");
-    await waitFor(() => expect(localStorage.getItem("parikshaa.practice.nit-practice.draft.sum-of-two")).toContain("print(5)"));
+    // The draft kept on this device is back in the editor. (Typing into the
+    // editor is checked in a real browser, in e2e's practice.spec.ts: jsdom
+    // cannot drive CodeMirror's contenteditable.)
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Code for question 1" })).toHaveTextContent("print(5)"));
 
     await userEvent.click(screen.getByRole("button", { name: "Submit" }));
     const results = await screen.findByRole("region", { name: "Submission results" });
@@ -284,6 +284,12 @@ describe("contests", () => {
     expect(rows[2]).toHaveClass("you");
     expect(rows[2]).toHaveTextContent("−2");
     expect(rows[1]).toHaveTextContent("+1");
+    // Ravi solved each problem first; Asha solved the first one later, and tried the second.
+    expect(within(rows[1]!).getAllByRole("cell")[4]).toHaveClass("cell-first");
+    expect(within(rows[1]!).getAllByRole("cell")[4]).toHaveTextContent("First to solve: solved at 5 min, after 0 wrong tries");
+    expect(within(rows[2]!).getAllByRole("cell")[4]).toHaveClass("cell-ok");
+    expect(within(rows[2]!).getAllByRole("cell")[5]).toHaveTextContent("not solved, 2 wrong tries");
+    expect(screen.getByText("Live")).toHaveClass("pill", "live");
   });
 
   it("do not name their problems before they start", async () => {
@@ -335,7 +341,11 @@ describe("progress", () => {
     expect(screen.getByText("4 days")).toBeInTheDocument();
     expect(screen.getByText("1 day")).toBeInTheDocument();
     expect(screen.getByText("1-day streak")).toBeInTheDocument();
-    expect(screen.getByTitle(`${today}: 3 submitted, 1 accepted`)).toHaveClass("l2");
+    // The squares are a picture; the days with activity are also said in words.
+    const said = `${new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", timeZone: "UTC" }).format(Date.parse(`${today}T00:00:00Z`))}: 3 submitted, 1 accepted`;
+    expect(screen.getByTitle(said)).toHaveClass("l2");
+    expect(screen.getByText("Submissions: 3, on 1 of the last 365 days")).toBeInTheDocument();
+    expect(screen.getAllByText(said).some((el) => el.tagName === "LI")).toBe(true);
     expect(screen.getByRole("link", { name: "Stable sort" })).toBeInTheDocument();
 
     vi.spyOn(window, "confirm").mockReturnValue(true);

@@ -351,6 +351,16 @@ export class ExamService {
     await this.createExam(actor, { ...source, id, title: title ?? `${source.title} (copy)` });
   }
 
+  /**
+   * Put an exam away, or bring it back. Nothing but the console's list
+   * changes: its window, invitations, attempts and results stay as they were.
+   */
+  async archiveExam(actor: Actor, id: ExamId, archived: boolean): Promise<void> {
+    const scope = this.#require(actor, "exam:write");
+    if (!(await this.#store.setExamArchived(scope, id, archived, new Date(this.#now())))) throw new AttemptError("not_found", `No such exam: ${id}`);
+    await this.#audit(actor, archived ? "exam.archived" : "exam.restored", id, {});
+  }
+
   listExams(actor: Actor): Promise<readonly ExamSummary[]> {
     return this.#store.listExams(this.#require(actor, "exam:read"));
   }

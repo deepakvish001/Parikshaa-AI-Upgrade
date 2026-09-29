@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { beginSitting, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
+import { beginSitting, chooseLanguage, local, MCQ, PRIVATE_OWNER, readyToBegin, SHORT, seedSitting, setPrivacyNotice } from "../tests/support.js";
 import { FIGURE_SERIES, SALES_CHART, uploadPicture } from "../tests/pictures.js";
 import { aptitudePaper, CODE_QUESTION, MERGE_INTERVALS, MERGE_SOLUTION, MERGE_UNSORTED, PRACTICE_SET } from "./fixtures.js";
 import { shoot } from "./shoot.js";
@@ -20,9 +20,10 @@ test("the access code, when a candidate has no link", async ({ page }) => {
 test("the privacy notice, agreed to before anything starts", async ({ page, request }) => {
   const sitting = await seedSitting(request, { owner: PRIVATE_OWNER, questions: [MCQ], title: TITLE });
   await setPrivacyNotice(request, sitting.token);
-  await beginSitting(page, sitting.links["CS001"]!);
+  await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "Before you start" })).toBeVisible();
-  await shoot(page, "candidate-02-privacy-notice");
+  // The agree bar sticks to the bottom of the window, so the window is the picture.
+  await shoot(page, "candidate-02-privacy-notice", { fullPage: false });
 });
 
 test("a link opened before the window", async ({ page, request }) => {
@@ -41,14 +42,15 @@ test("the camera check and the identity photos, for a proctored test", async ({ 
     title: TITLE,
     proctoring: { identity: true, snapshotEverySeconds: 60, browserEvents: true },
   });
-  await beginSitting(page, sitting.links["CS001"]!);
+  await page.goto(local(sitting.links["CS001"]!));
   await expect(page.getByRole("heading", { name: "This test uses your camera" })).toBeVisible();
   await shoot(page, "candidate-04-camera-notice");
   await page.getByRole("button", { name: "Allow the camera" }).click();
-  await expect(page.getByRole("button", { name: "My camera works — start the test" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "My camera works" })).toBeVisible();
   await page.waitForTimeout(600);
   await shoot(page, "candidate-05-camera-check");
-  await page.getByRole("button", { name: "My camera works — start the test" }).click();
+  await page.getByRole("button", { name: "My camera works" }).click();
+  await readyToBegin(page);
   await expect(page.getByRole("heading", { name: "Confirm who you are" })).toBeVisible();
   await page.getByRole("button", { name: "Take my photo" }).click();
   await page.waitForTimeout(400);
@@ -110,14 +112,14 @@ test("answering: one question at a time, autosave, a follow-up question, and the
   await probe.getByLabel("Your reply to the follow-up").fill("Merge sort only moves an element past another when it is strictly smaller, so equal keys keep their order.");
   await shoot(page, "candidate-08-follow-up", { fullPage: false });
 
-  await page.getByRole("combobox", { name: "Language" }).selectOption("hi");
+  await chooseLanguage(page, "hi");
   const probeHi = page.getByRole("region", { name: "अनुवर्ती प्रश्न" });
   await probeHi.getByRole("button", { name: "उत्तर भेजें" }).click();
   await expect(probeHi).toBeHidden();
   await page.locator("section.qview").getByRole("textbox").fill("हर तुलना के बाद खोज का अंतराल आधा हो जाता है, इसलिए log₂(n) चरणों में वह खाली हो जाता है।");
   await page.waitForTimeout(1600);
   await shoot(page, "candidate-09-hindi", { fullPage: false });
-  await page.getByRole("combobox", { name: "भाषा" }).selectOption("en");
+  await chooseLanguage(page, "en");
 
   await foot.getByRole("button", { name: "Save & next" }).click();
   await page.locator("section.qview").getByRole("textbox").fill("72");

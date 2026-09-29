@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ExternalLink, EyeOff, Eye } from "lucide-react";
+import { BookOpen, ExternalLink, EyeOff, Eye, MessageSquare, Trophy, Users } from "lucide-react";
 import {
   ConsoleError,
   type ConsoleClient,
@@ -10,6 +10,8 @@ import {
   type PracticeSiteSettings,
   type PracticeSimilarity,
 } from "../api.ts";
+import { DifficultyBadge, KIND_NAME } from "./Bank.tsx";
+import { EmptyState, SkeletonRows } from "./kit.tsx";
 import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
 import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
 
@@ -99,7 +101,12 @@ function SiteSettings({ client, canManage }: { client: ConsoleClient; canManage:
     mutationFn: () => client.savePracticeSite(draft),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["practice", "site"] }),
   });
-  if (site.isPending) return <p className="notice">Loading…</p>;
+  if (site.isPending)
+    return (
+      <section className="card">
+        <SkeletonRows rows={3} columns={2} label="Loading the practice site…" />
+      </section>
+    );
   const address = `${window.location.origin}/practice/${site.data?.slug ?? draft.slug}`;
   return (
     <section className="card" aria-label="Practice site">
@@ -357,9 +364,11 @@ function Problems({ client, canWrite, canReview }: { client: ConsoleClient; canW
           <span className="notice">{list.length} published</span>
         </div>
         {problems.isPending ? (
-          <p className="notice">Loading…</p>
+          <SkeletonRows columns={4} label="Loading problems…" />
         ) : list.length === 0 ? (
-          <p className="notice">Nothing yet. Publish a question from the bank to start.</p>
+          <EmptyState icon={BookOpen} compact>
+            Problems learners can practise appear here. Publish a question from the bank to start.
+          </EmptyState>
         ) : (
           <table>
             <thead>
@@ -404,13 +413,13 @@ function Problems({ client, canWrite, canReview }: { client: ConsoleClient; canW
                       )}
                       <span className="notice small">
                         {" "}
-                        · {p.question.kind}
+                        · {KIND_NAME[p.question.kind as keyof typeof KIND_NAME] ?? p.question.kind}
                         {p.tags.length > 0 ? ` · ${p.tags.join(", ")}` : ""}
                         {p.editorial.trim() === "" ? " · no editorial" : ""}
                       </span>
                     </td>
                     <td>
-                      <span className={`difficulty ${p.difficulty}`}>{p.difficulty}</span>
+                      <DifficultyBadge difficulty={p.difficulty} />
                     </td>
                     <td>{p.published ? <span className="pill ok">Published</span> : <span className="pill">Hidden</span>}</td>
                     <td className="num">{p.submissions}</td>
@@ -629,7 +638,9 @@ function Contests({ client, canWrite }: { client: ConsoleClient; canWrite: boole
           before it. A problem hidden from the problem set can be set in a contest, to be seen there first.
         </p>
         {(contests.data ?? []).length === 0 ? (
-          <p className="notice">No contests yet.</p>
+          <EmptyState icon={Trophy} compact>
+            Contests you schedule appear here, with who took part.
+          </EmptyState>
         ) : (
           <table>
             <thead>
@@ -771,8 +782,12 @@ function Learners({ client }: { client: ConsoleClient }) {
         <strong>Learners</strong>
         <span className="notice">{list.length} signed up</span>
       </div>
-      {list.length === 0 ? (
-        <p className="notice">{learners.isPending ? "Loading…" : "Nobody has signed up yet."}</p>
+      {learners.isPending ? (
+        <SkeletonRows columns={3} label="Loading learners…" />
+      ) : list.length === 0 ? (
+        <EmptyState icon={Users} compact>
+          Learners who sign up on your practice site appear here, with what they have solved.
+        </EmptyState>
       ) : (
         <table>
           <thead>
@@ -834,8 +849,12 @@ function Discussion({ client, canWrite }: { client: ConsoleClient; canWrite: boo
         Every comment on every problem, newest first. Hide one that gives an answer away or does not belong; it is kept, and can be shown again. A reply from staff
         is marked as such.
       </p>
-      {list.length === 0 ? (
-        <p className="notice">{comments.isPending ? "Loading…" : "No comments yet."}</p>
+      {comments.isPending ? (
+        <SkeletonRows rows={3} columns={2} label="Loading comments…" />
+      ) : list.length === 0 ? (
+        <EmptyState icon={MessageSquare} compact>
+          Learners' comments on problems appear here, newest first.
+        </EmptyState>
       ) : (
         <ul className="comment-list">
           {list.map((c) => (

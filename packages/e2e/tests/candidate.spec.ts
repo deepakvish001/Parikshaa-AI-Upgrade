@@ -57,11 +57,14 @@ test("an answer typed while offline is kept, sent when the connection returns, a
 
   await context.setOffline(true);
   await box.fill("Written on a train with no signal: the interval halves.");
-  await expect(page.getByText("You are offline")).toBeVisible();
+  // Offline shows in one quiet place, the save status, and never as a dialog.
+  await expect(page.getByRole("status").filter({ hasText: "Offline: kept on this device" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(actions(page)).toContainText("Kept on this device");
 
   await context.setOffline(false);
   await expect(actions(page)).toContainText("Draft saved", { timeout: 15_000 });
+  await expect(page.getByRole("status").filter({ hasText: "Back online — 1 answer sent" })).toBeVisible();
 
   await page.reload();
   await openQuestion(page, 2);
