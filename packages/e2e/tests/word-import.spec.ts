@@ -13,6 +13,7 @@ test("a teacher uploads a Word question paper, checks what was found, and adds i
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Question bank" }).click();
 
+  await page.getByRole("tab", { name: "Word document" }).click();
   const word = page.getByRole("region", { name: "Import from Word" });
   await word.getByLabel("Word file (.docx)").setInputFiles(SAMPLE);
 

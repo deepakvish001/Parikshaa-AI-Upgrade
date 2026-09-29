@@ -10,6 +10,6 @@
   },
   "packages/console/dist": {
     "index-*.js": 165,
-    "index-*.css": 14
+    "index-*.css": 18
   }
 }

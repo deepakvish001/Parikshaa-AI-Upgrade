@@ -57,6 +57,23 @@ export async function resetDatabase(hashPassword: (password: string) => Promise<
 }
 
 /**
+ * An organisation of its own, not billed, with a fixed id: for the console's
+ * visual checks, whose pages must show only what they seeded themselves.
+ */
+export async function seedOrganisation(hashPassword: (password: string) => Promise<string>, id: string, name: string): Promise<{ email: string; password: string }> {
+  const sql = connect(ownerUrl, { max: 1 });
+  try {
+    const identity = new IdentityStore(sql);
+    await identity.createOrganisation(orgId(id), name);
+    const email = `owner@${id}.test`;
+    await identity.createUser({ orgId: orgId(id), email, name: "Ravi Kumar", role: "owner", passwordHash: await hashPassword(OWNER_PASSWORD) });
+    return { email, password: OWNER_PASSWORD };
+  } finally {
+    await sql.end();
+  }
+}
+
+/**
  * A new organisation on prepaid credits with none yet (ROADMAP §12), and its
  * owner. Plans are the operator's to set, so this goes to the database as the
  * operator's tool does; each run gets its own, since the browsers run side by

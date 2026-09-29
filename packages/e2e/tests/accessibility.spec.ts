@@ -82,17 +82,30 @@ for (const colorScheme of ["light", "dark"] as const) {
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
       await expect(page.getByRole("region", { name: "Sittings" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
-      await page.getByRole("button", { name: sitting.title, exact: true }).click();
+      await page.getByRole("region", { name: "Sittings" }).getByRole("button", { name: sitting.title, exact: true }).click();
       await expect(page.getByRole("button", { name: "Live sitting" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
       await page.getByRole("button", { name: "Live sitting" }).click();
       await expect(page.getByRole("region", { name: "Candidates now" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
+      // The exam's "⋯", open; its candidates and its results.
+      await page.getByRole("button", { name: `More actions for ${sitting.title}` }).click();
+      await expect(page.getByRole("menu")).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.keyboard.press("Escape");
+      await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Candidates" }).click();
+      await expect(page.getByRole("region", { name: "Invited candidates" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
+      await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Results" }).click();
+      await expect(page.getByRole("region", { name: "Candidates" })).toBeVisible();
+      expect(await violations(page)).toEqual([]);
 
       // The questions, one previewed; the test tried; the editor's list and settings; Ctrl+K.
       await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Questions" }).click();
       await page.getByRole("button", { name: "Preview question 1" }).click();
+      await expect(page.getByRole("dialog", { name: "Question 1" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
+      await page.keyboard.press("Escape");
       await page.getByRole("button", { name: "Try test" }).click();
       await expect(page.getByRole("dialog", { name: "Try test" })).toBeVisible();
       expect(await violations(page)).toEqual([]);
@@ -102,6 +115,21 @@ for (const colorScheme of ["light", "dark"] as const) {
       expect(await violations(page)).toEqual([]);
       await page.getByRole("tab", { name: "Settings" }).click();
       expect(await violations(page)).toEqual([]);
+
+      // The exam list, the bank and the settings pages, each on the one template.
+      const nav = page.getByRole("navigation", { name: "Account" });
+      for (const [name, landmark] of [
+        ["Exams", "Exams"],
+        ["Question bank", "Question bank"],
+        ["Staff", "Staff"],
+        ["Audit log", "Audit log"],
+        ["Integrations", "Webhooks"],
+        ["Billing", "Plan and balance"],
+      ] as const) {
+        await nav.getByRole("button", { name, exact: true }).click();
+        await expect(page.getByRole("region", { name: landmark }).first()).toBeVisible();
+        expect(await violations(page)).toEqual([]);
+      }
       await page.keyboard.press("Control+k");
       await page.getByRole("combobox", { name: "Search exams, candidates and pages" }).fill("cs0");
       await expect(page.getByRole("option").first()).toBeVisible();

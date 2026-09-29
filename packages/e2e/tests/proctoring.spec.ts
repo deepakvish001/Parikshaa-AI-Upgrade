@@ -39,7 +39,7 @@ test("a proctored sitting: camera first, identity photos, then an invigilator co
   await staff.getByLabel("Email").fill(OWNER.email);
   await staff.getByLabel("Password").fill(OWNER.password);
   await staff.getByRole("button", { name: "Sign in", exact: true }).click();
-  await staff.getByRole("button", { name: sitting.title, exact: true }).click();
+  await staff.getByRole("region", { name: "Sittings" }).getByRole("button", { name: sitting.title, exact: true }).click();
   await staff.getByRole("button", { name: "Live sitting" }).click();
   const row = staff.getByRole("row").filter({ hasText: "CS001" });
   await expect(row).toContainText("ID to check");
@@ -49,9 +49,9 @@ test("a proctored sitting: camera first, identity photos, then an invigilator co
   const selfie = panel.getByRole("img", { name: /^Photo of/ });
   await expect(selfie).toBeVisible();
   expect(await selfie.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
-  await expect(panel.getByRole("img", { name: /^Webcam photo at/ }).first()).toBeVisible();
+  await expect(panel.getByRole("button", { name: /^Open the webcam photo at/ }).first()).toBeVisible();
 
   await panel.getByLabel(/What you compared/).fill("Face matches the photo on the ID card");
   await panel.getByRole("button", { name: "Confirm identity" }).click();
-  await expect(panel).toContainText("Confirmed");
+  await expect(panel).toContainText("ID confirmed");
 });

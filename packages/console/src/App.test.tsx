@@ -442,7 +442,7 @@ describe("signing in", () => {
     await userEvent.type(screen.getByLabelText("Email"), "asha@acme.test");
     expect(signIn).toHaveAccessibleDescription("Enter your password to sign in.");
     await userEvent.type(screen.getByLabelText("Password"), "a secret");
-    await userEvent.click(screen.getByRole("button", { name: "Show the password" }));
+    await userEvent.click(screen.getByRole("button", { name: "Show what you typed" }));
     expect(screen.getByLabelText("Password")).toHaveAttribute("type", "text");
     expect(signIn).toBeEnabled();
   });

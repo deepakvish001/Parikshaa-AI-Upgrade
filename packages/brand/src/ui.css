@@ -179,7 +179,7 @@
   color: var(--text-disabled);
   cursor: not-allowed;
 }
-.ui-menu-item.danger {
+.ui-menu-item.destructive {
   color: var(--danger);
 }
 .ui-menu-icon {

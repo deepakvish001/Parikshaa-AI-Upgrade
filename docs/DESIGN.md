@@ -108,7 +108,7 @@ Variants are classes:
 | Field | `.field` > `label` + `input`/`select`/`textarea`; `.grid` lays fields out in columns |
 | Card | `.card`; a `.bar` as its first child becomes the card's header |
 | Table | `<table>` with `<thead>`: sticky header, row hover |
-| Badge | `.pill`; `.ok`, `.attention`, `.bad`, `.brand`, or `data-state="in_progress"` and the like |
+| Badge | `.pill`; `.ok`, `.attention`, `.bad`, `.info`, `.brand`, or `data-state="in_progress"` and the like. Only `.live` and `in_progress` carry a dot: a dot means "happening now" |
 | Figures | `<dl class="figures">` of `div > dt + dd`: a row of headline numbers |
 | Messages | `.notice` (muted), `.error`, `.problems` (a list of what is wrong), `.alert` |
 
@@ -121,7 +121,8 @@ styled by `ui.css`, so they behave the same on every screen:
 | `Drawer` | A `Dialog` sliding in from the right: the question library. |
 | `Tabs` + `TabPanel` | Arrow keys move between tabs, Home and End to the ends; only the chosen tab is in the Tab order. Panels are hidden, not unmounted, so what is typed stays. |
 | `Tooltip` | Describes its control (`aria-describedby`), on keyboard focus as well as hover; Escape hides it. Icon-only buttons keep their own name. |
-| `ToastProvider` / `useToast` | Short confirmations ("Saved …") in a polite live region, bottom right; gone after four seconds, errors stay until dismissed. |
+| `ToastProvider` / `useToast` | Short confirmations ("Saved …") in a polite live region, bottom right (full width on a phone); gone after four seconds, errors stay until dismissed. |
+| `Menu` | A "⋯" button and its list: arrow keys, Home, End and Escape, focus back to the button, the list kept on screen. Items can carry an icon, be disabled with the reason, or be `danger` — set apart by a rule, last, in the danger colour. |
 
 All of it, with the colours, type and plain components, is on the console's
 **Design system** page (Ctrl+K → "Design system", or `/console/?gallery`).
@@ -132,7 +133,7 @@ Each app adds its own layout on top:
 - **Before the clock** (`components/Instructions.tsx`): an invitation's first opening shows the paper's instructions — who is sitting it, duration, questions, marks, sections, marking, what the palette's shapes mean, how to move — beside a system check (browser, connection, saving on the device, screen, camera) and a declaration. Reading them starts nothing (`POST /invitations/briefing`); the clock starts at "I am ready to begin". The same instructions open from the exam at any time.
 - **Tools** (`components/Tools.tsx`): a strip under the exam bar with the save status for the whole paper, Instructions, a scientific calculator where the exam allows one (`policy.calculator`; parsed by `calc.ts`, never `eval`), rough work kept on the device, A−/A+ text size, light and dark, and keyboard shortcuts (A–D, S, N, P, M, `?`). Warnings at 15, 5 and 1 minute; a plain "Time is up" when it is. On a phone the palette is a bottom sheet and a swipe moves between questions.
 - **After, and around the paper** (`components/Finished.tsx`, `components/QuestionPaper.tsx`): a submitted attempt opens on "Submitted", when, and how the paper was left — answered, not answered, marked — with "Print or save as PDF" (a print stylesheet, no PDF library) above the record. "Question paper" in the tool strip lists every question's opening line, marks and state, read-only, and goes to any of them. On a wide screen a coding question opens straight into the full-screen workspace, with the paper's numbers down its left side.
-- **Console** (`packages/console/src/styles.css`): the sidebar shell, the exams overview (totals, filters, search, and each exam's candidates sitting, to grade and graded), sign-in, review, results, live sitting, proctoring and invoices.
+- **Console** (`packages/console/src/styles.css`): the sidebar shell and the console kit (see *The console* below), sign-in, review, results, live sitting, proctoring and invoices.
 - **Home** (`components/Home.tsx`): where the console opens. A greeting and the day's figures; the sittings around now — a month calendar marking the days with one, beside them day by day, open, scheduled or closed in the last week, with how many of those invited have started; the latest actions in words, for those who may read the audit log; and "Get started", the first steps with a progress bar, until they are all done (`GET /dashboard`).
 - **An exam's page** (`components/ExamPage.tsx`): tabs across it — Overview · Questions · Candidates · Live sitting · Results — and down the side where its candidates stand: invited, in progress, completed, to evaluate, and, once it has a qualifying mark, qualified and not qualified, with the test's duration, marks and rules. The Questions tab lists the paper read-only, each question with a preview as the candidate sees it and the right answer marked.
 - **Writing an exam** (`components/ExamEditor.tsx`): the title and the paper's questions, marks, time and qualifying mark across the top; then Questions and Settings. Questions are a list — number, kind, stem, marks — each opened to edit or preview, moved up or down, or removed; "Add from bank" slides the question bank in from the right as a library to tick questions from. Settings hold the timing, the qualifying mark (`policy.cutoff`: a share of the paper, and optionally a minimum per section), the candidate's tools and the camera.
@@ -195,6 +196,73 @@ words (*Answer saved · question 3*), folded behind *Show all N entries*.
 and is checked by eye in Hindi and Tamil (see *Guarding the look*). Indic
 scripts get no capitals and no tracking, a 1.75 line height, and emphasis
 by weight. Components grow to fit rather than truncate.
+
+## The console
+
+The console follows one kit (`packages/console/src/components/kit.tsx`,
+styled in `styles.css` under "the console kit"), so a page reads the same
+wherever it sits.
+
+**The page header.** Every page is a `PageFrame`: the title once, a status
+chip beside it, one meta line under it, and its actions on the right. A
+panel fills those from wherever it is, with `PageStatus`, `PageMeta` and
+`PageActions`; the purpose line shows while no meta line does. An exam's
+page is headed by the exam — *Campus Drive 2026 — Aptitude* · *Open now* ·
+*Open until 1 Oct, 1:00 pm IST · 60 min · 6 marks · qualifies at 50%* —
+with its tabs under it, and the breadcrumb above names where it sits. No
+card repeats the page's title.
+
+**Figures.** A `FigureStrip` holds up to four headline figures, then a line
+of the lesser ones. Four sit in one row, or two by two below 64rem; three
+stay in one row. No row leaves a tile on its own. A figure is coloured only
+when it asks something of the reader (*To grade 4*), and one that counts
+something opens it.
+
+**Tables.** Headers in small uppercase; roll numbers in mono; numbers right
+aligned; the row's one visible action, then "⋯" (`RowMenu`) for the rest,
+named for the row (*More actions for CS004*). A row with nothing more to
+offer keeps the menu's width, so the actions line up. On a phone a table
+scrolls sideways inside its card; the page never does.
+
+**Words and badges.** One glossary, the same on every page:
+
+| Of | Words |
+| --- | --- |
+| An attempt (`StateBadge`) | Not started · In progress (the dot) · To grade · Graded · Set aside |
+| An outcome (`OutcomeBadge`) | Qualified · Not qualified, with an icon, never colour alone |
+| An exam (`PhaseBadge`) | Draft · Scheduled · Open now (the dot) · Closed |
+| Other terms | *Roll no.*, *Withdraw* (an invitation), *Scorecard*, *Set aside* (never "void") |
+
+**Empty and loading.** Every list has an `EmptyState` (an icon, one line on
+what will appear, and the action that fills it) and `SkeletonRows` while it
+loads, in place of a bare "no results" or a spinner. Warnings sit in a
+`Banner`, imports in a `DropZone`.
+
+**The pages.**
+
+- **Exams:** filters (All, Open now, To grade, Scheduled, Draft, Closed,
+  Archived), search, and a table with each exam's phase and where its
+  candidates stand. "⋯" holds Edit (disabled, with the reason, once
+  candidates have sat it), Make a copy, Try test, and Archive or Bring back
+  from the archive (`PUT /exams/:id/archived`).
+- **Live sitting:** a `StatBar` of where everyone stands (not started, in
+  progress, away, idle, submitted), in the chart colours with a key, and the
+  candidates below with how long since each was seen.
+- **Results** and the **Scorecard:** the figure strip, the marks as a
+  histogram with the qualifying mark drawn on it, then the candidates. The
+  scorecard prints on A4 without the console's chrome.
+- **Writing an exam:** two panes, the question list on the left and the
+  chosen question on the right, with a bar at the bottom that says what has
+  changed. Leaving with unsaved changes asks first (*Leave without saving?*).
+- **Question bank:** difficulty as a badge, and Word and spreadsheet imports
+  through the drop zone; a Word paper is shown question by question before
+  any of it is added.
+- **Settings** (Staff, API keys, Spend, Audit log, Integrations, Privacy,
+  Billing, Sign-in, Account): each group is a `SettingsGroup`, its title
+  and a line on what it does in the left third and its controls in a card
+  on the right. A table that needs the width puts the line above it
+  (`stacked`), and a group that removes or undoes something is a *Danger
+  zone*, last. Secrets shown once are a `SecretField`.
 
 ## Pages
 
@@ -264,8 +332,12 @@ Three checks in CI keep the detail from drifting:
   `visual/__screenshots__`. That is the access code, the privacy notice, a
   link opened early, the instructions, a question, the submit summary and
   the record, each on a laptop (1440) and a phone (390), in light and dark,
-  and in English, Hindi and Tamil: 84 images. Beside them are the console's
-  sign-in, a new exam in the editor, and the design system in both themes.
+  and in English, Hindi and Tamil: 84 images. The console has 25 more
+  (`visual/screens.visual.ts`), seeded in an organisation of their own: sign-in,
+  home, exams, an exam's overview, live sitting, results, the editor, the
+  question bank and staff at 1440 in light and dark; sign-in, exams, an
+  exam's overview, results and live sitting on a phone; and the design
+  system in both themes.
   Only what changes from run to run is masked: the clocks, the dates, the
   hashes and the measured connection. At most 100 pixels may differ, with a
   tight per-pixel tolerance, so a shift of colour or a new control is
@@ -281,7 +353,7 @@ Three checks in CI keep the detail from drifting:
   JavaScript and CSS file against a gzipped cap; a file with no budget fails
   too. The candidate's entry is about 119 KB of script and 18 KB of style:
   English and Hindi come with the page, and the other nine languages load
-  when chosen.
+  when chosen. The console is about 161 KB of script and 17 KB of style.
 
 The browser tests run in Chromium, Firefox and WebKit in CI.
 

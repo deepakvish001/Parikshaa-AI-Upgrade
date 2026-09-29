@@ -337,7 +337,7 @@ export function Menu({ label, items, className }: { label: string; items: readon
               type="button"
               role="menuitem"
               tabIndex={-1}
-              className={`ui-menu-item${item.danger === true ? " danger" : ""}`}
+              className={`ui-menu-item${item.danger === true ? " destructive" : ""}`}
               aria-disabled={item.disabled === undefined ? undefined : true}
               onClick={() => {
                 if (item.disabled !== undefined) return;

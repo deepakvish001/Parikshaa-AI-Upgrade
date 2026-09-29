@@ -222,6 +222,11 @@
   color: var(--text-subtle);
 }
 .breadcrumbs button.crumb {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text-muted);
 }
 .breadcrumbs button.crumb:hover:not(:disabled) {
@@ -509,11 +514,6 @@
 }
 .pool li:last-child {
   border-bottom: none;
-}
-.picker {
-  border-style: dashed;
-  border-color: var(--primary-soft-border);
-  background: var(--primary-soft);
 }
 .option {
   display: block;
@@ -2141,6 +2141,21 @@ label.search input {
 }
 /* On a phone an exam is a two-line card: title and chip, then where it stands. */
 @media (max-width: 40rem) {
+  /* The exam's tabs scroll sideways rather than widen the page. */
+  .exam-tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .exam-tabs .tab {
+    flex: none;
+  }
+  /* A table scrolls inside its card rather than squeezing every word onto its own line. */
+  .scroll > table {
+    min-width: 34rem;
+  }
+  .exam-table .scroll > table {
+    min-width: 0;
+  }
   .exam-table table,
   .exam-table tbody {
     display: block;
@@ -2204,7 +2219,6 @@ button.icon {
 }
 button.icon svg,
 .qitem-actions button svg,
-.side-actions button svg,
 .try-bar button svg,
 .try-foot button svg,
 .drawer-head button svg {
@@ -2353,10 +2367,6 @@ button.danger-quiet:hover:not(:disabled) {
   margin: 0;
   font-weight: var(--weight-medium);
   text-align: right;
-}
-.side-actions {
-  display: flex;
-  gap: var(--space-2);
 }
 
 @media (max-width: 1100px) {
@@ -2546,6 +2556,7 @@ button.danger-quiet:hover:not(:disabled) {
 }
 .settings-group {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3) var(--space-6);
   scroll-margin-top: 5rem;
 }
@@ -2603,6 +2614,10 @@ button.danger-quiet:hover:not(:disabled) {
 }
 .settings-explain p {
   margin: 0;
+}
+.settings-card,
+.settings-explain {
+  min-width: 0;
 }
 .settings-card {
   margin: 0;
@@ -2710,9 +2725,6 @@ button.qitem-stem:hover {
 .qlist.read .qread {
   padding: var(--space-1) 0;
   border-bottom: 1px solid var(--border);
-}
-.qsection {
-  margin-top: var(--space-5);
 }
 
 /* A question as the candidate sees it */

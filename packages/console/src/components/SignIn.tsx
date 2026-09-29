@@ -196,7 +196,7 @@ function PasswordForm({
             <button
               type="button"
               className="quiet icon reveal"
-              aria-label={showPassword ? "Hide the password" : "Show the password"}
+              aria-label={showPassword ? "Hide what you typed" : "Show what you typed"}
               aria-pressed={showPassword}
               onClick={() => setShowPassword(!showPassword)}
             >
