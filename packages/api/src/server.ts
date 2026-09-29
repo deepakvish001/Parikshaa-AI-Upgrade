@@ -58,7 +58,7 @@ import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
-import { LoginThrottle, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
+import { LoginThrottle, UNTIL_VERIFIED, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
 
 export interface ServerOptions {
   readonly service: ExamService;
@@ -365,6 +365,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     // none yet, may do nothing but set one up (routes that ask no permission).
     if (permission !== null && actor.kind === "user" && actor.mustEnrol2fa === true) {
       await reply.code(403).send({ error: "two_factor_required", message: "Set up a second factor before continuing" });
+      return null;
+    }
+    if (permission !== null && actor.kind === "user" && actor.emailUnverified === true && UNTIL_VERIFIED.has(permission)) {
+      await reply.code(403).send({ error: "email_unverified", message: "Confirm your email address first: open the link we sent to it" });
       return null;
     }
     if (permission !== null && !can(actor, permission)) {

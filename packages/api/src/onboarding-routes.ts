@@ -8,7 +8,7 @@ import type {
   RawServerDefault,
 } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
-import { SignupRefused, type Onboarding } from "./onboarding.js";
+import { InvalidEmailLink, SignupRefused, type Onboarding } from "./onboarding.js";
 import { RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
 import type { Actor, Permission } from "./staff-auth.js";
@@ -88,6 +88,50 @@ export function registerOnboardingRoutes(
         if (error instanceof SignupRefused) return reply.code(error.code === "email_taken" ? 409 : 422).send({ error: error.code, message: error.message });
         throw error;
       }
+    },
+  );
+
+  // Resending is a person clicking a button: one a minute is plenty.
+  const resends = new RateLimiter({ perSecond: 1 / 60, burst: 2 }, deps.now);
+
+  routes.post(
+    "/auth/verify-email",
+    {
+      schema: {
+        tags: ACCOUNT,
+        summary: "Confirm an owner's email address, from the link sent to it",
+        description:
+          "An owner who signed their institution up can build exams at once, but invites candidates, adds staff and issues API keys only once this has been done. The link names the account and the address it was sent to; it stops working if the address changes.",
+        body: S.verifyEmailBody,
+        response: { 200: S.okResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      try {
+        await onboarding.confirmEmail(request.body.token);
+        return reply.send({ ok: true });
+      } catch (error) {
+        if (error instanceof InvalidEmailLink) return reply.code(422).send({ error: "invalid_link", message: error.message });
+        throw error;
+      }
+    },
+  );
+
+  routes.post(
+    "/auth/verify-email/resend",
+    {
+      schema: {
+        tags: ACCOUNT,
+        summary: "Send the link that confirms this account's address again",
+        security: SECURED,
+        response: { 200: S.resendResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, null);
+      if (actor === null) return;
+      if (!resends.take(actor.id).ok) return reply.code(429).send({ error: "too_many_attempts", message: "The link was sent a moment ago. Check your inbox and spam folder." });
+      return reply.send({ sent: await onboarding.resendVerification(actor) });
     },
   );
 

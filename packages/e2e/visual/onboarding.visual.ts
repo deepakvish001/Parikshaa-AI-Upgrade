@@ -20,7 +20,7 @@ test.beforeAll(async ({ request }) => {
   token = ((await res.json()) as { token: string }).token;
 });
 
-/** Signed in as the new owner, on Home, with the clock-bound greeting worded the same every run. */
+/** Signed in as the new owner, on Home, with the clock-bound greeting and the run's own address worded the same every run. */
 async function home(page: Page) {
   await page.addInitScript((session) => sessionStorage.setItem("parikshaa.console.session", session), token);
   await page.goto("/console/");
@@ -30,7 +30,14 @@ async function home(page: Page) {
 }
 
 async function settle(page: Page) {
-  await page.evaluate(() => document.querySelectorAll(".home-greeting").forEach((el) => (el.textContent = "Good morning, Meera.")));
+  await page.evaluate(() => {
+    document.querySelectorAll(".home-greeting").forEach((el) => (el.textContent = "Good morning, Meera."));
+    // The address is new to every run; the words around it are what is held.
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+      node.textContent = node.textContent!.replace(/owner-[a-z0-9]+@onboarding-visual\.test/g, "meera@sahyadri.example");
+    }
+  });
   await page.evaluate(() => document.fonts.ready);
   await page.mouse.move(0, 0);
   await page.waitForTimeout(150);

@@ -223,6 +223,18 @@ export async function wire(
     ...(options.googleIssuer === undefined ? {} : { issuer: options.googleIssuer }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const onboarding = new Onboarding({
+    identity,
+    auth,
+    billing: new BillingStore(sql),
+    bank: new QuestionBank(sql),
+    exams: service,
+    signup: options.signup ?? null,
+    secrets,
+    mailer: options.mailer ?? null,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -250,7 +262,7 @@ export async function wire(
     tokens,
     auth,
     security,
-    onboarding: new Onboarding({ identity, auth, billing: new BillingStore(sql), bank: new QuestionBank(sql), exams: service, signup: options.signup ?? null }),
+    onboarding,
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
@@ -275,7 +287,7 @@ export async function wire(
     razorpay,
     security,
     app,
-    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
+    handlers: { ...integrations.handlers, staff_email: (item) => (item.purpose === "password_reset" ? security.resetMail(item) : onboarding.mail(item)), learner_email: practiceIdentity.verificationMail },
   };
 }
 

@@ -850,6 +850,7 @@ export class LedgerStore {
         staff: string | number;
         notice: boolean;
         sample: boolean;
+        credits: number | string | null;
       }>(
         `SELECT (SELECT count(*) FROM exams WHERE org_id = $1 AND id <> $2) AS exams,
                 (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL AND NOT ($3 = ANY (tags))) AS bank,
@@ -857,7 +858,8 @@ export class LedgerStore {
                 (SELECT count(*) FROM invitations WHERE org_id = $1) AS invited,
                 (SELECT count(*) FROM staff_users WHERE org_id = $1 AND disabled_at IS NULL) AS staff,
                 EXISTS (SELECT 1 FROM privacy_settings WHERE org_id = $1) AS notice,
-                EXISTS (SELECT 1 FROM exams WHERE org_id = $1 AND id = $2 AND archived_at IS NULL) AS sample`,
+                EXISTS (SELECT 1 FROM exams WHERE org_id = $1 AND id = $2 AND archived_at IS NULL) AS sample,
+                (SELECT credits FROM billing_accounts WHERE org_id = $1 AND mode = 'prepaid') AS credits`,
         [scope.orgId, SAMPLE_EXAM_ID, SAMPLE_TAG],
       );
       return {
@@ -887,6 +889,7 @@ export class LedgerStore {
           staff: Number(facts!.staff),
           privacyNotice: facts!.notice,
           sampleExamId: facts!.sample ? SAMPLE_EXAM_ID : null,
+          prepaidCredits: facts!.credits === null ? null : Number(facts!.credits),
         },
       };
     });
@@ -1089,6 +1092,8 @@ export interface Dashboard {
     readonly privacyNotice: boolean;
     /** The sample exam, while it is loaded and not put away. */
     readonly sampleExamId: string | null;
+    /** Attempt credits left, for a prepaid organisation; null for one not billed that way. */
+    readonly prepaidCredits: number | null;
   };
 }
 

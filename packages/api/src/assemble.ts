@@ -117,7 +117,17 @@ export function assemble(o: AssembleOptions): {
   const security = new StaffSecurity({ identity, auth, secrets, publicUrl: o.publicUrl, mailer: o.mailer ?? null });
 
   const bank = new QuestionBank(o.sql);
-  const onboarding = new Onboarding({ identity, auth, billing: billingStore, bank, exams: service, signup: o.signup ?? null });
+  const onboarding = new Onboarding({
+    identity,
+    auth,
+    billing: billingStore,
+    bank,
+    exams: service,
+    signup: o.signup ?? null,
+    secrets,
+    mailer: o.mailer ?? null,
+    publicUrl: o.publicUrl,
+  });
   const practiceStore = new PracticeStore(o.sql);
   const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }) });
   const practiceIdentity = new PracticeIdentity({
@@ -174,7 +184,7 @@ export function assemble(o: AssembleOptions): {
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
-    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
+    handlers: { ...integrations.handlers, staff_email: (item) => (item.purpose === "password_reset" ? security.resetMail(item) : onboarding.mail(item)), learner_email: practiceIdentity.verificationMail },
   });
 
   return { app, worker, privacy, billing, identity };

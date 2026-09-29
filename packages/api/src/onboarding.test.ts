@@ -2,7 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
-import { pgliteExecutor, type IdentityStore } from "@parikshaa/store";
+import { IdentityStore as Identity, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor, type IdentityStore } from "@parikshaa/store";
+import { DeliveryWorker, OutboxLog, type EmailMessage } from "./delivery.js";
 import { validateExam } from "@parikshaa/core";
 import { organisationId, SAMPLE_QUESTIONS, type SignupPolicy } from "./onboarding.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
@@ -15,14 +16,25 @@ let identity: IdentityStore;
 
 const POLICY: SignupPolicy = { trialCredits: 25, pricePaise: 4_900 };
 
-async function start(signup?: SignupPolicy): Promise<{ app: FastifyInstance; db: PGlite }> {
+async function start(signup?: SignupPolicy, mailer?: OutboxLog): Promise<{ app: FastifyInstance; db: PGlite; worker: DeliveryWorker }> {
   const database = await freshDatabase();
-  const wiring = await wire(pgliteExecutor(database), { client: {} as unknown as Anthropic, ...(signup === undefined ? {} : { signup }) });
+  const sql = pgliteExecutor(database);
+  const wiring = await wire(sql, { client: {} as unknown as Anthropic, ...(signup === undefined ? {} : { signup }), ...(mailer === undefined ? {} : { mailer }) });
   identity = wiring.identity;
   await database.exec(`SET ROLE parikshaa_app`);
   db = database;
   app = wiring.app;
-  return { app: wiring.app, db: database };
+  const worker = new DeliveryWorker({
+    outbox: new OutboxStore(sql),
+    invitations: new InvitationStore(sql),
+    store: new LedgerStore(sql),
+    identity: new Identity(sql),
+    link: () => "",
+    mailer: mailer ?? null,
+    sms: null,
+    handlers: wiring.handlers,
+  });
+  return { app: wiring.app, db: database, worker };
 }
 
 afterEach(async () => {
@@ -96,6 +108,87 @@ describe("signing an institution up", () => {
     expect(organisationId("St. Xavier's College, Mumbai", "abc123")).toBe("st-xavier-s-college-mumbai-abc123");
     expect(organisationId("आईआईटी", "abc123")).toBe("org-abc123");
     expect(organisationId("x".repeat(90), "abc123")).toBe(`${"x".repeat(40)}-abc123`);
+  });
+});
+
+describe("confirming a new owner's address", () => {
+  it("sends a link; until it is opened the owner builds but reaches nobody, and the operator hears of the institution", async () => {
+    const mail = new OutboxLog();
+    const { app, worker } = await start({ ...POLICY, notify: "ops@parikshaa.test" }, mail);
+    const { token } = (await signup(ASHA)).json();
+    const as = (method: "GET" | "POST", url: string, payload?: object) =>
+      app.inject({ method, url, headers: bearer(token), ...(payload === undefined ? {} : { payload }) });
+
+    const me = (await as("GET", "/auth/me")).json();
+    expect(me.emailVerified).toBe(false);
+    expect(me.permissions).toContain("exam:write");
+    expect(me.permissions).not.toContain("attempt:start");
+    expect(me.permissions).not.toContain("staff:manage");
+
+    // Building is allowed; inviting, adding staff and issuing keys wait.
+    const exam = {
+      id: "drive",
+      title: "Drive",
+      questions: [{ id: "q1", kind: "mcq", stem: "Pick", maxScore: 1, rubric: [], options: ["a", "b"], correctIndex: 0 }],
+      policy: { durationMs: 3_600_000, allowRevision: true, vivaTriggerRatio: 0.99 },
+    };
+    expect((await as("POST", "/exams", exam)).statusCode).toBe(201);
+    const invite = await as("POST", "/exams/drive/invitations/import", { csv: "ref,name\nCS001,A", dryRun: false, channels: [] });
+    expect(invite.statusCode).toBe(403);
+    expect(invite.json().error).toBe("email_unverified");
+    expect((await as("POST", "/staff", { email: "x@nalanda.test", name: "X", role: "author", password: "a long enough password" })).json().error).toBe("email_unverified");
+
+    await worker.tick();
+    const sent = mail.sent.filter((m): m is EmailMessage => "subject" in m);
+    const verify = sent.find((m) => m.to === "asha@nalanda.test")!;
+    expect(verify.subject).toBe("Confirm your email for Parikshaa");
+    expect(verify.text).toContain("Nalanda Institute of Technology");
+    const notice = sent.find((m) => m.to === "ops@parikshaa.test")!;
+    expect(notice.subject).toBe("New institution: Nalanda Institute of Technology");
+    expect(notice.text).toContain("Asha Rao <asha@nalanda.test>");
+
+    const link = /\?verify=([^\s]+)/.exec(verify.text)![1]!;
+    expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link).replace(/.$/, "x") } })).statusCode).toBe(422);
+    expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link) } })).statusCode).toBe(200);
+    // Opening it twice is harmless.
+    expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link) } })).statusCode).toBe(200);
+
+    expect((await as("GET", "/auth/me")).json().emailVerified).toBe(true);
+    const after = await as("POST", "/exams/drive/invitations/import", { csv: "ref,name\nCS001,A", dryRun: false, channels: [] });
+    // Past the gate: what stops it now is only that the exam has no window yet.
+    expect(after.json().error).toBe("invalid_import");
+    expect((await as("POST", "/auth/verify-email/resend")).json()).toEqual({ sent: false });
+    const audit = (await as("GET", "/audit")).json().entries.map((e: { action: string }) => e.action);
+    expect(audit).toContain("auth.email_verified");
+  });
+
+  it("sends the link again on asking, not more than twice a minute", async () => {
+    const mail = new OutboxLog();
+    const { app, worker } = await start(POLICY, mail);
+    const { token } = (await signup(ASHA)).json();
+    const resend = () => app.inject({ method: "POST", url: "/auth/verify-email/resend", headers: bearer(token) });
+    expect((await resend()).json()).toEqual({ sent: true });
+    expect((await resend()).statusCode).toBe(200);
+    expect((await resend()).statusCode).toBe(429);
+    await worker.tick();
+    expect(mail.sent.filter((m) => "subject" in m && m.to === "asha@nalanda.test")).toHaveLength(3);
+  });
+
+  it("does not hold back anyone the operator or an owner added", async () => {
+    const { app } = await start();
+    const org = await addOrganisation(identity, "org-a", "Acme");
+    await addStaff(identity, org, "owner@acme.test", "owner", "Ravi");
+    const token = await signIn(app, "owner@acme.test");
+    const me = (await app.inject({ method: "GET", url: "/auth/me", headers: bearer(token) })).json();
+    expect(me.emailVerified).toBe(true);
+    expect(me.permissions).toContain("attempt:start");
+  });
+
+  it("reports a prepaid organisation's credits on its home page", async () => {
+    const { app } = await start(POLICY);
+    const { token } = (await signup(ASHA)).json();
+    const home = (await app.inject({ method: "GET", url: "/dashboard", headers: bearer(token) })).json();
+    expect(home.setup.prepaidCredits).toBe(25);
   });
 });
 

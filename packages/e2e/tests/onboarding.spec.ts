@@ -1,5 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+// The link's MAC alone: the whole API would load Fastify into the test runner.
+import { StaffSecrets } from "@parikshaa/api/secrets";
+import { SECRET } from "../src/database.js";
 
 /**
  * A new institution's first day, in a real browser: it makes its own account,
@@ -42,7 +45,8 @@ test("an institution signs itself up, takes the tour, and tries the sample exam 
     if ((await next.count()) === 0) break;
     await next.click();
   }
-  expect(titles).toEqual(["Home", "Exams", "Question bank", "Staff", "Find anyone", "Start here"]);
+  // Staff waits for the owner's address to be confirmed, and so does its stop.
+  expect(titles).toEqual(["Home", "Exams", "Question bank", "Find anyone", "Start here"]);
   // The last stop points at the welcome.
   await expect(page.locator(".tour-spot")).toBeVisible();
   await tour.getByRole("button", { name: "Done" }).click();
@@ -64,6 +68,25 @@ test("an institution signs itself up, takes the tour, and tries the sample exam 
   await trying.getByRole("button", { name: "Submit preview" }).click();
   await expect(trying.getByText(/marked automatically/)).toBeVisible();
   await trying.getByRole("button", { name: "Close" }).click();
+
+  // The address is not confirmed yet: said at the top, and inviting waits for it.
+  const confirm = page.locator(".confirm-email");
+  await expect(confirm).toContainText("Confirm your email address");
+  await expect(confirm).toContainText(email);
+  const session = await page.evaluate(() => sessionStorage.getItem("parikshaa.console.session"));
+  const me = await (await page.request.get("/api/auth/me", { headers: { authorization: `Bearer ${session}` } })).json();
+  expect(me.permissions).not.toContain("attempt:start");
+  await confirm.getByRole("button", { name: "Send the link again" }).click();
+  await expect(confirm.getByText("Sent. Check your inbox and spam folder.")).toBeVisible();
+
+  // The link, as the email carries it.
+  await page.goto(`/console/?verify=${encodeURIComponent(new StaffSecrets(SECRET).emailToken(me.id, email))}`);
+  await expect(page.getByText("Your email address is confirmed.")).toBeVisible();
+  await expect(page.locator(".confirm-email")).toHaveCount(0);
+  await expect(page).toHaveURL(/\/console\/$/);
+  const after = await (await page.request.get("/api/auth/me", { headers: { authorization: `Bearer ${session}` } })).json();
+  expect(after.permissions).toContain("attempt:start");
+  await expect(page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Staff", exact: true })).toBeVisible();
 
   // It is among the exams, and the first steps still wait for the institution's own.
   await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams" }).click();

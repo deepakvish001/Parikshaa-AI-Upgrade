@@ -210,11 +210,20 @@ npm run billing -w @parikshaa/api -- show acme
 | `SELF_SIGNUP` | `on` lets anyone make an institution's account from the console's sign-in page. Off otherwise: organisations are made with `admin-cli` only. |
 | `SIGNUP_PRICE_RUPEES` | Required with `SELF_SIGNUP=on`: the price per attempt, before GST, once the trial credits are spent. |
 | `SIGNUP_TRIAL_CREDITS` | Attempts a new organisation starts with. Default 25. |
+| `SIGNUP_NOTIFY_EMAIL` | Optional. Where to email a notice of each new institution: its name, id, owner and trial credits. |
+
+Sign-up needs `SMTP_URL` (the server will not start without it), because a
+new owner confirms their email address from a link sent to it. Until they
+do, they can write and try exams but cannot invite candidates, add staff or
+issue API keys; the console says so at the top of every page, with "Send the
+link again". Everyone added by the operator (`admin-cli`) or by an owner
+counts as confirmed.
 
 Every organisation made this way is prepaid, so a stranger's account can
-start no more attempts than its trial credits until its owner buys more. One
-network may make five accounts an hour. The owner's email is not verified
-before the account works; watch the audit log (`org.created`) during a pilot.
+start no more attempts than its trial credits until its owner buys more; the
+console's Home warns at five left and again at none. One network may make
+five accounts an hour. The audit log records `org.created` and
+`auth.email_verified`.
 
 An organisation with no plan is not metered. A prepaid one starts no attempt
 without a credit; its owner buys more on the console's Billing page.

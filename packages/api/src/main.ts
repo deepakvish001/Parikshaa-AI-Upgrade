@@ -73,8 +73,14 @@ async function main(): Promise<void> {
       ? {
           pricePaise: Math.round(Number(required("SIGNUP_PRICE_RUPEES")) * 100),
           trialCredits: Number.parseInt(process.env["SIGNUP_TRIAL_CREDITS"] ?? "25", 10),
+          notify: process.env["SIGNUP_NOTIFY_EMAIL"] ?? null,
         }
       : null;
+  // A new owner confirms their address before inviting anyone: without email
+  // the link could never arrive.
+  if (signup !== null && (smtpUrl === undefined || smtpUrl === "")) {
+    throw new Error("SELF_SIGNUP=on needs SMTP_URL: a new owner confirms their email address before inviting anyone");
+  }
   if (signup !== null && !(signup.pricePaise > 0 && Number.isInteger(signup.trialCredits) && signup.trialCredits >= 0)) {
     throw new Error("SIGNUP_PRICE_RUPEES must be a positive amount and SIGNUP_TRIAL_CREDITS a whole number");
   }

@@ -10,7 +10,10 @@ import { Banner, EmptyState, FigureStrip, PageActions, PageMeta, PhaseBadge, Ske
  * organisation has done them — the first steps to running a test.
  */
 
-export type HomeTarget = "new-exam" | "bank" | "exams" | "staff" | "privacy" | "search";
+export type HomeTarget = "new-exam" | "bank" | "exams" | "staff" | "privacy" | "search" | "billing";
+
+/** Credits left at which a prepaid organisation is warned: about a small batch's worth. */
+export const FEW_CREDITS = 5;
 
 /** What the home page can do with the sample exam (see the API's `onboarding.ts`). */
 export interface SampleActions {
@@ -77,6 +80,7 @@ export const ACTIONS: Record<string, string> = {
   "auth.login": "signed in",
   "auth.sso_login": "signed in through their organisation",
   "auth.password_changed": "changed their password",
+  "auth.email_verified": "confirmed their email address",
   "auth.password_reset": "reset their password",
   "auth.password_reset_requested": "asked to reset their password",
   "org.created": "made the organisation's account",
@@ -142,6 +146,7 @@ export function Home({
   onGo,
   sample,
   onTour,
+  canBuy = false,
 }: {
   dashboard: Dashboard | undefined;
   exams: readonly ExamSummary[];
@@ -156,6 +161,8 @@ export function Home({
   sample?: SampleActions;
   /** Start the guided tour. */
   onTour?: () => void;
+  /** This account buys credits (an owner): the warning then offers to. */
+  canBuy?: boolean;
 }) {
   const totals = exams.reduce(
     (sum, e) => {
@@ -192,6 +199,8 @@ export function Home({
           </button>
         ) : null}
       </PageActions>
+
+      {dashboard === undefined ? null : <Credits left={dashboard.setup.prepaidCredits ?? null} canBuy={canBuy} onBuy={() => onGo("billing")} />}
 
       {dashboard === undefined || !canWrite ? null : (
         <Welcome setup={dashboard.setup} sample={sample} onGo={onGo} onTour={onTour} />
@@ -456,6 +465,35 @@ function Week({
         ))}
       </div>
       {all.length === 0 ? <p className="notice week-empty">No sitting this week.</p> : null}
+    </div>
+  );
+}
+
+/**
+ * A prepaid organisation running out: said before a candidate is turned away
+ * at the start of their test, not after.
+ */
+function Credits({ left, canBuy, onBuy }: { left: number | null; canBuy: boolean; onBuy: () => void }) {
+  if (left === null || left > FEW_CREDITS) return null;
+  const none = left <= 0;
+  return (
+    <div className="credits-line">
+      <Banner
+        tone={none ? "danger" : "warning"}
+        title={none ? "No attempts left" : `${left} attempt${left === 1 ? "" : "s"} left`}
+        action={
+          canBuy ? (
+            <button type="button" onClick={onBuy}>
+              Buy credits
+            </button>
+          ) : undefined
+        }
+      >
+        {none
+          ? "Candidates cannot start a test until more credits are bought."
+          : "Each candidate who starts a test uses one. Buy more before your next sitting so nobody is turned away."}
+        {canBuy ? null : " Ask your organisation's owner to buy more."}
+      </Banner>
     </div>
   );
 }

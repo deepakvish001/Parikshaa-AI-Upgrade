@@ -3906,8 +3906,15 @@ button.month-day.picked::after {
     grid-template-columns: 1fr;
   }
 }
-.sample-line {
+.sample-line,
+.credits-line {
   margin-top: var(--space-5);
+}
+.confirm-email {
+  margin-bottom: var(--space-4);
+}
+.signin-verified {
+  margin: 0 0 var(--space-4);
 }
 .sample-line .banner-action {
   display: flex;

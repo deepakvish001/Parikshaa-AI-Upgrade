@@ -159,11 +159,14 @@ export class IdentityStore {
     readonly name: string;
     readonly role: StaffRole;
     readonly passwordHash: string;
+    /** False for an owner who signed their institution up, until they open the link sent to them. */
+    readonly emailVerified?: boolean;
   }): Promise<StaffUser> {
     const id = this.#newId();
     await this.#sql.query(
-      `INSERT INTO staff_users (id, org_id, email, name, role, password_hash) VALUES ($1, $2, $3, $4, $5, $6)`,
-      [id, user.orgId, user.email.trim(), user.name, user.role, user.passwordHash],
+      `INSERT INTO staff_users (id, org_id, email, name, role, password_hash, email_verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, CASE WHEN $7 THEN now() END)`,
+      [id, user.orgId, user.email.trim(), user.name, user.role, user.passwordHash, user.emailVerified ?? true],
     );
     return { id, orgId: user.orgId, email: user.email.trim(), name: user.name, role: user.role, disabled: false };
   }
@@ -243,10 +246,14 @@ export class IdentityStore {
    * `mustEnrol2fa` says the organisation requires owners to use a second
    * factor and this owner has none yet.
    */
-  async userForSession(tokenHash: string, now: Date): Promise<(StaffUser & { readonly mustEnrol2fa: boolean }) | null> {
-    const rows = await this.#sql.query<UserRow & { must_enrol: boolean }>(
+  async userForSession(
+    tokenHash: string,
+    now: Date,
+  ): Promise<(StaffUser & { readonly mustEnrol2fa: boolean; readonly emailUnverified: boolean }) | null> {
+    const rows = await this.#sql.query<UserRow & { must_enrol: boolean; unverified: boolean }>(
       `SELECT u.id, u.org_id, u.email, u.name, u.role, u.password_hash, u.disabled_at,
-              (u.role = 'owner' AND o.require_owner_2fa AND u.totp_enabled_at IS NULL) AS must_enrol
+              (u.role = 'owner' AND o.require_owner_2fa AND u.totp_enabled_at IS NULL) AS must_enrol,
+              (u.email_verified_at IS NULL) AS unverified
          FROM staff_sessions s
          JOIN staff_users u ON u.id = s.user_id
          JOIN organisations o ON o.id = u.org_id
@@ -257,7 +264,43 @@ export class IdentityStore {
       [tokenHash, now.toISOString()],
     );
     const row = rows[0];
-    return row === undefined ? null : { ...withoutSecret(toUser(row)), mustEnrol2fa: row.must_enrol === true };
+    return row === undefined ? null : { ...withoutSecret(toUser(row)), mustEnrol2fa: row.must_enrol === true, emailUnverified: row.unverified === true };
+  }
+
+  // --- an address shown to be theirs ---------------------------------------------
+
+  /** Who an account is, for the verification email: its address, and whether it is shown already. */
+  async emailState(userId: string): Promise<{ orgId: OrgId; email: string; name: string; verified: boolean; disabled: boolean } | null> {
+    const rows = await this.#sql.query<{ org_id: string; email: string; name: string; email_verified_at: string | Date | null; disabled_at: string | Date | null }>(
+      `SELECT org_id, email, name, email_verified_at, disabled_at FROM staff_users WHERE id = $1`,
+      [userId],
+    );
+    const row = rows[0];
+    return row === undefined
+      ? null
+      : { orgId: row.org_id as OrgId, email: row.email, name: row.name, verified: row.email_verified_at !== null, disabled: row.disabled_at !== null };
+  }
+
+  /**
+   * Mark an address shown, if the account still has it: a link sent to an
+   * address the account has since changed from proves nothing. True when
+   * the account is now verified, whether by this call or before it.
+   */
+  async verifyEmail(userId: string, email: string, now: Date): Promise<boolean> {
+    const rows = await this.#sql.query<{ id: string }>(
+      `UPDATE staff_users SET email_verified_at = coalesce(email_verified_at, $3)
+        WHERE id = $1 AND lower(email) = lower($2) AND disabled_at IS NULL
+        RETURNING id`,
+      [userId, email, now.toISOString()],
+    );
+    return rows.length > 0;
+  }
+
+  /** A message to a member of staff (or to the operator), sent by the delivery worker. */
+  async queueStaffEmail(orgId: OrgId, purpose: string, subject: Record<string, unknown>, id: string, now: Date): Promise<void> {
+    await this.#sql.transaction(async (tx) => {
+      await enqueue(tx, orgId, [{ kind: "staff_email", subject, purpose, id, sendAfter: now }], this.#newId);
+    });
   }
 
   async revokeSession(tokenHash: string): Promise<void> {

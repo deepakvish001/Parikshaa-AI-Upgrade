@@ -1,7 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { examId, orgId, type Exam, type OrgId } from "@parikshaa/core";
 import { SAMPLE_EXAM_ID, SAMPLE_TAG, staffScope, type BankDraft, type BillingStore, type IdentityStore, type QuestionBank } from "@parikshaa/store";
+import type { OutboxItem } from "@parikshaa/store";
+import type { ItemHandler, Mailer } from "./delivery.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
+import type { StaffSecrets } from "./staff-secrets.js";
 import { can, hashPassword, MIN_PASSWORD_LENGTH, WeakPassword, type Actor, type LoginResult, type StaffAuth } from "./staff-auth.js";
 
 /**
@@ -22,6 +25,16 @@ export interface SignupPolicy {
   readonly trialCredits: number;
   /** The price per attempt after the trial, in paise before GST. */
   readonly pricePaise: number;
+  /** Where to tell the operator that an institution has signed up. None: nobody is told. */
+  readonly notify?: string | null;
+}
+
+/** An email link that did not verify anything. */
+export class InvalidEmailLink extends Error {
+  constructor() {
+    super("This link is not valid, or was for an address the account no longer has. Ask for a new one from the console.");
+    this.name = "InvalidEmailLink";
+  }
 }
 
 export interface SignupRequest {
@@ -44,6 +57,8 @@ export class SignupRefused extends Error {
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const escape = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
 /** An organisation's address from its name, with a random tail so two colleges of one name do not collide. */
 export function organisationId(name: string, tail = randomBytes(3).toString("hex")): OrgId {
   const base = name
@@ -65,6 +80,10 @@ export class Onboarding {
     readonly bank: QuestionBank;
     readonly exams: ExamService;
     readonly signup: SignupPolicy | null;
+    readonly secrets: StaffSecrets | null;
+    readonly mailer: Mailer | null;
+    readonly publicUrl: string;
+    readonly now: () => number;
   };
 
   constructor(options: {
@@ -74,8 +93,20 @@ export class Onboarding {
     bank: QuestionBank;
     exams: ExamService;
     signup?: SignupPolicy | null;
+    /** For the links that verify an owner's address. */
+    secrets?: StaffSecrets | null;
+    mailer?: Mailer | null;
+    publicUrl?: string;
+    now?: () => number;
   }) {
-    this.#o = { ...options, signup: options.signup ?? null };
+    this.#o = {
+      ...options,
+      signup: options.signup ?? null,
+      secrets: options.secrets ?? null,
+      mailer: options.mailer ?? null,
+      publicUrl: (options.publicUrl ?? "").replace(/\/+$/, ""),
+      now: options.now ?? (() => Date.now()),
+    };
   }
 
   /** Whether institutions may make their own accounts here, and on what terms. */
@@ -110,11 +141,91 @@ export class Onboarding {
     const scope = staffScope(id);
     await this.#o.billing.setPlan(scope, "prepaid", policy.pricePaise);
     if (policy.trialCredits > 0) await this.#o.billing.grant(scope, policy.trialCredits, "Trial credits on signing up");
-    const user = await this.#o.identity.createUser({ orgId: id, email, name, role: "owner", passwordHash });
+    const user = await this.#o.identity.createUser({ orgId: id, email, name, role: "owner", passwordHash, emailVerified: false });
     const session = await this.#o.auth.startSession(user);
     await this.#o.exams.recordAudit({ kind: "user", ...user }, "org.created", id, { trialCredits: policy.trialCredits });
+    await this.#queueVerification(id, user.id);
+    if ((policy.notify ?? "") !== "") {
+      await this.#o.identity.queueStaffEmail(id, "signup_notice", { userId: user.id }, `signup:${user.id}`, new Date(this.#o.now()));
+    }
     return session;
   }
+
+  // --- an owner's address -----------------------------------------------------------
+
+  #queueVerification(orgId: OrgId, userId: string) {
+    const now = new Date(this.#o.now());
+    return this.#o.identity.queueStaffEmail(orgId, "email_verification", { userId }, `verify:${userId}:${now.getTime()}`, now);
+  }
+
+  /** Send the link again, to an account whose address is not shown yet. False when there is nothing to send. */
+  async resendVerification(actor: Actor): Promise<boolean> {
+    if (actor.kind !== "user") return false;
+    const state = await this.#o.identity.emailState(actor.id);
+    if (state === null || state.verified) return false;
+    await this.#queueVerification(actor.orgId, actor.id);
+    return true;
+  }
+
+  /** Open a verification link. The account is then free to invite, add staff and issue keys. */
+  async confirmEmail(token: string): Promise<{ readonly orgId: OrgId; readonly userId: string }> {
+    const secrets = this.#o.secrets;
+    const userId = secrets?.emailTokenUser(token.trim()) ?? null;
+    if (secrets === null || userId === null) throw new InvalidEmailLink();
+    const state = await this.#o.identity.emailState(userId);
+    if (state === null || state.disabled || !secrets.checkEmailToken(token.trim(), state.email)) throw new InvalidEmailLink();
+    if (!(await this.#o.identity.verifyEmail(userId, state.email, new Date(this.#o.now())))) throw new InvalidEmailLink();
+    if (!state.verified) {
+      await this.#o.exams.recordAudit({ kind: "user", id: userId, orgId: state.orgId, role: "owner", name: state.name, email: state.email }, "auth.email_verified", userId, {});
+    }
+    return { orgId: state.orgId, userId };
+  }
+
+  /** The staff emails onboarding sends: the owner's link, and the operator's notice of a new institution. */
+  readonly mail: ItemHandler = async (item: OutboxItem) => {
+    const userId = String(item.subject["userId"] ?? "");
+    const state = await this.#o.identity.emailState(userId);
+    if (state === null) return { skip: "The account is gone" };
+    if (this.#o.mailer === null) return { skip: "Email is not configured" };
+    const org = await this.#o.identity.getOrganisation(state.orgId);
+    const orgName = org?.name ?? state.orgId;
+    if (item.purpose === "email_verification") {
+      if (state.verified) return { skip: "Already verified" };
+      if (state.disabled) return { skip: "The account is disabled" };
+      if (this.#o.secrets === null) return { skip: "Links cannot be made" };
+      const link = `${this.#o.publicUrl}/console/?verify=${encodeURIComponent(this.#o.secrets.emailToken(userId, state.email))}`;
+      const hello = state.name.trim() === "" ? "Hello," : `Hello ${state.name},`;
+      const text = [
+        hello,
+        "",
+        `You made a Parikshaa account for ${orgName}. Confirm this is your address:`,
+        link,
+        "",
+        "Until you do, you can write exams and try them, but not invite candidates or colleagues. If you did not sign up, ignore this email.",
+      ].join("\n");
+      const html = `<p>${escape(hello)}</p>
+<p>You made a Parikshaa account for ${escape(orgName)}. <a href="${escape(link)}">Confirm this is your address</a>.</p>
+<p>Until you do, you can write exams and try them, but not invite candidates or colleagues. If you did not sign up, ignore this email.</p>`;
+      await this.#o.mailer.send({ to: state.email, subject: "Confirm your email for Parikshaa", text, html });
+      return "sent";
+    }
+    if (item.purpose === "signup_notice") {
+      const to = this.#o.signup?.notify ?? "";
+      if (to === "") return { skip: "No one to tell" };
+      const text = [
+        "An institution has signed up for Parikshaa.",
+        "",
+        `Institution: ${orgName} (${state.orgId})`,
+        `Owner: ${state.name} <${state.email}>`,
+        `Trial credits: ${this.#o.signup?.trialCredits ?? 0}`,
+        "",
+        "Its owner's address is not confirmed until they open the link sent to it. See it with: npm run billing -w @parikshaa/api -- show " + state.orgId,
+      ].join("\n");
+      await this.#o.mailer.send({ to, subject: `New institution: ${orgName}`, text, html: `<pre>${escape(text)}</pre>` });
+      return "sent";
+    }
+    return { skip: `Not an onboarding email: ${item.purpose}` };
+  };
 
   /**
    * Put the sample exam in: its questions in the bank, tagged, and the exam

@@ -20,7 +20,7 @@ test("a new institution: signing up, the tour, the welcome and the sample exam",
   await tour.getByRole("button", { name: "Next", exact: true }).click();
   await expect(tour.getByRole("dialog", { name: "Exams" })).toBeVisible();
   await shoot(page, "onboarding-02-tour", { fullPage: false });
-  for (let i = 0; i < 4; i++) await tour.getByRole("button", { name: "Next", exact: true }).click();
+  for (let i = 0; i < 3; i++) await tour.getByRole("button", { name: "Next", exact: true }).click();
   await expect(tour.getByRole("dialog", { name: "Start here" })).toBeVisible();
   await shoot(page, "onboarding-03-tour-last-stop", { fullPage: false });
   await tour.getByRole("button", { name: "Done" }).click();

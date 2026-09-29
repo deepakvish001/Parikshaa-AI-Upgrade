@@ -360,10 +360,20 @@ What a pilot institution sees before it has anything of its own:
   question paper — each a card with one action. It gives way to the first
   steps once the organisation has made something. The sample does not count:
   it is there to look at, and a line on Home offers to put it away.
+- **Confirming the address.** A new owner is signed straight in, and a
+  warning banner at the top of every page says what waits for the link sent
+  to their address — inviting candidates, adding colleagues, API keys — with
+  "Send the link again". The link opens the console, says the address is
+  confirmed, and the banner goes. Staff pages and the tour's Staff stop
+  appear then.
+- **Credits running out.** A prepaid organisation with five attempts or
+  fewer left sees it on Home, before a candidate is turned away: a warning,
+  or at none a danger banner, with "Buy credits" for an owner and "ask your
+  owner" for anyone else.
 - **The sample exam.** A 20-minute campus aptitude round, one of each kind of
   question, loaded in one click and tried as a candidate would sit it in the
   preview, where nothing is recorded.
-- **The tour.** Six stops (fewer for a role that cannot reach them), each a
+- **The tour.** Up to six stops (fewer for a role that cannot reach them), each a
   ring round the thing it is about and a card beside it; in the middle when
   the thing is not on screen, as on a phone. It is a dialog: focus moves in,
   Tab stays within it, the arrow keys step, Escape ends it and focus returns

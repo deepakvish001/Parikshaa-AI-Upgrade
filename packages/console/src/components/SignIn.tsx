@@ -68,6 +68,7 @@ export function SignIn({
   onSignedIn,
   resetToken = null,
   ssoError = null,
+  emailVerified = null,
 }: {
   /** `fresh`: the account was made just now, so the console opens with its tour. */
   onSignedIn: (token: string, fresh?: boolean) => void;
@@ -75,6 +76,8 @@ export function SignIn({
   resetToken?: string | null;
   /** From a failed provider round trip: `?sso_error=…`. */
   ssoError?: string | null;
+  /** What opening a confirmation link came to: "done", a refusal's words, or "pending". */
+  emailVerified?: string | null;
 }) {
   const [mode, setMode] = useState<Mode>(resetToken === null ? "password" : "reset");
   const signup = useQuery({ queryKey: ["signup-status"], queryFn: () => ConsoleClient.signupStatus(), staleTime: Infinity, retry: false });
@@ -105,6 +108,15 @@ export function SignIn({
           <span className="signin-mark">
             <Wordmark size={28} />
           </span>
+          {emailVerified === null || emailVerified === "pending" ? null : emailVerified === "done" ? (
+            <p className="banner success signin-verified" role="status">
+              Your email address is confirmed. Sign in to carry on.
+            </p>
+          ) : (
+            <p className="error" role="alert">
+              {emailVerified}
+            </p>
+          )}
           {mode === "password" ? (
             <PasswordForm onSignedIn={onSignedIn} onMode={setMode} ssoError={ssoError} signupOpen={open} />
           ) : mode === "signup" ? (

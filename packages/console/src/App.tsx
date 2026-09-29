@@ -123,15 +123,15 @@ const stored = {
 
 /**
  * What the address bar brought: a session from the organisation's sign-in
- * provider (in the fragment, which no server logs), a provider's refusal, or a
- * password reset link. Each is taken once and cleared from the address bar.
+ * provider (in the fragment, which no server logs), a provider's refusal, a
+ * password reset link, or the link that confirms a new owner's address. Each is taken once and cleared from the address bar.
  */
-function arrival(): { sso: string | null; ssoError: string | null; reset: string | null } {
-  if (typeof window === "undefined") return { sso: null, ssoError: null, reset: null };
+function arrival(): { sso: string | null; ssoError: string | null; reset: string | null; verify: string | null } {
+  if (typeof window === "undefined") return { sso: null, ssoError: null, reset: null, verify: null };
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(window.location.search);
-  const found = { sso: hash.get("sso"), ssoError: query.get("sso_error"), reset: query.get("reset") };
-  if (found.sso !== null || found.ssoError !== null || found.reset !== null) {
+  const found = { sso: hash.get("sso"), ssoError: query.get("sso_error"), reset: query.get("reset"), verify: query.get("verify") };
+  if (found.sso !== null || found.ssoError !== null || found.reset !== null || found.verify !== null) {
     window.history.replaceState(null, "", window.location.pathname);
   }
   return found;
@@ -150,6 +150,18 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
     return stored.get();
   });
   const client = injected ?? (token === null ? null : new ConsoleClient(token));
+  // A new owner's confirmation link: opened once, signed in or not.
+  const [verified, setVerified] = useState<"pending" | "done" | string | null>(arrived.verify === null ? null : "pending");
+  useEffect(() => {
+    if (arrived.verify === null) return;
+    ConsoleClient.verifyEmail(arrived.verify).then(
+      () => {
+        setVerified("done");
+        void queryClient.invalidateQueries({ queryKey: ["me"] });
+      },
+      (error: unknown) => setVerified(error instanceof ConsoleError && error.detail !== undefined ? error.detail : "This link could not be checked. Try again."),
+    );
+  }, [arrived.verify, queryClient]);
 
   const signIn = (next: string, fresh = false) => {
     stored.set(next);
@@ -163,10 +175,10 @@ export function App({ client: injected }: { client?: ConsoleClient } = {}) {
     queryClient.clear();
   };
 
-  if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} />;
+  if (client === null) return <SignIn onSignedIn={signIn} resetToken={arrived.reset} ssoError={arrived.ssoError} emailVerified={verified} />;
   return (
     <ToastProvider>
-      <Console client={client} onSignedOut={signOut} theme={theme} onTheme={setTheme} arrivedBySso={arrived.sso !== null} />
+      <Console client={client} onSignedOut={signOut} theme={theme} onTheme={setTheme} arrivedBySso={arrived.sso !== null} emailVerified={verified} />
     </ToastProvider>
   );
 }
@@ -177,6 +189,7 @@ function Console({
   theme,
   onTheme,
   arrivedBySso = false,
+  emailVerified = null,
 }: {
   client: ConsoleClient;
   onSignedOut: () => void;
@@ -184,9 +197,19 @@ function Console({
   onTheme: (next: Theme) => void;
   /** This session came from the organisation's own sign-in provider. */
   arrivedBySso?: boolean;
+  /** What opening a confirmation link on arrival came to: "done", a refusal's words, or still "pending". */
+  emailVerified?: string | null;
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
+  useEffect(() => {
+    if (emailVerified === null || emailVerified === "pending") return;
+    if (emailVerified === "done") {
+      toast("Your email address is confirmed. You can invite candidates and colleagues now.", "success");
+      // Asked for alongside the link's check, the account may have been read before it counted.
+      void queryClient.invalidateQueries({ queryKey: ["me"] });
+    } else toast(emailVerified, "error");
+  }, [emailVerified, toast, queryClient]);
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
   const [view, setView] = useState<View>(() => {
     const query = new URLSearchParams(window.location.search);
@@ -578,6 +601,7 @@ function Console({
         ) : null}
 
         <main className="content">
+          {me.data?.emailVerified === false && me.data.email !== null ? <ConfirmEmail client={client} email={me.data.email} /> : null}
           <PageFrame title={pageTitle(view, examTitle)} note={PAGE_NOTE[view.name]}>
             {view.name === "home" ? (
               <Home
@@ -588,6 +612,7 @@ function Console({
                 onExam={(examId) => go({ name: "attempts", examId })}
                 onExams={(filter) => go({ name: "exams", filter })}
                 onTour={() => setTouring(true)}
+                canBuy={can("org:manage")}
                 {...(can("exam:write")
                   ? {
                       sample: {
@@ -983,3 +1008,38 @@ const PAGE_NOTE: Record<View["name"], string> = {
   signin: "How your staff sign in: your institution's own provider, and two-step sign-in for owners.",
   account: "Your password and two-step sign-in.",
 };
+
+/**
+ * Until a new owner opens the link sent to their address: what waits for it,
+ * and the link again on asking.
+ */
+function ConfirmEmail({ client, email }: { client: ConsoleClient; email: string }) {
+  const resend = useMutation({ mutationFn: () => client.resendVerification() });
+  return (
+    <div className="confirm-email">
+      <Banner
+        tone="warning"
+        title="Confirm your email address"
+        action={
+          resend.isSuccess ? (
+            <span className="notice" role="status">
+              Sent. Check your inbox and spam folder.
+            </span>
+          ) : (
+            <button type="button" className="secondary" disabled={resend.isPending} onClick={() => resend.mutate()}>
+              {resend.isPending ? "Sending…" : "Send the link again"}
+            </button>
+          )
+        }
+      >
+        We sent a link to {email}. Until you open it you can write and try exams, but not invite candidates, add colleagues or issue API keys.
+        {resend.error === null ? null : (
+          <span className="error">
+            {" "}
+            {resend.error instanceof ConsoleError && resend.error.status === 429 ? "It was sent a moment ago; wait a minute before asking again." : "It could not be sent. Try again."}
+          </span>
+        )}
+      </Banner>
+    </div>
+  );
+}

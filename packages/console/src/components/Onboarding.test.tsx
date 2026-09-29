@@ -24,10 +24,10 @@ const sampleActions = () => ({
   busy: false,
 });
 
-const renderHome = (dashboard: Dashboard, sample = sampleActions(), onGo = vi.fn(), onTour = vi.fn(), canWrite = true) => {
+const renderHome = (dashboard: Dashboard, sample = sampleActions(), onGo = vi.fn(), onTour = vi.fn(), canWrite = true, canBuy = true) => {
   render(
     <PageFrame title="Home" note="">
-      <Home dashboard={dashboard} exams={[]} name="Asha Rao" canWrite={canWrite} onExam={vi.fn()} onGo={onGo} sample={sample} onTour={onTour} />
+      <Home dashboard={dashboard} exams={[]} name="Asha Rao" canWrite={canWrite} onExam={vi.fn()} onGo={onGo} sample={sample} onTour={onTour} canBuy={canBuy} />
     </PageFrame>,
   );
   return { sample, onGo, onTour };
@@ -71,6 +71,33 @@ describe("the welcome", () => {
   it("is not shown to someone who cannot write exams", () => {
     renderHome(fresh, sampleActions(), vi.fn(), vi.fn(), false);
     expect(screen.queryByRole("region", { name: /Welcome/ })).toBeNull();
+  });
+});
+
+describe("credits running out", () => {
+  const withCredits = (n: number | null) => ({ ...fresh, setup: { ...fresh.setup, exams: 2, bankQuestions: 4, prepaidCredits: n } });
+
+  it("warns an owner a few attempts before the last, and offers to buy", async () => {
+    const onGo = vi.fn();
+    renderHome(withCredits(3), sampleActions(), onGo);
+    expect(screen.getByText("3 attempts left")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Buy credits" }));
+    expect(onGo).toHaveBeenCalledWith("billing");
+  });
+
+  it("says plainly when none are left, and who can buy more", () => {
+    renderHome(withCredits(0), sampleActions(), vi.fn(), vi.fn(), true, false);
+    expect(screen.queryByRole("button", { name: "Buy credits" })).toBeNull();
+    expect(screen.getByText(/Ask your organisation's owner/)).toBeInTheDocument();
+    expect(screen.getByText("No attempts left")).toBeInTheDocument();
+    expect(screen.getByText(/Candidates cannot start a test/)).toBeInTheDocument();
+  });
+
+  it("says nothing with plenty left, or for an organisation not prepaid", () => {
+    renderHome(withCredits(40));
+    expect(screen.queryByText(/attempts? left/)).toBeNull();
+    renderHome(withCredits(null));
+    expect(screen.queryByText(/attempts? left/)).toBeNull();
   });
 });
 
@@ -172,6 +199,16 @@ describe("making an institution's account", () => {
       email: "asha@nalanda.test",
       password: "short but longer now",
     });
+  });
+
+  it("says so when a confirmation link has just been opened", () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ open: false, trialCredits: 0 }))));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SignIn onSignedIn={vi.fn()} emailVerified="done" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Your email address is confirmed. Sign in to carry on.");
   });
 
   it("says when the address already has an account, and offers to sign in instead", async () => {

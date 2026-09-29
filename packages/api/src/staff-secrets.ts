@@ -47,6 +47,33 @@ export class StaffSecrets {
     return createHmac("sha256", this.#key("password-reset")).update(id).digest("base64url").slice(0, 32);
   }
 
+  /**
+   * A link that shows an address is the account's: the account's id and a MAC
+   * over the id and the address. Nothing is stored, and a link for an address
+   * the account no longer has stops working.
+   */
+  emailToken(userId: string, email: string): string {
+    return `${userId}.${this.#emailMac(userId, email)}`;
+  }
+
+  /** The account an email link names, if this server made it for `email`; the caller supplies the account's current address. */
+  emailTokenUser(token: string): string | null {
+    const dot = token.lastIndexOf(".");
+    return dot <= 0 ? null : token.slice(0, dot);
+  }
+
+  checkEmailToken(token: string, email: string): boolean {
+    const id = this.emailTokenUser(token);
+    if (id === null) return false;
+    const expected = Buffer.from(this.#emailMac(id, email));
+    const given = Buffer.from(token.slice(token.lastIndexOf(".") + 1));
+    return given.length === expected.length && timingSafeEqual(given, expected);
+  }
+
+  #emailMac(userId: string, email: string): string {
+    return createHmac("sha256", this.#key("staff-email")).update(`${userId}\n${email.trim().toLowerCase()}`).digest("base64url").slice(0, 32);
+  }
+
   /** A reset link's token: the reset's id and a MAC over it. Nothing about it is stored. */
   resetToken(id: string): string {
     return `${id}.${this.#resetMac(id)}`;

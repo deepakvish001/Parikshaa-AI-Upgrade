@@ -141,8 +141,9 @@ docker compose run --rm -e PARIKSHAA_OWNER_PASSWORD=... \
 
 The candidate interface is then at `/` and the console at `/console`, where
 staff sign in with their own accounts. For a pilot, `SELF_SIGNUP=on` (with
-`SIGNUP_PRICE_RUPEES`) lets an institution make its own account there instead,
-with trial credits, a sample exam and a tour (see `docs/OPERATIONS.md`).
+`SIGNUP_PRICE_RUPEES` and `SMTP_URL`) lets an institution make its own account
+there instead, with trial credits, a sample exam and a tour; its owner confirms
+their email before inviting anyone (see `docs/OPERATIONS.md`).
 
 Without Docker:
 

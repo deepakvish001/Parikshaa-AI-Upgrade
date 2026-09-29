@@ -32,6 +32,11 @@ export type Actor =
        * has none yet: until they set it up, nothing but that is allowed.
        */
       readonly mustEnrol2fa?: boolean;
+      /**
+       * An owner who signed their institution up and has not opened the link
+       * sent to their address yet: they may build, but not reach anyone else.
+       */
+      readonly emailUnverified?: boolean;
     }
   | {
       readonly kind: "api_key";
@@ -112,8 +117,16 @@ const GRANTS: Record<StaffRole, ReadonlySet<Permission>> = {
 export function can(actor: Actor, permission: Permission): boolean {
   // Granting time is recorded against a person for the same reason.
   if ((permission === "attempt:void" || permission === "attempt:extend") && actor.kind !== "user") return false;
+  if (actor.kind === "user" && actor.emailUnverified === true && UNTIL_VERIFIED.has(permission)) return false;
   return GRANTS[actor.role].has(permission);
 }
+
+/**
+ * What waits for a new owner's address to be shown to be theirs: everything
+ * that reaches other people or spends. Inviting candidates and starting
+ * attempts are `attempt:start`; adding staff and issuing keys the others.
+ */
+export const UNTIL_VERIFIED: ReadonlySet<Permission> = new Set(["attempt:start", "staff:manage", "apikey:manage"]);
 
 /** Everything an actor may do, for a client deciding what to show. */
 export const permissionsOf = (actor: Actor): readonly Permission[] => EVERYTHING.filter((p) => can(actor, p));
@@ -248,6 +261,7 @@ export class StaffAuth {
         name: user.name,
         email: user.email,
         ...(user.mustEnrol2fa ? { mustEnrol2fa: true } : {}),
+        ...(user.emailUnverified ? { emailUnverified: true } : {}),
       };
     }
     if (bearer.startsWith(API_KEY_PREFIX)) {

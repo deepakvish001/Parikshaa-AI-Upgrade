@@ -657,6 +657,7 @@ export const whoAmIResponse = z.object({
   role: staffRole,
   organisation: z.object({ id: z.string(), name: z.string() }),
   permissions: z.array(z.string()).readonly(),
+  emailVerified: z.boolean().describe("False for an owner who signed their institution up and has not opened the link sent to their address: until then they cannot invite candidates, add staff or issue API keys."),
   mustEnrol2fa: z
     .boolean()
     .describe("The organisation requires owners to use a second factor and this account has none: nothing else is allowed until it does."),
@@ -865,6 +866,7 @@ export const dashboardResponse = z.object({
     staff: z.number().int(),
     privacyNotice: z.boolean(),
     sampleExamId: z.string().nullable().describe("The sample exam, while it is loaded and not put away."),
+    prepaidCredits: z.number().int().nullable().describe("Attempt credits left, for a prepaid organisation; null for one not billed that way."),
   }),
 });
 
@@ -883,3 +885,7 @@ export const signupBody = z.object({
 });
 
 export const sampleResponse = z.object({ examId: z.string() });
+
+export const verifyEmailBody = z.object({ token: z.string().min(10).max(300).describe("From the link sent to the address.") });
+
+export const resendResponse = z.object({ sent: z.boolean().describe("False when the address is confirmed already.") });
