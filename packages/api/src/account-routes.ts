@@ -133,6 +133,7 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
         role: actor.role,
         organisation: { id: actor.orgId, name: org?.name ?? actor.orgId },
         permissions: permissionsOf(actor),
+        emailVerified: !(actor.kind === "user" && actor.emailUnverified === true),
         mustEnrol2fa: actor.kind === "user" && actor.mustEnrol2fa === true,
       });
     },

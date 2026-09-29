@@ -76,6 +76,8 @@ export interface WhoAmI {
   readonly permissions: readonly string[];
   /** The organisation requires owners to use a second factor and this one has none yet. */
   readonly mustEnrol2fa: boolean;
+  /** False for an owner who signed up and has not opened the link sent to their address. Absent from an older server. */
+  readonly emailVerified?: boolean;
 }
 
 export interface TwoFactorStatus {
@@ -221,6 +223,10 @@ export interface Dashboard {
     readonly invited: number;
     readonly staff: number;
     readonly privacyNotice: boolean;
+    /** The sample exam, while it is loaded and not put away. Absent from an older server. */
+    readonly sampleExamId?: string | null;
+    /** Attempt credits left, for a prepaid organisation; null for one not billed that way. */
+    readonly prepaidCredits?: number | null;
   };
 }
 
@@ -545,6 +551,19 @@ export class ConsoleClient {
   }
 
   /** Ask for a reset link. The server answers the same whether or not the address has an account. */
+  /** Open the link that confirms an owner's address. */
+  static async verifyEmail(token: string, baseUrl = "/api"): Promise<void> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/verify-email`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    if (!response.ok) {
+      const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
+      throw new ConsoleError(response.status, body.error ?? "request_failed", [], body.message);
+    }
+  }
+
   static async requestReset(email: string, baseUrl = "/api"): Promise<void> {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/password-reset`, {
       method: "POST",
@@ -567,6 +586,30 @@ export class ConsoleClient {
       const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
       throw new ConsoleError(response.status, body.error ?? "request_failed", [], body.message);
     }
+  }
+
+  /** Whether institutions may make their own accounts on this server. */
+  static async signupStatus(baseUrl = "/api"): Promise<{ readonly open: boolean; readonly trialCredits: number }> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/signup`);
+    if (!response.ok) return { open: false, trialCredits: 0 };
+    return (await response.json()) as { open: boolean; trialCredits: number };
+  }
+
+  /** Make an institution's account: its organisation and first owner, signed in. */
+  static async signUp(
+    details: { readonly organisation: string; readonly name: string; readonly email: string; readonly password: string },
+    baseUrl = "/api",
+  ): Promise<{ readonly token: string; readonly user: StaffUser }> {
+    const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/signup`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(details),
+    });
+    const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string; token?: string; user?: StaffUser };
+    if (!response.ok || body.token === undefined || body.user === undefined) {
+      throw new ConsoleError(response.status, body.error ?? "sign_up_failed", [], body.message);
+    }
+    return { token: body.token, user: body.user };
   }
 
   /** Where the browser goes to sign in through the organisation's own provider. */
@@ -974,6 +1017,20 @@ export class ConsoleClient {
 
   dashboard(): Promise<Dashboard> {
     return this.#request<Dashboard>("/dashboard");
+  }
+
+  /** Send the link that confirms this account's address again. */
+  resendVerification(): Promise<{ readonly sent: boolean }> {
+    return this.#request("/auth/verify-email/resend", { method: "POST" });
+  }
+
+  /** A short aptitude paper to look around with, in the bank and among the exams. */
+  loadSample(): Promise<{ readonly examId: string }> {
+    return this.#request("/onboarding/sample", { method: "POST" });
+  }
+
+  async removeSample(): Promise<void> {
+    await this.#request("/onboarding/sample", { method: "DELETE" });
   }
 
   /** Candidates across every exam matching `q` (at least two characters). */
@@ -1556,7 +1613,7 @@ export interface StaffExperience {
   readonly role: string;
   readonly interviewed: string;
   readonly verdict: "offer" | "reject" | "waiting";
-  readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[] }[];
+  readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[]; readonly problems?: readonly { readonly slug: string; readonly title: string }[] }[];
   readonly tips: string;
   readonly author: string;
   readonly status: "pending" | "published" | "rejected";

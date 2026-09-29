@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, CircleCheck, Circle, CircleDot, ClipboardList, History, Library, Plus, Search, SquareCheckBig, Users } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, CircleCheck, Circle, CircleDot, ClipboardList, Compass, FilePlus2, FileUp, FlaskConical, History, Library, Play, Plus, Search, SquareCheckBig, Users } from "lucide-react";
 import type { Dashboard, ExamSummary } from "../api.ts";
 import type { ExamFilter } from "./ExamList.tsx";
-import { EmptyState, FigureStrip, PageActions, PageMeta, PhaseBadge, SkeletonRows, ago, type Phase as ExamPhase } from "./kit.tsx";
+import { Banner, EmptyState, FigureStrip, PageActions, PageMeta, PhaseBadge, SkeletonRows, ago, type Phase as ExamPhase } from "./kit.tsx";
 
 /**
  * The console's home page, as a test platform's dashboard: what is sitting
@@ -10,7 +10,20 @@ import { EmptyState, FigureStrip, PageActions, PageMeta, PhaseBadge, SkeletonRow
  * organisation has done them — the first steps to running a test.
  */
 
-export type HomeTarget = "new-exam" | "bank" | "exams" | "staff" | "privacy" | "search";
+export type HomeTarget = "new-exam" | "bank" | "exams" | "staff" | "privacy" | "search" | "billing";
+
+/** Credits left at which a prepaid organisation is warned: about a small batch's worth. */
+export const FEW_CREDITS = 5;
+
+/** What the home page can do with the sample exam (see the API's `onboarding.ts`). */
+export interface SampleActions {
+  readonly onLoad: () => void;
+  readonly onTry: (examId: string) => void;
+  readonly onOpen: (examId: string) => void;
+  readonly onRemove: () => void;
+  /** Loading or putting it away is under way. */
+  readonly busy: boolean;
+}
 
 const IST = "Asia/Kolkata";
 const dayKey = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: IST, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
@@ -67,8 +80,12 @@ export const ACTIONS: Record<string, string> = {
   "auth.login": "signed in",
   "auth.sso_login": "signed in through their organisation",
   "auth.password_changed": "changed their password",
+  "auth.email_verified": "confirmed their email address",
   "auth.password_reset": "reset their password",
   "auth.password_reset_requested": "asked to reset their password",
+  "org.created": "made the organisation's account",
+  "sample.loaded": "loaded the sample exam",
+  "sample.removed": "put the sample exam away",
   "org.sso_configured": "set up signing in through the organisation",
   "org.spend_cap_set": "set the spending limit",
   "privacy.saved": "updated the privacy notice",
@@ -127,6 +144,9 @@ export function Home({
   onExam,
   onExams,
   onGo,
+  sample,
+  onTour,
+  canBuy = false,
 }: {
   dashboard: Dashboard | undefined;
   exams: readonly ExamSummary[];
@@ -137,6 +157,12 @@ export function Home({
   /** The exam list, filtered to what a figure counts. */
   onExams?: (filter: ExamFilter) => void;
   onGo: (target: HomeTarget) => void;
+  /** Absent for an account that cannot write exams. */
+  sample?: SampleActions;
+  /** Start the guided tour. */
+  onTour?: () => void;
+  /** This account buys credits (an owner): the warning then offers to. */
+  canBuy?: boolean;
 }) {
   const totals = exams.reduce(
     (sum, e) => {
@@ -174,6 +200,12 @@ export function Home({
         ) : null}
       </PageActions>
 
+      {dashboard === undefined ? null : <Credits left={dashboard.setup.prepaidCredits ?? null} canBuy={canBuy} onBuy={() => onGo("billing")} />}
+
+      {dashboard === undefined || !canWrite ? null : (
+        <Welcome setup={dashboard.setup} sample={sample} onGo={onGo} onTour={onTour} />
+      )}
+
       <FigureStrip
         figures={[
           { label: "In progress", value: totals.sitting, icon: CircleDot, ...(totals.sitting > 0 ? { tone: "live" as const } : {}), ...open("open") },
@@ -186,7 +218,7 @@ export function Home({
       <div className="home-grid">
         <Calendar sittings={dashboard?.sittings} now={now} onExam={onExam} onSchedule={() => onGo("exams")} />
         <div className="home-side">
-          {dashboard === undefined ? null : <Setup setup={dashboard.setup} onGo={onGo} />}
+          {dashboard === undefined ? null : <Setup setup={dashboard.setup} onGo={onGo} onTour={onTour} />}
           {dashboard?.activity == null ? null : <Activity activity={dashboard.activity} now={now} onExam={onExam} />}
         </div>
       </div>
@@ -437,8 +469,135 @@ function Week({
   );
 }
 
+/**
+ * A prepaid organisation running out: said before a candidate is turned away
+ * at the start of their test, not after.
+ */
+function Credits({ left, canBuy, onBuy }: { left: number | null; canBuy: boolean; onBuy: () => void }) {
+  if (left === null || left > FEW_CREDITS) return null;
+  const none = left <= 0;
+  return (
+    <div className="credits-line">
+      <Banner
+        tone={none ? "danger" : "warning"}
+        title={none ? "No attempts left" : `${left} attempt${left === 1 ? "" : "s"} left`}
+        action={
+          canBuy ? (
+            <button type="button" onClick={onBuy}>
+              Buy credits
+            </button>
+          ) : undefined
+        }
+      >
+        {none
+          ? "Candidates cannot start a test until more credits are bought."
+          : "Each candidate who starts a test uses one. Buy more before your next sitting so nobody is turned away."}
+        {canBuy ? null : " Ask your organisation's owner to buy more."}
+      </Banner>
+    </div>
+  );
+}
+
+/** Nothing of the organisation's own yet: no exam and no question in the bank. */
+export const isNew = (setup: Dashboard["setup"]) => setup.exams === 0 && setup.bankQuestions === 0;
+
+/**
+ * A new organisation's first screen: three ways to begin, and the tour. Once
+ * it has an exam or a question of its own this gives way to the first steps;
+ * a sample exam still loaded then keeps a line of its own.
+ */
+function Welcome({
+  setup,
+  sample,
+  onGo,
+  onTour,
+}: {
+  setup: Dashboard["setup"];
+  sample: SampleActions | undefined;
+  onGo: (target: HomeTarget) => void;
+  onTour: (() => void) | undefined;
+}) {
+  const loaded = setup.sampleExamId ?? null;
+  if (!isNew(setup)) {
+    if (loaded === null || sample === undefined) return null;
+    return (
+      <div className="sample-line">
+        <Banner
+          title="The sample exam is still here"
+          action={
+            <>
+              <button type="button" className="secondary" onClick={() => sample.onOpen(loaded)}>
+                Open it
+              </button>
+              <button type="button" className="quiet" disabled={sample.busy} onClick={sample.onRemove}>
+                Put it away
+              </button>
+            </>
+          }
+        >
+          It does not count as one of your exams. Put it away once you no longer need it; its questions leave the bank with it.
+        </Banner>
+      </div>
+    );
+  }
+  return (
+    <section className="card welcome" aria-labelledby="welcome-title" data-tour="welcome">
+      <div className="welcome-head">
+        <div>
+          <h2 id="welcome-title">Welcome to Parikshaa. Three ways to begin.</h2>
+          <p className="notice">Nothing reaches a candidate until you invite one, so try anything.</p>
+        </div>
+        {onTour === undefined ? null : (
+          <button type="button" className="secondary" onClick={onTour}>
+            <Compass aria-hidden="true" />
+            Take the tour
+          </button>
+        )}
+      </div>
+      <ol className="welcome-paths">
+        <li>
+          <FlaskConical aria-hidden="true" className="welcome-icon" />
+          <h3>Try the sample exam</h3>
+          <p>A 20-minute campus aptitude round with every kind of question. Sit it as a candidate would; nothing is recorded.</p>
+          {sample === undefined ? null : loaded === null ? (
+            <button type="button" disabled={sample.busy} onClick={sample.onLoad}>
+              {sample.busy ? "Loading…" : "Load the sample exam"}
+            </button>
+          ) : (
+            <div className="row">
+              <button type="button" onClick={() => sample.onTry(loaded)}>
+                <Play aria-hidden="true" />
+                Try it as a candidate
+              </button>
+              <button type="button" className="quiet" onClick={() => sample.onOpen(loaded)}>
+                Open it
+              </button>
+            </div>
+          )}
+        </li>
+        <li>
+          <FilePlus2 aria-hidden="true" className="welcome-icon" />
+          <h3>Write your first exam</h3>
+          <p>Multiple choice, numbers, written answers and code, with a timer, sections and a qualifying mark.</p>
+          <button type="button" className="secondary" onClick={() => onGo("new-exam")}>
+            New exam
+          </button>
+        </li>
+        <li>
+          <FileUp aria-hidden="true" className="welcome-icon" />
+          <h3>Bring a question paper</h3>
+          <p>Import a Word question paper or a spreadsheet into the question bank, then build exams from it.</p>
+          <button type="button" className="secondary" onClick={() => onGo("bank")}>
+            Import questions
+          </button>
+        </li>
+      </ol>
+    </section>
+  );
+}
+
 /** The first steps, until they are all done. */
-function Setup({ setup, onGo }: { setup: Dashboard["setup"]; onGo: (target: HomeTarget) => void }) {
+function Setup({ setup, onGo, onTour }: { setup: Dashboard["setup"]; onGo: (target: HomeTarget) => void; onTour?: (() => void) | undefined }) {
   const steps: readonly { label: string; done: boolean; target: HomeTarget; hint: string }[] = [
     { label: "Add questions to the bank", done: setup.bankQuestions > 0, target: "bank", hint: "Write them, or import a spreadsheet or a Word paper." },
     { label: "Create an exam", done: setup.exams > 0, target: "new-exam", hint: "From the bank or from scratch." },
@@ -481,6 +640,12 @@ function Setup({ setup, onGo }: { setup: Dashboard["setup"]; onGo: (target: Home
           </li>
         ))}
       </ol>
+      {onTour === undefined || isNew(setup) ? null : (
+        <button type="button" className="quiet setup-tour" onClick={onTour}>
+          <Compass aria-hidden="true" />
+          Take the tour again
+        </button>
+      )}
     </section>
   );
 }

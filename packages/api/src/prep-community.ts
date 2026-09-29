@@ -192,26 +192,32 @@ export class PrepCommunity {
   async experiences(site: PracticeSite, learner: Learner | null, companySlug?: string) {
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
     const company = companySlug === undefined ? undefined : await this.#company(site, companySlug);
-    const [list, voted, companies] = await Promise.all([
+    const [list, voted, companies, titles] = await Promise.all([
       this.#store.experiences(scope, company === undefined ? {} : { companyId: company.id }),
       this.#store.myVotes(scope),
       this.#store.companies(scope),
+      this.#titles(site.orgId),
     ]);
     const names = new Map(companies.map((c) => [c.id, c]));
     // Published ones, and the learner's own whatever their state.
     return list
       .filter((e) => e.status === "published" || (learner !== null && e.learnerId === learner.id))
-      .map((e) => this.#view(e, names.get(e.companyId), learner, voted.has(e.id)));
+      .map((e) => this.#view(e, names.get(e.companyId), learner, voted.has(e.id), titles));
   }
 
-  #view(e: Experience, company: Company | undefined, learner: Learner | null, voted: boolean) {
+  /** Each published problem's title by its address, so a round names its problems in words. */
+  async #titles(orgId: OrgId): Promise<ReadonlyMap<string, string>> {
+    return new Map((await this.#practice.problems(practiceLearner(orgId, null))).filter((p) => p.published).map((p) => [p.slug, p.title]));
+  }
+
+  #view(e: Experience, company: Company | undefined, learner: Learner | null, voted: boolean, titles: ReadonlyMap<string, string>) {
     return {
       id: e.id,
       company: { slug: company?.slug ?? "", name: company?.name ?? "" },
       role: e.role,
       interviewed: e.interviewed,
       verdict: e.verdict,
-      rounds: e.rounds,
+      rounds: e.rounds.map((r) => ({ ...r, problems: r.problemSlugs.filter((slug) => titles.has(slug)).map((slug) => ({ slug, title: titles.get(slug)! })) })),
       tips: e.tips,
       author: e.authorName,
       status: e.status,
@@ -232,7 +238,7 @@ export class PrepCommunity {
     if (waiting.length >= MAX_PENDING) throw new PracticeError("too_many_runs", `You have ${MAX_PENDING} write-ups waiting to be read. Send more once those are.`);
     if (!MONTH.test(input.interviewed) || input.interviewed > this.#today().slice(0, 7)) throw new PracticeError("invalid", "When was the interview? A month, not in the future.");
     if (input.rounds.length === 0) throw new PracticeError("invalid", "Say what at least one round was like");
-    const published = new Set((await this.#practice.problems(practiceLearner(site.orgId, null))).filter((p) => p.published).map((p) => p.slug));
+    const published = await this.#titles(site.orgId);
     const unknown = input.rounds.flatMap((r) => r.problemSlugs).filter((s) => !published.has(s));
     if (unknown.length > 0) throw new PracticeError("invalid", `Not a problem on this site: ${unknown.join(", ")}`);
     const saved = await this.#store.addExperience(practiceLearner(site.orgId, learner.id), {
@@ -244,7 +250,7 @@ export class PrepCommunity {
       tips: input.tips.trim(),
       authorName: input.anonymous ? "Anonymous" : learner.name,
     });
-    return this.#view(saved, company, learner, false);
+    return this.#view(saved, company, learner, false, published);
   }
 
   async vote(site: PracticeSite, learner: Learner, id: string, on: boolean): Promise<void> {
@@ -429,9 +435,9 @@ export class PrepCommunity {
 
   async staffExperiences(orgId: OrgId, status?: Experience["status"]) {
     const scope = practiceStaff(orgId);
-    const [list, companies] = await Promise.all([this.#store.experiences(scope, status === undefined ? {} : { status }), this.#store.companies(scope)]);
+    const [list, companies, titles] = await Promise.all([this.#store.experiences(scope, status === undefined ? {} : { status }), this.#store.companies(scope), this.#titles(orgId)]);
     const names = new Map(companies.map((c) => [c.id, c]));
-    return list.map((e) => ({ ...this.#view(e, names.get(e.companyId), null, false), learnerId: e.learnerId }));
+    return list.map((e) => ({ ...this.#view(e, names.get(e.companyId), null, false, titles), learnerId: e.learnerId }));
   }
 
   /**

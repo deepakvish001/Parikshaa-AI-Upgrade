@@ -59,7 +59,7 @@ describe("experiences", () => {
       role: "SDE 1",
       interviewed: "2026-08",
       verdict: "offer",
-      rounds: [{ kind: "DSA", asked: "Two sum", problemSlugs: ["two-sum"] }],
+      rounds: [{ kind: "DSA", asked: "Two sum", problemSlugs: ["two-sum"], problems: [{ slug: "two-sum", title: "Two Sum" }] }],
       tips: "",
       author: "Asha",
       status: "pending",
@@ -70,7 +70,7 @@ describe("experiences", () => {
     const user = userEvent.setup();
     show(<Experiences client={client as unknown as ConsoleClient} canWrite />);
     const item = await screen.findByRole("article", { name: "Acme, SDE 1, by Asha" });
-    expect(within(item).getByText("(two-sum)")).toBeTruthy();
+    expect(within(item).getByText("(Two Sum)")).toBeTruthy();
     await user.click(within(item).getByRole("button", { name: "Publish" }));
     await waitFor(() => expect(client.decideExperience).toHaveBeenCalledWith("e1", "published"));
     expect(client.experiences).toHaveBeenCalledWith("pending");

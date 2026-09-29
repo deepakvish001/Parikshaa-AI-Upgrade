@@ -1,3 +1,4 @@
+import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
@@ -129,6 +130,8 @@ export async function wire(
     readonly atsBases?: AtsBaseUrls;
     /** Stands in for Google in a test of signing in with it. */
     readonly googleIssuer?: string;
+    /** Institutions may sign themselves up, on these terms. */
+    readonly signup?: SignupPolicy;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -220,6 +223,18 @@ export async function wire(
     ...(options.googleIssuer === undefined ? {} : { issuer: options.googleIssuer }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const onboarding = new Onboarding({
+    identity,
+    auth,
+    billing: new BillingStore(sql),
+    bank: new QuestionBank(sql),
+    exams: service,
+    signup: options.signup ?? null,
+    secrets,
+    mailer: options.mailer ?? null,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const app = buildServer({
     service,
     invitations,
@@ -247,6 +262,7 @@ export async function wire(
     tokens,
     auth,
     security,
+    onboarding,
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
@@ -271,7 +287,7 @@ export async function wire(
     razorpay,
     security,
     app,
-    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
+    handlers: { ...integrations.handlers, staff_email: (item) => (item.purpose === "password_reset" ? security.resetMail(item) : onboarding.mail(item)), learner_email: practiceIdentity.verificationMail },
   };
 }
 

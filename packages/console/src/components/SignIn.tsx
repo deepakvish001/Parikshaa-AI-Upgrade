@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Building2, Eye, EyeOff, Languages, MessageCircleQuestion, ShieldCheck } from "lucide-react";
 import { Wordmark } from "@parikshaa/brand/react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { ConsoleClient, ConsoleError } from "../api.ts";
 
 /**
  * Every way into the console (ROADMAP §1): a password, then a code when the
- * account has a second factor; a reset link by email; and the organisation's
- * own sign-in provider.
+ * account has a second factor; a reset link by email; the organisation's own
+ * sign-in provider; and, where the server takes them, an institution making
+ * its own account.
  */
 
-type Mode = "password" | "forgot" | "reset" | "sso";
+type Mode = "password" | "forgot" | "reset" | "sso" | "signup";
 
 /**
  * What this device remembers between visits: the last email that signed in,
@@ -52,6 +53,9 @@ export const remembered = {
   },
 };
 
+/** Making an institution's account: once per institution, so loaded when chosen. */
+const SignupForm = lazy(() => import("./Signup.tsx"));
+
 /** What the provider's round trip came back with, said in plain words. */
 const SSO_ERRORS: Record<string, string> = {
   not_staff: "Your organisation's sign-in worked, but that address is not a member of staff here. Ask an owner to add you.",
@@ -64,14 +68,20 @@ export function SignIn({
   onSignedIn,
   resetToken = null,
   ssoError = null,
+  emailVerified = null,
 }: {
-  onSignedIn: (token: string) => void;
+  /** `fresh`: the account was made just now, so the console opens with its tour. */
+  onSignedIn: (token: string, fresh?: boolean) => void;
   /** From a reset link: `?reset=…`. */
   resetToken?: string | null;
   /** From a failed provider round trip: `?sso_error=…`. */
   ssoError?: string | null;
+  /** What opening a confirmation link came to: "done", a refusal's words, or "pending". */
+  emailVerified?: string | null;
 }) {
   const [mode, setMode] = useState<Mode>(resetToken === null ? "password" : "reset");
+  const signup = useQuery({ queryKey: ["signup-status"], queryFn: () => ConsoleClient.signupStatus(), staleTime: Infinity, retry: false });
+  const open = signup.data?.open === true;
 
   return (
     <div className="signin">
@@ -98,8 +108,21 @@ export function SignIn({
           <span className="signin-mark">
             <Wordmark size={28} />
           </span>
+          {emailVerified === null || emailVerified === "pending" ? null : emailVerified === "done" ? (
+            <p className="banner success signin-verified" role="status">
+              Your email address is confirmed. Sign in to carry on.
+            </p>
+          ) : (
+            <p className="error" role="alert">
+              {emailVerified}
+            </p>
+          )}
           {mode === "password" ? (
-            <PasswordForm onSignedIn={onSignedIn} onMode={setMode} ssoError={ssoError} />
+            <PasswordForm onSignedIn={onSignedIn} onMode={setMode} ssoError={ssoError} signupOpen={open} />
+          ) : mode === "signup" ? (
+            <Suspense fallback={<p className="notice">Loading…</p>}>
+              <SignupForm trialCredits={signup.data?.trialCredits ?? 0} onSignedIn={(token) => onSignedIn(token, true)} onBack={() => setMode("password")} />
+            </Suspense>
           ) : mode === "forgot" ? (
             <ForgotForm onBack={() => setMode("password")} />
           ) : mode === "reset" ? (
@@ -117,10 +140,13 @@ function PasswordForm({
   onSignedIn,
   onMode,
   ssoError,
+  signupOpen = false,
 }: {
   onSignedIn: (token: string) => void;
   onMode: (mode: Mode) => void;
   ssoError: string | null;
+  /** Institutions may make their own accounts here. */
+  signupOpen?: boolean;
 }) {
   const [email, setEmail] = useState(remembered.email);
   const [password, setPassword] = useState("");
@@ -245,6 +271,14 @@ function PasswordForm({
           <Building2 aria-hidden="true" /> Sign in with your organisation
         </button>
       </div>
+      {signupOpen ? (
+        <p className="signin-new">
+          New to Parikshaa?{" "}
+          <button type="button" className="link" onClick={() => onMode("signup")}>
+            Make your institution's account
+          </button>
+        </p>
+      ) : null}
     </>
   );
 }

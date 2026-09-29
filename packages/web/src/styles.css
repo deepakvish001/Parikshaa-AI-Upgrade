@@ -362,7 +362,7 @@ button.quiet.review-toggle svg {
   height: 0.95rem;
 }
 button.quiet.review-toggle.on {
-  color: var(--saffron-600);
+  color: var(--accent-text);
   font-weight: var(--weight-semibold);
 }
 
@@ -1169,7 +1169,7 @@ button.small {
   box-shadow: var(--shadow-md);
 }
 .announcement .eyebrow {
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 
 /* --- language and bandwidth (ROADMAP §9) ----------------------------------- */

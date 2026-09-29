@@ -16,6 +16,8 @@ import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@
 import { RunnerUnavailable } from "@parikshaa/runner";
 import { ExamFrozen, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
+import type { Onboarding } from "./onboarding.js";
+import { registerOnboardingRoutes } from "./onboarding-routes.js";
 import { registerBankRoutes } from "./bank-routes.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import { registerPracticeRoutes } from "./practice-routes.js";
@@ -56,7 +58,7 @@ import { AttemptTokens, type AttemptClaims } from "./auth.js";
 import { DEFAULT_LIMITS, RateLimiter, type RateLimit } from "./rate-limit.js";
 import * as S from "./schemas.js";
 import { AttemptError, ExamInvalidError, ExamService, Forbidden, SpendCapReached } from "./service.js";
-import { LoginThrottle, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
+import { LoginThrottle, UNTIL_VERIFIED, WeakPassword, can, type Actor, type Permission, type StaffAuth } from "./staff-auth.js";
 
 export interface ServerOptions {
   readonly service: ExamService;
@@ -95,6 +97,10 @@ export interface ServerOptions {
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
+  /** Institutions signing themselves up, and the sample exam. Absent: neither's routes. */
+  readonly onboarding?: Onboarding;
+  /** Sign-ups from one address (`SIGNUPS`: five an hour, unless given). */
+  readonly signupLimit?: RateLimit;
   /**
    * Send Strict-Transport-Security: browsers then refuse plain HTTP to this
    * host. On when the deployment is served over HTTPS (`PUBLIC_URL`).
@@ -359,6 +365,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     // none yet, may do nothing but set one up (routes that ask no permission).
     if (permission !== null && actor.kind === "user" && actor.mustEnrol2fa === true) {
       await reply.code(403).send({ error: "two_factor_required", message: "Set up a second factor before continuing" });
+      return null;
+    }
+    if (permission !== null && actor.kind === "user" && actor.emailUnverified === true && UNTIL_VERIFIED.has(permission)) {
+      await reply.code(403).send({ error: "email_unverified", message: "Confirm your email address first: open the link we sent to it" });
       return null;
     }
     if (permission !== null && !can(actor, permission)) {
@@ -1147,6 +1157,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       staff,
     });
     if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
+    if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
   });
 
   if (options.clients !== undefined) {

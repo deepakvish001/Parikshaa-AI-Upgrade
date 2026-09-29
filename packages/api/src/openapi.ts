@@ -1,3 +1,4 @@
+import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BillingStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
@@ -77,6 +78,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     tokens,
     auth,
     security: new StaffSecurity({ identity, auth, secrets, publicUrl: "https://example.invalid" }),
+    onboarding: new Onboarding({ identity, auth, billing: new BillingStore(unusable), bank: new QuestionBank(unusable), exams: service }),
     identity,
     bank: new QuestionBank(unusable),
     media: new QuestionMedia(unusable),

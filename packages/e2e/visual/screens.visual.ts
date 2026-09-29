@@ -166,6 +166,7 @@ for (const scheme of ["light", "dark"] as const) {
     test("sign-in", async ({ page }) => {
       await page.goto("/console/");
       await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Make your institution's account" })).toBeVisible();
       await settle(page);
       await expect(page).toHaveScreenshot(`console-sign-in-1440-${scheme}.png`);
     });
@@ -195,6 +196,7 @@ test.describe("390 · light", () => {
   test("sign-in", async ({ page }) => {
     await page.goto("/console/");
     await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Make your institution's account" })).toBeVisible();
     await settle(page);
     await expect(page).toHaveScreenshot("console-sign-in-390-light.png");
   });

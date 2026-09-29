@@ -26,6 +26,7 @@ import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
 import { StaffSecrets } from "./staff-secrets.js";
 import { StaffSecurity } from "./staff-security.js";
+import { Onboarding, type SignupPolicy } from "./onboarding.js";
 
 /**
  * The whole service, wired: the server and the delivery worker over one
@@ -55,7 +56,9 @@ export interface AssembleOptions {
   readonly supplier?: Supplier | null;
   readonly mailer?: Mailer | null;
   readonly sms?: SmsSender | null;
-  readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds">;
+  /** Institutions may sign themselves up, on these terms. Absent: only the admin CLI makes organisations. */
+  readonly signup?: SignupPolicy | null;
+  readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit">;
 }
 
 export function assemble(o: AssembleOptions): {
@@ -78,9 +81,10 @@ export function assemble(o: AssembleOptions): {
     ...(o.runner === undefined ? {} : { runner: o.runner }),
     meter: { consume: (org, attempt) => billing!.consume(org, attempt), refund: (org, attempt) => billing!.refund(org, attempt) },
   });
+  const billingStore = new BillingStore(o.sql);
   billing = new BillingService({
     store,
-    billing: new BillingStore(o.sql),
+    billing: billingStore,
     identity,
     exams: service,
     gateway: o.gateway ?? null,
@@ -113,6 +117,17 @@ export function assemble(o: AssembleOptions): {
   const security = new StaffSecurity({ identity, auth, secrets, publicUrl: o.publicUrl, mailer: o.mailer ?? null });
 
   const bank = new QuestionBank(o.sql);
+  const onboarding = new Onboarding({
+    identity,
+    auth,
+    billing: billingStore,
+    bank,
+    exams: service,
+    signup: o.signup ?? null,
+    secrets,
+    mailer: o.mailer ?? null,
+    publicUrl: o.publicUrl,
+  });
   const practiceStore = new PracticeStore(o.sql);
   const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }) });
   const practiceIdentity = new PracticeIdentity({
@@ -147,6 +162,7 @@ export function assemble(o: AssembleOptions): {
     tokens,
     auth,
     security,
+    onboarding,
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,
@@ -168,7 +184,7 @@ export function assemble(o: AssembleOptions): {
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
-    handlers: { ...integrations.handlers, staff_email: security.resetMail, learner_email: practiceIdentity.verificationMail },
+    handlers: { ...integrations.handlers, staff_email: (item) => (item.purpose === "password_reset" ? security.resetMail(item) : onboarding.mail(item)), learner_email: practiceIdentity.verificationMail },
   });
 
   return { app, worker, privacy, billing, identity };

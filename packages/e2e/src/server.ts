@@ -45,7 +45,11 @@ const { app } = assemble({
   ...(runner === undefined ? {} : { runner }),
   supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru", sac: "998399" },
   publicUrl: process.env["PUBLIC_URL"] ?? `http://localhost:${port}`,
+  // Institutions may sign themselves up, as a pilot deployment lets them.
+  signup: { trialCredits: 25, pricePaise: 4_900 },
   server: {
+    // Every browser's tests sign up from this one address.
+    signupLimit: { perSecond: 1, burst: 100 },
     clients: {
       web: fileURLToPath(new URL("../../web/dist", import.meta.url)),
       console: fileURLToPath(new URL("../../console/dist", import.meta.url)),

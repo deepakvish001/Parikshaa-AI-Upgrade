@@ -11,35 +11,12 @@
 .store-item > strong svg {
   width: 1.1rem;
   height: 1.1rem;
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 .window-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
-}
-.chip {
-  display: inline-flex;
-  gap: var(--space-1);
-  align-items: center;
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  background: var(--surface);
-  color: var(--text);
-  font: inherit;
-  font-size: var(--text-sm);
-  text-decoration: none;
-  cursor: pointer;
-}
-.chip.on {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: var(--on-primary);
-}
-.chip .count {
-  font-variant-numeric: tabular-nums;
-  opacity: 0.8;
 }
 .company-problems .asked {
   font-weight: var(--weight-semibold);
@@ -92,13 +69,14 @@
   display: block;
   height: 0.5rem;
   border-radius: var(--radius-full);
-  background: var(--surface-muted, var(--border));
+  background: var(--surface-sunken);
   overflow: hidden;
 }
+/* A count, not a reward: the chart's first colour, not the accent. */
 .topic-bars .bar span {
   display: block;
   height: 100%;
-  background: var(--saffron-500);
+  background: var(--chart-cat-1);
 }
 .experience-list {
   gap: var(--space-4);
@@ -135,14 +113,22 @@
   gap: var(--space-1);
   margin: 0;
 }
-.verdict {
-  padding: 0.1rem 0.5rem;
+/* How it ended, as the status colours say it: an offer, no offer, or still waiting. */
+.exp-verdict {
+  padding: var(--space-0-5) var(--space-2);
   border-radius: var(--radius-full);
-  font-size: var(--text-sm);
-  background: var(--surface-muted, var(--border));
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
 }
-.verdict.offer {
-  background: var(--saffron-100);
+.exp-verdict.offer {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.exp-verdict.reject {
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 .experience button.on {
   border-color: var(--primary);
@@ -184,9 +170,9 @@
   gap: var(--space-2);
   align-items: center;
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--saffron-500);
+  border: 1px solid var(--accent);
   border-radius: var(--radius-full);
-  background: var(--saffron-100);
+  background: var(--accent-soft);
   font-size: var(--text-xl);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
@@ -194,7 +180,7 @@
 .rating-badge svg {
   width: 1.25rem;
   height: 1.25rem;
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 .rating-badge .title {
   font-size: var(--text-sm);
@@ -216,8 +202,8 @@
 }
 .badges li.earned {
   border-style: solid;
-  border-color: var(--saffron-500);
-  background: var(--saffron-100);
+  border-color: var(--accent);
+  background: var(--accent-soft);
   color: var(--text);
 }
 .badges svg {
@@ -225,5 +211,5 @@
   height: 1.5rem;
 }
 .badges li.earned svg {
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }

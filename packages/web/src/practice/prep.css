@@ -72,11 +72,11 @@
 .stat-chip svg {
   width: 1rem;
   height: 1rem;
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 .streak-chip {
-  background: var(--saffron-100);
-  border-color: var(--saffron-500);
+  background: var(--accent-soft);
+  border-color: var(--accent);
   color: var(--text);
 }
 .reward-note {
@@ -87,14 +87,14 @@
   margin: 0;
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
-  background: var(--saffron-100);
+  background: var(--accent-soft);
   color: var(--text);
   font-weight: var(--weight-semibold);
 }
 .reward-note svg {
   width: 1rem;
   height: 1rem;
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 @media (prefers-reduced-motion: no-preference) {
   .reward-note {
@@ -140,15 +140,15 @@
   align-items: center;
   justify-content: space-between;
 }
-.figures-row {
+.prep-figures {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
 }
-.figures-row > div {
+.prep-figures > div {
   display: grid;
 }
-.figure {
+.prep-figure {
   font-size: var(--text-2xl);
   font-weight: var(--weight-bold);
   font-variant-numeric: tabular-nums;
@@ -247,16 +247,16 @@
   color: var(--text);
   white-space: nowrap;
 }
-.task-kind.learn {
+.task-kind.kind-learn {
   background: var(--primary-soft);
   color: var(--primary-active);
 }
-.task-kind.practice {
+.task-kind.kind-practice {
   background: var(--success-soft);
   color: var(--success);
 }
-.task-kind.revise {
-  background: var(--saffron-100);
+.task-kind.kind-revise {
+  background: var(--accent-soft);
   color: var(--text);
 }
 .moved {
@@ -319,8 +319,11 @@
 }
 
 /* lessons and notes */
-.lesson-body {
+/* A lesson and its notes read in one column, at a book's width. */
+.lesson-page > .card {
   max-width: 48rem;
+}
+.lesson-body {
   line-height: var(--leading);
 }
 .note-editor {
@@ -565,7 +568,7 @@
   font-variant-numeric: tabular-nums;
 }
 .coin-balance svg {
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 .coin-history li,
 .coin-leaders li {
@@ -628,7 +631,7 @@
   padding-left: var(--space-5);
 }
 .prep-head h1 svg {
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 .tutor {
   display: grid;

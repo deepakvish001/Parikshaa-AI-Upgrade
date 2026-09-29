@@ -17,6 +17,10 @@
     "./passwords": {
       "types": "./dist/staff-auth.d.ts",
       "default": "./dist/staff-auth.js"
+    },
+    "./secrets": {
+      "types": "./dist/staff-secrets.d.ts",
+      "default": "./dist/staff-secrets.js"
     }
   },
   "files": [
