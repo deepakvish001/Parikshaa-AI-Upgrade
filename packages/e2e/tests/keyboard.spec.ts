@@ -78,7 +78,7 @@ test("a candidate sits the whole paper with the keyboard alone, and always sees 
   await expect(page.locator(".qfoot")).toContainText("Saved");
 
   // Submit, back up in the bar: the summary opens on "Keep working"; Tab to "Yes, submit".
-  await tabTo(page, page.getByRole("button", { name: "Submit attempt" }));
+  await tabTo(page, page.getByRole("button", { name: "Submit attempt" }), 80, true);
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "Submit your attempt?" });
   await expect(dialog).toBeVisible();

@@ -15,7 +15,12 @@ permissions:
   security-events: write
 
 jobs:
+  # Uploading results needs GitHub Advanced Security on a private repository,
+  # and errors out without it. It runs on public repositories, or once the
+  # repository variable CODE_SCANNING is set to 'true'.
   analyze:
+    if: >-
+      !github.event.repository.private || vars.CODE_SCANNING == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

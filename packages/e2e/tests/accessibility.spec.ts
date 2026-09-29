@@ -10,12 +10,9 @@ import { beginSitting, chooseLanguage, local, MCQ, OWNER, PRIVATE_OWNER, SHORT, 
  */
 
 async function violations(page: Page): Promise<string[]> {
-  // Colours are checked as they settle: a button fading in from disabled, or a menu fading in, is mid-way neither.
-  // Endless ones (a loading shimmer) never settle and are left to run; and no page waits more than a second.
-  await page.evaluate(async () => {
-    const settling = document.getAnimations().filter((a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity);
-    await Promise.race([Promise.allSettled(settling.map((a) => a.finished)), new Promise((done) => setTimeout(done, 1000))]);
-  });
+  // Colours are scored at rest: mid-way through a fade (a dialog, a menu, a
+  // button leaving disabled) they are neither, and WebKit catches them there.
+  await page.addStyleTag({ content: "*, *::before, *::after { animation: none !important; transition: none !important; }" });
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
