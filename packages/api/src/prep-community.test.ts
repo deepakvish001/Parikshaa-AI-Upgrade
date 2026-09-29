@@ -119,6 +119,10 @@ describe("interview experiences", () => {
     expect((await call("POST", null, `${S}/experiences`, draft)).statusCode).toBe(401);
     const mine = await ok("POST", asha, `${S}/experiences`, { ...draft, anonymous: true });
     expect(mine).toMatchObject({ status: "pending", author: "Anonymous", mine: true });
+    // A round names its problems by title as well as by address.
+    expect(mine.rounds[0].problems).toHaveLength(1);
+    expect(mine.rounds[0].problems[0]).toMatchObject({ slug: problems[3]!.slug, title: expect.stringMatching(/\S/) });
+    expect(mine.rounds[0].problems[0].title).not.toBe(problems[3]!.slug);
     expect((await ok("GET", ravi, `${S}/experiences`)).experiences).toEqual([]);
     expect((await ok("GET", asha, `${S}/experiences`)).experiences).toHaveLength(1);
 

@@ -239,6 +239,21 @@
 .problem-table table td {
   vertical-align: middle;
 }
+/* A filter chip, on the problems, a company's window or the experiences: chosen reads as chosen. */
+.practice .chip {
+  font: inherit;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  cursor: pointer;
+}
+.practice .chip[aria-pressed="true"],
+.practice .chip[aria-checked="true"],
+.practice .chip.on {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: var(--primary-soft-border);
+}
+.practice .chip .count,
 .tag-row .chip .count {
   margin-left: var(--space-1);
   font-variant-numeric: tabular-nums;
@@ -390,7 +405,7 @@
 .streak svg {
   width: 1.1rem;
   height: 1.1rem;
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 
 .progress-head {
@@ -620,7 +635,7 @@
 .contest-banner svg {
   width: 1rem;
   height: 1rem;
-  color: var(--saffron-600);
+  color: var(--accent-text);
 }
 .locked {
   display: flex;

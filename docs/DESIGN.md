@@ -316,6 +316,36 @@ around it, on the same tokens and components.
   leaderboard's top three wear accent rank chips, not medals, and the learner's
   own row stays in sight.
 
+## Prep
+
+Prep (ROADMAP §16) is the practice site's study side: a learner's home,
+tracks and lessons, a study plan with a focus timer, revision, lists and notes,
+the problem of the day, companies and interview write-ups, coins and the coin
+store, Plus and the tutor. It is built on the practice site's bar, tokens and
+components, with three rules of its own:
+
+- **Its class names are its own.** Prep's pages sit beside the exam's and the
+  practice site's stylesheets, so a generic name there changes another page:
+  `.practice` once made each problem in a track a screen tall, `.figure`
+  boxed the home's numbers like an exam picture, and `.chip` restyled every
+  filter once the companies page had loaded. Prep's are prefixed
+  (`prep-figures`, `task-kind kind-practice`, `exp-verdict`), and filter chips
+  are one style for the whole site: chosen reads as chosen, in the primary.
+- **Colours are semantic.** The streak, the coins and the rewards use
+  `--accent-soft`, `--accent` and `--accent-text`, which change with the
+  theme; a raw palette step (`--saffron-100`) does not, which left the streak
+  unreadable in dark. A company's topics are a count, in the chart's first
+  colour; an interview's outcome is a status: Offer in success, Not selected
+  in danger, Waiting neutral. A round names its problems by title.
+- **Link-buttons are buttons.** `.button.secondary` and `.button.quiet` (on an
+  `<a>`) look as `button.secondary` and `button.quiet` do, so "Open" beside
+  "Next" is quiet, not a second primary.
+
+In the console, Prep's tabs (Tracks, Lessons, Problem of the day, Plus,
+Companies, Experiences, Coin store) use the kit's empty and loading states,
+quiet row actions, and a hidden comment is marked by its pill and a warning
+rule rather than faded text. The tab row scrolls on a narrow screen.
+
 ## Pages
 
 | | Candidate app | | Console |
@@ -374,6 +404,30 @@ A practice site (ROADMAP §15), as a learner sees it at `/practice/<site>`:
 | 10 | [On a phone: the problems as cards](screenshots/practice-10-phone-problems.png) |
 | 11 | [On a phone: the scoreboard, rank and name held](screenshots/practice-11-phone-scoreboard.png) |
 
+Prep, as a learner sees it, and as the institution runs it:
+
+| | Learner | | Console |
+| --- | --- | --- | --- |
+| 01 | [Home](screenshots/prep-01-home.png) | 35 | [Tracks and starter packs](screenshots/console-35-prep-tracks.png) |
+| 02 | [Tracks](screenshots/prep-02-tracks.png) | 36 | [Lessons](screenshots/console-36-prep-lessons.png) |
+| 03 | [A track](screenshots/prep-03-track.png) | 37 | [Problem of the day](screenshots/console-37-prep-problem-of-the-day.png) |
+| 04 | [A lesson](screenshots/prep-04-lesson.png) | 38 | [Plus and the tutor](screenshots/console-38-prep-plus.png) |
+| 05 | [A study plan](screenshots/prep-05-plan.png) | 39 | [Companies](screenshots/console-39-prep-companies.png) |
+| 06 | [Revision](screenshots/prep-06-revise.png) | 40 | [Interview write-ups](screenshots/console-40-prep-experiences.png) |
+| 07 | [Lists](screenshots/prep-07-lists.png) | 41 | [Coin store](screenshots/console-41-prep-coin-store.png) |
+| 08 | [Notes](screenshots/prep-08-notes.png) | | |
+| 09 | [Problem of the day](screenshots/prep-09-problem-of-the-day.png) | | |
+| 10 | [Companies](screenshots/prep-10-companies.png) | | |
+| 11 | [A company](screenshots/prep-11-company.png) | | |
+| 12 | [Interview experiences](screenshots/prep-12-experiences.png) | | |
+| 13 | [Coin store](screenshots/prep-13-store.png) | | |
+| 14 | [Coins](screenshots/prep-14-coins.png) | | |
+| 15 | [Plus](screenshots/prep-15-plus.png) | | |
+| 16 | [Rating and achievements](screenshots/prep-16-rating.png) | | |
+| 17 | [On a phone: home](screenshots/prep-17-phone-home.png) | | |
+| 18 | [On a phone: the plan](screenshots/prep-18-phone-plan.png) | | |
+| 19 | [On a phone: a track](screenshots/prep-19-phone-track.png) | | |
+
 The green camera images are Chromium's fake camera, which stands in for a
 webcam when the screenshots are taken.
 
@@ -391,7 +445,9 @@ Three checks in CI keep the detail from drifting:
   home, exams, an exam's overview, live sitting, results, the editor, the
   question bank and staff at 1440 in light and dark; sign-in, exams, an
   exam's overview, results and live sitting on a phone; and the design
-  system in both themes.
+  system in both themes. Prep has 17 (`visual/prep.visual.ts`): a learner's
+  home, the tracks, a track, a plan, the companies, a company and the coin
+  store at 1440 in light and dark, and home, a track and a plan on a phone.
   Only what changes from run to run is masked: the clocks, the dates, the
   hashes and the measured connection. At most 100 pixels may differ, with a
   tight per-pixel tolerance, so a shift of colour or a new control is
@@ -422,7 +478,8 @@ Two more checks keep the pages usable without a mouse or a screen:
   state in words, and a clock read out as time left.
 
 axe runs on every page in both themes (`accessibility.spec.ts`, and the
-practice site in `practice.spec.ts`). The browser tests run in Chromium,
+practice site, Prep's pages and every tab of the console's practice admin in
+`practice.spec.ts`). The browser tests run in Chromium,
 Firefox and WebKit in CI.
 
 ## Regenerating the screenshots

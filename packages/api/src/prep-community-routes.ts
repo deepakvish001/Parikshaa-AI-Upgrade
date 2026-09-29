@@ -51,7 +51,16 @@ const experience = z.object({
   role: z.string(),
   interviewed: z.string().describe("YYYY-MM."),
   verdict,
-  rounds: z.array(z.object({ kind: z.string(), asked: z.string(), problemSlugs: z.array(z.string()).readonly() })).readonly(),
+  rounds: z
+    .array(
+      z.object({
+        kind: z.string(),
+        asked: z.string(),
+        problemSlugs: z.array(z.string()).readonly(),
+        problems: z.array(z.object({ slug: z.string(), title: z.string() })).readonly().describe("The round's problems still on the site, by title."),
+      }),
+    )
+    .readonly(),
   tips: z.string(),
   author: z.string().describe('The learner\'s name, or "Anonymous".'),
   status: z.enum(["pending", "published", "rejected"]),

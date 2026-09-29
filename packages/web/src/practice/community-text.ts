@@ -14,7 +14,7 @@ const en = {
   "companies.title": "Companies",
   "companies.lead": "What companies ask, counted from reports and from interviews learners write up.",
   "companies.none": "No companies yet.",
-  "companies.card": "{problems} problems in 6 months · {experiences} experiences",
+  "companies.card": "Problems asked in 6 months: {problems} · Interview write-ups: {experiences}",
   "company.window": "Asked in",
   "company.window.30": "30 days",
   "company.window.60": "60 days",

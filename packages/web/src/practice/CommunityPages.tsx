@@ -105,7 +105,7 @@ export function CompanyPage({ client, nav, learner, site, slug }: Context & { re
           ) : (
             <ul className="item-list company-problems">
               {data.problems.map((p) => (
-                <li key={p.slug} className={p.solved ? "done" : undefined}>
+                <li key={p.slug}>
                   <Link nav={nav} to={`/problems/${p.slug}`}>
                     {p.title}
                   </Link>
@@ -187,7 +187,7 @@ function ExperienceList({ client, nav, learner, site, experiences }: Context & {
                   {e.company.name}
                 </Link>
               </strong>
-              <span className={`verdict ${e.verdict}`}>{c(`exp.verdict.${e.verdict}` as CommunityKey)}</span>
+              <span className={`exp-verdict ${e.verdict}`}>{c(`exp.verdict.${e.verdict}` as CommunityKey)}</span>
               {e.status === "pending" ? <span className="stat-chip">{c("exp.pending")}</span> : e.status === "rejected" ? <span className="stat-chip">{c("exp.rejected")}</span> : null}
               <span className="notice">{c("exp.by", { author: e.author, role: e.role, month: month(e.interviewed) })}</span>
             </header>
@@ -196,11 +196,11 @@ function ExperienceList({ client, nav, learner, site, experiences }: Context & {
                 <li key={i}>
                   <h3>{c("exp.round", { n: i + 1, kind: r.kind })}</h3>
                   {r.asked === "" ? null : <Markdown source={r.asked} />}
-                  {r.problemSlugs.length === 0 ? null : (
+                  {(r.problems ?? []).length === 0 ? null : (
                     <p className="round-problems">
-                      {r.problemSlugs.map((s) => (
-                        <Link key={s} nav={nav} to={`/problems/${s}`} className="stat-chip">
-                          {s}
+                      {r.problems!.map((q) => (
+                        <Link key={q.slug} nav={nav} to={`/problems/${q.slug}`} className="stat-chip">
+                          {q.title}
                         </Link>
                       ))}
                     </p>
@@ -439,7 +439,7 @@ export function StorePage({ client, nav, learner, site }: Context) {
         )}
       </header>
       {learner === null ? <SignInNeeded nav={nav} next="/store" /> : null}
-      {data.opensAt === null ? null : <p className="alert">{c("store.opens", { day: when(data.opensAt, false) })}</p>}
+      {data.opensAt === null ? null : <p className="alert store-opens">{c("store.opens", { day: when(data.opensAt, false) })}</p>}
       {buy.isSuccess ? <p role="status">{c("store.done", { balance: buy.data.balance })}</p> : null}
       {buy.isError ? <Failed error={buy.error} /> : null}
       {data.items.length === 0 ? (

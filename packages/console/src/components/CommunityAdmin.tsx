@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Trash2 } from "lucide-react";
+import { Building2, MessageSquareText, Package, Store, Trash2 } from "lucide-react";
 import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StarterPack, type StoreItem } from "../api.ts";
+import { EmptyState, SkeletonRows } from "./kit.tsx";
 
 /** How an interview ended, in words. */
-const VERDICT_WORDS: Record<"offer" | "reject" | "waiting", string> = { offer: "Offer", reject: "No offer", waiting: "Waiting to hear" };
+const VERDICT_WORDS: Record<"offer" | "reject" | "waiting", string> = { offer: "Offer", reject: "Not selected", waiting: "Waiting" };
 
 /**
  * Companies, interview experiences and the coin store (ROADMAP §16), for staff.
@@ -109,8 +110,12 @@ export function Companies({ client, canWrite }: { client: ConsoleClient; canWrit
           </form>
         ) : null}
         {add.isError ? <p className="error">{failure(add.error, "That company could not be added")}</p> : null}
-        {(companies.data ?? []).length === 0 ? (
-          <p className="notice">No companies yet.</p>
+        {companies.isPending ? (
+          <SkeletonRows rows={3} columns={4} />
+        ) : (companies.data ?? []).length === 0 ? (
+          <EmptyState icon={Building2} compact>
+            No companies yet.
+          </EmptyState>
         ) : (
           <table>
             <thead>
@@ -267,8 +272,12 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
       </div>
       <p className="notice">Publishing pays the author 100 coins and reports the problems its rounds name against the company. Anything with names, contact details or leaked papers should not be published.</p>
       {decide.isError ? <p className="error">{failure(decide.error, "That could not be saved")}</p> : null}
-      {(list.data ?? []).length === 0 ? (
-        <p className="notice">Nothing here.</p>
+      {list.isPending ? (
+        <SkeletonRows rows={3} columns={4} />
+      ) : (list.data ?? []).length === 0 ? (
+        <EmptyState icon={MessageSquareText} compact>
+          No interview write-ups here yet. Learners send them from the practice site; they wait here to be read.
+        </EmptyState>
       ) : (
         <ul className="stack experience-queue">
           {(list.data ?? []).map((e) => (
@@ -281,7 +290,7 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
                   {e.rounds.map((r, i) => (
                     <li key={i}>
                       <strong>{r.kind}</strong>: {r.asked}
-                      {r.problemSlugs.length === 0 ? null : <span className="notice"> ({r.problemSlugs.join(", ")})</span>}
+                      {(r.problems ?? []).length === 0 ? null : <span className="notice"> ({r.problems!.map((q) => q.title).join(", ")})</span>}
                     </li>
                   ))}
                 </ol>
@@ -338,8 +347,12 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
           <strong>Coin store</strong>
         </div>
         <p className="notice">What learners may spend coins on. A Plus item gives its days of Plus at once; others you send and mark sent here. Accounts spend from 14 days old.</p>
-        {(items.data ?? []).length === 0 ? (
-          <p className="notice">Nothing for sale yet.</p>
+        {items.isPending ? (
+          <SkeletonRows rows={3} columns={4} />
+        ) : (items.data ?? []).length === 0 ? (
+          <EmptyState icon={Store} compact>
+            Nothing for sale yet.
+          </EmptyState>
         ) : (
           <table>
             <thead>
@@ -420,8 +433,12 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
           <div className="bar">
             <strong>Orders</strong>
           </div>
-          {(orders.data ?? []).length === 0 ? (
-            <p className="notice">No orders yet.</p>
+          {orders.isPending ? (
+            <SkeletonRows rows={3} columns={4} />
+          ) : (orders.data ?? []).length === 0 ? (
+            <EmptyState icon={Package} compact>
+              No orders yet.
+            </EmptyState>
           ) : (
             <table>
               <thead>

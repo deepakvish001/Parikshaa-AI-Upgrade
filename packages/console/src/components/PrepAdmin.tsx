@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, BookOpen, Plus, Route, Trash2 } from "lucide-react";
 import { ConsoleError, type ConsoleClient, type PrepLesson, type PrepTrack } from "../api.ts";
+import { EmptyState, SkeletonRows } from "./kit.tsx";
 
 /**
  * Prep content (ROADMAP §16): the tracks a practice site's learners follow,
@@ -33,23 +34,26 @@ export function Tracks({ client, canWrite }: { client: ConsoleClient; canWrite: 
     <>
       {editing !== null ? (
         <TrackForm client={client} track={editing === "new" ? null : editing} onDone={() => setEditing(null)} problems={problems.data ?? []} lessons={lessons.data ?? []} />
-      ) : canWrite ? (
-        <div className="row">
-          <button type="button" onClick={() => setEditing("new")}>
-            New track
-          </button>
-        </div>
       ) : null}
       <section className="card prep-card" aria-label="Tracks">
         <div className="bar">
           <strong>Tracks</strong>
+          {canWrite && editing === null ? (
+            <button type="button" onClick={() => setEditing("new")}>
+              <Plus aria-hidden="true" /> New track
+            </button>
+          ) : null}
         </div>
         <p className="notice">
           A track is a sheet: modules of lessons and problems, in the order to learn them. Learners plan their days around one, and are paid coins as they finish its
           modules.
         </p>
-        {(tracks.data ?? []).length === 0 ? (
-          <p className="notice">No tracks yet.</p>
+        {tracks.isPending ? (
+          <SkeletonRows rows={3} columns={4} />
+        ) : (tracks.data ?? []).length === 0 ? (
+          <EmptyState icon={Route} compact>
+            No tracks yet.
+          </EmptyState>
         ) : (
           <table>
             <thead>
@@ -74,7 +78,7 @@ export function Tracks({ client, canWrite }: { client: ConsoleClient; canWrite: 
                   <td>{t.published ? <span className="pill ok">Shown</span> : <span className="pill">Hidden</span>}</td>
                   <td>
                     {canWrite ? (
-                      <button type="button" className="secondary" onClick={() => setEditing(t)}>
+                      <button type="button" className="quiet" onClick={() => setEditing(t)}>
                         Edit
                       </button>
                     ) : null}
@@ -260,8 +264,12 @@ export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite:
         <div className="bar">
           <strong>Lessons</strong>
         </div>
-        {(lessons.data ?? []).length === 0 ? (
-          <p className="notice">No lessons yet. A lesson is Markdown, with a link to a video if it has one.</p>
+        {lessons.isPending ? (
+          <SkeletonRows rows={3} columns={4} />
+        ) : (lessons.data ?? []).length === 0 ? (
+          <EmptyState icon={BookOpen} compact>
+            No lessons yet. A lesson is Markdown, with a link to a video if it has one.
+          </EmptyState>
         ) : (
           <table>
             <thead>
@@ -286,7 +294,7 @@ export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite:
                   <td>{l.published ? <span className="pill ok">Shown</span> : <span className="pill">Hidden</span>}</td>
                   <td>
                     {canWrite ? (
-                      <button type="button" className="secondary" onClick={() => setEditing(l)}>
+                      <button type="button" className="quiet" onClick={() => setEditing(l)}>
                         Edit
                       </button>
                     ) : null}

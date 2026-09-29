@@ -260,6 +260,109 @@ test("a practice site: problems, the workspace, a contest, progress and the cons
   await shoot(page, "practice-11-phone-scoreboard");
   await page.setViewportSize({ width: 1440, height: 900 });
 
+  // --- prep: tracks, lessons, a plan, the problem of the day, companies, the store, Plus ---------
+  const ok = async (res: Promise<import("@playwright/test").APIResponse>, status = 200) => {
+    const r = await res;
+    expect(r.status(), await r.text()).toBe(status);
+    return r.json();
+  };
+  const learnerHeaders = { authorization: `Bearer ${asha}` };
+  const today = new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10);
+  const pack = await request.post("/api/practice-admin/starter-packs/cs-fundamentals", { headers: staff });
+  expect([200, 201], await pack.text()).toContain(pack.status());
+  const lesson = async (title: string, body: string, estMinutes: number) =>
+    (await ok(request.post("/api/practice-admin/lessons", { headers: staff, data: { title, body, estMinutes, published: true } }), 201)) as { id: string; slug: string };
+  const arrays = await lesson(
+    "Arrays and two pointers",
+    "An array keeps its items side by side, so reading any one of them costs the same.\n\n## Two pointers\n\nWalk from both ends towards the middle. Each step rules out one item for good, so the walk is linear.\n\n```python\nlo, hi = 0, len(a) - 1\nwhile lo < hi:\n    ...\n```",
+    20,
+  );
+  const sorting = await lesson("Stable sorting", "A sort is **stable** when equal keys keep their order. Merge sort is; heap sort is not.", 15);
+  const dsa = (await ok(
+    request.post("/api/practice-admin/tracks", {
+      headers: staff,
+      data: {
+        title: "DSA for placements",
+        description: "Arrays, sorting and searching: the rounds most campus drives open with.",
+        published: true,
+        modules: [
+          { title: "Arrays", items: [{ lessonId: arrays.id }, { problemId: published["twoSum"]!.id }, { problemId: published["runs"]!.id }] },
+          { title: "Sorting", items: [{ lessonId: sorting.id }, { problemId: published["stable"]!.id }, { problemId: published["merge"]!.id }] },
+        ],
+      },
+    }),
+    201,
+  )) as { slug: string };
+  await ok(request.put(`/api/practice-admin/potd/${today}`, { headers: staff, data: { problemId: published["merge"]!.id } }));
+  const company = async (name: string, about: string, problems: string[]) => {
+    const made = (await ok(request.post("/api/practice-admin/companies", { headers: staff, data: { name, about } }), 201)) as { id: string; slug: string };
+    await ok(request.post(`/api/practice-admin/companies/${made.id}/reports`, { headers: staff, data: { problemIds: problems.map((k) => published[k]!.id), reportedOn: today } }), 201).catch(() => undefined);
+    return made;
+  };
+  const infosys = await company("Infosys", "Online test, then two technical rounds and HR.", ["twoSum", "speed", "stable"]);
+  await company("TCS", "NQT, then a technical and a managerial round.", ["speed", "merge"]);
+  const story = (await ok(
+    request.post(`/api/practice/${SITE}/experiences`, {
+      headers: learnerHeaders,
+      data: {
+        company: infosys.slug,
+        role: "Systems Engineer",
+        interviewed: today.slice(0, 7),
+        verdict: "offer",
+        rounds: [
+          { kind: "Online test", asked: "Aptitude and two coding questions.", problemSlugs: [published["twoSum"]!.slug] },
+          { kind: "Technical", asked: "Sorting, and why merge sort is stable.", problemSlugs: [published["stable"]!.slug] },
+        ],
+        tips: "Say the brute force first, then improve it out loud.",
+      },
+    }),
+    201,
+  )) as { id: string };
+  await ok(request.post(`/api/practice-admin/experiences/${story.id}/decision`, { headers: staff, data: { status: "published" } }));
+  await ok(request.put("/api/practice-admin/plus", { headers: staff, data: { plusEnabled: true, tutorEnabled: true, freeModules: 1, monthlyCredits: 20 } }));
+  await ok(request.post("/api/practice-admin/plus/products", { headers: staff, data: { title: "Plus · 3 months", kind: "plus", days: 90, pricePaise: 49_900 } }), 201);
+  await ok(request.post("/api/practice-admin/store/items", { headers: staff, data: { title: "Plus for a week", description: "Every track and the tutor, for seven days.", kind: "plus", plusDays: 7, priceCoins: 60 } }), 201);
+  await ok(request.post("/api/practice-admin/store/items", { headers: staff, data: { title: "Arena T-shirt", description: "Delivered on campus.", kind: "physical", priceCoins: 500, stock: 40 } }), 201);
+  await ok(request.post(`/api/practice/${SITE}/lessons/${arrays.slug}/done`, { headers: learnerHeaders }));
+  const me = (await ok(request.get(`/api/practice/${SITE}/me`, { headers: learnerHeaders }))) as { learner?: { id: string }; id?: string };
+  await ok(request.post(`/api/practice-admin/learners/${me.learner?.id ?? me.id}/plus`, { headers: staff, data: { days: 30 } }));
+  await ok(request.post(`/api/practice/${SITE}/plan`, {
+    headers: learnerHeaders,
+    data: { track: dsa.slug, level: "intermediate", deadline: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10), dailyMinutes: 60, offDays: [0], goal: "Infosys, SDE" },
+  }), 201);
+  await ok(request.put(`/api/practice/${SITE}/notes/problem/${published["twoSum"]!.slug}`, { headers: learnerHeaders, data: { body: "Keep a map from value to index; look up target − x before adding x." } }));
+  await ok(request.put(`/api/practice/${SITE}/lists/Infosys%20prep/${published["twoSum"]!.slug}`, { headers: learnerHeaders }));
+  await ok(request.put(`/api/practice/${SITE}/lists/Infosys%20prep/${published["speed"]!.slug}`, { headers: learnerHeaders }));
+
+  const prep = async (path: string, name: string, fullPage = false) => {
+    await page.goto(`/practice/${SITE}${path}`);
+    await expect(page.locator(".practice-main h1").first()).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(300);
+    await shoot(page, name, { fullPage });
+  };
+  await prep("/home", "prep-01-home", true);
+  await prep("/tracks", "prep-02-tracks");
+  await prep(`/tracks/${dsa.slug}`, "prep-03-track", true);
+  await prep(`/lessons/${arrays.slug}`, "prep-04-lesson");
+  await prep("/plan", "prep-05-plan", true);
+  await prep("/revise", "prep-06-revise");
+  await prep("/lists", "prep-07-lists");
+  await prep("/notes", "prep-08-notes");
+  await prep("/potd", "prep-09-problem-of-the-day");
+  await prep("/companies", "prep-10-companies");
+  await prep(`/companies/${infosys.slug}`, "prep-11-company", true);
+  await prep("/experiences", "prep-12-experiences", true);
+  await prep("/store", "prep-13-store");
+  await prep("/coins", "prep-14-coins");
+  await prep("/plus", "prep-15-plus");
+  await prep("/rating", "prep-16-rating");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prep("/home", "prep-17-phone-home", true);
+  await prep("/plan", "prep-18-phone-plan", true);
+  await prep(`/tracks/${dsa.slug}`, "prep-19-phone-track", true);
+  await page.setViewportSize({ width: 1440, height: 900 });
+
   // --- a visitor: signing up -------------------------------------------------------------------
   await page.evaluate((key) => localStorage.removeItem(key), `parikshaa.practice.${SITE}.session`);
   await page.addInitScript((key) => localStorage.removeItem(key), `parikshaa.practice.${SITE}.session`);
@@ -284,4 +387,19 @@ test("a practice site: problems, the workspace, a contest, progress and the cons
   await page.getByRole("tab", { name: "Discussion" }).click();
   await expect(page.getByRole("region", { name: "Discussion" })).toContainText("Is it fine to sort");
   await shoot(page, "console-26-practice-discussion", { fullPage: false });
+  // Prep, as the institution runs it.
+  for (const [tab, name] of [
+    ["Tracks", "console-35-prep-tracks"],
+    ["Lessons", "console-36-prep-lessons"],
+    ["Problem of the day", "console-37-prep-problem-of-the-day"],
+    ["Plus", "console-38-prep-plus"],
+    ["Companies", "console-39-prep-companies"],
+    ["Experiences", "console-40-prep-experiences"],
+    ["Coin store", "console-41-prep-coin-store"],
+  ] as const) {
+    await page.getByRole("tab", { name: tab, exact: true }).click();
+    await page.waitForLoadState("networkidle");
+    await page.waitForTimeout(300);
+    await shoot(page, name);
+  }
 });

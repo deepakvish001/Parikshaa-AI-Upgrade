@@ -1556,7 +1556,7 @@ export interface StaffExperience {
   readonly role: string;
   readonly interviewed: string;
   readonly verdict: "offer" | "reject" | "waiting";
-  readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[] }[];
+  readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[]; readonly problems?: readonly { readonly slug: string; readonly title: string }[] }[];
   readonly tips: string;
   readonly author: string;
   readonly status: "pending" | "published" | "rejected";

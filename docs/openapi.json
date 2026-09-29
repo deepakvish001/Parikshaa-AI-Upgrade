@@ -45167,12 +45167,34 @@
                                   "items": {
                                     "type": "string"
                                   }
+                                },
+                                "problems": {
+                                  "readOnly": true,
+                                  "description": "The round's problems still on the site, by title.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "slug": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "slug",
+                                      "title"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "required": [
                                 "kind",
                                 "asked",
-                                "problemSlugs"
+                                "problemSlugs",
+                                "problems"
                               ],
                               "additionalProperties": false
                             }
@@ -45522,12 +45544,34 @@
                                   "items": {
                                     "type": "string"
                                   }
+                                },
+                                "problems": {
+                                  "readOnly": true,
+                                  "description": "The round's problems still on the site, by title.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "slug": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "slug",
+                                      "title"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "required": [
                                 "kind",
                                 "asked",
-                                "problemSlugs"
+                                "problemSlugs",
+                                "problems"
                               ],
                               "additionalProperties": false
                             }
@@ -45942,12 +45986,34 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "problems": {
+                            "readOnly": true,
+                            "description": "The round's problems still on the site, by title.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "slug": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "slug",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            }
                           }
                         },
                         "required": [
                           "kind",
                           "asked",
-                          "problemSlugs"
+                          "problemSlugs",
+                          "problems"
                         ],
                         "additionalProperties": false
                       }
@@ -49024,12 +49090,34 @@
                                   "items": {
                                     "type": "string"
                                   }
+                                },
+                                "problems": {
+                                  "readOnly": true,
+                                  "description": "The round's problems still on the site, by title.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "slug": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "slug",
+                                      "title"
+                                    ],
+                                    "additionalProperties": false
+                                  }
                                 }
                               },
                               "required": [
                                 "kind",
                                 "asked",
-                                "problemSlugs"
+                                "problemSlugs",
+                                "problems"
                               ],
                               "additionalProperties": false
                             }

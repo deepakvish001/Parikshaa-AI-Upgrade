@@ -148,13 +148,13 @@ export function HomePage({ client, nav, learner, site }: Signed) {
               </Link>
             ) : null}
           </section>
-          <section className="card figures-row" aria-label={p("home.focus")}>
+          <section className="card prep-figures" aria-label={p("home.focus")}>
             <div>
-              <span className="figure">{h.focusMinutesToday}</span>
+              <span className="prep-figure">{h.focusMinutesToday}</span>
               <span className="notice">{p("home.focus")} (min)</span>
             </div>
             <div>
-              <span className="figure">{h.solved}</span>
+              <span className="prep-figure">{h.solved}</span>
               <span className="notice">{p("home.solved")}</span>
             </div>
           </section>
@@ -237,7 +237,7 @@ function TaskList({
             ) : (
               <span className="task-open" aria-hidden="true" />
             )}
-            <span className={`task-kind ${t.kind}`}>{p(`plan.kind.${t.kind}` as PrepKey)}</span>
+            <span className={`task-kind kind-${t.kind}`}>{p(`plan.kind.${t.kind}` as PrepKey)}</span>
             <span className="task-title">
               {t.link === null ? (
                 <label htmlFor={manual ? `task-${t.id}` : undefined}>{t.title}</label>
@@ -354,7 +354,7 @@ export function TrackPage({ client, nav, learner, site, slug }: Context & { read
                     ) : (
                       <span className="task-open" aria-hidden="true" />
                     )}
-                    <span className={`task-kind ${item.kind === "lesson" ? "learn" : "practice"}`}>{p(item.kind === "lesson" ? "track.lesson" : "track.problem")}</span>
+                    <span className={`task-kind ${item.kind === "lesson" ? "kind-learn" : "kind-practice"}`}>{p(item.kind === "lesson" ? "track.lesson" : "track.problem")}</span>
                     <Link nav={nav} to={item.kind === "lesson" ? `/lessons/${item.slug}` : `/problems/${item.slug}`}>
                       {item.title}
                     </Link>
@@ -520,7 +520,7 @@ export function NotesPage({ client, nav, learner, site }: Signed) {
             <li key={`${n.kind}-${n.ref}`} className="card">
               <div className="card-head">
                 <h2>
-                  <span className="task-kind learn">{p(`notes.kind.${n.kind}` as PrepKey)}</span>{" "}
+                  <span className="task-kind kind-learn">{p(`notes.kind.${n.kind}` as PrepKey)}</span>{" "}
                   {n.kind === "topic" ? (
                     <button type="button" className="link-button" onClick={() => setEditing(n.title)}>
                       {n.title}
@@ -1127,7 +1127,8 @@ export function PotdPage({ client, nav, learner, site }: Context) {
             </section>
           )}
           <h2>{p("potd.past")}</h2>
-          <ul className="item-list card">
+          <section className="card">
+          <ul className="item-list">
             {potd.data.calendar.map((d) => (
               <li key={d.day} className={d.solved ? "done" : ""}>
                 {d.solved ? <CircleCheck className="task-done" aria-label={p("home.solvedIt")} /> : <span className="task-open" aria-hidden="true" />}
@@ -1139,6 +1140,7 @@ export function PotdPage({ client, nav, learner, site }: Context) {
               </li>
             ))}
           </ul>
+          </section>
         </>
       )}
     </div>
@@ -1313,6 +1315,7 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
           </section>
           <section className="card" aria-labelledby="orders-title">
             <h2 id="orders-title">{p("plus.orders")}</h2>
+            {(orders.data ?? []).every((x) => x.status !== "paid") ? <p className="notice">{p("plus.noOrders")}</p> : null}
             <ul className="coin-history">
               {(orders.data ?? [])
                 .filter((x) => x.status === "paid")

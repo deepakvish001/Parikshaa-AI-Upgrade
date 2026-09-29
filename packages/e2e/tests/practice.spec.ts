@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { ownerToken } from "./support.js";
+import { OWNER, ownerToken } from "./support.js";
 
 /**
  * ROADMAP §15, in a real browser: an institution opens a practice site and
@@ -169,3 +169,60 @@ test.describe("in the dark theme", () => {
     expect(await violations(page)).toEqual([]);
   });
 });
+
+for (const scheme of ["light", "dark"] as const) {
+  test.describe(`Prep, in the ${scheme} theme`, () => {
+    test.use({ colorScheme: scheme });
+
+    test("a learner's home, tracks, a lesson, a plan, companies, the store and coins pass WCAG 2.1 AA", async ({ page, request }) => {
+      const { token } = await seedPractice(request);
+      const staff = { authorization: `Bearer ${token}` };
+      const unique = Math.random().toString(36).slice(2, 8);
+      const lesson = await request.post("/api/practice-admin/lessons", { headers: staff, data: { title: `Two pointers ${unique}`, body: "Walk in from both ends.", estMinutes: 10, published: true } });
+      expect(lesson.status(), await lesson.text()).toBe(201);
+      const { id: lessonId, slug: lessonSlug } = await lesson.json();
+      const track = await request.post("/api/practice-admin/tracks", { headers: staff, data: { title: `Arrays ${unique}`, description: "Arrays first.", published: true, modules: [{ title: "Basics", items: [{ lessonId }] }] } });
+      expect(track.status(), await track.text()).toBe(201);
+      const trackSlug = (await track.json()).slug as string;
+      const company = await request.post("/api/practice-admin/companies", { headers: staff, data: { name: `Acme ${unique}` } });
+      expect(company.status(), await company.text()).toBe(201);
+
+      const signedUp = await request.post(`/api/practice/${SITE}/signup`, { data: { name: "Asha", email: `asha.${unique}@learners.e2e.test`, password: "a long enough password" } });
+      expect(signedUp.status(), await signedUp.text()).toBe(201);
+      const learner = (await signedUp.json()).token as string;
+      const plan = await request.post(`/api/practice/${SITE}/plan`, {
+        headers: { authorization: `Bearer ${learner}` },
+        data: { track: trackSlug, level: "beginner", deadline: new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10), dailyMinutes: 30, offDays: [] },
+      });
+      expect(plan.status(), await plan.text()).toBe(201);
+      await page.addInitScript(([key, value]) => localStorage.setItem(key!, value!), [`parikshaa.practice.${SITE}.session`, learner]);
+
+      for (const path of ["/home", "/tracks", `/tracks/${trackSlug}`, `/lessons/${lessonSlug}`, "/plan", "/companies", "/store", "/coins"]) {
+        await page.goto(`/practice/${SITE}${path}`);
+        await expect(page.locator(".practice-main h1").first()).toBeVisible();
+        await page.waitForLoadState("networkidle");
+        expect(await violations(page), path).toEqual([]);
+      }
+    });
+  });
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  test.describe(`The console's practice admin, in the ${scheme} theme`, () => {
+    test.use({ colorScheme: scheme });
+
+    test("every tab passes WCAG 2.1 AA", async ({ page, request }) => {
+      await seedPractice(request);
+      await page.goto("/console/");
+      await page.getByLabel("Email").fill(OWNER.email);
+      await page.getByLabel("Password", { exact: true }).fill(OWNER.password);
+      await page.getByRole("button", { name: "Sign in", exact: true }).click();
+      await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Practice", exact: true }).click();
+      for (const tab of ["Site", "Problems", "Tracks", "Lessons", "Problem of the day", "Plus", "Companies", "Experiences", "Coin store", "Contests", "Learners", "Discussion"]) {
+        await page.getByRole("tab", { name: tab, exact: true }).click();
+        await page.waitForLoadState("networkidle");
+        expect(await violations(page), tab).toEqual([]);
+      }
+    });
+  });
+}

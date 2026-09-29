@@ -1393,7 +1393,12 @@ article.report.scorecard {
   display: flex;
   gap: var(--space-1);
   margin-bottom: var(--space-4);
+  overflow-x: auto;
+  scrollbar-width: none;
   border-bottom: 1px solid var(--border);
+}
+.tabs .tab {
+  flex: none;
 }
 .tabs .tab {
   min-height: 2.25rem;
@@ -1446,9 +1451,13 @@ article.report.scorecard {
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border);
 }
+/* Hidden from learners: the pill says so, and a rule marks it; the words stay readable for the moderator. */
+.comment-list li.hidden-comment {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--warning);
+}
 .comment-list li.hidden-comment .comment-body {
-  color: var(--text-subtle);
-  text-decoration: line-through;
+  color: var(--text-secondary);
 }
 .comment-head {
   display: flex;

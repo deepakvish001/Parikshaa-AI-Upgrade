@@ -747,6 +747,8 @@ export interface InterviewRound {
   readonly kind: string;
   readonly asked: string;
   readonly problemSlugs: readonly string[];
+  /** The round's problems still on the site, by title: as the site sends them back. */
+  readonly problems?: readonly { readonly slug: string; readonly title: string }[];
 }
 
 export interface InterviewExperience {
