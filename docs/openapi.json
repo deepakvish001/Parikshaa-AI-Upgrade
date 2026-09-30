@@ -54147,7 +54147,7 @@
         "tags": [
           "Invitations"
         ],
-        "description": "Columns: ref (or roll_number, candidate_id, application_id), name, email, phone, and optionally opens_at and closes_at for a narrower window per candidate. Times without an offset are India Standard Time; phones are Indian mobiles. With dryRun, everything is checked and nothing changes. Otherwise it is all or nothing, and each candidate's invitation and reminder are queued for delivery.",
+        "description": "Columns: ref (or roll_number, candidate_id, application_id), name, email, phone, and optionally opens_at and closes_at for a narrower window per candidate. Times without an offset are India Standard Time; phones are Indian mobiles. With dryRun, everything is checked and nothing changes. Otherwise it is all or nothing, and each candidate's invitation is queued for delivery with two reminders: a day before their window opens, and an hour before.",
         "requestBody": {
           "required": true,
           "content": {

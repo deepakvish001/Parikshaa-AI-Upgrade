@@ -65,13 +65,15 @@ function cellsOf(line: string): string[] {
 }
 
 const DELIVERY_WORDS: Record<string, string> = { sent: "sent", failed: "failed", skipped: "not sent", pending: "waiting", sending: "sending" };
+/** Which message the icon is about: the invitation itself, or one of its reminders. */
+const PURPOSE_WORDS: Record<string, string> = { invite: "", reminder: "reminder ", reminder_day: "reminder " };
 
 /** Email and SMS as two small icons, each coloured by how its delivery went; what went wrong is in a tooltip. */
 function DeliveryIcons({ row }: { row: InvitationRow }) {
   const icon = (channel: Channel, d: Delivery) => {
     const Icon = channel === "email" ? Mail : MessageSquare;
     const tone = d.status === "sent" ? "ok" : d.status === "failed" || d.status === "skipped" ? "bad" : "pending";
-    const words = `${channel === "email" ? "Email" : "SMS"} ${DELIVERY_WORDS[d.status] ?? d.status}`;
+    const words = `${channel === "email" ? "Email" : "SMS"} ${PURPOSE_WORDS[d.purpose] ?? ""}${DELIVERY_WORDS[d.status] ?? d.status}`;
     const mark = (
       <span className={`delivery-icon ${tone}`} role="img" aria-label={d.error === null ? words : `${words}: ${d.error}`} tabIndex={d.error === null ? undefined : 0}>
         <Icon aria-hidden="true" />
@@ -317,7 +319,8 @@ function Importer({
       <p className="notice">
         One candidate per row: <span className="mono">roll_number</span> (or ref), <span className="mono">name</span>, <span className="mono">email</span>,{" "}
         <span className="mono">phone</span>, and optionally <span className="mono">opens_at</span> / <span className="mono">closes_at</span> for a narrower window,
-        read as IST. Nothing is sent until you confirm.
+        read as IST. Nothing is sent until you confirm. Each candidate then gets their link at once, a reminder the day before their window opens,
+        and another an hour before; a candidate who has already begun is not reminded.
         {hasWindow ? null : " Schedule the exam first, or give every candidate their own window."}
       </p>
       <DropZone

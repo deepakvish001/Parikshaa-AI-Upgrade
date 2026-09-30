@@ -127,7 +127,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         tags: INVITE,
         summary: "Invite candidates from a CSV file",
         description:
-          "Columns: ref (or roll_number, candidate_id, application_id), name, email, phone, and optionally opens_at and closes_at for a narrower window per candidate. Times without an offset are India Standard Time; phones are Indian mobiles. With dryRun, everything is checked and nothing changes. Otherwise it is all or nothing, and each candidate's invitation and reminder are queued for delivery.",
+          "Columns: ref (or roll_number, candidate_id, application_id), name, email, phone, and optionally opens_at and closes_at for a narrower window per candidate. Times without an offset are India Standard Time; phones are Indian mobiles. With dryRun, everything is checked and nothing changes. Otherwise it is all or nothing, and each candidate's invitation is queued for delivery with two reminders: a day before their window opens, and an hour before.",
         security: SECURED,
         params: S.examParams,
         body: z.object({

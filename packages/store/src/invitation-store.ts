@@ -100,6 +100,16 @@ const COLUMNS = `org_id, id, exam_id, candidate_ref, name, email, phone, opens_a
                  attempt_id, source, created_at, revoked_at`;
 
 /** Insert outbox rows inside a caller's transaction. */
+/**
+ * Which message about an invitation the console shows: the latest one that has
+ * fallen due, or, before any has, the next to go. Not the latest written — an
+ * invitation and its reminders are written together, and a reminder queued for
+ * tomorrow says nothing about whether the invitation went out today.
+ */
+const LATEST_DUE = `send_after > $3::timestamptz, CASE WHEN send_after <= $3::timestamptz THEN send_after END DESC NULLS LAST, send_after`;
+/** A reminder skipped because the candidate had already begun was not needed; it is not a failure to show. */
+const NEEDED = `NOT (purpose IN ('reminder', 'reminder_day') AND status = 'skipped')`;
+
 export class InvitationStore {
   readonly #sql: SqlExecutor;
   readonly #newId: () => string;
@@ -202,7 +212,8 @@ export class InvitationStore {
     });
   }
 
-  async list(scope: Scope, examId: string): Promise<readonly InvitationStatus[]> {
+  /** Every invitation to an exam, where its attempt stands, and its latest message due by `now`. */
+  async list(scope: Scope, examId: string, now: Date = new Date()): Promise<readonly InvitationStatus[]> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<
         Row & { lifecycle: string | null; email_delivery: DeliveryRow | null; sms_delivery: DeliveryRow | null }
@@ -212,14 +223,16 @@ export class InvitationStore {
                 ${lifecycleSql("i.org_id", "i.attempt_id")} AS lifecycle,
                 (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
                    FROM outbox WHERE org_id = i.org_id AND kind = 'email' AND subject ->> 'invitationId' = i.id
-                   ORDER BY created_at DESC LIMIT 1) o) AS email_delivery,
+                    AND ${NEEDED}
+                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS email_delivery,
                 (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
                    FROM outbox WHERE org_id = i.org_id AND kind = 'sms' AND subject ->> 'invitationId' = i.id
-                   ORDER BY created_at DESC LIMIT 1) o) AS sms_delivery
+                    AND ${NEEDED}
+                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS sms_delivery
            FROM invitations i
           WHERE i.org_id = $1 AND i.exam_id = $2
           ORDER BY i.created_at, i.candidate_ref`,
-        [scope.orgId, examId],
+        [scope.orgId, examId, now.toISOString()],
       );
       return rows.map((row) => ({
         ...toInvitation(row),

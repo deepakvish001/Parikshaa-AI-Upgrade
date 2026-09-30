@@ -149,7 +149,9 @@ it.
 
 - [ ] The exam's window is set, and candidates are invited — the exam's
       Candidates tab shows, for each, whether the email was sent or failed.
-      **Download links** there too, as a fallback to hand out.
+      **Download links** there too, as a fallback to hand out. Invite at
+      least a day ahead: each candidate is reminded the day before and an
+      hour before the window opens.
 - [ ] Credits cover the batch: Home warns at five left. `billing show` to be sure.
 - [ ] The model provider's rate limit covers the batch's follow-ups and
       grading (see *Sizing* in `OPERATIONS.md`).

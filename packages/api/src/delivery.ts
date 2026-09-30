@@ -1,5 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
-import { examId, orgId as toOrgId } from "@parikshaa/core";
+import { examId, orgId as toOrgId, type Exam, type ProctoringPolicy } from "@parikshaa/core";
 import {
   staffScope,
   type IdentityStore,
@@ -204,7 +204,12 @@ export class DeliveryWorker {
     if (Date.parse(invitation.closesAt) <= this.#now() && invitation.attemptId === null) {
       return { skip: "The window has closed" };
     }
-    if (item.purpose === "reminder" && invitation.attemptId !== null) return { skip: "Already started" };
+    const reminder = item.purpose === "reminder" || item.purpose === "reminder_day";
+    if (reminder && invitation.attemptId !== null) return { skip: "Already started" };
+    // Held up past its moment (the worker was down), the day's reminder gives way to the hour's.
+    if (item.purpose === "reminder_day" && Date.parse(invitation.opensAt) - this.#now() < 2 * 3_600_000) {
+      return { skip: "The later reminder covers it" };
+    }
 
     const [exam, org] = await Promise.all([
       this.#o.store.loadExam(scope, examId(invitation.examId)),
@@ -217,7 +222,7 @@ export class DeliveryWorker {
     if (item.kind === "email") {
       if (this.#o.mailer === null) return { skip: "Email is not configured" };
       if (invitation.email === null) return { skip: "No email address" };
-      await this.#o.mailer.send(this.#email(invitation, title, institution, link, item.purpose));
+      await this.#o.mailer.send(this.#email(invitation, { title, institution, link, purpose: item.purpose, exam }));
     } else {
       if (this.#o.sms === null) return { skip: "SMS is not configured" };
       if (invitation.phone === null) return { skip: "No phone number" };
@@ -227,43 +232,89 @@ export class DeliveryWorker {
   }
 
   /**
-   * The invitation email. Plain about what the test does and does not do,
-   * because a candidate who expects to be watched arrives anxious, and the
-   * follow-up question should not come as a surprise.
+   * The invitation email, and the reminders. Plain about what the test does
+   * and does not do, because a candidate who expects to be watched arrives
+   * anxious, and the follow-up question should not come as a surprise. What
+   * it says about the camera is what this exam does: a proctored exam's
+   * candidates are told, before the day, to have their camera and ID ready.
    */
-  #email(invitation: Invitation, title: string, institution: string, link: string, purpose: string): EmailMessage {
+  #email(
+    invitation: Invitation,
+    about: { readonly title: string; readonly institution: string; readonly link: string; readonly purpose: string; readonly exam: Exam | null },
+  ): EmailMessage {
+    const { title, institution, link, purpose, exam } = about;
     const greeting = invitation.name.trim() === "" ? "Hello," : `Hello ${invitation.name},`;
-    const lead =
-      purpose === "reminder"
-        ? `A reminder: your ${title} test with ${institution} opens soon.`
-        : `${institution} has invited you to take the ${title} test.`;
+    const opens = ist(invitation.opensAt);
+    const untilOpen = Date.parse(invitation.opensAt) - this.#now();
+    const reminder = purpose === "reminder" || purpose === "reminder_day";
+    const lead = !reminder
+      ? `${institution} has invited you to take the ${title} test.`
+      : untilOpen <= 0
+        ? `A reminder: your ${title} test with ${institution} is open now.`
+        : untilOpen <= 90 * 60_000
+          ? `A reminder: your ${title} test with ${institution} opens in ${Math.max(1, Math.round(untilOpen / 60_000))} minutes.`
+          : `A reminder: your ${title} test with ${institution} opens ${opens}.`;
+
+    const proctoring = exam?.policy.proctoring;
+    const camera = proctoring !== undefined && (proctoring.identity || proctoring.snapshotEverySeconds !== null);
+    const minutes = exam === null ? null : Math.round(exam.policy.durationMs / 60_000);
+    const what = [
+      ...(minutes === null ? [] : [`Once you begin, you have ${minutes} minutes.`]),
+      "You can open the link on any device, and reopen it if your connection drops; your answers are kept as you type.",
+      camera ? cameraWords(proctoring!) : "The test uses no webcam, no screen capture and no keystroke monitoring.",
+      ...(proctoring?.browserEvents === true ? ["It notes if you leave the test's tab or full screen, or copy or paste, for your institution to see."] : []),
+      "You may be asked a short follow-up question about one or two of your own answers.",
+    ];
+    const ready = reminder
+      ? [
+          `Before it opens: charge your phone or laptop, find a quiet place with a steady connection${camera && proctoring!.identity ? ", keep your photo ID to hand" : ""}, and keep this email where you can find it.`,
+        ]
+      : [];
+
     const lines = [
       greeting,
       "",
       lead,
       "",
-      `Opens:  ${ist(invitation.opensAt)}`,
+      `Opens:  ${opens}`,
       `Closes: ${ist(invitation.closesAt)}`,
       "",
       "Your personal link (do not share it — it is yours alone):",
       link,
       "",
-      "You can open the link on any device, and reopen it if your connection drops; your answers are kept as you type.",
-      "The test uses no webcam, no screen capture and no keystroke monitoring. You may be asked a short follow-up question about one or two of your own answers.",
+      ...ready,
+      ...(ready.length > 0 ? [""] : []),
+      ...what,
       "",
       `— ${institution}, via Parikshaa`,
     ];
     const html = `<p>${escape(greeting)}</p><p>${escape(lead)}</p>
-<p><strong>Opens:</strong> ${escape(ist(invitation.opensAt))}<br><strong>Closes:</strong> ${escape(ist(invitation.closesAt))}</p>
+<p><strong>Opens:</strong> ${escape(opens)}<br><strong>Closes:</strong> ${escape(ist(invitation.closesAt))}</p>
 <p><a href="${escape(link)}">Open your test</a> — this link is yours alone; please do not share it.</p>
-<p>You can open the link on any device, and reopen it if your connection drops; your answers are kept as you type.</p>
-<p>The test uses no webcam, no screen capture and no keystroke monitoring. You may be asked a short follow-up question about one or two of your own answers.</p>
+${ready.map((line) => `<p>${escape(line)}</p>`).join("\n")}
+${what.map((line) => `<p>${escape(line)}</p>`).join("\n")}
 <p>— ${escape(institution)}, via Parikshaa</p>`;
     return {
       to: invitation.email!,
-      subject: purpose === "reminder" ? `Reminder: ${title} opens ${ist(invitation.opensAt)}` : `Your ${title} test — ${institution}`,
+      subject: !reminder
+        ? `Your ${title} test — ${institution}`
+        : untilOpen <= 0
+          ? `Reminder: ${title} is open now`
+          : `Reminder: ${title} opens ${opens}`,
       text: lines.join("\n"),
       html,
     };
   }
 }
+
+/** What a proctored exam's camera does, in a candidate's terms. */
+function cameraWords(policy: ProctoringPolicy): string {
+  const uses = [
+    ...(policy.identity ? ["a photo of you and of your photo ID before you begin"] : []),
+    ...(policy.snapshotEverySeconds !== null ? [`a photo from your camera every ${everyWords(policy.snapshotEverySeconds)} while you work`] : []),
+  ];
+  return `This test uses your camera: ${uses.join(", and ")}. Allow the camera when your browser asks. It uses no screen capture and no keystroke monitoring.`;
+}
+
+const everyWords = (seconds: number) =>
+  seconds % 60 === 0 ? (seconds === 60 ? "minute" : `${seconds / 60} minutes`) : `${seconds} seconds`;

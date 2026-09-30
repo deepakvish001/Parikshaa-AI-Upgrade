@@ -1446,6 +1446,21 @@ describe("scheduling and inviting a cohort", () => {
     expect(sms).toHaveAttribute("tabindex", "0");
   });
 
+  it("says when what went out last was a reminder", async () => {
+    const client = stubClient();
+    const [invited] = await client.listInvitations("algorithms");
+    client.listInvitations = vi.fn(async () => [
+      { ...invited!, delivery: { email: { status: "sent", purpose: "reminder_day", at: "2026-09-30T04:30:00.000Z", error: null }, sms: null } },
+    ]);
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Candidates" }));
+    const table = await screen.findByRole("region", { name: "Invited candidates" });
+    const row = (await within(table).findByText("CS001")).closest("tr")!;
+    expect(within(row).getByRole("img", { name: "Email reminder sent" })).toBeInTheDocument();
+    expect(screen.getByText(/a reminder the day before their window opens,\s+and another an hour before/)).toBeInTheDocument();
+  });
+
   it("resends and revokes a candidate who has not started", async () => {
     const client = await open();
     const table = await screen.findByRole("region", { name: "Invited candidates" });

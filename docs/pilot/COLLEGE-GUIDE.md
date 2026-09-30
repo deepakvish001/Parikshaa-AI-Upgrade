@@ -48,8 +48,10 @@ On the exam's **Candidates** tab:
    name and email (and phone, for SMS). **Download a sample sheet** shows the
    columns. Check the preview, then invite.
 
-Each student gets their own link by email. The same tab shows whether each
-email went; **Download links** gives you every link to share another way.
+Each student gets their own link by email (and SMS, if you choose it), then a
+reminder the day before and another an hour before the test opens. The same
+tab shows whether each message went; **Download links** gives you every link
+to share another way.
 
 Add colleagues from **Staff** (after confirming your email): authors write
 tests, invigilators watch sittings, reviewers read results.
