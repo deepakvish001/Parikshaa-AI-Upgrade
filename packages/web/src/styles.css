@@ -3864,6 +3864,79 @@ button.tools-grid-item svg {
 .finished-actions {
   margin-top: var(--space-3);
 }
+
+/* How the test went: after the paper, optional, and never on the printout. */
+.feedback {
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-4);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.feedback h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md);
+}
+.feedback .notice {
+  margin: 0 0 var(--space-3);
+}
+.feedback-rating {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+}
+.feedback-options {
+  display: flex;
+  gap: var(--space-2);
+}
+.feedback-options label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.feedback-options input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.feedback-options label:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.feedback-options label.chosen {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.feedback-scale {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.feedback textarea {
+  width: 100%;
+  margin: var(--space-1) 0 var(--space-3);
+}
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.feedback-thanks {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}
 @media (max-width: 40rem) {
   .finished-figures {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4276,6 +4349,8 @@ button.paper-row.current {
   .topbar,
   .prefs,
   .finished-actions,
+  .feedback,
+  .feedback-thanks,
   .receipt .row button,
   .gate-foot {
     display: none !important;

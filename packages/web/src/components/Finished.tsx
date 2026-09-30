@@ -1,6 +1,7 @@
 import { CircleCheck, Printer } from "lucide-react";
 import type { CandidateLedger } from "../api.ts";
 import { usePreferences } from "../i18n.tsx";
+import { Feedback, type FeedbackClient } from "./Feedback.tsx";
 
 /** When the attempt was submitted, from the record itself: the last submission's entry. */
 export function submittedAt(ledger: CandidateLedger | undefined): number | null {
@@ -24,6 +25,7 @@ export function Finished({
   total,
   answered,
   marked,
+  feedback,
 }: {
   readonly title: string;
   readonly graded: boolean;
@@ -31,6 +33,8 @@ export function Finished({
   readonly total: number;
   readonly answered: number;
   readonly marked: number;
+  /** Where to send how the test went; absent, the question is not asked. */
+  readonly feedback?: FeedbackClient;
 }) {
   const { t, language } = usePreferences();
   const when =
@@ -75,6 +79,7 @@ export function Finished({
           <li>{t("done.step3")}</li>
         </ol>
       </div>
+      {feedback === undefined ? null : <Feedback client={feedback} />}
       <p className="notice">{t("done.next")}</p>
       <div className="finished-actions">
         <button type="button" className="secondary" onClick={() => window.print()}>

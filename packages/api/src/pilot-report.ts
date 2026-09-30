@@ -59,6 +59,9 @@ export function flagsFor(o: OrganisationFacts, now: number): Flag[] {
   }
 
   if (o.awaitingGrading > 0) flags.push({ level: "watch", text: `${plural(o.awaitingGrading, "attempt")} waiting to be graded` });
+  if (o.feedback.average !== null && o.feedback.responses >= 5 && o.feedback.average < 3) {
+    flags.push({ level: "watch", text: `Candidates rated the test ${o.feedback.average}/5: read what they wrote on the Results tab` });
+  }
   if (o.exams === 0 && age >= 3 * DAY) flags.push({ level: "watch", text: `No exam of its own after ${plural(days(age), "day")}` });
   if (o.lastActivity !== null && now - Date.parse(o.lastActivity) >= 7 * DAY) {
     flags.push({ level: "watch", text: `Nothing done for ${plural(days(now - Date.parse(o.lastActivity)), "day")}` });
@@ -111,6 +114,7 @@ export function renderReport(report: PilotReport): string {
       `  Owner:    ${owner}${o.staff > 1 ? ` · ${plural(o.staff, "member")} of staff` : ""}`,
       `  Using:    ${using}${o.sampleLoaded ? " · sample loaded" : ""}`,
       `  Credits:  ${credits}`,
+      ...(o.feedback.responses === 0 ? [] : [`  Said:     ${o.feedback.average}/5 from ${plural(o.feedback.responses, "candidate")}`]),
       ...(o.nextSitting === null
         ? []
         : [`  Next:     ${o.nextSitting.title}, ${when(o.nextSitting, Date.parse(report.generatedAt)).replace(/,$/, "")} · ${o.nextSitting.waiting} yet to begin`]),

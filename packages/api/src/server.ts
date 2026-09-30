@@ -14,7 +14,7 @@ import {
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
 import { RunnerUnavailable } from "@parikshaa/runner";
-import { ExamFrozen, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
+import { ExamFrozen, type FeedbackStore, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import type { Onboarding } from "./onboarding.js";
 import { registerOnboardingRoutes } from "./onboarding-routes.js";
@@ -35,6 +35,7 @@ import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
 import { registerResultsRoutes } from "./results-routes.js";
+import { registerFeedbackRoutes } from "./feedback-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
@@ -94,6 +95,8 @@ export interface ServerOptions {
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
   readonly proctor: ProctorService;
+  /** What candidates say about the test after submitting (docs/PILOT.md). Absent: none of its routes. */
+  readonly feedback?: FeedbackStore;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -1195,6 +1198,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
+    if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });
 
     registerAccountRoutes(routes, {
       service,

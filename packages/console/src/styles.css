@@ -593,6 +593,59 @@ textarea.mono {
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
 }
 /* A band no one reached draws nothing, not a sliver. */
+/* What candidates said: ratings as short bars, then their words. */
+.candidate-feedback .feedback-lead {
+  margin: 0 0 var(--space-3);
+}
+.feedback-counts {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 28rem;
+  margin: 0 0 var(--space-4);
+}
+.feedback-counts > div {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: var(--space-2);
+  align-items: center;
+}
+.feedback-counts dt {
+  font-weight: var(--weight-bold);
+  text-align: right;
+}
+.feedback-counts dd {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.feedback-bar {
+  display: block;
+  min-inline-size: 2px;
+  block-size: 0.75rem;
+  background: var(--chart-seq-4);
+  border-radius: var(--radius-xs);
+}
+.feedback-comments {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.feedback-comments li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+.feedback-comments p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .histogram .column.none {
   min-height: 0;
 }

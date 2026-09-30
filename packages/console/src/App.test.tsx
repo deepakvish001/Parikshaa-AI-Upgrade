@@ -367,6 +367,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     announce: vi.fn(async () => ({ id: "n2", message: "x", authorName: "Asha", at: "2026-10-01T05:00:00.000Z" })),
     reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
+    examFeedback: vi.fn(async () => ({ responses: 0, submitted: 0, average: null, counts: [0, 0, 0, 0, 0], comments: [] })),
     similarity: vi.fn(async () => ({
       exam: { id: "exam-1", title: "Algorithms" },
       questions: [
@@ -1518,6 +1519,26 @@ describe("results and exports", () => {
     return client;
   };
   const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
+
+  it("shows what candidates said about the test, without names", async () => {
+    const client = stubClient();
+    client.examFeedback = vi.fn(async () => ({
+      responses: 3,
+      submitted: 4,
+      average: 3.7,
+      counts: [0, 1, 0, 1, 1],
+      comments: [
+        { rating: 2, comment: "The page froze twice on my phone.", at: "2026-10-01T06:00:00.000Z" },
+        { rating: 5, comment: "Smooth.", at: "2026-10-01T05:00:00.000Z" },
+      ],
+    }));
+    await open(client);
+    const card = await screen.findByRole("region", { name: "What candidates said" });
+    expect(card).toHaveTextContent("3.7 out of 5, from 3 of the 4 who submitted.");
+    expect(within(card).getByText("The page froze twice on my phone.")).toBeInTheDocument();
+    expect(within(card).getByLabelText("Rated 2 out of 5")).toBeInTheDocument();
+    expect(client.examFeedback).toHaveBeenCalledWith("exam-1");
+  });
 
   it("shows code answers alike enough to look at, as evidence, side by side on request", async () => {
     await open();

@@ -274,6 +274,21 @@ export class ParikshaaClient {
     await this.#request("/attempts/me/submit", { method: "POST" });
   }
 
+  /** Whether the candidate has already said how the test went. */
+  async feedbackGiven(): Promise<boolean> {
+    return (await this.#request<{ given: boolean }>("/attempts/me/feedback")).given;
+  }
+
+  /** Say how the test went: once, after submitting. Already given counts as done. */
+  async giveFeedback(rating: number, comment: string): Promise<void> {
+    try {
+      await this.#request("/attempts/me/feedback", { method: "POST", body: JSON.stringify({ rating, ...(comment.trim() === "" ? {} : { comment }) }) });
+    } catch (error) {
+      if (error instanceof ApiError && error.code === "already_given") return;
+      throw error;
+    }
+  }
+
   /**
    * Reply to a probe.
    *

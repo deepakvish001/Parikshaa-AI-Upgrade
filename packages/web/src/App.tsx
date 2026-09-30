@@ -777,6 +777,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
                 total={exam.questions.length}
                 answered={exam.questions.filter((q) => (answered.get(q.id) ?? "") !== "").length}
                 marked={exam.questions.filter((q) => review.has(q.id)).length}
+                feedback={client}
               />
             </>
           ) : (

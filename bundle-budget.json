@@ -17,7 +17,7 @@
   },
   "packages/console/dist": {
     "index-*.js": 176,
-    "index-*.css": 18,
+    "index-*.css": 19,
     "Practice-*.js": 14,
     "Signup-*.js": 2,
     "Tour-*.js": 3,

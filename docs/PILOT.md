@@ -223,6 +223,14 @@ What to do when:
 
 ## 6. What to learn from the pilot
 
+Candidates are asked two things after submitting: how the test went (1 to
+5) and anything that got in the way. Answering is optional and the college
+sees it without names: the exam's **Results** tab shows the ratings and every
+comment, and the pilot report shows each organisation's average (and flags a
+poor one). Read the comments before the conversation below — a pattern in
+them (phones, the lab network, the follow-up question) is the first thing to
+ask about.
+
 Ask the pilot owner, a week after the first sitting:
 
 1. Would you run your next test on Parikshaa? What would stop you?

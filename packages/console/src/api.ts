@@ -168,6 +168,16 @@ export interface BankFilter {
 
 export type Channel = "email" | "sms";
 
+/** How the test went, in candidates' words: asked after submitting, answered or not, read without names. */
+export interface ExamFeedback {
+  readonly responses: number;
+  readonly submitted: number;
+  readonly average: number | null;
+  /** How many gave each rating, 1 to 5. */
+  readonly counts: readonly number[];
+  readonly comments: readonly { readonly rating: number; readonly comment: string; readonly at: string }[];
+}
+
 export interface ExamWindow {
   readonly opensAt: string;
   readonly closesAt: string;
@@ -1023,6 +1033,11 @@ export class ConsoleClient {
   /** Send the link that confirms this account's address again. */
   resendVerification(): Promise<{ readonly sent: boolean }> {
     return this.#request("/auth/verify-email/resend", { method: "POST" });
+  }
+
+  /** What an exam's candidates said about the test, without names. */
+  examFeedback(examId: string): Promise<ExamFeedback> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/feedback`);
   }
 
   /** Email the results workbook to this account's own address. */

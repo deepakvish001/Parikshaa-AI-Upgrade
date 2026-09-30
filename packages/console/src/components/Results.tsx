@@ -137,8 +137,73 @@ export function ResultsPanel({
       <CandidateTable rows={rows} onReport={onReport} />
       {rows.length === 0 ? null : <QuestionTable questions={analytics.questions} graded={analytics.graded} />}
       {rows.length === 0 ? null : <Integrity integrity={analytics.integrity} />}
+      {rows.length === 0 ? null : <CandidateFeedback client={client} examId={examId} />}
       <CodeSimilarity client={client} examId={examId} />
     </>
+  );
+}
+
+/** Comments shown before "Show all": enough to read the mood without a wall of text. */
+const FIRST_COMMENTS = 10;
+
+/**
+ * What candidates said after submitting: a rating out of five and anything
+ * that got in the way. Without names, as they were told; answering was
+ * optional, so the count is out of those who submitted.
+ */
+function CandidateFeedback({ client, examId }: { client: ConsoleClient; examId: string }) {
+  const feedback = useQuery({ queryKey: ["feedback", examId], queryFn: () => client.examFeedback(examId) });
+  const [all, setAll] = useState(false);
+  const f = feedback.data;
+  if (f === undefined) return null;
+  const most = Math.max(1, ...f.counts);
+  const shown = all ? f.comments : f.comments.slice(0, FIRST_COMMENTS);
+  return (
+    <section className="card candidate-feedback" aria-label="What candidates said">
+      <h2 className="card-title">What candidates said</h2>
+      {f.responses === 0 ? (
+        <p className="notice">
+          Nobody has said yet. After submitting, each candidate is asked how the test went; answering is optional, and you see it without their name.
+        </p>
+      ) : (
+        <>
+          <p className="feedback-lead">
+            <strong>{f.average} out of 5</strong>, from {f.responses} of the {f.submitted} who submitted. Without names, as candidates were told.
+          </p>
+          <dl className="feedback-counts">
+            {[5, 4, 3, 2, 1].map((rating) => (
+              <div key={rating}>
+                <dt>{rating}</dt>
+                <dd>
+                  <span className="feedback-bar" style={{ inlineSize: `${(f.counts[rating - 1]! / most) * 100}%` }} aria-hidden="true" />
+                  <span>{f.counts[rating - 1]}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {f.comments.length === 0 ? null : (
+            <>
+              <h3>What got in the way</h3>
+              <ul className="feedback-comments">
+                {shown.map((c) => (
+                  <li key={`${c.at}-${c.comment.slice(0, 20)}`}>
+                    <span className="badge" aria-label={`Rated ${c.rating} out of 5`}>
+                      {c.rating}/5
+                    </span>
+                    <p>{c.comment}</p>
+                  </li>
+                ))}
+              </ul>
+              {f.comments.length > FIRST_COMMENTS ? (
+                <button type="button" className="link" onClick={() => setAll(!all)}>
+                  {all ? "Show fewer" : `Show all ${f.comments.length}`}
+                </button>
+              ) : null}
+            </>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 

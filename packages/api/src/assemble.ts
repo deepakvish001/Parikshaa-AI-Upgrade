@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -165,6 +165,7 @@ export function assemble(o: AssembleOptions): {
     privacy,
     billing,
     proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
+    feedback: new FeedbackStore(o.sql),
     tokens,
     auth,
     security,

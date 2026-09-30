@@ -30,6 +30,7 @@ const facts = (over: Partial<OrganisationFacts> = {}): OrganisationFacts => ({
   attemptsCharged: 0,
   failedMessages: 0,
   overdueMessages: 0,
+  feedback: { responses: 0, average: null },
   lastActivity: new Date(NOW - DAY).toISOString(),
   nextSitting: null,
   ...over,
@@ -77,6 +78,15 @@ describe("what the report asks the operator to do", () => {
       "act: 2 messages could not be sent: the exam's Candidates tab says why",
       "act: 1 message overdue by more than 15 minutes: is the API running?",
     ]);
+  });
+
+  it("read what candidates wrote, when enough of them rated the test poorly", () => {
+    expect(texts(facts({ feedback: { responses: 12, average: 2.4 } }))).toEqual([
+      "watch: Candidates rated the test 2.4/5: read what they wrote on the Results tab",
+    ]);
+    // A couple of unhappy candidates is not yet a pattern.
+    expect(texts(facts({ feedback: { responses: 2, average: 1.5 } }))).toEqual([]);
+    expect(renderReport(pilotReport([facts({ feedback: { responses: 12, average: 4.1 } })], NOW))).toContain("  Said:     4.1/5 from 12 candidates");
   });
 
   it("keep an eye on grading, a slow start, and silence", () => {
