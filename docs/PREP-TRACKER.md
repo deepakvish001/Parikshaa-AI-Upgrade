@@ -2,7 +2,7 @@
 
 **Parikshaa Prep Blueprint** (28 Sep 2026) ka har feature yahan track hota hai: kya ban gaya, kya aadha hai, kya baaki hai, aur aage kya banana hai. Blueprint ka poora plan (design, flows, data model, pricing) yahan hai: <https://claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh>. Isi ka engineering version [ROADMAP §16](ROADMAP.md#16-prep-a-practice-site-to-prepare-on) me hai.
 
-Aakhri update: **30 Sep 2026** · PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27)
+Aakhri update: **30 Sep 2026** · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
 
 ## Is file ko kaise update karna hai
 
@@ -36,8 +36,8 @@ Status ka matlab:
 | Company prep aur community | 8 | 1 | 6 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
-| Platform, quality, B2B | 5 | 2 | 6 | 0 |
-| **Kul** | **61** | **16** | **44** | **1** |
+| Platform, quality, B2B | 6 | 2 | 5 | 0 |
+| **Kul** | **62** | **16** | **43** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -216,8 +216,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Hindi strings, naye pages ke | ✅ | `prep-text.ts`, `community-text.ts` | |
 | Bundle budget, pages lazy-load | ✅ | `bundle-budget.json` | |
 | Account delete par sara prep data | 🟡 | `eraseLearner` | Notes, tutor, votes, address hat-te hain. Plan, cards, coins ke rows reh jaate hain (bina naam ke account se jude) |
-| Playwright e2e: onboarding → plan, solve, purchase, redeem | 🟡 | | Unit/API tests hain, browser e2e baaki |
-| Screenshots naye pages ke | ⬜ | | |
+| Playwright e2e: onboarding → plan, solve, purchase, redeem | 🟡 | `e2e/tests/practice.spec.ts` | Prep pages ka WCAG AA check dono themes me hai. Click karke poore flows (F1, F12, F13) ka e2e baaki |
+| Design system par prep pages, screenshots, visual baselines | ✅ | `e2e/visual/prep.visual.ts`, `docs/screenshots/prep-*` | 19 learner + 7 console screenshots, 17 visual baselines |
 | Analytics events (signup, task_done, hint_used, purchase…) | ⬜ | | Metrics (activation, D7) naapne ke liye |
 | Roz ke reminders (email/push) | ⬜ | | |
 | Contest load test (2,000 ek saath) | ⬜ | | |
@@ -284,7 +284,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 2 | Coupons, GST invoices, pricing page ka GST breakup | §16, F12 | Paid launch ke liye zaroori | Test mode me coupon ke saath kharidna, invoice PDF | ⬜ |
 | 3 | Roz ke reminders + analytics events | F2, §17 | Retention aur metrics naapna | D7 aur activation dashboard par | ⬜ |
 | 4 | Sprint quiz + revision notes, streak freeze | F7, 13.2 | Planner poora | Sprint ke ant me quiz, 70% se kam par revise tasks | ⬜ |
-| 5 | Playwright e2e: F1, F3, F12, F13 + screenshots | §20 | Regression se bachav | CI me chalein | ⬜ |
+| 5 | Playwright e2e: F1, F3, F12, F13 ke click-through flows | §20 | Regression se bachav | CI me chalein | ⬜ |
 | 6 | Company v2: readiness, "list shuru karo", Company Pass | F9 | Company prep poora | Readiness dashboard par | ⬜ |
 | 7 | NoteSpace: AI draft, PDF export | F15 | Phase 5 | Topic ke notes ek PDF me | ⬜ |
 | 8 | Campus licence: CSV se bulk Plus, college dashboard | F16 | B2B sales | 500 students ek CSV se | ⬜ |
@@ -296,7 +296,8 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
-| 30 Sep 2026 | [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) | Ye tracker, aur `CLAUDE.md` me rule ki har build ise update kare |
+| 30 Sep 2026 | (is tracker ka PR) | Ye tracker, aur `CLAUDE.md` me rule ki har build ise update kare |
+| 29 Sep 2026 | [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) `84391f5` | Prep pages design system par; interview rounds me problems ke titles; screenshots, visual baselines, prep pages par axe |
 | 29 Sep 2026 | [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) `a270c39` | SQL (SQLite) runner language, editorial approach tabs, starter packs (CS fundamentals, SQL), ROADMAP §16 |
 | 29 Sep 2026 | #27 `a858ee4` | Companies (30/60/180), interview experiences, coin store, contest rating, titles, achievements; account delete ab prep data bhi hatata hai |
 | 28 Sep 2026 | #27 `4452ad8`, `6db65a4` | Plus (Razorpay), credits, Sahayak tutor (hint, review, doubt), learner aur console pages |
