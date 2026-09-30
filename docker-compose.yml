@@ -47,6 +47,12 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
       MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
       MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
+      # Optional: WhatsApp through the Cloud API, with Parikshaa's templates
+      # approved in your WhatsApp Business account (docs/PILOT.md).
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      WHATSAPP_LANGUAGE: ${WHATSAPP_LANGUAGE:-}
+      WHATSAPP_API_URL: ${WHATSAPP_API_URL:-}
       # Optional: selling prepaid credits (Razorpay) and issuing GST invoices.
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}

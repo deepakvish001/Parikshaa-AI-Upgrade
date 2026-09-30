@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 import { assemble, hashPassword } from "@parikshaa/api";
-import { FakeRazorpay, fakeModel } from "@parikshaa/api/testing";
+import { FakeRazorpay, OutboxLog, fakeModel } from "@parikshaa/api/testing";
 import { mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,6 +45,10 @@ const { app } = assemble({
   ...(runner === undefined ? {} : { runner }),
   supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru", sac: "998399" },
   publicUrl: process.env["PUBLIC_URL"] ?? `http://localhost:${port}`,
+  // Email and WhatsApp set up, as a pilot's are; nothing leaves the machine
+  // (and no worker runs, so messages stay queued, as the Candidates tab shows).
+  mailer: new OutboxLog(),
+  whatsapp: new OutboxLog(),
   // Institutions may sign themselves up, as a pilot deployment lets them.
   signup: { trialCredits: 25, pricePaise: 4_900 },
   server: {

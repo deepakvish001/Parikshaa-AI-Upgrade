@@ -783,7 +783,7 @@ function Console({
               />
             ) : null}
             {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} organisation={me.data?.organisation.name} /> : null}
-            {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}
+            {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} canConfigure={can("exam:write")} /> : null}
 
             {view.name === "attempts" ? (
               <ExamOverview

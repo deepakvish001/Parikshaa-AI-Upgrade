@@ -727,9 +727,10 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     );
   }
   if (state.error !== null) {
+    const outside = state.error instanceof ApiError && state.error.code === "outside_network";
     return (
       <main className="page">
-        <p className="error">{t("exam.loadFailed")}</p>
+        <p className="error">{outside ? `${t("invite.outside")} ${t("invite.outsideNote")}` : t("exam.loadFailed")}</p>
       </main>
     );
   }

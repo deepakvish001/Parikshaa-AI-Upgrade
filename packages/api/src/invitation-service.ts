@@ -17,6 +17,7 @@ import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor, type Permission } from "./staff-auth.js";
 import { ConsentRequired, type Notice } from "./privacy.js";
 import { needsCamera } from "./proctoring.js";
+import type { LabService } from "./lab.js";
 import type { Exam, ProctoringPolicy } from "@parikshaa/core";
 
 /**
@@ -40,7 +41,7 @@ export class CameraRequired extends Error {
  * the window closes.
  */
 
-export type Channel = "email" | "sms";
+export type Channel = "email" | "sms" | "whatsapp";
 
 /** The first reminder goes out this long before the candidate's window opens. */
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -90,6 +91,8 @@ export interface InvitationServiceOptions {
    * their attempt starts (ROADMAP §11), or null if it has not set one.
    */
   readonly notice?: (orgId: OrgId) => Promise<Notice | null>;
+  /** Lab mode: where an exam may be taken from, and whether it waits for its invigilator. */
+  readonly lab?: LabService;
 }
 
 export interface ImportPreview {
@@ -101,8 +104,9 @@ export interface ImportPreview {
 }
 
 export class InvitationService {
-  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice">>;
+  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab">>;
   readonly #notice: (orgId: OrgId) => Promise<Notice | null>;
+  readonly #lab: LabService | null;
   readonly #lead: number;
   readonly #now: () => number;
   readonly #newId: () => string;
@@ -113,6 +117,7 @@ export class InvitationService {
     this.#now = options.now ?? (() => Date.now());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
     this.#notice = options.notice ?? (async () => null);
+    this.#lab = options.lab ?? null;
   }
 
   #require(actor: Actor, permission: Permission) {
@@ -323,6 +328,8 @@ export class InvitationService {
     consent?: { readonly noticeVersion: number },
     /** The candidate's page has the camera working, for a proctored exam. */
     camera?: boolean,
+    /** Where the request came from, for an exam limited to a lab's network. */
+    ip?: string,
   ): Promise<{ token: string; attemptId: string; resumed: boolean }> {
     const named = this.#o.codes.verify(code);
     if (named === null) throw new InvalidInvitation();
@@ -346,6 +353,9 @@ export class InvitationService {
     if (notice !== null && consent?.noticeVersion !== notice.version) throw new ConsentRequired(notice);
     const proctoring = exam.policy.proctoring;
     if (starting && proctoring !== undefined && needsCamera(proctoring) && camera !== true) throw new CameraRequired(proctoring);
+
+    // Last, so a candidate waiting for the invigilator has done everything else first.
+    if (this.#lab !== null) await this.#lab.check(orgId, exam.id, ip ?? "", { starting });
 
     const claim = await this.#o.invitations.claimAttempt(scope, invitation.id, this.#newId());
     // Not only the first redemption starts the attempt: if the first died

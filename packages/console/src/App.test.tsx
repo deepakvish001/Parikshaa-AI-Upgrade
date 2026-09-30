@@ -324,6 +324,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
         delivery: {
           email: { status: "sent", purpose: "invite", at: "2026-09-29T00:00:00.000Z", error: null },
           sms: { status: "failed", purpose: "invite", at: "2026-09-29T00:00:00.000Z", error: "MSG91 400: bad number" },
+          whatsapp: null,
         },
       },
     ]),
@@ -364,11 +365,14 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     issueGreenhouseKey: vi.fn(async () => ({ key: "ghk.acme.1.abc", endpoints: {} })),
     disableGreenhouse: vi.fn(async () => undefined),
     live: vi.fn(async () => liveView),
+    lab: vi.fn(async () => ({ networks: [], startTogether: false, startedAt: null, yourAddress: "203.0.113.10" })),
+    setLab: vi.fn(async (_exam: string, settings: { networks: readonly string[]; startTogether: boolean }) => ({ ...settings, startedAt: null, yourAddress: "203.0.113.10" })),
+    startSitting: vi.fn(async () => ({ startedAt: "2026-10-01T04:31:00.000Z" })),
     announce: vi.fn(async () => ({ id: "n2", message: "x", authorName: "Asha", at: "2026-10-01T05:00:00.000Z" })),
     reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
     examFeedback: vi.fn(async () => ({ responses: 0, submitted: 0, average: null, counts: [0, 0, 0, 0, 0], comments: [] })),
-    releaseResults: vi.fn(async () => ({ sent: 0, alreadySent: 0, notGraded: 0, noEmail: 0 })),
+    releaseResults: vi.fn(async () => ({ sent: 0, alreadySent: 0, notGraded: 0, unreachable: 0, channels: ["email"] as const })),
     similarity: vi.fn(async () => ({
       exam: { id: "exam-1", title: "Algorithms" },
       questions: [
@@ -1420,6 +1424,13 @@ describe("scheduling and inviting a cohort", () => {
     expect(client.importCandidates).toHaveBeenLastCalledWith("exam-1", "ref,name\nCS001,A\nCS002,B", false, ["email", "sms"]);
   });
 
+  it("sends the links by WhatsApp too when ticked", async () => {
+    const client = await open();
+    await userEvent.click(await screen.findByRole("checkbox", { name: "WhatsApp" }));
+    await userEvent.upload(await screen.findByLabelText("Candidate list (CSV)"), new File(["ref,name\nCS001,A"], "cohort.csv", { type: "text/csv" }));
+    await waitFor(() => expect(client.importCandidates).toHaveBeenCalledWith("exam-1", "ref,name\nCS001,A", true, ["email", "sms", "whatsapp"]));
+  });
+
   it("schedules on India's clock, whatever the computer's own zone", async () => {
     const client = await open();
     const opens = await screen.findByLabelText("Opens (IST)");
@@ -1487,7 +1498,7 @@ describe("scheduling and inviting a cohort", () => {
     const client = stubClient();
     const [invited] = await client.listInvitations("algorithms");
     client.listInvitations = vi.fn(async () => [
-      { ...invited!, delivery: { email: { status: "sent", purpose: "reminder_day", at: "2026-09-30T04:30:00.000Z", error: null }, sms: null } },
+      { ...invited!, delivery: { email: { status: "sent", purpose: "reminder_day", at: "2026-09-30T04:30:00.000Z", error: null }, sms: null, whatsapp: null } },
     ]);
     renderApp(<App client={client} />);
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
@@ -1522,18 +1533,21 @@ describe("results and exports", () => {
   const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
 
   it("sends graded candidates their results, saying first who will and will not get one", async () => {
-    const withEmail = results.rows.map((r) => (r.state === "graded" ? { ...r, email: `${r.ref.toLowerCase()}@college.test` } : r));
-    const client = stubClient({ results: vi.fn(async () => ({ ...results, rows: withEmail, exam: { ...results.exam, cutoff: { percent: 50 } } })) });
-    client.releaseResults = vi.fn(async () => ({ sent: 2, alreadySent: 0, notGraded: 1, noEmail: 0 }));
+    const client = stubClient({ results: vi.fn(async () => ({ ...results, exam: { ...results.exam, cutoff: { percent: 50 } } })) });
+    client.releaseResults = vi.fn(async () => ({ sent: 2, alreadySent: 1, notGraded: 1, unreachable: 1, channels: ["email", "whatsapp"] as const }));
     await open(client);
     await userEvent.click(await screen.findByRole("button", { name: "Send results to candidates…" }));
     const dialog = screen.getByRole("dialog", { name: "Send results to candidates" });
-    expect(dialog).toHaveTextContent("2 candidates graded, with an email address");
+    await waitFor(() => expect(dialog).toHaveTextContent("2 candidates to send to"));
+    expect(client.releaseResults).toHaveBeenCalledWith("exam-1", false, true);
+    expect(dialog).toHaveTextContent("by email and WhatsApp");
+    expect(dialog).toHaveTextContent("1 candidate sent theirs already: not sent again");
     expect(dialog).toHaveTextContent("1 attempt still to grade: not sent until graded");
+    expect(dialog).toHaveTextContent("1 graded candidate with no email address or mobile number");
     expect(within(dialog).getByRole("checkbox", { name: "Say whether each reached the qualifying mark" })).toBeChecked();
     await userEvent.click(within(dialog).getByRole("button", { name: "Send to 2 candidates" }));
     await waitFor(() => expect(client.releaseResults).toHaveBeenCalledWith("exam-1", true));
-    expect(await screen.findByText("Results on their way to 2 candidates.")).toBeInTheDocument();
+    expect(await screen.findByText("Results on their way to 2 candidates; 1 had theirs already.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Send results to candidates" })).toBeNull();
   });
 
@@ -1769,6 +1783,25 @@ describe("the live sitting", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Live sitting" }));
     return client;
   };
+
+  it("limits the sitting to the lab's network, holds candidates, and starts everyone at once", async () => {
+    const client = stubClient();
+    await open(client);
+    const lab = await screen.findByRole("region", { name: "Lab mode" });
+    expect(lab).toHaveTextContent("From anywhere · each candidate begins when they open their link");
+    await userEvent.click(within(lab).getByRole("button", { name: "Change" }));
+    expect(lab).toHaveTextContent("This computer’s address is 203.0.113.10");
+    await userEvent.click(within(lab).getByRole("button", { name: "Add it" }));
+    expect(within(lab).getByRole("textbox", { name: "Networks candidates may take it from" })).toHaveValue("203.0.113.10");
+    await userEvent.click(within(lab).getByRole("checkbox", { name: "Candidates wait for the invigilator to start" }));
+    await userEvent.click(within(lab).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(client.setLab).toHaveBeenCalledWith("exam-1", { networks: ["203.0.113.10"], startTogether: true }));
+    expect(await within(lab).findByText(/Only from 203\.0\.113\.10 · candidates wait for the invigilator/)).toBeInTheDocument();
+
+    await userEvent.click(within(lab).getByRole("button", { name: "Start the test for everyone" }));
+    await waitFor(() => expect(client.startSitting).toHaveBeenCalledWith("exam-1"));
+    expect(await screen.findByText("Started: candidates waiting are beginning now")).toBeInTheDocument();
+  });
 
   it("shows the room at a glance, and who has gone away", async () => {
     await open();

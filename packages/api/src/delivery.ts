@@ -37,6 +37,17 @@ export interface SmsMessage {
   readonly variables: readonly string[];
 }
 
+/** The WhatsApp templates Parikshaa sends, each approved in the WhatsApp Business account (docs/PILOT.md). */
+export type WhatsAppTemplate = "invite" | "reminder" | "rescheduled" | "result";
+
+export interface WhatsAppMessage {
+  /** 91XXXXXXXXXX */
+  readonly to: string;
+  readonly template: WhatsAppTemplate;
+  /** Values for the template's body variables, {{1}} onwards. */
+  readonly parameters: readonly string[];
+}
+
 /** Raised by a transport for a failure retrying will not fix. */
 export class PermanentFailure extends Error {
   constructor(message: string) {
@@ -51,6 +62,10 @@ export interface Mailer {
 
 export interface SmsSender {
   send(message: SmsMessage): Promise<void>;
+}
+
+export interface WhatsAppSender {
+  send(message: WhatsAppMessage): Promise<void>;
 }
 
 /**
@@ -122,10 +137,59 @@ export class Msg91Sender implements SmsSender {
   }
 }
 
+/**
+ * WhatsApp through the WhatsApp Business Cloud API. A message a business
+ * starts must use a template approved in advance, so each purpose has one,
+ * named `parikshaa_<template>` in the language `language`; their wording is in
+ * docs/PILOT.md. Partners that speak the same API (360dialog, for one) work by
+ * pointing `baseUrl` at them.
+ */
+export class CloudWhatsApp implements WhatsAppSender {
+  readonly #token: string;
+  readonly #url: string;
+  readonly #language: string;
+
+  constructor(token: string, phoneNumberId: string, options: { readonly language?: string; readonly baseUrl?: string } = {}) {
+    this.#token = token;
+    this.#url = `${(options.baseUrl ?? "https://graph.facebook.com/v21.0").replace(/\/+$/, "")}/${encodeURIComponent(phoneNumberId)}/messages`;
+    this.#language = options.language ?? "en";
+  }
+
+  async send(message: WhatsAppMessage): Promise<void> {
+    const response = await fetch(this.#url, {
+      method: "POST",
+      headers: { authorization: `Bearer ${this.#token}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        to: message.to,
+        type: "template",
+        template: {
+          name: `parikshaa_${message.template}`,
+          language: { code: this.#language },
+          components: [{ type: "body", parameters: message.parameters.map((text) => ({ type: "text", text: whatsAppText(text) })) }],
+        },
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (response.ok) return;
+    const body = (await response.json().catch(() => ({}))) as { error?: { message?: string; code?: number } };
+    const detail = `WhatsApp ${response.status}: ${body.error?.message ?? "no message"}${body.error?.code === undefined ? "" : ` (${body.error.code})`}`;
+    // 4xx is the request itself: a template not approved, a number not on WhatsApp, a bad token.
+    if (response.status >= 400 && response.status < 500 && response.status !== 429) throw new PermanentFailure(detail);
+    throw new Error(detail);
+  }
+}
+
+/** A template variable may not be empty, hold a line break or a tab, or run more than four spaces. */
+export const whatsAppText = (text: string): string => {
+  const flat = text.replace(/[\r\n\t]+/g, " ").replace(/ {2,}/g, " ").trim();
+  return flat === "" ? "-" : flat.slice(0, 1000);
+};
+
 /** For development and tests: keeps what would have been sent. */
-export class OutboxLog implements Mailer, SmsSender {
-  readonly sent: (EmailMessage | SmsMessage)[] = [];
-  async send(message: EmailMessage | SmsMessage): Promise<void> {
+export class OutboxLog implements Mailer, SmsSender, WhatsAppSender {
+  readonly sent: (EmailMessage | SmsMessage | WhatsAppMessage)[] = [];
+  async send(message: EmailMessage | SmsMessage | WhatsAppMessage): Promise<void> {
     this.sent.push(message);
   }
 }
@@ -149,6 +213,8 @@ export interface DeliveryWorkerOptions {
   readonly link: (orgId: string, invitationId: string) => string;
   readonly mailer: Mailer | null;
   readonly sms: SmsSender | null;
+  /** Absent or null: WhatsApp is not set up, and its messages are skipped. */
+  readonly whatsapp?: WhatsAppSender | null;
   readonly handlers?: Partial<Record<OutboxItem["kind"], ItemHandler>>;
   /** A graded candidate's result, for the message that tells them it (ResultsService.candidateResult). */
   readonly result?: (orgId: string, invitation: Invitation) => Promise<CandidateResult | null>;
@@ -202,7 +268,7 @@ export class DeliveryWorker {
   }
 
   async #deliver(item: OutboxItem): Promise<"sent" | { readonly skip: string }> {
-    if (item.kind !== "email" && item.kind !== "sms") {
+    if (item.kind !== "email" && item.kind !== "sms" && item.kind !== "whatsapp") {
       const handler = this.#o.handlers?.[item.kind];
       return handler === undefined ? { skip: `No handler for ${item.kind}` } : handler(item);
     }
@@ -229,18 +295,33 @@ export class DeliveryWorker {
     const institution = org?.name ?? "Your institution";
     const link = this.#o.link(item.orgId, invitation.id);
 
+    const whatsapp = this.#o.whatsapp ?? null;
+    if (item.kind === "whatsapp") {
+      if (whatsapp === null) return { skip: "WhatsApp is not configured" };
+      if (invitation.phone === null) return { skip: "No phone number" };
+    }
+
     if (item.purpose === "results") {
-      if (item.kind !== "email") return { skip: "Results go by email" };
-      if (this.#o.mailer === null) return { skip: "Email is not configured" };
-      if (invitation.email === null) return { skip: "No email address" };
+      if (item.kind === "sms") return { skip: "Results go by email or WhatsApp" };
+      if (item.kind === "email") {
+        if (this.#o.mailer === null) return { skip: "Email is not configured" };
+        if (invitation.email === null) return { skip: "No email address" };
+      }
       // Read now: an attempt set aside since, or regraded, is told as it stands.
       const result = invitation.attemptId === null || this.#o.result === undefined ? null : await this.#o.result(item.orgId, invitation);
       if (result === null) return { skip: "No result to send: not graded, or set aside" };
-      await this.#o.mailer.send(resultsEmail(invitation, { title, institution, link, result, outcome: item.subject["outcome"] === true }));
+      const outcome = item.subject["outcome"] === true;
+      if (item.kind === "whatsapp") {
+        await whatsapp!.send({ to: invitation.phone!, template: "result", parameters: resultParameters(invitation, { title, institution, link, result, outcome }) });
+      } else {
+        await this.#o.mailer!.send(resultsEmail(invitation, { title, institution, link, result, outcome }));
+      }
       return "sent";
     }
 
-    if (item.kind === "email") {
+    if (item.kind === "whatsapp") {
+      await whatsapp!.send(this.#whatsApp(invitation, { title, institution, link, purpose: item.purpose }));
+    } else if (item.kind === "email") {
       if (this.#o.mailer === null) return { skip: "Email is not configured" };
       if (invitation.email === null) return { skip: "No email address" };
       await this.#o.mailer.send(this.#email(invitation, { title, institution, link, purpose: item.purpose, exam }));
@@ -250,6 +331,26 @@ export class DeliveryWorker {
       await this.#o.sms.send({ to: invitation.phone, variables: [title.slice(0, 30), ist(invitation.opensAt), link] });
     }
     return "sent";
+  }
+
+  /** The invitation, a reminder or a new time on WhatsApp: the same facts as the email, in the template's few lines. */
+  #whatsApp(
+    invitation: Invitation,
+    about: { readonly title: string; readonly institution: string; readonly link: string; readonly purpose: string },
+  ): WhatsAppMessage {
+    const { title, institution, link, purpose } = about;
+    const to = invitation.phone!;
+    const name = invitation.name.trim() === "" ? "there" : invitation.name.trim();
+    const opens = ist(invitation.opensAt);
+    const closes = ist(invitation.closesAt);
+    if (purpose === "rescheduled") return { to, template: "rescheduled", parameters: [name, title, institution, opens, closes, link] };
+    if (purpose === "reminder" || purpose === "reminder_day") {
+      const untilOpen = Date.parse(invitation.opensAt) - this.#now();
+      const when =
+        untilOpen <= 0 ? "is open now" : untilOpen <= 90 * 60_000 ? `opens in ${Math.max(1, Math.round(untilOpen / 60_000))} minutes` : `opens ${opens}`;
+      return { to, template: "reminder", parameters: [name, title, institution, when, link] };
+    }
+    return { to, template: "invite", parameters: [name, institution, title, opens, closes, link] };
   }
 
   /**
@@ -367,6 +468,22 @@ function resultsEmail(
 <p><a href="${escape(link)}">Your record of the test</a>, with what you submitted.</p>
 <p>— ${escape(institution)}, via Parikshaa</p>`;
   return { to: invitation.email!, subject: `Your result: ${title} — ${institution}`, text: lines.join("\n"), html };
+}
+
+/** The result template's variables: name, institution, test, marks, out of, percent, whether they qualified, link. */
+function resultParameters(
+  invitation: Invitation,
+  about: { readonly title: string; readonly institution: string; readonly link: string; readonly result: CandidateResult; readonly outcome: boolean },
+): string[] {
+  const { title, institution, link, result, outcome } = about;
+  const standing =
+    !outcome || result.outcome === null
+      ? `${institution} will tell you about any next steps.`
+      : result.outcome === "qualified"
+        ? "You reached the qualifying mark."
+        : "You did not reach the qualifying mark this time.";
+  const name = invitation.name.trim() === "" ? "there" : invitation.name.trim();
+  return [name, institution, title, String(round(result.total)), String(round(result.maxTotal)), String(Math.round(result.percent)), standing, link];
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;

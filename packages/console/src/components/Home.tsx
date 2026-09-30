@@ -71,6 +71,8 @@ export const ACTIONS: Record<string, string> = {
   "attempt.erased": "erased a candidate's data",
   "results.exported": "downloaded results",
   "results.released": "sent candidates their results",
+  "exam.lab_set": "changed lab mode",
+  "exam.lab_started": "started the sitting for everyone",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",

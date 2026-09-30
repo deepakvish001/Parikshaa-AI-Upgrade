@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock, Megaphone, RotateCcw, Users } from "lucide-react";
 import { Dialog, Drawer, useToast } from "@parikshaa/brand/ui";
@@ -6,6 +6,8 @@ import { ConsoleError, type ConsoleClient, type LiveRow } from "../api.ts";
 import { TimeDialog } from "./Intervene.tsx";
 import { Banner, EmptyState, PageActions, RowMenu, SkeletonRows, StatBar, StateBadge, ago } from "./kit.tsx";
 import { IDENTITY_LABEL, ProctoringReview } from "./Proctoring.tsx";
+// Loaded when the Live page is: most staff never open it.
+const LabCard = lazy(() => import("./Lab.tsx").then((m) => ({ default: m.LabCard })));
 
 /**
  * The sitting, live (ROADMAP §8): who has started, how far each candidate is,
@@ -52,7 +54,18 @@ function Freshness({ updatedAt, now }: { updatedAt: number; now: number }) {
   );
 }
 
-export function LivePanel({ client, examId, canIntervene }: { client: ConsoleClient; examId: string; canIntervene: boolean }) {
+export function LivePanel({
+  client,
+  examId,
+  canIntervene,
+  canConfigure = false,
+}: {
+  client: ConsoleClient;
+  examId: string;
+  canIntervene: boolean;
+  /** Set lab mode: those who write exams. */
+  canConfigure?: boolean;
+}) {
   const [idleMinutes, setIdleMinutes] = useState(5);
   const [filter, setFilter] = useState<Filter>("all");
   const [announcing, setAnnouncing] = useState(false);
@@ -146,6 +159,10 @@ export function LivePanel({ client, examId, canIntervene }: { client: ConsoleCli
           ) : null}
         </dl>
       </section>
+
+      <Suspense fallback={null}>
+        <LabCard client={client} examId={examId} canStart={canIntervene} canConfigure={canConfigure} />
+      </Suspense>
 
       {announcements.length === 0 ? null : (
         <section className="card told" aria-label="Told to the room">

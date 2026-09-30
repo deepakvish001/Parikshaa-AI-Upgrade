@@ -36,6 +36,8 @@ import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
 import { registerResultsRoutes } from "./results-routes.js";
 import { registerFeedbackRoutes } from "./feedback-routes.js";
+import { OutsideNetwork, type LabService } from "./lab.js";
+import { registerLabRoutes } from "./lab-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
@@ -97,6 +99,8 @@ export interface ServerOptions {
   readonly proctor: ProctorService;
   /** What candidates say about the test after submitting (docs/PILOT.md). Absent: none of its routes. */
   readonly feedback?: FeedbackStore;
+  /** Lab mode: candidates' requests are checked against the exam's networks. */
+  readonly lab?: LabService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -407,6 +411,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     request.orgId = claims.orgId;
     if (await limited(reply, "attempt", claims.attemptId)) return null;
+    if (options.lab !== undefined) {
+      try {
+        await options.lab.check(claims.orgId, claims.examId, request.ip, { attemptId: claims.attemptId });
+      } catch (error) {
+        if (!(error instanceof OutsideNetwork)) throw error;
+        await reply.code(403).send({ error: "outside_network", message: error.message });
+        return null;
+      }
+    }
     return claims;
   };
 
@@ -1198,6 +1211,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
+    if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });
 
     registerAccountRoutes(routes, {

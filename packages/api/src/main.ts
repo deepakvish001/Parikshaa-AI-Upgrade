@@ -4,7 +4,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { HttpCodeRunner } from "@parikshaa/runner";
 import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
-import { Msg91Sender, SmtpMailer } from "./delivery.js";
+import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { supplierFromEnv } from "./gst.js";
 import { RazorpayGateway } from "./razorpay.js";
 
@@ -46,11 +46,16 @@ async function main(): Promise<void> {
     process.env["CONSOLE_ROOT"] ?? fileURLToPath(new URL("../../console/dist", import.meta.url));
   const clients = existsSync(web) && existsSync(consoleRoot) ? { web, console: consoleRoot } : undefined;
 
-  // Delivery: email over SMTP and SMS through MSG91, each optional. Without
+  // Delivery: email over SMTP, SMS through MSG91 and WhatsApp, each optional. Without
   // one, messages for that channel are recorded as skipped, with the reason,
   // and links can still be exported and handed out.
   const smtpUrl = process.env["SMTP_URL"];
   const msg91Key = process.env["MSG91_AUTH_KEY"];
+  // WhatsApp through the Cloud API, with Parikshaa's templates approved in the
+  // WhatsApp Business account (docs/PILOT.md); optional in the same way.
+  const whatsAppToken = process.env["WHATSAPP_TOKEN"];
+  const whatsAppLanguage = process.env["WHATSAPP_LANGUAGE"] || undefined;
+  const whatsAppUrl = process.env["WHATSAPP_API_URL"] || undefined;
 
   // Billing (ROADMAP §12): Razorpay to sell prepaid credits, and the supplier
   // Parikshaa's tax invoices are issued by. Both optional: without them,
@@ -112,6 +117,13 @@ async function main(): Promise<void> {
     supplier: supplierFromEnv(process.env),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
+    whatsapp:
+      whatsAppToken === undefined || whatsAppToken === ""
+        ? null
+        : new CloudWhatsApp(whatsAppToken, required("WHATSAPP_PHONE_NUMBER_ID"), {
+            ...(whatsAppLanguage === undefined ? {} : { language: whatsAppLanguage }),
+            ...(whatsAppUrl === undefined ? {} : { baseUrl: whatsAppUrl }),
+          }),
     server: {
       trustProxy: process.env["TRUST_PROXY"] === "true",
       // JSON lines on stdout, one per request; LOG_LEVEL=silent turns them off.

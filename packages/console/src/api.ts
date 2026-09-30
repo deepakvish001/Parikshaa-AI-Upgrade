@@ -166,7 +166,24 @@ export interface BankFilter {
   readonly q?: string;
 }
 
-export type Channel = "email" | "sms";
+export type Channel = "email" | "sms" | "whatsapp";
+
+/** Lab mode: where an exam may be taken from, and whether it waits for the invigilator. */
+export interface LabSettings {
+  readonly networks: readonly string[];
+  readonly startTogether: boolean;
+  readonly startedAt: string | null;
+  readonly yourAddress: string;
+}
+
+/** What sending results did, or would do. */
+export interface ReleaseCounts {
+  readonly sent: number;
+  readonly alreadySent: number;
+  readonly notGraded: number;
+  readonly unreachable: number;
+  readonly channels: readonly ("email" | "whatsapp")[];
+}
 
 /** How the test went, in candidates' words: asked after submitting, answered or not, read without names. */
 export interface ExamFeedback {
@@ -202,7 +219,7 @@ export interface InvitationRow {
   readonly attemptId: string | null;
   readonly attemptState: "not_started" | "in_progress" | "submitted" | "graded" | "void";
   readonly revoked: boolean;
-  readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
+  readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null; readonly whatsapp: Delivery | null };
 }
 
 /** The console's home page. */
@@ -1041,11 +1058,8 @@ export class ConsoleClient {
   }
 
   /** Send each graded candidate their result; nobody is sent it twice. */
-  releaseResults(
-    examId: string,
-    outcome: boolean,
-  ): Promise<{ readonly sent: number; readonly alreadySent: number; readonly notGraded: number; readonly noEmail: number }> {
-    return this.#request(`/exams/${encodeURIComponent(examId)}/results/release`, { method: "POST", body: JSON.stringify({ outcome }) });
+  releaseResults(examId: string, outcome: boolean, dryRun = false): Promise<ReleaseCounts> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/results/release`, { method: "POST", body: JSON.stringify({ outcome, dryRun }) });
   }
 
   /** Email the results workbook to this account's own address. */
@@ -1253,6 +1267,20 @@ export class ConsoleClient {
       method: "POST",
       body: JSON.stringify({ outcome, reason }),
     });
+  }
+
+  /** An exam's lab mode, and the address this request came from. */
+  lab(examId: string): Promise<LabSettings> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/lab`);
+  }
+
+  setLab(examId: string, settings: { readonly networks: readonly string[]; readonly startTogether: boolean }): Promise<LabSettings> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/lab`, { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  /** Let every candidate waiting at the start begin. */
+  startSitting(examId: string): Promise<{ readonly startedAt: string }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/lab/start`, { method: "POST" });
   }
 
   live(examId: string, idleMinutes = 5): Promise<LiveView> {

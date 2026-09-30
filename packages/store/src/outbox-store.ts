@@ -11,7 +11,7 @@ import type { SqlExecutor } from "./sql.js";
 export interface OutboxItem {
   readonly id: string;
   readonly orgId: string;
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
+  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly attempts: number;
@@ -19,7 +19,7 @@ export interface OutboxItem {
 
 /** Something to send later, written with the change that caused it. */
 export interface OutboxDraft {
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
+  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly sendAfter?: Date;
@@ -29,17 +29,17 @@ export interface OutboxDraft {
 
 /**
  * Write outbox items inside the caller's transaction, so they exist exactly
- * when the change that caused them does. Returns how many were new: an item
- * with a fixed id that was already written is not written again.
+ * when the change that caused them does. Returns the ids of those that were
+ * new: an item with a fixed id that was already written is not written again.
  */
-export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string): Promise<number> {
-  let written = 0;
+export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string): Promise<readonly string[]> {
+  const written: string[] = [];
   for (const d of drafts) {
-    const rows = await tx.query(
+    const rows = await tx.query<{ id: string }>(
       `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING RETURNING id`,
       [d.id ?? newId(), orgId, d.kind, JSON.stringify(d.subject), d.purpose, (d.sendAfter ?? new Date()).toISOString()],
     );
-    written += rows.length;
+    written.push(...rows.map((r) => r.id));
   }
   return written;
 }

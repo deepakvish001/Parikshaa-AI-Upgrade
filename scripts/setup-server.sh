@@ -22,6 +22,10 @@
 #   sudo DOMAIN=exam.college.in ADMIN_EMAIL=you@… ANTHROPIC_API_KEY=… \
 #        SMTP_URL='smtps://…' EMAIL_FROM='Parikshaa <no-reply@…>' \
 #        SIGNUP_PRICE_RUPEES=49 ./scripts/setup-server.sh
+#
+# SMS and WhatsApp are never asked for: set MSG91_AUTH_KEY/MSG91_TEMPLATE_ID
+# or WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID in the environment, or in the
+# settings file, and run it again.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,7 +35,7 @@ CONFIG_ONLY=false
 for arg in "$@"; do
   case "$arg" in
     --config-only) CONFIG_ONLY=true ;;
-    -h | --help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h | --help) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -96,6 +100,13 @@ if [[ "$SELF_SIGNUP" == on ]]; then
   ask SIGNUP_TRIAL_CREDITS "Free attempts for each new institution" "25"
 fi
 BACKUP_UPLOAD="$(value BACKUP_UPLOAD)"
+# Optional, and never asked: SMS through MSG91 and WhatsApp, from the
+# environment or kept from the settings file (docs/PILOT.md, "SMS and WhatsApp").
+OPTIONAL=(MSG91_AUTH_KEY MSG91_TEMPLATE_ID WHATSAPP_TOKEN WHATSAPP_PHONE_NUMBER_ID WHATSAPP_LANGUAGE WHATSAPP_API_URL)
+for name in "${OPTIONAL[@]}"; do
+  printf -v "$name" '%s' "$(value "$name")"
+  [[ "${!name}" != *"'"* && "${!name}" != *$'\n'* ]] || die "$name cannot contain a single quote or a line break."
+done
 
 secret POSTGRES_PASSWORD 24
 secret PARIKSHAA_APP_PASSWORD 24
@@ -128,6 +139,9 @@ umask 077
   echo "PUBLIC_URL='https://$DOMAIN'"
   echo "SMTP_URL='$SMTP_URL'"
   echo "EMAIL_FROM='$EMAIL_FROM'"
+  echo
+  echo "# Optional: SMS (MSG91) and WhatsApp (Cloud API); empty means not set up"
+  for name in "${OPTIONAL[@]}"; do echo "$name='${!name}'"; done
   echo
   echo "# The pilot"
   echo "SELF_SIGNUP='$SELF_SIGNUP'"

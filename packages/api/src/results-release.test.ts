@@ -102,7 +102,7 @@ describe("releasing results to candidates", () => {
   it("tells each graded candidate their marks and whether they qualified, and says who was left out", async () => {
     const res = await release();
     expect(res.statusCode, res.payload).toBe(202);
-    expect(res.json()).toEqual({ sent: 2, alreadySent: 0, notGraded: 1, noEmail: 1 });
+    expect(res.json()).toEqual({ sent: 2, alreadySent: 0, notGraded: 1, unreachable: 1, channels: ["email"] });
 
     await worker.tick();
     const sent = emails();
@@ -126,7 +126,7 @@ describe("releasing results to candidates", () => {
     const meera = results.rows.find((r: { ref: string }) => r.ref === "CS003");
     await call("POST", owner, `/attempts/${meera.attemptId}/grade`);
 
-    expect((await release()).json()).toEqual({ sent: 1, alreadySent: 2, notGraded: 0, noEmail: 1 });
+    expect((await release()).json()).toEqual({ sent: 1, alreadySent: 2, notGraded: 0, unreachable: 1, channels: ["email"] });
     await worker.tick();
     expect(emails().map((e) => e.to).sort()).toEqual(["ananya@college.test", "meera@college.test", "rohan@college.test"]);
   });

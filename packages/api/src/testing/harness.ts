@@ -19,12 +19,14 @@ import {
   QuestionMedia,
   DataKeys,
   FeedbackStore,
+  LabStore,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
   type StaffRole,
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
+import { LabService } from "../lab.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -124,6 +126,8 @@ export async function wire(
     readonly greenhouseHosts?: readonly string[];
     /** Where staff mail (password resets) goes. */
     readonly mailer?: Mailer;
+    /** Results may go by WhatsApp too, as when the server has it set up. */
+    readonly whatsapp?: boolean;
     /**
      * The clock staff sign-in runs on. Off by default, so sessions do not
      * expire when a test moves `now` on by days; a second-factor test needs it.
@@ -170,8 +174,10 @@ export async function wire(
     exams: service,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const lab = new LabService({ lab: new LabStore(sql), invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
+    lab,
     exams: service,
     store,
     invitations: invitationStore,
@@ -233,6 +239,7 @@ export async function wire(
     proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
     identity,
     mailer: options.mailer ?? null,
+    whatsapp: options.whatsapp ?? false,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const onboarding = new Onboarding({
@@ -272,6 +279,7 @@ export async function wire(
       ...(options.now === undefined ? {} : { now: options.now }),
     }),
     feedback: new FeedbackStore(sql),
+    lab,
     tokens,
     auth,
     security,

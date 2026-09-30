@@ -602,6 +602,29 @@ textarea.mono {
   margin-top: var(--space-1);
 }
 
+/* Lab mode on the Live sitting page: a line, and a border that says "waiting" until started. */
+.lab .bar svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+/* Settled, the card is its one line: no rule under it, no empty body. */
+.card.lab > .bar:only-child {
+  margin-bottom: calc(-1 * var(--space-5));
+  border-bottom: 0;
+}
+.lab.lab-waiting {
+  border-left: 3px solid var(--warning);
+}
+.lab-form {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.lab-form textarea {
+  font-family: var(--font-mono);
+  width: 100%;
+}
+
 /* What candidates said: ratings as short bars, then their words. */
 .candidate-feedback .feedback-lead {
   margin: 0 0 var(--space-3);

@@ -580,7 +580,7 @@ export class LedgerStore {
         await tx.query(`UPDATE greenhouse_interviews SET profile_url = NULL WHERE org_id = $1 AND invitation_id = $2`, [scope.orgId, id]);
         await tx.query(
           `UPDATE outbox SET status = 'skipped', last_error = 'personal data erased'
-            WHERE org_id = $1 AND kind IN ('email', 'sms') AND status = 'pending' AND subject->>'invitationId' = $2`,
+            WHERE org_id = $1 AND kind IN ('email', 'sms', 'whatsapp') AND status = 'pending' AND subject->>'invitationId' = $2`,
           [scope.orgId, id],
         );
       }

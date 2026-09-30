@@ -47,10 +47,10 @@ On the exam's **Candidates** tab:
 
 1. **When candidates can take it** — set when it opens and closes (IST).
 2. **Invite from a spreadsheet** — a sheet with each student's roll number,
-   name and email (and phone, for SMS). **Download a sample sheet** shows the
+   name and email (and mobile number, for SMS or WhatsApp). **Download a sample sheet** shows the
    columns. Check the preview, then invite.
 
-Each student gets their own link by email (and SMS, if you choose it), then a
+Each student gets their own link by email (and SMS or WhatsApp, if you tick them), then a
 reminder the day before and another an hour before the test opens. The same
 tab shows whether each message went; **Download links** gives you every link
 to share another way.
@@ -74,6 +74,16 @@ still connected.
   sitting the same minutes at once.
 - **Tell everyone something**: **Announce**. It appears on every open test.
 
+**A test in the computer lab.** On the same tab, **Lab mode → Change**:
+
+- **Only from the lab's network**: press **Add it** beside "This computer's
+  address" while sitting in the lab (ask your IT team for the full range if
+  the lab has several). A student who opens their link anywhere else is told
+  the test can only be taken in the exam room.
+- **Candidates wait for the invigilator**: students who open their link see
+  "Waiting for the invigilator" until you press **Start the test for
+  everyone**. Each student's time starts when they begin, not before.
+
 ## 6. Results
 
 On the exam's **Results** tab, press **Grade all**: objective questions are
@@ -83,8 +93,9 @@ goes. The same tab shows scores, who qualified, and how the batch did;
 the workbook in your inbox. Each student's report shows
 their answers, marks and any follow-up, with the reasoning behind every mark.
 
-When you are ready, **Send results to candidates…** emails each graded
-student their marks (and, if you choose, whether they qualified). Nobody is
+When you are ready, **Send results to candidates…** sends each graded
+student their marks by email, and by WhatsApp where it is set up (and, if you
+choose, whether they qualified). It says first how many it will reach. Nobody is
 sent theirs twice, so you can send again after grading the rest.
 
 After submitting, each student is asked how the test went and whether

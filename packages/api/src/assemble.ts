@@ -2,9 +2,10 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, type SqlExecutor } from "@parikshaa/store";
+import { LabService } from "./lab.js";
 import { AttemptTokens } from "./auth.js";
-import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
+import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
 import { InvigilationService } from "./invigilation.js";
 import { InviteCodes } from "./invite-codes.js";
@@ -58,6 +59,7 @@ export interface AssembleOptions {
   readonly supplier?: Supplier | null;
   readonly mailer?: Mailer | null;
   readonly sms?: SmsSender | null;
+  readonly whatsapp?: WhatsAppSender | null;
   /** Institutions may sign themselves up, on these terms. Absent: only the admin CLI makes organisations. */
   readonly signup?: SignupPolicy | null;
   /** The operator's address for the pilot report each morning. Absent: no report is sent. */
@@ -99,8 +101,10 @@ export function assemble(o: AssembleOptions): {
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
   const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
+  const lab = new LabService({ lab: new LabStore(o.sql), invitations: invitationStore, store, exams: service });
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
+    lab,
     exams: service,
     store,
     invitations: invitationStore,
@@ -147,7 +151,7 @@ export function assemble(o: AssembleOptions): {
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
-  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null });
   const app = buildServer({
     service,
     invitations,
@@ -167,6 +171,7 @@ export function assemble(o: AssembleOptions): {
     billing,
     proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
     feedback: new FeedbackStore(o.sql),
+    lab,
     tokens,
     auth,
     security,
@@ -197,6 +202,7 @@ export function assemble(o: AssembleOptions): {
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
+    whatsapp: o.whatsapp ?? null,
     result: (org, invitation) => results.candidateResult(orgId(org), attemptId(invitation.attemptId!), examId(invitation.examId)),
     handlers: { ...integrations.handlers, staff_email: (item) =>
       item.purpose === "password_reset"

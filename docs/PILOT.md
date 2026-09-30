@@ -20,6 +20,7 @@ first: the console's address and your contact details.
 | **The address** candidates open, e.g. `exam.yourdomain.in` | It is in every invitation; changing it later breaks sent links | `PUBLIC_URL` |
 | **Email sender** (SMTP), e.g. Amazon SES in Mumbai | Owners confirm their address, and candidates get their links by email | `SMTP_URL`, `EMAIL_FROM` |
 | **Where you hear of new sign-ups**, and get the pilot report each morning | A pilot should not sign up, or stall, unnoticed | `SIGNUP_NOTIFY_EMAIL` |
+| **WhatsApp** (optional): a WhatsApp Business number on the Cloud API, with the four templates below approved | Most students read WhatsApp before email; links, reminders and results reach them there | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` |
 
 Set the price from a measurement, not a guess: with a real API key,
 `npm run cost-run` (see *Measuring what an attempt costs* in
@@ -95,6 +96,42 @@ TRUST_PROXY=true
 
 `openssl rand` must be run once and the values written down, not left as
 commands in the file.
+
+### SMS and WhatsApp (optional)
+
+**SMS** goes through MSG91 with a DLT-registered template
+(`MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID`; see `delivery.ts`).
+
+**WhatsApp** goes through Meta's WhatsApp Business Cloud API. A message a
+business starts must use a template approved in advance, so before the first
+invitation:
+
+1. In Meta's WhatsApp Manager, add a phone number and create a permanent
+   access token (a system user's) with `whatsapp_business_messaging`.
+2. Create these four templates, category **Utility**, language **English**
+   (`en`; set `WHATSAPP_LANGUAGE` if you register them under another code,
+   such as `en_US`). The names must match; the wording can be yours as long
+   as the numbered variables mean the same.
+
+| Name | Body |
+|---|---|
+| `parikshaa_invite` | Hello {{1}}, {{2}} has invited you to take the {{3}} test. It opens {{4}} and closes {{5}}. Your personal link, for you alone: {{6}} |
+| `parikshaa_reminder` | Hello {{1}}, a reminder: your {{2}} test with {{3}} {{4}}. Your personal link: {{5}} |
+| `parikshaa_rescheduled` | Hello {{1}}, the time of your {{2}} test with {{3}} has changed. It now opens {{4}} and closes {{5}}. Your link stays the same: {{6}} |
+| `parikshaa_result` | Hello {{1}}, {{2}} has released the results of the {{3}} test. Your marks: {{4}} out of {{5}} ({{6}}%). {{7}} Your record of the test: {{8}} |
+
+3. Set `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` (and, for a partner
+   that speaks the same API, such as 360dialog, `WHATSAPP_API_URL`), then
+   restart. Invite yourself with **WhatsApp** ticked before inviting anyone
+   else: a template that is not approved yet shows on the Candidates tab as
+   *not sent*, with Meta's reason.
+
+Staff choose WhatsApp per import, beside email and SMS. Results go by email
+and WhatsApp both, where each is set up and the candidate gave an address or
+a mobile number.
+
+![Inviting a batch by email, SMS and WhatsApp](screenshots/pilot-01-invite-by-whatsapp.png)
+![Sending results: who it will reach, and how](screenshots/pilot-02-send-results.png)
 
 ### Start it
 
@@ -235,6 +272,31 @@ it.
 - [ ] Someone opens a test invitation on a phone and on a lab machine.
 - [ ] The invigilators are signed in and have the exam's **Live** tab open.
 
+### A sitting in a lab
+
+On the exam's **Live** tab, **Lab mode → Change**, from a machine in the lab:
+
+- **Networks**: **Add it** puts this machine's public address in the list;
+  add the college's full range if its labs leave by more than one. Outside
+  them, a candidate's link says the test is for the exam room, and a
+  candidate who carries on from outside is stopped, until the window closes.
+  A list that leaves out the address of whoever saves it is refused.
+- **Candidates wait for the invigilator**: opening a link shows "Waiting for
+  the invigilator" until **Start the test for everyone**; each candidate's
+  own clock starts as they begin. Turning waiting off and on again holds the
+  next batch.
+
+It checks where requests come from, as the college's router presents them:
+behind Caddy this needs `TRUST_PROXY=true` (setup-server.sh sets it), and a
+VPN into the college satisfies it. It keeps an honest room honest; it does
+not prove anyone is in it. Both changes are audited.
+
+| Setting it, from the lab | What a candidate sees until the start | The start button |
+|---|---|---|
+| ![Lab mode settings](screenshots/pilot-03-lab-mode-settings.png) | ![Waiting for the invigilator](screenshots/pilot-04-candidate-waiting.png) | ![Start the test for everyone](screenshots/pilot-05-lab-start-for-everyone.png) |
+
+Opened anywhere else, the link says so: ![Exam room only](screenshots/pilot-06-candidate-exam-room-only.png)
+
 ### During
 
 The **Live** tab shows every candidate, where they are in the test, and when
@@ -262,7 +324,8 @@ What to do when:
       each. Any it cannot grade are named, to open one by one.
 - [ ] Read a few reports end to end, follow-ups included.
 - [ ] When the college is ready, Results tab → **Send results to candidates…**:
-      each graded candidate with an email address gets their marks (and,
+      each graded candidate gets their marks by email, and by WhatsApp where
+      it is set up and they gave a mobile number (and,
       if the exam has a qualifying mark and the college wants it said,
       whether they reached it), with a link to their record. Nobody is sent
       theirs twice, so it can be pressed again after grading the rest.

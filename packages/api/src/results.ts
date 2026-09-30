@@ -135,6 +135,7 @@ export class ResultsService {
 
   readonly #identity: IdentityStore | null;
   readonly #mailer: Mailer | null;
+  readonly #whatsapp: boolean;
   readonly #now: () => number;
 
   constructor(options: {
@@ -145,6 +146,8 @@ export class ResultsService {
     /** For sending the workbook by email to whoever asks for it. */
     readonly identity?: IdentityStore | null;
     readonly mailer?: Mailer | null;
+    /** Whether WhatsApp is set up, so results can go that way too. */
+    readonly whatsapp?: boolean;
     readonly now?: () => number;
   }) {
     this.#proctor = options.proctor ?? null;
@@ -153,6 +156,7 @@ export class ResultsService {
     this.#exams = options.exams;
     this.#identity = options.identity ?? null;
     this.#mailer = options.mailer ?? null;
+    this.#whatsapp = options.whatsapp ?? false;
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -173,43 +177,68 @@ export class ResultsService {
   }
 
   /**
-   * Tell each graded candidate their result, by email (docs/PILOT.md: after
-   * the sitting). One message each, ever: pressing it again sends nobody a
+   * Tell each graded candidate their result, by email and, where it is set
+   * up and they gave a mobile number, WhatsApp (docs/PILOT.md: after the
+   * sitting). One message each way, ever: pressing it again sends nobody a
    * second, so it is safe to press once more grading is done. The message is
    * written when it is sent, from the result as it then stands; with
-   * `outcome`, it says whether they reached the qualifying mark.
+   * `outcome`, it says whether they reached the qualifying mark. A dry run
+   * queues nothing and says what sending would do.
    */
   async release(
     actor: Actor,
     examId: ExamId,
-    options: { readonly outcome: boolean },
-  ): Promise<{ readonly sent: number; readonly alreadySent: number; readonly notGraded: number; readonly noEmail: number }> {
+    options: { readonly outcome: boolean; readonly dryRun?: boolean },
+  ): Promise<{
+    readonly sent: number;
+    readonly alreadySent: number;
+    readonly notGraded: number;
+    readonly unreachable: number;
+    readonly channels: readonly ("email" | "whatsapp")[];
+  }> {
     if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
-    if (this.#mailer === null) throw new AttemptError("invalid_state", "Email is not set up on this server: results cannot be sent to candidates");
+    if (this.#mailer === null && !this.#whatsapp) {
+      throw new AttemptError("invalid_state", "Neither email nor WhatsApp is set up on this server: results cannot be sent to candidates");
+    }
     const scope = staffScope(actor.orgId);
     const { rows } = await this.results(actor, examId);
     const invited = new Map((await this.#invitations.list(scope, examId)).filter((i) => i.attemptId !== null && !i.revoked).map((i) => [i.attemptId!, i]));
     const graded = rows.filter((r) => r.state === "graded");
-    const reachable = graded.flatMap((r) => {
+    const messages = graded.map((r) => {
       const invitation = invited.get(r.attemptId);
-      return invitation === undefined || invitation.email === null ? [] : [invitation];
+      if (invitation === undefined) return [];
+      const draft = (kind: "email" | "whatsapp", id: string) => ({
+        kind,
+        subject: { invitationId: invitation.id, outcome: options.outcome },
+        purpose: "results",
+        id,
+        sendAfter: new Date(this.#now()),
+      });
+      return [
+        ...(this.#mailer !== null && invitation.email !== null ? [draft("email", `results:${invitation.id}`)] : []),
+        ...(this.#whatsapp && invitation.phone !== null ? [draft("whatsapp", `results:${invitation.id}:whatsapp`)] : []),
+      ];
     });
-    const drafts = reachable.map((i) => ({
-      kind: "email" as const,
-      subject: { invitationId: i.id, outcome: options.outcome },
-      purpose: "results",
-      id: `results:${i.id}`,
-      sendAfter: new Date(this.#now()),
-    }));
-    const sent = drafts.length === 0 ? 0 : await this.#invitations.enqueue(scope, drafts);
+    const drafts = messages.flat();
+    const ids = drafts.map((d) => d.id);
+    const written = new Set(
+      options.dryRun === true
+        ? await this.#invitations.queued(scope, ids).then((already) => ids.filter((id) => !already.includes(id)))
+        : drafts.length === 0
+          ? []
+          : await this.#invitations.enqueue(scope, drafts),
+    );
+    const reached = messages.filter((m) => m.length > 0);
     const counts = {
-      sent,
-      alreadySent: drafts.length - sent,
+      // A candidate counts as sent if any way of reaching them is new: one who gave a number since, say.
+      sent: reached.filter((m) => m.some((d) => written.has(d.id))).length,
+      alreadySent: reached.filter((m) => !m.some((d) => written.has(d.id))).length,
       notGraded: rows.filter((r) => r.state === "submitted").length,
-      noEmail: graded.length - reachable.length,
+      unreachable: graded.length - reached.length,
     };
-    await this.#exams.recordAudit(actor, "results.released", examId, { ...counts, outcome: options.outcome });
-    return counts;
+    const channels = [...(this.#mailer === null ? [] : (["email"] as const)), ...(this.#whatsapp ? (["whatsapp"] as const) : [])];
+    if (options.dryRun !== true) await this.#exams.recordAudit(actor, "results.released", examId, { ...counts, outcome: options.outcome });
+    return { ...counts, channels };
   }
 
   /** One candidate's result, as the Results tab has it, for the message that tells them; null until graded. */

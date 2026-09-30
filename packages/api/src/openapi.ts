@@ -1,6 +1,7 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, FeedbackStore, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, FeedbackStore, IdentityStore, LabStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { LabService } from "./lab.js";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -76,6 +77,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),
     proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }),
     feedback: new FeedbackStore(unusable),
+    lab: new LabService({ lab: new LabStore(unusable), invitations: invitationStore, store, exams: service }),
     tokens,
     auth,
     security: new StaffSecurity({ identity, auth, secrets, publicUrl: "https://example.invalid" }),

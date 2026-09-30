@@ -170,6 +170,36 @@ describe("an invitation link", () => {
     expect(fetch).not.toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
   });
 
+  it("waits for the invigilator in lab mode, asking again by itself without flashing", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const fetch = vi.fn(async (url: string) =>
+      url.endsWith("/invitations/redeem") ? json({ error: "waiting_for_start", message: "not yet" }, 403) : json({ error: "nope" }, 404),
+    );
+    vi.stubGlobal("fetch", fetch);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      renderApp(<App />);
+      const waiting = await screen.findByRole("region", { name: "Waiting to start" });
+      expect(waiting).toHaveTextContent("Waiting for the invigilator to start the test.");
+      const asked = fetch.mock.calls.filter(([url]) => String(url).endsWith("/invitations/redeem")).length;
+      await vi.advanceTimersByTimeAsync(5_500);
+      expect(fetch.mock.calls.filter(([url]) => String(url).endsWith("/invitations/redeem")).length).toBe(asked + 1);
+      // Still waiting: the page did not flash to "opening" in between.
+      expect(screen.getByRole("region", { name: "Waiting to start" })).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("says a lab-only test must be opened in the exam room", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "outside_network", message: "lab only" }, 403)));
+    renderApp(<App />);
+    const outside = await screen.findByRole("region", { name: "Exam room only" });
+    expect(outside).toHaveTextContent("This test can only be taken in the exam room.");
+    expect(within(outside).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
   it("says plainly when the window has closed", async () => {
     window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
     vi.stubGlobal(
