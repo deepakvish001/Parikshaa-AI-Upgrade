@@ -1,8 +1,8 @@
 # Parikshaa Prep — build tracker
 
-**Parikshaa Prep Blueprint** (28 Sep 2026) ka har feature yahan track hota hai: kya ban gaya, kya aadha hai, kya baaki hai, aur aage kya banana hai. Blueprint ka poora plan (design, flows, data model, pricing) yahan hai: <https://claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh>. Isi ka engineering version [ROADMAP §16](ROADMAP.md#16-prep-a-practice-site-to-prepare-on) me hai.
+**Parikshaa Prep Blueprint** (28 Sep 2026) ka har feature yahan track hota hai: kya ban gaya, kya aadha hai, kya baaki hai, aur aage kya banana hai. Blueprint ka poora plan (design, flows, data model, pricing) yahan hai: <https://claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh>. Isi ka engineering version [ROADMAP §16](ROADMAP.md#16-prep-a-practice-site-to-prepare-on) me hai. Blueprint ke aage ka bada plan (Pramaan, Parikshaa Score, college aur company ka hissa, dusre exams) [Master plan v2](#master-plan-v2-taiyaari-se-naukri-tak-ek-bharosemand-platform) me hai: abhi prastaav, owner ki haan baaki.
 
-Aakhri update: **30 Sep 2026** · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
+Aakhri update: **1 Oct 2026** (Master plan v2 joda) · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
 
 ## Is file ko kaise update karna hai
 
@@ -269,6 +269,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Naam aur brand | "Parikshaa Prep" kaam chalane ka naam. **Pakka karna baaki** | — |
 | Prices | Staff console me khud set karta hai. Blueprint ke numbers (₹3,999/₹6,999…) **pakka karna baaki** | — |
 | Videos: kaun, kis bhasha me, hosting kahan | **Baaki** | — |
+| Scope: placement prep se aage (college ka TPO OS, company ka talent pool, coaching aur dusre exams) | **Prastaav**, [Master plan v2](#master-plan-v2-taiyaari-se-naukri-tak-ek-bharosemand-platform). Owner ki haan baaki | — |
+| Student ke liye core taiyaari, Parikshaa Score aur Pramaan hamesha free; paisa company, college aur coaching se | **Prastaav** (V2-7). Owner ki haan baaki | — |
 | Sahayak evals ka size | Blueprint me 200 problems the; owner ne **40 problems × 3 galat programs** chune (har flow me 120 cases, kul 360). Problems apne likhe hain, kisi site se copy nahi | 30 Sep 2026 |
 
 ---
@@ -280,6 +282,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | Kaam | Kis cheez ka intezaar | Uske baad kya hoga | Kab se |
 |---|---|---|---|
 | **Sahayak evals ka paid run** (plan 1a) | Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, tracker me scores | 30 Sep 2026 |
+| **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
 
 ## Plan: aage kya banega
 
@@ -299,6 +302,250 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 7 | NoteSpace: AI draft, PDF export | F15 | Phase 5 | Topic ke notes ek PDF me | ⬜ |
 | 8 | Campus licence: CSV se bulk Plus, college dashboard | F16 | B2B sales | 500 students ek CSV se | ⬜ |
 | 9 | Content: 150 editorials, 300 hints, 25 companies, videos | §15 | Log content ke liye aate hain | Har phase ka content target | ⬜ |
+| 10 | **V2-P0 Neev**: 1a–5 poore, PWA v1 (A1), achievement cards (C1), public profile (C6), pehla load test (G) | Master plan v2 | Baaki sab isi par khada hai | V2-8 ka gate: D1/D7 naap rahe; 1,000 ka exam start paas | ⬜ owner ki haan baaki |
+| 11 | **V2-P1 Saboot**: Pramaan (B1), viva-verified solves (B2), leak-proof paper (B4), Premier League, squads, referral, WhatsApp sawaal | Master plan v2 | Hamara sabse bada fark | 20 college, 10,000 learners, D7 ≥ 25% | ⬜ owner ki haan baaki |
+| 12 | **V2-P2 College**: TPO OS (D1–D5, D7), handwritten checking beta (D6), mock OA (A5) | Master plan v2 | Distribution ka sasta rasta | 50 college har hafte active; 3 paid pilot | ⬜ owner ki haan baaki |
+| 13 | **V2-P3 Company**: Parikshaa Score (B3), talent pool, hiring challenge, interview room, AI-allowed test (E1–E6) | Master plan v2 | Paisa yahan se | 20 paying companies; Score se 100 hiring | ⬜ owner ki haan baaki |
+| 14 | **V2-P4 Aur exams + Bharat**: coaching white-label, OMR scan, GATE, SSC/Bank (F1–F4), awaaz + 11 bhashayein (A7), creators | Master plan v2 | Placement ke bahar ka bazaar | 25 coaching; Hindi/regional ≥ 40% | ⬜ owner ki haan baaki |
+| 15 | **V2-P5 Scale + certificate**: 10,000 ka contest, pentest + bug bounty, DigiLocker, Play Store app | Master plan v2 | Badi company aur sarkar ka bharosa | Pentest ke critical/high 0 | ⬜ owner ki haan baaki |
+
+## Master plan v2: taiyaari se naukri tak, ek bharosemand platform
+
+**Likha gaya:** 1 Oct 2026 · **Status:** prastaav. Owner ki haan ke baad har hissa upar ki [Plan](#plan-aage-kya-banega) table me entry banega, aur tabhi build shuru hoga. Faisle jo owner ko lene hain, [neeche](#v2-11-owner-se-kya-chahiye) hain.
+
+### V2-1. Ek line me
+
+**Student free me taiyaari kare → har taiyaari ka saboot bane (Parikshaa Pramaan) → college aur company usi saboot par bharosa karein aur dobara-dobara test na karwayein → paisa company, college aur coaching dete hain, student nahi.**
+
+Aaj student har company ka alag online test deta hai, LeetCode ki ginti AI se nakli ban sakti hai, aur company ko kisi score par bharosa nahi. Jo platform "ye student sach me jaanta hai" ka **saboot** de sake, woh dono taraf jeetega.
+
+### V2-2. Hamari asli taakat (jo code me pehle se hai)
+
+Ye cheezein bani hui hain aur tests ke saath chal rahi hain. Plan inhi par khada hai, kyunki inhe copy karna mushkil hai:
+
+| Taakat | Kahan | Kyun kaam ki |
+|---|---|---|
+| **Integrity ledger**: har attempt ek hash-chain, candidate ko receipt, bahar se verify | `packages/core`, `packages/verify`, scorecard QR (`/?scorecard=`) | Result ke saath chhed-chhaad pakdi jaati hai. Candidate khud apna record jaanch sakta hai |
+| **Micro-viva**: jawab ke baad AI follow-up sawaal, "kya isne khud likha?" | exam engine | "Suspicion score" ki jagah seedha samajh ki jaanch. AI se copy kiya jawab pakda jaata hai |
+| **11 bhashayein + Hinglish grading**, 2G low-bandwidth mode | `web/src/locales`, ROADMAP §9 | Tier-2/3 aur Hindi-medium student |
+| **NTA jaisa CBT interface** | candidate exam | JEE/NEET/CUET/SSC wale students isi se pehchaante hain |
+| **Lab mode, WhatsApp, ATS, GST billing, rechecks, marking** | PR #32 | College aur company ka poora exam-din |
+| **Prep ka core loop**: planner, Sahayak, coins, company pages, contests | upar ki tables | Roz aane ki wajah |
+
+Kami (jo abhi nahi hai): app/PWA, awaaz (voice), content ka size, public profile, companies ke liye talent pool, analytics, bade contest ka load test.
+
+### V2-3. Competitors: kiske paas kya hai, kahan jagah khaali hai
+
+Ye tasveer 1 Oct 2026 ki public jaankari se hai. "Kisi ke paas nahi" ka daava hum pakka nahi kar sakte. Isliye neeche likha hai ki **ek saath** kiske paas nahi hai. Launch se pehle har daave ko dobara jaanchna hai.
+
+| Kism | Khiladi | Unki taakat | Khaali jagah (jahan hum jeetein) |
+|---|---|---|---|
+| Coding prep | LeetCode, GeeksforGeeks, takeUforward, Coding Ninjas, Scaler | Content, community, brand | Zyaadatar English. "Solved count" AI se banaya ja sakta hai, iska koi saboot nahi. Achhe courses mehnge |
+| Aptitude aur company mocks | PrepInsta, IndiaBIX, FACE Prep, PlacementPreparation.io | Company-wise pattern | Asli proctoring nahi, personal plan nahi, hiring se juda nahi |
+| Common placement test | AMCAT (SHL), eLitmus, CoCubes | Ek score, kai companies | Student fees deta hai. Score ka hisaab chhupa hota hai. Taiyaari ka loop nahi. Candidate score khud verify nahi kar sakta |
+| B2B assessment | Mercer Mettl, HackerRank, HackerEarth, iMocha, TCS iON, Unstop | Enterprise proctoring, AI proctoring, bade clients | Har test mehnga. AI "cheating score" ek black box. English pe zor. Candidate ko badle me kuch nahi milta |
+| Govt aur entrance prep | Testbook, Adda247, PW, Unacademy | Bahut content, mock tests, Hindi | Hiring se juda nahi, coding kam |
+| AI mock interview | PlacementDo jaise naye tools, Coding Ninjas ka AI | Voice practice | Saboot nahi, regional bhasha kam, prep aur hiring se alag |
+| Campus placement ERP | Superset jaise tools | Drive management | Assessment aur prep nahi |
+
+Nichod: **prep + proctored assessment + verifiable saboot + Bharat ki bhashayein + college ka free system + company ka talent pool**, ye sab **ek jagah** kisi ek khiladi ke paas nahi dikhta. Yahi hamari jagah hai.
+
+### V2-4. Do tarafa soch: kaun, kya dard, hum kya denge
+
+| Kaun | Aaj ka dard | Hum kya denge | Woh kyun aayega |
+|---|---|---|---|
+| **Student, tier-1** | Har company ka alag OA, LeetCode grind ka saboot nahi | Ek Pramaan jo sab companies dekhein, Parikshaa Score, company-wise plan | Kam test, zyada interview call |
+| **Student, tier-2/3, Hindi/regional medium** | English content, mehngi coaching, sasta phone, kamzor net | 11 bhashaon me Sahayak (awaaz se bhi), 2G PWA, WhatsApp par roz ka sawaal, sab free | Pehli baar apni bhasha me placement taiyaari |
+| **Govt job / GATE / entrance aspirant** | Mock tests bikte hain, interface asli jaisa nahi | NTA/TCS iON jaisa CBT free, All-India rank | Asli exam jaisa abhyaas, free |
+| **Maa-baap** | Bachcha kya kar raha hai pata nahi | Hafte ki WhatsApp report (student ki manzoori se) | Bharosa, aur college/coaching ki sifarish |
+| **TPO / placement cell** | Excel me drives, NIRF/NAAC ke liye data jodna, students ki taiyaari ka andaaza nahi | Free "TPO OS": students, drives, eligibility, readiness heatmap, NIRF/NAAC reports ek click | Kaam aadha, ranking ke liye data taiyaar |
+| **Faculty** | Internal exams check karna, CO-PO attainment | Handwritten copy scan karke AI se sujhaya hua marking, CO-PO report | Hafte bachenge |
+| **Badi company (mass hiring)** | Lakhon applicants, proxy, paper leak, mehnga assessment | Leak-proof paper, identity + viva, 50 college ek saath lab mode me, verified talent pool | Sasta, bharosemand, kam fraud |
+| **Startup / SME** | Recruiter nahi, test ka budget nahi | Free hiring challenge, sirf shortlist par paisa | Bina sales call ke hiring |
+| **Coaching institute (chhote shehar)** | Apna CBT nahi, OMR ka jhanjhat | White-label NTA-jaisa CBT, phone camera se OMR scan, All-India rank | Apne brand me online test series |
+| **Hum (operator)** | AI ka kharcha, content ka size, bharosa banana | Static-first content, creators, sasta model routing | Har student free rahe aur business bhi chale |
+
+### V2-5. Chhe bade daav (jo ek saath kisi ke paas nahi)
+
+1. **Parikshaa Pramaan (Skill Passport)**: har proctored test, "samjha hua" solve, contest aur viva ek **signed, verifiable** profile me aata hai. QR, public link aur LinkedIn "Add to profile". Isme koi cheez haath se likhi nahi hoti: sab ledger se aata hai.
+2. **"Samjha hua" solve (viva-verified)**: accepted submission ke baad 2 chhote sawaal (text ya awaaz me), jaise "complexity kyun ye hai?" ya "khaali input par kya hoga?". Paas hone par hi solve ✔✔ ginta hai. AI ke zamane me sirf ginti bekaar hai. Ye ginti asli hai.
+3. **Parikshaa Score (PS)**: har mahine ek free, proctored national test (aptitude, coding, CS fundamentals, communication). Score 12 mahine valid, section-wise breakdown ke saath, aur kamzor hisson se apne aap naya study plan bane. Companies isi score se shortlist karein: "ek test, sab companies".
+4. **Leak-proof paper**: har candidate ka paper thoda alag hota hai (options ka kram, numbers badle hue variants, shabdon ke variants), aur us par ek halka candidate-code watermark hota hai jo photo ya screenshot me bhi rehta hai. Paper leak ho to photo se pata chal jaata hai kiske paper ki thi. Ledger batata hai kisne kab kya dekha. (NEET 2024 ke baad "paper leak" Bharat me sabse bada dar hai.)
+5. **Bharat-first pahunch**: Sahayak se awaaz me doubt poochhna (11 bhashayein), WhatsApp par roz ka sawaal aur hafte ki report, ₹6,000 wale phone aur 2G par chalne wala PWA, offline lessons.
+6. **College ke liye hamesha free TPO OS**: drives, eligibility, readiness, NIRF/NAAC reports aur handwritten exam checking. College free me judta hai, aur uske students apne aap aate hain. Distribution ka sabse sasta rasta yahi hai.
+
+### V2-6. Features, stambh (pillar) ke hisaab se
+
+Har row ka ID `V2-<pillar><number>` hai. Build shuru karte waqt ID ke saath upar ki Plan table me entry banegi.
+
+#### A. Student: free taiyaari (B2C)
+
+| ID | Feature | Kya aur kaise | Done kab |
+|---|---|---|---|
+| A1 | **PWA + offline** | Install hone wala app (Play Store par TWA wrapper), lessons aur problems offline cache, submissions queue me jaakar net aane par jaati hain | ₹6,000 ke Android par, 2G par, pehla page < 2.5 s |
+| A2 | **Browser me turant Run** | Python/JS ka Run browser ke andar WebAssembly (Pyodide) se: server ka chakkar nahi, offline bhi. Submit abhi bhi server judge par | Run < 300 ms, offline kaam kare |
+| A3 | **Placement quiz + target companies se plan** | 8–12 sawaal ka adaptive quiz level tay kare. Target role ya company chuno, plan ke aakhri 30% din me unke sawaal | Tracker ki §1 rows ✅ |
+| A4 | **JD se plan** | Job description chipkao, Sahayak skills nikaale, gap dikhaye aur 2–6 hafte ka plan bana de | 20 asli JD par sahi skills |
+| A5 | **Company mock OA simulator** | TCS NQT, Infosys, Accenture, Wipro, Capgemini, Cognizant jaise pattern: section, time aur negative marking wahi. Proctoring bhi wahi jo asli exam me, taaki aadat pade | 10 pattern, har ek ka readiness % |
+| A6 | **Aptitude + verbal + CS tracks** | Quant, reasoning, verbal, OS/DBMS/CN/OOP: Hindi aur English me | Har track me 300+ sawaal |
+| A7 | **Sahayak v2** | Awaaz se doubt (Bhashini ya browser speech), 11 bhashayein, notes ka AI draft, interview follow-ups, review ka fixed JSON | Tracker ki §5 rows ✅; evals targets paas |
+| A8 | **AI mock interview (awaaz)** | Company persona, Hinglish, follow-ups; report me samajh, communication aur galtiyaan. Micro-viva engine ka hi istemal | 5 persona; har session ki report |
+| A9 | **Resume jo saboot se bane** | Resume ki har line Pramaan se judi ("Solved 300 — 180 viva-verified"), ATS-friendly PDF, Hindi/English | Recruiter link khole to har daava verify ho |
+| A10 | **Streak freeze, sprint quiz, reminders** | Tracker ki §2 ki baaki rows, WhatsApp/email/push reminders | §2 rows ✅ |
+
+#### B. Saboot aur bharosa (dono taraf ki jadd)
+
+| ID | Feature | Kya aur kaise | Done kab |
+|---|---|---|---|
+| B1 | **Parikshaa Pramaan v1** | W3C Verifiable Credential jaisa JSON, Ed25519 se signed. Public key site par. `/p/<id>` public page, QR, PDF, LinkedIn "Add to profile". Kya dikhana hai, ye student chune | Offline verify tool (`packages/verify`) signature aur ledger dono jaanche |
+| B2 | **Viva-verified solves** | Accepted ke baad 2 sawaal. Pehle admin ke likhe sawaal (0 AI kharcha, static hint jaisa), na hon to AI. Leaderboard aur Pramaan sirf ✔✔ ginein | Eval: copy kiye solution wale 90% viva me fail hon, asli wale 95% paas |
+| B3 | **Parikshaa Score (PS)** | Mahine me ek slot, ghar se (camera + identity + viva) ya partner college ke lab me (lab mode, "high-trust" tier). Items IRT se calibrated, har candidate ka alag paper (B4) | 2 pilot slots, score ka test-retest stable |
+| B4 | **Leak-proof paper** | Parameterised variants (numbers, options, shabd), per-candidate kram, candidate-code watermark (CSS overlay jo photo me dikhe), leaked photo se candidate dhoondhne ka tool console me | Kisi test paper ki photo se 30 s me candidate mil jaaye |
+| B5 | **Proxy aur collusion pakadna** | Identity photo + awaaz viva; jawab ke samay aur similarity se "saath baithe" jode (winnowing pehle se hai). Faisla hamesha insaan ka | Report me jode aur kaaran |
+| B6 | **DigiLocker me Pramaan** | Issuer ke roop me DigiLocker/NeGD ke saath onboarding (sarkari process). Uske baad Pramaan student ke DigiLocker me | Owner ka kaam: application (neeche) |
+| B7 | **Leaderboard ki safai** | Plagiarism, bahut tez solve aur viva fail wale solves ranking se bahar. Kaaran student ko dikhe, appeal ho sake | Top 100 me manual audit par 0 nakli |
+
+#### C. Viral hona aur badhna
+
+| ID | Feature | Kya aur kaise | Kyun viral |
+|---|---|---|---|
+| C1 | **Achievement cards** | 9:16 (WhatsApp status/Instagram story) aur 1:1 card, Hindi/regional me, ek tap me share. Card par QR jo Pramaan khole | Har streak, contest aur Score ek post ban jaata hai |
+| C2 | **Campus Premier League** | College vs college aur state leaderboard: mahine ka "Top campus", TPO ko badge | TPO khud students ko jodta hai |
+| C3 | **Squads** | 3–5 dost, saanjha streak, ek toote to sab ko yaad dilaye | Dost dost ko laata hai |
+| C4 | **Referral** | Dono ko Sahayak credits + Plus ke din. Coupon/affiliate `?ref=` (tracker plan #2) | Seedha K-factor |
+| C5 | **Sponsored weekly contest** | Company prize de, top 50 ko seedha interview call. "Contest se naukri" | Har hafte khabar |
+| C6 | **Public profile `/u/:username`** | Pramaan, rating, achievements; SEO ke liye fast static page | Google se naye students |
+| C7 | **Placement Wrapped** | Saal ke ant me "tumhara saal", share hone layak | Dec–Jan me lehar |
+| C8 | **Creator programme** | Teachers aur YouTubers tracks/lessons banayein, moderation ke baad publish. Plus ki kamai me hissa | Content ka size + creators ka apna audience |
+| C9 | **Campus ambassador** | Har college me 1–2 students: coins, certificate, swag. Console me ambassador dashboard | Tier-3 me pahunch |
+| C10 | **WhatsApp Roz Ka Sawaal** | Subah ek MCQ WhatsApp buttons se, jawab par turant explanation, streak. Kharcha Meta ki per-message pricing par (pehle naapna) | App ke bina bhi judaav |
+
+#### D. College (free TPO OS + paid proctored exams)
+
+| ID | Feature | Kya aur kaise | Done kab |
+|---|---|---|---|
+| D1 | **Campus licence + bulk CSV** | 500 students ek CSV se, Plus sabko (tracker plan #8) | 500 students 1 minute me |
+| D2 | **Readiness heatmap** | Branch/batch ke hisaab se kaun kis topic me kamzor; kamzor students ki early warning, faculty ko remedial list | TPO ek page par dekhe |
+| D3 | **Drive manager** | Company registration, eligibility (CGPA, backlogs, branch), apply, round-wise status, offer upload | Ek poori drive bina Excel ke |
+| D4 | **NIRF / NAAC reports** | Placement %, median salary, higher studies: NIRF ke format me export. NAAC Criterion 5 ka data | Pilot college ki report TPO manzoor kare |
+| D5 | **CO–PO attainment** | Har sawaal course outcome se juda, attainment report PDF/Excel | NBA format me report |
+| D6 | **Handwritten copy checking** | Phone se answer sheet scan, AI likha hua padhe aur rubric se mark sujhaye, faculty manzoor kare. Sab ledger me (rechecks pehle se hain) | 200 asli copiyon par faculty se 90% match |
+| D7 | **Semester internals** | Lab mode + NTA CBT + question quality report (pehle se). Paper setter ke liye AI se question paper, syllabus aur blueprint ke hisaab se | Ek internal exam poora online |
+
+#### E. Company (paisa yahan se)
+
+| ID | Feature | Kya aur kaise | Done kab |
+|---|---|---|---|
+| E1 | **Verified talent pool** | Sirf wahi students jo khud "discoverable" chunein (DPDP consent). Filter: Score, verified skills, shehar, bhasha, graduation year | Consent log, student kabhi bhi hat sake |
+| E2 | **Hiring challenge** | Company free me challenge daale, students dein, shortlist par paisa | Pehli 5 company se hiring |
+| E3 | **Mass drive** | 50 college, ek paper, ek samay, lab mode, variants + watermark, results ek jagah | 5,000 candidates ek saath 10:00 baje |
+| E4 | **Interview room** | Video (WebRTC) + saanjha editor + whiteboard, interviewer ki rubric, recording sirf dono ki manzoori se | 30 min interview bina ruke 4G par |
+| E5 | **"AI-allowed" assessment** | Candidate test me diya gaya AI assistant use kar sakta hai; har prompt ledger me; grading me dekha jaata hai ki AI ka sahi istemal kiya ya nahi | 2026 ki hiring ki asli zaroorat |
+| E6 | **Pay-per-shortlist pricing** | SME ke liye sirf shortlist par, badi company ke liye credits ya saal ka contract (GST billing pehle se hai) | Self-serve kharid |
+
+#### F. Dusre exams (placement ke baad)
+
+| ID | Feature | Kya aur kaise | Kram |
+|---|---|---|---|
+| F1 | **Coaching white-label** | Coaching institute ka apna subdomain aur logo, NTA-jaisa CBT, test series, All-India rank (sab coaching milakar, naam chhupa ke) | Pehla |
+| F2 | **Phone se OMR scan** | Offline test ki OMR sheet phone camera se jaanchi jaaye, result online | F1 ke saath |
+| F3 | **GATE CS track** | CS fundamentals pack ko GATE syllabus tak badhana, GATE jaisa virtual calculator (pehle se), NAT sawaal | Doosra |
+| F4 | **SSC / Bank / Railway aptitude** | Aptitude content wahi, Hindi pehle; TCS iON jaisa interface | Teesra |
+| F5 | **School aur CUET** | Under-18 ke liye maa-baap ki verifiable consent (DPDP) zaroori, isliye sabse baad | Chautha |
+
+#### G. Sabse tez (speed ke vaade, naap ke saath)
+
+| Kya | Target | Kaise |
+|---|---|---|
+| Pehla page (4G, sasta Android) | < 1.5 s LCP; 2G par < 4 s | Bundle budget (pehle se), Brotli, images lazy, font subset, Mumbai/Hyderabad region |
+| API TTFB Bharat me | p95 < 200 ms | India region server, connection pooling, read replica |
+| Judge verdict | p95 < 2 s (normal), contest me < 5 s | Warm runner pool, priority lane (tracker §9), autoscale |
+| Exam start burst | 5,000 candidates 60 s me | Load test (ROADMAP §10), pre-signed tokens, CDN par static |
+| Contest | 10,000 ek saath | Queue, backpressure, scoreboard cache |
+
+Har release me ye naap CI ya nightly load test me chale. Target se neeche gaye to release ruke.
+
+#### H. Suraksha aur privacy (bharosa hi product hai)
+
+| ID | Kya | Kyun |
+|---|---|---|
+| H1 | **Passkeys (WebAuthn)** staff aur learners dono ke liye; staff ke liye 2FA pehle se hai | Password chori ka ant |
+| H2 | **DPDP Act 2023 + DPDP Rules 2025** ke hisaab se consent manager, data export/delete, retention (tutor chats 180 din, tracker §5), under-18 ke liye maa-baap ki consent | Kanoon; school aur coaching ke liye zaroori |
+| H3 | **CERT-In directions**: incident 6 ghante me report karne ki prakriya, logs 180 din Bharat me | Kanoon |
+| H4 | **Bahar ka pentest + bug bounty**, phir ISO 27001 ki taiyaari (ROADMAP ki "honestly not in here" list) | Badi company ka procurement |
+| H5 | **Data Bharat me**: DB aur files India region me. Model calls ke India region ka sawaal ROADMAP me khula hai | Colleges aur sarkari buyers poochhte hain |
+| H6 | **Koi AI "cheating score" nahi**: photo ya tab switch sirf insaan ke dekhne ka kaaran hai, faisla nahi (ROADMAP §14 ka siddhant). Marketing me bhi yahi | Students ka bharosa; galat aarop se bachav |
+
+#### I. AI, kharche ke saath
+
+- **Static pehle, AI baad me**: pehla hint, viva ke sawaal aur editorials admin/creator ke likhe hon; AI tabhi chale jab likha hua na ho (1b jaisa).
+- **Model routing**: chhote kaam (quiz check, tagging, OCR ke baad saaf karna) sabse saste model par; review, interview aur grading bade model par. Prompt caching har jagah.
+- **Credits**: free student ko mahine ke credits. Kharcha org ke spend cap me gine (pehle se).
+- **Evals pehle**: har naya AI feature (viva, interview, handwritten checking) tabhi launch ho jab uska eval set paas ho, Sahayak evals ki tarah (plan 1a).
+- **Kharcha naapna**: §0 cost-run se har feature ka "₹ per active student per mahina" nikaalna. Free rehne ki shart yahi number hai.
+
+### V2-7. Paisa kahan se (student hamesha free)
+
+| Kahan se | Kaise | Kab |
+|---|---|---|
+| Company | Assessment credits, mass drive, pay-per-shortlist, talent pool ka subscription, interview room | P3 se |
+| College | TPO OS free. Proctored semester exams, handwritten checking aur NAAC/NIRF pack paid (per student per saal) | P2 se |
+| Coaching | White-label test series: per student per test, ya saal ka plan | P4 se |
+| Plus (optional) | Zyada Sahayak credits, mock interviews, Company Pass. Core taiyaari kabhi paywall ke peeche nahi | Pehle se (tracker §6) |
+| Sponsor | Contest aur Premier League ke sponsor, "top 50 ko interview" | P1 se |
+
+Siddhant: **jo student ke career ke liye zaroori hai (practice, plan, Score, Pramaan) woh free rahega.** Paisa convenience aur institutions se aata hai.
+
+### V2-8. Phases aur samay
+
+Samay ek chhoti team (2–4 engineers + content) ke hisaab se andaaza hai, vaada nahi. Har phase ke ant me ek **gate** hai: gate paas na ho to agla phase nahi shuru hoga.
+
+| Phase | Samay | Kya banega | Gate (aage badhne ki shart) |
+|---|---|---|---|
+| **V2-P0 Neev** | 0–4 hafte | Plan 1a–5 poore (evals run, coupons/invoices, reminders + analytics, e2e), A1 PWA v1, C1 cards, C6 public profile, G ka pehla load test | Analytics se D1/D7 naap rahe hain; exam start 1,000 ek saath paas |
+| **V2-P1 Saboot** | 1–3 mahine | B1 Pramaan, B2 viva-verified, B4 leak-proof paper, B7, C2 Premier League, C3 squads, C4 referral, C10 WhatsApp sawaal, A3 | 20 college, 10,000 learners, D7 ≥ 25% |
+| **V2-P2 College** | 3–5 mahine | D1–D5, D7, D6 beta, A5 mock OA, A6 tracks | 50 college har hafte active; 3 college paid pilot |
+| **V2-P3 Company** | 5–7 mahine | B3 Parikshaa Score (2 pilot slots), E1–E6, A8 mock interview, A9 resume | 20 paying companies; Score se pehli 100 hiring |
+| **V2-P4 Aur exams + Bharat** | 7–10 mahine | F1–F4, A7 awaaz + 11 bhashayein, C8 creators, C9 ambassadors | 25 coaching institutes; Hindi/regional learners ≥ 40% |
+| **V2-P5 Scale + certificate** | 10–12 mahine | 10,000 ka contest, H4 pentest + bug bounty, B6 DigiLocker, Play Store app, F5 ki taiyaari | Pentest ke critical/high 0; contest bina ruke |
+
+### V2-9. Kya naapenge (metrics)
+
+- **North star:** har hafte kitne **verified skills** (viva-verified solves + Score + Pramaan) bane. Ye student ki taiyaari aur company ka bharosa dono ko ek number me naapta hai.
+- **Student:** activation (pehle din plan + 1 solve), D7, D30, hafte me active din, viva pass rate.
+- **Viral:** K-factor (ek student kitne laata hai), share ki ginti, referral se signup.
+- **College:** active college, TPO hafte me kitni baar aata hai, readiness me sudhaar.
+- **Company:** Score/Pramaan se shortlist → interview → offer ka funnel, repeat company.
+- **Bharosa:** leak ke case, galat flag par appeals, uptime, judge p95.
+- **Kharcha:** ₹ AI kharcha per active student per mahina.
+
+### V2-10. Khatre aur imaandari
+
+| Khatra | Asar | Bachav |
+|---|---|---|
+| Free Score par cheating | Score ki keemat khatam | Viva, variants, watermark, "high-trust" lab tier, B7 audit; company ko dikhe ki score kis tier ka hai |
+| AI ka kharcha free users se badh jaaye | Paisa khatam | Static-first, routing, credits, cost-run gate (V2-I) |
+| Content ka size (editorials, videos, company data) | Log nahi rukenge | Creators (C8), content team, evals se quality |
+| DigiLocker issuer banna sarkari process hai | Der | B1 pehle apne signature se; DigiLocker baad me, bonus |
+| DPDP: under-18 aur consent | Jurmana, bharosa | School/CUET sabse baad (F5); consent manager P1 me |
+| "Kisi competitor ke paas nahi" galat nikle | Marketing par sawaal | Har daava launch se pehle dobara jaanchna; daava "ek saath" ka ho |
+| AI mark ya viva galat ho | Student ke saath anyaay | Faisla hamesha insaan ka, rechecks (pehle se), evals |
+| Handwritten OCR Hindi/regional me kamzor | D6 fail | Pehle English + Hindi, faculty-in-loop, 200 copiyon ka eval |
+| Team chhoti, scope bada | Kuch bhi poora nahi | Phase gates; ek waqt me ek phase |
+
+### V2-11. Owner se kya chahiye
+
+Ye faisle owner ke hain. Jab tak na milein, related build shuru nahi hoga:
+
+1. **Haan ya na**: kya scope placement se badhkar college OS, company talent pool aur coaching tak jaaye? (Faisle table me "prastaav")
+2. **Naam aur brand**: "Parikshaa Prep", "Parikshaa Pramaan", "Parikshaa Score" pakke hain ya nahi.
+3. **Siddhant**: kya ye pakka hai ki core taiyaari aur Score student ke liye hamesha free rahega?
+4. **Budget**: AI ka mahine ka budget, aur `ANTHROPIC_API_KEY` (evals ka paid run pehle se ruka hai).
+5. **Content**: content team ya creators; videos kaun banayega, kis bhasha me.
+6. **Sarkari/kanooni**: DigiLocker issuer application, company registration, privacy policy par vakeel ki salah (DPDP).
+7. **Pehle partners**: 3 pilot college, 2 sponsor company, 5 coaching institute.
+
+---
 
 ## Build log
 
@@ -306,6 +553,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | Master plan v2 likha: competitors, dono taraf ki zaroorat, 6 bade daav, 9 stambh, phases, metrics, khatre. Abhi sirf plan, code nahi |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) `850cb5d` | Pehla hint admin ka likha (free, bina AI); worked solution ke baad solve par coins aadhe; tracker me "Ruka hua kaam" |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) `cdf6fd9` | Sahayak evals ka dhaancha: 40 problems (360 cases), runner, grading, judge-sanity, tests. Paid baseline run abhi baaki |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) | Ye tracker, aur `CLAUDE.md` me rule ki har build ise update kare |
