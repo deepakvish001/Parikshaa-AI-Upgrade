@@ -104,7 +104,26 @@ is a hope, not a backup. Keep `PARIKSHAA_DATA_KEY` apart from the backups.
 
 ## 3. Check it yourself before the college does
 
-Do the college's whole first day, as them, with an address of your own:
+**First, the server check**, from any machine with Node 20 and this
+repository, after every deploy:
+
+```bash
+npm run smoke -- https://exam.yourdomain.in
+SMOKE_EMAIL=you@yourdomain.in SMOKE_PASSWORD='…' npm run smoke -- https://exam.yourdomain.in
+```
+
+The first line checks what anyone can reach: the service answers, the
+candidates' page and the console load with their security headers, HTTPS,
+and whether sign-up is open. With an account it also signs in, writes a
+two-question exam, sits it as a candidate, has it graded (the written answer
+by the model, so the API key is checked), asks for the results by email, and
+archives the exam. Use an owner in an organisation you made with
+`admin-cli`, so the check spends no one's credits; `SMOKE_CODE` carries a
+second-factor code if the account has one. Each step prints ✓ or ✗ and why,
+and it exits non-zero if any failed. Check the results email arrives.
+
+Then do the college's whole first day by hand, as them, with an address of
+your own:
 
 1. Open `https://exam.yourdomain.in/console/`. The sign-in page shows
    **"Make your institution's account"** — if not, `SELF_SIGNUP` is not on.

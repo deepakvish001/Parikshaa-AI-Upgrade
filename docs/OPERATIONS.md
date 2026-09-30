@@ -192,6 +192,12 @@ older than the organisation's retention period are erased. Set
 `RETENTION_WORKER=off` on API-only nodes, as with the delivery worker.
 Nothing is erased for an organisation that has not set its privacy notice.
 
+## Checking a deployment
+
+`npm run smoke -- https://<your host>` walks a live server through a
+college's first day in small, from outside: see step 3 of `PILOT.md`. Run it
+after every deploy; it exits non-zero on any failure, so it can gate one.
+
 ## Billing
 
 Plans are set by the operator, not the customer:
