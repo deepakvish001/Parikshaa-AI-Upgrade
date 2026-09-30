@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, type SqlExecutor } from "@parikshaa/store";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -27,6 +27,7 @@ import { StaffAuth } from "./staff-auth.js";
 import { StaffSecrets } from "./staff-secrets.js";
 import { StaffSecurity } from "./staff-security.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
+import { DailyPilotReport } from "./pilot-report.js";
 
 /**
  * The whole service, wired: the server and the delivery worker over one
@@ -58,6 +59,8 @@ export interface AssembleOptions {
   readonly sms?: SmsSender | null;
   /** Institutions may sign themselves up, on these terms. Absent: only the admin CLI makes organisations. */
   readonly signup?: SignupPolicy | null;
+  /** The operator's address for the pilot report each morning. Absent: no report is sent. */
+  readonly pilotReportTo?: string | null;
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy">;
 }
 
@@ -67,6 +70,8 @@ export function assemble(o: AssembleOptions): {
   privacy: PrivacyService;
   billing: BillingService;
   identity: IdentityStore;
+  /** Null unless {@link AssembleOptions.pilotReportTo} is given. */
+  dailyReport: DailyPilotReport | null;
 } {
   const keys = new DataKeys(o.dataKey);
   const proctorStore = new ProctorStore(o.sql, keys);
@@ -177,6 +182,11 @@ export function assemble(o: AssembleOptions): {
     ...o.server,
   });
 
+  const dailyReport =
+    o.pilotReportTo === undefined || o.pilotReportTo === null
+      ? null
+      : new DailyPilotReport({ identity, reports: new ReportStore(o.sql), mailer: o.mailer ?? null, to: o.pilotReportTo });
+
   const worker = new DeliveryWorker({
     outbox: new OutboxStore(o.sql),
     invitations: invitationStore,
@@ -186,8 +196,15 @@ export function assemble(o: AssembleOptions): {
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: practiceIdentity.verificationMail },
+      item.purpose === "password_reset"
+        ? security.resetMail(item)
+        : item.purpose === "results_file"
+          ? results.mail(item)
+          : item.purpose === "pilot_report"
+            ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
+            : onboarding.mail(item),
+      learner_email: practiceIdentity.verificationMail },
   });
 
-  return { app, worker, privacy, billing, identity };
+  return { app, worker, privacy, billing, identity, dailyReport };
 }

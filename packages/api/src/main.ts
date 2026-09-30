@@ -86,8 +86,12 @@ async function main(): Promise<void> {
     throw new Error("SIGNUP_PRICE_RUPEES must be a positive amount and SIGNUP_TRIAL_CREDITS a whole number");
   }
 
-  const { app, worker, privacy, billing, identity } = assemble({
+  // The pilot report each morning goes where new sign-ups are announced; PILOT_REPORT=off keeps it quiet.
+  const pilotReportTo = process.env["PILOT_REPORT"] === "off" ? null : process.env["SIGNUP_NOTIFY_EMAIL"] || null;
+
+  const { app, worker, privacy, billing, identity, dailyReport } = assemble({
     signup,
+    pilotReportTo,
     sql,
     ...(runner === undefined ? {} : { runner }),
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
@@ -163,6 +167,19 @@ async function main(): Promise<void> {
     setTimeout(run, 120_000).unref();
   }
 
+  // The pilot report (docs/PILOT.md), mailed to the operator after 8 am IST.
+  // Checked every quarter hour; the day's item has a fixed id, so several
+  // instances and restarts send it once.
+  let reporting: ReturnType<typeof setInterval> | undefined;
+  if (dailyReport !== null) {
+    const check = () =>
+      dailyReport
+        .due()
+        .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "pilot report failed"));
+    reporting = setInterval(check, 15 * 60 * 1000);
+    setTimeout(check, 90_000).unref();
+  }
+
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info({ port }, "listening");
@@ -172,6 +189,7 @@ async function main(): Promise<void> {
       clearInterval(delivering);
       clearInterval(retaining);
       clearInterval(invoicing);
+      clearInterval(reporting);
       void app.close().then(() => sql.end()).then(() => process.exit(0));
     });
   }

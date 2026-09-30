@@ -1,5 +1,6 @@
-import type { OrganisationFacts } from "@parikshaa/store";
-import { ist } from "./delivery.js";
+import { orgId } from "@parikshaa/core";
+import type { IdentityStore, OrganisationFacts, OutboxItem, ReportStore } from "@parikshaa/store";
+import { ist, type ItemHandler, type Mailer } from "./delivery.js";
 
 /**
  * The pilot report (docs/PILOT.md): every organisation, what it has done, and
@@ -118,4 +119,63 @@ export function renderReport(report: PilotReport): string {
     );
   }
   return `${lines.join("\n")}\n`;
+}
+
+/** The morning hour, in India, after which the day's report goes out. */
+const REPORT_HOUR_IST = 8;
+/** The organisation every installation has (migration 0003); the operator's own mail is queued under it. */
+const OPERATOR_ORG = orgId("default");
+
+/**
+ * The pilot report, emailed to the operator each morning, so that nobody has
+ * to remember to run it. {@link due} is called often by every instance; the
+ * day's item has a fixed id, so however many instances and restarts there
+ * are, one report goes out a day. The report itself is read when the worker
+ * sends it, not when it is queued.
+ */
+export class DailyPilotReport {
+  readonly #o: {
+    readonly identity: IdentityStore;
+    readonly reports: ReportStore;
+    readonly mailer: Mailer | null;
+    readonly to: string;
+    readonly now: () => number;
+  };
+
+  constructor(options: {
+    readonly identity: IdentityStore;
+    readonly reports: ReportStore;
+    readonly mailer: Mailer | null;
+    readonly to: string;
+    readonly now?: () => number;
+  }) {
+    this.#o = { ...options, now: options.now ?? (() => Date.now()) };
+  }
+
+  /** Queue today's report, once it is past eight in the morning in India. Returns whether it is past. */
+  async due(): Promise<boolean> {
+    const now = this.#o.now();
+    const india = new Date(now + 5.5 * 3_600_000);
+    if (india.getUTCHours() < REPORT_HOUR_IST) return false;
+    const day = india.toISOString().slice(0, 10);
+    await this.#o.identity.queueStaffEmail(OPERATOR_ORG, "pilot_report", { day }, `pilot-report-${day}`, new Date(now));
+    return true;
+  }
+
+  /** The outbox handler: read the report now, and send it. */
+  readonly mail: ItemHandler = async (_item: OutboxItem) => {
+    if (this.#o.mailer === null) return { skip: "Email is not configured" };
+    const now = this.#o.now();
+    const report = pilotReport(await this.#o.reports.organisations(new Date(now)), now);
+    if (report.organisations.length === 0) return { skip: "No organisations yet" };
+    const calls = report.organisations.filter((o) => o.flags.some((f) => f.level === "act")).length;
+    const text = renderReport(report);
+    await this.#o.mailer.send({
+      to: this.#o.to,
+      subject: `Pilot report, ${date(report.generatedAt)}: ${calls === 0 ? "nothing needs you today" : `${plural(calls, "organisation")} ${calls === 1 ? "needs" : "need"} attention`}`,
+      text,
+      html: `<pre style="font: 13px/1.5 ui-monospace, monospace; white-space: pre-wrap">${text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!)}</pre>`,
+    });
+    return "sent";
+  };
 }

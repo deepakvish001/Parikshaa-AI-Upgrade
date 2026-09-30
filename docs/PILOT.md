@@ -19,7 +19,7 @@ first: the console's address and your contact details.
 | **Free attempts** | Enough for their first real batch; 25 by default | `SIGNUP_TRIAL_CREDITS` |
 | **The address** candidates open, e.g. `exam.yourdomain.in` | It is in every invitation; changing it later breaks sent links | `PUBLIC_URL` |
 | **Email sender** (SMTP), e.g. Amazon SES in Mumbai | Owners confirm their address, and candidates get their links by email | `SMTP_URL`, `EMAIL_FROM` |
-| **Where you hear of new sign-ups** | A pilot should not sign up unnoticed | `SIGNUP_NOTIFY_EMAIL` |
+| **Where you hear of new sign-ups**, and get the pilot report each morning | A pilot should not sign up, or stall, unnoticed | `SIGNUP_NOTIFY_EMAIL` |
 
 Set the price from a measurement, not a guess: with a real API key,
 `npm run cost-run` (see *Measuring what an attempt costs* in
@@ -132,7 +132,9 @@ it.
 
 - Send them [`pilot/COLLEGE-GUIDE.md`](pilot/COLLEGE-GUIDE.md) (or its text
   in an email) and the console's address.
-- **Every morning, read the pilot report:**
+- **Every morning, read the pilot report.** It arrives by email at
+  `SIGNUP_NOTIFY_EMAIL` soon after 8 am IST (the subject says how many
+  organisations need you); to see it at any other time:
 
   ```bash
   docker compose exec api npm run -s pilot-report -w @parikshaa/api

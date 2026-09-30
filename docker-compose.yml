@@ -60,6 +60,7 @@ services:
       SIGNUP_PRICE_RUPEES: ${SIGNUP_PRICE_RUPEES:-}
       SIGNUP_TRIAL_CREDITS: ${SIGNUP_TRIAL_CREDITS:-}
       SIGNUP_NOTIFY_EMAIL: ${SIGNUP_NOTIFY_EMAIL:-}
+      PILOT_REPORT: ${PILOT_REPORT:-}
       # Behind a reverse proxy on the same host (as in docs/PILOT.md): the client's address comes from it.
       TRUST_PROXY: ${TRUST_PROXY:-}
       RUNNER_URL: http://runner:4000

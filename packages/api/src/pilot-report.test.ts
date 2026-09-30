@@ -3,8 +3,9 @@ import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, describe, expect, it } from "vitest";
 import { orgId } from "@parikshaa/core";
-import { BillingStore, pgliteExecutor, ReportStore, staffScope, type OrganisationFacts } from "@parikshaa/store";
-import { flagsFor, pilotReport, renderReport } from "./pilot-report.js";
+import { BillingStore, IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor, ReportStore, staffScope, type OrganisationFacts } from "@parikshaa/store";
+import { DeliveryWorker, OutboxLog, type EmailMessage } from "./delivery.js";
+import { DailyPilotReport, flagsFor, pilotReport, renderReport } from "./pilot-report.js";
 import { InviteCodes } from "./invite-codes.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, TOKEN_SECRET, wire } from "./testing/harness.js";
 
@@ -171,5 +172,59 @@ describe("the report, from the database", () => {
     expect(after.lastActivity).not.toBeNull();
     // Nothing has sent the invitations: past the quarter hour, they show as overdue.
     expect(after.overdueMessages).toBeGreaterThan(0);
+  });
+});
+
+describe("the report each morning", () => {
+  let db: PGlite | undefined;
+  afterEach(async () => {
+    await db?.close();
+  });
+
+  it("goes to the operator once a day, after eight in India, however often it is asked for", async () => {
+    // 02:00 UTC is 7:30 in India.
+    let clock = Date.parse("2026-10-05T02:00:00Z");
+    db = await freshDatabase();
+    const sql = pgliteExecutor(db);
+    const identity = new IdentityStore(sql);
+    const org = await addOrganisation(identity, "sahyadri", "Sahyadri College");
+    await addStaff(identity, org, "meera@sahyadri.test", "owner");
+    await db.exec(`SET ROLE parikshaa_app`);
+    const mailer = new OutboxLog();
+    const daily = new DailyPilotReport({ identity, reports: new ReportStore(sql), mailer, to: "operator@parikshaa.test", now: () => clock });
+    const worker = new DeliveryWorker({
+      outbox: new OutboxStore(sql),
+      invitations: new InvitationStore(sql),
+      store: new LedgerStore(sql),
+      identity,
+      link: () => "",
+      mailer,
+      sms: null,
+      handlers: { staff_email: daily.mail },
+      now: () => clock,
+    });
+    const sent = () => mailer.sent as EmailMessage[];
+
+    expect(await daily.due()).toBe(false);
+    await worker.tick();
+    expect(sent()).toHaveLength(0);
+
+    clock = Date.parse("2026-10-05T02:31:00Z");
+    expect(await daily.due()).toBe(true);
+    expect(await daily.due()).toBe(true);
+    await worker.tick();
+    expect(sent()).toHaveLength(1);
+    expect(sent()[0]).toMatchObject({ to: "operator@parikshaa.test", subject: "Pilot report, 5 Oct 2026: nothing needs you today" });
+    expect(sent()[0]!.text).toContain("Sahyadri College  (sahyadri)");
+
+    // Later the same day: nothing more. The next morning: the next report.
+    clock = Date.parse("2026-10-05T12:00:00Z");
+    await daily.due();
+    await worker.tick();
+    expect(sent()).toHaveLength(1);
+    clock = Date.parse("2026-10-06T03:00:00Z");
+    await daily.due();
+    await worker.tick();
+    expect(sent()).toHaveLength(2);
   });
 });

@@ -218,7 +218,8 @@ npm run -s pilot-report -w @parikshaa/api            # add -- --json for JSON
 | `SELF_SIGNUP` | `on` lets anyone make an institution's account from the console's sign-in page. Off otherwise: organisations are made with `admin-cli` only. |
 | `SIGNUP_PRICE_RUPEES` | Required with `SELF_SIGNUP=on`: the price per attempt, before GST, once the trial credits are spent. |
 | `SIGNUP_TRIAL_CREDITS` | Attempts a new organisation starts with. Default 25. |
-| `SIGNUP_NOTIFY_EMAIL` | Optional. Where to email a notice of each new institution: its name, id, owner and trial credits. |
+| `SIGNUP_NOTIFY_EMAIL` | Optional. Where to email a notice of each new institution: its name, id, owner and trial credits. The pilot report goes here too, each morning after 8 am IST. |
+| `PILOT_REPORT` | `off` stops the morning pilot report. It is sent once a day however many instances run. |
 
 Sign-up needs `SMTP_URL` (the server will not start without it), because a
 new owner confirms their email address from a link sent to it. Until they
