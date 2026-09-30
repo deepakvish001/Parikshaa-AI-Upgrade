@@ -67,7 +67,9 @@ services:
       RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
       PORT: "3000"
     ports:
-      - "3000:3000"
+      # Behind a reverse proxy on the same machine, publish on 127.0.0.1:3000 only
+      # (setup-server.sh does): Docker's published ports go around ufw.
+      - "${API_ADDRESS:-3000}:3000"
     networks: [default, sandbox]
     depends_on:
       migrate:

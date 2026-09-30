@@ -38,6 +38,27 @@ instance served 1,000 candidates in the load test):
   to start without it. With no code questions in the pilot, it can wait.
 - **A domain** pointing at the machine, and HTTPS in front (below).
 
+### The quick way: one command
+
+On a fresh Ubuntu 22.04 or 24.04 machine, with the domain already pointing
+at it:
+
+```bash
+git clone https://github.com/deepakvish001/Parikshaa-AI-Upgrade.git parikshaa
+cd parikshaa && sudo ./scripts/setup-server.sh
+```
+
+It asks for the domain, your email, the Anthropic key, the email sender and
+the price, and does everything in the rest of this section: Docker, gVisor,
+`/etc/parikshaa.env` with fresh secrets, the service, HTTPS through Caddy, a
+firewall, a nightly backup (with a first one straight away), and the server
+check. Run it again to rebuild and restart after pulling a new version: it
+keeps the settings and never makes new secrets. Set `BACKUP_UPLOAD` in
+`/etc/parikshaa.env` to copy each backup off the machine. **Copy
+`/etc/parikshaa.env` somewhere safe as soon as it is written.**
+
+The steps below are what it does, for doing them by hand.
+
 ### Secrets and settings
 
 Keep these in a file only root can read (`/etc/parikshaa.env`, mode 600), and
@@ -77,15 +98,16 @@ commands in the file.
 
 ### Start it
 
+Add `API_ADDRESS=127.0.0.1:3000` to `/etc/parikshaa.env`, then:
+
 ```bash
 git clone https://github.com/deepakvish001/Parikshaa-AI-Upgrade.git parikshaa && cd parikshaa
-set -a && . /etc/parikshaa.env && set +a
-docker compose up -d --build
-docker compose logs -f api        # wait for "listening"; Ctrl-C to stop following
+docker compose --env-file /etc/parikshaa.env up -d --build
+docker compose --env-file /etc/parikshaa.env logs -f api   # wait for "listening"; Ctrl-C to stop following
 ```
 
-The API listens on port 3000 on the machine. Put HTTPS in front with Caddy,
-which fetches and renews the certificate itself (`/etc/caddy/Caddyfile`):
+The API listens on port 3000, on this machine only. Put HTTPS in front with
+Caddy, which fetches and renews the certificate itself (`/etc/caddy/Caddyfile`):
 
 ```
 exam.yourdomain.in {
@@ -93,12 +115,17 @@ exam.yourdomain.in {
 }
 ```
 
-Close port 3000 to the outside (`ufw allow 80,443/tcp && ufw deny 3000`), so
-everything arrives through Caddy — which is what `TRUST_PROXY=true` assumes.
+Everything then arrives through Caddy, which is what `TRUST_PROXY=true`
+assumes. `API_ADDRESS` is what keeps port 3000 closed to the outside: a
+firewall rule alone (`ufw deny 3000`) does not, because Docker's published
+ports go around ufw. Allow only SSH, 80 and 443 in (`ufw allow OpenSSH`,
+`ufw allow 80,443/tcp`, `ufw enable`).
 
 ### Backups, before anyone relies on it
 
-Follow *Backups and point-in-time recovery* in `OPERATIONS.md`, then do its
+`scripts/backup.sh` dumps the database into `/var/backups/parikshaa` and keeps
+14 days of dumps; the setup script runs it nightly from cron. Follow *Backups and point-in-time
+recovery* in `OPERATIONS.md` for continuous archiving, then do its
 **restore drill once** (`scripts/restore-drill.sh`). A backup never restored
 is a hope, not a backup. Keep `PARIKSHAA_DATA_KEY` apart from the backups.
 
