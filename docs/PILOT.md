@@ -130,6 +130,26 @@ it.
 
 - Send them [`pilot/COLLEGE-GUIDE.md`](pilot/COLLEGE-GUIDE.md) (or its text
   in an email) and the console's address.
+- **Every morning, read the pilot report:**
+
+  ```bash
+  docker compose exec api npm run -s pilot-report -w @parikshaa/api
+  ```
+
+  It lists each organisation (owner, exams, candidates invited and started,
+  attempts graded and waiting, credits left, the next sitting), those that
+  need something from you first. A line starting `!` is for today:
+
+  | It says | Do |
+  |---|---|
+  | The owner has not confirmed their email after N days | Call them: the email is probably in spam |
+  | Only N attempts left, or a sitting with more candidates than credits | `billing grant`, below, before the sitting |
+  | N messages could not be sent | The exam's Candidates tab names the address and the reason |
+  | N messages overdue | The API is not sending: `docker compose ps`, then `docker compose logs api` |
+
+  Lines starting `·` are worth knowing (attempts to grade, no exam yet, a
+  quiet week), not urgent. `-- --json` prints the same as JSON. The report
+  names owners and their addresses: keep it to your own terminal.
 - When the "New institution" notice arrives, check the owner confirmed their
   email within the day; if not, call them — the email may be in spam.
 - **More free attempts** for a pilot that needs them, without a payment:
@@ -152,7 +172,8 @@ it.
       **Download links** there too, as a fallback to hand out. Invite at
       least a day ahead: each candidate is reminded the day before and an
       hour before the window opens.
-- [ ] Credits cover the batch: Home warns at five left. `billing show` to be sure.
+- [ ] Credits cover the batch: Home warns at five left, and the pilot report
+      flags a sitting with more candidates than credits. `billing show` to be sure.
 - [ ] The model provider's rate limit covers the batch's follow-ups and
       grading (see *Sizing* in `OPERATIONS.md`).
 - [ ] Last night's backup exists.

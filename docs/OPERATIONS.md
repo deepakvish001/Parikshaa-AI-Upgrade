@@ -203,6 +203,14 @@ npm run billing -w @parikshaa/api -- grant acme 25 "pilot drive"
 npm run billing -w @parikshaa/api -- show acme
 ```
 
+Every organisation at once — owner and whether they confirmed their email,
+exams, candidates, grading, credits, the next sitting, messages that failed —
+with what needs doing first (see *The college's first days* in `PILOT.md`):
+
+```bash
+npm run -s pilot-report -w @parikshaa/api            # add -- --json for JSON
+```
+
 **Institutions signing themselves up** (for a pilot) is off unless turned on:
 
 | Variable | |
