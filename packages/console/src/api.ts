@@ -1585,6 +1585,8 @@ export interface PracticeProblem {
   readonly difficulty: Difficulty;
   readonly tags: readonly string[];
   readonly editorial: string;
+  /** The first hint, given free by the tutor in place of its own. */
+  readonly hint: string;
   readonly fromBank: string | null;
   readonly position: number;
   readonly published: boolean;
@@ -1599,6 +1601,7 @@ export interface PracticeProblemPatch {
   readonly difficulty?: Difficulty;
   readonly tags?: readonly string[];
   readonly editorial?: string;
+  readonly hint?: string;
   readonly published?: boolean;
 }
 

@@ -1,0 +1,76 @@
+{
+  "flow": "sahayak-review",
+  "model": "claude-opus-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "metrics": [
+    {
+      "id": "bug_found",
+      "label": "Bug found",
+      "kind": "binary"
+    },
+    {
+      "id": "complexity_right",
+      "label": "Complexity",
+      "kind": "binary"
+    },
+    {
+      "id": "no_fixed_program",
+      "label": "No fixed prog",
+      "kind": "binary"
+    },
+    {
+      "id": "language",
+      "label": "Language",
+      "kind": "binary"
+    }
+  ],
+  "metrics_md": "Review of the learner's submitted wrong program. **bug_found** (judge, shown the hidden mistake): names the real fault. **complexity_right** (judge): states the program's complexity correctly and a better one when there is one. **no_fixed_program**: script (<= 3 lines of real code) AND judge. **language** as for hints. Targets: bug_found >= 90%, complexity_right >= 95%, no_fixed_program 100%.",
+  "perf_fields": [
+    {
+      "id": "cost_usd",
+      "label": "Cost",
+      "unit": "$"
+    },
+    {
+      "id": "in_tokens",
+      "label": "In tok"
+    },
+    {
+      "id": "out_tokens",
+      "label": "Out tok"
+    },
+    {
+      "id": "latency_s",
+      "label": "Latency",
+      "unit": "s"
+    },
+    {
+      "id": "out_words",
+      "label": "Words"
+    }
+  ],
+  "prices": {
+    "claude-opus-5-5": {
+      "in": 4,
+      "out": 20
+    },
+    "claude-sonnet-5-5": {
+      "in": 2,
+      "out": 10
+    }
+  },
+  "harness_paths": [
+    "packages/api/src/testing/sahayak-eval/eval.ts",
+    "packages/api/src/testing/sahayak-eval/app.ts",
+    "packages/api/src/testing/sahayak-eval/grade.ts",
+    "packages/api/src/testing/sahayak-eval/cases.ts",
+    "packages/api/src/testing/sahayak-eval/validate.ts",
+    "packages/api/src/testing/sahayak-eval/types.ts",
+    "packages/api/src/testing/sahayak-eval/problems-a.ts",
+    "packages/api/src/testing/sahayak-eval/problems-b.ts",
+    "packages/api/src/testing/sahayak-eval/problems-c.ts",
+    "packages/api/src/testing/sahayak-eval/problems-d.ts",
+    "packages/api/src/sahayak.ts",
+    "package-lock.json"
+  ]
+}

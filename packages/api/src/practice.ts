@@ -728,7 +728,7 @@ export class PracticeService {
 
   async publish(
     orgId: OrgId,
-    input: { bankQuestionId: string; title?: string; slug?: string; difficulty?: Difficulty; tags?: readonly string[]; editorial?: string; published?: boolean },
+    input: { bankQuestionId: string; title?: string; slug?: string; difficulty?: Difficulty; tags?: readonly string[]; editorial?: string; hint?: string; published?: boolean },
   ): Promise<PracticeProblem> {
     const entry = (await this.#bank.list({ orgId, actor: "staff" }, { includeArchived: false })).find((e) => e.id === input.bankQuestionId);
     if (entry === undefined) throw new PracticeError("not_found", "No such question in the bank");
@@ -746,6 +746,7 @@ export class PracticeService {
       difficulty: input.difficulty ?? entry.difficulty,
       tags: input.tags ?? entry.tags,
       editorial: input.editorial ?? "",
+      hint: input.hint?.trim() ?? "",
       fromBank: entry.id,
       position: existing.length,
       published: input.published ?? true,
@@ -761,7 +762,7 @@ export class PracticeService {
   async updateProblem(
     orgId: OrgId,
     id: string,
-    patch: { title?: string; slug?: string; difficulty?: Difficulty; tags?: readonly string[]; editorial?: string; published?: boolean; position?: number },
+    patch: { title?: string; slug?: string; difficulty?: Difficulty; tags?: readonly string[]; editorial?: string; hint?: string; published?: boolean; position?: number },
   ): Promise<PracticeProblem> {
     const current = (await this.#store.problems(practiceStaff(orgId))).find((p) => p.id === id);
     if (current === undefined) throw new PracticeError("not_found", "No such problem");
@@ -772,6 +773,7 @@ export class PracticeService {
       difficulty: patch.difficulty ?? current.difficulty,
       tags: patch.tags ?? current.tags,
       editorial: patch.editorial ?? current.editorial,
+      hint: patch.hint?.trim() ?? current.hint,
       fromBank: current.fromBank,
       position: patch.position ?? current.position,
       published: patch.published ?? current.published,

@@ -49,11 +49,11 @@ const runner: CodeRunner = {
   run: async (request) => ({ compiled: true, tests: request.tests.map((t) => ({ id: t.id, status: "passed", timeMs: 5, memoryKb: 1000, stdout: t.expected, stderr: "" })) }),
 };
 
-function call(method: "GET" | "POST" | "PUT" | "DELETE", token: string | null, url: string, payload?: object) {
+function call(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", token: string | null, url: string, payload?: object) {
   const headers = token === null ? {} : bearer(token);
   return payload === undefined ? app.inject({ method, url, headers }) : app.inject({ method, url, headers, payload });
 }
-async function ok(method: "GET" | "POST" | "PUT" | "DELETE", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
+async function ok(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
   const res = await call(method, token, url, payload);
   expect(res.statusCode, res.payload).toBe(status);
   return res.json();
@@ -245,6 +245,38 @@ describe("the tutor", () => {
 
     // The learner can delete what it said.
     expect(await ok("DELETE", asha, `${S}/tutor?problem=${problems.mcq!.slug}`, undefined, 200)).toEqual({ deleted: 4 });
+  });
+
+  it("gives the author's first hint free, without the model, and pays half for a problem solved after the worked solution", async () => {
+    const patched = await ok("PATCH", owner, `/practice-admin/problems/${problems.mcq!.id}`, { hint: "  What happens to two equal keys?  " }, 200);
+    expect(patched.hint).toBe("What happens to two equal keys?");
+    const asha = await signUp();
+    const url = `${S}/problems/${problems.mcq!.slug}/tutor`;
+    expect((await ok("GET", asha, url)).nextHint).toEqual({ level: 1, credits: 0, available: true });
+
+    const first = await ok("POST", asha, `${url}/hint`, {}, 200);
+    expect(first).toMatchObject({ hintLevel: 1, credits: 0, answer: "What happens to two equal keys?" });
+    expect(model.requests).toHaveLength(0);
+    expect((await ok("GET", asha, `${S}/credits`)).balance).toBe(100);
+    // The rest of the ladder is the tutor's, as before.
+    expect((await ok("GET", asha, url)).nextHint).toEqual({ level: 2, credits: 20, available: true });
+    await ok("POST", asha, `${url}/hint`, {}, 200);
+    await ok("POST", asha, `${url}/hint`, {}, 200);
+    expect(model.requests.map((r) => r.user.slice(0, 29))).toEqual(["Give rung 2 of the hint ladde", "Give rung 3 of the hint ladde"]);
+
+    for (let i = 0; i < 3; i++) await ok("POST", asha, `${S}/problems/${problems.mcq!.slug}/submit`, { answer: "0" }, 200);
+    await ok("POST", asha, `${url}/hint`, {}, 200);
+    const solved = await ok("POST", asha, `${S}/problems/${problems.mcq!.slug}/submit`, { answer: "1" }, 200);
+    expect(solved.reward.reasons).toContain("solve_after_solution");
+    expect(solved.reward.reasons).not.toContain("solve");
+
+    // Someone who solved it with the free hint alone is paid in full.
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    await ok("POST", ravi, `${url}/hint`, {}, 200);
+    const full = await ok("POST", ravi, `${S}/problems/${problems.mcq!.slug}/submit`, { answer: "1" }, 200);
+    expect(full.reward.reasons).toContain("solve");
+    const coins = async (token: string) => (await ok("GET", token, `${S}/coins`)).history as { rule: string; amount: number }[];
+    expect((await coins(asha)).find((h) => h.rule === "solve_after_solution")!.amount * 2).toBe((await coins(ravi)).find((h) => h.rule === "solve")!.amount);
   });
 
   it("is never shown a hidden test, and reviews only what was submitted", async () => {

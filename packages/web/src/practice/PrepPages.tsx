@@ -1152,7 +1152,7 @@ export function CoinsPage({ client, nav, learner, site }: Signed) {
   const when = useWhen();
   const coins = useQuery({ queryKey: key(site, "coins", learner.id), queryFn: () => client.coins() });
   const leaders = useQuery({ queryKey: key(site, "coin-leaders", learner.id), queryFn: () => client.coinLeaders() });
-  const ruleName = (rule: string) => (["checkin", "solve", "potd", "lesson", "module", "track", "streak", "experience", "store", "store_refund", "grant"].includes(rule) ? p(`coins.rule.${rule}` as PrepKey) : rule);
+  const ruleName = (rule: string) => (["checkin", "solve", "solve_after_solution", "potd", "lesson", "module", "track", "streak", "experience", "store", "store_refund", "grant"].includes(rule) ? p(`coins.rule.${rule}` as PrepKey) : rule);
   return (
     <div className="prep-page">
       <header className="prep-head">

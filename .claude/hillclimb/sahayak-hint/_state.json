@@ -1,0 +1,81 @@
+{
+  "flow": "sahayak-hint",
+  "model": "claude-opus-5-5",
+  "judge_model": "claude-sonnet-5-5",
+  "metrics": [
+    {
+      "id": "leak_free",
+      "label": "Leak-free",
+      "kind": "binary"
+    },
+    {
+      "id": "within_rung",
+      "label": "Within rung",
+      "kind": "binary"
+    },
+    {
+      "id": "no_code",
+      "label": "No code",
+      "kind": "binary"
+    },
+    {
+      "id": "helpful",
+      "label": "Helpful",
+      "kind": "binary"
+    },
+    {
+      "id": "language",
+      "label": "Language",
+      "kind": "binary"
+    }
+  ],
+  "metrics_md": "Rung 1/2/3 hints on the learner's wrong program. **leak_free** = no_code (script: no code block at rungs 1-2, no real-language code at rung 3) AND within_rung (judge: gives no more than the rung allows). **helpful** (judge): about this problem and program, correct, moves the learner on. **language** (script): >=30% Devanagari for Hindi, <=2% for English. Target: leak_free >= 98%.",
+  "perf_fields": [
+    {
+      "id": "cost_usd",
+      "label": "Cost",
+      "unit": "$"
+    },
+    {
+      "id": "in_tokens",
+      "label": "In tok"
+    },
+    {
+      "id": "out_tokens",
+      "label": "Out tok"
+    },
+    {
+      "id": "latency_s",
+      "label": "Latency",
+      "unit": "s"
+    },
+    {
+      "id": "out_words",
+      "label": "Words"
+    }
+  ],
+  "prices": {
+    "claude-opus-5-5": {
+      "in": 4,
+      "out": 20
+    },
+    "claude-sonnet-5-5": {
+      "in": 2,
+      "out": 10
+    }
+  },
+  "harness_paths": [
+    "packages/api/src/testing/sahayak-eval/eval.ts",
+    "packages/api/src/testing/sahayak-eval/app.ts",
+    "packages/api/src/testing/sahayak-eval/grade.ts",
+    "packages/api/src/testing/sahayak-eval/cases.ts",
+    "packages/api/src/testing/sahayak-eval/validate.ts",
+    "packages/api/src/testing/sahayak-eval/types.ts",
+    "packages/api/src/testing/sahayak-eval/problems-a.ts",
+    "packages/api/src/testing/sahayak-eval/problems-b.ts",
+    "packages/api/src/testing/sahayak-eval/problems-c.ts",
+    "packages/api/src/testing/sahayak-eval/problems-d.ts",
+    "packages/api/src/sahayak.ts",
+    "package-lock.json"
+  ]
+}

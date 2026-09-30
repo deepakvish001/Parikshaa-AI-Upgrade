@@ -114,7 +114,7 @@ export function TutorPanel({
           <p className="notice">{p("tutor.allHints")}</p>
         ) : next.available ? (
           <button type="button" className="secondary" disabled={busy} onClick={() => hint.mutate()}>
-            <Lightbulb aria-hidden="true" /> {next.level === 4 ? p("tutor.solution", { credits: next.credits }) : p("tutor.hint", { n: next.level, credits: next.credits })}
+            <Lightbulb aria-hidden="true" /> {next.level === 4 ? p("tutor.solution", { credits: next.credits }) : next.credits === 0 ? p("tutor.hintFree", { n: next.level }) : p("tutor.hint", { n: next.level, credits: next.credits })}
           </button>
         ) : (
           <p className="notice">{p("tutor.solutionLocked", { n: h.failures })}</p>

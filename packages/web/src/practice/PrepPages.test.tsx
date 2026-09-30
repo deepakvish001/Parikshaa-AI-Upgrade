@@ -297,6 +297,20 @@ describe("Sahayak on a problem", () => {
     expect(await screen.findByText(/Not enough credits/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Get credits" })).toBeTruthy();
   });
+
+  it("says so when the first hint is free: the problem's author wrote it", async () => {
+    routes["GET /practice/nit-practice/problems/stable-sort"] = () => ({ body: mcq });
+    routes["GET /practice/nit-practice/problems/stable-sort/comments"] = () => ({ body: { comments: [] } });
+    routes["GET /practice/nit-practice/lists"] = () => ({ body: { lists: [{ name: "Bookmarks", solved: 0, problems: [] }] } });
+    routes["GET /practice/nit-practice/problems/stable-sort/tutor"] = () => ({
+      body: { entries: [], nextHint: { level: 1, credits: 0, available: true }, failures: 0, costs: { hint1: 10, hint: 20, review: 40, doubt: 15 } },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 25, history: [] } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/problems/stable-sort");
+    await user.click(await screen.findByRole("tab", { name: "Sahayak" }));
+    expect(await screen.findByRole("button", { name: "Hint 1 · free" })).toBeTruthy();
+  });
 });
 
 describe("Plus", () => {
