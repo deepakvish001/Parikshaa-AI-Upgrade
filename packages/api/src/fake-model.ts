@@ -10,6 +10,8 @@ export interface FakeModelScript {
   probe: string;
   rubricScore: number;
   verdict: { verdict: "consistent" | "shallow" | "inconsistent" | "inconclusive"; confidence: number; reasoning: string };
+  /** What reading a job description finds. */
+  job: { roleId: string; title: string; seniority: "fresher" | "junior" | "mid" | "senior"; skills: { name: string; keywords: string[] }[] };
   /** Milliseconds before a probe finishes streaming, and before a grade or reading returns. */
   latencyMs: number;
 }
@@ -22,6 +24,7 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
     probe: "Walk me through why your answer holds in the worst case.",
     rubricScore: 7,
     verdict: { verdict: "consistent", confidence: 0.8, reasoning: "The reply engages the specifics of the answer." },
+    job: { roleId: "java-developer", title: "Java Developer — online test", seniority: "junior", skills: [{ name: "Apache Kafka", keywords: ["kafka", "event streaming"] }, { name: "Core Java", keywords: ["java"] }] },
     latencyMs: 0,
     ...overrides,
   };
@@ -46,8 +49,9 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
     messages: {
       async parse(params: { system?: unknown }) {
         await pause(script.latencyMs);
-        const grading = JSON.stringify(params.system).includes("grade exam answers");
-        const parsed = grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
+        const system = JSON.stringify(params.system);
+        const grading = system.includes("grade exam answers");
+        const parsed = system.includes("read job descriptions") ? script.job : grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
         return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed, usage: USAGE };
       },
     },

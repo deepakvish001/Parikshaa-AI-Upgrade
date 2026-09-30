@@ -22,6 +22,7 @@ import {
   LabStore,
   RecheckStore,
   MarkingStore,
+  PlacementStore,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -31,6 +32,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import { LabService } from "../lab.js";
 import { RecheckService } from "../rechecks.js";
 import { MarkingService } from "../marking.js";
+import { PlacementService } from "../placement.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -300,6 +302,7 @@ export async function wire(
     lab,
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
+    placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,
     auth,
     security,

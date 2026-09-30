@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Archive, ArchiveRestore, Camera, ClipboardList, Copy, Layers, Pencil, Play, Plus, Search } from "lucide-react";
+import { Archive, ArchiveRestore, BriefcaseBusiness, Camera, ClipboardList, Copy, Layers, Pencil, Play, Plus, Search } from "lucide-react";
 import type { ExamSummary } from "../api.ts";
 import { EmptyState, PageActions, PhaseBadge, RowMenu, phaseOf, type Phase } from "./kit.tsx";
 
@@ -10,6 +10,8 @@ interface Props {
   readonly onOpen: (examId: string) => void;
   readonly onEdit: (examId: string) => void;
   readonly onNew: () => void;
+  /** Draft a test from a role or a job description, from the bank. */
+  readonly onFromJob?: () => void;
   /** Whether this account may author exams; the server refuses it either way. */
   readonly canWrite?: boolean;
   /** Copy an exam, which is how a sat — and so frozen — exam is changed. */
@@ -65,7 +67,7 @@ const created = (iso: string | undefined) =>
  * glance: where each is in its life, and which need someone — sitting now,
  * or waiting to be graded. The headline figures are on Home, not here too.
  */
-export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true, onClone, onTry, onArchive, initialFilter = "all", now = Date.now() }: Props) {
+export function ExamList({ exams, onOpen, onEdit, onNew, onFromJob, canWrite = true, onClone, onTry, onArchive, initialFilter = "all", now = Date.now() }: Props) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ExamFilter>(initialFilter);
 
@@ -79,6 +81,12 @@ export function ExamList({ exams, onOpen, onEdit, onNew, canWrite = true, onClon
     <div className="exams-overview">
       {canWrite ? (
         <PageActions>
+          {onFromJob === undefined ? null : (
+            <button type="button" className="secondary" onClick={onFromJob}>
+              <BriefcaseBusiness aria-hidden="true" />
+              From a job
+            </button>
+          )}
           <button type="button" onClick={onNew}>
             <Plus aria-hidden="true" />
             New exam

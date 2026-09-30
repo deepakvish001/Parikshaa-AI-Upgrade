@@ -279,3 +279,72 @@ test("testing an ATS connection", async ({ page, request }) => {
     lever.close();
   }
 });
+
+test("the placement cell: students on file, and a drive to the offer", async ({ page, request }) => {
+  test.setTimeout(300_000);
+  const sitting = await seedSitting(request, { questions: [MCQ, SHORT, NUMERIC], title: "Infosys online test", refs: REFS, names: PEOPLE, cutoff: { percent: 50 } });
+  const marks = [["1", "The interval halves until it is empty.", "72"], ["1", "It halves.", "72"], ["1", "Halving until nothing is left.", "70"], ["0", "Stops.", "72"], ["0", "No idea.", "60"], ["1", "The range shrinks.", "72"]] as const;
+  for (const [i, ref] of REFS.entries()) await sitAndGrade(request, sitting, ref, { mcq: marks[i]![0], short: marks[i]![1], numeric: marks[i]![2] });
+
+  const headers = { authorization: `Bearer ${sitting.token}` };
+  const csv = [
+    "Roll No.,Name,Email,Mobile,Branch,Passing Year,CGPA,Active Backlogs",
+    ...PEOPLE.map((name, i) => `${REFS[i]},${name},${name.split(" ")[0]!.toLowerCase()}@college.ac.in,98765${String(43210 + i)},CSE,2027,${[8.9, 7.8, 8.2, 7.1, 6.4, 9.1][i]},${i === 4 ? 1 : 0}`),
+    "EC001,Rohan Gupta,rohan@college.ac.in,,ECE,2027,7.6,0",
+    "EC002,Sneha Kulkarni,sneha@college.ac.in,,ECE,2027,8.4,0",
+    "ME001,Vikram Joshi,,,MECH,2027,7.9,2",
+    "CS101,Pooja Bansal,pooja@college.ac.in,,CSE,2028,9.3,0",
+  ].join("\n");
+  expect((await request.post("/api/students/import", { headers, data: { csv, dryRun: false } })).status()).toBe(200);
+  const made = await request.post("/api/drives", {
+    headers,
+    data: { company: "Infosys", role: "Systems Engineer", ctcLpa: 3.6, location: "Pune, Bengaluru", eligibility: { minCgpa: 7, maxBacklogs: 0, branches: ["CSE", "ECE"], batches: [2027] }, applyBy: "2026-10-20", examId: sitting.examId },
+  });
+  expect(made.status(), await made.text()).toBe(201);
+  const id = (await made.json()).id as string;
+  await request.post(`/api/drives/${id}/students`, { headers, data: { refs: REFS.slice(0, 4) } });
+  const stage = (refs: string[], to: string, offerLpa: number | null = null) => request.post(`/api/drives/${id}/stage`, { headers, data: { refs, stage: to, offerLpa } });
+  await stage(["CS001"], "offered", 4.5);
+  await stage(["CS002", "CS003"], "interview");
+  await stage(["CS004"], "rejected");
+  await request.post("/api/drives", { headers, data: { company: "TCS", role: "Ninja", ctcLpa: 3.36, eligibility: { minCgpa: 6 }, applyBy: "2026-10-28" } });
+
+  await signIn(page);
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Placement", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Drives" })).toBeVisible();
+  await page.getByRole("tab", { name: "Students" }).click();
+  await expect(page.getByRole("region", { name: "Students", exact: true })).toBeVisible();
+  await shoot(page, "pilot-19-students", { fullPage: true });
+  await page.getByRole("tab", { name: "Drives" }).click();
+  await page.getByRole("region", { name: "Drives" }).getByRole("button", { name: "Infosys" }).click();
+  await expect(page.getByRole("region", { name: "Students in the drive" })).toContainText("CS001");
+  await shoot(page, "pilot-20-drive", { fullPage: true });
+});
+
+test("a test from a job", async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const token = (await (await request.post("/api/auth/login", { data: OWNER })).json()).token as string;
+  const headers = { authorization: `Bearer ${token}` };
+  const mcq = (stem: string, topic: string, difficulty: string, i: number) => ({
+    question: { kind: "mcq", stem: `${stem} (${i + 1})`, maxScore: 1, rubric: [], options: ["A", "B", "C", "D"], correctIndex: 0 },
+    topic,
+    difficulty,
+    tags: [],
+  });
+  const bank = [
+    ...Array.from({ length: 36 }, (_, i) => mcq("A shopkeeper marks an item 20% above cost", "Quantitative aptitude", ["easy", "medium", "hard"][i % 3]!, i)),
+    ...Array.from({ length: 24 }, (_, i) => mcq("Find the next term of the series", "Logical reasoning", i % 2 === 0 ? "medium" : "easy", i)),
+    ...Array.from({ length: 9 }, (_, i) => mcq("Choose the word closest in meaning", "Verbal ability", "easy", i)),
+  ];
+  for (const draft of bank) expect((await request.post("/api/bank", { headers, data: draft })).status()).toBe(201);
+
+  await signIn(page);
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
+  await page.getByRole("button", { name: "From a job" }).click();
+  const drawer = page.getByRole("dialog", { name: "New test from a job" });
+  await drawer.getByText("Fresher aptitude (mass hiring)").click();
+  await shoot(page, "pilot-21-test-from-a-job");
+  await drawer.getByRole("button", { name: "Draft the test" }).click();
+  await expect(drawer.getByText("Where your bank is short")).toBeVisible();
+  await shoot(page, "pilot-22-job-test-draft");
+});

@@ -266,6 +266,32 @@ export class InvitationService {
     return invitation!;
   }
 
+  /**
+   * Invite several people at once, on the exam's window (or a week from now
+   * without one), as a placement drive does. Anyone already invited to the
+   * exam keeps their invitation and is counted as skipped.
+   */
+  async inviteMany(
+    actor: Actor,
+    examId: string,
+    people: readonly { readonly ref: string; readonly name: string; readonly email: string | null; readonly phone: string | null }[],
+    channels: readonly Channel[],
+    detail: Record<string, unknown> = {},
+  ): Promise<{ readonly invited: number; readonly skipped: number }> {
+    const scope = this.#require(actor, "attempt:start");
+    await this.#examExists(actor.orgId, examId);
+    const [window, existing] = await Promise.all([this.#o.invitations.getWindow(scope, examId), this.#o.invitations.existingRefs(scope, examId)]);
+    const opensAt = window?.opensAt ?? new Date(this.#now()).toISOString();
+    const closesAt = window?.closesAt ?? new Date(this.#now() + 7 * DAY_MS).toISOString();
+    if (window !== null && Date.parse(window.closesAt) <= this.#now()) throw new AttemptError("invalid_state", "The exam's window has closed: set a new one first");
+    const drafts: InvitationDraft[] = people
+      .filter((p) => !existing.has(p.ref))
+      .map((p) => ({ candidateRef: p.ref, name: p.name, email: p.email, phone: p.phone, opensAt, closesAt, hardClose: window?.hardClose ?? true }));
+    const invited = drafts.length === 0 ? [] : await this.#o.invitations.invite(scope, examId, drafts, (id, draft) => this.#messages(draft, channels)(id));
+    if (invited.length > 0) await this.#audit(actor, "invitations.imported", examId, { candidates: invited.length, channels, ...detail });
+    return { invited: invited.length, skipped: people.length - invited.length };
+  }
+
   list(actor: Actor, examId: string): Promise<readonly InvitationStatus[]> {
     return this.#o.invitations.list(this.#require(actor, "attempt:read"), examId, new Date(this.#now()));
   }

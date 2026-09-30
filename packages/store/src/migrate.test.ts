@@ -97,10 +97,13 @@ describe("migrate", () => {
       "0022_exam_archive.sql",
       "0023_staff_email_verified.sql",
       "0024_attempt_feedback.sql",
+      "0024_static_hint.sql",
       "0025_whatsapp.sql",
       "0026_exam_lab.sql",
       "0027_rechecks.sql",
       "0028_mark_reviews.sql",
+      "0029_students_drives.sql",
+      "0030_author_usage.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -122,6 +125,9 @@ describe("migrate", () => {
         "schema_migrations",
         "staff_sessions",
         "staff_users",
+        "students",
+        "drives",
+        "drive_applications",
       ]),
     );
   });

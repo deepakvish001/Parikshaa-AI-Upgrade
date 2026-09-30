@@ -6,6 +6,7 @@ import {
   Gauge,
   GraduationCap,
   TrendingUp,
+  BriefcaseBusiness,
   KeyRound,
   KeySquare,
   LayoutDashboard,
@@ -51,6 +52,8 @@ import { remembered, SignIn } from "./components/SignIn.tsx";
 /** The tour, taken once or twice by each account, likewise. */
 const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
+const PlacementPanel = lazy(() => import("./components/Placement.tsx").then((m) => ({ default: m.PlacementPanel })));
+const JobTestDrawer = lazy(() => import("./components/JobTest.tsx").then((m) => ({ default: m.JobTestDrawer })));
 const PracticePanel = lazy(() => import("./components/Practice.tsx").then((m) => ({ default: m.PracticePanel })));
 
 type View =
@@ -64,6 +67,7 @@ type View =
   | { readonly name: "bank" }
   | { readonly name: "practice" }
   | { readonly name: "insights" }
+  | { readonly name: "placement" }
   | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "results"; readonly examId: string }
   | { readonly name: "live"; readonly examId: string }
@@ -396,6 +400,7 @@ function Console({
     enabled: pageExamId !== null && view.name === "attempts" && can("attempt:review"),
   });
   const [trying, setTrying] = useState(false);
+  const [fromJob, setFromJob] = useState(false);
   const [startingDirect, setStartingDirect] = useState(false);
   const [searching, setSearching] = useState(false);
   useCommandKey(useCallback(() => setSearching(true), []));
@@ -410,6 +415,7 @@ function Console({
   }[] = [
     { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key", group: "assess", icon: Library },
     { view: { name: "insights" }, label: "Insights", permission: "attempt:review", group: "assess", icon: TrendingUp },
+    { view: { name: "placement" }, label: "Placement", permission: "attempt:review", group: "assess", icon: BriefcaseBusiness },
     { view: { name: "practice" }, label: "Practice", permission: "exam:read_key", group: "assess", icon: GraduationCap },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage", group: "org", icon: Users },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage", group: "org", icon: KeySquare },
@@ -584,6 +590,13 @@ function Console({
                         go({ name: "editor", examId: null });
                       },
                     },
+                    {
+                      label: "New test from a job",
+                      go: () => {
+                        go({ name: "exams" });
+                        setFromJob(true);
+                      },
+                    },
                   ]
                 : []),
               ...(can("attempt:start")
@@ -677,6 +690,7 @@ function Console({
                     setProblems([]);
                     go({ name: "editor", examId: null });
                   }}
+                  onFromJob={() => setFromJob(true)}
                 />
               )
             ) : null}
@@ -867,6 +881,11 @@ function Console({
                 <InsightsPanel client={client} />
               </Suspense>
             ) : null}
+            {view.name === "placement" ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={4} label="Loading placement…" />}>
+                <PlacementPanel client={client} canInvite={can("attempt:start")} />
+              </Suspense>
+            ) : null}
             {view.name === "practice" ? (
               <Suspense fallback={<SkeletonRows rows={5} columns={3} label="Loading the practice site…" />}>
                 <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
@@ -891,6 +910,19 @@ function Console({
               </div>
             ) : null}
           </PageFrame>
+          {fromJob ? (
+            <Suspense fallback={null}>
+              <JobTestDrawer
+                client={client}
+                onClose={() => setFromJob(false)}
+                onCreated={(examId) => {
+                  setFromJob(false);
+                  setProblems([]);
+                  go({ name: "editor", examId });
+                }}
+              />
+            </Suspense>
+          ) : null}
           {leaving === null ? null : (
             <Dialog label="Leave without saving?" onClose={() => setLeaving(null)}>
               <h2 className="dialog-title">Leave without saving?</h2>
@@ -937,6 +969,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   bank: "bank",
   practice: "practice",
   insights: "insights",
+  placement: "placement",
   staff: "staff",
   keys: "keys",
   usage: "usage",
@@ -975,6 +1008,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Practice";
     case "insights":
       return "Insights";
+    case "placement":
+      return "Placement";
     case "staff":
       return "Staff";
     case "keys":
@@ -1017,6 +1052,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   bank: "Questions filed by topic and difficulty, to draw exams from. Import from a spreadsheet or a Word paper.",
   practice: "A practice site for your learners: problems from the bank, contests, and their progress. Nothing there is an exam.",
   insights: "Candidates across every test, lined up by roll number, and the questions worth a second look.",
+  placement: "Your students, entered once, and every company's drive: who is eligible, the test, each round and the offers.",
   staff: "Who can sign in to this console, and what each can do.",
   keys: "Keys for your own systems to call Parikshaa.",
   usage: "What the AI model has cost this month, and the cap on it.",

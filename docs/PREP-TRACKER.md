@@ -308,6 +308,8 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 13 | **V2-P3 Company** ([V2-12](#v2-12-college-aur-company-end-to-end-feature-list)): Parikshaa Score (B3), talent pool, hiring challenge, interview room, AI-allowed test (E1–E6) | Master plan v2 | Paisa yahan se | 20 paying companies; Score se 100 hiring | ⬜ owner ki haan baaki |
 | 14 | **V2-P4 Aur exams + Bharat**: coaching white-label, OMR scan, GATE, SSC/Bank (F1–F4), awaaz + 11 bhashayein (A7), creators | Master plan v2 | Placement ke bahar ka bazaar | 25 coaching; Hindi/regional ≥ 40% | ⬜ owner ki haan baaki |
 | 15 | **V2-P5 Scale + certificate**: 10,000 ka contest, pentest + bug bounty, DigiLocker, Play Store app | Master plan v2 | Badi company aur sarkar ka bharosa | Pentest ke critical/high 0 | ⬜ owner ki haan baaki |
+| 16 | **Student master + drive manager** (CL8, CL52; shuru: 1 Oct 2026). College ke students ek baar (roll no., naam, email, phone, branch, batch, CGPA, backlogs) CSV se, dry run ke saath, dobara import par update. Drive: company, role, CTC, JD, eligibility (min CGPA, max backlogs, branches, batches), apply-by; eligible students apne aap nikle, drive me jude, rounds me aage badhein (applied → test → interview → offer/reject → joined), drive ke exam ka test ek click me bheja jaaye, CSV export company ke liye | V2-12 | TPO ka Excel khatam; NIRF ka data yahin se | Tests: import (galat CGPA, duplicate, update), eligibility, stage badalna audit ke saath, test bhejna; console me Students aur Drives page; screenshots | ✅ ban gaya (1 Oct 2026) |
+| 17 | **JD se test + role library** (CO6, CO7; shuru: 1 Oct 2026). 8+ role templates (fresher aptitude, Java dev, Python dev, frontend, data analyst, QA, DevOps, BPO/support): skills, sections, time, difficulty. JD chipkao: model skills aur level nikaale (bina model ke role template se). Question bank se har section ke sawaal chune jaayein, kami ho to saaf bataya jaaye; draft exam editor me khule, author badle aur save kare | V2-12 | Recruiter 10 minute me test bheje | Tests: role template se draft, JD se skills (fake model), bank me kami ki report, draft save hokar exam bane; console me "New test from a job" | ✅ ban gaya (1 Oct 2026) |
 
 ## Master plan v2: taiyaari se naukri tak, ek bharosemand platform
 
@@ -573,7 +575,7 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | ID | Feature | Status | Note |
 |---|---|---|---|
 | CL7 | Har exam ke liye candidates CSV se, dry run ke saath | ✅ | ROADMAP §5 |
-| CL8 | **Student master**: roll no., branch, batch, CGPA, backlogs, phone. Ek baar daalo, har exam aur drive me kaam aaye | ⬜ | TPO OS ki neev (D3) |
+| CL8 | **Student master**: roll no., branch, batch, CGPA, backlogs, phone. Ek baar daalo, har exam aur drive me kaam aaye | ✅ | Console → Placement → Students; `api/src/placement.ts`, `student-import.ts`, migration 0029. CSV dry run ke saath, dobara import par update. Screenshot `pilot-19` |
 | CL9 | Student khud register kare (college ka link), TPO manzoor kare | ⬜ | |
 | CL10 | APAAR ID / DigiLocker se naam aur marks verify | ⬜ | Sarkari onboarding chahiye (B6) |
 
@@ -647,7 +649,7 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | CL49 | College ki practice site aur Prep (plan, Sahayak, contests) | ✅ | ROADMAP §15, §16 |
 | CL50 | Campus licence: CSV se sabko Plus | ⬜ | Tracker plan #8 |
 | CL51 | **Readiness heatmap** (branch/batch × topic), kamzor students ki list | ⬜ | D2 |
-| CL52 | **Drive manager**: company, JD, eligibility (CGPA, backlogs, branch), apply, rounds, offer | ⬜ | D3 |
+| CL52 | **Drive manager**: company, JD, eligibility (CGPA, backlogs, branch), apply, rounds, offer | ✅ | Console → Placement → Drives: eligible students apne aap, drive ka test ek click me, rounds (applied → test → interview → offer/join), offer LPA, company ke liye CSV. Student khud apply nahi karta, TPO jodta hai (CL9 baaki). Screenshot `pilot-20` |
 | CL53 | Company ke liye college ka portal (drive request, shortlist dekhna) | ⬜ | E3 se juda |
 | CL54 | **NIRF / NAAC reports** (placement %, median salary, higher studies) | ⬜ | D4 |
 | CL55 | Campus Premier League (college ranking) | ⬜ | C2 |
@@ -676,8 +678,8 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | ID | Feature | Status | Note |
 |---|---|---|---|
 | CO5 | Question bank, coding, sections, random paper, negative marking | ✅ | College jaisa hi |
-| CO6 | **JD chipkao → test ka draft** (skills, levels, time), recruiter badle | ⬜ | Sabse bada "aasaan" feature |
-| CO7 | **Role library**: Java/Python dev, data analyst, QA, DevOps, BPO, sales, fresher aptitude | ⬜ | Ready templates |
+| CO6 | **JD chipkao → test ka draft** (skills, levels, time), recruiter badle | ✅ | Exams → "From a job"; `api/src/job-test.ts`. Model sirf role, seniority aur skills padhta hai; sawaal hamesha apne bank se, kami saaf likhi. Kharcha spend cap me ("author" route, migration 0030). Asli model par abhi nahi chalaya (tests fake model se). Screenshots `pilot-21`, `pilot-22` |
+| CO7 | **Role library**: Java/Python dev, data analyst, QA, DevOps, BPO, sales, fresher aptitude | ✅ | `api/src/roles.ts`: 9 roles (fresher aptitude, Java, Python, frontend, data analyst, QA, DevOps, support/BPO, campus software). Sales abhi nahi |
 | CO8 | SQL exam me (practice me pehle se) | 🟡 | Runner me SQL hai. Exam ke author flow me jaanchna baaki |
 | CO9 | Frontend/full-stack task (React, API) browser IDE me | ⬜ | |
 | CO10 | **Bolkar ya video jawab** (communication, sales, BPO roles), English speaking score | ⬜ | Mass hiring ki zaroorat |
@@ -765,6 +767,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 1 Oct 2026 | [#34](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/34) | Student master + drive manager (CL8, CL52), JD se test + 9 roles ki library (CO6, CO7); console me Placement page aur "From a job"; migrations 0029, 0030; screenshots `pilot-19`…`pilot-22` |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | V2-12: college aur company ka end-to-end feature list (94 features, har ek ka aaj ka status), 3 usool, pehle banne wale top 12 |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | Master plan v2 likha: competitors, dono taraf ki zaroorat, 6 bade daav, 9 stambh, phases, metrics, khatre. Abhi sirf plan, code nahi |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) `850cb5d` | Pehla hint admin ka likha (free, bina AI); worked solution ke baad solve par coins aadhe; tracker me "Ruka hua kaam" |
