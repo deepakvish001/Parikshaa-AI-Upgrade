@@ -30,14 +30,14 @@ Status ka matlab:
 | Dashboard aur planner | 7 | 2 | 6 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 4 | 1 | 2 | 0 |
-| Sahayak AI | 10 | 2 | 6 | 0 |
+| Sahayak AI | 10 | 3 | 5 | 0 |
 | Plus aur payment | 5 | 2 | 6 | 0 |
 | Coins, store, gamification | 10 | 2 | 3 | 0 |
 | Company prep aur community | 8 | 1 | 6 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
 | Platform, quality, B2B | 6 | 2 | 5 | 0 |
-| **Kul** | **62** | **16** | **43** | **1** |
+| **Kul** | **62** | **17** | **42** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -120,7 +120,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Notes draft mode | ⬜ | | |
 | Interview follow-up sawaal | ⬜ | | Phase 6 |
 | Chats 180 din baad apne aap delete | ⬜ | | DPDP |
-| Evals (200 problems, hint me code leak nahi, review bug pakde) | ⬜ | | Launch se pehle zaroori |
+| Evals (hint me code leak nahi, review bug pakde, doubt par solution nahi) | 🟡 | `api/src/testing/sahayak-eval/`, `.claude/hillclimb/sahayak-*` | 360 cases (40 problems), grading aur runner tests ke saath ban gaye. **Paid baseline run abhi nahi hua**: API key aur owner ki manzoori chahiye. Scores abhi nahi hain |
 | Admin page par AI kharcha aur eval scores | 🟡 | console Usage page | Kharcha dikhta hai, evals nahi |
 
 ### 6. Plus aur payment (section 16, F12, F16)
@@ -269,6 +269,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Naam aur brand | "Parikshaa Prep" kaam chalane ka naam. **Pakka karna baaki** | — |
 | Prices | Staff console me khud set karta hai. Blueprint ke numbers (₹3,999/₹6,999…) **pakka karna baaki** | — |
 | Videos: kaun, kis bhasha me, hosting kahan | **Baaki** | — |
+| Sahayak evals ka size | Blueprint me 200 problems the; owner ne **40 problems × 3 galat programs** chune (har flow me 120 cases, kul 360). Problems apne likhe hain, kisi site se copy nahi | 30 Sep 2026 |
 
 ---
 
@@ -280,7 +281,8 @@ Sujhaya gaya kram (sabse zaroori pehle):
 
 | # | Kaam | Blueprint | Kyun | Done kab | Status |
 |---|---|---|---|---|---|
-| 1 | Sahayak evals + static hint 1 + solution par coins aadhe | §14, F4 | Launch se pehle safety aur kharcha | Eval targets pass (98% / 90% / 95%) | ⬜ |
+| 1a | **Sahayak evals** (shuru: 30 Sep 2026). Teen evals, ek hi case set par: **hint** (rung 1–2 me code ya poora algorithm leak na ho), **review** (planted bug pakde, learner ke code ki complexity sahi bataye, sahi program na likh de), **doubt** ("bas code de do" par bhi solution na de, sawaal ka jawab de). Cases: 40 apne likhe problems × 3 galat solutions (off-by-one, overflow, TLE), har galat solution runner par sach me fail hota hai; 120 doubts; ~20% Hindi. Judge: `claude-sonnet-5-5`, structured output. Runner asli `Sahayak` class chalata hai (PGlite par). Paid run sirf owner ki manzoori ke baad. **Ab tak:** cases owner ne manzoor kiye (30 Sep); 40 problems ke saare galat programs runner par check; runner, grader, judge-sanity aur tests ban gaye. **Baaki:** API key, pilot (24 cases), grading par manzoori, kharche ka andaaza, baseline run | §14, F4, F5 | Launch se pehle safety aur kharcha | Inputs aur grading par owner ki manzoori; baseline run ka `report.html`; targets: hint leak-free 98%, review bug 90%, complexity 95% | 🟡 chal raha |
+| 1b | Static hint 1 + solution par coins aadhe | §14, F4 | AI ka kharcha bachana | Admin ka likha hint pehle, poora solution dekhne par coins aadhe | ⬜ |
 | 2 | Coupons, GST invoices, pricing page ka GST breakup | §16, F12 | Paid launch ke liye zaroori | Test mode me coupon ke saath kharidna, invoice PDF | ⬜ |
 | 3 | Roz ke reminders + analytics events | F2, §17 | Retention aur metrics naapna | D7 aur activation dashboard par | ⬜ |
 | 4 | Sprint quiz + revision notes, streak freeze | F7, 13.2 | Planner poora | Sprint ke ant me quiz, 70% se kam par revise tasks | ⬜ |
