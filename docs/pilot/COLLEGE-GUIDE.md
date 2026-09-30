@@ -1,5 +1,7 @@
 # Parikshaa: your first test, step by step
 
+*(हिंदी में: [COLLEGE-GUIDE.hi.md](COLLEGE-GUIDE.hi.md))*
+
 Parikshaa runs online tests for your students: on a phone or a lab computer,
 in English, Hindi and nine other Indian languages. Answers are saved as
 students type, so a dropped connection loses nothing. After a written answer,

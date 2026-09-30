@@ -5,8 +5,10 @@ decisions to make, the server, the checks before the college is told, the
 first exam day, and what to learn afterwards. `OPERATIONS.md` has the detail
 behind each step (sizing, backups, billing); this is the order to do them in.
 
-The college's side is in [`pilot/COLLEGE-GUIDE.md`](pilot/COLLEGE-GUIDE.md):
-send it to them once the server is ready.
+The college's side is in [`pilot/COLLEGE-GUIDE.md`](pilot/COLLEGE-GUIDE.md)
+(in Hindi: [`pilot/COLLEGE-GUIDE.hi.md`](pilot/COLLEGE-GUIDE.hi.md)): send it
+to them once the server is ready. Both have the same two blanks to fill in
+first: the console's address and your contact details.
 
 ## 1. Decide first
 
