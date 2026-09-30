@@ -205,7 +205,7 @@ export class DeliveryWorker {
       return { skip: "The window has closed" };
     }
     const reminder = item.purpose === "reminder" || item.purpose === "reminder_day";
-    if (reminder && invitation.attemptId !== null) return { skip: "Already started" };
+    if ((reminder || item.purpose === "rescheduled") && invitation.attemptId !== null) return { skip: "Already started" };
     // Held up past its moment (the worker was down), the day's reminder gives way to the hour's.
     if (item.purpose === "reminder_day" && Date.parse(invitation.opensAt) - this.#now() < 2 * 3_600_000) {
       return { skip: "The later reminder covers it" };
@@ -247,13 +247,16 @@ export class DeliveryWorker {
     const opens = ist(invitation.opensAt);
     const untilOpen = Date.parse(invitation.opensAt) - this.#now();
     const reminder = purpose === "reminder" || purpose === "reminder_day";
-    const lead = !reminder
-      ? `${institution} has invited you to take the ${title} test.`
-      : untilOpen <= 0
-        ? `A reminder: your ${title} test with ${institution} is open now.`
-        : untilOpen <= 90 * 60_000
-          ? `A reminder: your ${title} test with ${institution} opens in ${Math.max(1, Math.round(untilOpen / 60_000))} minutes.`
-          : `A reminder: your ${title} test with ${institution} opens ${opens}.`;
+    const rescheduled = purpose === "rescheduled";
+    const lead = rescheduled
+      ? `The time of your ${title} test with ${institution} has changed. It now opens ${opens}.`
+      : !reminder
+        ? `${institution} has invited you to take the ${title} test.`
+        : untilOpen <= 0
+          ? `A reminder: your ${title} test with ${institution} is open now.`
+          : untilOpen <= 90 * 60_000
+            ? `A reminder: your ${title} test with ${institution} opens in ${Math.max(1, Math.round(untilOpen / 60_000))} minutes.`
+            : `A reminder: your ${title} test with ${institution} opens ${opens}.`;
 
     const proctoring = exam?.policy.proctoring;
     const camera = proctoring !== undefined && (proctoring.identity || proctoring.snapshotEverySeconds !== null);
@@ -265,11 +268,12 @@ export class DeliveryWorker {
       ...(proctoring?.browserEvents === true ? ["It notes if you leave the test's tab or full screen, or copy or paste, for your institution to see."] : []),
       "You may be asked a short follow-up question about one or two of your own answers.",
     ];
-    const ready = reminder
-      ? [
-          `Before it opens: charge your phone or laptop, find a quiet place with a steady connection${camera && proctoring!.identity ? ", keep your photo ID to hand" : ""}, and keep this email where you can find it.`,
-        ]
-      : [];
+    const ready =
+      reminder || rescheduled
+        ? [
+            `Before it opens: charge your phone or laptop, find a quiet place with a steady connection${camera && proctoring!.identity ? ", keep your photo ID to hand" : ""}, and keep this email where you can find it.`,
+          ]
+        : [];
 
     const lines = [
       greeting,
@@ -296,11 +300,13 @@ ${what.map((line) => `<p>${escape(line)}</p>`).join("\n")}
 <p>— ${escape(institution)}, via Parikshaa</p>`;
     return {
       to: invitation.email!,
-      subject: !reminder
-        ? `Your ${title} test — ${institution}`
-        : untilOpen <= 0
-          ? `Reminder: ${title} is open now`
-          : `Reminder: ${title} opens ${opens}`,
+      subject: rescheduled
+        ? `New time: ${title} opens ${opens}`
+        : !reminder
+          ? `Your ${title} test — ${institution}`
+          : untilOpen <= 0
+            ? `Reminder: ${title} is open now`
+            : `Reminder: ${title} opens ${opens}`,
       text: lines.join("\n"),
       html,
     };

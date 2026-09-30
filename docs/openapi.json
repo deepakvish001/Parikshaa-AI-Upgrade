@@ -53778,11 +53778,11 @@
     },
     "/exams/{examId}/window": {
       "put": {
-        "summary": "Schedule an exam",
+        "summary": "Schedule an exam, or move it",
         "tags": [
           "Invitations"
         ],
-        "description": "Candidates can open their link only inside this window, or a narrower one of their own.",
+        "description": "Candidates can open their link only inside this window, or a narrower one of their own. Moving it moves every invited candidate on it who has not begun: their reminders are for the new time, and with notify each is told the new time. A candidate with a window of their own keeps it.",
         "requestBody": {
           "required": true,
           "content": {
@@ -53803,6 +53803,11 @@
                   "hardClose": {
                     "default": true,
                     "description": "End every attempt when the window closes, however late it started.",
+                    "type": "boolean"
+                  },
+                  "notify": {
+                    "default": true,
+                    "description": "When the time changes, tell each invited candidate who moves with it, by the channels their invitation went by.",
                     "type": "boolean"
                   }
                 },
@@ -53839,11 +53844,21 @@
                   "type": "object",
                   "properties": {
                     "ok": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "moved": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Invited candidates moved to the new time: those on the exam's window who had not begun."
                     }
                   },
                   "required": [
-                    "ok"
+                    "ok",
+                    "moved"
                   ],
                   "additionalProperties": false
                 }

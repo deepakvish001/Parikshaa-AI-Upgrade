@@ -137,7 +137,9 @@ export function Candidates({ client, examId, canInvite }: { client: ConsoleClien
         </Banner>
       ) : null}
 
-      {window.data === undefined ? null : <WindowForm client={client} examId={examId} initial={window.data} canEdit={canInvite} />}
+      {window.data === undefined ? null : (
+        <WindowForm client={client} examId={examId} initial={window.data} canEdit={canInvite} invited={invitations.data ?? []} />
+      )}
 
       {canInvite ? <Importer client={client} examId={examId} onImported={refresh} hasWindow={window.data !== null && window.data !== undefined} /> : null}
 
@@ -210,25 +212,42 @@ function WindowForm({
   examId,
   initial,
   canEdit,
+  invited,
 }: {
   client: ConsoleClient;
   examId: string;
   initial: { opensAt: string; closesAt: string; hardClose: boolean } | null;
   canEdit: boolean;
+  invited: readonly InvitationRow[];
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [opensAt, setOpensAt] = useState(initial === null ? "" : toIst(initial.opensAt));
   const [closesAt, setClosesAt] = useState(initial === null ? "" : toIst(initial.closesAt));
   const [hardClose, setHardClose] = useState(initial?.hardClose ?? true);
+  const [notify, setNotify] = useState(true);
+  const backwards = opensAt !== "" && closesAt !== "" && closesAt <= opensAt;
+  // Moving the time moves those on the exam's window who have not begun; a window of one's own, or a test begun, stays.
+  const retimed = initial !== null && opensAt !== "" && closesAt !== "" && (fromIst(opensAt) !== initial.opensAt || fromIst(closesAt) !== initial.closesAt);
+  const following = initial === null ? 0 : invited.filter((i) => !i.revoked && i.attemptId === null && i.opensAt === initial.opensAt && i.closesAt === initial.closesAt).length;
   const save = useMutation({
-    mutationFn: () => client.setWindow(examId, { opensAt: fromIst(opensAt), closesAt: fromIst(closesAt), hardClose }),
-    onSuccess: async () => {
-      toast(initial === null ? "Scheduled" : "Rescheduled", "success");
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ["window", examId] }), queryClient.invalidateQueries({ queryKey: ["exams"] })]);
+    mutationFn: () => client.setWindow(examId, { opensAt: fromIst(opensAt), closesAt: fromIst(closesAt), hardClose }, { notify }),
+    onSuccess: async ({ moved }) => {
+      toast(
+        initial === null
+          ? "Scheduled"
+          : moved === 0
+            ? "Rescheduled"
+            : `Rescheduled. ${moved === 1 ? "1 candidate moves" : `${moved} candidates move`} to the new time${notify ? ", and will be told" : ""}.`,
+        "success",
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["window", examId] }),
+        queryClient.invalidateQueries({ queryKey: ["exams"] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", examId] }),
+      ]);
     },
   });
-  const backwards = opensAt !== "" && closesAt !== "" && closesAt <= opensAt;
 
   return (
     <section className="card" aria-label="Schedule">
@@ -248,6 +267,18 @@ function WindowForm({
         <input type="checkbox" checked={hardClose} disabled={!canEdit} onChange={(e) => setHardClose(e.target.checked)} /> End every attempt when the window
         closes, however late it was started
       </label>
+      {canEdit && retimed && following > 0 ? (
+        <div className="reschedule-note" role="note">
+          <p>
+            {following === 1 ? "1 invited candidate who has not begun moves" : `${following} invited candidates who have not begun move`} to the new time,
+            with their reminders. Anyone with a window of their own, or who has begun, keeps theirs.
+          </p>
+          <label className="inline">
+            <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Tell them the new time, by the email or SMS their
+            invitation went by
+          </label>
+        </div>
+      ) : null}
       {canEdit ? (
         <div className="row">
           <button type="button" disabled={save.isPending || opensAt === "" || closesAt === "" || backwards} onClick={() => save.mutate()}>

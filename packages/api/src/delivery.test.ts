@@ -219,6 +219,112 @@ describe("what the email says about the test", () => {
   });
 });
 
+describe("rescheduling", () => {
+  const LATER = OPENS + 2 * 24 * HOUR;
+  const move = (opensAt: number, extra: object = {}) =>
+    call("PUT", "/exams/drive/window", {
+      opensAt: new Date(opensAt).toISOString(),
+      closesAt: new Date(opensAt + 3 * HOUR).toISOString(),
+      ...extra,
+    });
+  const outbox = async () => new OutboxStore(pgliteExecutor(db)).recent("org-a");
+
+  it("moves a candidate who has not begun, tells them the new time, and reminds them for it", async () => {
+    await worker.tick();
+    log.sent.length = 0;
+
+    const moved = await move(LATER);
+    expect(moved.json()).toEqual({ ok: true, moved: 1 });
+    const [invitation] = (await call("GET", "/exams/drive/invitations")).json().invitations;
+    expect(invitation.opensAt).toBe(new Date(LATER).toISOString());
+
+    // The old time's reminders are withdrawn; the new time's are queued, with the news.
+    const queued = await outbox();
+    expect(queued.filter((q) => q.status === "skipped").map((q) => [q.kind, q.purpose, q.error]).sort()).toEqual([
+      ["email", "reminder", "Rescheduled"],
+      ["email", "reminder_day", "Rescheduled"],
+      ["sms", "reminder", "Rescheduled"],
+      ["sms", "reminder_day", "Rescheduled"],
+    ]);
+    expect(queued.filter((q) => q.status === "pending").map((q) => `${q.kind}:${q.purpose}`).sort()).toEqual([
+      "email:reminder",
+      "email:reminder_day",
+      "email:rescheduled",
+      "sms:reminder",
+      "sms:reminder_day",
+      "sms:rescheduled",
+    ]);
+
+    await worker.tick();
+    const [news] = emails();
+    expect(news!.subject).toBe(`New time: Campus drive opens ${ist(new Date(LATER).toISOString())}`);
+    expect(news!.text).toContain(`The time of your Campus drive test with Acme Engineering has changed. It now opens ${ist(new Date(LATER).toISOString())}.`);
+    expect(news!.text).toContain(`Opens:  ${ist(new Date(LATER).toISOString())}`);
+    expect(texts()).toHaveLength(1);
+
+    // Nothing goes out at the old time; the reminders come for the new one.
+    log.sent.length = 0;
+    clock = OPENS - HOUR + 1;
+    await worker.tick();
+    expect(log.sent).toHaveLength(0);
+    clock = LATER - HOUR + 1;
+    await worker.tick();
+    expect(emails().map((e) => e.subject)).toEqual([`Reminder: Campus drive opens ${ist(new Date(LATER).toISOString())}`]);
+
+    // The link opens at the new time, not the old.
+    const code = new InviteCodes(TOKEN_SECRET).issue("org-a", invitation.id);
+    clock = OPENS + 60_000;
+    expect((await app.inject({ method: "POST", url: "/invitations/redeem", payload: { code } })).statusCode).toBe(403);
+    clock = LATER + 60_000;
+    expect((await app.inject({ method: "POST", url: "/invitations/redeem", payload: { code } })).statusCode).toBe(200);
+  });
+
+  it("leaves a candidate with a window of their own, and one who has begun, where they are", async () => {
+    // A narrower window of their own, inside the exam's.
+    const own = OPENS + HOUR;
+    const imported = await call("POST", "/exams/drive/invitations/import", {
+      csv: `ref,name,email,opens_at,closes_at\nCS002,Own Window,own@college.test,${new Date(own).toISOString()},${new Date(own + HOUR).toISOString()}`,
+      dryRun: false,
+      channels: ["email"],
+    });
+    expect(imported.statusCode, imported.payload).toBe(201);
+    const [first] = (await call("GET", "/exams/drive/invitations")).json().invitations;
+    clock = OPENS + 1;
+    await app.inject({ method: "POST", url: "/invitations/redeem", payload: { code: new InviteCodes(TOKEN_SECRET).issue("org-a", first.id) } });
+
+    expect((await move(LATER)).json()).toEqual({ ok: true, moved: 0 });
+    const after = (await call("GET", "/exams/drive/invitations")).json().invitations;
+    expect(after.map((i: { candidateRef: string; opensAt: string }) => [i.candidateRef, i.opensAt])).toEqual([
+      ["CS001", new Date(OPENS).toISOString()],
+      ["CS002", new Date(own).toISOString()],
+    ]);
+    expect((await outbox()).filter((q) => q.purpose === "rescheduled")).toEqual([]);
+  });
+
+  it("moves quietly when asked not to tell anyone, still reminding them for the new time", async () => {
+    expect((await move(LATER, { notify: false })).json()).toEqual({ ok: true, moved: 1 });
+    const pending = (await outbox()).filter((q) => q.status === "pending").map((q) => `${q.kind}:${q.purpose}`);
+    expect(pending).not.toContain("email:rescheduled");
+    expect(pending).toContain("email:reminder_day");
+  });
+
+  it("moves nobody when only the hard close changes", async () => {
+    expect((await move(OPENS, { hardClose: false })).json()).toEqual({ ok: true, moved: 0 });
+    expect((await outbox()).filter((q) => q.status === "skipped")).toEqual([]);
+  });
+
+  it("does not tell a candidate who begins before the news goes out", async () => {
+    await move(OPENS - 12 * HOUR);
+    const [invitation] = (await call("GET", "/exams/drive/invitations")).json().invitations;
+    clock = OPENS - 12 * HOUR + 60_000;
+    await app.inject({ method: "POST", url: "/invitations/redeem", payload: { code: new InviteCodes(TOKEN_SECRET).issue("org-a", invitation.id) } });
+    log.sent.length = 0;
+    await worker.tick();
+    expect(emails().map((e) => e.subject)).toEqual(["Your Campus drive test — Acme Engineering"]);
+    expect((await outbox()).filter((q) => q.purpose === "rescheduled").map((q) => q.status)).toEqual(["skipped", "skipped"]);
+  });
+});
+
 describe("when sending fails", () => {
   it("retries a failure that might pass, later", async () => {
     let failures = 1;

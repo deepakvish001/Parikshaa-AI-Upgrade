@@ -195,6 +195,7 @@ What to do when:
 |---|---|
 | A candidate's connection drops | Nothing is lost: answers are saved as they type. They reopen the same link, on any device, and carry on. |
 | A candidate lost their link | Candidates tab → the candidate's ⋯ → **Resend the link**; or give them the access code to type at the site's address. |
+| The college moves the test to another day or time | Candidates tab → change the times → **Reschedule**. Everyone invited who has not begun moves with it, is told the new time, and is reminded for it; links stay the same. Do it as early as possible. |
 | A candidate needs more time (a fault at one desk) | Live → the candidate's ⋯ → **Extra time…**, with the reason. It is recorded. |
 | The whole hall lost time (a power cut) | Live → **Extra time for everyone**: the same minutes, with one reason, for everyone still sitting. Each is recorded. |
 | A candidate submitted too early by mistake | Live → the candidate's ⋯ → **Reopen…**, for a few minutes, with the reason. |

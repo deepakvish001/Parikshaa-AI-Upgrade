@@ -53,6 +53,10 @@ reminder the day before and another an hour before the test opens. The same
 tab shows whether each message went; **Download links** gives you every link
 to share another way.
 
+**If the date changes**, change it in the same place and press **Reschedule**.
+Every invited student who has not begun moves to the new time, with their
+reminders, and is told the new time; their link stays the same.
+
 Add colleagues from **Staff** (after confirming your email): authors write
 tests, invigilators watch sittings, reviewers read results.
 

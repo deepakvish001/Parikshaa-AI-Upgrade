@@ -3917,6 +3917,17 @@ button.month-day.picked::after {
 .signin-verified {
   margin: 0 0 var(--space-4);
 }
+/* Rescheduling: who moves with the new time, said before it is saved. */
+.reschedule-note {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--info-soft);
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius);
+}
+.reschedule-note p {
+  margin: 0 0 var(--space-2);
+}
 .sample-line .banner-action {
   display: flex;
   gap: var(--space-2);

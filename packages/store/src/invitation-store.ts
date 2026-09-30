@@ -132,6 +132,61 @@ export class InvitationStore {
     );
   }
 
+  /**
+   * Reschedule an exam, taking its invited candidates with it: everyone whose
+   * window was the exam's `from` window, who has not begun and was not
+   * withdrawn, moves to `to`. A candidate with a window of their own stays in
+   * it. With `retime`, their reminders still to go are cancelled (they were
+   * for the old time) and `messages` queues what replaces them, given each
+   * candidate's id and the channels their invitation went by. All in one
+   * transaction, so no candidate is moved without their messages. Returns
+   * how many moved.
+   */
+  async moveWindow(
+    scope: Scope,
+    examId: string,
+    from: ExamWindow,
+    to: ExamWindow,
+    options: {
+      readonly retime: boolean;
+      readonly messages: (invitationId: string, channels: readonly ("email" | "sms")[]) => readonly OutboxDraft[];
+    },
+  ): Promise<number> {
+    return withScope(this.#sql, scope, async (tx) => {
+      await tx.query(
+        `INSERT INTO exam_windows (org_id, exam_id, opens_at, closes_at, hard_close) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, exam_id)
+         DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, hard_close = EXCLUDED.hard_close`,
+        [scope.orgId, examId, to.opensAt, to.closesAt, to.hardClose],
+      );
+      const moved = await tx.query<{ id: string }>(
+        `UPDATE invitations SET opens_at = $3, closes_at = $4, hard_close = $5
+          WHERE org_id = $1 AND exam_id = $2 AND revoked_at IS NULL AND attempt_id IS NULL
+            AND opens_at = $6::timestamptz AND closes_at = $7::timestamptz
+        RETURNING id`,
+        [scope.orgId, examId, to.opensAt, to.closesAt, to.hardClose, from.opensAt, from.closesAt],
+      );
+      const ids = moved.map((m) => m.id);
+      if (!options.retime || ids.length === 0) return ids.length;
+
+      await tx.query(
+        `UPDATE outbox SET status = 'skipped', last_error = 'Rescheduled', locked_until = NULL
+          WHERE org_id = $1 AND status = 'pending' AND purpose IN ('reminder', 'reminder_day', 'rescheduled')
+            AND subject ->> 'invitationId' = ANY ($2::text[])`,
+        [scope.orgId, ids],
+      );
+      const sent = await tx.query<{ id: string; kinds: ("email" | "sms")[] }>(
+        `SELECT subject ->> 'invitationId' AS id, array_agg(DISTINCT kind ORDER BY kind) AS kinds FROM outbox
+          WHERE org_id = $1 AND purpose = 'invite' AND kind IN ('email', 'sms') AND subject ->> 'invitationId' = ANY ($2::text[])
+          GROUP BY 1`,
+        [scope.orgId, ids],
+      );
+      const channels = new Map(sent.map((r) => [r.id, r.kinds]));
+      for (const id of ids) await enqueue(tx, scope.orgId, options.messages(id, channels.get(id) ?? []), this.#newId);
+      return ids.length;
+    });
+  }
+
   async getWindow(scope: Scope, examId: string): Promise<ExamWindow | null> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<{ opens_at: string | Date; closes_at: string | Date; hard_close: boolean }>(

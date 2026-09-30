@@ -993,8 +993,9 @@ export class ConsoleClient {
     return this.#request(`/exams/${encodeURIComponent(examId)}/window`);
   }
 
-  async setWindow(examId: string, window: ExamWindow): Promise<void> {
-    await this.#request(`/exams/${encodeURIComponent(examId)}/window`, { method: "PUT", body: JSON.stringify(window) });
+  /** Schedule an exam, or move it; moving it moves the invited candidates on it who have not begun, and says how many. */
+  setWindow(examId: string, window: ExamWindow, options: { readonly notify?: boolean } = {}): Promise<{ readonly moved: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/window`, { method: "PUT", body: JSON.stringify({ ...window, ...options }) });
   }
 
   /**

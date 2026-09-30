@@ -132,14 +132,44 @@ export class InvitationService {
 
   // --- the window -----------------------------------------------------------
 
-  async setWindow(actor: Actor, examId: string, window: ExamWindow): Promise<void> {
+  /**
+   * Schedule an exam, or move it. Moving it takes along every invited
+   * candidate who was on the exam's window and has not begun: their link
+   * opens at the new time, their reminders are for the new time, and, with
+   * `notify`, each is told the new time by the channels their invitation
+   * went by. A candidate given a window of their own keeps it. Returns how
+   * many candidates moved.
+   */
+  async setWindow(
+    actor: Actor,
+    examId: string,
+    window: ExamWindow,
+    options: { readonly notify?: boolean } = {},
+  ): Promise<{ readonly moved: number }> {
     const scope = this.#require(actor, "exam:write");
     await this.#examExists(actor.orgId, examId);
     if (new Date(window.closesAt) <= new Date(window.opensAt)) {
       throw new AttemptError("invalid_state", "The window closes before it opens");
     }
-    await this.#o.invitations.setWindow(scope, examId, window);
-    await this.#audit(actor, "exam.window_set", examId, { ...window });
+    const previous = await this.#o.invitations.getWindow(scope, examId);
+    if (previous === null) {
+      await this.#o.invitations.setWindow(scope, examId, window);
+      await this.#audit(actor, "exam.window_set", examId, { ...window });
+      return { moved: 0 };
+    }
+    const retime = previous.opensAt !== window.opensAt || previous.closesAt !== window.closesAt;
+    const notify = options.notify ?? true;
+    const moved = await this.#o.invitations.moveWindow(scope, examId, previous, window, {
+      retime,
+      messages: (invitationId, channels) => [
+        ...(notify ? channels.map((kind) => ({ kind, subject: { invitationId }, purpose: "rescheduled", sendAfter: new Date(this.#now()) })) : []),
+        ...this.#reminders(invitationId, window.opensAt, channels),
+      ],
+    });
+    const change = retime ? { from: { opensAt: previous.opensAt, closesAt: previous.closesAt }, moved, notified: notify } : {};
+    await this.#audit(actor, "exam.window_set", examId, { ...window, ...change });
+    // The same times with only hard close changed: candidates follow it, but nobody moved.
+    return { moved: retime ? moved : 0 };
   }
 
   getWindow(actor: Actor, examId: string): Promise<ExamWindow | null> {
@@ -157,17 +187,22 @@ export class InvitationService {
   #messages(draft: InvitationDraft, channels: readonly Channel[]) {
     return (invitationId: string): OutboxDraft[] => {
       const reachable = channels.filter((c) => (c === "email" ? draft.email !== null : draft.phone !== null));
-      const opens = new Date(draft.opensAt).getTime();
-      const worthIt = (at: number) => at > this.#now() + 5 * 60 * 1000;
-      const reminders = [
-        { purpose: "reminder_day", at: opens - DAY_MS },
-        { purpose: "reminder", at: opens - this.#lead },
-      ].filter((r) => worthIt(r.at));
-      return reachable.flatMap((kind) => [
-        { kind, subject: { invitationId }, purpose: "invite", sendAfter: new Date(this.#now()) },
-        ...reminders.map((r) => ({ kind, subject: { invitationId }, purpose: r.purpose, sendAfter: new Date(r.at) })),
-      ]);
+      return [
+        ...reachable.map((kind) => ({ kind, subject: { invitationId }, purpose: "invite", sendAfter: new Date(this.#now()) })),
+        ...this.#reminders(invitationId, draft.opensAt, reachable),
+      ];
     };
+  }
+
+  /** The reminders for a window opening at `opensAt`: a day before, and shortly before, each only if still to come. */
+  #reminders(invitationId: string, opensAt: string, channels: readonly Channel[]): OutboxDraft[] {
+    const opens = new Date(opensAt).getTime();
+    const worthIt = (at: number) => at > this.#now() + 5 * 60 * 1000;
+    const due = [
+      { purpose: "reminder_day", at: opens - DAY_MS },
+      { purpose: "reminder", at: opens - this.#lead },
+    ].filter((r) => worthIt(r.at));
+    return channels.flatMap((kind) => due.map((r) => ({ kind, subject: { invitationId }, purpose: r.purpose, sendAfter: new Date(r.at) })));
   }
 
   /**
