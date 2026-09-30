@@ -1297,6 +1297,11 @@ export class ConsoleClient {
     return this.#request(`/integrations/ats/${provider}/key`, { method: "POST" });
   }
 
+  /** Try a connector's credentials against the live account; nothing is changed there. */
+  checkAts(provider: AtsProvider): Promise<{ readonly ok: boolean; readonly detail: string }> {
+    return this.#request(`/integrations/ats/${provider}/check`, { method: "POST" });
+  }
+
   async disableAts(provider: AtsProvider): Promise<void> {
     await this.#request(`/integrations/ats/${provider}/disable`, { method: "POST" });
   }

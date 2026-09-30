@@ -49,6 +49,8 @@ const { app } = assemble({
   // (and no worker runs, so messages stay queued, as the Candidates tab shows).
   mailer: new OutboxLog(),
   whatsapp: new OutboxLog(),
+  // A stand-in Lever on this machine, for the screenshots: only then may outbound calls reach localhost.
+  ...(process.env["E2E_LEVER_URL"] === undefined ? {} : { atsBases: { lever: process.env["E2E_LEVER_URL"] }, http: { allowPrivate: true, timeoutMs: 5_000 } }),
   // Institutions may sign themselves up, as a pilot deployment lets them.
   signup: { trialCredits: 25, pricePaise: 4_900 },
   server: {

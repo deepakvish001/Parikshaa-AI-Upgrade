@@ -258,6 +258,18 @@ same secret. It credits a payment whose buyer closed the tab before Checkout
 returned; without it, such a payment is credited only when they come back.
 Payments must be captured automatically (the dashboard's default for Checkout).
 
+**ATS connectors** (Lever, Zoho Recruit, Darwinbox) are set up by each
+organisation's owner under Integrations. **Test connection** there makes one
+call to the live account that changes nothing — Lever lists its stages and
+checks the mapped ones exist, Zoho exchanges the refresh token in the chosen
+data centre, Darwinbox's callback is asked whether it answers — and says what
+it found or what was refused. For a pilot against Lever's sandbox, set
+`LEVER_API_URL=https://api.sandbox.lever.co` (it applies to every
+organisation on the server).
+
+![Test connection: refused](screenshots/pilot-17-ats-connection-refused.png)
+![Test connection: connected](screenshots/pilot-18-ats-connected.png)
+
 Before taking a real payment, in this order:
 
 1. Put the **test** keys (`rzp_test_…`) and the test-mode webhook in the

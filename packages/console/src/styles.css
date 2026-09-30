@@ -625,6 +625,11 @@ textarea.mono {
   width: 100%;
 }
 
+/* A connector's test: said in the success colour when it connects. */
+.connection-ok {
+  color: var(--success);
+}
+
 /* Insights: candidates across tests, and questions worth a second look. */
 .progress-table td.qualified {
   color: var(--success);

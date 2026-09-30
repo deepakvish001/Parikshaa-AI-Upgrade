@@ -124,6 +124,8 @@ async function main(): Promise<void> {
             ...(whatsAppLanguage === undefined ? {} : { language: whatsAppLanguage }),
             ...(whatsAppUrl === undefined ? {} : { baseUrl: whatsAppUrl }),
           }),
+    // Lever's sandbox, for a pilot: https://api.sandbox.lever.co. Lever's own API otherwise.
+    ...(process.env["LEVER_API_URL"] ? { atsBases: { lever: process.env["LEVER_API_URL"] } } : {}),
     server: {
       trustProxy: process.env["TRUST_PROXY"] === "true",
       // JSON lines on stdout, one per request; LOG_LEVEL=silent turns them off.

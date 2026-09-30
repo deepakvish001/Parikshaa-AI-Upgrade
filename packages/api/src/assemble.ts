@@ -9,6 +9,8 @@ import { MarkingService } from "./marking.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
+import type { AtsBaseUrls } from "./ats.js";
+import type { SafeHttpOptions } from "./safe-http.js";
 import { InvigilationService } from "./invigilation.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
@@ -62,6 +64,10 @@ export interface AssembleOptions {
   readonly mailer?: Mailer | null;
   readonly sms?: SmsSender | null;
   readonly whatsapp?: WhatsAppSender | null;
+  /** Lever's API root, such as its sandbox https://api.sandbox.lever.co; Lever's own when absent. */
+  readonly atsBases?: AtsBaseUrls;
+  /** Outbound requests to webhooks and ATSs: only a browser-suite server lets them reach private addresses. */
+  readonly http?: SafeHttpOptions;
   /** Institutions may sign themselves up, on these terms. Absent: only the admin CLI makes organisations. */
   readonly signup?: SignupPolicy | null;
   /** The operator's address for the pilot report each morning. Absent: no report is sent. */
@@ -122,6 +128,8 @@ export function assemble(o: AssembleOptions): {
     exams: service,
     secret: o.secret,
     publicUrl: o.publicUrl,
+    ...(o.atsBases === undefined ? {} : { atsBases: o.atsBases }),
+    ...(o.http === undefined ? {} : { http: o.http }),
   });
 
   const secrets = new StaffSecrets(o.secret);

@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { writeFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 import { hashPassword } from "@parikshaa/api/passwords";
 import { SECRET, seedBilledOrganisation } from "../src/database.js";
@@ -242,4 +243,39 @@ test("buying credits, and the tax invoice", async ({ page }) => {
   await buy.getByRole("button", { name: /^Pay ₹/ }).click();
   await expect(buy.getByRole("status")).toContainText("credits added");
   await shoot(page, "pilot-16-billing-after-payment", { fullPage: true });
+});
+
+test("testing an ATS connection", async ({ page, request }) => {
+  test.setTimeout(120_000);
+  // A stand-in for Lever's API (E2E_LEVER_URL): it knows one key, as Lever would.
+  const lever = createServer((req, res) => {
+    const good = req.headers.authorization === `Basic ${Buffer.from("lever-sandbox-key:").toString("base64")}`;
+    res.setHeader("content-type", "application/json");
+    res.statusCode = good ? 200 : 401;
+    res.end(JSON.stringify(good ? { data: [{ id: "stage-applied" }, { id: "stage-assessment" }, { id: "stage-interview" }] } : { code: "Unauthorized" }));
+  });
+  await new Promise<void>((r) => lever.listen(4199, "127.0.0.1", r));
+  try {
+    const token = (await (await request.post("/api/auth/login", { data: OWNER })).json()).token as string;
+    const connect = (apiKey: string) =>
+      request.put("/api/integrations/ats/lever", {
+        headers: { authorization: `Bearer ${token}` },
+        data: { settings: { stageExams: { "stage-assessment": "campus-drive" } }, credentials: { apiKey, signatureToken: "sig" } },
+      });
+    expect((await connect("an-old-key")).status()).toBe(200);
+    await signIn(page);
+    await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Integrations", exact: true }).click();
+    const card = page.locator("#ats-lever");
+    await card.getByRole("button", { name: "Test connection" }).click();
+    await expect(card.getByRole("status")).toContainText("Not connected");
+    await shootPart(card, "pilot-17-ats-connection-refused");
+    expect((await connect("lever-sandbox-key")).status()).toBe(200);
+    await page.reload();
+    await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Integrations", exact: true }).click();
+    await card.getByRole("button", { name: "Test connection" }).click();
+    await expect(card.getByRole("status")).toContainText("Connected");
+    await shootPart(card, "pilot-18-ats-connected");
+  } finally {
+    lever.close();
+  }
 });

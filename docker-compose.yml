@@ -53,6 +53,8 @@ services:
       WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
       WHATSAPP_LANGUAGE: ${WHATSAPP_LANGUAGE:-}
       WHATSAPP_API_URL: ${WHATSAPP_API_URL:-}
+      # Optional: Lever's sandbox for a pilot (https://api.sandbox.lever.co).
+      LEVER_API_URL: ${LEVER_API_URL:-}
       # Optional: selling prepaid credits (Razorpay) and issuing GST invoices.
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET:-}

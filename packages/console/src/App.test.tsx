@@ -359,6 +359,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     saveAts: vi.fn(async (provider: string) => ({ provider, label: "Lever", configured: true, enabled: true, settings: {}, credentialsSet: true })),
     issueAtsHook: vi.fn(async () => ({ key: "atk.acme.lever.2.x", hookUrl: "https://exam.test/api/integrations/ats/lever/hook/atk.acme.lever.2.x" })),
     disableAts: vi.fn(async () => undefined),
+    checkAts: vi.fn(async () => ({ ok: true, detail: "The API key works; 5 stages in the account, and 1 mapped to exams all exist" })),
     ltiPlatforms: vi.fn(async () => []),
     registerLti: vi.fn(async (p: object) => ({ ...p, id: "p1", enabled: true, tool: { toolUrl: "t", loginUrl: "l", redirectUrl: "r", jwksUrl: "j", customParameters: "exam=<exam id>" } })),
     updateLti: vi.fn(async () => undefined),
@@ -1754,6 +1755,22 @@ describe("results and exports", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
     await screen.findByRole("button", { name: "Candidates" });
     expect(screen.queryByRole("button", { name: "Results" })).toBeNull();
+  });
+});
+
+describe("testing an ATS connection", () => {
+  it("tries the connector against the live account and says what it found", async () => {
+    const client = stubClient({
+      atsConnectors: vi.fn(async () => [
+        { provider: "lever" as const, label: "Lever", configured: true, enabled: true, settings: { stageExams: { s1: "exam-1" } }, credentialsSet: true },
+      ]),
+    });
+    client.checkAts = vi.fn(async () => ({ ok: false, detail: "Lever refused the credentials (401): check they are current and for this account" }));
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Integrations" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+    expect(await screen.findByText(/Not connected: Lever refused the credentials \(401\)/)).toBeInTheDocument();
+    expect(client.checkAts).toHaveBeenCalledWith("lever");
   });
 });
 
