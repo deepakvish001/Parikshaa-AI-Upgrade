@@ -3864,6 +3864,197 @@ button.tools-grid-item svg {
 .finished-actions {
   margin-top: var(--space-3);
 }
+
+/* How the test went: after the paper, optional, and never on the printout. */
+.feedback {
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-4);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.feedback h3 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md);
+}
+.feedback .notice {
+  margin: 0 0 var(--space-3);
+}
+.feedback-rating {
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  border: 0;
+}
+.feedback-options {
+  display: flex;
+  gap: var(--space-2);
+}
+.feedback-options label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+}
+.feedback-options input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.feedback-options label:focus-within {
+  box-shadow: var(--focus-ring);
+}
+.feedback-options label.chosen {
+  color: var(--on-primary);
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.feedback-scale {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.feedback textarea {
+  width: 100%;
+  margin: var(--space-1) 0 var(--space-3);
+}
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.feedback-thanks {
+  margin: var(--space-4) 0 0;
+  color: var(--text-secondary);
+}
+
+/* The released result: marks by question, a recheck per question, the scorecard. */
+.my-result {
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--space-4) 0 0;
+  padding: var(--space-4);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.my-result-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+.my-result h3 {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.my-result-marks {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+.my-result-outcome {
+  margin: 0 0 var(--space-3);
+  font-weight: var(--weight-semibold);
+}
+.my-result-outcome.qualified {
+  color: var(--success);
+}
+.my-result-outcome.failed {
+  color: var(--text-secondary);
+}
+.my-result-table {
+  width: 100%;
+  margin: var(--space-3) 0;
+  border-collapse: collapse;
+}
+.my-result-table th,
+.my-result-table td {
+  padding: var(--space-2) var(--space-1);
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.my-result-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.my-result-table .q-number {
+  color: var(--text-secondary);
+}
+.my-result-table .recheck-ask {
+  display: block;
+  margin-top: var(--space-1);
+}
+.recheck-state {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+.recheck-state.changed {
+  color: var(--success);
+}
+.recheck-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.recheck-form .notice {
+  margin: 0;
+}
+.recheck-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* What a scorecard's code opens. */
+.scorecard-check {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.scorecard-check .status-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: var(--space-3);
+}
+.scorecard-check dl {
+  width: 100%;
+  margin: var(--space-3) 0;
+  text-align: left;
+}
+.scorecard-check dl div {
+  display: grid;
+  grid-template-columns: 9rem 1fr;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.scorecard-check dt {
+  color: var(--text-secondary);
+}
+.scorecard-check dd {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+}
+.status-icon.ok {
+  color: var(--success);
+}
+.status-card .status-icon.bad {
+  color: var(--danger);
+}
 @media (max-width: 40rem) {
   .finished-figures {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4276,6 +4467,8 @@ button.paper-row.current {
   .topbar,
   .prefs,
   .finished-actions,
+  .feedback,
+  .feedback-thanks,
   .receipt .row button,
   .gate-foot {
     display: none !important;

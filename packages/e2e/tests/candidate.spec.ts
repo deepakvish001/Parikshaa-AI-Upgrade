@@ -47,6 +47,16 @@ test("a candidate sits the exam from their link, answers a follow-up, and leaves
   expect(report.ok, JSON.stringify(report)).toBe(true);
   const types = receipt.entries!.map((e) => e.event.type);
   expect(types).toEqual(expect.arrayContaining(["attempt_started", "answer_submitted", "viva_probed", "viva_replied", "attempt_submitted"]));
+
+  // Asked how it went, after the paper: once, and outside the record.
+  const feedback = page.getByRole("region", { name: "How was the test?" });
+  await feedback.getByRole("radio", { name: "4 out of 5" }).check();
+  await feedback.getByLabel("Anything that got in the way? (optional)").fill("The follow-up question came as a surprise.");
+  await feedback.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Thank you. Your institution will read what you said." })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Your record" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "How was the test?" })).toHaveCount(0);
 });
 
 test("an answer typed while offline is kept, sent when the connection returns, and survives a reload", async ({ page, context, request }) => {

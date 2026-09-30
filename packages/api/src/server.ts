@@ -14,7 +14,7 @@ import {
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
 import { RunnerUnavailable } from "@parikshaa/runner";
-import { ExamFrozen, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
+import { ExamFrozen, type FeedbackStore, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import type { Onboarding } from "./onboarding.js";
 import { registerOnboardingRoutes } from "./onboarding-routes.js";
@@ -35,6 +35,15 @@ import type { InvitationService } from "./invitation-service.js";
 import { registerInvitationRoutes } from "./invitation-routes.js";
 import type { ResultsService } from "./results.js";
 import { registerResultsRoutes } from "./results-routes.js";
+import { registerFeedbackRoutes } from "./feedback-routes.js";
+import { OutsideNetwork, type LabService } from "./lab.js";
+import { registerLabRoutes } from "./lab-routes.js";
+import type { RecheckService } from "./rechecks.js";
+import { registerRecheckRoutes } from "./rechecks-routes.js";
+import type { MarkingService } from "./marking.js";
+import { registerMarkingRoutes } from "./marking-routes.js";
+import { ProgressService } from "./progress.js";
+import { registerProgressRoutes } from "./progress-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
@@ -94,6 +103,14 @@ export interface ServerOptions {
   readonly privacy: PrivacyService;
   readonly billing: BillingService;
   readonly proctor: ProctorService;
+  /** What candidates say about the test after submitting (docs/PILOT.md). Absent: none of its routes. */
+  readonly feedback?: FeedbackStore;
+  /** Lab mode: candidates' requests are checked against the exam's networks. */
+  readonly lab?: LabService;
+  /** Results as candidates see them, rechecks and scorecards. */
+  readonly rechecks?: RecheckService;
+  /** Marking by hand: written answers read after the model. */
+  readonly marking?: MarkingService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -404,6 +421,15 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     }
     request.orgId = claims.orgId;
     if (await limited(reply, "attempt", claims.attemptId)) return null;
+    if (options.lab !== undefined) {
+      try {
+        await options.lab.check(claims.orgId, claims.examId, request.ip, { attemptId: claims.attemptId });
+      } catch (error) {
+        if (!(error instanceof OutsideNetwork)) throw error;
+        await reply.code(403).send({ error: "outside_network", message: error.message });
+        return null;
+      }
+    }
     return claims;
   };
 
@@ -1195,6 +1221,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerPrivacyRoutes(routes, { privacy: options.privacy, staff, candidate: requireAttempt });
     registerBillingRoutes(routes, { billing: options.billing, staff });
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
+    if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
+    if (options.marking !== undefined) registerMarkingRoutes(routes, { marking: options.marking, staff });
+    registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
+    if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
+    if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });
 
     registerAccountRoutes(routes, {
       service,

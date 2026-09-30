@@ -80,7 +80,24 @@ interface Provider {
   /** The candidate to invite, or why this call asks for nothing. */
   inbound(body: unknown, ctx: Context): Promise<Inbound | { readonly ignore: string }>;
   report(candidate: AtsCandidate, outcome: AtsOutcome, ctx: Context): Promise<void>;
+  /**
+   * A call to the live account that changes nothing there, to prove the
+   * credentials before a candidate depends on them. Says what it found.
+   */
+  check(ctx: Context): Promise<string>;
 }
+
+/** What a connection check says: whether it worked, and in words what was found or refused. */
+export interface AtsCheck {
+  readonly ok: boolean;
+  readonly detail: string;
+}
+
+/** A refusal from an account, in a person's words. */
+const refused = (who: string, status: number) =>
+  status === 401 || status === 403
+    ? `${who} refused the credentials (${status}): check they are current and for this account`
+    : `${who} answered ${status}`;
 
 export class AtsError extends Error {
   constructor(
@@ -181,6 +198,21 @@ const lever: Provider = {
     );
     await json(response, "Lever");
   },
+
+  async check(ctx) {
+    const base = (ctx.bases.lever ?? "https://api.lever.co").replace(/\/$/, "");
+    const response = await safeRequest(
+      `${base}/v1/stages`,
+      { method: "GET", headers: { authorization: `Basic ${Buffer.from(`${ctx.credentials["apiKey"]}:`).toString("base64")}` } },
+      ctx.http,
+    );
+    if (response.status !== 200) throw new AtsError("upstream", refused("Lever", response.status));
+    const stages = ((JSON.parse(response.body) as { data?: { id: string; text?: string }[] }).data ?? []).map((st) => st.id);
+    const mapped = Object.keys((ctx.settings["stageExams"] as Record<string, string> | undefined) ?? {});
+    const unknown = mapped.filter((id) => !stages.includes(id));
+    if (unknown.length > 0) throw new AtsError("upstream", `The API key works, but these stages are not in this Lever account: ${unknown.join(", ")}`);
+    return `The API key works; ${stages.length} stages in the account, and ${mapped.length} mapped to exams all exist`;
+  },
 };
 
 // --- Zoho Recruit ------------------------------------------------------------------------------
@@ -251,6 +283,24 @@ const zoho: Provider = {
     );
     await json(response, "Zoho Recruit");
   },
+
+  async check(ctx) {
+    const dc = ctx.settings["dataCentre"] as string;
+    const accounts = (ctx.bases.zoho ?? `https://accounts.zoho.${dc}`).replace(/\/$/, "");
+    const form = new URLSearchParams({
+      refresh_token: ctx.credentials["refreshToken"]!,
+      client_id: ctx.credentials["clientId"]!,
+      client_secret: ctx.credentials["clientSecret"]!,
+      grant_type: "refresh_token",
+    }).toString();
+    const response = await safeRequest(`${accounts}/oauth/v2/token`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form }, ctx.http);
+    if (response.status !== 200) throw new AtsError("upstream", refused(`Zoho's accounts server (zoho.${dc})`, response.status));
+    const token = JSON.parse(response.body === "" ? "{}" : response.body) as Record<string, unknown>;
+    if (typeof token["access_token"] !== "string") {
+      throw new AtsError("upstream", `Zoho refused the refresh token (${String(token["error"] ?? "no access token")}): is the data centre zoho.${dc} the one the client was made in?`);
+    }
+    return `Zoho (zoho.${dc}) accepted the client and the refresh token`;
+  },
 };
 
 // --- Darwinbox ---------------------------------------------------------------------------------
@@ -311,6 +361,15 @@ const darwinbox: Provider = {
       ctx.http,
     );
     await json(response, "Darwinbox");
+  },
+
+  // Darwinbox gives no call that reads without writing, so this asks the
+  // callback address whether it answers at all, with the token, and posts nothing.
+  async check(ctx) {
+    const response = await safeRequest(ctx.settings["callbackUrl"] as string, { method: "GET", headers: { authorization: `Bearer ${ctx.credentials["callbackToken"]}` } }, ctx.http);
+    if (response.status === 401 || response.status === 403) throw new AtsError("upstream", refused("Darwinbox's callback", response.status));
+    if (response.status >= 500) throw new AtsError("upstream", `Darwinbox's callback answered ${response.status}`);
+    return `The callback address answers (${response.status}); a result is posted there only when a candidate is graded`;
   },
 };
 
@@ -407,6 +466,23 @@ export class AtsService {
   async disable(actor: Actor, provider: AtsProvider): Promise<void> {
     await this.#o.integrations.disableAtsConnector(this.#require(actor), provider);
     await this.#o.exams.recordAudit(actor, "ats.disabled", provider);
+  }
+
+  /** Prove a connector's credentials against the live account, changing nothing there. Audited. */
+  async check(actor: Actor, provider: AtsProvider): Promise<AtsCheck> {
+    const scope = this.#require(actor);
+    const connector = await this.#o.integrations.atsConnector(scope, provider);
+    if (connector === null) throw new AttemptError("not_found", `Set up ${ATS_LABELS[provider]} first`);
+    let outcome: AtsCheck;
+    try {
+      outcome = { ok: true, detail: await PROVIDERS[provider].check(this.#context(actor.orgId, connector)) };
+    } catch (error) {
+      if (error instanceof AtsError) outcome = { ok: false, detail: error.message };
+      else if (error instanceof Error && /blocked|not allowed|private/i.test(error.message)) outcome = { ok: false, detail: error.message };
+      else outcome = { ok: false, detail: `${ATS_LABELS[provider]} could not be reached: ${error instanceof Error ? error.message : String(error)}` };
+    }
+    await this.#o.exams.recordAudit(actor, "ats.checked", provider, { ok: outcome.ok });
+    return outcome;
   }
 
   #context(orgId: OrgId, connector: AtsConnector): Context {

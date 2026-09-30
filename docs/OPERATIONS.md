@@ -192,6 +192,12 @@ older than the organisation's retention period are erased. Set
 `RETENTION_WORKER=off` on API-only nodes, as with the delivery worker.
 Nothing is erased for an organisation that has not set its privacy notice.
 
+## Checking a deployment
+
+`npm run smoke -- https://<your host>` walks a live server through a
+college's first day in small, from outside: see step 3 of `PILOT.md`. Run it
+after every deploy; it exits non-zero on any failure, so it can gate one.
+
 ## Billing
 
 Plans are set by the operator, not the customer:
@@ -218,7 +224,8 @@ npm run -s pilot-report -w @parikshaa/api            # add -- --json for JSON
 | `SELF_SIGNUP` | `on` lets anyone make an institution's account from the console's sign-in page. Off otherwise: organisations are made with `admin-cli` only. |
 | `SIGNUP_PRICE_RUPEES` | Required with `SELF_SIGNUP=on`: the price per attempt, before GST, once the trial credits are spent. |
 | `SIGNUP_TRIAL_CREDITS` | Attempts a new organisation starts with. Default 25. |
-| `SIGNUP_NOTIFY_EMAIL` | Optional. Where to email a notice of each new institution: its name, id, owner and trial credits. |
+| `SIGNUP_NOTIFY_EMAIL` | Optional. Where to email a notice of each new institution: its name, id, owner and trial credits. The pilot report goes here too, each morning after 8 am IST. |
+| `PILOT_REPORT` | `off` stops the morning pilot report. It is sent once a day however many instances run. |
 
 Sign-up needs `SMTP_URL` (the server will not start without it), because a
 new owner confirms their email address from a link sent to it. Until they
@@ -250,6 +257,36 @@ In the Razorpay dashboard, add a webhook to
 same secret. It credits a payment whose buyer closed the tab before Checkout
 returned; without it, such a payment is credited only when they come back.
 Payments must be captured automatically (the dashboard's default for Checkout).
+
+**ATS connectors** (Lever, Zoho Recruit, Darwinbox) are set up by each
+organisation's owner under Integrations. **Test connection** there makes one
+call to the live account that changes nothing — Lever lists its stages and
+checks the mapped ones exist, Zoho exchanges the refresh token in the chosen
+data centre, Darwinbox's callback is asked whether it answers — and says what
+it found or what was refused. For a pilot against Lever's sandbox, set
+`LEVER_API_URL=https://api.sandbox.lever.co` (it applies to every
+organisation on the server).
+
+![Test connection: refused](screenshots/pilot-17-ats-connection-refused.png)
+![Test connection: connected](screenshots/pilot-18-ats-connected.png)
+
+Before taking a real payment, in this order:
+
+1. Put the **test** keys (`rzp_test_…`) and the test-mode webhook in the
+   settings file, and run `sudo ./scripts/setup-server.sh` again: it keeps
+   `RAZORPAY_*` and `PARIKSHAA_SUPPLIER_*` across re-runs.
+2. `SMOKE_BILLING=on SMOKE_EMAIL=… SMOKE_PASSWORD=… npm run smoke -- https://…`
+   as the owner of a prepaid organisation with its legal name set: it asks
+   Razorpay for an order of one credit, which proves the keys and the supplier
+   without paying (the order lapses by itself).
+3. On the console's Billing page, buy one pack with a Razorpay test card, and
+   check the credits, the tax invoice and the credit history. Close the
+   Checkout tab straight after paying once, to see the webhook credit it.
+4. Swap in the live keys and the live webhook, re-run setup, and run step 2
+   again: it now says "live keys".
+
+![Buying credits](screenshots/pilot-15-buy-credits.png)
+![Billing after a payment: credits, the tax invoice, the history](screenshots/pilot-16-billing-after-payment.png)
 
 **Invoiced organisations** are billed monthly, in arrears, for the attempts
 their ledgers show as started in that month (IST). The API issues last month's

@@ -64,6 +64,8 @@ function describe(event: ExamEvent): string {
       return `Scored ${event.questionId}: ${event.score}`;
     case "attempt_graded":
       return `Graded: ${event.total}`;
+    case "score_revised":
+      return `Mark for ${event.questionId} changed to ${event.score} by ${event.decidedBy.name} — ${event.reason}`;
     case "code_tested":
       return `Code for ${event.questionId} passed ${event.passed} of ${event.total} tests`;
     case "time_extended":

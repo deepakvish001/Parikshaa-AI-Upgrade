@@ -161,4 +161,4 @@ point-in-time recovery; a restore drill that runs in CI. See OPERATIONS.md.
 | ISO 27001 / SOC 2 | Not started; this pack is the starting evidence |
 | Signed DPA with each institution | Needs legal review of a template |
 | India inference region for model calls | To be confirmed with Anthropic |
-| Greenhouse, Lever, Zoho Recruit and Darwinbox connectors; MSG91 | Built against published documentation (Darwinbox: a configurable callback); not yet exercised against live accounts |
+| Greenhouse, Lever, Zoho Recruit and Darwinbox connectors; MSG91; WhatsApp Cloud API | Built against published documentation (Darwinbox: a configurable callback); not yet exercised against live accounts. Lever, Zoho and Darwinbox now have **Test connection** (a read-only call to the account), so the first college's credentials can be proved before a candidate depends on them |

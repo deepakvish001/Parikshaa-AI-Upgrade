@@ -389,6 +389,20 @@ export type ExamEvent =
   | { readonly type: "question_scored"; readonly attemptId: AttemptId; readonly questionId: QuestionId; readonly score: number }
   | { readonly type: "attempt_graded"; readonly attemptId: AttemptId; readonly total: number }
   | {
+      /**
+       * A mark changed by a person after grading: a recheck the candidate
+       * asked for, or a marker correcting the model. The only change a graded
+       * attempt takes besides being set aside, and never silent: who, why, and
+       * the new mark are in the chain, and the total follows from it.
+       */
+      readonly type: "score_revised";
+      readonly attemptId: AttemptId;
+      readonly questionId: QuestionId;
+      readonly score: number;
+      readonly reason: string;
+      readonly decidedBy: StaffAttribution;
+    }
+  | {
       readonly type: "attempt_voided";
       readonly attemptId: AttemptId;
       readonly reason: string;

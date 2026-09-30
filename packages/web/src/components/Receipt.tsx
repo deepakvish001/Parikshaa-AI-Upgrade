@@ -29,6 +29,7 @@ const EVENT: Record<string, MessageKey> = {
   viva_assessed: "event.viva_assessed",
   question_scored: "event.question_scored",
   attempt_graded: "event.attempt_graded",
+  score_revised: "event.score_revised",
   attempt_voided: "event.attempt_voided",
   time_extended: "event.time_extended",
   attempt_reopened: "event.attempt_reopened",

@@ -562,6 +562,11 @@ export class LedgerStore {
         [scope.orgId, attemptId, at],
       );
       await tx.query(`DELETE FROM answer_drafts WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      // What the candidate said about the test: a comment can say anything, so it goes too.
+      await tx.query(`DELETE FROM attempt_feedback WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      // So is what they asked about their marks; a changed mark stays in the ledger.
+      await tx.query(`DELETE FROM recheck_requests WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      await tx.query(`DELETE FROM mark_reviews WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       // Proctoring photos are unreadable once the key is gone; the rows go too.
       await tx.query(`DELETE FROM proctor_media WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM proctor_events WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
@@ -578,7 +583,7 @@ export class LedgerStore {
         await tx.query(`UPDATE greenhouse_interviews SET profile_url = NULL WHERE org_id = $1 AND invitation_id = $2`, [scope.orgId, id]);
         await tx.query(
           `UPDATE outbox SET status = 'skipped', last_error = 'personal data erased'
-            WHERE org_id = $1 AND kind IN ('email', 'sms') AND status = 'pending' AND subject->>'invitationId' = $2`,
+            WHERE org_id = $1 AND kind IN ('email', 'sms', 'whatsapp') AND status = 'pending' AND subject->>'invitationId' = $2`,
           [scope.orgId, id],
         );
       }

@@ -1,10 +1,16 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { attemptId, examId, orgId } from "@parikshaa/core";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, type SqlExecutor } from "@parikshaa/store";
+import { LabService } from "./lab.js";
+import { RecheckService } from "./rechecks.js";
+import { MarkingService } from "./marking.js";
 import { AttemptTokens } from "./auth.js";
-import { DeliveryWorker, type Mailer, type SmsSender } from "./delivery.js";
+import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
+import type { AtsBaseUrls } from "./ats.js";
+import type { SafeHttpOptions } from "./safe-http.js";
 import { InvigilationService } from "./invigilation.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvitationService } from "./invitation-service.js";
@@ -27,6 +33,7 @@ import { StaffAuth } from "./staff-auth.js";
 import { StaffSecrets } from "./staff-secrets.js";
 import { StaffSecurity } from "./staff-security.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
+import { DailyPilotReport } from "./pilot-report.js";
 
 /**
  * The whole service, wired: the server and the delivery worker over one
@@ -56,8 +63,15 @@ export interface AssembleOptions {
   readonly supplier?: Supplier | null;
   readonly mailer?: Mailer | null;
   readonly sms?: SmsSender | null;
+  readonly whatsapp?: WhatsAppSender | null;
+  /** Lever's API root, such as its sandbox https://api.sandbox.lever.co; Lever's own when absent. */
+  readonly atsBases?: AtsBaseUrls;
+  /** Outbound requests to webhooks and ATSs: only a browser-suite server lets them reach private addresses. */
+  readonly http?: SafeHttpOptions;
   /** Institutions may sign themselves up, on these terms. Absent: only the admin CLI makes organisations. */
   readonly signup?: SignupPolicy | null;
+  /** The operator's address for the pilot report each morning. Absent: no report is sent. */
+  readonly pilotReportTo?: string | null;
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy">;
 }
 
@@ -67,6 +81,8 @@ export function assemble(o: AssembleOptions): {
   privacy: PrivacyService;
   billing: BillingService;
   identity: IdentityStore;
+  /** Null unless {@link AssembleOptions.pilotReportTo} is given. */
+  dailyReport: DailyPilotReport | null;
 } {
   const keys = new DataKeys(o.dataKey);
   const proctorStore = new ProctorStore(o.sql, keys);
@@ -93,8 +109,10 @@ export function assemble(o: AssembleOptions): {
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
   const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
+  const lab = new LabService({ lab: new LabStore(o.sql), invitations: invitationStore, store, exams: service });
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
+    lab,
     exams: service,
     store,
     invitations: invitationStore,
@@ -110,6 +128,8 @@ export function assemble(o: AssembleOptions): {
     exams: service,
     secret: o.secret,
     publicUrl: o.publicUrl,
+    ...(o.atsBases === undefined ? {} : { atsBases: o.atsBases }),
+    ...(o.http === undefined ? {} : { http: o.http }),
   });
 
   const secrets = new StaffSecrets(o.secret);
@@ -141,7 +161,9 @@ export function assemble(o: AssembleOptions): {
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
-  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null });
+  const recheckStore = new RecheckStore(o.sql);
+  const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
   const app = buildServer({
     service,
     invitations,
@@ -160,6 +182,10 @@ export function assemble(o: AssembleOptions): {
     privacy,
     billing,
     proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
+    feedback: new FeedbackStore(o.sql),
+    lab,
+    rechecks,
+    marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     tokens,
     auth,
     security,
@@ -177,6 +203,11 @@ export function assemble(o: AssembleOptions): {
     ...o.server,
   });
 
+  const dailyReport =
+    o.pilotReportTo === undefined || o.pilotReportTo === null
+      ? null
+      : new DailyPilotReport({ identity, reports: new ReportStore(o.sql), mailer: o.mailer ?? null, to: o.pilotReportTo });
+
   const worker = new DeliveryWorker({
     outbox: new OutboxStore(o.sql),
     invitations: invitationStore,
@@ -185,9 +216,19 @@ export function assemble(o: AssembleOptions): {
     link: (orgId, invitationId) => invitations.link(orgId, invitationId),
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
+    whatsapp: o.whatsapp ?? null,
+    recheck: (org, id) => rechecks.note(orgId(org), id),
+    result: (org, invitation) => results.candidateResult(orgId(org), attemptId(invitation.attemptId!), examId(invitation.examId)),
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: practiceIdentity.verificationMail },
+      item.purpose === "password_reset"
+        ? security.resetMail(item)
+        : item.purpose === "results_file"
+          ? results.mail(item)
+          : item.purpose === "pilot_report"
+            ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
+            : onboarding.mail(item),
+      learner_email: practiceIdentity.verificationMail },
   });
 
-  return { app, worker, privacy, billing, identity };
+  return { app, worker, privacy, billing, identity, dailyReport };
 }

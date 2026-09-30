@@ -35,7 +35,7 @@ export default defineConfig({
   webServer: {
     command: "node dist/server.js",
     url: `http://localhost:${port}/api/health`,
-    env: { PORT: String(port), E2E_RUNNER: "local" },
+    env: { PORT: String(port), E2E_RUNNER: "local", E2E_LEVER_URL: "http://127.0.0.1:4199" },
     reuseExistingServer: false,
     timeout: 60_000,
     stdout: "pipe",

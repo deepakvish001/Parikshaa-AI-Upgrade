@@ -30,6 +30,8 @@ export interface OrganisationFacts {
   readonly failedMessages: number;
   /** Messages that should have gone more than a quarter of an hour ago and have not: the worker is stuck. */
   readonly overdueMessages: number;
+  /** What candidates said after submitting: how many answered, and their mean rating out of 5. */
+  readonly feedback: { readonly responses: number; readonly average: number | null };
   /** When anyone last did anything the audit log records; null if nothing yet. */
   readonly lastActivity: string | null;
   /** The next window still to close, and how many candidates in it have not begun. */
@@ -76,6 +78,8 @@ export class ReportStore {
         failed: string;
         overdue: string;
         last_activity: string | Date | null;
+        feedback_n: string;
+        feedback_avg: string | number | null;
       }>(
         `WITH states AS (
            SELECT ${lifecycleSql("a.org_id", "a.id")} AS state FROM attempts a WHERE a.org_id = $1 AND a.exam_id <> $2
@@ -98,7 +102,9 @@ export class ReportStore {
                 (SELECT count(*) FROM outbox WHERE org_id = $1 AND status = 'failed') AS failed,
                 (SELECT count(*) FROM outbox WHERE org_id = $1 AND status IN ('pending', 'sending')
                     AND send_after < $3::timestamptz - interval '15 minutes') AS overdue,
-                (SELECT max(at) FROM audit_log WHERE org_id = $1) AS last_activity`,
+                (SELECT max(at) FROM audit_log WHERE org_id = $1) AS last_activity,
+                (SELECT count(*) FROM attempt_feedback WHERE org_id = $1) AS feedback_n,
+                (SELECT round(avg(rating), 1) FROM attempt_feedback WHERE org_id = $1) AS feedback_avg`,
         [id, SAMPLE_EXAM_ID, now.toISOString()],
       );
       const [next] = await tx.query<{ exam_id: string; title: string | null; opens_at: string | Date; closes_at: string | Date; waiting: string }>(
@@ -127,6 +133,7 @@ export class ReportStore {
         attemptsCharged: Number(r.charged),
         failedMessages: Number(r.failed),
         overdueMessages: Number(r.overdue),
+        feedback: { responses: Number(r.feedback_n), average: r.feedback_avg === null ? null : Number(r.feedback_avg) },
         lastActivity: r.last_activity === null ? null : new Date(r.last_activity).toISOString(),
         nextSitting:
           next === undefined

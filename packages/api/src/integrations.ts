@@ -22,7 +22,7 @@ export function buildIntegrations(o: {
   readonly publicUrl: string;
   readonly http?: SafeHttpOptions;
   readonly greenhouseHosts?: readonly string[];
-  /** Lever's and Zoho's API roots, in a test. */
+  /** Lever's and Zoho's API roots: their sandboxes for a pilot, or a stand-in in a test. */
   readonly atsBases?: AtsBaseUrls;
   readonly now?: () => number;
 }): {

@@ -48,6 +48,15 @@ beforeEach(async () => {
       if (req.url === "/v1/opportunities/opp-42" && req.method === "GET") {
         return res.end(JSON.stringify({ data: { id: "opp-42", name: "Ananya  Iyer", emails: ["ananya@example.test"], phones: [{ value: "+91 98765 43210" }] } }));
       }
+      if (req.url === "/v1/stages" && req.method === "GET") {
+        const good = req.headers.authorization === `Basic ${Buffer.from("lever-api-key:").toString("base64")}`;
+        res.statusCode = good ? 200 : 401;
+        return res.end(JSON.stringify(good ? { data: [{ id: "lead", text: "Lead" }, { id: "stage-assess", text: "Assessment" }] } : { code: "Unauthorized" }));
+      }
+      if (req.url === "/darwinbox/locked") {
+        res.statusCode = 403;
+        return res.end("{}");
+      }
       if (req.url === "/oauth/v2/token") {
         const form = new URLSearchParams(body);
         return res.end(JSON.stringify(form.get("refresh_token") === "1000.refresh" ? { access_token: "1000.access", expires_in: 3600 } : { error: "invalid_code" }));
@@ -239,5 +248,45 @@ describe("Darwinbox", () => {
     const list = await call("GET", owner, "/integrations/ats");
     expect(list.payload).not.toContain("never-shown");
     expect(list.json().connectors.find((c: { provider: string }) => c.provider === "darwinbox")).toMatchObject({ enabled: true, credentialsSet: true });
+  });
+});
+
+describe("testing a connection", () => {
+  const check = (provider: string) => call("POST", owner, `/integrations/ats/${provider}/check`);
+
+  it("proves Lever's key against the account, and that the mapped stages exist", async () => {
+    await connect("lever", { stageExams: { "stage-assess": "drive" } }, { apiKey: "lever-api-key", signatureToken: "s" });
+    expect((await check("lever")).json()).toEqual({ ok: true, detail: "The API key works; 2 stages in the account, and 1 mapped to exams all exist" });
+
+    await connect("lever", { stageExams: { "stage-gone": "drive" } }, { apiKey: "lever-api-key", signatureToken: "s" });
+    expect((await check("lever")).json()).toMatchObject({ ok: false, detail: expect.stringContaining("not in this Lever account: stage-gone") });
+
+    await connect("lever", { stageExams: { "stage-assess": "drive" } }, { apiKey: "wrong", signatureToken: "s" });
+    expect((await check("lever")).json()).toMatchObject({ ok: false, detail: expect.stringContaining("Lever refused the credentials (401)") });
+  });
+
+  it("proves Zoho's refresh token, and names the data centre when it is refused", async () => {
+    await connect("zoho_recruit", { dataCentre: "in", defaultExamId: "drive" }, { clientId: "c", clientSecret: "s", refreshToken: "1000.refresh" });
+    expect((await check("zoho_recruit")).json()).toEqual({ ok: true, detail: "Zoho (zoho.in) accepted the client and the refresh token" });
+    await connect("zoho_recruit", { dataCentre: "in", defaultExamId: "drive" }, { clientId: "c", clientSecret: "s", refreshToken: "stale" });
+    expect((await check("zoho_recruit")).json()).toMatchObject({ ok: false, detail: expect.stringContaining("Zoho refused the refresh token (invalid_code)") });
+  });
+
+  it("asks Darwinbox's callback whether it answers, posting nothing", async () => {
+    await connect("darwinbox", { callbackUrl: `${base}/darwinbox/assessment-result`, defaultExamId: null }, { callbackToken: "db-token" });
+    received.length = 0;
+    expect((await check("darwinbox")).json()).toMatchObject({ ok: true });
+    expect(received.map((r) => r.method)).toEqual(["GET"]);
+    await connect("darwinbox", { callbackUrl: `${base}/darwinbox/locked`, defaultExamId: null }, { callbackToken: "db-token" });
+    expect((await check("darwinbox")).json()).toMatchObject({ ok: false, detail: expect.stringContaining("refused the credentials (403)") });
+  });
+
+  it("is the owner's, needs a connector first, and is recorded", async () => {
+    expect((await check("lever")).statusCode).toBe(404);
+    const author = await signIn(app, "author@acme.test");
+    expect((await call("POST", author, "/integrations/ats/lever/check")).statusCode).toBe(403);
+    await connect("lever", { stageExams: {} }, { apiKey: "lever-api-key", signatureToken: "s" });
+    await check("lever");
+    expect(JSON.stringify((await call("GET", owner, "/audit")).json())).toContain("ats.checked");
   });
 });

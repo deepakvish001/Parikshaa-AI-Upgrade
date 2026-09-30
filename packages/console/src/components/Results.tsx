@@ -1,11 +1,16 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Users } from "lucide-react";
+import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Send, Users } from "lucide-react";
 import { useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type CandidateReport, type ConsoleClient, type Outcome, type QuestionStats, type ResultRow, type Results, type SectionScore, type Similarity, type Verdict } from "../api.ts";
 import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge } from "./kit.tsx";
 import { EraseCard } from "./Privacy.tsx";
+import { ReleaseDialog } from "./Release.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
+
+// Loaded when a sitting has results: most never has a recheck.
+const Rechecks = lazy(() => import("./Rechecks.tsx").then((m) => ({ default: m.Rechecks })));
+const Marking = lazy(() => import("./Marking.tsx").then((m) => ({ default: m.Marking })));
 
 /**
  * What a recruiter takes away from a sitting (ROADMAP §6): the cohort's
@@ -59,12 +64,15 @@ export function ResultsPanel({
   examId,
   onReport,
   canGrade = false,
+  canRelease = false,
 }: {
   client: ConsoleClient;
   examId: string;
   onReport: (attemptId: string) => void;
   /** This account grades: the attempts waiting can be graded from here, all at once. */
   canGrade?: boolean;
+  /** This account reads results, and so may send candidates theirs. */
+  canRelease?: boolean;
 }) {
   const results = useQuery({ queryKey: ["results", examId], queryFn: () => client.results(examId) });
   const download = useMutation({
@@ -77,8 +85,15 @@ export function ResultsPanel({
     onError: (error) => toast(error instanceof ConsoleError && error.detail !== undefined ? error.detail : "The email could not be sent. Download the results instead.", "error"),
   });
   const empty = results.data === undefined || results.data.rows.length === 0;
+  const [releasing, setReleasing] = useState(false);
   const downloads = (
     <PageActions>
+      {canRelease ? (
+        <button type="button" className="secondary" disabled={empty} onClick={() => setReleasing(true)}>
+          <Send aria-hidden="true" />
+          Send results to candidates…
+        </button>
+      ) : null}
       <button type="button" className="secondary" disabled={empty || email.isPending} onClick={() => email.mutate()}>
         <Mail aria-hidden="true" />
         Email to me
@@ -93,6 +108,11 @@ export function ResultsPanel({
       </button>
     </PageActions>
   );
+
+  const release =
+    releasing && results.data !== undefined ? (
+      <ReleaseDialog client={client} examId={examId} results={results.data} onClose={() => setReleasing(false)} />
+    ) : null;
 
   if (results.isPending)
     return (
@@ -112,6 +132,7 @@ export function ResultsPanel({
   return (
     <>
       {downloads}
+      {release}
       {download.error === null ? null : <Banner tone="danger" title="The download failed.">Try again in a moment.</Banner>}
       {canGrade ? <GradeAll client={client} examId={examId} waiting={rows.filter((r) => r.state === "submitted").length} /> : null}
       <FigureStrip
@@ -134,11 +155,86 @@ export function ResultsPanel({
         </section>
       ) : null}
 
+      {canGrade && analytics.graded > 0 ? (
+        <Suspense fallback={null}>
+          <Marking client={client} examId={examId} />
+        </Suspense>
+      ) : null}
       <CandidateTable rows={rows} onReport={onReport} />
       {rows.length === 0 ? null : <QuestionTable questions={analytics.questions} graded={analytics.graded} />}
       {rows.length === 0 ? null : <Integrity integrity={analytics.integrity} />}
+      {rows.length === 0 ? null : (
+        <Suspense fallback={null}>
+          <Rechecks client={client} examId={examId} canAnswer={canGrade} />
+        </Suspense>
+      )}
+      {rows.length === 0 ? null : <CandidateFeedback client={client} examId={examId} />}
       <CodeSimilarity client={client} examId={examId} />
     </>
+  );
+}
+
+/** Comments shown before "Show all": enough to read the mood without a wall of text. */
+const FIRST_COMMENTS = 10;
+
+/**
+ * What candidates said after submitting: a rating out of five and anything
+ * that got in the way. Without names, as they were told; answering was
+ * optional, so the count is out of those who submitted.
+ */
+function CandidateFeedback({ client, examId }: { client: ConsoleClient; examId: string }) {
+  const feedback = useQuery({ queryKey: ["feedback", examId], queryFn: () => client.examFeedback(examId) });
+  const [all, setAll] = useState(false);
+  const f = feedback.data;
+  if (f === undefined) return null;
+  const most = Math.max(1, ...f.counts);
+  const shown = all ? f.comments : f.comments.slice(0, FIRST_COMMENTS);
+  return (
+    <section className="card candidate-feedback" aria-label="What candidates said">
+      <h2 className="card-title">What candidates said</h2>
+      {f.responses === 0 ? (
+        <p className="notice">
+          Nobody has said yet. After submitting, each candidate is asked how the test went; answering is optional, and you see it without their name.
+        </p>
+      ) : (
+        <>
+          <p className="feedback-lead">
+            <strong>{f.average} out of 5</strong>, from {f.responses} of the {f.submitted} who submitted. Without names, as candidates were told.
+          </p>
+          <dl className="feedback-counts">
+            {[5, 4, 3, 2, 1].map((rating) => (
+              <div key={rating}>
+                <dt>{rating}</dt>
+                <dd>
+                  <span className="feedback-bar" style={{ inlineSize: `${(f.counts[rating - 1]! / most) * 100}%` }} aria-hidden="true" />
+                  <span>{f.counts[rating - 1]}</span>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {f.comments.length === 0 ? null : (
+            <>
+              <h3>What got in the way</h3>
+              <ul className="feedback-comments">
+                {shown.map((c) => (
+                  <li key={`${c.at}-${c.comment.slice(0, 20)}`}>
+                    <span className="badge" aria-label={`Rated ${c.rating} out of 5`}>
+                      {c.rating}/5
+                    </span>
+                    <p>{c.comment}</p>
+                  </li>
+                ))}
+              </ul>
+              {f.comments.length > FIRST_COMMENTS ? (
+                <button type="button" className="link" onClick={() => setAll(!all)}>
+                  {all ? "Show fewer" : `Show all ${f.comments.length}`}
+                </button>
+              ) : null}
+            </>
+          )}
+        </>
+      )}
+    </section>
   );
 }
 
@@ -416,7 +512,11 @@ export function ReportPanel({
   const erasable = canErase && report.data.result.state !== "in_progress" && !ref.startsWith("erased-") && ref !== "[erased]";
   return (
     <>
-      <Report report={report.data} organisation={organisation} />
+      <Report
+        report={report.data}
+        organisation={organisation}
+        {...(report.data.result.state === "graded" ? { onPdf: async () => save(await client.scorecardPdf(attemptId), `scorecard-${ref}.pdf`) } : {})}
+      />
       {erasable ? (
         <EraseCard
           client={client}
@@ -445,7 +545,16 @@ const clockOf = (ms: number | null | undefined) => {
  * went, where they stand among the rest, each answer with when it was saved,
  * and — apart, as evidence — the follow-ups. Laid out to print as a PDF.
  */
-export function Report({ report, organisation }: { report: CandidateReport; organisation?: string | undefined }) {
+export function Report({
+  report,
+  organisation,
+  onPdf,
+}: {
+  report: CandidateReport;
+  organisation?: string | undefined;
+  /** Download the candidate's scorecard, with its checking code: a graded attempt's. */
+  onPdf?: () => Promise<void>;
+}) {
   const { candidate, result } = report;
   const standing = report.standing;
   const sections = result.sections ?? [];
@@ -453,6 +562,12 @@ export function Report({ report, organisation }: { report: CandidateReport; orga
   return (
     <article className="report scorecard">
       <PageActions>
+        {onPdf === undefined ? null : (
+          <button type="button" className="secondary" onClick={() => void onPdf()}>
+            <Download aria-hidden="true" />
+            Scorecard PDF
+          </button>
+        )}
         <button type="button" className="secondary" onClick={() => window.print()}>
           <Printer aria-hidden="true" />
           Print or save as PDF
