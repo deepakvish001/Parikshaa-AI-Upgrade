@@ -778,6 +778,7 @@ function Console({
                 client={client}
                 examId={view.examId}
                 canGrade={can("attempt:grade")}
+                canRelease={can("attempt:review")}
                 onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
               />
             ) : null}

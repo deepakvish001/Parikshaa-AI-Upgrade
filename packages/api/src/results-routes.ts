@@ -295,6 +295,35 @@ export function registerResultsRoutes(routes: Routes, deps: ResultsRouteDeps): v
     },
   );
 
+  routes.post(
+    "/exams/:examId/results/release",
+    {
+      schema: {
+        tags: RESULTS,
+        summary: "Send each graded candidate their result",
+        description:
+          "An email to each graded candidate with an address: their marks and, with outcome, whether they reached the qualifying mark. Once per candidate ever: calling it again sends nobody a second, so it is safe to call again after more grading. Needs email set up on the server (409 otherwise). Audited.",
+        security: SECURED,
+        params: S.examParams,
+        body: z.object({ outcome: z.boolean().default(true).describe("Say whether each reached the qualifying mark, where the exam has one.") }),
+        response: {
+          202: z.object({
+            sent: z.number().int().describe("Candidates whose result is now on its way."),
+            alreadySent: z.number().int().describe("Candidates sent their result before; not sent again."),
+            notGraded: z.number().int().describe("Submitted attempts still to grade: grade them, then release again."),
+            noEmail: z.number().int().describe("Graded candidates with no email address."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.code(202).send(await results.release(actor, examId(request.params.examId), { outcome: request.body.outcome }));
+    },
+  );
+
   routes.get(
     "/attempts/:attemptId/report",
     {

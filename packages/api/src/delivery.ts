@@ -130,6 +130,14 @@ export class OutboxLog implements Mailer, SmsSender {
   }
 }
 
+/** What a candidate is told of their result. */
+export interface CandidateResult {
+  readonly total: number;
+  readonly maxTotal: number;
+  readonly percent: number;
+  readonly outcome: "qualified" | "failed" | null;
+}
+
 /** Handles the outbox kinds this module does not: webhooks, integrations (§7). */
 export type ItemHandler = (item: OutboxItem) => Promise<"sent" | { readonly skip: string }>;
 
@@ -142,6 +150,8 @@ export interface DeliveryWorkerOptions {
   readonly mailer: Mailer | null;
   readonly sms: SmsSender | null;
   readonly handlers?: Partial<Record<OutboxItem["kind"], ItemHandler>>;
+  /** A graded candidate's result, for the message that tells them it (ResultsService.candidateResult). */
+  readonly result?: (orgId: string, invitation: Invitation) => Promise<CandidateResult | null>;
   readonly now?: () => number;
   /** Attempts before an item is given up on. */
   readonly maxAttempts?: number;
@@ -218,6 +228,17 @@ export class DeliveryWorker {
     const title = exam?.title ?? invitation.examId;
     const institution = org?.name ?? "Your institution";
     const link = this.#o.link(item.orgId, invitation.id);
+
+    if (item.purpose === "results") {
+      if (item.kind !== "email") return { skip: "Results go by email" };
+      if (this.#o.mailer === null) return { skip: "Email is not configured" };
+      if (invitation.email === null) return { skip: "No email address" };
+      // Read now: an attempt set aside since, or regraded, is told as it stands.
+      const result = invitation.attemptId === null || this.#o.result === undefined ? null : await this.#o.result(item.orgId, invitation);
+      if (result === null) return { skip: "No result to send: not graded, or set aside" };
+      await this.#o.mailer.send(resultsEmail(invitation, { title, institution, link, result, outcome: item.subject["outcome"] === true }));
+      return "sent";
+    }
 
     if (item.kind === "email") {
       if (this.#o.mailer === null) return { skip: "Email is not configured" };
@@ -312,6 +333,43 @@ ${what.map((line) => `<p>${escape(line)}</p>`).join("\n")}
     };
   }
 }
+
+/** A candidate's result: the marks, as a share, and — if the institution chose to say — whether they qualified. */
+function resultsEmail(
+  invitation: Invitation,
+  about: { readonly title: string; readonly institution: string; readonly link: string; readonly result: CandidateResult; readonly outcome: boolean },
+): EmailMessage {
+  const { title, institution, link, result, outcome } = about;
+  const greeting = invitation.name.trim() === "" ? "Hello," : `Hello ${invitation.name},`;
+  const marks = `Your marks: ${round(result.total)} out of ${round(result.maxTotal)} (${Math.round(result.percent)}%).`;
+  const standing =
+    !outcome || result.outcome === null
+      ? []
+      : [result.outcome === "qualified" ? "You reached the qualifying mark." : "You did not reach the qualifying mark this time."];
+  const lines = [
+    greeting,
+    "",
+    `${institution} has released the results of the ${title} test.`,
+    "",
+    marks,
+    ...standing,
+    "",
+    `${institution} will tell you about any next steps. Questions about your result go to them.`,
+    "",
+    "Your record of the test, with what you submitted:",
+    link,
+    "",
+    `— ${institution}, via Parikshaa`,
+  ];
+  const html = `<p>${escape(greeting)}</p><p>${escape(`${institution} has released the results of the ${title} test.`)}</p>
+<p><strong>${escape(marks)}</strong>${standing.map((line) => `<br>${escape(line)}`).join("")}</p>
+<p>${escape(`${institution} will tell you about any next steps. Questions about your result go to them.`)}</p>
+<p><a href="${escape(link)}">Your record of the test</a>, with what you submitted.</p>
+<p>— ${escape(institution)}, via Parikshaa</p>`;
+  return { to: invitation.email!, subject: `Your result: ${title} — ${institution}`, text: lines.join("\n"), html };
+}
+
+const round = (n: number) => Math.round(n * 100) / 100;
 
 /** What a proctored exam's camera does, in a candidate's terms. */
 function cameraWords(policy: ProctoringPolicy): string {

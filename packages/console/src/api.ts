@@ -1040,6 +1040,14 @@ export class ConsoleClient {
     return this.#request(`/exams/${encodeURIComponent(examId)}/feedback`);
   }
 
+  /** Send each graded candidate their result; nobody is sent it twice. */
+  releaseResults(
+    examId: string,
+    outcome: boolean,
+  ): Promise<{ readonly sent: number; readonly alreadySent: number; readonly notGraded: number; readonly noEmail: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/results/release`, { method: "POST", body: JSON.stringify({ outcome }) });
+  }
+
   /** Email the results workbook to this account's own address. */
   emailResults(examId: string): Promise<{ readonly to: string }> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/results/email`, { method: "POST" });

@@ -70,6 +70,7 @@ export const ACTIONS: Record<string, string> = {
   "attempt.reopened": "reopened an attempt",
   "attempt.erased": "erased a candidate's data",
   "results.exported": "downloaded results",
+  "results.released": "sent candidates their results",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",

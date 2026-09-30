@@ -66,7 +66,7 @@ function cellsOf(line: string): string[] {
 
 const DELIVERY_WORDS: Record<string, string> = { sent: "sent", failed: "failed", skipped: "not sent", pending: "waiting", sending: "sending" };
 /** Which message the icon is about: the invitation itself, or one of its reminders. */
-const PURPOSE_WORDS: Record<string, string> = { invite: "", reminder: "reminder ", reminder_day: "reminder " };
+const PURPOSE_WORDS: Record<string, string> = { invite: "", reminder: "reminder ", reminder_day: "reminder ", rescheduled: "new time ", results: "result " };
 
 /** Email and SMS as two small icons, each coloured by how its delivery went; what went wrong is in a tooltip. */
 function DeliveryIcons({ row }: { row: InvitationRow }) {

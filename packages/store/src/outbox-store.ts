@@ -27,14 +27,21 @@ export interface OutboxDraft {
   readonly id?: string;
 }
 
-/** Write outbox items inside the caller's transaction, so they exist exactly when the change that caused them does. */
-export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string) {
+/**
+ * Write outbox items inside the caller's transaction, so they exist exactly
+ * when the change that caused them does. Returns how many were new: an item
+ * with a fixed id that was already written is not written again.
+ */
+export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string): Promise<number> {
+  let written = 0;
   for (const d of drafts) {
-    await tx.query(
-      `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+    const rows = await tx.query(
+      `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING RETURNING id`,
       [d.id ?? newId(), orgId, d.kind, JSON.stringify(d.subject), d.purpose, (d.sendAfter ?? new Date()).toISOString()],
     );
+    written += rows.length;
   }
+  return written;
 }
 
 /** How long a claimed item is held before another worker may retry it. */

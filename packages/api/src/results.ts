@@ -172,6 +172,60 @@ export class ResultsService {
     return { to: actor.email };
   }
 
+  /**
+   * Tell each graded candidate their result, by email (docs/PILOT.md: after
+   * the sitting). One message each, ever: pressing it again sends nobody a
+   * second, so it is safe to press once more grading is done. The message is
+   * written when it is sent, from the result as it then stands; with
+   * `outcome`, it says whether they reached the qualifying mark.
+   */
+  async release(
+    actor: Actor,
+    examId: ExamId,
+    options: { readonly outcome: boolean },
+  ): Promise<{ readonly sent: number; readonly alreadySent: number; readonly notGraded: number; readonly noEmail: number }> {
+    if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
+    if (this.#mailer === null) throw new AttemptError("invalid_state", "Email is not set up on this server: results cannot be sent to candidates");
+    const scope = staffScope(actor.orgId);
+    const { rows } = await this.results(actor, examId);
+    const invited = new Map((await this.#invitations.list(scope, examId)).filter((i) => i.attemptId !== null && !i.revoked).map((i) => [i.attemptId!, i]));
+    const graded = rows.filter((r) => r.state === "graded");
+    const reachable = graded.flatMap((r) => {
+      const invitation = invited.get(r.attemptId);
+      return invitation === undefined || invitation.email === null ? [] : [invitation];
+    });
+    const drafts = reachable.map((i) => ({
+      kind: "email" as const,
+      subject: { invitationId: i.id, outcome: options.outcome },
+      purpose: "results",
+      id: `results:${i.id}`,
+      sendAfter: new Date(this.#now()),
+    }));
+    const sent = drafts.length === 0 ? 0 : await this.#invitations.enqueue(scope, drafts);
+    const counts = {
+      sent,
+      alreadySent: drafts.length - sent,
+      notGraded: rows.filter((r) => r.state === "submitted").length,
+      noEmail: graded.length - reachable.length,
+    };
+    await this.#exams.recordAudit(actor, "results.released", examId, { ...counts, outcome: options.outcome });
+    return counts;
+  }
+
+  /** One candidate's result, as the Results tab has it, for the message that tells them; null until graded. */
+  async candidateResult(
+    orgId: OrgId,
+    attemptId: AttemptId,
+    examIdOf: ExamId,
+  ): Promise<{ readonly title: string; readonly total: number; readonly maxTotal: number; readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null> {
+    const scope = staffScope(orgId);
+    const definition = await this.#store.loadExam(scope, examIdOf);
+    if (definition === null) return null;
+    const result = resultOf(await this.#store.load(scope, attemptId), definition);
+    if (result === null || result.state !== "graded" || result.total === null || result.percent === null) return null;
+    return { title: definition.title, total: result.total, maxTotal: result.maxTotal, percent: result.percent, outcome: result.outcome ?? null };
+  }
+
   /** Sends a results workbook the outbox names, as its asker would download it now. */
   readonly mail = async (item: OutboxItem): Promise<"sent" | { readonly skip: string }> => {
     if (this.#identity === null || this.#mailer === null) return { skip: "Email is not configured" };

@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Users } from "lucide-react";
+import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Send, Users } from "lucide-react";
 import { useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type CandidateReport, type ConsoleClient, type Outcome, type QuestionStats, type ResultRow, type Results, type SectionScore, type Similarity, type Verdict } from "../api.ts";
 import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge } from "./kit.tsx";
 import { EraseCard } from "./Privacy.tsx";
+import { ReleaseDialog } from "./Release.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
 /**
@@ -59,12 +60,15 @@ export function ResultsPanel({
   examId,
   onReport,
   canGrade = false,
+  canRelease = false,
 }: {
   client: ConsoleClient;
   examId: string;
   onReport: (attemptId: string) => void;
   /** This account grades: the attempts waiting can be graded from here, all at once. */
   canGrade?: boolean;
+  /** This account reads results, and so may send candidates theirs. */
+  canRelease?: boolean;
 }) {
   const results = useQuery({ queryKey: ["results", examId], queryFn: () => client.results(examId) });
   const download = useMutation({
@@ -77,8 +81,15 @@ export function ResultsPanel({
     onError: (error) => toast(error instanceof ConsoleError && error.detail !== undefined ? error.detail : "The email could not be sent. Download the results instead.", "error"),
   });
   const empty = results.data === undefined || results.data.rows.length === 0;
+  const [releasing, setReleasing] = useState(false);
   const downloads = (
     <PageActions>
+      {canRelease ? (
+        <button type="button" className="secondary" disabled={empty} onClick={() => setReleasing(true)}>
+          <Send aria-hidden="true" />
+          Send results to candidates…
+        </button>
+      ) : null}
       <button type="button" className="secondary" disabled={empty || email.isPending} onClick={() => email.mutate()}>
         <Mail aria-hidden="true" />
         Email to me
@@ -93,6 +104,11 @@ export function ResultsPanel({
       </button>
     </PageActions>
   );
+
+  const release =
+    releasing && results.data !== undefined ? (
+      <ReleaseDialog client={client} examId={examId} results={results.data} onClose={() => setReleasing(false)} />
+    ) : null;
 
   if (results.isPending)
     return (
@@ -112,6 +128,7 @@ export function ResultsPanel({
   return (
     <>
       {downloads}
+      {release}
       {download.error === null ? null : <Banner tone="danger" title="The download failed.">Try again in a moment.</Banner>}
       {canGrade ? <GradeAll client={client} examId={examId} waiting={rows.filter((r) => r.state === "submitted").length} /> : null}
       <FigureStrip

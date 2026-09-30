@@ -83,6 +83,10 @@ goes. The same tab shows scores, who qualified, and how the batch did;
 the workbook in your inbox. Each student's report shows
 their answers, marks and any follow-up, with the reasoning behind every mark.
 
+When you are ready, **Send results to candidates…** emails each graded
+student their marks (and, if you choose, whether they qualified). Nobody is
+sent theirs twice, so you can send again after grading the rest.
+
 After submitting, each student is asked how the test went and whether
 anything got in the way. Answering is optional; **What candidates said** on
 the Results tab shows the ratings and comments, without names.

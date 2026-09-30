@@ -593,6 +593,15 @@ textarea.mono {
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
 }
 /* A band no one reached draws nothing, not a sliver. */
+/* Sending results to candidates: who gets one, and who does not, before anything goes. */
+.release-counts {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+.release-counts li + li {
+  margin-top: var(--space-1);
+}
+
 /* What candidates said: ratings as short bars, then their words. */
 .candidate-feedback .feedback-lead {
   margin: 0 0 var(--space-3);

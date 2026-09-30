@@ -368,6 +368,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
     examFeedback: vi.fn(async () => ({ responses: 0, submitted: 0, average: null, counts: [0, 0, 0, 0, 0], comments: [] })),
+    releaseResults: vi.fn(async () => ({ sent: 0, alreadySent: 0, notGraded: 0, noEmail: 0 })),
     similarity: vi.fn(async () => ({
       exam: { id: "exam-1", title: "Algorithms" },
       questions: [
@@ -1519,6 +1520,22 @@ describe("results and exports", () => {
     return client;
   };
   const refs = (table: HTMLElement) => within(table).getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent);
+
+  it("sends graded candidates their results, saying first who will and will not get one", async () => {
+    const withEmail = results.rows.map((r) => (r.state === "graded" ? { ...r, email: `${r.ref.toLowerCase()}@college.test` } : r));
+    const client = stubClient({ results: vi.fn(async () => ({ ...results, rows: withEmail, exam: { ...results.exam, cutoff: { percent: 50 } } })) });
+    client.releaseResults = vi.fn(async () => ({ sent: 2, alreadySent: 0, notGraded: 1, noEmail: 0 }));
+    await open(client);
+    await userEvent.click(await screen.findByRole("button", { name: "Send results to candidates…" }));
+    const dialog = screen.getByRole("dialog", { name: "Send results to candidates" });
+    expect(dialog).toHaveTextContent("2 candidates graded, with an email address");
+    expect(dialog).toHaveTextContent("1 attempt still to grade: not sent until graded");
+    expect(within(dialog).getByRole("checkbox", { name: "Say whether each reached the qualifying mark" })).toBeChecked();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Send to 2 candidates" }));
+    await waitFor(() => expect(client.releaseResults).toHaveBeenCalledWith("exam-1", true));
+    expect(await screen.findByText("Results on their way to 2 candidates.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Send results to candidates" })).toBeNull();
+  });
 
   it("shows what candidates said about the test, without names", async () => {
     const client = stubClient();

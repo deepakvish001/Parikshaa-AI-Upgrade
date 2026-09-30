@@ -261,6 +261,11 @@ What to do when:
       marked at once; written answers are read by the model, a few seconds
       each. Any it cannot grade are named, to open one by one.
 - [ ] Read a few reports end to end, follow-ups included.
+- [ ] When the college is ready, Results tab → **Send results to candidates…**:
+      each graded candidate with an email address gets their marks (and,
+      if the exam has a qualifying mark and the college wants it said,
+      whether they reached it), with a link to their record. Nobody is sent
+      theirs twice, so it can be pressed again after grading the rest.
 - [ ] Results tab → **Email to me** sends the Excel workbook to your own
       address (or **Download Excel**); forward it to the pilot owner. Home
       says whenever attempts are waiting to be graded.

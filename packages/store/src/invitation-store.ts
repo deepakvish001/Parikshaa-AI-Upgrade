@@ -368,8 +368,9 @@ export class InvitationStore {
   }
 
   /** Queue messages outside an invitation's creation — a resend, a webhook. */
-  async enqueue(scope: Scope, drafts: readonly OutboxDraft[]): Promise<void> {
-    await withScope(this.#sql, scope, (tx) => enqueue(tx, scope.orgId, drafts, this.#newId));
+  /** Queue messages about invitations; returns how many were new (a fixed id already queued is not queued again). */
+  async enqueue(scope: Scope, drafts: readonly OutboxDraft[]): Promise<number> {
+    return withScope(this.#sql, scope, (tx) => enqueue(tx, scope.orgId, drafts, this.#newId));
   }
 }
 
