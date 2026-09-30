@@ -11,7 +11,7 @@ import type { SqlExecutor } from "./sql.js";
 export interface OutboxItem {
   readonly id: string;
   readonly orgId: string;
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
+  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly attempts: number;
@@ -19,7 +19,7 @@ export interface OutboxItem {
 
 /** Something to send later, written with the change that caused it. */
 export interface OutboxDraft {
-  readonly kind: "email" | "sms" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
+  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly sendAfter?: Date;
@@ -27,14 +27,21 @@ export interface OutboxDraft {
   readonly id?: string;
 }
 
-/** Write outbox items inside the caller's transaction, so they exist exactly when the change that caused them does. */
-export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string) {
+/**
+ * Write outbox items inside the caller's transaction, so they exist exactly
+ * when the change that caused them does. Returns the ids of those that were
+ * new: an item with a fixed id that was already written is not written again.
+ */
+export async function enqueue(tx: SqlExecutor, orgId: string, drafts: readonly OutboxDraft[], newId: () => string): Promise<readonly string[]> {
+  const written: string[] = [];
   for (const d of drafts) {
-    await tx.query(
-      `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING`,
+    const rows = await tx.query<{ id: string }>(
+      `INSERT INTO outbox (id, org_id, kind, subject, purpose, send_after) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO NOTHING RETURNING id`,
       [d.id ?? newId(), orgId, d.kind, JSON.stringify(d.subject), d.purpose, (d.sendAfter ?? new Date()).toISOString()],
     );
+    written.push(...rows.map((r) => r.id));
   }
+  return written;
 }
 
 /** How long a claimed item is held before another worker may retry it. */

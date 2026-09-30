@@ -17,7 +17,7 @@ import {
   type ExamId,
   type OrgId,
 } from "@parikshaa/core";
-import { staffScope, type IdentityStore, type Invitation, type InvitationStore, type LedgerStore, type OutboxItem, type ProctorStore, type Scope } from "@parikshaa/store";
+import { staffScope, type IdentityStore, type Invitation, type InvitationStore, type LedgerStore, type OutboxItem, type ProctorStore, type RecheckStore, type Scope } from "@parikshaa/store";
 import type { Mailer } from "./delivery.js";
 import { identityState } from "./proctoring.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
@@ -135,6 +135,8 @@ export class ResultsService {
 
   readonly #identity: IdentityStore | null;
   readonly #mailer: Mailer | null;
+  readonly #whatsapp: boolean;
+  readonly #releases: RecheckStore | null;
   readonly #now: () => number;
 
   constructor(options: {
@@ -145,6 +147,10 @@ export class ResultsService {
     /** For sending the workbook by email to whoever asks for it. */
     readonly identity?: IdentityStore | null;
     readonly mailer?: Mailer | null;
+    /** Whether WhatsApp is set up, so results can go that way too. */
+    readonly whatsapp?: boolean;
+    /** Where a release is recorded, so candidates see their result and may ask for a recheck. */
+    readonly releases?: RecheckStore | null;
     readonly now?: () => number;
   }) {
     this.#proctor = options.proctor ?? null;
@@ -153,6 +159,8 @@ export class ResultsService {
     this.#exams = options.exams;
     this.#identity = options.identity ?? null;
     this.#mailer = options.mailer ?? null;
+    this.#whatsapp = options.whatsapp ?? false;
+    this.#releases = options.releases ?? null;
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -170,6 +178,89 @@ export class ResultsService {
     const now = new Date(this.#now());
     await this.#identity.queueStaffEmail(actor.orgId, "results_file", { userId: actor.id, examId }, `results:${actor.id}:${examId}:${now.getTime()}`, now);
     return { to: actor.email };
+  }
+
+  /**
+   * Tell each graded candidate their result, by email and, where it is set
+   * up and they gave a mobile number, WhatsApp (docs/PILOT.md: after the
+   * sitting). One message each way, ever: pressing it again sends nobody a
+   * second, so it is safe to press once more grading is done. The message is
+   * written when it is sent, from the result as it then stands; with
+   * `outcome`, it says whether they reached the qualifying mark. A dry run
+   * queues nothing and says what sending would do.
+   */
+  async release(
+    actor: Actor,
+    examId: ExamId,
+    options: { readonly outcome: boolean; readonly dryRun?: boolean },
+  ): Promise<{
+    readonly sent: number;
+    readonly alreadySent: number;
+    readonly notGraded: number;
+    readonly unreachable: number;
+    readonly channels: readonly ("email" | "whatsapp")[];
+  }> {
+    if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
+    if (this.#mailer === null && !this.#whatsapp) {
+      throw new AttemptError("invalid_state", "Neither email nor WhatsApp is set up on this server: results cannot be sent to candidates");
+    }
+    const scope = staffScope(actor.orgId);
+    const { rows } = await this.results(actor, examId);
+    const invited = new Map((await this.#invitations.list(scope, examId)).filter((i) => i.attemptId !== null && !i.revoked).map((i) => [i.attemptId!, i]));
+    const graded = rows.filter((r) => r.state === "graded");
+    const messages = graded.map((r) => {
+      const invitation = invited.get(r.attemptId);
+      if (invitation === undefined) return [];
+      const draft = (kind: "email" | "whatsapp", id: string) => ({
+        kind,
+        subject: { invitationId: invitation.id, outcome: options.outcome },
+        purpose: "results",
+        id,
+        sendAfter: new Date(this.#now()),
+      });
+      return [
+        ...(this.#mailer !== null && invitation.email !== null ? [draft("email", `results:${invitation.id}`)] : []),
+        ...(this.#whatsapp && invitation.phone !== null ? [draft("whatsapp", `results:${invitation.id}:whatsapp`)] : []),
+      ];
+    });
+    const drafts = messages.flat();
+    const ids = drafts.map((d) => d.id);
+    const written = new Set(
+      options.dryRun === true
+        ? await this.#invitations.queued(scope, ids).then((already) => ids.filter((id) => !already.includes(id)))
+        : drafts.length === 0
+          ? []
+          : await this.#invitations.enqueue(scope, drafts),
+    );
+    const reached = messages.filter((m) => m.length > 0);
+    const counts = {
+      // A candidate counts as sent if any way of reaching them is new: one who gave a number since, say.
+      sent: reached.filter((m) => m.some((d) => written.has(d.id))).length,
+      alreadySent: reached.filter((m) => !m.some((d) => written.has(d.id))).length,
+      notGraded: rows.filter((r) => r.state === "submitted").length,
+      unreachable: graded.length - reached.length,
+    };
+    const channels = [...(this.#mailer === null ? [] : (["email"] as const)), ...(this.#whatsapp ? (["whatsapp"] as const) : [])];
+    if (options.dryRun !== true) {
+      // Their own page shows it too, from now on, with the recheck it offers.
+      await this.#releases?.release(actor.orgId, examId, options.outcome, new Date(this.#now()));
+      await this.#exams.recordAudit(actor, "results.released", examId, { ...counts, outcome: options.outcome });
+    }
+    return { ...counts, channels };
+  }
+
+  /** One candidate's result, as the Results tab has it, for the message that tells them; null until graded. */
+  async candidateResult(
+    orgId: OrgId,
+    attemptId: AttemptId,
+    examIdOf: ExamId,
+  ): Promise<{ readonly title: string; readonly total: number; readonly maxTotal: number; readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null> {
+    const scope = staffScope(orgId);
+    const definition = await this.#store.loadExam(scope, examIdOf);
+    if (definition === null) return null;
+    const result = resultOf(await this.#store.load(scope, attemptId), definition);
+    if (result === null || result.state !== "graded" || result.total === null || result.percent === null) return null;
+    return { title: definition.title, total: result.total, maxTotal: result.maxTotal, percent: result.percent, outcome: result.outcome ?? null };
   }
 
   /** Sends a results workbook the outbox names, as its asker would download it now. */

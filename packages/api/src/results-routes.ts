@@ -295,6 +295,39 @@ export function registerResultsRoutes(routes: Routes, deps: ResultsRouteDeps): v
     },
   );
 
+  routes.post(
+    "/exams/:examId/results/release",
+    {
+      schema: {
+        tags: RESULTS,
+        summary: "Send each graded candidate their result",
+        description:
+          "A message to each graded candidate, by email where they have an address and by WhatsApp where they have a mobile number and the server has WhatsApp: their marks and, with outcome, whether they reached the qualifying mark. Once per candidate each way, ever: calling it again sends nobody a second, so it is safe to call again after more grading. With dryRun, nothing is sent and the counts say what would be. Needs email or WhatsApp set up on the server (409 otherwise). Audited.",
+        security: SECURED,
+        params: S.examParams,
+        body: z.object({
+          outcome: z.boolean().default(true).describe("Say whether each reached the qualifying mark, where the exam has one."),
+          dryRun: z.boolean().default(false).describe("Send nothing; answer with what sending would do."),
+        }),
+        response: {
+          202: z.object({
+            sent: z.number().int().describe("Candidates whose result is now on its way."),
+            alreadySent: z.number().int().describe("Candidates sent their result before; not sent again."),
+            notGraded: z.number().int().describe("Submitted attempts still to grade: grade them, then release again."),
+            unreachable: z.number().int().describe("Graded candidates with no way set up to reach them: no email address, and no mobile number or no WhatsApp."),
+            channels: z.array(z.enum(["email", "whatsapp"])).readonly().describe("The ways results go from this server."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.code(202).send(await results.release(actor, examId(request.params.examId), { outcome: request.body.outcome, dryRun: request.body.dryRun }));
+    },
+  );
+
   routes.get(
     "/attempts/:attemptId/report",
     {

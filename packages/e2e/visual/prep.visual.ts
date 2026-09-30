@@ -101,6 +101,19 @@ async function open(page: Page, path: string) {
 }
 
 /** What the date changes: the plan's and the home's dates, when a company last asked, a write-up's month, when the store opens. */
+const DATED = [".prep-head .notice", ".company-problems .notice", ".experience header .notice", ".coin-history .notice", ".potd-day", ".store-opens"];
+
+/**
+ * The dated words set to one date before the picture, then masked: masking
+ * alone hides the words but not their width, and "30 Sept" is wider than
+ * "1 Oct", which moved everything beside them when the month turned.
+ */
+async function steady(page: Page) {
+  await page.evaluate((selectors) => {
+    for (const el of document.querySelectorAll(selectors.join(","))) el.textContent = "1 Oct 2026";
+  }, DATED);
+}
+
 const masks = (page: Page) => [
   page.locator(".prep-head .notice"),
   page.locator(".company-problems .notice"),
@@ -127,6 +140,7 @@ for (const scheme of ["light", "dark"] as const) {
     for (const [name, path] of PAGES) {
       test(name, async ({ page }) => {
         await open(page, path());
+        await steady(page);
         await expect(page).toHaveScreenshot(`prep-${name}-1440-${scheme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
@@ -138,6 +152,7 @@ test.describe("390 · light", () => {
   for (const [name, path] of PAGES.filter(([n]) => ON_A_PHONE.has(n))) {
     test(name, async ({ page }) => {
       await open(page, path());
+      await steady(page);
       await expect(page).toHaveScreenshot(`prep-${name}-390-light.png`, { fullPage: true, mask: masks(page) });
     });
   }

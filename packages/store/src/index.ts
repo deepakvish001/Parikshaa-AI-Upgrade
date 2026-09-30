@@ -18,3 +18,7 @@ export * from "./prep-store.js";
 export * from "./prep-plus-store.js";
 export * from "./prep-community-store.js";
 export * from "./report-store.js";
+export * from "./feedback-store.js";
+export * from "./lab-store.js";
+export * from "./recheck-store.js";
+export * from "./marking-store.js";

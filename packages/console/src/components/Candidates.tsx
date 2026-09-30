@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Mail, MessageSquare, RotateCw, Send, UserX, Users } from "lucide-react";
+import { Download, Mail, MessageCircle, MessageSquare, RotateCw, Send, UserX, Users } from "lucide-react";
 import type { ExamProblem } from "@parikshaa/core/browser";
 import { Tooltip, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type Channel, type ConsoleClient, type Delivery, type ImportResult, type InvitationRow } from "../api.ts";
@@ -66,14 +66,16 @@ function cellsOf(line: string): string[] {
 
 const DELIVERY_WORDS: Record<string, string> = { sent: "sent", failed: "failed", skipped: "not sent", pending: "waiting", sending: "sending" };
 /** Which message the icon is about: the invitation itself, or one of its reminders. */
-const PURPOSE_WORDS: Record<string, string> = { invite: "", reminder: "reminder ", reminder_day: "reminder " };
+const PURPOSE_WORDS: Record<string, string> = { invite: "", reminder: "reminder ", reminder_day: "reminder ", rescheduled: "new time ", results: "result " };
 
-/** Email and SMS as two small icons, each coloured by how its delivery went; what went wrong is in a tooltip. */
+const CHANNEL_WORDS: Record<Channel, string> = { email: "Email", sms: "SMS", whatsapp: "WhatsApp" };
+
+/** Email, SMS and WhatsApp as small icons, each coloured by how its delivery went; what went wrong is in a tooltip. */
 function DeliveryIcons({ row }: { row: InvitationRow }) {
   const icon = (channel: Channel, d: Delivery) => {
-    const Icon = channel === "email" ? Mail : MessageSquare;
+    const Icon = channel === "email" ? Mail : channel === "sms" ? MessageSquare : MessageCircle;
     const tone = d.status === "sent" ? "ok" : d.status === "failed" || d.status === "skipped" ? "bad" : "pending";
-    const words = `${channel === "email" ? "Email" : "SMS"} ${PURPOSE_WORDS[d.purpose] ?? ""}${DELIVERY_WORDS[d.status] ?? d.status}`;
+    const words = `${CHANNEL_WORDS[channel]} ${PURPOSE_WORDS[d.purpose] ?? ""}${DELIVERY_WORDS[d.status] ?? d.status}`;
     const mark = (
       <span className={`delivery-icon ${tone}`} role="img" aria-label={d.error === null ? words : `${words}: ${d.error}`} tabIndex={d.error === null ? undefined : 0}>
         <Icon aria-hidden="true" />
@@ -87,7 +89,7 @@ function DeliveryIcons({ row }: { row: InvitationRow }) {
       </Tooltip>
     );
   };
-  const shown = (["email", "sms"] as const).filter((c) => row.delivery[c] !== null);
+  const shown = (["email", "sms", "whatsapp"] as const).filter((c) => row.delivery[c] !== null);
   return shown.length === 0 ? <span className="notice">—</span> : <span className="delivery">{shown.map((c) => icon(c, row.delivery[c]!))}</span>;
 }
 
@@ -103,7 +105,11 @@ export function Candidates({ client, examId, canInvite }: { client: ConsoleClien
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["invitations", examId] });
 
   const resend = useMutation({
-    mutationFn: (row: InvitationRow) => client.resendInvitation(row.id, ["email", "sms"]),
+    // By the ways the invitation went; one never sent yet goes by email and SMS.
+    mutationFn: (row: InvitationRow) => {
+      const went = (["email", "sms", "whatsapp"] as const).filter((c) => row.delivery[c] !== null);
+      return client.resendInvitation(row.id, went.length === 0 ? ["email", "sms"] : went);
+    },
     onSuccess: (_, row) => toast(`Link sent again to ${row.candidateRef}`, "success"),
     onSettled: refresh,
   });
@@ -377,6 +383,9 @@ function Importer({
         </label>
         <label className="inline">
           <input type="checkbox" checked={channels.includes("sms")} onChange={() => toggle("sms")} /> SMS
+        </label>
+        <label className="inline">
+          <input type="checkbox" checked={channels.includes("whatsapp")} onChange={() => toggle("whatsapp")} /> WhatsApp
         </label>
       </fieldset>
 

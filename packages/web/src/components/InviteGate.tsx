@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { BatteryCharging, CalendarClock, CalendarX2, Check, Copy, IdCard, Link2Off, Loader, TriangleAlert, Video, VolumeX, WifiOff } from "lucide-react";
+import { BatteryCharging, CalendarClock, CalendarX2, Check, Copy, Hourglass, IdCard, Link2Off, Loader, MapPinOff, TriangleAlert, Video, VolumeX, WifiOff } from "lucide-react";
 import { ApiError, briefInvitation, redeemInvitation, type Briefing, type Notice } from "../api.ts";
 import { BriefingScreen } from "./Instructions.tsx";
 import { type Language, uiLocaleOf, usePreferences } from "../i18n.tsx";
@@ -25,6 +25,9 @@ type Stage =
   | { readonly kind: "camera"; readonly policy: ProctoringPolicy; readonly consent: { noticeVersion: number } | undefined }
   | { readonly kind: "early"; readonly opensAt: string; readonly brief?: Briefing }
   | { readonly kind: "closed"; readonly closesAt: string }
+  // Lab mode: held until the invigilator starts everyone, or not in the exam room.
+  | { readonly kind: "waiting"; readonly consent: { noticeVersion: number } | undefined; readonly camera: boolean | undefined }
+  | { readonly kind: "outside"; readonly consent: { noticeVersion: number } | undefined; readonly camera: boolean | undefined }
   | { readonly kind: "invalid" }
   | { readonly kind: "unavailable" }
   | { readonly kind: "offline" };
@@ -57,8 +60,8 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
   const [cameraReady, setCameraReady] = useState(false);
 
   const open = useCallback(
-    async (agreed?: { noticeVersion: number }, camera?: boolean) => {
-      setStage({ kind: "opening" });
+    async (agreed?: { noticeVersion: number }, camera?: boolean, quietly = false) => {
+      if (!quietly) setStage({ kind: "opening" });
       try {
         onOpened((await redeemInvitation(code, "/api", agreed, camera)).token);
       } catch (error) {
@@ -69,6 +72,8 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
         if (error.code === "consent_required") return setStage({ kind: "notice", notice: error.detail["notice"] as Notice });
         if (error.code === "not_open_yet") return setStage({ kind: "early", opensAt: String(error.detail["opensAt"]) });
         if (error.code === "window_closed") return setStage({ kind: "closed", closesAt: String(error.detail["closesAt"]) });
+        if (error.code === "waiting_for_start") return setStage({ kind: "waiting", consent: agreed, camera });
+        if (error.code === "outside_network") return setStage({ kind: "outside", consent: agreed, camera });
         setStage({ kind: "invalid" });
       }
     },
@@ -104,6 +109,13 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
     const timer = setTimeout(() => void enter(), wait);
     return () => clearTimeout(timer);
   }, [stage, enter]);
+
+  // Waiting for the invigilator: ask again every few seconds, without flashing the page.
+  useEffect(() => {
+    if (stage.kind !== "waiting") return;
+    const timer = setTimeout(() => void open(stage.consent, stage.camera, true), 5_000);
+    return () => clearTimeout(timer);
+  }, [stage, open]);
 
   const LABEL: Record<Step, string> = { notice: t("steps.data"), camera: t("steps.camera"), instructions: t("steps.instructions") };
   let body: ReactNode = null;
@@ -159,6 +171,23 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
     body = (
       <StatusCard icon={CalendarX2} label={t("invite.closedRegion")} title={t("invite.closedOn", { when: ist(stage.closesAt, uiLocaleOf(language)) })}>
         <p className="notice">{t("invite.closedNote")}</p>
+      </StatusCard>
+    );
+  } else if (stage.kind === "waiting") {
+    body = (
+      <StatusCard icon={Hourglass} label={t("invite.waitingRegion")} title={t("invite.waiting")}>
+        <p className="notice" role="status">
+          {t("invite.waitingNote")}
+        </p>
+      </StatusCard>
+    );
+  } else if (stage.kind === "outside") {
+    body = (
+      <StatusCard icon={MapPinOff} label={t("invite.outsideRegion")} title={t("invite.outside")}>
+        <p className="notice">{t("invite.outsideNote")}</p>
+        <button type="button" onClick={() => void open(stage.consent, stage.camera)}>
+          {t("invite.tryAgain")}
+        </button>
       </StatusCard>
     );
   } else if (stage.kind === "invalid") {

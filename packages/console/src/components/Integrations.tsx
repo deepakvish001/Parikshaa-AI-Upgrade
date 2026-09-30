@@ -416,7 +416,8 @@ function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsC
   });
   const issue = useMutation({ mutationFn: () => client.issueAtsHook(connector.provider), onSuccess: (r) => setHook(r.hookUrl) });
   const disable = useMutation({ mutationFn: () => client.disableAts(connector.provider), onSettled: refresh });
-  const problem = save.error ?? issue.error ?? disable.error;
+  const check = useMutation({ mutationFn: () => client.checkAts(connector.provider) });
+  const problem = save.error ?? issue.error ?? disable.error ?? check.error;
 
   return (
     <SettingsGroup
@@ -501,6 +502,12 @@ function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsC
           {problem instanceof ConsoleError ? (problem.detail ?? problem.message) : "That did not work."}
         </p>
       )}
+      {check.data === undefined ? null : (
+        <p className={check.data.ok ? "notice connection-ok" : "error"} role="status">
+          {check.data.ok ? "Connected: " : "Not connected: "}
+          {check.data.detail}
+        </p>
+      )}
       <div className="row">
         {open ? null : (
           <button type="button" className={connector.configured ? "secondary" : ""} onClick={() => setOpen(true)}>
@@ -511,6 +518,9 @@ function AtsCard({ client, connector }: { client: ConsoleClient; connector: AtsC
           <>
             <button type="button" className="secondary" disabled={issue.isPending} onClick={() => issue.mutate()}>
               Issue hook URL
+            </button>
+            <button type="button" className="secondary" disabled={check.isPending} onClick={() => check.mutate()}>
+              {check.isPending ? "Testing…" : "Test connection"}
             </button>
             <button type="button" className="quiet" disabled={disable.isPending} onClick={() => disable.mutate()}>
               Turn off

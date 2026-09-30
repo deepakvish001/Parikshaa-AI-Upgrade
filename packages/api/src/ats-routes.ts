@@ -106,6 +106,26 @@ export function registerAtsRoutes(routes: Routes, deps: AtsRouteDeps): void {
   );
 
   routes.post(
+    "/integrations/ats/:provider/check",
+    {
+      schema: {
+        tags: INTEGRATIONS,
+        summary: "Test a connector's credentials",
+        description:
+          "A call to the live account that changes nothing there: Lever lists its stages (and checks the mapped ones exist), Zoho exchanges the refresh token, Darwinbox's callback is asked whether it answers. ok false says what was refused. Audited.",
+        security: SECURED,
+        params: providerParams,
+        response: { 200: z.object({ ok: z.boolean(), detail: z.string() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.send(await ats.check(actor, request.params.provider));
+    },
+  );
+
+  routes.post(
     "/integrations/ats/:provider/disable",
     { schema: { tags: INTEGRATIONS, summary: "Turn an ATS connector off", security: SECURED, params: providerParams, response: { 200: S.okResponse, ...refusals } } },
     async (request, reply) => {

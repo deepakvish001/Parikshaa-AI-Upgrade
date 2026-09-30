@@ -593,6 +593,211 @@ textarea.mono {
   border-radius: var(--radius-xs) var(--radius-xs) 0 0;
 }
 /* A band no one reached draws nothing, not a sliver. */
+/* Sending results to candidates: who gets one, and who does not, before anything goes. */
+.release-counts {
+  margin: 0 0 var(--space-3);
+  padding-left: var(--space-5);
+}
+.release-counts li + li {
+  margin-top: var(--space-1);
+}
+
+/* Lab mode on the Live sitting page: a line, and a border that says "waiting" until started. */
+.lab .bar svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+/* Settled, the card is its one line: no rule under it, no empty body. */
+.card.lab > .bar:only-child {
+  margin-bottom: calc(-1 * var(--space-5));
+  border-bottom: 0;
+}
+.lab.lab-waiting {
+  border-left: 3px solid var(--warning);
+}
+.lab-form {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.lab-form textarea {
+  font-family: var(--font-mono);
+  width: 100%;
+}
+
+/* A connector's test: said in the success colour when it connects. */
+.connection-ok {
+  color: var(--success);
+}
+
+/* Insights: candidates across tests, and questions worth a second look. */
+.progress-table td.qualified {
+  color: var(--success);
+}
+.progress-table td.failed {
+  color: var(--text-secondary);
+}
+.progress-table td.up {
+  color: var(--success);
+}
+.progress-table td.down {
+  color: var(--danger);
+}
+.quality-reason.does_not_separate {
+  color: var(--warning);
+}
+
+/* Marking by hand: the card on Results, and the drawer it opens. */
+.marking-card .bar svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+.marking-card > .notice {
+  margin: 0;
+}
+.marking {
+  display: grid;
+  gap: var(--space-3);
+}
+.marking-question p {
+  margin: 0 0 var(--space-2);
+}
+.marking-rubric {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--text-secondary);
+}
+.marking-progress {
+  height: 0.375rem;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-xs);
+}
+.marking-progress span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+.marking-text {
+  max-height: 22rem;
+  margin: 0 0 var(--space-3);
+  padding: var(--space-3);
+  overflow: auto;
+  white-space: pre-wrap;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.marking-text.code {
+  font-family: var(--font-mono);
+  white-space: pre;
+}
+.marking-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* Rechecks: each request, the answer it is about, and the reply. */
+.recheck-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recheck-item {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.recheck-item:last-child {
+  border-bottom: 0;
+}
+.recheck-item.open {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--warning);
+}
+.recheck-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+}
+.recheck-stem {
+  margin: var(--space-1) 0;
+  color: var(--text-secondary);
+}
+.recheck-reason {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+}
+.recheck-answer {
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.recheck-answer-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.recheck-answer-form textarea {
+  width: 100%;
+}
+
+/* What candidates said: ratings as short bars, then their words. */
+.candidate-feedback .feedback-lead {
+  margin: 0 0 var(--space-3);
+}
+.feedback-counts {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 28rem;
+  margin: 0 0 var(--space-4);
+}
+.feedback-counts > div {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr;
+  gap: var(--space-2);
+  align-items: center;
+}
+.feedback-counts dt {
+  font-weight: var(--weight-bold);
+  text-align: right;
+}
+.feedback-counts dd {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.feedback-bar {
+  display: block;
+  min-inline-size: 2px;
+  block-size: 0.75rem;
+  background: var(--chart-seq-4);
+  border-radius: var(--radius-xs);
+}
+.feedback-comments {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.feedback-comments li {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+.feedback-comments p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .histogram .column.none {
   min-height: 0;
 }

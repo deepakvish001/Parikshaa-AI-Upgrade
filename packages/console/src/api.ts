@@ -166,7 +166,104 @@ export interface BankFilter {
   readonly q?: string;
 }
 
-export type Channel = "email" | "sms";
+export type Channel = "email" | "sms" | "whatsapp";
+
+/** Lab mode: where an exam may be taken from, and whether it waits for the invigilator. */
+export interface LabSettings {
+  readonly networks: readonly string[];
+  readonly startTogether: boolean;
+  readonly startedAt: string | null;
+  readonly yourAddress: string;
+}
+
+/** Candidates across tests, for a placement cell. */
+export interface Progress {
+  readonly exams: readonly { readonly id: string; readonly title: string; readonly date: string; readonly graded: number; readonly meanPercent: number | null; readonly qualified: number | null }[];
+  readonly candidates: readonly {
+    readonly ref: string;
+    readonly name: string;
+    readonly results: Readonly<Record<string, { readonly percent: number; readonly outcome: "qualified" | "failed" | null }>>;
+    readonly average: number | null;
+    readonly change: number | null;
+  }[];
+  readonly available: readonly { readonly id: string; readonly title: string }[];
+}
+
+/** A question worth a second look, and why. */
+export interface QualityFlag {
+  readonly examId: string;
+  readonly examTitle: string;
+  readonly questionId: string;
+  readonly number: number;
+  readonly stem: string;
+  readonly kind: string;
+  readonly appeared: number;
+  readonly facility: number;
+  readonly discrimination: number | null;
+  readonly reason: "does_not_separate" | "too_hard" | "too_easy";
+}
+
+/** A written question, for marking by hand: what it looks for, and how many answers are read. */
+export interface MarkingQuestion {
+  readonly id: string;
+  readonly number: number;
+  readonly stem: string;
+  readonly kind: string;
+  readonly max: number;
+  readonly rubric: readonly string[];
+  readonly expectedPoints: readonly string[];
+  readonly answers: number;
+  readonly reviewed: number;
+}
+
+/** One answer to mark: whose is not said. */
+export interface MarkingItem {
+  readonly attemptId: string;
+  readonly questionId: string;
+  readonly answer: string;
+  readonly language: string | null;
+  readonly score: number;
+  readonly max: number;
+  readonly reviewed: boolean;
+}
+
+/** A candidate's request to recheck one question, with what it is about. */
+export interface RecheckRow {
+  readonly id: string;
+  readonly attemptId: string;
+  readonly questionId: string;
+  readonly reason: string;
+  readonly status: "open" | "changed" | "unchanged";
+  readonly scoreBefore: number | null;
+  readonly scoreAfter: number | null;
+  readonly reply: string | null;
+  readonly decidedBy: string | null;
+  readonly decidedAt: string | null;
+  readonly createdAt: string;
+  readonly candidate: { readonly ref: string; readonly name: string };
+  readonly question: { readonly number: number; readonly stem: string; readonly kind: string; readonly max: number };
+  readonly answer: string | null;
+  readonly score: number;
+}
+
+/** What sending results did, or would do. */
+export interface ReleaseCounts {
+  readonly sent: number;
+  readonly alreadySent: number;
+  readonly notGraded: number;
+  readonly unreachable: number;
+  readonly channels: readonly ("email" | "whatsapp")[];
+}
+
+/** How the test went, in candidates' words: asked after submitting, answered or not, read without names. */
+export interface ExamFeedback {
+  readonly responses: number;
+  readonly submitted: number;
+  readonly average: number | null;
+  /** How many gave each rating, 1 to 5. */
+  readonly counts: readonly number[];
+  readonly comments: readonly { readonly rating: number; readonly comment: string; readonly at: string }[];
+}
 
 export interface ExamWindow {
   readonly opensAt: string;
@@ -192,7 +289,7 @@ export interface InvitationRow {
   readonly attemptId: string | null;
   readonly attemptState: "not_started" | "in_progress" | "submitted" | "graded" | "void";
   readonly revoked: boolean;
-  readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null };
+  readonly delivery: { readonly email: Delivery | null; readonly sms: Delivery | null; readonly whatsapp: Delivery | null };
 }
 
 /** The console's home page. */
@@ -1025,6 +1122,16 @@ export class ConsoleClient {
     return this.#request("/auth/verify-email/resend", { method: "POST" });
   }
 
+  /** What an exam's candidates said about the test, without names. */
+  examFeedback(examId: string): Promise<ExamFeedback> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/feedback`);
+  }
+
+  /** Send each graded candidate their result; nobody is sent it twice. */
+  releaseResults(examId: string, outcome: boolean, dryRun = false): Promise<ReleaseCounts> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/results/release`, { method: "POST", body: JSON.stringify({ outcome, dryRun }) });
+  }
+
   /** Email the results workbook to this account's own address. */
   emailResults(examId: string): Promise<{ readonly to: string }> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/results/email`, { method: "POST" });
@@ -1090,6 +1197,45 @@ export class ConsoleClient {
     return response.blob();
   }
 
+  /** Candidates across the organisation's graded tests; `search` narrows by roll number or name. */
+  progress(search = ""): Promise<Progress> {
+    return this.#request(`/progress${search.trim() === "" ? "" : `?search=${encodeURIComponent(search.trim())}`}`);
+  }
+
+  /** Questions worth a second look across recent tests. */
+  questionQuality(): Promise<{ readonly flags: readonly QualityFlag[]; readonly questions: number; readonly exams: number }> {
+    return this.#request("/question-quality");
+  }
+
+  /** The written answers of an exam, without names, for marking by hand. */
+  marking(examId: string): Promise<{ readonly questions: readonly MarkingQuestion[]; readonly items: readonly MarkingItem[] }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/marking`);
+  }
+
+  /** Keep or change one answer's mark, and record it as read. */
+  markAnswer(examId: string, attemptId: string, questionId: string, score: number): Promise<{ readonly score: number; readonly changed: boolean }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/marking`, { method: "POST", body: JSON.stringify({ attemptId, questionId, score }) });
+  }
+
+  /** An exam's recheck requests, open first. */
+  async rechecks(examId: string): Promise<readonly RecheckRow[]> {
+    return (await this.#request<{ rechecks: readonly RecheckRow[] }>(`/exams/${encodeURIComponent(examId)}/rechecks`)).rechecks;
+  }
+
+  /** Answer a recheck: the mark as it now stands, and a reply the candidate reads. */
+  answerRecheck(id: string, score: number, reply: string): Promise<RecheckRow> {
+    return this.#request(`/rechecks/${encodeURIComponent(id)}/answer`, { method: "POST", body: JSON.stringify({ score, reply }) });
+  }
+
+  /** A candidate's scorecard PDF, with its checking code. */
+  async scorecardPdf(attemptId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/attempts/${encodeURIComponent(attemptId)}/scorecard.pdf`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
   report(attemptId: string): Promise<CandidateReport> {
     return this.#request<CandidateReport>(`/attempts/${encodeURIComponent(attemptId)}/report`);
   }
@@ -1149,6 +1295,11 @@ export class ConsoleClient {
 
   issueAtsHook(provider: AtsProvider): Promise<{ readonly key: string; readonly hookUrl: string }> {
     return this.#request(`/integrations/ats/${provider}/key`, { method: "POST" });
+  }
+
+  /** Try a connector's credentials against the live account; nothing is changed there. */
+  checkAts(provider: AtsProvider): Promise<{ readonly ok: boolean; readonly detail: string }> {
+    return this.#request(`/integrations/ats/${provider}/check`, { method: "POST" });
   }
 
   async disableAts(provider: AtsProvider): Promise<void> {
@@ -1230,6 +1381,20 @@ export class ConsoleClient {
       method: "POST",
       body: JSON.stringify({ outcome, reason }),
     });
+  }
+
+  /** An exam's lab mode, and the address this request came from. */
+  lab(examId: string): Promise<LabSettings> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/lab`);
+  }
+
+  setLab(examId: string, settings: { readonly networks: readonly string[]; readonly startTogether: boolean }): Promise<LabSettings> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/lab`, { method: "PUT", body: JSON.stringify(settings) });
+  }
+
+  /** Let every candidate waiting at the start begin. */
+  startSitting(examId: string): Promise<{ readonly startedAt: string }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/lab/start`, { method: "POST" });
   }
 
   live(examId: string, idleMinutes = 5): Promise<LiveView> {

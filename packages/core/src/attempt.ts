@@ -74,6 +74,8 @@ export type FoldFailure =
   | "not_in_progress"
   /** Scoring or grading before the attempt was submitted. */
   | "not_submitted"
+  /** A mark revised before the attempt was graded. */
+  | "not_graded"
   /** An event after the attempt was voided, or a non-void event after grading. */
   | "closed"
   /** A second answer to a question, under a policy that forbids revision. */
@@ -168,7 +170,7 @@ export function foldAttempt(
     }
     if (state === "void") return fail("closed");
     if (erasedAt !== null && event.type !== "attempt_voided") return fail("closed");
-    if (state === "graded" && event.type !== "attempt_voided") return fail("closed");
+    if (state === "graded" && event.type !== "attempt_voided" && event.type !== "score_revised") return fail("closed");
 
     switch (event.type) {
       case "attempt_started":
@@ -225,6 +227,16 @@ export function foldAttempt(
         if (state !== "submitted") return fail("not_submitted");
         state = "graded";
         total = event.total;
+        break;
+      }
+
+      // Only once graded: before that, grading itself writes the marks. The
+      // total moves by the difference, so it stays the sum it was recorded as.
+      case "score_revised": {
+        if (state !== "graded") return fail("not_graded");
+        const before = scores.get(event.questionId) ?? 0;
+        scores.set(event.questionId, event.score);
+        total = (total ?? 0) + event.score - before;
         break;
       }
 

@@ -10,6 +10,7 @@ import type {
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import { CameraRequired, ImportRejected, InvalidInvitation, OutsideWindow, type InvitationService } from "./invitation-service.js";
+import { OutsideNetwork, WaitingForStart } from "./lab.js";
 import { ConsentRequired } from "./privacy.js";
 import { noticeSchema } from "./privacy-routes.js";
 import * as S from "./schemas.js";
@@ -39,7 +40,7 @@ const refusals = {
   409: S.errorResponse,
 } as const;
 
-const channel = z.enum(["email", "sms"]);
+const channel = z.enum(["email", "sms", "whatsapp"]);
 const windowBody = z.object({
   opensAt: z.iso.datetime({ offset: true }),
   closesAt: z.iso.datetime({ offset: true }),
@@ -64,7 +65,7 @@ const invitation = z.object({
   attemptId: z.string().nullable(),
   attemptState: z.enum(["not_started", "in_progress", "submitted", "graded", "void"]),
   revoked: z.boolean(),
-  delivery: z.object({ email: delivery, sms: delivery }),
+  delivery: z.object({ email: delivery, sms: delivery, whatsapp: delivery }),
 });
 
 const csvCell = (value: string | null) => {
@@ -347,7 +348,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         tags: ["Candidate"],
         summary: "Open an invitation link",
         description:
-          "Starts the candidate's attempt the first time, inside their window, and resumes it every time after — from any device — until the window closes. Answers 403 not_open_yet before the window, 410 window_closed after it, and 428 consent_required with the privacy notice when the organisation has one and this first opening did not agree to its current version.",
+          "Starts the candidate's attempt the first time, inside their window, and resumes it every time after — from any device — until the window closes. Answers 403 not_open_yet before the window, outside_network or waiting_for_start in lab mode, 410 window_closed after it, and 428 consent_required with the privacy notice when the organisation has one and this first opening did not agree to its current version.",
         body: z.object({
           code: z.string().min(1).max(512),
           consent: z
@@ -363,7 +364,12 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
             z.object({ error: z.literal("consent_required"), notice: noticeSchema }),
             z.object({ error: z.literal("camera_required"), proctoring: S.proctoringPolicy }),
           ]),
-          403: z.object({ error: z.literal("not_open_yet"), opensAt: z.string(), closesAt: z.string() }),
+          403: z.union([
+            z.object({ error: z.literal("not_open_yet"), opensAt: z.string(), closesAt: z.string() }),
+            z
+              .object({ error: z.enum(["outside_network", "waiting_for_start"]), message: z.string() })
+              .describe("Lab mode: outside_network when the exam is limited to its institution's network; waiting_for_start until the invigilator starts the sitting — try again shortly."),
+          ]),
           404: S.errorResponse,
           410: z.object({ error: z.literal("window_closed"), opensAt: z.string(), closesAt: z.string() }),
           429: S.errorResponse,
@@ -375,7 +381,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
       }
       try {
-        const opened = await invitations.redeem(request.body.code, request.body.consent, request.body.camera);
+        const opened = await invitations.redeem(request.body.code, request.body.consent, request.body.camera, request.ip);
         return reply.send(opened);
       } catch (error) {
         if (error instanceof ConsentRequired) return reply.code(428).send({ error: "consent_required", notice: error.notice });
@@ -384,6 +390,8 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
           throttle.failed(request.ip, "invitation");
           return reply.code(404).send({ error: "invalid_invitation", message: error.message });
         }
+        if (error instanceof OutsideNetwork) return reply.code(403).send({ error: "outside_network", message: error.message });
+        if (error instanceof WaitingForStart) return reply.code(403).send({ error: "waiting_for_start", message: error.message });
         if (error instanceof OutsideWindow) {
           return error.when === "early"
             ? reply.code(403).send({ error: "not_open_yet", opensAt: error.opensAt, closesAt: error.closesAt })

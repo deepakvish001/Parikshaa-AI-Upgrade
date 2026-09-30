@@ -131,6 +131,8 @@ const PAGES: readonly (readonly [string, (page: Page) => Promise<void>])[] = [
       await page.getByRole("button", { name: DRIVE, exact: true }).click();
       await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Live sitting" }).click();
       await expect(page.getByRole("region", { name: "Candidates now" }).getByText("CS004")).toBeVisible();
+      // Loaded on its own, after the page: wait for it, so the picture never races it.
+      await expect(page.getByRole("region", { name: "Lab mode" })).toBeVisible();
     },
   ],
   [

@@ -18,12 +18,19 @@ import {
   QuestionBank,
   QuestionMedia,
   DataKeys,
+  FeedbackStore,
+  LabStore,
+  RecheckStore,
+  MarkingStore,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
   type StaffRole,
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
+import { LabService } from "../lab.js";
+import { RecheckService } from "../rechecks.js";
+import { MarkingService } from "../marking.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -98,6 +105,10 @@ const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
   readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler };
+  /** For a delivery worker's candidate results (DeliveryWorkerOptions.result). */
+  readonly results: ResultsService;
+  /** For a delivery worker's recheck messages (DeliveryWorkerOptions.recheck). */
+  readonly rechecks: RecheckService;
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
@@ -121,6 +132,8 @@ export async function wire(
     readonly greenhouseHosts?: readonly string[];
     /** Where staff mail (password resets) goes. */
     readonly mailer?: Mailer;
+    /** Results may go by WhatsApp too, as when the server has it set up. */
+    readonly whatsapp?: boolean;
     /**
      * The clock staff sign-in runs on. Off by default, so sessions do not
      * expire when a test moves `now` on by days; a second-factor test needs it.
@@ -167,8 +180,10 @@ export async function wire(
     exams: service,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const lab = new LabService({ lab: new LabStore(sql), invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
+    lab,
     exams: service,
     store,
     invitations: invitationStore,
@@ -223,6 +238,17 @@ export async function wire(
     ...(options.googleIssuer === undefined ? {} : { issuer: options.googleIssuer }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const recheckStore = new RecheckStore(sql);
+  const rechecks = new RecheckService({
+    store,
+    rechecks: recheckStore,
+    invitations: invitationStore,
+    identity,
+    exams: service,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const results = new ResultsService({
     store,
     invitations: invitationStore,
@@ -230,6 +256,8 @@ export async function wire(
     proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
     identity,
     mailer: options.mailer ?? null,
+    whatsapp: options.whatsapp ?? false,
+    releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const onboarding = new Onboarding({
@@ -268,6 +296,10 @@ export async function wire(
       exams: service,
       ...(options.now === undefined ? {} : { now: options.now }),
     }),
+    feedback: new FeedbackStore(sql),
+    lab,
+    rechecks,
+    marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     tokens,
     auth,
     security,
@@ -296,6 +328,8 @@ export async function wire(
     razorpay,
     security,
     app,
+    results,
+    rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
       item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: practiceIdentity.verificationMail },
   };

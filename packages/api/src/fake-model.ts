@@ -55,3 +55,5 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
   return { client, script };
 }
 export { FakeRazorpay } from "./razorpay.js";
+// Keeps what would have been sent: the browser suite has no mail server or WhatsApp account.
+export { OutboxLog } from "./delivery.js";

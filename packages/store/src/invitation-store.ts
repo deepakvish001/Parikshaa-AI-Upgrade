@@ -38,7 +38,7 @@ export interface Invitation extends InvitationDraft {
 export interface InvitationStatus extends Invitation {
   readonly attemptState: "not_started" | "in_progress" | "submitted" | "graded" | "void";
   /** The latest message about this invitation, by channel. */
-  readonly delivery: { readonly email: DeliveryState | null; readonly sms: DeliveryState | null };
+  readonly delivery: { readonly email: DeliveryState | null; readonly sms: DeliveryState | null; readonly whatsapp: DeliveryState | null };
 }
 
 /** A candidate found by search, with the exam they were invited to. */
@@ -149,7 +149,7 @@ export class InvitationStore {
     to: ExamWindow,
     options: {
       readonly retime: boolean;
-      readonly messages: (invitationId: string, channels: readonly ("email" | "sms")[]) => readonly OutboxDraft[];
+      readonly messages: (invitationId: string, channels: readonly ("email" | "sms" | "whatsapp")[]) => readonly OutboxDraft[];
     },
   ): Promise<number> {
     return withScope(this.#sql, scope, async (tx) => {
@@ -175,9 +175,9 @@ export class InvitationStore {
             AND subject ->> 'invitationId' = ANY ($2::text[])`,
         [scope.orgId, ids],
       );
-      const sent = await tx.query<{ id: string; kinds: ("email" | "sms")[] }>(
+      const sent = await tx.query<{ id: string; kinds: ("email" | "sms" | "whatsapp")[] }>(
         `SELECT subject ->> 'invitationId' AS id, array_agg(DISTINCT kind ORDER BY kind) AS kinds FROM outbox
-          WHERE org_id = $1 AND purpose = 'invite' AND kind IN ('email', 'sms') AND subject ->> 'invitationId' = ANY ($2::text[])
+          WHERE org_id = $1 AND purpose = 'invite' AND kind IN ('email', 'sms', 'whatsapp') AND subject ->> 'invitationId' = ANY ($2::text[])
           GROUP BY 1`,
         [scope.orgId, ids],
       );
@@ -271,7 +271,7 @@ export class InvitationStore {
   async list(scope: Scope, examId: string, now: Date = new Date()): Promise<readonly InvitationStatus[]> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<
-        Row & { lifecycle: string | null; email_delivery: DeliveryRow | null; sms_delivery: DeliveryRow | null }
+        Row & { lifecycle: string | null; email_delivery: DeliveryRow | null; sms_delivery: DeliveryRow | null; whatsapp_delivery: DeliveryRow | null }
       >(
         `SELECT i.org_id, i.id, i.exam_id, i.candidate_ref, i.name, i.email, i.phone, i.opens_at, i.closes_at, i.hard_close,
                 i.attempt_id, i.source, i.created_at, i.revoked_at,
@@ -283,7 +283,11 @@ export class InvitationStore {
                 (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
                    FROM outbox WHERE org_id = i.org_id AND kind = 'sms' AND subject ->> 'invitationId' = i.id
                     AND ${NEEDED}
-                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS sms_delivery
+                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS sms_delivery,
+                (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
+                   FROM outbox WHERE org_id = i.org_id AND kind = 'whatsapp' AND subject ->> 'invitationId' = i.id
+                    AND ${NEEDED}
+                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS whatsapp_delivery
            FROM invitations i
           WHERE i.org_id = $1 AND i.exam_id = $2
           ORDER BY i.created_at, i.candidate_ref`,
@@ -292,7 +296,7 @@ export class InvitationStore {
       return rows.map((row) => ({
         ...toInvitation(row),
         attemptState: row.attempt_id === null ? "not_started" : lifecycleState(row.lifecycle),
-        delivery: { email: toDelivery(row.email_delivery), sms: toDelivery(row.sms_delivery) },
+        delivery: { email: toDelivery(row.email_delivery), sms: toDelivery(row.sms_delivery), whatsapp: toDelivery(row.whatsapp_delivery) },
       }));
     });
   }
@@ -367,9 +371,20 @@ export class InvitationStore {
     });
   }
 
-  /** Queue messages outside an invitation's creation — a resend, a webhook. */
-  async enqueue(scope: Scope, drafts: readonly OutboxDraft[]): Promise<void> {
-    await withScope(this.#sql, scope, (tx) => enqueue(tx, scope.orgId, drafts, this.#newId));
+  /** Which of these outbox ids are already written, for saying what queuing them would do. */
+  async queued(scope: Scope, ids: readonly string[]): Promise<readonly string[]> {
+    if (ids.length === 0) return [];
+    return withScope(this.#sql, scope, async (tx) =>
+      (await tx.query<{ id: string }>(`SELECT id FROM outbox WHERE org_id = $1 AND id = ANY ($2::text[])`, [scope.orgId, ids])).map((r) => r.id),
+    );
+  }
+
+  /**
+   * Queue messages outside an invitation's creation — a resend, a result.
+   * Returns the ids of those that were new: a fixed id already queued is not queued again.
+   */
+  async enqueue(scope: Scope, drafts: readonly OutboxDraft[]): Promise<readonly string[]> {
+    return withScope(this.#sql, scope, (tx) => enqueue(tx, scope.orgId, drafts, this.#newId));
   }
 }
 

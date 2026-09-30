@@ -1,7 +1,7 @@
 {
   "$comment": "Gzipped kilobytes each built file may reach (scripts/bundle-budget.mjs). Raise one only on purpose, in the same change that needs it.",
   "packages/web/dist": {
-    "index-*.js": 140,
+    "index-*.js": 142,
     "index-*.css": 19,
     "jsx-runtime-*.js": 4,
     "CodeEditor-*.js": 240,
@@ -13,14 +13,20 @@
     "prep-*.js": 1,
     "CommunityPages-*.js": 9,
     "CommunityPages-*.css": 2,
-    "??-*.js": 11
+    "??-*.js": 12
   },
   "packages/console/dist": {
-    "index-*.js": 176,
-    "index-*.css": 18,
+    "index-*.js": 178,
+    "index-*.css": 19,
     "Practice-*.js": 14,
     "Signup-*.js": 2,
     "Tour-*.js": 3,
+    "Lab-*.js": 2,
+    "Rechecks-*.js": 3,
+    "Marking-*.js": 3,
+    "Insights-*.js": 3,
+    "useQuery-*.js": 8,
+    "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5
   }
 }
