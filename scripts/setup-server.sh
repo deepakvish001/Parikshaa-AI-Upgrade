@@ -23,9 +23,9 @@
 #        SMTP_URL='smtps://…' EMAIL_FROM='Parikshaa <no-reply@…>' \
 #        SIGNUP_PRICE_RUPEES=49 ./scripts/setup-server.sh
 #
-# SMS and WhatsApp are never asked for: set MSG91_AUTH_KEY/MSG91_TEMPLATE_ID
-# or WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID in the environment, or in the
-# settings file, and run it again.
+# SMS, WhatsApp and Razorpay are never asked for: set MSG91_AUTH_KEY/
+# MSG91_TEMPLATE_ID, WHATSAPP_TOKEN/WHATSAPP_PHONE_NUMBER_ID, or RAZORPAY_* and
+# PARIKSHAA_SUPPLIER_* in the environment or the settings file, and run it again.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -100,9 +100,12 @@ if [[ "$SELF_SIGNUP" == on ]]; then
   ask SIGNUP_TRIAL_CREDITS "Free attempts for each new institution" "25"
 fi
 BACKUP_UPLOAD="$(value BACKUP_UPLOAD)"
-# Optional, and never asked: SMS through MSG91 and WhatsApp, from the
-# environment or kept from the settings file (docs/PILOT.md, "SMS and WhatsApp").
-OPTIONAL=(MSG91_AUTH_KEY MSG91_TEMPLATE_ID WHATSAPP_TOKEN WHATSAPP_PHONE_NUMBER_ID WHATSAPP_LANGUAGE WHATSAPP_API_URL)
+# Optional, and never asked: SMS through MSG91, WhatsApp, and selling credits
+# through Razorpay with GST invoices, from the environment or kept from the
+# settings file (docs/PILOT.md, "SMS and WhatsApp"; docs/OPERATIONS.md, "Selling credits").
+OPTIONAL=(MSG91_AUTH_KEY MSG91_TEMPLATE_ID WHATSAPP_TOKEN WHATSAPP_PHONE_NUMBER_ID WHATSAPP_LANGUAGE WHATSAPP_API_URL
+  RAZORPAY_KEY_ID RAZORPAY_KEY_SECRET RAZORPAY_WEBHOOK_SECRET
+  PARIKSHAA_SUPPLIER_NAME PARIKSHAA_SUPPLIER_GSTIN PARIKSHAA_SUPPLIER_ADDRESS PARIKSHAA_SUPPLIER_SAC)
 for name in "${OPTIONAL[@]}"; do
   printf -v "$name" '%s' "$(value "$name")"
   [[ "${!name}" != *"'"* && "${!name}" != *$'\n'* ]] || die "$name cannot contain a single quote or a line break."
@@ -140,7 +143,7 @@ umask 077
   echo "SMTP_URL='$SMTP_URL'"
   echo "EMAIL_FROM='$EMAIL_FROM'"
   echo
-  echo "# Optional: SMS (MSG91) and WhatsApp (Cloud API); empty means not set up"
+  echo "# Optional: SMS (MSG91), WhatsApp (Cloud API), Razorpay and the GST supplier; empty means not set up"
   for name in "${OPTIONAL[@]}"; do echo "$name='${!name}'"; done
   echo
   echo "# The pilot"

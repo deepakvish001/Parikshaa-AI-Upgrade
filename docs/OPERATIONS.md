@@ -258,6 +258,24 @@ same secret. It credits a payment whose buyer closed the tab before Checkout
 returned; without it, such a payment is credited only when they come back.
 Payments must be captured automatically (the dashboard's default for Checkout).
 
+Before taking a real payment, in this order:
+
+1. Put the **test** keys (`rzp_test_…`) and the test-mode webhook in the
+   settings file, and run `sudo ./scripts/setup-server.sh` again: it keeps
+   `RAZORPAY_*` and `PARIKSHAA_SUPPLIER_*` across re-runs.
+2. `SMOKE_BILLING=on SMOKE_EMAIL=… SMOKE_PASSWORD=… npm run smoke -- https://…`
+   as the owner of a prepaid organisation with its legal name set: it asks
+   Razorpay for an order of one credit, which proves the keys and the supplier
+   without paying (the order lapses by itself).
+3. On the console's Billing page, buy one pack with a Razorpay test card, and
+   check the credits, the tax invoice and the credit history. Close the
+   Checkout tab straight after paying once, to see the webhook credit it.
+4. Swap in the live keys and the live webhook, re-run setup, and run step 2
+   again: it now says "live keys".
+
+![Buying credits](screenshots/pilot-15-buy-credits.png)
+![Billing after a payment: credits, the tax invoice, the history](screenshots/pilot-16-billing-after-payment.png)
+
 **Invoiced organisations** are billed monthly, in arrears, for the attempts
 their ledgers show as started in that month (IST). The API issues last month's
 invoices by itself early on the 1st (checked every six hours; set

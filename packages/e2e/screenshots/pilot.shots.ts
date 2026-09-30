@@ -1,7 +1,8 @@
 import { createHmac } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
-import { SECRET } from "../src/database.js";
+import { hashPassword } from "@parikshaa/api/passwords";
+import { SECRET, seedBilledOrganisation } from "../src/database.js";
 import { local, MCQ, OWNER, readyToBegin, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { shoot, shootPart } from "./shoot.js";
 
@@ -211,4 +212,34 @@ test("insights across tests", async ({ page, request }) => {
   await page.getByRole("tab", { name: "Question quality" }).click();
   await expect(page.getByRole("tabpanel", { name: "Question quality" })).toBeVisible();
   await shoot(page, "pilot-14-question-quality", { fullPage: true });
+});
+
+test("buying credits, and the tax invoice", async ({ page }) => {
+  test.setTimeout(300_000);
+  // Checkout without Razorpay: a stand-in that signs as Razorpay does, with the fake gateway's key secret.
+  await page.addInitScript(() => {
+    (window as unknown as { Razorpay: unknown }).Razorpay = class {
+      constructor(readonly options: { order_id: string; handler: (r: object) => void }) {}
+      on() {}
+      async open() {
+        const paymentId = `pay_${Date.now()}`;
+        const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("fake-key-secret"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+        const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${this.options.order_id}|${paymentId}`));
+        const signature = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+        this.options.handler({ razorpay_order_id: this.options.order_id, razorpay_payment_id: paymentId, razorpay_signature: signature });
+      }
+    };
+  });
+  const org = await seedBilledOrganisation(hashPassword, "Sri Venkateswara College of Engineering");
+  await page.goto("/console/");
+  await page.getByLabel("Email").fill(org.email);
+  await page.getByLabel("Password").fill(org.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Billing", exact: true }).click();
+  const buy = page.getByRole("region", { name: "Buy credits" });
+  await buy.getByRole("radio", { name: "500" }).check();
+  await shootPart(buy, "pilot-15-buy-credits");
+  await buy.getByRole("button", { name: /^Pay ₹/ }).click();
+  await expect(buy.getByRole("status")).toContainText("credits added");
+  await shoot(page, "pilot-16-billing-after-payment", { fullPage: true });
 });

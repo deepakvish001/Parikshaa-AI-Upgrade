@@ -14,6 +14,10 @@
  * answer by the model — and asks for the results by email, then archives the
  * exam. The attempt stays in that organisation's results, named smoke-….
  *
+ * SMOKE_BILLING=on also asks Razorpay for an order of one credit, which checks
+ * the keys and the GST supplier without paying: the order lapses by itself.
+ * It needs the account's organisation on prepaid credits with its legal name set.
+ *
  * Every step prints ✓ or ✗ and why; it exits 1 if any failed. Nothing here
  * needs the database or the server's secrets: only what a browser can reach.
  */
@@ -125,6 +129,23 @@ if (email === "" || password === "") {
   if (token !== undefined) {
     const me = (await call("GET", "/auth/me", { token })).json;
     const can = (p) => me?.permissions?.includes(p) === true;
+    // Only when asked: it makes a real (unpaid) order in the Razorpay account.
+    if (process.env["SMOKE_BILLING"] === "on" && can("org:manage")) {
+      await step("Razorpay", async () => {
+        const order = await call("POST", "/billing/orders", { token, body: { credits: 1 } });
+        if (order.status === 201) {
+          const mode = String(order.json.keyId).startsWith("rzp_test_") ? "test keys" : "live keys";
+          pass("Razorpay", `an order for 1 credit was created with the ${mode} (₹${(order.json.amountPaise / 100).toFixed(2)}, not paid; it lapses by itself)`);
+        } else if (order.json?.error === "billing_not_configured") {
+          fail("Razorpay", `${order.json.message}: set RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET and PARIKSHAA_SUPPLIER_*`);
+        } else if (order.status === 502 || order.status === 503) {
+          fail("Razorpay", `${order.status} ${order.json?.message ?? ""}: Razorpay refused or could not be reached; check the keys match the dashboard's mode`);
+        } else {
+          fail("Razorpay", `${order.status} ${order.json?.message ?? order.json?.error ?? ""}: use an owner in an organisation on prepaid credits, with its legal name set under Billing`);
+        }
+      });
+    }
+
     if (!can("exam:write") || !can("attempt:start")) {
       fail("The test account", `it cannot write exams and start attempts${me?.emailVerified === false ? " (its email address is not confirmed)" : ""}: use an owner`);
     } else {
