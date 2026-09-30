@@ -57,6 +57,7 @@ export function LivePanel({ client, examId, canIntervene }: { client: ConsoleCli
   const [filter, setFilter] = useState<Filter>("all");
   const [announcing, setAnnouncing] = useState(false);
   const [acting, setActing] = useState<{ kind: "extend" | "reopen"; row: LiveRow } | null>(null);
+  const [extendingAll, setExtendingAll] = useState(false);
   const [reviewing, setReviewing] = useState<LiveRow | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -67,8 +68,13 @@ export function LivePanel({ client, examId, canIntervene }: { client: ConsoleCli
     refetchInterval: REFRESH_MS,
   });
 
+  const sitting = live.data?.rows.filter((r) => r.attemptId !== null && r.state === "in_progress").length ?? 0;
   const header = canIntervene ? (
     <PageActions>
+      <button type="button" className="secondary" disabled={sitting === 0} onClick={() => setExtendingAll(true)}>
+        <Clock aria-hidden="true" />
+        Extra time for everyone
+      </button>
       <button type="button" className="secondary" onClick={() => setAnnouncing(true)}>
         <Megaphone aria-hidden="true" />
         Announce
@@ -224,6 +230,22 @@ export function LivePanel({ client, examId, canIntervene }: { client: ConsoleCli
       </section>
 
       {announcing ? <Announce client={client} examId={examId} onClose={() => setAnnouncing(false)} /> : null}
+      {extendingAll ? (
+        <TimeDialog
+          kind="everyone"
+          who={`${sitting} candidate${sitting === 1 ? "" : "s"}`}
+          onSubmit={async (minutes, reason) => {
+            const result = await client.extendOpen(examId, minutes, reason);
+            await queryClient.invalidateQueries({ queryKey: ["live", examId] });
+            toast(
+              `${minutes} extra minute${minutes === 1 ? "" : "s"} given to ${result.extended} candidate${result.extended === 1 ? "" : "s"}` +
+                (result.failed.length === 0 ? "" : `; ${result.failed.length} had already finished`),
+              "success",
+            );
+          }}
+          onClose={() => setExtendingAll(false)}
+        />
+      ) : null}
       {acting === null || acting.row.attemptId === null ? null : (
         <TimeDialog
           kind={acting.kind}

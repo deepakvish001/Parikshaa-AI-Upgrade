@@ -42,6 +42,9 @@ export class CameraRequired extends Error {
 
 export type Channel = "email" | "sms";
 
+/** The first reminder goes out this long before the candidate's window opens. */
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** The invitation's code was not issued by this server, or has been revoked. */
 export class InvalidInvitation extends Error {
   constructor() {
@@ -78,7 +81,7 @@ export interface InvitationServiceOptions {
   readonly tokens: AttemptTokens;
   /** Where candidates open their link, e.g. https://exam.institution.ac.in */
   readonly publicUrl: string;
-  /** How long before a window opens the reminder goes out. */
+  /** How long before a window opens the last reminder goes out; the first goes a day before. */
   readonly reminderLeadMs?: number;
   readonly now?: () => number;
   readonly newId?: () => string;
@@ -129,14 +132,44 @@ export class InvitationService {
 
   // --- the window -----------------------------------------------------------
 
-  async setWindow(actor: Actor, examId: string, window: ExamWindow): Promise<void> {
+  /**
+   * Schedule an exam, or move it. Moving it takes along every invited
+   * candidate who was on the exam's window and has not begun: their link
+   * opens at the new time, their reminders are for the new time, and, with
+   * `notify`, each is told the new time by the channels their invitation
+   * went by. A candidate given a window of their own keeps it. Returns how
+   * many candidates moved.
+   */
+  async setWindow(
+    actor: Actor,
+    examId: string,
+    window: ExamWindow,
+    options: { readonly notify?: boolean } = {},
+  ): Promise<{ readonly moved: number }> {
     const scope = this.#require(actor, "exam:write");
     await this.#examExists(actor.orgId, examId);
     if (new Date(window.closesAt) <= new Date(window.opensAt)) {
       throw new AttemptError("invalid_state", "The window closes before it opens");
     }
-    await this.#o.invitations.setWindow(scope, examId, window);
-    await this.#audit(actor, "exam.window_set", examId, { ...window });
+    const previous = await this.#o.invitations.getWindow(scope, examId);
+    if (previous === null) {
+      await this.#o.invitations.setWindow(scope, examId, window);
+      await this.#audit(actor, "exam.window_set", examId, { ...window });
+      return { moved: 0 };
+    }
+    const retime = previous.opensAt !== window.opensAt || previous.closesAt !== window.closesAt;
+    const notify = options.notify ?? true;
+    const moved = await this.#o.invitations.moveWindow(scope, examId, previous, window, {
+      retime,
+      messages: (invitationId, channels) => [
+        ...(notify ? channels.map((kind) => ({ kind, subject: { invitationId }, purpose: "rescheduled", sendAfter: new Date(this.#now()) })) : []),
+        ...this.#reminders(invitationId, window.opensAt, channels),
+      ],
+    });
+    const change = retime ? { from: { opensAt: previous.opensAt, closesAt: previous.closesAt }, moved, notified: notify } : {};
+    await this.#audit(actor, "exam.window_set", examId, { ...window, ...change });
+    // The same times with only hard close changed: candidates follow it, but nobody moved.
+    return { moved: retime ? moved : 0 };
   }
 
   getWindow(actor: Actor, examId: string): Promise<ExamWindow | null> {
@@ -145,17 +178,31 @@ export class InvitationService {
 
   // --- inviting -------------------------------------------------------------
 
-  /** The messages an invitation sends: now, and a reminder before the window opens. */
+  /**
+   * The messages an invitation sends: now, a reminder the day before the
+   * window opens, and another shortly before. A reminder that would fall due
+   * within a few minutes of the invitation itself is left out: the invitation
+   * says the same thing.
+   */
   #messages(draft: InvitationDraft, channels: readonly Channel[]) {
     return (invitationId: string): OutboxDraft[] => {
       const reachable = channels.filter((c) => (c === "email" ? draft.email !== null : draft.phone !== null));
-      const remindAt = new Date(new Date(draft.opensAt).getTime() - this.#lead);
-      const remind = remindAt.getTime() > this.#now() + 5 * 60 * 1000;
-      return reachable.flatMap((kind) => [
-        { kind, subject: { invitationId }, purpose: "invite", sendAfter: new Date(this.#now()) },
-        ...(remind ? [{ kind, subject: { invitationId }, purpose: "reminder", sendAfter: remindAt }] : []),
-      ]);
+      return [
+        ...reachable.map((kind) => ({ kind, subject: { invitationId }, purpose: "invite", sendAfter: new Date(this.#now()) })),
+        ...this.#reminders(invitationId, draft.opensAt, reachable),
+      ];
     };
+  }
+
+  /** The reminders for a window opening at `opensAt`: a day before, and shortly before, each only if still to come. */
+  #reminders(invitationId: string, opensAt: string, channels: readonly Channel[]): OutboxDraft[] {
+    const opens = new Date(opensAt).getTime();
+    const worthIt = (at: number) => at > this.#now() + 5 * 60 * 1000;
+    const due = [
+      { purpose: "reminder_day", at: opens - DAY_MS },
+      { purpose: "reminder", at: opens - this.#lead },
+    ].filter((r) => worthIt(r.at));
+    return channels.flatMap((kind) => due.map((r) => ({ kind, subject: { invitationId }, purpose: r.purpose, sendAfter: new Date(r.at) })));
   }
 
   /**
@@ -215,7 +262,7 @@ export class InvitationService {
   }
 
   list(actor: Actor, examId: string): Promise<readonly InvitationStatus[]> {
-    return this.#o.invitations.list(this.#require(actor, "attempt:read"), examId);
+    return this.#o.invitations.list(this.#require(actor, "attempt:read"), examId, new Date(this.#now()));
   }
 
   /** Candidates across the organisation's exams matching `text`, for the console's search. */

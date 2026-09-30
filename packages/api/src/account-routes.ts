@@ -125,7 +125,8 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
       const actor = await staff(request, reply, null);
       if (actor === null) return;
       const org = await identity.getOrganisation(actor.orgId);
-      return reply.send({
+      // What the account may do changes under it (a confirmed address, a new role): never reused.
+      return reply.header("cache-control", "no-store").send({
         kind: actor.kind,
         id: actor.id,
         name: actor.name,

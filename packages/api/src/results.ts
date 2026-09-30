@@ -2,6 +2,7 @@ import {
   allQuestions,
   cohortAnalytics,
   decodeCodeAnswer,
+  examId,
   percentileOf,
   foldAttempt,
   paperOf,
@@ -14,12 +15,16 @@ import {
   type Exam,
   type CohortAnalytics,
   type ExamId,
+  type OrgId,
 } from "@parikshaa/core";
-import { staffScope, type Invitation, type InvitationStore, type LedgerStore, type ProctorStore, type Scope } from "@parikshaa/store";
+import { staffScope, type IdentityStore, type Invitation, type InvitationStore, type LedgerStore, type OutboxItem, type ProctorStore, type Scope } from "@parikshaa/store";
+import type { Mailer } from "./delivery.js";
 import { identityState } from "./proctoring.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
-import type { Cell } from "./xlsx.js";
+import { xlsx, type Cell } from "./xlsx.js";
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 /**
  * Results, exports and reports (ROADMAP §6).
@@ -128,17 +133,63 @@ export class ResultsService {
   readonly #exams: ExamService;
   readonly #proctor: ProctorStore | null;
 
+  readonly #identity: IdentityStore | null;
+  readonly #mailer: Mailer | null;
+  readonly #now: () => number;
+
   constructor(options: {
     readonly store: LedgerStore;
     readonly invitations: InvitationStore;
     readonly exams: ExamService;
     readonly proctor?: ProctorStore | null;
+    /** For sending the workbook by email to whoever asks for it. */
+    readonly identity?: IdentityStore | null;
+    readonly mailer?: Mailer | null;
+    readonly now?: () => number;
   }) {
     this.#proctor = options.proctor ?? null;
     this.#store = options.store;
     this.#invitations = options.invitations;
     this.#exams = options.exams;
+    this.#identity = options.identity ?? null;
+    this.#mailer = options.mailer ?? null;
+    this.#now = options.now ?? (() => Date.now());
   }
+
+  /**
+   * Send the results workbook to the member of staff asking, at their own
+   * address — never anyone else's: it is the file they could download, sent
+   * where they read their mail. Made when it is sent, so it is current.
+   */
+  async emailWorkbook(actor: Actor, examId: ExamId): Promise<{ readonly to: string }> {
+    if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
+    if (actor.kind !== "user") throw new AttemptError("invalid_state", "Only a person has an address to send the results to");
+    if (this.#identity === null || this.#mailer === null) throw new AttemptError("invalid_state", "Email is not set up on this server: download the results instead");
+    const definition = await this.#store.loadExam(staffScope(actor.orgId), examId);
+    if (definition === null) throw new AttemptError("not_found", `No such exam: ${examId}`);
+    const now = new Date(this.#now());
+    await this.#identity.queueStaffEmail(actor.orgId, "results_file", { userId: actor.id, examId }, `results:${actor.id}:${examId}:${now.getTime()}`, now);
+    return { to: actor.email };
+  }
+
+  /** Sends a results workbook the outbox names, as its asker would download it now. */
+  readonly mail = async (item: OutboxItem): Promise<"sent" | { readonly skip: string }> => {
+    if (this.#identity === null || this.#mailer === null) return { skip: "Email is not configured" };
+    const user = await this.#identity.findUser(item.orgId as OrgId, String(item.subject["userId"] ?? ""));
+    if (user === null || user.disabled) return { skip: "The account is gone or disabled" };
+    const actor: Actor = { kind: "user", id: user.id, orgId: user.orgId, role: user.role, name: user.name, email: user.email };
+    if (!can(actor, "attempt:review")) return { skip: "The account may no longer read results" };
+    const id = examId(String(item.subject["examId"] ?? ""));
+    const table = await this.table(actor, id);
+    await this.#mailer.send({
+      to: user.email,
+      subject: `Results: ${table.title}`,
+      text: `The results of ${table.title}, as they stand now, are attached as an Excel workbook.\n\nIt holds candidates' names, contacts and marks: keep it where only those who need it can open it.`,
+      html: `<p>The results of <strong>${escapeHtml(table.title)}</strong>, as they stand now, are attached as an Excel workbook.</p><p>It holds candidates' names, contacts and marks: keep it where only those who need it can open it.</p>`,
+      attachments: [{ filename: `${id}-results.xlsx`, content: xlsx(table.title, table.rows), contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }],
+    });
+    return "sent";
+  };
 
   async results(actor: Actor, examId: ExamId): Promise<Results> {
     if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");

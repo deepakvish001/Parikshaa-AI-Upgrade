@@ -72,8 +72,9 @@ async function main(): Promise<void> {
     process.env["SELF_SIGNUP"] === "on"
       ? {
           pricePaise: Math.round(Number(required("SIGNUP_PRICE_RUPEES")) * 100),
-          trialCredits: Number.parseInt(process.env["SIGNUP_TRIAL_CREDITS"] ?? "25", 10),
-          notify: process.env["SIGNUP_NOTIFY_EMAIL"] ?? null,
+          // docker-compose passes an unset variable as "": the default then, not NaN.
+          trialCredits: Number.parseInt(process.env["SIGNUP_TRIAL_CREDITS"] || "25", 10),
+          notify: process.env["SIGNUP_NOTIFY_EMAIL"] || null,
         }
       : null;
   // A new owner confirms their address before inviting anyone: without email

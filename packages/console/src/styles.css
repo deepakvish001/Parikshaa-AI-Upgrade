@@ -3907,7 +3907,8 @@ button.month-day.picked::after {
   }
 }
 .sample-line,
-.credits-line {
+.credits-line,
+.to-grade-line {
   margin-top: var(--space-5);
 }
 .confirm-email {
@@ -3915,6 +3916,17 @@ button.month-day.picked::after {
 }
 .signin-verified {
   margin: 0 0 var(--space-4);
+}
+/* Rescheduling: who moves with the new time, said before it is saved. */
+.reschedule-note {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--info-soft);
+  border: 1px solid var(--info-border);
+  border-radius: var(--radius);
+}
+.reschedule-note p {
+  margin: 0 0 var(--space-2);
 }
 .sample-line .banner-action {
   display: flex;
@@ -4006,4 +4018,19 @@ button.month-day.picked::after {
     transition: none;
     animation: none;
   }
+}
+
+/* Results → Grade all: how far it has got, and what it could not grade. */
+.grade-all .bar {
+  align-items: center;
+}
+.grade-all .progress {
+  margin-top: var(--space-3);
+}
+.grade-all .notice.small {
+  margin: var(--space-2) 0 0;
+}
+.grade-all-failed ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
 }

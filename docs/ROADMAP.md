@@ -336,8 +336,11 @@ comes in from CSV — roll numbers, names, emails, Indian mobiles in any usual
 form, optional per-candidate windows read as IST — checked by a dry run that
 changes nothing, then imported all or nothing. Each candidate gets a personal
 link, by email (SMTP, so any provider) and SMS (MSG91's DLT template flow), and
-a reminder an hour before the window opens; reminders to candidates who have
-already started are skipped. The link does not start anything: the attempt,
+reminders a day and an hour before the window opens; reminders to candidates
+who have already started are skipped. Rescheduling the exam moves every
+invited candidate on its window who has not begun, with their reminders, and
+tells them the new time. The email gives the test's length and
+says truthfully whether it uses the camera. The link does not start anything: the attempt,
 and its clock, start when the candidate opens it inside their window, and the
 same link resumes from any device until the window closes.
 

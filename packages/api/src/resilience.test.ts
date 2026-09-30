@@ -331,6 +331,34 @@ describe("extra time", () => {
     expect((await extend(invigilator, attemptId, 10, "Too late for this one.")).statusCode).toBe(409);
   });
 
+  it("can be given to everyone still sitting at once, leaving the submitted as they are", async () => {
+    const started = clock;
+    const sitting = async (candidateId: string) => {
+      const res = await call("POST", invigilator, "/exams/open-book/attempts", { candidateId });
+      expect(res.statusCode).toBe(201);
+      return res.json() as { attemptId: string; token: string };
+    };
+    const a = await sitting("cand-a");
+    const b = await sitting("cand-b");
+    const done = await sitting("cand-c");
+    await call("POST", done.token, "/attempts/me/submit");
+
+    const everyone = (minutes: number, reason: string, token = invigilator) =>
+      call("POST", token, "/exams/open-book/extend-open", { minutes, reason });
+    expect((await everyone(10, "short")).statusCode).toBe(422);
+    const res = await everyone(10, "Power cut across the lab block at 09:40.");
+    expect(res.statusCode, res.payload).toBe(200);
+    expect(res.json()).toEqual({ extended: 2, failed: [] });
+    for (const t of [a.token, b.token]) {
+      expect((await call("POST", t, "/attempts/me/heartbeat")).json().expiresAt).toBe(started + HOUR + 10 * 60_000);
+    }
+    const audit = (await call("GET", owner, "/audit")).json().entries.filter((e: { action: string }) => e.action === "attempt.extended");
+    expect(audit).toHaveLength(2);
+
+    await addStaff(identity, "org-a" as never, "viewer@acme.test", "viewer");
+    expect((await everyone(10, "Not my call to make.", await signIn(app, "viewer@acme.test"))).statusCode).toBe(403);
+  });
+
   it("is audited", async () => {
     const { attemptId } = await start();
     await extend(invigilator, attemptId, 10, "Accessibility accommodation on file.");

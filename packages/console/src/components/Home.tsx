@@ -147,6 +147,7 @@ export function Home({
   sample,
   onTour,
   canBuy = false,
+  onResults,
 }: {
   dashboard: Dashboard | undefined;
   exams: readonly ExamSummary[];
@@ -163,6 +164,8 @@ export function Home({
   onTour?: () => void;
   /** This account buys credits (an owner): the warning then offers to. */
   canBuy?: boolean;
+  /** An exam's Results tab, where its waiting attempts are graded; absent for an account that cannot grade. */
+  onResults?: (examId: string) => void;
 }) {
   const totals = exams.reduce(
     (sum, e) => {
@@ -201,6 +204,7 @@ export function Home({
       </PageActions>
 
       {dashboard === undefined ? null : <Credits left={dashboard.setup.prepaidCredits ?? null} canBuy={canBuy} onBuy={() => onGo("billing")} />}
+      {onResults === undefined ? null : <ToGrade exams={exams} onResults={onResults} onExams={onExams} />}
 
       {dashboard === undefined || !canWrite ? null : (
         <Welcome setup={dashboard.setup} sample={sample} onGo={onGo} onTour={onTour} />
@@ -465,6 +469,46 @@ function Week({
         ))}
       </div>
       {all.length === 0 ? <p className="notice week-empty">No sitting this week.</p> : null}
+    </div>
+  );
+}
+
+/**
+ * Attempts waiting to be graded, and the way straight to them: one exam's
+ * Results tab, where Grade all is, or the exams that have some.
+ */
+function ToGrade({
+  exams,
+  onResults,
+  onExams,
+}: {
+  exams: readonly ExamSummary[];
+  onResults: (examId: string) => void;
+  onExams: ((filter: ExamFilter) => void) | undefined;
+}) {
+  const waiting = exams.filter((e) => (e.attempts?.submitted ?? 0) > 0 && (e.archivedAt ?? null) === null);
+  if (waiting.length === 0) return null;
+  const total = waiting.reduce((sum, e) => sum + e.attempts!.submitted, 0);
+  const only = waiting.length === 1 ? waiting[0]! : null;
+  return (
+    <div className="to-grade-line">
+      <Banner
+        tone="info"
+        title={`${total} attempt${total === 1 ? "" : "s"} waiting to be graded`}
+        action={
+          only !== null ? (
+            <button type="button" onClick={() => onResults(only.id)}>
+              Grade them
+            </button>
+          ) : onExams === undefined ? undefined : (
+            <button type="button" onClick={() => onExams("grading")}>
+              See which exams
+            </button>
+          )
+        }
+      >
+        {only !== null ? `In “${only.title}”: Grade all on its Results tab grades every one.` : `Across ${waiting.length} exams: each exam's Results tab has Grade all.`}
+      </Banner>
     </div>
   );
 }

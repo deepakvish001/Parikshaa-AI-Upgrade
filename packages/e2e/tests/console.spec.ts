@@ -4,8 +4,8 @@ import { OWNER, seedSitting, type Sitting } from "./support.js";
 
 /** ROADMAP §13: a recruiter's side, in a real browser — sign in, results, the spreadsheet, a report. */
 
-/** Sit and grade one candidate's attempt through the API, as a candidate and an institution would. */
-async function sitAndGrade(request: APIRequestContext, sitting: Sitting, ref: string, choice: string) {
+/** Sit and grade one candidate's attempt through the API, as a candidate and an institution would; `grade` false leaves it submitted. */
+async function sitAndGrade(request: APIRequestContext, sitting: Sitting, ref: string, choice: string, grade = true) {
   const code = decodeURIComponent(new URL(sitting.links[ref]!).searchParams.get("invite")!);
   const opened = await request.post("/api/invitations/redeem", { data: { code } });
   expect(opened.status()).toBe(200);
@@ -13,6 +13,7 @@ async function sitAndGrade(request: APIRequestContext, sitting: Sitting, ref: st
   const candidate = { authorization: `Bearer ${token}` };
   expect((await request.post("/api/attempts/me/answers", { headers: candidate, data: { questionId: "q1", answer: choice } })).status()).toBe(202);
   expect((await request.post("/api/attempts/me/submit", { headers: candidate })).status()).toBe(200);
+  if (!grade) return attemptId as string;
   const graded = await request.post(`/api/attempts/${attemptId}/grade`, { headers: { authorization: `Bearer ${sitting.token}` } });
   expect(graded.status(), await graded.text()).toBe(200);
   return attemptId as string;
@@ -50,6 +51,27 @@ test("a recruiter signs in, reads the results, downloads them, and opens one can
   await expect(page.getByRole("region", { name: "Answers" })).toContainText("Merge sort");
   await expect(page.getByRole("region", { name: "Follow-up evidence" })).toContainText("None were asked.");
   await expect(page.getByText(/Record: \d+ entries, head [0-9a-f]{16}…/)).toBeVisible();
+});
+
+test("every submitted attempt is graded at once from the Results tab", async ({ page, request }) => {
+  const sitting = await seedSitting(request, { refs: ["CS001", "CS002", "CS003"] });
+  await sitAndGrade(request, sitting, "CS001", "1", false);
+  await sitAndGrade(request, sitting, "CS002", "0", false);
+
+  await page.goto("/console/");
+  await page.getByLabel("Email").fill(OWNER.email);
+  await page.getByLabel("Password").fill(OWNER.password);
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Exams", exact: true }).click();
+  await page.getByRole("button", { name: sitting.title, exact: true }).click();
+  await page.getByRole("button", { name: "Results", exact: true }).click();
+
+  const card = page.getByRole("region", { name: "Grade all" });
+  await expect(card).toContainText("2 attempts to grade");
+  await card.getByRole("button", { name: "Grade all 2" }).click();
+  await expect(card.getByRole("status")).toHaveText("Graded 2 attempts.");
+  await expect(page.getByRole("region", { name: "At a glance" })).toContainText("2 Graded");
+  await expect(card.getByRole("button", { name: /Grade all/ })).toHaveCount(0);
 });
 
 test("a report link from a webhook or Greenhouse opens straight on that candidate's report", async ({ page, request }) => {

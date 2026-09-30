@@ -100,6 +100,16 @@ const COLUMNS = `org_id, id, exam_id, candidate_ref, name, email, phone, opens_a
                  attempt_id, source, created_at, revoked_at`;
 
 /** Insert outbox rows inside a caller's transaction. */
+/**
+ * Which message about an invitation the console shows: the latest one that has
+ * fallen due, or, before any has, the next to go. Not the latest written — an
+ * invitation and its reminders are written together, and a reminder queued for
+ * tomorrow says nothing about whether the invitation went out today.
+ */
+const LATEST_DUE = `send_after > $3::timestamptz, CASE WHEN send_after <= $3::timestamptz THEN send_after END DESC NULLS LAST, send_after`;
+/** A reminder skipped because the candidate had already begun was not needed; it is not a failure to show. */
+const NEEDED = `NOT (purpose IN ('reminder', 'reminder_day') AND status = 'skipped')`;
+
 export class InvitationStore {
   readonly #sql: SqlExecutor;
   readonly #newId: () => string;
@@ -120,6 +130,61 @@ export class InvitationStore {
         [scope.orgId, examId, window.opensAt, window.closesAt, window.hardClose],
       ),
     );
+  }
+
+  /**
+   * Reschedule an exam, taking its invited candidates with it: everyone whose
+   * window was the exam's `from` window, who has not begun and was not
+   * withdrawn, moves to `to`. A candidate with a window of their own stays in
+   * it. With `retime`, their reminders still to go are cancelled (they were
+   * for the old time) and `messages` queues what replaces them, given each
+   * candidate's id and the channels their invitation went by. All in one
+   * transaction, so no candidate is moved without their messages. Returns
+   * how many moved.
+   */
+  async moveWindow(
+    scope: Scope,
+    examId: string,
+    from: ExamWindow,
+    to: ExamWindow,
+    options: {
+      readonly retime: boolean;
+      readonly messages: (invitationId: string, channels: readonly ("email" | "sms")[]) => readonly OutboxDraft[];
+    },
+  ): Promise<number> {
+    return withScope(this.#sql, scope, async (tx) => {
+      await tx.query(
+        `INSERT INTO exam_windows (org_id, exam_id, opens_at, closes_at, hard_close) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, exam_id)
+         DO UPDATE SET opens_at = EXCLUDED.opens_at, closes_at = EXCLUDED.closes_at, hard_close = EXCLUDED.hard_close`,
+        [scope.orgId, examId, to.opensAt, to.closesAt, to.hardClose],
+      );
+      const moved = await tx.query<{ id: string }>(
+        `UPDATE invitations SET opens_at = $3, closes_at = $4, hard_close = $5
+          WHERE org_id = $1 AND exam_id = $2 AND revoked_at IS NULL AND attempt_id IS NULL
+            AND opens_at = $6::timestamptz AND closes_at = $7::timestamptz
+        RETURNING id`,
+        [scope.orgId, examId, to.opensAt, to.closesAt, to.hardClose, from.opensAt, from.closesAt],
+      );
+      const ids = moved.map((m) => m.id);
+      if (!options.retime || ids.length === 0) return ids.length;
+
+      await tx.query(
+        `UPDATE outbox SET status = 'skipped', last_error = 'Rescheduled', locked_until = NULL
+          WHERE org_id = $1 AND status = 'pending' AND purpose IN ('reminder', 'reminder_day', 'rescheduled')
+            AND subject ->> 'invitationId' = ANY ($2::text[])`,
+        [scope.orgId, ids],
+      );
+      const sent = await tx.query<{ id: string; kinds: ("email" | "sms")[] }>(
+        `SELECT subject ->> 'invitationId' AS id, array_agg(DISTINCT kind ORDER BY kind) AS kinds FROM outbox
+          WHERE org_id = $1 AND purpose = 'invite' AND kind IN ('email', 'sms') AND subject ->> 'invitationId' = ANY ($2::text[])
+          GROUP BY 1`,
+        [scope.orgId, ids],
+      );
+      const channels = new Map(sent.map((r) => [r.id, r.kinds]));
+      for (const id of ids) await enqueue(tx, scope.orgId, options.messages(id, channels.get(id) ?? []), this.#newId);
+      return ids.length;
+    });
   }
 
   async getWindow(scope: Scope, examId: string): Promise<ExamWindow | null> {
@@ -202,7 +267,8 @@ export class InvitationStore {
     });
   }
 
-  async list(scope: Scope, examId: string): Promise<readonly InvitationStatus[]> {
+  /** Every invitation to an exam, where its attempt stands, and its latest message due by `now`. */
+  async list(scope: Scope, examId: string, now: Date = new Date()): Promise<readonly InvitationStatus[]> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<
         Row & { lifecycle: string | null; email_delivery: DeliveryRow | null; sms_delivery: DeliveryRow | null }
@@ -212,14 +278,16 @@ export class InvitationStore {
                 ${lifecycleSql("i.org_id", "i.attempt_id")} AS lifecycle,
                 (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
                    FROM outbox WHERE org_id = i.org_id AND kind = 'email' AND subject ->> 'invitationId' = i.id
-                   ORDER BY created_at DESC LIMIT 1) o) AS email_delivery,
+                    AND ${NEEDED}
+                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS email_delivery,
                 (SELECT to_jsonb(o) FROM (SELECT status, purpose, coalesce(sent_at, created_at) AS at, last_error AS error
                    FROM outbox WHERE org_id = i.org_id AND kind = 'sms' AND subject ->> 'invitationId' = i.id
-                   ORDER BY created_at DESC LIMIT 1) o) AS sms_delivery
+                    AND ${NEEDED}
+                   ORDER BY ${LATEST_DUE} LIMIT 1) o) AS sms_delivery
            FROM invitations i
           WHERE i.org_id = $1 AND i.exam_id = $2
           ORDER BY i.created_at, i.candidate_ref`,
-        [scope.orgId, examId],
+        [scope.orgId, examId, now.toISOString()],
       );
       return rows.map((row) => ({
         ...toInvitation(row),

@@ -22,7 +22,7 @@ import {
 import { Avatar, Wordmark } from "@parikshaa/brand/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Exam } from "@parikshaa/core/browser";
-import { ConsoleClient, ConsoleError } from "./api.ts";
+import { ConsoleClient, ConsoleError, type WhoAmI } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { BankPanel } from "./components/Bank.tsx";
 import { Candidates } from "./components/Candidates.tsx";
@@ -206,10 +206,8 @@ function Console({
     if (emailVerified === null || emailVerified === "pending") return;
     if (emailVerified === "done") {
       toast("Your email address is confirmed. You can invite candidates and colleagues now.", "success");
-      // Asked for alongside the link's check, the account may have been read before it counted.
-      void queryClient.invalidateQueries({ queryKey: ["me"] });
     } else toast(emailVerified, "error");
-  }, [emailVerified, toast, queryClient]);
+  }, [emailVerified, toast]);
   // `?report=<attempt>` opens one candidate's report: the link webhooks and Greenhouse carry.
   const [view, setView] = useState<View>(() => {
     const query = new URLSearchParams(window.location.search);
@@ -219,7 +217,8 @@ function Console({
     window.history.replaceState(null, "", window.location.pathname);
     return { name: "report", examId: "", attemptId: report };
   });
-  const me = useQuery({ queryKey: ["me"], queryFn: () => client.me() });
+  // Opened with a confirmation link, the account is read once the link is checked, not alongside it.
+  const me = useQuery({ queryKey: ["me"], queryFn: () => client.me(), enabled: emailVerified !== "pending" });
   // Signed in through the organisation's provider: next time, offer it first, by name.
   const cameBySso = arrivedBySso;
   useEffect(() => {
@@ -601,7 +600,7 @@ function Console({
         ) : null}
 
         <main className="content">
-          {me.data?.emailVerified === false && me.data.email !== null ? <ConfirmEmail client={client} email={me.data.email} /> : null}
+          {me.data?.emailVerified === false && me.data.email !== null && emailVerified !== "done" ? <ConfirmEmail client={client} email={me.data.email} /> : null}
           <PageFrame title={pageTitle(view, examTitle)} note={PAGE_NOTE[view.name]}>
             {view.name === "home" ? (
               <Home
@@ -613,6 +612,7 @@ function Console({
                 onExams={(filter) => go({ name: "exams", filter })}
                 onTour={() => setTouring(true)}
                 canBuy={can("org:manage")}
+                {...(can("attempt:grade") ? { onResults: (examId: string) => go({ name: "results", examId }) } : {})}
                 {...(can("exam:write")
                   ? {
                       sample: {
@@ -774,7 +774,12 @@ function Console({
             {view.name === "candidates" ? <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} /> : null}
 
             {view.name === "results" ? (
-              <ResultsPanel client={client} examId={view.examId} onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })} />
+              <ResultsPanel
+                client={client}
+                examId={view.examId}
+                canGrade={can("attempt:grade")}
+                onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
+              />
             ) : null}
             {view.name === "report" ? <ReportPanel client={client} attemptId={view.attemptId} canErase={can("org:manage")} organisation={me.data?.organisation.name} /> : null}
             {view.name === "live" ? <LivePanel client={client} examId={view.examId} canIntervene={can("attempt:extend")} /> : null}

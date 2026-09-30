@@ -29,8 +29,10 @@ export function ProbePanel({ prompt, streaming, onReply }: Props) {
   const box = useRef<HTMLTextAreaElement>(null);
 
   // Once the question is written out, the reply box is where the candidate is taken: no hunting for it.
+  // Not from a window they have open, though: the submit summary keeps its focus, not a box behind it.
   useEffect(() => {
-    if (!streaming) box.current?.focus({ preventScroll: false });
+    if (streaming || document.activeElement?.closest('[role="dialog"]')) return;
+    box.current?.focus({ preventScroll: false });
   }, [streaming]);
 
   const send = async () => {

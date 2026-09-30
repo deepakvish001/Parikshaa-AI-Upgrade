@@ -27,6 +27,8 @@ for (const colorScheme of ["light", "dark"] as const) {
     test.use({ colorScheme });
 
     test("every screen a candidate meets passes WCAG 2.1 AA, in English and in Hindi", async ({ page, request }) => {
+      // Every screen twice over, each run through axe: WebKit on CI has taken most of a minute and run out of it.
+      test.slow();
       const sitting = await seedSitting(request, { vivaTriggerRatio: 0.5 });
       await beginSitting(page, sitting.links["CS001"]!);
       await expect(page.getByRole("heading", { name: sitting.title })).toBeVisible();

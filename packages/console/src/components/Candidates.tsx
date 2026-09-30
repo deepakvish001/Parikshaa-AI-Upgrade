@@ -65,13 +65,15 @@ function cellsOf(line: string): string[] {
 }
 
 const DELIVERY_WORDS: Record<string, string> = { sent: "sent", failed: "failed", skipped: "not sent", pending: "waiting", sending: "sending" };
+/** Which message the icon is about: the invitation itself, or one of its reminders. */
+const PURPOSE_WORDS: Record<string, string> = { invite: "", reminder: "reminder ", reminder_day: "reminder " };
 
 /** Email and SMS as two small icons, each coloured by how its delivery went; what went wrong is in a tooltip. */
 function DeliveryIcons({ row }: { row: InvitationRow }) {
   const icon = (channel: Channel, d: Delivery) => {
     const Icon = channel === "email" ? Mail : MessageSquare;
     const tone = d.status === "sent" ? "ok" : d.status === "failed" || d.status === "skipped" ? "bad" : "pending";
-    const words = `${channel === "email" ? "Email" : "SMS"} ${DELIVERY_WORDS[d.status] ?? d.status}`;
+    const words = `${channel === "email" ? "Email" : "SMS"} ${PURPOSE_WORDS[d.purpose] ?? ""}${DELIVERY_WORDS[d.status] ?? d.status}`;
     const mark = (
       <span className={`delivery-icon ${tone}`} role="img" aria-label={d.error === null ? words : `${words}: ${d.error}`} tabIndex={d.error === null ? undefined : 0}>
         <Icon aria-hidden="true" />
@@ -135,7 +137,9 @@ export function Candidates({ client, examId, canInvite }: { client: ConsoleClien
         </Banner>
       ) : null}
 
-      {window.data === undefined ? null : <WindowForm client={client} examId={examId} initial={window.data} canEdit={canInvite} />}
+      {window.data === undefined ? null : (
+        <WindowForm client={client} examId={examId} initial={window.data} canEdit={canInvite} invited={invitations.data ?? []} />
+      )}
 
       {canInvite ? <Importer client={client} examId={examId} onImported={refresh} hasWindow={window.data !== null && window.data !== undefined} /> : null}
 
@@ -208,25 +212,42 @@ function WindowForm({
   examId,
   initial,
   canEdit,
+  invited,
 }: {
   client: ConsoleClient;
   examId: string;
   initial: { opensAt: string; closesAt: string; hardClose: boolean } | null;
   canEdit: boolean;
+  invited: readonly InvitationRow[];
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [opensAt, setOpensAt] = useState(initial === null ? "" : toIst(initial.opensAt));
   const [closesAt, setClosesAt] = useState(initial === null ? "" : toIst(initial.closesAt));
   const [hardClose, setHardClose] = useState(initial?.hardClose ?? true);
+  const [notify, setNotify] = useState(true);
+  const backwards = opensAt !== "" && closesAt !== "" && closesAt <= opensAt;
+  // Moving the time moves those on the exam's window who have not begun; a window of one's own, or a test begun, stays.
+  const retimed = initial !== null && opensAt !== "" && closesAt !== "" && (fromIst(opensAt) !== initial.opensAt || fromIst(closesAt) !== initial.closesAt);
+  const following = initial === null ? 0 : invited.filter((i) => !i.revoked && i.attemptId === null && i.opensAt === initial.opensAt && i.closesAt === initial.closesAt).length;
   const save = useMutation({
-    mutationFn: () => client.setWindow(examId, { opensAt: fromIst(opensAt), closesAt: fromIst(closesAt), hardClose }),
-    onSuccess: async () => {
-      toast(initial === null ? "Scheduled" : "Rescheduled", "success");
-      await Promise.all([queryClient.invalidateQueries({ queryKey: ["window", examId] }), queryClient.invalidateQueries({ queryKey: ["exams"] })]);
+    mutationFn: () => client.setWindow(examId, { opensAt: fromIst(opensAt), closesAt: fromIst(closesAt), hardClose }, { notify }),
+    onSuccess: async ({ moved }) => {
+      toast(
+        initial === null
+          ? "Scheduled"
+          : moved === 0
+            ? "Rescheduled"
+            : `Rescheduled. ${moved === 1 ? "1 candidate moves" : `${moved} candidates move`} to the new time${notify ? ", and will be told" : ""}.`,
+        "success",
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["window", examId] }),
+        queryClient.invalidateQueries({ queryKey: ["exams"] }),
+        queryClient.invalidateQueries({ queryKey: ["invitations", examId] }),
+      ]);
     },
   });
-  const backwards = opensAt !== "" && closesAt !== "" && closesAt <= opensAt;
 
   return (
     <section className="card" aria-label="Schedule">
@@ -246,6 +267,18 @@ function WindowForm({
         <input type="checkbox" checked={hardClose} disabled={!canEdit} onChange={(e) => setHardClose(e.target.checked)} /> End every attempt when the window
         closes, however late it was started
       </label>
+      {canEdit && retimed && following > 0 ? (
+        <div className="reschedule-note" role="note">
+          <p>
+            {following === 1 ? "1 invited candidate who has not begun moves" : `${following} invited candidates who have not begun move`} to the new time,
+            with their reminders. Anyone with a window of their own, or who has begun, keeps theirs.
+          </p>
+          <label className="inline">
+            <input type="checkbox" checked={notify} onChange={(e) => setNotify(e.target.checked)} /> Tell them the new time, by the email or SMS their
+            invitation went by
+          </label>
+        </div>
+      ) : null}
       {canEdit ? (
         <div className="row">
           <button type="button" disabled={save.isPending || opensAt === "" || closesAt === "" || backwards} onClick={() => save.mutate()}>
@@ -317,7 +350,8 @@ function Importer({
       <p className="notice">
         One candidate per row: <span className="mono">roll_number</span> (or ref), <span className="mono">name</span>, <span className="mono">email</span>,{" "}
         <span className="mono">phone</span>, and optionally <span className="mono">opens_at</span> / <span className="mono">closes_at</span> for a narrower window,
-        read as IST. Nothing is sent until you confirm.
+        read as IST. Nothing is sent until you confirm. Each candidate then gets their link at once, a reminder the day before their window opens,
+        and another an hour before; a candidate who has already begun is not reminded.
         {hasWindow ? null : " Schedule the exam first, or give every candidate their own window."}
       </p>
       <DropZone

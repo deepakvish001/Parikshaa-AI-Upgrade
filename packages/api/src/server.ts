@@ -99,6 +99,13 @@ export interface ServerOptions {
   readonly loginThrottle?: LoginThrottle;
   /** Institutions signing themselves up, and the sample exam. Absent: neither's routes. */
   readonly onboarding?: Onboarding;
+  /**
+   * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
+   * opened a page of ours can reach into it. On unless set false, which only
+   * the browser suite does: Playwright's Firefox loses a new tab's first
+   * navigation when the policy moves it to another process.
+   */
+  readonly openerPolicy?: boolean;
   /** Sign-ups from one address (`SIGNUPS`: five an hour, unless given). */
   readonly signupLimit?: RateLimit;
   /**
@@ -287,7 +294,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     reply.header("x-content-type-options", "nosniff");
     reply.header("x-frame-options", "DENY");
     reply.header("referrer-policy", "no-referrer");
-    reply.header("cross-origin-opener-policy", "same-origin");
+    if (options.openerPolicy !== false) reply.header("cross-origin-opener-policy", "same-origin");
     reply.header("permissions-policy", "camera=(self), microphone=(), geolocation=(), payment=(self)");
     if (options.hsts === true) reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
   });
@@ -725,6 +732,47 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const actor = await staff(request, reply, "attempt:grade");
         if (actor === null) return;
         return reply.send({ total: await service.grade(actor, attemptId(request.params.attemptId)) });
+      },
+    );
+
+    routes.post(
+      "/exams/:examId/extend-open",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Give every candidate still sitting the same extra time",
+          description:
+            "For a power cut or a fault everyone sat through. Each open attempt is extended as `POST /attempts/{attemptId}/extend` would, with the reason in its ledger and the audit. An attempt that closes meanwhile is listed in `failed`.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          body: S.extendBody,
+          response: { 200: S.extendOpenResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "attempt:extend");
+        if (actor === null) return;
+        return reply.send(await service.extendOpen(actor, examId(request.params.examId), request.body.minutes, request.body.reason));
+      },
+    );
+
+    routes.post(
+      "/exams/:examId/grade-submitted",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Grade the exam's submitted attempts, a batch at a time",
+          description:
+            "Grades up to 20 submitted attempts, a few at once, each as `POST /attempts/{attemptId}/grade` would. One that cannot be graded is listed in `failed` and left submitted. Call again while `remaining` is above zero and the last call graded any. 402 `spend_cap_reached` stops it.",
+          security: [{ staffAuth: [] }],
+          params: S.examParams,
+          response: { 200: S.gradeSubmittedResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "attempt:grade");
+        if (actor === null) return;
+        return reply.send(await service.gradeSubmitted(actor, examId(request.params.examId)));
       },
     );
 

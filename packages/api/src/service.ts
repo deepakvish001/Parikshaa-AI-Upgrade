@@ -1280,6 +1280,36 @@ export class ExamService {
   }
 
   /**
+   * The same extra time for every attempt still open on an exam: a power cut
+   * in the hall, a server hiccup everyone sat through. Each is extended as
+   * `extendTime` would, with the same reason in each ledger and the audit;
+   * one that closes meanwhile is named, never stopping the rest.
+   */
+  async extendOpen(
+    actor: Actor,
+    examId: ExamId,
+    minutes: number,
+    reason: string,
+  ): Promise<{ extended: number; failed: { attemptId: string; message: string }[] }> {
+    this.#require(actor, "attempt:extend");
+    if (actor.kind !== "user") throw new Forbidden("attempt:extend");
+    const open = (await this.listAttempts(actor, examId)).filter((a) => a.state === "in_progress");
+    const failed: { attemptId: string; message: string }[] = [];
+    let extended = 0;
+    for (const attempt of open) {
+      try {
+        await this.extendTime(actor, attempt.id, minutes, reason);
+        extended++;
+      } catch (error) {
+        // A reason or a length that is refused is refused for every one of them: say so once.
+        if (error instanceof AttemptError && (error.code === "reason_required" || error.code === "invalid_extension")) throw error;
+        failed.push({ attemptId: attempt.id, message: error instanceof Error ? error.message : String(error) });
+      }
+    }
+    return { extended, failed };
+  }
+
+  /**
    * Open a submitted attempt again (ROADMAP §8): the laptop crashed and
    * submitted, the power went, submit was pressed by mistake.
    *
@@ -1394,6 +1424,40 @@ export class ExamService {
     await this.#store.append(scope, id, { type: "attempt_graded", attemptId: id, total });
     await this.#audit(actor, "attempt.graded", id, { total });
     return total;
+  }
+
+  /**
+   * Grade an exam's submitted attempts, a batch at a time (Results → Grade
+   * all). Each is graded exactly as one graded by hand; a few run at once, as
+   * the model allows. One that cannot be graded is reported and left as it
+   * was, never stopping the rest — except running out of budget, which stops
+   * everything. The caller asks again while any remain.
+   */
+  async gradeSubmitted(
+    actor: Actor,
+    examId: ExamId,
+    options: { readonly limit?: number; readonly concurrency?: number } = {},
+  ): Promise<{ graded: number; failed: { attemptId: string; message: string }[]; remaining: number }> {
+    this.#require(actor, "attempt:grade");
+    const submitted = (await this.listAttempts(actor, examId)).filter((a) => a.state === "submitted");
+    const batch = submitted.slice(0, options.limit ?? 20);
+    const failed: { attemptId: string; message: string }[] = [];
+    let graded = 0;
+    let next = 0;
+    const worker = async (): Promise<void> => {
+      while (next < batch.length) {
+        const attempt = batch[next++]!;
+        try {
+          await this.grade(actor, attempt.id);
+          graded++;
+        } catch (error) {
+          if (error instanceof SpendCapReached) throw error;
+          failed.push({ attemptId: attempt.id, message: error instanceof Error ? error.message : String(error) });
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(options.concurrency ?? 4, batch.length) }, worker));
+    return { graded, failed, remaining: submitted.length - graded };
   }
 
   // --- the organisation -----------------------------------------------------

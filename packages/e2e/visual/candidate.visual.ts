@@ -84,6 +84,8 @@ for (const [size, viewport] of SIZES) {
           await page.locator("section.qview label.option").nth(1).click();
           await page.locator(".qfoot .save-next").click();
           await expect(page.locator(".save-status.saved")).toBeVisible();
+          // The follow-up written out in full first: arriving behind the summary, it would be half a sentence.
+          await expect(page.locator(".probe textarea")).toBeFocused();
           await page.locator(".exambar-action").click();
           await expect(page.locator(".submit-dialog")).toBeVisible();
           await settle(page);

@@ -125,7 +125,7 @@ describe("importing a cohort", () => {
     expect((await call("GET", owner, "/exams/drive-2026/invitations")).json().invitations).toEqual([]);
   });
 
-  it("invites everyone and queues each their invitation and a reminder", async () => {
+  it("invites everyone and queues each their invitation and two reminders", async () => {
     const invited = await inviteAll();
 
     expect(invited.map((i) => i.candidateRef)).toEqual(["CS001", "CS002", "CS003"]);
@@ -134,9 +134,17 @@ describe("importing a cohort", () => {
       const id = invited.find((i) => i.candidateRef === ref)!.id;
       return queued.filter((q) => q.subject["invitationId"] === id).map((q) => `${q.kind}:${q.purpose}`).sort();
     };
-    expect(about("CS001")).toEqual(["email:invite", "email:reminder", "sms:invite", "sms:reminder"]);
+    expect(about("CS001")).toEqual(["email:invite", "email:reminder", "email:reminder_day", "sms:invite", "sms:reminder", "sms:reminder_day"]);
     // Nothing to send to a candidate with no contact details.
     expect(about("CS003")).toEqual([]);
+  });
+
+  it("leaves out a reminder whose moment has passed: invited the same morning, only the hour's goes", async () => {
+    clock = OPENS - 3 * HOUR;
+    const invited = await inviteAll();
+    const queued = await new OutboxStore(pgliteExecutor(db)).recent("org-a");
+    const id = invited.find((i) => i.candidateRef === "CS001")!.id;
+    expect(queued.filter((q) => q.subject["invitationId"] === id && q.kind === "email").map((q) => q.purpose).sort()).toEqual(["invite", "reminder"]);
   });
 
   it("refuses a second import of the same candidates", async () => {

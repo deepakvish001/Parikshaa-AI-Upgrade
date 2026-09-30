@@ -44,6 +44,11 @@ const windowBody = z.object({
   opensAt: z.iso.datetime({ offset: true }),
   closesAt: z.iso.datetime({ offset: true }),
   hardClose: z.boolean().default(true).describe("End every attempt when the window closes, however late it started."),
+  notify: z.boolean().default(true).describe("When the time changes, tell each invited candidate who moves with it, by the channels their invitation went by."),
+});
+const windowSaved = z.object({
+  ok: z.literal(true),
+  moved: z.number().int().describe("Invited candidates moved to the new time: those on the exam's window who had not begun."),
 });
 const windowResponse = z.object({ opensAt: z.string(), closesAt: z.string(), hardClose: z.boolean() });
 const problem = z.object({ row: z.number(), message: z.string() });
@@ -81,24 +86,22 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
     {
       schema: {
         tags: INVITE,
-        summary: "Schedule an exam",
-        description: "Candidates can open their link only inside this window, or a narrower one of their own.",
+        summary: "Schedule an exam, or move it",
+        description:
+          "Candidates can open their link only inside this window, or a narrower one of their own. Moving it moves every invited candidate on it who has not begun: their reminders are for the new time, and with notify each is told the new time. A candidate with a window of their own keeps it.",
         security: SECURED,
         params: S.examParams,
         body: windowBody,
-        response: { 200: S.okResponse, ...refusals },
+        response: { 200: windowSaved, ...refusals },
       },
     },
     async (request, reply) => {
       const actor = await staff(request, reply, "exam:write");
       if (actor === null) return;
-      const { opensAt, closesAt, hardClose } = request.body;
-      await invitations.setWindow(actor, request.params.examId, {
-        opensAt: new Date(opensAt).toISOString(),
-        closesAt: new Date(closesAt).toISOString(),
-        hardClose,
-      });
-      return reply.send({ ok: true });
+      const { opensAt, closesAt, hardClose, notify } = request.body;
+      const window = { opensAt: new Date(opensAt).toISOString(), closesAt: new Date(closesAt).toISOString(), hardClose };
+      const { moved } = await invitations.setWindow(actor, request.params.examId, window, { notify });
+      return reply.send({ ok: true as const, moved });
     },
   );
 
@@ -127,7 +130,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         tags: INVITE,
         summary: "Invite candidates from a CSV file",
         description:
-          "Columns: ref (or roll_number, candidate_id, application_id), name, email, phone, and optionally opens_at and closes_at for a narrower window per candidate. Times without an offset are India Standard Time; phones are Indian mobiles. With dryRun, everything is checked and nothing changes. Otherwise it is all or nothing, and each candidate's invitation and reminder are queued for delivery.",
+          "Columns: ref (or roll_number, candidate_id, application_id), name, email, phone, and optionally opens_at and closes_at for a narrower window per candidate. Times without an offset are India Standard Time; phones are Indian mobiles. With dryRun, everything is checked and nothing changes. Otherwise it is all or nothing, and each candidate's invitation is queued for delivery with two reminders: a day before their window opens, and an hour before.",
         security: SECURED,
         params: S.examParams,
         body: z.object({

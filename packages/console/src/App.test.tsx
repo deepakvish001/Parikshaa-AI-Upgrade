@@ -297,7 +297,7 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     })),
     cloneExam: vi.fn(async () => undefined),
     getWindow: vi.fn(async () => ({ opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true })),
-    setWindow: vi.fn(async () => undefined),
+    setWindow: vi.fn(async () => ({ moved: 0 })),
     importCandidates: vi.fn(async (_exam: string, _csv: string, dryRun: boolean) =>
       dryRun
         ? {
@@ -1430,8 +1430,43 @@ describe("scheduling and inviting a cohort", () => {
     await userEvent.type(closes, "2026-10-01T13:00");
     await userEvent.click(screen.getByRole("button", { name: /^(Schedule|Reschedule)$/ }));
     await waitFor(() =>
-      expect(client.setWindow).toHaveBeenCalledWith("exam-1", { opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true }),
+      expect(client.setWindow).toHaveBeenCalledWith(
+        "exam-1",
+        { opensAt: "2026-10-01T04:30:00.000Z", closesAt: "2026-10-01T07:30:00.000Z", hardClose: true },
+        { notify: true },
+      ),
     );
+  });
+
+  it("says who moves with a new time before saving it, and can move them without telling them", async () => {
+    const client = stubClient();
+    client.setWindow = vi.fn(async () => ({ moved: 1 }));
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Candidates" }));
+    await screen.findByText("CS001");
+    const opens = await screen.findByLabelText("Opens (IST)");
+    // The same time moves nobody, and says nothing.
+    expect(screen.queryByRole("note")).toBeNull();
+
+    await userEvent.clear(opens);
+    await userEvent.type(opens, "2026-10-02T10:00");
+    const closes = screen.getByLabelText("Closes (IST)");
+    await userEvent.clear(closes);
+    await userEvent.type(closes, "2026-10-02T13:00");
+    const note = screen.getByRole("note");
+    expect(note).toHaveTextContent("1 invited candidate who has not begun moves to the new time, with their reminders.");
+    await userEvent.click(within(note).getByRole("checkbox", { name: /Tell them the new time/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Reschedule" }));
+
+    await waitFor(() =>
+      expect(client.setWindow).toHaveBeenCalledWith(
+        "exam-1",
+        { opensAt: "2026-10-02T04:30:00.000Z", closesAt: "2026-10-02T07:30:00.000Z", hardClose: true },
+        { notify: false },
+      ),
+    );
+    expect(await screen.findByText("Rescheduled. 1 candidate moves to the new time.")).toBeInTheDocument();
   });
 
   it("shows each candidate's delivery, including what failed and why", async () => {
@@ -1444,6 +1479,21 @@ describe("scheduling and inviting a cohort", () => {
     // What went wrong is in a tooltip, on hover and on focus.
     expect(within(row).getByRole("tooltip", { hidden: true })).toHaveTextContent("bad number");
     expect(sms).toHaveAttribute("tabindex", "0");
+  });
+
+  it("says when what went out last was a reminder", async () => {
+    const client = stubClient();
+    const [invited] = await client.listInvitations("algorithms");
+    client.listInvitations = vi.fn(async () => [
+      { ...invited!, delivery: { email: { status: "sent", purpose: "reminder_day", at: "2026-09-30T04:30:00.000Z", error: null }, sms: null } },
+    ]);
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Candidates" }));
+    const table = await screen.findByRole("region", { name: "Invited candidates" });
+    const row = (await within(table).findByText("CS001")).closest("tr")!;
+    expect(within(row).getByRole("img", { name: "Email reminder sent" })).toBeInTheDocument();
+    expect(screen.getByText(/a reminder the day before their window opens,\s+and another an hour before/)).toBeInTheDocument();
   });
 
   it("resends and revokes a candidate who has not started", async () => {

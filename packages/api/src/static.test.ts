@@ -95,6 +95,8 @@ describe("serving the clients", () => {
     expect(candidate.headers["x-frame-options"]).toBe("DENY");
     expect(candidate.headers["referrer-policy"]).toBe("no-referrer");
     expect(candidate.headers["x-content-type-options"]).toBe("nosniff");
+    // No other site that opened this page can reach into it.
+    expect(candidate.headers["cross-origin-opener-policy"]).toBe("same-origin");
 
     // The console's Billing page opens Razorpay Checkout; the candidate's page never can.
     const staff = await app.inject({ method: "GET", url: "/console/", headers: html });

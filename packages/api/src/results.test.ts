@@ -64,8 +64,8 @@ const call = (method: "GET" | "POST" | "PUT", token: string | null, url: string,
     ...(payload === undefined ? {} : { payload }),
   });
 
-/** Sit the exam as the invited candidate `ref`, answering as given, and have it graded. */
-async function sit(ref: string, answers: Record<string, string>, minutes: number): Promise<string> {
+/** Sit the exam as the invited candidate `ref`, answering as given, and have it graded unless told not to. */
+async function sit(ref: string, answers: Record<string, string>, minutes: number, grade = true): Promise<string> {
   const invitations = (await call("GET", owner, "/exams/drive/invitations")).json().invitations as { id: string; candidateRef: string }[];
   const invitation = invitations.find((i) => i.candidateRef === ref)!;
   clock = OPENS + 60_000;
@@ -77,9 +77,37 @@ async function sit(ref: string, answers: Record<string, string>, minutes: number
   }
   clock += minutes * 60_000;
   expect((await call("POST", token, "/attempts/me/submit")).statusCode).toBe(200);
-  expect((await call("POST", owner, `/attempts/${attemptId}/grade`)).statusCode).toBe(200);
+  if (grade) expect((await call("POST", owner, `/attempts/${attemptId}/grade`)).statusCode).toBe(200);
   return attemptId;
 }
+
+describe("grading every submitted attempt at once", () => {
+  it("grades each as it would be graded by hand, and says when none are left", async () => {
+    await sit("007", { q1: "0", q2: "1" }, 30, false);
+    await sit("008", { q1: "1" }, 50, false);
+
+    const first = await call("POST", owner, "/exams/drive/grade-submitted");
+    expect(first.statusCode, first.payload).toBe(200);
+    expect(first.json()).toEqual({ graded: 2, failed: [], remaining: 0 });
+
+    const rows = (await call("GET", owner, "/exams/drive/results")).json().rows as { ref: string; state: string; total: number }[];
+    expect(rows.filter((r) => r.state === "graded").map((r) => [r.ref, r.total]).sort()).toEqual([
+      ["007", 3],
+      ["008", 0],
+    ]);
+    // Asked again, there is nothing to do; nor for a candidate who never started.
+    expect((await call("POST", owner, "/exams/drive/grade-submitted")).json()).toEqual({ graded: 0, failed: [], remaining: 0 });
+    const audit = (await call("GET", owner, "/audit")).json().entries.filter((e: { action: string }) => e.action === "attempt.graded");
+    expect(audit).toHaveLength(2);
+  });
+
+  it("is for those who may grade", async () => {
+    const org = (await identity.findUserByEmail("owner@acme.test"))!.orgId;
+    await addStaff(identity, org, "watch@acme.test", "invigilator");
+    const invigilator = await signIn(app, "watch@acme.test");
+    expect((await call("POST", invigilator, "/exams/drive/grade-submitted")).statusCode).toBe(403);
+  });
+});
 
 describe("the cohort's results", () => {
   it("lists each candidate by their own reference, with the cohort's figures", async () => {
