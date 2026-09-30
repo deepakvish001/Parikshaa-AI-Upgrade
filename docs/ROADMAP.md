@@ -818,7 +818,8 @@ was solved, a reason to come back each day, and a sense of what companies
 ask. §16 makes a practice site that, in the manner of takeUforward and its
 peers, while staying the institution's own. The plan behind it is at
 `claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh`; the content of its first packs
-is from Parikshaa-New.
+is from Parikshaa-New. What is built and what is left of that plan, feature by
+feature, is tracked in [PREP-TRACKER.md](PREP-TRACKER.md).
 
 **Status — built.** Four parts, each in its own migration.
 
