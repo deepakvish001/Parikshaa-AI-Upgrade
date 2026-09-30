@@ -42,6 +42,8 @@ import type { RecheckService } from "./rechecks.js";
 import { registerRecheckRoutes } from "./rechecks-routes.js";
 import type { MarkingService } from "./marking.js";
 import { registerMarkingRoutes } from "./marking-routes.js";
+import { ProgressService } from "./progress.js";
+import { registerProgressRoutes } from "./progress-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
@@ -1221,6 +1223,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
     if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
     if (options.marking !== undefined) registerMarkingRoutes(routes, { marking: options.marking, staff });
+    registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });
 

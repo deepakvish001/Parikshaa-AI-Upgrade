@@ -357,6 +357,25 @@ What to do when:
 - [ ] Note every question anyone asked you: each is a gap in the product or
       in the guide.
 
+### Across tests: Insights
+
+**Insights** in the console's sidebar is for a placement cell running a term
+of drives:
+
+- **Candidates across tests** lines up every candidate by roll number with
+  their percentage in each graded test (the latest twelve), their average,
+  and the change from their first to their latest. Search by a roll-number
+  prefix (such as a branch's, `CS`) or a name; **Download CSV** takes it away.
+  The same roll number in two tests is taken to be the same student.
+- **Question quality** reads the questions of recent tests with eight or more
+  graded papers, and lists those worth a second look before they are used
+  again: almost everyone got it, very few did, or strong candidates did no
+  better than weak ones.
+
+| Candidates across tests | Question quality |
+|---|---|
+| ![Candidates across tests](screenshots/pilot-13-candidates-across-tests.png) | ![Question quality](screenshots/pilot-14-question-quality.png) |
+
 ## 6. What to learn from the pilot
 
 Candidates are asked two things after submitting: how the test went (1 to

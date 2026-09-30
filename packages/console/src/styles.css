@@ -625,6 +625,23 @@ textarea.mono {
   width: 100%;
 }
 
+/* Insights: candidates across tests, and questions worth a second look. */
+.progress-table td.qualified {
+  color: var(--success);
+}
+.progress-table td.failed {
+  color: var(--text-secondary);
+}
+.progress-table td.up {
+  color: var(--success);
+}
+.progress-table td.down {
+  color: var(--danger);
+}
+.quality-reason.does_not_separate {
+  color: var(--warning);
+}
+
 /* Marking by hand: the card on Results, and the drawer it opens. */
 .marking-card .bar svg {
   width: 1.1rem;

@@ -110,6 +110,12 @@ After submitting, each student is asked how the test went and whether
 anything got in the way. Answering is optional; **What candidates said** on
 the Results tab shows the ratings and comments, without names.
 
+## 7. Across the term
+
+**Insights** in the sidebar shows every student across your tests by roll
+number — their percentage in each, their average and how they have moved —
+and lists questions worth a second look before you use them again.
+
 ## Need help?
 
 Call or message **[pilot contact name, phone]**. Before your first real

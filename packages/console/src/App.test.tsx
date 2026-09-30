@@ -374,6 +374,22 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     examFeedback: vi.fn(async () => ({ responses: 0, submitted: 0, average: null, counts: [0, 0, 0, 0, 0], comments: [] })),
     rechecks: vi.fn(async () => []),
     marking: vi.fn(async () => ({ questions: [], items: [] })),
+    progress: vi.fn(async () => ({
+      exams: [
+        { id: "e1", title: "Aptitude, July", date: "2026-07-01T04:30:00.000Z", graded: 2, meanPercent: 55, qualified: 1 },
+        { id: "e2", title: "Aptitude, September", date: "2026-09-01T04:30:00.000Z", graded: 2, meanPercent: 70, qualified: 2 },
+      ],
+      candidates: [
+        { ref: "CS001", name: "Ananya Iyer", results: { e1: { percent: 40, outcome: "failed" as const }, e2: { percent: 80, outcome: "qualified" as const } }, average: 60, change: 40 },
+        { ref: "CS002", name: "Rohan Das", results: { e1: { percent: 70, outcome: "qualified" as const } }, average: 70, change: null },
+      ],
+      available: [],
+    })),
+    questionQuality: vi.fn(async () => ({
+      flags: [{ examId: "e2", examTitle: "Aptitude, September", questionId: "q4", number: 4, stem: "Pick the odd one out.", kind: "mcq", appeared: 30, facility: 0.55, discrimination: -0.05, reason: "does_not_separate" as const }],
+      questions: 24,
+      exams: 2,
+    })),
     markAnswer: vi.fn(async (_e: string, _a: string, _q: string, score: number) => ({ score, changed: false })),
     answerRecheck: vi.fn(async () => ({ status: "changed" })),
     scorecardPdf: vi.fn(async () => new Blob(["%PDF"])),
@@ -1838,6 +1854,24 @@ describe("integrations", () => {
     expect(screen.getByRole("img", { name: "90%" })).toBeInTheDocument();
     expect(client.report).toHaveBeenCalledWith("a2");
     expect(window.location.search).toBe("");
+  });
+});
+
+describe("insights across tests", () => {
+  it("lines candidates up by roll number across tests, and names the questions worth a second look", async () => {
+    const client = stubClient();
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Insights" }));
+    const table = await screen.findByRole("region", { name: "Candidates across tests" });
+    const ananya = within(table).getByText("CS001").closest("tr")!;
+    expect(ananya).toHaveTextContent("40%");
+    expect(ananya).toHaveTextContent("80%");
+    expect(ananya).toHaveTextContent("+40");
+    expect(within(table).getByText("CS002").closest("tr")).toHaveTextContent("—");
+    await userEvent.click(screen.getByRole("tab", { name: "Question quality" }));
+    const flags = await screen.findByRole("region", { name: "Questions worth a second look" });
+    expect(flags).toHaveTextContent("1 of 24 questions, across 2 tests");
+    expect(flags).toHaveTextContent("Strong candidates did no better on it than weak ones");
   });
 });
 

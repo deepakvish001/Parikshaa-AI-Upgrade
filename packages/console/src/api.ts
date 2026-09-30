@@ -176,6 +176,33 @@ export interface LabSettings {
   readonly yourAddress: string;
 }
 
+/** Candidates across tests, for a placement cell. */
+export interface Progress {
+  readonly exams: readonly { readonly id: string; readonly title: string; readonly date: string; readonly graded: number; readonly meanPercent: number | null; readonly qualified: number | null }[];
+  readonly candidates: readonly {
+    readonly ref: string;
+    readonly name: string;
+    readonly results: Readonly<Record<string, { readonly percent: number; readonly outcome: "qualified" | "failed" | null }>>;
+    readonly average: number | null;
+    readonly change: number | null;
+  }[];
+  readonly available: readonly { readonly id: string; readonly title: string }[];
+}
+
+/** A question worth a second look, and why. */
+export interface QualityFlag {
+  readonly examId: string;
+  readonly examTitle: string;
+  readonly questionId: string;
+  readonly number: number;
+  readonly stem: string;
+  readonly kind: string;
+  readonly appeared: number;
+  readonly facility: number;
+  readonly discrimination: number | null;
+  readonly reason: "does_not_separate" | "too_hard" | "too_easy";
+}
+
 /** A written question, for marking by hand: what it looks for, and how many answers are read. */
 export interface MarkingQuestion {
   readonly id: string;
@@ -1168,6 +1195,16 @@ export class ConsoleClient {
     });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  /** Candidates across the organisation's graded tests; `search` narrows by roll number or name. */
+  progress(search = ""): Promise<Progress> {
+    return this.#request(`/progress${search.trim() === "" ? "" : `?search=${encodeURIComponent(search.trim())}`}`);
+  }
+
+  /** Questions worth a second look across recent tests. */
+  questionQuality(): Promise<{ readonly flags: readonly QualityFlag[]; readonly questions: number; readonly exams: number }> {
+    return this.#request("/question-quality");
   }
 
   /** The written answers of an exam, without names, for marking by hand. */

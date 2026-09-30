@@ -185,3 +185,30 @@ test("marking written answers by hand", async ({ page, request }) => {
   await drawer.getByRole("spinbutton").fill("3");
   await shoot(page, "pilot-12-marking-by-hand", { fullPage: false });
 });
+
+test("insights across tests", async ({ page, request }) => {
+  test.setTimeout(300_000);
+  // Three drives over a term, the same batch in each: some improve, some slip.
+  const plan: readonly (readonly [string, readonly [string, string, string][]])[] = [
+    ["Aptitude — July", [["1", "It halves.", "72"], ["0", "Stops.", "70"], ["1", "The interval halves until it is empty.", "72"], ["0", "", "65"], ["1", "Halving.", "72"], ["0", "No idea.", "60"]]],
+    ["Aptitude — August", [["1", "The interval halves until empty.", "72"], ["1", "It halves each time.", "72"], ["1", "Halving until nothing is left.", "72"], ["0", "It finds it.", "70"], ["1", "Halves.", "72"], ["1", "The range shrinks.", "72"]]],
+    ["Aptitude — September", [["1", "Each step halves the interval; empty means stop.", "72"], ["1", "The interval halves until it is empty.", "72"], ["0", "Stops.", "72"], ["1", "It halves each step.", "72"], ["1", "Halving.", "72"], ["1", "The interval shrinks to nothing.", "72"]]],
+  ];
+  // Ten a test: question figures are read from eight graded papers.
+  const batch = [...PEOPLE, "Rohan Gupta", "Sneha Kulkarni", "Vikram Joshi", "Pooja Bansal"];
+  const refs = batch.map((_, i) => `CS${String(i + 1).padStart(3, "0")}`);
+  for (const [title, answers] of plan) {
+    const sitting = await seedSitting(request, { questions: [MCQ, SHORT, NUMERIC], title, refs, names: batch, cutoff: { percent: 50 } });
+    for (const [i, ref] of refs.entries()) {
+      const [mcq, short, numeric] = answers[i % answers.length]!;
+      await sitAndGrade(request, sitting, ref, { mcq, short: short === "" ? "-" : short, numeric });
+    }
+  }
+  await signIn(page);
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Insights", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Candidates across tests" })).toBeVisible();
+  await shoot(page, "pilot-13-candidates-across-tests", { fullPage: true });
+  await page.getByRole("tab", { name: "Question quality" }).click();
+  await expect(page.getByRole("tabpanel", { name: "Question quality" })).toBeVisible();
+  await shoot(page, "pilot-14-question-quality", { fullPage: true });
+});
