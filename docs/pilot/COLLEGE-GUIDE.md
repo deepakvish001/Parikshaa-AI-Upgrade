@@ -93,6 +93,10 @@ goes. The same tab shows scores, who qualified, and how the batch did;
 the workbook in your inbox. Each student's report shows
 their answers, marks and any follow-up, with the reasoning behind every mark.
 
+The model marks written answers first. To read them yourself, **Written
+answers → Start marking** on the Results tab shows them one by one without
+names; keep each mark or change it.
+
 When you are ready, **Send results to candidates…** sends each graded
 student their marks by email, and by WhatsApp where it is set up (and, if you
 choose, whether they qualified). It says first how many it will reach. From

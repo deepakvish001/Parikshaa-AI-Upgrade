@@ -329,6 +329,14 @@ What to do when:
       if the exam has a qualifying mark and the college wants it said,
       whether they reached it), with a link to their record. Nobody is sent
       theirs twice, so it can be pressed again after grading the rest.
+- [ ] Before releasing, read the written answers: Results tab → **Written
+      answers → Start marking** shows each graded answer to a written or code
+      question, one after another and without names, with the rubric and the
+      mark the model gave. Enter keeps or saves the mark and moves on; J and K
+      move without saving. A changed mark goes into the record with who
+      changed it; the card counts how many a person has read.
+
+      ![Marking written answers](screenshots/pilot-12-marking-by-hand.png)
 - [ ] From then, each candidate's own link shows **Your result**: marks
       question by question, and **Download scorecard (PDF)**. The scorecard
       carries a QR code and a link that anyone — an employer — can open to see

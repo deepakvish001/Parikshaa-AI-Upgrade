@@ -176,6 +176,30 @@ export interface LabSettings {
   readonly yourAddress: string;
 }
 
+/** A written question, for marking by hand: what it looks for, and how many answers are read. */
+export interface MarkingQuestion {
+  readonly id: string;
+  readonly number: number;
+  readonly stem: string;
+  readonly kind: string;
+  readonly max: number;
+  readonly rubric: readonly string[];
+  readonly expectedPoints: readonly string[];
+  readonly answers: number;
+  readonly reviewed: number;
+}
+
+/** One answer to mark: whose is not said. */
+export interface MarkingItem {
+  readonly attemptId: string;
+  readonly questionId: string;
+  readonly answer: string;
+  readonly language: string | null;
+  readonly score: number;
+  readonly max: number;
+  readonly reviewed: boolean;
+}
+
 /** A candidate's request to recheck one question, with what it is about. */
 export interface RecheckRow {
   readonly id: string;
@@ -1144,6 +1168,16 @@ export class ConsoleClient {
     });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  /** The written answers of an exam, without names, for marking by hand. */
+  marking(examId: string): Promise<{ readonly questions: readonly MarkingQuestion[]; readonly items: readonly MarkingItem[] }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/marking`);
+  }
+
+  /** Keep or change one answer's mark, and record it as read. */
+  markAnswer(examId: string, attemptId: string, questionId: string, score: number): Promise<{ readonly score: number; readonly changed: boolean }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/marking`, { method: "POST", body: JSON.stringify({ attemptId, questionId, score }) });
   }
 
   /** An exam's recheck requests, open first. */

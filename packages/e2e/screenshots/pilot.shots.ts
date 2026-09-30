@@ -161,3 +161,27 @@ test("results on the candidate's page, a recheck, and the scorecard", async ({ p
   await expect(check.getByRole("heading", { name: "This scorecard is genuine." })).toBeVisible();
   await shoot(check, "pilot-11-scorecard-check", { fullPage: false });
 });
+
+test("marking written answers by hand", async ({ page, request }) => {
+  test.setTimeout(300_000);
+  const title = "Semester 5 — Algorithms Quiz";
+  const sitting = await seedSitting(request, { questions: [MCQ, SHORT, NUMERIC], title, refs: REFS.slice(0, 4), names: PEOPLE.slice(0, 4) });
+  const answers = [
+    "Each comparison halves the interval that could hold the target; once low passes high the interval is empty, so the loop must end after about log n steps.",
+    "Because the range gets smaller every time.",
+    "It stops when it finds the number.",
+    "The search space halves each step until nothing is left to search.",
+  ];
+  for (const [i, ref] of REFS.slice(0, 4).entries()) await sitAndGrade(request, sitting, ref, { mcq: "1", short: answers[i]!, numeric: "72" });
+
+  await signIn(page);
+  await openExam(page, title, "Results");
+  const card = page.getByRole("region", { name: "Written answers" });
+  await expect(card).toContainText("0 of 4 read by a person");
+  await card.getByRole("button", { name: "Start marking" }).click();
+  const drawer = page.getByRole("dialog", { name: "Marking written answers" });
+  await drawer.getByRole("button", { name: "Keep the mark" }).click();
+  await expect(drawer).toContainText("Answer 2 of 4");
+  await drawer.getByRole("spinbutton").fill("3");
+  await shoot(page, "pilot-12-marking-by-hand", { fullPage: false });
+});

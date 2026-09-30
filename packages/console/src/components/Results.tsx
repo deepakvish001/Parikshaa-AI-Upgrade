@@ -10,6 +10,7 @@ import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
 // Loaded when a sitting has results: most never has a recheck.
 const Rechecks = lazy(() => import("./Rechecks.tsx").then((m) => ({ default: m.Rechecks })));
+const Marking = lazy(() => import("./Marking.tsx").then((m) => ({ default: m.Marking })));
 
 /**
  * What a recruiter takes away from a sitting (ROADMAP §6): the cohort's
@@ -154,6 +155,11 @@ export function ResultsPanel({
         </section>
       ) : null}
 
+      {canGrade && analytics.graded > 0 ? (
+        <Suspense fallback={null}>
+          <Marking client={client} examId={examId} />
+        </Suspense>
+      ) : null}
       <CandidateTable rows={rows} onReport={onReport} />
       {rows.length === 0 ? null : <QuestionTable questions={analytics.questions} graded={analytics.graded} />}
       {rows.length === 0 ? null : <Integrity integrity={analytics.integrity} />}

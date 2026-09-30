@@ -566,6 +566,7 @@ export class LedgerStore {
       await tx.query(`DELETE FROM attempt_feedback WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       // So is what they asked about their marks; a changed mark stays in the ledger.
       await tx.query(`DELETE FROM recheck_requests WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      await tx.query(`DELETE FROM mark_reviews WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       // Proctoring photos are unreadable once the key is gone; the rows go too.
       await tx.query(`DELETE FROM proctor_media WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM proctor_events WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);

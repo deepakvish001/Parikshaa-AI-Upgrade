@@ -373,6 +373,8 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     results: vi.fn(async () => results),
     examFeedback: vi.fn(async () => ({ responses: 0, submitted: 0, average: null, counts: [0, 0, 0, 0, 0], comments: [] })),
     rechecks: vi.fn(async () => []),
+    marking: vi.fn(async () => ({ questions: [], items: [] })),
+    markAnswer: vi.fn(async (_e: string, _a: string, _q: string, score: number) => ({ score, changed: false })),
     answerRecheck: vi.fn(async () => ({ status: "changed" })),
     scorecardPdf: vi.fn(async () => new Blob(["%PDF"])),
     releaseResults: vi.fn(async () => ({ sent: 0, alreadySent: 0, notGraded: 0, unreachable: 0, channels: ["email"] as const })),
@@ -1552,6 +1554,34 @@ describe("results and exports", () => {
     await waitFor(() => expect(client.releaseResults).toHaveBeenCalledWith("exam-1", true));
     expect(await screen.findByText("Results on their way to 2 candidates; 1 had theirs already.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Send results to candidates" })).toBeNull();
+  });
+
+  it("reads written answers one by one, without names, keeping or changing each mark", async () => {
+    const client = stubClient();
+    const question = { id: "q2", number: 2, stem: "Why does binary search stop?", kind: "short", max: 4, rubric: ["Names the halving"], expectedPoints: [], answers: 2, reviewed: 0 };
+    client.marking = vi.fn(async () => ({
+      questions: [question],
+      items: [
+        { attemptId: "a1", questionId: "q2", answer: "The interval halves.", language: null, score: 3, max: 4, reviewed: false },
+        { attemptId: "a2", questionId: "q2", answer: "It just stops.", language: null, score: 2, max: 4, reviewed: false },
+      ],
+    }));
+    client.markAnswer = vi.fn(async (_e: string, _a: string, _q: string, score: number) => ({ score, changed: score !== 3 }));
+    await open(client);
+    const card = await screen.findByRole("region", { name: "Written answers" });
+    expect(card).toHaveTextContent("0 of 2 read by a person");
+    await userEvent.click(within(card).getByRole("button", { name: "Start marking" }));
+    const drawer = await screen.findByRole("dialog", { name: "Marking written answers" });
+    expect(drawer).toHaveTextContent("Answer 1 of 2");
+    expect(drawer).toHaveTextContent("The interval halves.");
+    expect(drawer).toHaveTextContent("Names the halving");
+    await userEvent.click(within(drawer).getByRole("button", { name: "Keep the mark" }));
+    await waitFor(() => expect(client.markAnswer).toHaveBeenCalledWith("exam-1", "a1", "q2", 3));
+    expect(await within(drawer).findByText("Answer 2 of 2")).toBeInTheDocument();
+    const mark = within(drawer).getByRole("spinbutton", { name: "Mark, out of 4" });
+    await userEvent.clear(mark);
+    await userEvent.type(mark, "1{Enter}");
+    await waitFor(() => expect(client.markAnswer).toHaveBeenCalledWith("exam-1", "a2", "q2", 1));
   });
 
   it("answers a recheck with a mark and a reply", async () => {
