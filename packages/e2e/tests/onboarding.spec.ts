@@ -11,6 +11,9 @@ import { SECRET } from "../src/database.js";
  */
 
 async function violations(page: Page): Promise<string[]> {
+  // Colours are measured once they have arrived: the tour card fades in, and a
+  // half-faded button is not the button anyone reads (WebKit measured one).
+  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }
@@ -56,8 +59,6 @@ test("an institution signs itself up, takes the tour, and tries the sample exam 
   await expect(welcome).toBeVisible();
   expect(await violations(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: "dark" });
-  // Colours fade into the dark theme: measure them once they have arrived, not halfway.
-  await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished)));
   expect(await violations(page)).toEqual([]);
   await page.emulateMedia({ colorScheme: "light" });
 
