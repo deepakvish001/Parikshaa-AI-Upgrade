@@ -372,6 +372,9 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     reopen: vi.fn(async () => ({ expiresAt: 1 })),
     results: vi.fn(async () => results),
     examFeedback: vi.fn(async () => ({ responses: 0, submitted: 0, average: null, counts: [0, 0, 0, 0, 0], comments: [] })),
+    rechecks: vi.fn(async () => []),
+    answerRecheck: vi.fn(async () => ({ status: "changed" })),
+    scorecardPdf: vi.fn(async () => new Blob(["%PDF"])),
     releaseResults: vi.fn(async () => ({ sent: 0, alreadySent: 0, notGraded: 0, unreachable: 0, channels: ["email"] as const })),
     similarity: vi.fn(async () => ({
       exam: { id: "exam-1", title: "Algorithms" },
@@ -1549,6 +1552,38 @@ describe("results and exports", () => {
     await waitFor(() => expect(client.releaseResults).toHaveBeenCalledWith("exam-1", true));
     expect(await screen.findByText("Results on their way to 2 candidates; 1 had theirs already.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Send results to candidates" })).toBeNull();
+  });
+
+  it("answers a recheck with a mark and a reply", async () => {
+    const client = stubClient();
+    const asked = {
+      id: "rc1",
+      attemptId: "a1",
+      questionId: "q2",
+      reason: "I named the halving interval.",
+      status: "open" as const,
+      scoreBefore: null,
+      scoreAfter: null,
+      reply: null,
+      decidedBy: null,
+      decidedAt: null,
+      createdAt: "2026-10-02T04:30:00.000Z",
+      candidate: { ref: "CS001", name: "Ananya Iyer" },
+      question: { number: 2, stem: "Why does binary search stop?", kind: "short", max: 4 },
+      answer: "Because the interval halves.",
+      score: 2,
+    };
+    client.rechecks = vi.fn(async () => [asked]);
+    await open(client);
+    const card = await screen.findByRole("region", { name: "Rechecks asked for" });
+    expect(card).toHaveTextContent("1 to answer");
+    expect(card).toHaveTextContent("I named the halving interval.");
+    const mark = within(card).getByRole("spinbutton", { name: "Mark for question 2, out of 4" });
+    await userEvent.clear(mark);
+    await userEvent.type(mark, "3");
+    await userEvent.type(within(card).getByRole("textbox", { name: "Reply to the candidate" }), "The halving earns a mark.");
+    await userEvent.click(within(card).getByRole("button", { name: "Change the mark and reply" }));
+    await waitFor(() => expect(client.answerRecheck).toHaveBeenCalledWith("rc1", 3, "The halving earns a mark."));
   });
 
   it("shows what candidates said about the test, without names", async () => {

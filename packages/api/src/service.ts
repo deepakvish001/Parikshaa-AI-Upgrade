@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import {
+  allQuestions,
   candidateView,
   decodeCodeAnswer,
   encodeCodeAnswer,
@@ -1427,6 +1428,42 @@ export class ExamService {
   }
 
   /**
+   * Change one mark of a graded attempt, as a person decides it: a recheck
+   * the candidate asked for, or a marker correcting the model's reading.
+   * Written to the ledger with who and why, so the candidate's receipt shows
+   * it and the total follows from it. Returns the new total.
+   */
+  async reviseScore(actor: Actor, id: AttemptId, questionId: string, score: number, reason: string): Promise<number> {
+    const scope = this.#require(actor, "attempt:grade");
+    const trimmed = reason.trim();
+    if (trimmed === "") throw new AttemptError("invalid_state", "Say why the mark changes");
+    const { projection, exam } = await this.#context(scope, id);
+    if (projection.attempt.state !== "graded") throw new AttemptError("invalid_state", `Attempt ${id} is ${projection.attempt.state}; only a graded attempt's marks are revised`);
+    if (projection.erasedAt !== null) throw new AttemptError("invalid_state", `Attempt ${id}'s personal data has been erased`);
+    const question = allQuestions(exam).find((q) => q.id === questionId);
+    if (question === undefined) throw new AttemptError("not_found", `No question ${questionId} in this exam`);
+    if (!Number.isFinite(score) || score < 0 || score > question.maxScore || Math.round(score * 100) !== score * 100) {
+      throw new AttemptError("invalid_state", `A mark from 0 to ${question.maxScore}, in steps of 0.01`);
+    }
+    const before = projection.scores.get(questionId as QuestionId) ?? 0;
+    if (before === score) return projection.total ?? 0;
+    try {
+      await this.#store.append(
+        scope,
+        id,
+        { type: "score_revised", attemptId: id, questionId: questionId as QuestionId, score, reason: trimmed, decidedBy: { userId: actor.id, name: actor.name } },
+        { guard: whileGraded },
+      );
+    } catch (error) {
+      if (error instanceof AppendRefused) throw new AttemptError("invalid_state", `Attempt ${id} changed while this was being recorded`);
+      throw error;
+    }
+    const total = (projection.total ?? 0) + score - before;
+    await this.#audit(actor, "attempt.score_revised", id, { questionId, from: before, to: score, reason: trimmed });
+    return total;
+  }
+
+  /**
    * Grade an exam's submitted attempts, a batch at a time (Results → Grade
    * all). Each is graded exactly as one graded by hand; a few run at once, as
    * the model allows. One that cannot be graded is reported and left as it
@@ -1513,6 +1550,13 @@ const isOpen = (events: readonly ExamEvent[]): boolean => {
 const whileOpen = (events: readonly ExamEvent[]): string | null => (isOpen(events) ? null : "The attempt has closed");
 
 /** An append guard for reopening: only a submitted attempt, not graded, not set aside, not already open. */
+/** Graded, and not since set aside or erased: the only state a mark may be revised in. */
+const whileGraded = (events: readonly ExamEvent[]): string | null => {
+  if (events.some((e) => e.type === "attempt_voided")) return "The attempt is set aside";
+  if (events.some((e) => e.type === "data_erased")) return "The attempt's personal data has been erased";
+  return events.some((e) => e.type === "attempt_graded") ? null : "The attempt is not graded";
+};
+
 const whileSubmitted = (events: readonly ExamEvent[]): string | null => {
   if (events.some((e) => e.type === "attempt_graded" || e.type === "attempt_voided")) return "The attempt is graded or set aside";
   if (events.some((e) => e.type === "data_erased")) return "The attempt's personal data has been erased";

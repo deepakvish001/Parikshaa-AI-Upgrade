@@ -625,6 +625,52 @@ textarea.mono {
   width: 100%;
 }
 
+/* Rechecks: each request, the answer it is about, and the reply. */
+.recheck-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.recheck-item {
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.recheck-item:last-child {
+  border-bottom: 0;
+}
+.recheck-item.open {
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--warning);
+}
+.recheck-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+  align-items: baseline;
+}
+.recheck-stem {
+  margin: var(--space-1) 0;
+  color: var(--text-secondary);
+}
+.recheck-reason {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+}
+.recheck-answer {
+  max-height: 12rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.recheck-answer-form {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.recheck-answer-form textarea {
+  width: 100%;
+}
+
 /* What candidates said: ratings as short bars, then their words. */
 .candidate-feedback .feedback-lead {
   margin: 0 0 var(--space-3);

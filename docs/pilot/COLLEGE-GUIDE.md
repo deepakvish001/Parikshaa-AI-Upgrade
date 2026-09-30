@@ -95,7 +95,11 @@ their answers, marks and any follow-up, with the reasoning behind every mark.
 
 When you are ready, **Send results to candidates…** sends each graded
 student their marks by email, and by WhatsApp where it is set up (and, if you
-choose, whether they qualified). It says first how many it will reach. Nobody is
+choose, whether they qualified). It says first how many it will reach. From
+then, each student's own link shows their marks question by question and a
+scorecard PDF with a QR code anyone can scan to check it. For a week they may
+ask for a recheck of up to three questions; the requests appear on the
+Results tab, where you give the mark as it should stand and a reply. Nobody is
 sent theirs twice, so you can send again after grading the rest.
 
 After submitting, each student is asked how the test went and whether

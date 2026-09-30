@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Send, Users } from "lucide-react";
 import { useToast } from "@parikshaa/brand/ui";
@@ -7,6 +7,9 @@ import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge 
 import { EraseCard } from "./Privacy.tsx";
 import { ReleaseDialog } from "./Release.tsx";
 import { IDENTITY_LABEL } from "./Proctoring.tsx";
+
+// Loaded when a sitting has results: most never has a recheck.
+const Rechecks = lazy(() => import("./Rechecks.tsx").then((m) => ({ default: m.Rechecks })));
 
 /**
  * What a recruiter takes away from a sitting (ROADMAP §6): the cohort's
@@ -154,6 +157,11 @@ export function ResultsPanel({
       <CandidateTable rows={rows} onReport={onReport} />
       {rows.length === 0 ? null : <QuestionTable questions={analytics.questions} graded={analytics.graded} />}
       {rows.length === 0 ? null : <Integrity integrity={analytics.integrity} />}
+      {rows.length === 0 ? null : (
+        <Suspense fallback={null}>
+          <Rechecks client={client} examId={examId} canAnswer={canGrade} />
+        </Suspense>
+      )}
       {rows.length === 0 ? null : <CandidateFeedback client={client} examId={examId} />}
       <CodeSimilarity client={client} examId={examId} />
     </>
@@ -498,7 +506,11 @@ export function ReportPanel({
   const erasable = canErase && report.data.result.state !== "in_progress" && !ref.startsWith("erased-") && ref !== "[erased]";
   return (
     <>
-      <Report report={report.data} organisation={organisation} />
+      <Report
+        report={report.data}
+        organisation={organisation}
+        {...(report.data.result.state === "graded" ? { onPdf: async () => save(await client.scorecardPdf(attemptId), `scorecard-${ref}.pdf`) } : {})}
+      />
       {erasable ? (
         <EraseCard
           client={client}
@@ -527,7 +539,16 @@ const clockOf = (ms: number | null | undefined) => {
  * went, where they stand among the rest, each answer with when it was saved,
  * and — apart, as evidence — the follow-ups. Laid out to print as a PDF.
  */
-export function Report({ report, organisation }: { report: CandidateReport; organisation?: string | undefined }) {
+export function Report({
+  report,
+  organisation,
+  onPdf,
+}: {
+  report: CandidateReport;
+  organisation?: string | undefined;
+  /** Download the candidate's scorecard, with its checking code: a graded attempt's. */
+  onPdf?: () => Promise<void>;
+}) {
   const { candidate, result } = report;
   const standing = report.standing;
   const sections = result.sections ?? [];
@@ -535,6 +556,12 @@ export function Report({ report, organisation }: { report: CandidateReport; orga
   return (
     <article className="report scorecard">
       <PageActions>
+        {onPdf === undefined ? null : (
+          <button type="button" className="secondary" onClick={() => void onPdf()}>
+            <Download aria-hidden="true" />
+            Scorecard PDF
+          </button>
+        )}
         <button type="button" className="secondary" onClick={() => window.print()}>
           <Printer aria-hidden="true" />
           Print or save as PDF

@@ -168,6 +168,54 @@ export async function briefInvitation(code: string, baseUrl = "/api"): Promise<B
   return body as unknown as Briefing;
 }
 
+/** A candidate's released result, question by question, with any rechecks asked for. */
+export type MyResult =
+  | { readonly released: false }
+  | {
+      readonly released: true;
+      readonly title: string;
+      readonly institution: string;
+      readonly total: number;
+      readonly maxTotal: number;
+      readonly percent: number;
+      readonly outcome: "qualified" | "failed" | null;
+      readonly questions: readonly { readonly id: string; readonly number: number; readonly stem: string; readonly score: number; readonly max: number }[];
+      readonly rechecks: readonly {
+        readonly id: string;
+        readonly questionId: string;
+        readonly reason: string;
+        readonly status: "open" | "changed" | "unchanged";
+        readonly scoreBefore: number | null;
+        readonly scoreAfter: number | null;
+        readonly reply: string | null;
+        readonly decidedAt: string | null;
+      }[];
+      readonly recheckUntil: string | null;
+    };
+
+/** What a scorecard's code proves (GET /scorecards/{code}). */
+export type ScorecardCheck =
+  | {
+      readonly valid: true;
+      readonly institution: string;
+      readonly candidate: { readonly name: string; readonly ref: string };
+      readonly title: string;
+      readonly total: number;
+      readonly maxTotal: number;
+      readonly percent: number;
+      readonly outcome: "qualified" | "failed" | null;
+      readonly sittingDate: string;
+      readonly record: string;
+    }
+  | { readonly valid: false; readonly reason: "unknown" | "withdrawn" };
+
+/** Check a scorecard: public, no sign-in. */
+export async function checkScorecard(code: string, baseUrl = "/api"): Promise<ScorecardCheck> {
+  const response = await fetch(`${baseUrl}/scorecards/${encodeURIComponent(code)}`);
+  if (!response.ok) throw new ApiError(response.status, "request_failed");
+  return (await response.json()) as ScorecardCheck;
+}
+
 export class ParikshaaClient {
   readonly #baseUrl: string;
   readonly #token: string;
@@ -272,6 +320,23 @@ export class ParikshaaClient {
 
   async submit(): Promise<void> {
     await this.#request("/attempts/me/submit", { method: "POST" });
+  }
+
+  /** My result, once the institution releases it. */
+  result(): Promise<MyResult> {
+    return this.#request<MyResult>("/attempts/me/result");
+  }
+
+  /** Ask for one question to be looked at again. */
+  async askRecheck(questionId: string, reason: string): Promise<void> {
+    await this.#request("/attempts/me/rechecks", { method: "POST", body: JSON.stringify({ questionId, reason }) });
+  }
+
+  /** The scorecard PDF, to save. */
+  async scorecard(): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/attempts/me/scorecard.pdf`, { headers: this.#headers(false) });
+    if (!response.ok) throw new ApiError(response.status, "scorecard_unavailable");
+    return response.blob();
   }
 
   /** Whether the candidate has already said how the test went. */

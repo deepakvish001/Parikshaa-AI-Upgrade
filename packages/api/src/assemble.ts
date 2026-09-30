@@ -2,8 +2,9 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
+import { RecheckService } from "./rechecks.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -151,7 +152,9 @@ export function assemble(o: AssembleOptions): {
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
-  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null });
+  const recheckStore = new RecheckStore(o.sql);
+  const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
   const app = buildServer({
     service,
     invitations,
@@ -172,6 +175,7 @@ export function assemble(o: AssembleOptions): {
     proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
     feedback: new FeedbackStore(o.sql),
     lab,
+    rechecks,
     tokens,
     auth,
     security,
@@ -203,6 +207,7 @@ export function assemble(o: AssembleOptions): {
     mailer: o.mailer ?? null,
     sms: o.sms ?? null,
     whatsapp: o.whatsapp ?? null,
+    recheck: (org, id) => rechecks.note(orgId(org), id),
     result: (org, invitation) => results.candidateResult(orgId(org), attemptId(invitation.attemptId!), examId(invitation.examId)),
     handlers: { ...integrations.handlers, staff_email: (item) =>
       item.purpose === "password_reset"

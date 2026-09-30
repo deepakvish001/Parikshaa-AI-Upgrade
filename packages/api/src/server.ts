@@ -38,6 +38,8 @@ import { registerResultsRoutes } from "./results-routes.js";
 import { registerFeedbackRoutes } from "./feedback-routes.js";
 import { OutsideNetwork, type LabService } from "./lab.js";
 import { registerLabRoutes } from "./lab-routes.js";
+import type { RecheckService } from "./rechecks.js";
+import { registerRecheckRoutes } from "./rechecks-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
@@ -101,6 +103,8 @@ export interface ServerOptions {
   readonly feedback?: FeedbackStore;
   /** Lab mode: candidates' requests are checked against the exam's networks. */
   readonly lab?: LabService;
+  /** Results as candidates see them, rechecks and scorecards. */
+  readonly rechecks?: RecheckService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -1212,6 +1216,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerBillingRoutes(routes, { billing: options.billing, staff });
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
     if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
+    if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });
 
     registerAccountRoutes(routes, {

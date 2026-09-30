@@ -176,6 +176,25 @@ export interface LabSettings {
   readonly yourAddress: string;
 }
 
+/** A candidate's request to recheck one question, with what it is about. */
+export interface RecheckRow {
+  readonly id: string;
+  readonly attemptId: string;
+  readonly questionId: string;
+  readonly reason: string;
+  readonly status: "open" | "changed" | "unchanged";
+  readonly scoreBefore: number | null;
+  readonly scoreAfter: number | null;
+  readonly reply: string | null;
+  readonly decidedBy: string | null;
+  readonly decidedAt: string | null;
+  readonly createdAt: string;
+  readonly candidate: { readonly ref: string; readonly name: string };
+  readonly question: { readonly number: number; readonly stem: string; readonly kind: string; readonly max: number };
+  readonly answer: string | null;
+  readonly score: number;
+}
+
 /** What sending results did, or would do. */
 export interface ReleaseCounts {
   readonly sent: number;
@@ -1121,6 +1140,25 @@ export class ConsoleClient {
   /** The results as a file to save: CSV or an Excel workbook. */
   async resultsFile(examId: string, format: "csv" | "xlsx"): Promise<Blob> {
     const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/results.${format}`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  /** An exam's recheck requests, open first. */
+  async rechecks(examId: string): Promise<readonly RecheckRow[]> {
+    return (await this.#request<{ rechecks: readonly RecheckRow[] }>(`/exams/${encodeURIComponent(examId)}/rechecks`)).rechecks;
+  }
+
+  /** Answer a recheck: the mark as it now stands, and a reply the candidate reads. */
+  answerRecheck(id: string, score: number, reply: string): Promise<RecheckRow> {
+    return this.#request(`/rechecks/${encodeURIComponent(id)}/answer`, { method: "POST", body: JSON.stringify({ score, reply }) });
+  }
+
+  /** A candidate's scorecard PDF, with its checking code. */
+  async scorecardPdf(attemptId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/attempts/${encodeURIComponent(attemptId)}/scorecard.pdf`, {
       headers: { authorization: `Bearer ${this.#token}` },
     });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");

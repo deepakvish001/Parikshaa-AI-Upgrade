@@ -42,6 +42,7 @@ function stubClient(overrides: Partial<Record<keyof ParikshaaClient, unknown>> =
       state = { ...state, state: "submitted" };
     }),
     feedbackGiven: vi.fn(async () => false),
+    result: vi.fn(async () => ({ released: false })),
     giveFeedback: vi.fn(async () => undefined),
     replyToProbe: vi.fn(async () => {
       state = { ...state, openProbe: null };

@@ -17,7 +17,7 @@ import {
   type ExamId,
   type OrgId,
 } from "@parikshaa/core";
-import { staffScope, type IdentityStore, type Invitation, type InvitationStore, type LedgerStore, type OutboxItem, type ProctorStore, type Scope } from "@parikshaa/store";
+import { staffScope, type IdentityStore, type Invitation, type InvitationStore, type LedgerStore, type OutboxItem, type ProctorStore, type RecheckStore, type Scope } from "@parikshaa/store";
 import type { Mailer } from "./delivery.js";
 import { identityState } from "./proctoring.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
@@ -136,6 +136,7 @@ export class ResultsService {
   readonly #identity: IdentityStore | null;
   readonly #mailer: Mailer | null;
   readonly #whatsapp: boolean;
+  readonly #releases: RecheckStore | null;
   readonly #now: () => number;
 
   constructor(options: {
@@ -148,6 +149,8 @@ export class ResultsService {
     readonly mailer?: Mailer | null;
     /** Whether WhatsApp is set up, so results can go that way too. */
     readonly whatsapp?: boolean;
+    /** Where a release is recorded, so candidates see their result and may ask for a recheck. */
+    readonly releases?: RecheckStore | null;
     readonly now?: () => number;
   }) {
     this.#proctor = options.proctor ?? null;
@@ -157,6 +160,7 @@ export class ResultsService {
     this.#identity = options.identity ?? null;
     this.#mailer = options.mailer ?? null;
     this.#whatsapp = options.whatsapp ?? false;
+    this.#releases = options.releases ?? null;
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -237,7 +241,11 @@ export class ResultsService {
       unreachable: graded.length - reached.length,
     };
     const channels = [...(this.#mailer === null ? [] : (["email"] as const)), ...(this.#whatsapp ? (["whatsapp"] as const) : [])];
-    if (options.dryRun !== true) await this.#exams.recordAudit(actor, "results.released", examId, { ...counts, outcome: options.outcome });
+    if (options.dryRun !== true) {
+      // Their own page shows it too, from now on, with the recheck it offers.
+      await this.#releases?.release(actor.orgId, examId, options.outcome, new Date(this.#now()));
+      await this.#exams.recordAudit(actor, "results.released", examId, { ...counts, outcome: options.outcome });
+    }
     return { ...counts, channels };
   }
 

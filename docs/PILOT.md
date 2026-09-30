@@ -329,6 +329,20 @@ What to do when:
       if the exam has a qualifying mark and the college wants it said,
       whether they reached it), with a link to their record. Nobody is sent
       theirs twice, so it can be pressed again after grading the rest.
+- [ ] From then, each candidate's own link shows **Your result**: marks
+      question by question, and **Download scorecard (PDF)**. The scorecard
+      carries a QR code and a link that anyone — an employer — can open to see
+      the result as it stands in the record, or that it was withdrawn.
+- [ ] For a week after the release, a candidate may **ask for a recheck** of
+      up to three questions, saying why. Requests appear on the Results tab
+      under **Rechecks asked for**, with the answer each is about. Answer with
+      the mark as it should stand and a reply: a changed mark goes into the
+      attempt's record with who changed it and why, the candidate's receipt
+      shows it, and they are emailed the reply.
+
+| The candidate's result, and a recheck | Answering it | The scorecard, and what its code opens |
+|---|---|---|
+| ![Your result](screenshots/pilot-07-candidate-result-and-recheck.png) | ![Rechecks asked for](screenshots/pilot-08-recheck-in-the-console.png) | ![Scorecard PDF](screenshots/pilot-10-scorecard-pdf.png) ![Scorecard check](screenshots/pilot-11-scorecard-check.png) |
 - [ ] Results tab → **Email to me** sends the Excel workbook to your own
       address (or **Download Excel**); forward it to the pilot owner. Home
       says whenever attempts are waiting to be graded.

@@ -71,6 +71,7 @@ describe("the OpenAPI document", () => {
     // <img> fetches with no session and only a holder of the picture can name.
     // And the ways back in for someone who cannot sign in: a password reset
     // (whose link is the proof) and their organisation's own sign-in provider.
+    // And a scorecard's check, whose code — printed on the scorecard — is the proof.
     const open = new Set([
       "get /health",
       "get /openapi.json",
@@ -85,6 +86,7 @@ describe("the OpenAPI document", () => {
       "post /auth/password-reset/confirm",
       "get /auth/sso/{orgId}/start",
       "get /auth/sso/callback",
+      "get /scorecards/{code}",
     ]);
 
     expect(all.length).toBeGreaterThanOrEqual(30);

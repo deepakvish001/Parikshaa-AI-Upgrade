@@ -1,4 +1,5 @@
 import { CircleCheck, Printer } from "lucide-react";
+import { MyResult, type ResultClient } from "./MyResult.tsx";
 import type { CandidateLedger } from "../api.ts";
 import { usePreferences } from "../i18n.tsx";
 import { Feedback, type FeedbackClient } from "./Feedback.tsx";
@@ -26,6 +27,7 @@ export function Finished({
   answered,
   marked,
   feedback,
+  result,
 }: {
   readonly title: string;
   readonly graded: boolean;
@@ -35,6 +37,8 @@ export function Finished({
   readonly marked: number;
   /** Where to send how the test went; absent, the question is not asked. */
   readonly feedback?: FeedbackClient;
+  /** Where the released result comes from; absent, none is shown. */
+  readonly result?: ResultClient;
 }) {
   const { t, language } = usePreferences();
   const when =
@@ -79,6 +83,7 @@ export function Finished({
           <li>{t("done.step3")}</li>
         </ol>
       </div>
+      {graded && result !== undefined ? <MyResult client={result} /> : null}
       {feedback === undefined ? null : <Feedback client={feedback} />}
       <p className="notice">{t("done.next")}</p>
       <div className="finished-actions">

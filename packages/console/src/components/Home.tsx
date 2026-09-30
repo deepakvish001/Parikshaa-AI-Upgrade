@@ -73,6 +73,8 @@ export const ACTIONS: Record<string, string> = {
   "results.released": "sent candidates their results",
   "exam.lab_set": "changed lab mode",
   "exam.lab_started": "started the sitting for everyone",
+  "attempt.score_revised": "changed a mark",
+  "recheck.answered": "answered a recheck",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",

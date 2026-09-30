@@ -7,6 +7,7 @@ import { AnswerInput } from "./components/AnswerInput.tsx";
 import { splitStem } from "./components/code-meta.ts";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
+import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { IdentityCapture } from "./components/IdentityCapture.tsx";
@@ -110,10 +111,16 @@ function rememberToken(token: string | null): void {
 /** An invitation code (org.invitation.mac) rather than an attempt token, which is a JWT. */
 const isInviteCode = (value: string) => !value.startsWith("eyJ") && value.split(".").length === 3;
 
+
 export function App(props: { client?: ParikshaaClient } = {}) {
+  const scorecard = props.client === undefined ? new URLSearchParams(window.location.search).get("scorecard") : null;
   return (
     <PreferencesProvider>
-      <Screens {...props} />
+      {scorecard === null ? (
+        <Screens {...props} />
+      ) : (
+        <ScorecardCheck code={scorecard} />
+      )}
     </PreferencesProvider>
   );
 }
@@ -779,6 +786,7 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
                 answered={exam.questions.filter((q) => (answered.get(q.id) ?? "") !== "").length}
                 marked={exam.questions.filter((q) => review.has(q.id)).length}
                 feedback={client}
+                result={client}
               />
             </>
           ) : (

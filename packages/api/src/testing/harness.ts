@@ -20,6 +20,7 @@ import {
   DataKeys,
   FeedbackStore,
   LabStore,
+  RecheckStore,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -27,6 +28,7 @@ import {
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
 import { LabService } from "../lab.js";
+import { RecheckService } from "../rechecks.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -103,6 +105,8 @@ export interface Wiring {
   readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler };
   /** For a delivery worker's candidate results (DeliveryWorkerOptions.result). */
   readonly results: ResultsService;
+  /** For a delivery worker's recheck messages (DeliveryWorkerOptions.recheck). */
+  readonly rechecks: RecheckService;
   readonly store: LedgerStore;
   readonly identity: IdentityStore;
   readonly service: ExamService;
@@ -232,6 +236,17 @@ export async function wire(
     ...(options.googleIssuer === undefined ? {} : { issuer: options.googleIssuer }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const recheckStore = new RecheckStore(sql);
+  const rechecks = new RecheckService({
+    store,
+    rechecks: recheckStore,
+    invitations: invitationStore,
+    identity,
+    exams: service,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const results = new ResultsService({
     store,
     invitations: invitationStore,
@@ -240,6 +255,7 @@ export async function wire(
     identity,
     mailer: options.mailer ?? null,
     whatsapp: options.whatsapp ?? false,
+    releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const onboarding = new Onboarding({
@@ -280,6 +296,7 @@ export async function wire(
     }),
     feedback: new FeedbackStore(sql),
     lab,
+    rechecks,
     tokens,
     auth,
     security,
@@ -309,6 +326,7 @@ export async function wire(
     security,
     app,
     results,
+    rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
       item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: practiceIdentity.verificationMail },
   };

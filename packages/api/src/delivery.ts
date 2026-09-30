@@ -202,6 +202,15 @@ export interface CandidateResult {
   readonly outcome: "qualified" | "failed" | null;
 }
 
+/** What a candidate is told of an answered recheck. */
+export interface RecheckNote {
+  readonly number: number;
+  readonly status: "changed" | "unchanged";
+  readonly before: number;
+  readonly after: number;
+  readonly reply: string;
+}
+
 /** Handles the outbox kinds this module does not: webhooks, integrations (§7). */
 export type ItemHandler = (item: OutboxItem) => Promise<"sent" | { readonly skip: string }>;
 
@@ -216,6 +225,8 @@ export interface DeliveryWorkerOptions {
   /** Absent or null: WhatsApp is not set up, and its messages are skipped. */
   readonly whatsapp?: WhatsAppSender | null;
   readonly handlers?: Partial<Record<OutboxItem["kind"], ItemHandler>>;
+  /** An answered recheck, for the message that tells the candidate (RecheckService.note). */
+  readonly recheck?: (orgId: string, recheckId: string) => Promise<RecheckNote | null>;
   /** A graded candidate's result, for the message that tells them it (ResultsService.candidateResult). */
   readonly result?: (orgId: string, invitation: Invitation) => Promise<CandidateResult | null>;
   readonly now?: () => number;
@@ -299,6 +310,16 @@ export class DeliveryWorker {
     if (item.kind === "whatsapp") {
       if (whatsapp === null) return { skip: "WhatsApp is not configured" };
       if (invitation.phone === null) return { skip: "No phone number" };
+    }
+
+    if (item.purpose === "recheck") {
+      if (item.kind !== "email") return { skip: "Rechecks are answered by email" };
+      if (this.#o.mailer === null) return { skip: "Email is not configured" };
+      if (invitation.email === null) return { skip: "No email address" };
+      const note = this.#o.recheck === undefined ? null : await this.#o.recheck(item.orgId, String(item.subject["recheckId"] ?? ""));
+      if (note === null) return { skip: "The request is gone" };
+      await this.#o.mailer.send(recheckEmail(invitation, { title, institution, link, note }));
+      return "sent";
     }
 
     if (item.purpose === "results") {
@@ -468,6 +489,40 @@ function resultsEmail(
 <p><a href="${escape(link)}">Your record of the test</a>, with what you submitted.</p>
 <p>— ${escape(institution)}, via Parikshaa</p>`;
   return { to: invitation.email!, subject: `Your result: ${title} — ${institution}`, text: lines.join("\n"), html };
+}
+
+/** An answered recheck: which question, whether the mark changed, and the reply as written. */
+function recheckEmail(
+  invitation: Invitation,
+  about: { readonly title: string; readonly institution: string; readonly link: string; readonly note: RecheckNote },
+): EmailMessage {
+  const { title, institution, link, note } = about;
+  const greeting = invitation.name.trim() === "" ? "Hello," : `Hello ${invitation.name},`;
+  const outcome =
+    note.status === "changed"
+      ? `Your mark for question ${note.number} has changed from ${round(note.before)} to ${round(note.after)}.`
+      : `Your mark for question ${note.number} stays at ${round(note.after)}.`;
+  const lines = [
+    greeting,
+    "",
+    `${institution} has answered your request to recheck question ${note.number} of the ${title} test.`,
+    "",
+    outcome,
+    "",
+    "Their reply:",
+    note.reply,
+    "",
+    "Your result, and your record of the test, which shows any change and who made it:",
+    link,
+    "",
+    `— ${institution}, via Parikshaa`,
+  ];
+  const html = `<p>${escape(greeting)}</p><p>${escape(`${institution} has answered your request to recheck question ${note.number} of the ${title} test.`)}</p>
+<p><strong>${escape(outcome)}</strong></p>
+<p>Their reply:</p><blockquote>${escape(note.reply)}</blockquote>
+<p><a href="${escape(link)}">Your result and your record of the test</a>, which shows any change and who made it.</p>
+<p>— ${escape(institution)}, via Parikshaa</p>`;
+  return { to: invitation.email!, subject: `Your recheck: ${title} — ${institution}`, text: lines.join("\n"), html };
 }
 
 /** The result template's variables: name, institution, test, marks, out of, percent, whether they qualified, link. */

@@ -1,4 +1,7 @@
+import { createHmac } from "node:crypto";
+import { writeFileSync } from "node:fs";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { SECRET } from "../src/database.js";
 import { local, MCQ, OWNER, readyToBegin, SHORT, seedSitting, type Sitting } from "../tests/support.js";
 import { shoot, shootPart } from "./shoot.js";
 
@@ -103,4 +106,58 @@ test("a sitting in the computer lab", async ({ page, browser, request }) => {
   await readyToBegin(away);
   await expect(away.getByRole("region", { name: "Exam room only" })).toBeVisible();
   await shoot(away, "pilot-06-candidate-exam-room-only", { fullPage: false });
+});
+
+/** The code printed on a scorecard, as the server makes it (rechecks.ts, ScorecardCodes). */
+const scorecardCode = (orgId: string, attemptId: string) => {
+  const key = createHmac("sha256", SECRET).update("parikshaa-scorecards").digest();
+  return `${orgId}.${attemptId}.${createHmac("sha256", key).update(`${orgId}.${attemptId}`).digest("base64url").slice(0, 16)}`;
+};
+
+test("results on the candidate's page, a recheck, and the scorecard", async ({ page, browser, request }) => {
+  test.setTimeout(300_000);
+  const title = "Campus Drive 2026 — Reasoning";
+  const sitting = await seedSitting(request, { questions: [MCQ, SHORT, NUMERIC], title, refs: REFS.slice(0, 3), names: PEOPLE.slice(0, 3), cutoff: { percent: 50 } });
+  const sat: { attemptId: string }[] = [];
+  for (const [i, ref] of REFS.slice(0, 3).entries()) {
+    sat.push(await sitAndGrade(request, sitting, ref, { mcq: "1", short: "The interval halves each step until it is empty.", numeric: i === 0 ? "70" : "72" }));
+  }
+  const staff = { authorization: `Bearer ${sitting.token}` };
+  expect((await request.post(`/api/exams/${sitting.examId}/results/release`, { headers: staff, data: { outcome: true } })).status()).toBe(202);
+
+  // The candidate opens their link again: their result, and a recheck asked for.
+  const candidate = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  await candidate.goto(local(sitting.links[REFS[0]!]!));
+  const card = candidate.getByRole("region", { name: "Your result" });
+  await expect(card).toContainText("out of");
+  await card.getByRole("button", { name: "Ask for question 3 to be rechecked" }).click();
+  await card.getByLabel("Why should it be looked at again?").fill("180 km in 2.5 hours: I wrote 70 by rounding the time; my working shows 72.");
+  await shootPart(card, "pilot-07-candidate-result-and-recheck");
+  await card.getByRole("button", { name: "Send the request" }).click();
+  await expect(card).toContainText("Recheck asked: waiting for a reply");
+
+  // The institution answers it from the Results tab.
+  await signIn(page);
+  await openExam(page, title, "Results");
+  const rechecks = page.getByRole("region", { name: "Rechecks asked for" });
+  await expect(rechecks).toContainText("1 to answer");
+  await rechecks.getByRole("spinbutton").fill("2");
+  await rechecks.getByRole("textbox", { name: "Reply to the candidate" }).fill("Your working shows 72: full marks for question 3.");
+  await shootPart(rechecks, "pilot-08-recheck-in-the-console");
+  await rechecks.getByRole("button", { name: "Change the mark and reply" }).click();
+  await expect(rechecks).toContainText("All answered");
+
+  await candidate.reload();
+  await expect(card).toContainText("Rechecked: changed from 0 to 2");
+  await shootPart(card, "pilot-09-candidate-recheck-answered");
+
+  // The scorecard: the PDF (kept as a sample, and pictured from it), and what its code opens.
+  const pdf = await request.get(`/api/attempts/${sat[0]!.attemptId}/scorecard.pdf`, { headers: staff });
+  expect(pdf.status()).toBe(200);
+  writeFileSync(new URL("../../../docs/samples/scorecard.pdf", import.meta.url), await pdf.body());
+  const orgId = sitting.links[REFS[0]!]!.match(/invite=([^.]+)/)![1]!;
+  const check = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  await check.goto(`/?scorecard=${encodeURIComponent(scorecardCode(decodeURIComponent(orgId), sat[0]!.attemptId))}`);
+  await expect(check.getByRole("heading", { name: "This scorecard is genuine." })).toBeVisible();
+  await shoot(check, "pilot-11-scorecard-check", { fullPage: false });
 });

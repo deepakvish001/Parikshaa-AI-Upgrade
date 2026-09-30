@@ -273,6 +273,32 @@ describe("foldAttempt", () => {
     });
   });
 
+  describe("a mark revised after grading", () => {
+    const scored = (question = Q1, score = 1): ExamEvent => ({ type: "question_scored", attemptId: A, questionId: question, score });
+    const graded: ExamEvent = { type: "attempt_graded", attemptId: A, total: 3 };
+    const revised = (score: number): ExamEvent => ({
+      type: "score_revised",
+      attemptId: A,
+      questionId: Q2,
+      score,
+      reason: "Recheck: the second step earns a mark.",
+      decidedBy: { userId: "u1", name: "Examiner" },
+    });
+
+    it("changes that question's mark, and the total by the difference", () => {
+      const projection = project(chain(started, answered(Q1), answered(Q2), submitted, scored(Q1, 1), scored(Q2, 2), graded, revised(3)));
+      expect(projection.scores.get(Q2)).toBe(3);
+      expect(projection.total).toBe(4);
+      expect(projection.attempt.state).toBe("graded");
+    });
+
+    it("is refused before grading, and after a set-aside", () => {
+      expect(foldAttempt(chain(started, submitted, revised(1)))).toMatchObject({ ok: false, reason: "not_graded", seq: 2 });
+      const voided: ExamEvent = { type: "attempt_voided", attemptId: A, reason: "Sat by someone else." };
+      expect(foldAttempt(chain(started, submitted, graded, voided, revised(1)))).toMatchObject({ ok: false, reason: "closed", seq: 4 });
+    });
+  });
+
   describe("reopening", () => {
     const reopened = (minutes: number): ExamEvent => ({
       type: "attempt_reopened",
