@@ -304,8 +304,8 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 9 | Content: 150 editorials, 300 hints, 25 companies, videos | §15 | Log content ke liye aate hain | Har phase ka content target | ⬜ |
 | 10 | **V2-P0 Neev**: 1a–5 poore, PWA v1 (A1), achievement cards (C1), public profile (C6), pehla load test (G) | Master plan v2 | Baaki sab isi par khada hai | V2-8 ka gate: D1/D7 naap rahe; 1,000 ka exam start paas | ⬜ owner ki haan baaki |
 | 11 | **V2-P1 Saboot**: Pramaan (B1), viva-verified solves (B2), leak-proof paper (B4), Premier League, squads, referral, WhatsApp sawaal | Master plan v2 | Hamara sabse bada fark | 20 college, 10,000 learners, D7 ≥ 25% | ⬜ owner ki haan baaki |
-| 12 | **V2-P2 College**: TPO OS (D1–D5, D7), handwritten checking beta (D6), mock OA (A5) | Master plan v2 | Distribution ka sasta rasta | 50 college har hafte active; 3 paid pilot | ⬜ owner ki haan baaki |
-| 13 | **V2-P3 Company**: Parikshaa Score (B3), talent pool, hiring challenge, interview room, AI-allowed test (E1–E6) | Master plan v2 | Paisa yahan se | 20 paying companies; Score se 100 hiring | ⬜ owner ki haan baaki |
+| 12 | **V2-P2 College**: TPO OS (D1–D5, D7; list [V2-12](#v2-12-college-aur-company-end-to-end-feature-list)), handwritten checking beta (D6), mock OA (A5) | Master plan v2 | Distribution ka sasta rasta | 50 college har hafte active; 3 paid pilot | ⬜ owner ki haan baaki |
+| 13 | **V2-P3 Company** ([V2-12](#v2-12-college-aur-company-end-to-end-feature-list)): Parikshaa Score (B3), talent pool, hiring challenge, interview room, AI-allowed test (E1–E6) | Master plan v2 | Paisa yahan se | 20 paying companies; Score se 100 hiring | ⬜ owner ki haan baaki |
 | 14 | **V2-P4 Aur exams + Bharat**: coaching white-label, OMR scan, GATE, SSC/Bank (F1–F4), awaaz + 11 bhashayein (A7), creators | Master plan v2 | Placement ke bahar ka bazaar | 25 coaching; Hindi/regional ≥ 40% | ⬜ owner ki haan baaki |
 | 15 | **V2-P5 Scale + certificate**: 10,000 ka contest, pentest + bug bounty, DigiLocker, Play Store app | Master plan v2 | Badi company aur sarkar ka bharosa | Pentest ke critical/high 0 | ⬜ owner ki haan baaki |
 
@@ -545,6 +545,218 @@ Ye faisle owner ke hain. Jab tak na milein, related build shuru nahi hoga:
 6. **Sarkari/kanooni**: DigiLocker issuer application, company registration, privacy policy par vakeel ki salah (DPDP).
 7. **Pehle partners**: 3 pilot college, 2 sponsor company, 5 coaching institute.
 
+### V2-12. College aur company: end-to-end feature list
+
+Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din judne se lekar result, placement aur bill tak. Har row me likha hai ki aaj code me kya hai (✅ ban gaya, tests ke saath · 🟡 aadha · ⬜ naya), taaki pata rahe kitna kaam sach me baaki hai. ✅ wali rows ki poori detail [ROADMAP](ROADMAP.md) me hai.
+
+#### Teen usool: har feature inhi par parkha jaayega
+
+1. **Aasaan:** TPO ya recruiter bina training ke 10 minute me pehla test bhej de. Har kaam ka template ho ("TCS jaisa aptitude", "Java developer"). Koi bhi kaam 3 click se zyada ka na ho. Console Hindi me bhi ho.
+2. **Bharosemand:** har number ledger se aaye aur bahar se verify ho sake. AI kabhi faisla nahi karta, sirf sujhaata hai; faisla insaan ka hota hai aur uska naam record me jaata hai. Data Bharat me rahe, aur DPDP ke hisaab se chale.
+3. **Bilkul fit:** Indian exam ki aadatein pehle se hon: negative marking, sections, NTA jaisa interface, CGPA/backlog eligibility, NIRF/NAAC, GST, PO aur NEFT se payment, aur Hindi.
+
+#### College ka safar
+
+**1. Judna aur team**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL1 | Khud sign-up, email verify, sample exam, guided tour | ✅ | Self-serve (PR G1–G3) |
+| CL2 | 5 roles (owner, author, invigilator, reviewer, read-only), 2FA, Google/Microsoft SSO | ✅ | ROADMAP §1 |
+| CL3 | Hindi me college guide | ✅ | `docs/pilot` |
+| CL4 | Staff ko CSV se ek saath jodna (department-wise) | ⬜ | Aaj staff ek-ek karke jodte hain |
+| CL5 | Console Hindi me | ⬜ | Aaj console sirf English me (ROADMAP §9) |
+| CL6 | Department aur campus (ek university, kai college) | ⬜ | Aaj ek organisation = ek unit |
+
+**2. Students ka data**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL7 | Har exam ke liye candidates CSV se, dry run ke saath | ✅ | ROADMAP §5 |
+| CL8 | **Student master**: roll no., branch, batch, CGPA, backlogs, phone. Ek baar daalo, har exam aur drive me kaam aaye | ⬜ | TPO OS ki neev (D3) |
+| CL9 | Student khud register kare (college ka link), TPO manzoor kare | ⬜ | |
+| CL10 | APAAR ID / DigiLocker se naam aur marks verify | ⬜ | Sarkari onboarding chahiye (B6) |
+
+**3. Sawaal aur paper**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL11 | Question bank: topic, difficulty, tags; CSV aur Word (.docx) import, pictures ke saath | ✅ | ROADMAP §3 |
+| CL12 | Passages, negative marking, ek se zyada sahi option, numeric | ✅ | |
+| CL13 | Sections, pools se random paper (har candidate alag), section ka apna time | ✅ | Draw seeded, auditor dobara bana sakta hai |
+| CL14 | Coding (Python, JS, C, C++, Java), LeetCode jaisa workspace, hidden tests | ✅ | ROADMAP §4 |
+| CL15 | 11 bhashaon me sawaal ka anuvaad | ✅ | ROADMAP §9 |
+| CL16 | Question quality report (bahut aasaan, bahut mushkil, farq na karne wale) | ✅ | Insights (PR #32) |
+| CL17 | **Syllabus/topic se AI draft sawaal**, author jaanch kar manzoor kare | ⬜ | Evals ke saath |
+| CL18 | Taiyaar packs: aptitude, reasoning, verbal, CS fundamentals, company patterns | 🟡 | CS fundamentals aur SQL packs Prep me hain. Exam ke liye aptitude packs baaki |
+| CL19 | Har sawaal ka CO (course outcome) aur Bloom level | ⬜ | CO–PO report ke liye (D5) |
+| CL20 | Parameterised variants (har candidate ke alag numbers) | ⬜ | Leak-proof paper (B4) |
+
+**4. Exam se pehle**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL21 | Exam window, invitation email, SMS (MSG91) aur WhatsApp; din pehle aur ghanta pehle reminder | ✅ | |
+| CL22 | Time badalne par sabko naya time apne aap | ✅ | |
+| CL23 | Try test (staff preview), system check candidate ke liye | ✅ | |
+| CL24 | **Admit card / hall ticket PDF**: photo, seat, lab, QR | ⬜ | Colleges ki roz ki zaroorat |
+| CL25 | Lab aur seat allocation (kaunsa student kaunse lab, kaunsi seat) | ⬜ | |
+| CL26 | Candidate ke liye demo test (asli jaisa, bina marks) | ⬜ | Pehli baar CBT dene walon ka dar kam |
+
+**5. Exam ka din**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL27 | NTA jaisa CBT, calculator, palette, 11 bhashayein, keyboard se poora exam | ✅ | |
+| CL28 | Autosave, net jaane par bhi kuch na khoye, 2G mode | ✅ | ROADMAP §2, §9 |
+| CL29 | Lab mode: sirf lab ke network se, sab ek saath shuru | ✅ | PR #32 |
+| CL30 | Identity photo, webcam photos, tab/full-screen events (sirf insaan ke dekhne ke liye) | ✅ | Default off. ROADMAP §14 |
+| CL31 | Live sitting: kaun shuru, kahan tak, away/idle, sabko announcement, time badhana, reopen | ✅ | ROADMAP §8 |
+| CL32 | **Kai lab ek dashboard par** (centre-wise), har lab ka invigilator alag | ⬜ | |
+| CL33 | Invigilator phone se (attendance QR scan, incident note) | ⬜ | |
+| CL34 | Candidate-code watermark jo photo me bhi dikhe | ⬜ | B4 |
+
+**6. Checking**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL35 | MCQ/numeric/code apne aap; short answer AI se, rubric ke saath | ✅ | |
+| CL36 | Micro-viva: AI follow-up se "khud likha ya nahi" ka saboot | ✅ | |
+| CL37 | Written answers ka blind marking queue (J/K, Enter) | ✅ | PR #32 |
+| CL38 | Code similarity (MOSS jaisa) | ✅ | |
+| CL39 | **Handwritten copy scan karke AI se sujhaya hua marking** | ⬜ | D6 |
+| CL40 | Doosra examiner (moderation), farq zyada ho to teesra | ⬜ | |
+
+**7. Result**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL41 | Cut-off, qualified/failed, results table, CSV/Excel | ✅ | |
+| CL42 | Analytics: mean, median, histogram, har sawaal ki difficulty | ✅ | |
+| CL43 | Scorecard PDF, QR se public verify | ✅ | PR #32 |
+| CL44 | Result email/WhatsApp se, candidate apne marks sawaal-wise dekhe | ✅ | |
+| CL45 | Recheck: 7 din, 3 sawaal, badlaav ledger me | ✅ | |
+| CL46 | Candidates across tests (Insights), Moodle gradebook (LTI 1.3) | ✅ | |
+| CL47 | **CO–PO attainment report** (NBA format) | ⬜ | D5 |
+| CL48 | Maa-baap ko report (student ki manzoori se) | ⬜ | |
+
+**8. Placement cell (TPO OS)**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL49 | College ki practice site aur Prep (plan, Sahayak, contests) | ✅ | ROADMAP §15, §16 |
+| CL50 | Campus licence: CSV se sabko Plus | ⬜ | Tracker plan #8 |
+| CL51 | **Readiness heatmap** (branch/batch × topic), kamzor students ki list | ⬜ | D2 |
+| CL52 | **Drive manager**: company, JD, eligibility (CGPA, backlogs, branch), apply, rounds, offer | ⬜ | D3 |
+| CL53 | Company ke liye college ka portal (drive request, shortlist dekhna) | ⬜ | E3 se juda |
+| CL54 | **NIRF / NAAC reports** (placement %, median salary, higher studies) | ⬜ | D4 |
+| CL55 | Campus Premier League (college ranking) | ⬜ | C2 |
+
+**9. Paisa**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CL56 | Prepaid credits (Razorpay) ya monthly invoice; GST invoice, credit note, TDS | ✅ | ROADMAP §12 |
+| CL57 | **Saal ka licence, PO aur NEFT** se payment ka record, quotation PDF | ⬜ | Sarkari aur private colleges card se kam dete hain |
+| CL58 | TPO OS free; proctored exam aur handwritten checking paid | ⬜ | V2-7 |
+
+#### Company ka safar
+
+**1. Judna aur jodna**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO1 | Self sign-up, roles, 2FA, SSO (Google, Entra, Okta) | ✅ | |
+| CO2 | ATS: Greenhouse, Lever, Zoho Recruit, Darwinbox; Test connection | ✅ | Asli accounts par abhi nahi chalaya |
+| CO3 | Webhooks (signed), API keys, OpenAPI | ✅ | |
+| CO4 | Naukri/LinkedIn job se candidate lana | ⬜ | Unki API ki shartein pehle dekhni hongi |
+
+**2. Job se test**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO5 | Question bank, coding, sections, random paper, negative marking | ✅ | College jaisa hi |
+| CO6 | **JD chipkao → test ka draft** (skills, levels, time), recruiter badle | ⬜ | Sabse bada "aasaan" feature |
+| CO7 | **Role library**: Java/Python dev, data analyst, QA, DevOps, BPO, sales, fresher aptitude | ⬜ | Ready templates |
+| CO8 | SQL exam me (practice me pehle se) | 🟡 | Runner me SQL hai. Exam ke author flow me jaanchna baaki |
+| CO9 | Frontend/full-stack task (React, API) browser IDE me | ⬜ | |
+| CO10 | **Bolkar ya video jawab** (communication, sales, BPO roles), English speaking score | ⬜ | Mass hiring ki zaroorat |
+| CO11 | Take-home project (GitHub repo), rubric se check | ⬜ | |
+| CO12 | "AI-allowed" test (prompts ledger me) | ⬜ | E5 |
+
+**3. Candidates bulana**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO13 | CSV bulk invite, email/SMS/WhatsApp, reminders, ATS se apne aap | ✅ | |
+| CO14 | **Open link / careers page** se khud apply karke test (eligibility sawaal ke saath) | ⬜ | Off-campus drive |
+| CO15 | **Multi-college drive**: 50 college, ek paper, ek samay, lab mode | 🟡 | Lab mode aur ek exam hai; college-wise centre aur report baaki |
+| CO16 | Verified talent pool aur Parikshaa Score se search | ⬜ | E1, B3 |
+
+**4. Test aur bharosa**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO17 | Identity photo, webcam, browser events, micro-viva, code similarity | ✅ | |
+| CO18 | Ledger, receipt, public verify | ✅ | |
+| CO19 | Proxy pakadna: identity + awaaz ka viva, "saath baithe" jode | ⬜ | B5 |
+| CO20 | Second-device camera (phone se room ka view) | ⬜ | ROADMAP §14 me "not in it" |
+| CO21 | Lockdown browser | ❌ abhi nahi | Install ka jhanjhat; lab mode aur viva pehle. Badi company maange to dobara sochenge |
+
+**5. Shortlist**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO22 | Cut-off, results, report, analytics, export | ✅ | |
+| CO23 | **Hiring manager ko shortlist link** (expire hone wala), Shortlist/Reject button, comment | ⬜ | Recruiter ↔ manager ka roz ka kaam |
+| CO24 | Candidates ki side-by-side tulna | ⬜ | |
+| CO25 | Score ka role benchmark ("is role ke top 20%") | ⬜ | Kaafi data ke baad |
+
+**6. Interview**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO26 | **Interview room**: video + saanjha code editor + whiteboard | ⬜ | E4 |
+| CO27 | Interview scheduling (Google/Outlook calendar) | ⬜ | |
+| CO28 | Structured scorecard har round ka, panel ke notes | ⬜ | |
+| CO29 | AI pehla round (awaaz, Hinglish), report insaan dekhe | ⬜ | A8 ka engine |
+
+**7. Offer aur joining**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO30 | Offer status tracking (offered, accepted, joined) | ⬜ | College ke NIRF data me bhi jaata hai |
+| CO31 | DigiLocker se documents verify | ⬜ | |
+
+**8. Paisa aur enterprise**
+
+| ID | Feature | Status | Note |
+|---|---|---|---|
+| CO32 | Credits, monthly invoice, GST, TDS | ✅ | |
+| CO33 | Pay-per-shortlist, saal ka contract | ⬜ | E6 |
+| CO34 | Audit log, privacy notice, retention, data Bharat me, SECURITY.md | ✅ | |
+| CO35 | DPA template, security questionnaire ka taiyaar jawab, status page, SLA | ⬜ | Procurement ke liye |
+| CO36 | Pentest, ISO 27001 | ⬜ | Paisa aur auditor chahiye (ROADMAP "not in here") |
+
+#### Pehle kya banega (college + company, top 12)
+
+Ye kram isliye hai kyunki inme kam mehnat me sabse zyada "aasaan" aur "bharosa" milta hai, aur ye pilot colleges se seedha jude hain:
+
+1. CL8 Student master + CL52 Drive manager: TPO ka Excel khatam
+2. CO6 JD se test + CO7 role library: recruiter 10 minute me test bheje
+3. CL24 Admit card + CL25 seat allocation: exam din ki tension kam
+4. CO23 Hiring manager shortlist link
+5. CL57 Saal ka licence, PO aur NEFT
+6. CL51 Readiness heatmap
+7. CO14 Open link se apply (off-campus drive)
+8. CL54 NIRF/NAAC + CL47 CO–PO reports
+9. CL32 Kai lab ek dashboard + CL33 invigilator phone se
+10. CO10 Bolkar jawab aur English speaking
+11. CO26 Interview room
+12. CL39 Handwritten checking (evals ke baad)
+
+Inka kaam V2-P2 (college) aur V2-P3 (company) me aata hai. Build shuru karte waqt har ID upar ki Plan table me alag row banega.
+
 ---
 
 ## Build log
@@ -553,6 +765,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | V2-12: college aur company ka end-to-end feature list (94 features, har ek ka aaj ka status), 3 usool, pehle banne wale top 12 |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | Master plan v2 likha: competitors, dono taraf ki zaroorat, 6 bade daav, 9 stambh, phases, metrics, khatre. Abhi sirf plan, code nahi |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) `850cb5d` | Pehla hint admin ka likha (free, bina AI); worked solution ke baad solve par coins aadhe; tracker me "Ruka hua kaam" |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) `cdf6fd9` | Sahayak evals ka dhaancha: 40 problems (360 cases), runner, grading, judge-sanity, tests. Paid baseline run abhi baaki |
