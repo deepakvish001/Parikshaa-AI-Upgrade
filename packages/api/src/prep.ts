@@ -274,6 +274,7 @@ export class PrepService {
   /**
    * After a submission is judged: a first solve pays coins (and the day's
    * problem a bonus), completes its plan task and becomes a revision card.
+   * A solve that came after the tutor's worked solution pays half.
    */
   async afterSubmit(site: PracticeSite, learner: Learner, problemSlug: string, verdict: { readonly status: string; readonly firstSolve: boolean }): Promise<Reward> {
     if (verdict.status !== "passed") return NONE;
@@ -284,7 +285,10 @@ export class PrepService {
     if (!verdict.firstSolve) return NONE;
     const today = this.#today();
     await this.#store.addCard(scope, problem.id, addDays(today, 1));
-    const rewards = [await this.#pay(site, learner, "solve", COINS.solve[problem.difficulty], `solve:${problem.id}`)];
+    // Solved after the tutor gave the worked solution: half the coins.
+    const shown = this.#plus !== null && (await this.#plus.store.tutorHistory(scope, { problemId: problem.id })).some((e) => e.mode === "hint" && (e.hintLevel ?? 0) >= 4);
+    const solve = shown ? Math.floor(COINS.solve[problem.difficulty] / 2) : COINS.solve[problem.difficulty];
+    const rewards = [await this.#pay(site, learner, shown ? "solve_after_solution" : "solve", solve, `solve:${problem.id}`)];
     const [potd] = await this.#store.potd(scope, today, today);
     if (potd?.problemId === problem.id) rewards.push(await this.#pay(site, learner, "potd", COINS.potd, `potd:${today}`));
     rewards.push(...(await this.#milestones(site, learner)));

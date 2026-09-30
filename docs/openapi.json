@@ -26030,6 +26030,10 @@
                           "editorial": {
                             "type": "string"
                           },
+                          "hint": {
+                            "type": "string",
+                            "description": "The author's first hint: rung 1 of the tutor's ladder, given without the model. Empty when there is none."
+                          },
                           "fromBank": {
                             "type": [
                               "string",
@@ -26060,6 +26064,7 @@
                           "difficulty",
                           "tags",
                           "editorial",
+                          "hint",
                           "fromBank",
                           "position",
                           "published",
@@ -26309,6 +26314,10 @@
                   "editorial": {
                     "type": "string",
                     "maxLength": 50000
+                  },
+                  "hint": {
+                    "type": "string",
+                    "maxLength": 2000
                   },
                   "published": {
                     "type": "boolean"
@@ -27306,6 +27315,10 @@
                     "editorial": {
                       "type": "string"
                     },
+                    "hint": {
+                      "type": "string",
+                      "description": "The author's first hint: rung 1 of the tutor's ladder, given without the model. Empty when there is none."
+                    },
                     "fromBank": {
                       "type": [
                         "string",
@@ -27330,6 +27343,7 @@
                     "difficulty",
                     "tags",
                     "editorial",
+                    "hint",
                     "fromBank",
                     "position",
                     "published",
@@ -27567,6 +27581,10 @@
                   "editorial": {
                     "type": "string",
                     "maxLength": 50000
+                  },
+                  "hint": {
+                    "type": "string",
+                    "maxLength": 2000
                   },
                   "published": {
                     "type": "boolean"
@@ -28577,6 +28595,10 @@
                     "editorial": {
                       "type": "string"
                     },
+                    "hint": {
+                      "type": "string",
+                      "description": "The author's first hint: rung 1 of the tutor's ladder, given without the model. Empty when there is none."
+                    },
                     "fromBank": {
                       "type": [
                         "string",
@@ -28601,6 +28623,7 @@
                     "difficulty",
                     "tags",
                     "editorial",
+                    "hint",
                     "fromBank",
                     "position",
                     "published",

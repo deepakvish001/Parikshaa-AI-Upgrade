@@ -12,7 +12,8 @@ import type { PrepPlus } from "./prep-plus.js";
  * What it is never given: a hidden test (the same problem may be set in an
  * exam), or a problem while a contest that includes it is running. A hint
  * ladder goes one rung at a time; the whole solution is on the last rung, and
- * only after three wrong submissions. The learner's code is text to read,
+ * only after three wrong submissions. Where the problem's author wrote a
+ * first hint, rung 1 is that hint: no model, no credits. The learner's code is text to read,
  * never instructions to follow. Each answer costs credits, taken before the
  * model is asked and given back if it fails; its spend counts toward the
  * organisation's monthly model budget.
@@ -24,6 +25,10 @@ export const DEFAULT_TUTOR_MODEL = "claude-opus-5-5";
 export const TUTOR_CREDITS = { hint1: 10, hint: 20, review: 40, doubt: 15 } as const;
 /** Wrong submissions before the last rung (a worked solution) is offered. */
 export const SOLUTION_AFTER_FAILURES = 3;
+
+/** What a tutor entry records as its model when the problem's author wrote the answer. */
+export const AUTHORED = "authored";
+const authored = (problem: PracticeProblem) => problem.hint.trim() !== "";
 
 const monthStart = (ms: number) => {
   const d = new Date(ms);
@@ -110,9 +115,10 @@ export class Sahayak {
     const rung = Math.max(0, ...entries.filter((e) => e.mode === "hint").map((e) => e.hintLevel ?? 0));
     const failures = submissions.filter((s) => s.status !== "passed").length;
     const next = rung >= 4 ? null : rung + 1;
+    const credits = next === 1 ? (authored(problem) ? 0 : TUTOR_CREDITS.hint1) : TUTOR_CREDITS.hint;
     return {
       entries: entries.map(({ id, mode, hintLevel, question, answer, credits, createdAt }) => ({ id, mode, hintLevel, question, answer, credits, createdAt })),
-      nextHint: next === null ? null : { level: next, credits: next === 1 ? TUTOR_CREDITS.hint1 : TUTOR_CREDITS.hint, available: next < 4 || failures >= SOLUTION_AFTER_FAILURES },
+      nextHint: next === null ? null : { level: next, credits, available: next < 4 || failures >= SOLUTION_AFTER_FAILURES },
       failures,
       costs: TUTOR_CREDITS,
     };
@@ -173,6 +179,13 @@ export class Sahayak {
     const { nextHint } = await this.history(site, learner, slug);
     if (nextHint === null) throw new PracticeError("invalid", "Every hint for this problem has been given; the last one has the solution");
     if (!nextHint.available) throw new PracticeError("invalid", `The worked solution opens after ${SOLUTION_AFTER_FAILURES} wrong submissions. Try once more with the hints so far.`);
+    if (nextHint.level === 1 && authored(problem)) {
+      // The author's own first hint: given as written, without the model or credits.
+      if (!(await this.#plus.settings(site.orgId)).tutorEnabled) throw new PracticeError("unavailable", "The tutor is not available on this site");
+      const entry = { mode: "hint" as const, problemId: problem.id, lessonId: null, hintLevel: 1, question: "", answer: problem.hint.trim(), credits: 0, model: AUTHORED };
+      const saved = await this.#plus.store.addTutor(site.orgId, learner.id, entry, new Date(this.#now()));
+      return { id: saved.id, mode: saved.mode, hintLevel: saved.hintLevel, answer: saved.answer, credits: saved.credits, createdAt: saved.createdAt };
+    }
     const code = (input.code ?? "").slice(0, 20_000);
     const request = [
       `Give rung ${nextHint.level} of the hint ladder. Answer in ${input.replyIn === "hi" ? "Hindi (Devanagari), keeping technical terms in English" : "English"}.`,

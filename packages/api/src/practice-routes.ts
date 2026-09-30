@@ -179,6 +179,7 @@ const staffProblem = z.object({
   difficulty,
   tags: z.array(z.string()).readonly(),
   editorial: z.string(),
+  hint: z.string().describe("The author's first hint: rung 1 of the tutor's ladder, given without the model. Empty when there is none."),
   fromBank: z.string().nullable(),
   position: z.number(),
   published: z.boolean(),
@@ -193,6 +194,7 @@ const publishBody = z.object({
   difficulty: difficulty.optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
   editorial: z.string().max(50_000).optional(),
+  hint: z.string().max(2_000).optional(),
   published: z.boolean().optional(),
 });
 const problemPatch = z.object({
@@ -201,6 +203,7 @@ const problemPatch = z.object({
   difficulty: difficulty.optional(),
   tags: z.array(z.string().max(40)).max(20).optional(),
   editorial: z.string().max(50_000).optional(),
+  hint: z.string().max(2_000).optional(),
   published: z.boolean().optional(),
   position: z.number().int().optional(),
 });

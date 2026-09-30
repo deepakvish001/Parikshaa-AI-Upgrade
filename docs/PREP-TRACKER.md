@@ -30,14 +30,14 @@ Status ka matlab:
 | Dashboard aur planner | 7 | 2 | 6 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 4 | 1 | 2 | 0 |
-| Sahayak AI | 10 | 3 | 5 | 0 |
+| Sahayak AI | 12 | 3 | 3 | 0 |
 | Plus aur payment | 5 | 2 | 6 | 0 |
 | Coins, store, gamification | 10 | 2 | 3 | 0 |
 | Company prep aur community | 8 | 1 | 6 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
 | Platform, quality, B2B | 6 | 2 | 5 | 0 |
-| **Kul** | **62** | **17** | **42** | **1** |
+| **Kul** | **64** | **17** | **40** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -114,8 +114,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Rate limit 30/ghanta | ✅ | `TUTOR_RATE` | |
 | Kharcha org ke spend cap me ginta hai | ✅ | `model_usage` route `tutor` | |
 | Learner apni baatcheet mita sake | ✅ | `DELETE /tutor` | |
-| Pehla hint static (admin ka likha), AI ka kharcha bachane ke liye | ⬜ | | Content (300 static hints) ke saath |
-| Poora solution dekhne par us problem ke coins aadhe | ⬜ | | |
+| Pehla hint static (admin ka likha), AI ka kharcha bachane ke liye | ✅ | `practice_problems.hint` (migration 0024), `sahayak.ts`, console Problems → Edit → "First hint" | Hint likha ho to rung 1 wahi: model call nahi, 0 credit. Na likha ho to AI rung 1. Hints ka content (300) abhi likhna baaki, Content table dekho |
+| Poora solution dekhne par us problem ke coins aadhe | ✅ | `prep.ts` `afterSubmit`, coin rule `solve_after_solution` | Sirf Sahayak ka rung 4 (worked solution) ginta hai. 3 galat submit ke baad editorial khulna nahi ginta |
 | Review ka fixed JSON (logic, complexity, quality, edge cases) | 🟡 | | Review Markdown me aata hai, fixed JSON nahi |
 | Notes draft mode | ⬜ | | |
 | Interview follow-up sawaal | ⬜ | | Phase 6 |
@@ -233,7 +233,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
 | P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Coupons, invoices, passes, trial |
 | P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Sprint quiz, streak freeze, reminders, placement quiz |
-| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals, static hint 1, notes draft, 180 din delete |
+| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, notes draft, 180 din delete |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Company Pass, readiness, contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting, PDF export, AI draft |
 | P6 · Aage | Content, follow-ups, PWA, campus, subscriptions | ⬜ | |
@@ -245,7 +245,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F1 Sign up → onboarding → pehla plan | 🟡 | Placement quiz aur target companies baaki |
 | F2 Roz ka loop | 🟡 | Reminder email baaki |
 | F3 Run aur Submit | ✅ | |
-| F4 Sahayak hint ladder | 🟡 | Static hint 1 aur coins aadhe baaki |
+| F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
 | F5 Submit ke baad review | 🟡 | Fixed JSON format baaki |
 | F6 Chhoota task reschedule | ✅ | App kholne par. Cron aur email baaki |
 | F7 Sprint notes + quiz | ⬜ | |
@@ -273,6 +273,14 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 
 ---
 
+## Ruka hua kaam (owner ke intezaar me)
+
+Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya pending hai" pooche to sabse pehle ye list batani hai.
+
+| Kaam | Kis cheez ka intezaar | Uske baad kya hoga | Kab se |
+|---|---|---|---|
+| **Sahayak evals ka paid run** (plan 1a) | Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, tracker me scores | 30 Sep 2026 |
+
 ## Plan: aage kya banega
 
 Naya kaam shuru karne se pehle yahan entry jodo. Kaam ho jaaye to status ✅ karke upar ki table update karo, aur entry ko [Build log](#build-log) me le jao.
@@ -282,7 +290,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | # | Kaam | Blueprint | Kyun | Done kab | Status |
 |---|---|---|---|---|---|
 | 1a | **Sahayak evals** (shuru: 30 Sep 2026). Teen evals, ek hi case set par: **hint** (rung 1–2 me code ya poora algorithm leak na ho), **review** (planted bug pakde, learner ke code ki complexity sahi bataye, sahi program na likh de), **doubt** ("bas code de do" par bhi solution na de, sawaal ka jawab de). Cases: 40 apne likhe problems × 3 galat solutions (off-by-one, overflow, TLE), har galat solution runner par sach me fail hota hai; 120 doubts; ~20% Hindi. Judge: `claude-sonnet-5-5`, structured output. Runner asli `Sahayak` class chalata hai (PGlite par). Paid run sirf owner ki manzoori ke baad. **Ab tak:** cases owner ne manzoor kiye (30 Sep); 40 problems ke saare galat programs runner par check; runner, grader, judge-sanity aur tests ban gaye. **Baaki:** API key, pilot (24 cases), grading par manzoori, kharche ka andaaza, baseline run | §14, F4, F5 | Launch se pehle safety aur kharcha | Inputs aur grading par owner ki manzoori; baseline run ka `report.html`; targets: hint leak-free 98%, review bug 90%, complexity 95% | 🟡 chal raha |
-| 1b | Static hint 1 + solution par coins aadhe | §14, F4 | AI ka kharcha bachana | Admin ka likha hint pehle, poora solution dekhne par coins aadhe | ⬜ |
+| 1b | **Static hint 1 + solution par coins aadhe** (shuru: 30 Sep 2026). Admin har problem par ek "pehla hint" likh sake (console). Hint ladder ka rung 1 us problem par wahi hint dikhaye: model call nahi, credits 0. Hint na likha ho to pehle jaisa AI rung 1. Jis learner ne rung 4 (poora solution) le liya, us problem ko solve karne par coins aadhe | §14, F4 | AI ka kharcha bachana, aur solution dekh kar coins kamane par rok | Tests: static hint par model call nahi aur credit nahi katta; hint na ho to AI; rung 4 ke baad solve par aadhe coins; console me hint likhna/badalna | ✅ ban gaya (30 Sep 2026) |
 | 2 | Coupons, GST invoices, pricing page ka GST breakup | §16, F12 | Paid launch ke liye zaroori | Test mode me coupon ke saath kharidna, invoice PDF | ⬜ |
 | 3 | Roz ke reminders + analytics events | F2, §17 | Retention aur metrics naapna | D7 aur activation dashboard par | ⬜ |
 | 4 | Sprint quiz + revision notes, streak freeze | F7, 13.2 | Planner poora | Sprint ke ant me quiz, 70% se kam par revise tasks | ⬜ |

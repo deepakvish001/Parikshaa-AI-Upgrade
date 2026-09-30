@@ -72,6 +72,8 @@ export interface PracticeProblem {
   readonly difficulty: Difficulty;
   readonly tags: readonly string[];
   readonly editorial: string;
+  /** The author's first hint, given as rung 1 of the ladder in place of the tutor's. Empty when there is none. */
+  readonly hint: string;
   readonly fromBank: string | null;
   readonly position: number;
   readonly published: boolean;
@@ -85,6 +87,8 @@ export interface ProblemDraft {
   readonly difficulty: Difficulty;
   readonly tags: readonly string[];
   readonly editorial: string;
+  /** Empty or absent: no author's hint. */
+  readonly hint?: string;
   readonly fromBank: string | null;
   readonly position: number;
   readonly published: boolean;
@@ -192,6 +196,7 @@ interface ProblemRow {
   difficulty: Difficulty;
   tags: string[];
   editorial: string;
+  hint: string;
   from_bank: string | null;
   position: number;
   published: boolean;
@@ -205,12 +210,13 @@ const toProblem = (r: ProblemRow): PracticeProblem => ({
   difficulty: r.difficulty,
   tags: r.tags,
   editorial: r.editorial,
+  hint: r.hint,
   fromBank: r.from_bank,
   position: r.position,
   published: r.published,
   updatedAt: iso(r.updated_at),
 });
-const PROBLEM_COLUMNS = "id, slug, title, question, difficulty, tags, editorial, from_bank, position, published, updated_at";
+const PROBLEM_COLUMNS = "id, slug, title, question, difficulty, tags, editorial, hint, from_bank, position, published, updated_at";
 
 interface ContestRow {
   id: string;
@@ -492,9 +498,9 @@ export class PracticeStore {
       const id = this.#newId();
       try {
         const rows = await tx.query<ProblemRow>(
-          `INSERT INTO practice_problems (org_id, id, slug, title, question, difficulty, tags, editorial, from_bank, position, published)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING ${PROBLEM_COLUMNS}`,
-          [orgId, id, draft.slug, draft.title, JSON.stringify({ ...draft.question, id }), draft.difficulty, [...draft.tags], draft.editorial, draft.fromBank, draft.position, draft.published],
+          `INSERT INTO practice_problems (org_id, id, slug, title, question, difficulty, tags, editorial, from_bank, position, published, hint)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING ${PROBLEM_COLUMNS}`,
+          [orgId, id, draft.slug, draft.title, JSON.stringify({ ...draft.question, id }), draft.difficulty, [...draft.tags], draft.editorial, draft.fromBank, draft.position, draft.published, draft.hint ?? ""],
         );
         return toProblem(rows[0]!);
       } catch (error) {
@@ -509,9 +515,9 @@ export class PracticeStore {
       try {
         const rows = await tx.query<ProblemRow>(
           `UPDATE practice_problems
-              SET slug = $3, title = $4, question = $5, difficulty = $6, tags = $7, editorial = $8, position = $9, published = $10, updated_at = now()
+              SET slug = $3, title = $4, question = $5, difficulty = $6, tags = $7, editorial = $8, position = $9, published = $10, hint = $11, updated_at = now()
             WHERE org_id = $1 AND id = $2 RETURNING ${PROBLEM_COLUMNS}`,
-          [orgId, id, draft.slug, draft.title, JSON.stringify({ ...draft.question, id }), draft.difficulty, [...draft.tags], draft.editorial, draft.position, draft.published],
+          [orgId, id, draft.slug, draft.title, JSON.stringify({ ...draft.question, id }), draft.difficulty, [...draft.tags], draft.editorial, draft.position, draft.published, draft.hint ?? ""],
         );
         return rows[0] === undefined ? null : toProblem(rows[0]);
       } catch (error) {

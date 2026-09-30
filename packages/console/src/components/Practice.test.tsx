@@ -15,6 +15,7 @@ const problem = (id: string, title: string, patch: Partial<PracticeProblem> = {}
   difficulty: "easy",
   tags: [],
   editorial: "",
+  hint: "",
   fromBank: `bank-${id}`,
   position: 0,
   published: true,
@@ -168,6 +169,19 @@ describe("the practice panel", () => {
     await userEvent.click(within(form).getByRole("button", { name: "Save" }));
     await waitFor(() => expect(client.updateProblem).toHaveBeenCalledWith("p1", expect.objectContaining({ tags: ["sorting", "basics"], published: false })));
     expect(await screen.findByText("Hidden")).toBeInTheDocument();
+  });
+
+  it("gives a problem a first hint, which the tutor hands out free", async () => {
+    const client = stub();
+    show(client);
+    await userEvent.click(screen.getByRole("tab", { name: "Problems" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Edit Stable sort" }));
+    const form = screen.getByRole("form", { name: "Edit Stable sort" });
+    const hint = within(form).getByLabelText("First hint");
+    expect(hint).toHaveAccessibleDescription(/free as the tutor's first hint/);
+    await userEvent.type(hint, "What happens to two equal keys?");
+    await userEvent.click(within(form).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(client.updateProblem).toHaveBeenCalledWith("p1", expect.objectContaining({ hint: "What happens to two equal keys?" })));
   });
 
   it("schedules a contest with its problems in the order chosen", async () => {

@@ -529,6 +529,7 @@ function ProblemEditor({ client, problem, onDone }: { client: ConsoleClient; pro
   const [difficulty, setDifficulty] = useState<Difficulty>(problem.difficulty);
   const [tags, setTags] = useState(problem.tags.join(", "));
   const [editorial, setEditorial] = useState(problem.editorial);
+  const [hint, setHint] = useState(problem.hint);
   const [published, setPublished] = useState(problem.published);
   const save = useMutation({
     mutationFn: () =>
@@ -541,6 +542,7 @@ function ProblemEditor({ client, problem, onDone }: { client: ConsoleClient; pro
           .map((t) => t.trim())
           .filter((t) => t !== ""),
         editorial,
+        hint,
         published,
       }),
     onSuccess: async () => {
@@ -585,6 +587,14 @@ function ProblemEditor({ client, problem, onDone }: { client: ConsoleClient; pro
       <div className="field">
         <label htmlFor={id("editorial")}>Editorial (Markdown)</label>
         <textarea id={id("editorial")} rows={5} value={editorial} onChange={(e) => setEditorial(e.target.value)} />
+      </div>
+      <div className="field">
+        <label htmlFor={id("hint")}>First hint</label>
+        <textarea id={id("hint")} rows={2} maxLength={2000} value={hint} aria-describedby={id("hint-help")} onChange={(e) => setHint(e.target.value)} />
+        <p className="notice" id={id("hint-help")}>
+          One observation or the pattern's name, not the approach. Learners get it free as the tutor's first hint, and the model is not asked. Leave empty to let
+          the tutor write it.
+        </p>
       </div>
       <label className="inline">
         <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} /> Shown to learners (a hidden problem can still be set in a contest)

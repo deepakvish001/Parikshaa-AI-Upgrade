@@ -9,6 +9,8 @@
 3. **After the PR exists**, add a line to "Build log" (newest first): date, PR link, what was built.
 4. A decision that differs from the blueprint goes under "Faisle".
 
+When the owner asks what is pending, start with the "Ruka hua kaam" section: work that is ready but waits on the owner (a key, an approval). Add to it whenever work stops for that reason, and remove the row when it is done.
+
 Mark something ✅ only when it works and has tests; say plainly in the note what is still missing. Write the tracker in the same Hinglish as the rest of it.
 
 ## Checks
