@@ -182,21 +182,27 @@ const stateOf = (contest: Contest, now: number): ContestState =>
   now < Date.parse(contest.startsAt) ? "upcoming" : now < Date.parse(contest.endsAt) ? "running" : "ended";
 
 /** Consecutive IST days, ending today or yesterday, with an accepted submission; and the longest such run. */
-export function streaks(days: readonly { day: string; accepted: number }[], today: string): { current: number; longest: number } {
+export function streaks(
+  days: readonly { day: string; accepted: number }[],
+  today: string,
+  /** Days taken off on purpose: they neither count toward a streak nor break it. */
+  frozen: ReadonlySet<string> = new Set(),
+): { current: number; longest: number } {
   const active = new Set(days.filter((d) => d.accepted > 0).map((d) => d.day));
+  const kept = (day: string) => active.has(day) || frozen.has(day);
   const dayBefore = (day: string) => new Date(Date.parse(`${day}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
   let current = 0;
-  let cursor = active.has(today) ? today : dayBefore(today);
-  while (active.has(cursor)) {
-    current++;
+  let cursor = kept(today) ? today : dayBefore(today);
+  while (kept(cursor)) {
+    if (active.has(cursor)) current++;
     cursor = dayBefore(cursor);
   }
   let longest = 0;
   for (const day of [...active].sort()) {
     let run = 1;
     let back = dayBefore(day);
-    while (active.has(back)) {
-      run++;
+    while (kept(back)) {
+      if (active.has(back)) run++;
       back = dayBefore(back);
     }
     longest = Math.max(longest, run);

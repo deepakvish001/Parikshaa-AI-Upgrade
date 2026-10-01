@@ -52,6 +52,37 @@ function Failed({ error }: { readonly error: unknown }) {
   );
 }
 
+/** "Aaj chhutti": today off, the streak kept. */
+function DayOff({ client, site, frozen, left }: { readonly client: Context["client"]; readonly site: string; readonly frozen: boolean; readonly left: number }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const [asking, setAsking] = useState(false);
+  const off = useMutation({
+    mutationFn: () => client.freezeToday(),
+    onSuccess: () => {
+      setAsking(false);
+      void queryClient.invalidateQueries({ queryKey: key(site) });
+    },
+  });
+  if (frozen) return <span className="stat-chip">{p("freeze.today")}</span>;
+  if (left === 0) return null;
+  return asking ? (
+    <span className="stat-chip">
+      {p("freeze.confirm", { n: left })}{" "}
+      <button type="button" className="link-button" disabled={off.isPending} onClick={() => off.mutate()}>
+        {p("freeze.yes")}
+      </button>{" "}
+      <button type="button" className="link-button" onClick={() => setAsking(false)}>
+        ✕
+      </button>
+    </span>
+  ) : (
+    <button type="button" className="stat-chip link-button" onClick={() => setAsking(true)} aria-label={p("freeze.ask", { n: left })}>
+      {p("freeze.button")}
+    </button>
+  );
+}
+
 // --- the dashboard -------------------------------------------------------------------------
 
 export function HomePage({ client, nav, learner, site }: Signed) {
@@ -80,6 +111,7 @@ export function HomePage({ client, nav, learner, site }: Signed) {
           <span className="stat-chip streak-chip">
             <Flame aria-hidden="true" /> {p("home.streak", { n: h.streak })}
           </span>
+          <DayOff client={client} site={site} frozen={h.frozenToday} left={h.freezesLeft} />
           <Link nav={nav} to="/coins" className="stat-chip">
             <Coins aria-hidden="true" /> {p("home.coins", { n: h.coins.toLocaleString("en-IN") })}
           </Link>
@@ -948,6 +980,15 @@ function PlanView({ client, nav, learner, site }: Signed) {
                   <span className="notice">
                     {s.done}/{s.tasks} · {day(s.from)}–{day(s.to)}
                   </span>
+                  <span className="sprint-links">
+                    <Link nav={nav} to={`/sprints/${s.sprint}/quiz`}>
+                      {p("sprint.quiz")}
+                    </Link>{" "}
+                    ·{" "}
+                    <Link nav={nav} to={`/sprints/${s.sprint}/notes`}>
+                      {p("sprint.notes")}
+                    </Link>
+                  </span>
                 </li>
               ))}
             </ol>
@@ -1031,6 +1072,116 @@ function ReminderCard({ client, site, learner }: { readonly client: Context["cli
       <p className="notice">{p("reminder.hint")}</p>
       {save.isError ? <Failed error={save.error} /> : null}
     </section>
+  );
+}
+
+/** A sprint's quiz: choice and number questions, handed in together. */
+export function SprintQuizPage({ client, nav, learner, site, sprint }: Signed & { readonly sprint: number }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const quiz = useQuery({ queryKey: key(site, "quiz", learner.id, sprint), queryFn: () => client.sprintQuiz(sprint) });
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const hand = useMutation({
+    mutationFn: () => client.takeSprintQuiz(sprint, answers),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: key(site) }),
+  });
+  if (quiz.isPending) return <Loading />;
+  if (quiz.isError) return <Failed error={quiz.error} />;
+  const q = quiz.data;
+  const result = hand.data;
+  return (
+    <div className="prep-page">
+      <header className="prep-head">
+        <div>
+          <h1>{p("sprint.quizTitle", { n: sprint })}</h1>
+          <p className="notice">{p("sprint.quizHint", { pass: q.passPercent })}</p>
+        </div>
+        <Link nav={nav} to="/plan">
+          ← {p("plan.title")}
+        </Link>
+      </header>
+      {q.count === 0 ? (
+        <p className="notice">{p("sprint.noQuestions")}</p>
+      ) : !q.open ? (
+        <p className="notice">{p("sprint.notYet")}</p>
+      ) : (
+        <form
+          className="card quiz-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            hand.mutate();
+          }}
+        >
+          {q.questions.map((item, i) => (
+            <fieldset key={item.slug} className={result === undefined ? "" : result.wrong.includes(item.slug) ? "wrong" : "right"}>
+              <legend>
+                {i + 1}. <Markdown source={item.question.stem} />
+              </legend>
+              {item.question.kind === "mcq" ? (
+                (item.question.options ?? []).map((option, j) => (
+                  <label key={j} className="check">
+                    <input type="radio" name={item.slug} value={String(j)} checked={answers[item.slug] === String(j)} onChange={() => setAnswers({ ...answers, [item.slug]: String(j) })} />{" "}
+                    {option}
+                  </label>
+                ))
+              ) : (
+                <input aria-label={item.title} inputMode="decimal" value={answers[item.slug] ?? ""} onChange={(e) => setAnswers({ ...answers, [item.slug]: e.target.value })} />
+              )}
+            </fieldset>
+          ))}
+          <button type="submit" disabled={hand.isPending}>
+            {p("sprint.handIn")}
+          </button>
+          {hand.isError ? <Failed error={hand.error} /> : null}
+        </form>
+      )}
+      {result === undefined ? null : (
+        <p className={`alert ${result.passed ? "ok" : "warn"}`} role="status">
+          {result.passed ? p("sprint.passed", { score: result.score, total: result.total }) : p("sprint.failed", { score: result.score, total: result.total, n: result.revise })}
+        </p>
+      )}
+      <RewardNote reward={result?.reward} />
+      {q.sittings.length === 0 ? null : (
+        <section className="card">
+          <h2>{p("sprint.sittings")}</h2>
+          <ul>
+            {q.sittings.map((s) => (
+              <li key={s.takenAt}>
+                {s.score}/{s.total} {s.passed ? "✓" : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** A sprint's revision notes: the learner's own notes on its lessons and problems, to read or print. */
+export function SprintNotesPage({ client, nav, learner, site, sprint }: Signed & { readonly sprint: number }) {
+  const p = usePrepText();
+  const notes = useQuery({ queryKey: key(site, "sprint-notes", learner.id, sprint), queryFn: () => client.sprintNotes(sprint) });
+  if (notes.isPending) return <Loading />;
+  if (notes.isError) return <Failed error={notes.error} />;
+  return (
+    <article className="prep-page sprint-notes" aria-label={p("sprint.notesTitle", { n: sprint })}>
+      <header className="prep-head">
+        <h1>{p("sprint.notesTitle", { n: sprint })}</h1>
+        <button type="button" className="secondary no-print" onClick={() => window.print()}>
+          {p("plus.print")}
+        </button>
+      </header>
+      {notes.data.items.map((item) => (
+        <section key={`${item.kind}:${item.slug}`} className="card">
+          <h2>
+            <Link nav={nav} to={item.kind === "problem" ? `/problems/${item.slug}` : `/lessons/${item.slug}`}>
+              {item.title}
+            </Link>
+          </h2>
+          {item.note === null ? <p className="notice">{p("sprint.noNote")}</p> : <Markdown source={item.note} />}
+        </section>
+      ))}
+    </article>
   );
 }
 

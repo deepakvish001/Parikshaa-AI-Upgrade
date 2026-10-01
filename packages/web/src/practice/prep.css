@@ -772,3 +772,25 @@
     display: none !important;
   }
 }
+.sprint-links {
+  font-size: var(--text-sm);
+}
+.quiz-form {
+  display: grid;
+  gap: var(--space-3);
+}
+.quiz-form fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md, 0.5rem);
+  padding: var(--space-2) var(--space-3);
+}
+.quiz-form fieldset.wrong {
+  border-color: var(--danger-border);
+}
+.quiz-form fieldset.right {
+  border-color: var(--success-border);
+}
+.quiz-form legend p {
+  display: inline;
+  margin: 0;
+}

@@ -259,3 +259,101 @@ describe("lists, notes and the problem of the day", () => {
     expect(potd.calendar.map((d: { day: string }) => d.day)).toEqual(["2026-10-05", "2026-10-04"]);
   });
 });
+
+describe("the end of a sprint, and a day off", () => {
+  beforeEach(() => buildTrack());
+  const input = { track: "dsa-basics", level: "intermediate", deadline: "2026-10-30", dailyMinutes: 75, offDays: [0] };
+
+  it("opens the sprint's quiz when its days are over, sends what was missed back to revise, and pays a pass once", async () => {
+    const asha = await signUp();
+    await ok("POST", asha, `${S}/plan`, input);
+    const closed = await ok("GET", asha, `${S}/plan/sprints/1/quiz`);
+    expect(closed).toMatchObject({ sprint: 1, open: false, passPercent: 70, questions: [], count: 3, sittings: [] });
+    expect((await call("POST", asha, `${S}/plan/sprints/1/quiz`, { answers: {} })).statusCode).toBe(422);
+    expect((await call("GET", asha, `${S}/plan/sprints/9/quiz`)).statusCode).toBe(404);
+
+    // Thursday: the sprint's days are over.
+    clock += 3 * DAY;
+    const quiz = await ok("GET", asha, `${S}/plan/sprints/1/quiz`);
+    expect(quiz.open).toBe(true);
+    expect(quiz.questions.map((q: { slug: string }) => q.slug)).toEqual([problems.arrays!.slug, problems.search!.slug, problems.graphs!.slug]);
+    // The answer key never leaves.
+    expect(JSON.stringify(quiz)).not.toContain("correctIndex");
+
+    const failed = await ok("POST", asha, `${S}/plan/sprints/1/quiz`, { answers: { [problems.arrays!.slug]: "1", [problems.search!.slug]: "0" } }, 200);
+    expect(failed).toEqual({ score: 1, total: 3, passed: false, wrong: [problems.search!.slug, problems.graphs!.slug], revise: 2, reward: { coins: 0, reasons: [] } });
+    // Due today, and back as tasks on the next study day.
+    const due = (await ok("GET", asha, `${S}/revise`)).due.map((c: { slug: string }) => c.slug);
+    expect(due).toEqual(expect.arrayContaining([problems.search!.slug, problems.graphs!.slug]));
+    const upcoming = (await ok("GET", asha, `${S}/plan`)).plan.upcoming as { title: string; day: string; kind: string }[];
+    expect(upcoming.filter((t) => t.title.startsWith("Revise:")).map((t) => [t.day, t.kind, t.title])).toEqual([
+      ["2026-10-09", "revise", "Revise: Binary search needs what"],
+      ["2026-10-09", "revise", "Revise: BFS uses which structure"],
+    ]);
+
+    const all = { [problems.arrays!.slug]: "1", [problems.search!.slug]: "1", [problems.graphs!.slug]: "1" };
+    const passed = await ok("POST", asha, `${S}/plan/sprints/1/quiz`, { answers: all }, 200);
+    expect(passed).toMatchObject({ score: 3, passed: true, revise: 0, reward: { coins: 20, reasons: ["quiz"] } });
+    expect((await ok("POST", asha, `${S}/plan/sprints/1/quiz`, { answers: all }, 200)).reward.coins).toBe(0);
+    expect((await ok("GET", asha, `${S}/plan/sprints/1/quiz`)).sittings.map((q: { score: number; passed: boolean }) => [q.score, q.passed])).toEqual([
+      [1, false],
+      [3, true],
+      [3, true],
+    ]);
+  });
+
+  it("gathers a sprint's revision notes from the learner's own notes", async () => {
+    const asha = await signUp();
+    await ok("POST", asha, `${S}/plan`, input);
+    await ok("PUT", asha, `${S}/notes/lesson/what-an-array-is`, { body: "Contiguous: **O(1)** index." }, 200);
+    await ok("PUT", asha, `${S}/notes/problem/${problems.search!.slug}`, { body: "Needs a sorted array." }, 200);
+    const notes = await ok("GET", asha, `${S}/plan/sprints/1/notes`);
+    expect(notes).toEqual({
+      sprint: 1,
+      items: [
+        { kind: "lesson", slug: "what-an-array-is", title: "What an array is", note: "Contiguous: **O(1)** index." },
+        { kind: "problem", slug: problems.arrays!.slug, title: "Arrays are stored how", note: null },
+        { kind: "problem", slug: problems.search!.slug, title: "Binary search needs what", note: "Needs a sorted array." },
+        { kind: "problem", slug: problems.graphs!.slug, title: "BFS uses which structure", note: null },
+      ],
+    });
+  });
+
+  it("takes a day off twice a month: the streak holds, and the day's tasks move on", async () => {
+    // Submissions are dated by the database's clock; put each on the test's day.
+    const onTheDay = async () => {
+      await db.exec(`RESET ROLE`);
+      await db.exec(`UPDATE practice_submissions SET created_at = '${new Date(clock).toISOString()}' WHERE created_at BETWEEN now() - interval '1 minute' AND now() + interval '1 second'`);
+      await db.exec(`SET ROLE parikshaa_app`);
+    };
+    const asha = await signUp();
+    await ok("POST", asha, `${S}/plan`, input);
+    expect(await ok("GET", asha, `${S}/home`)).toMatchObject({ freezesLeft: 2, frozenToday: false });
+    await ok("POST", asha, `${S}/problems/${problems.arrays!.slug}/submit`, { answer: "1" }, 200);
+    await onTheDay();
+    expect((await ok("GET", asha, `${S}/home`)).streak).toBe(1);
+
+    // Tuesday off: its tasks go to Wednesday.
+    clock += DAY;
+    const off = await ok("POST", asha, `${S}/streak/freeze`, undefined, 200);
+    expect(off).toMatchObject({ day: "2026-10-06", freezesLeft: 1 });
+    expect(off.moved).toBeGreaterThan(0);
+    expect((await ok("GET", asha, `${S}/plan`)).plan.today).toEqual([]);
+    expect(await ok("GET", asha, `${S}/home`)).toMatchObject({ frozenToday: true, freezesLeft: 1, streak: 1 });
+    // Again the same day changes nothing.
+    expect((await ok("POST", asha, `${S}/streak/freeze`, undefined, 200)).freezesLeft).toBe(1);
+
+    // Wednesday: a solve carries the streak on over the day off.
+    clock += DAY;
+    await ok("POST", asha, `${S}/problems/${problems.search!.slug}/submit`, { answer: "1" }, 200);
+    await onTheDay();
+    expect((await ok("GET", asha, `${S}/home`)).streak).toBe(2);
+
+    clock += DAY;
+    expect((await ok("POST", asha, `${S}/streak/freeze`, undefined, 200)).freezesLeft).toBe(0);
+    clock += DAY;
+    const third = await call("POST", asha, `${S}/streak/freeze`);
+    expect(third.statusCode).toBe(409);
+    expect(third.json().error).toBe("limit_reached");
+  });
+});

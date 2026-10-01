@@ -67,6 +67,8 @@ const home = {
   plan,
   continue: { slug: "dsa-basics", title: "DSA Basics", items: 30, done: 1, next: { kind: "problem", slug: "two-sum", title: "Two sum" } },
   solved: 57,
+  frozenToday: false,
+  freezesLeft: 2,
 };
 
 beforeEach(() => {
@@ -207,6 +209,56 @@ describe("the plan", () => {
     expect(screen.queryByRole("checkbox", { name: "Two sum" })).toBeNull();
     await user.click(screen.getByRole("checkbox", { name: "Update my resume" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ done: true }));
+  });
+});
+
+describe("the end of a sprint, and a day off", () => {
+  it("takes today off from the dashboard, after asking", async () => {
+    let frozen = false;
+    routes["GET /practice/nit-practice/home"] = () => ({ body: { ...home, frozenToday: frozen, freezesLeft: frozen ? 1 : 2 } });
+    routes["POST /practice/nit-practice/streak/freeze"] = () => {
+      frozen = true;
+      return { body: { day: "2026-10-05", freezesLeft: 1, moved: 2 } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/home");
+    await user.click(await screen.findByRole("button", { name: /Take today off: your streak stays, 2 days off left/ }));
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+    expect(await screen.findByText("Today off")).toBeTruthy();
+  });
+
+  it("hands in a sprint's quiz and says what comes back to revise", async () => {
+    routes["GET /practice/nit-practice/plan/sprints/1/quiz"] = () => ({
+      body: {
+        sprint: 1,
+        open: true,
+        passPercent: 70,
+        count: 2,
+        sittings: [],
+        questions: [
+          { slug: "stable", title: "Stable sort", question: { kind: "mcq", stem: "Which sort is **stable**?", options: ["quick", "merge"] } },
+          { slug: "bits", title: "Bits", question: { kind: "numeric", stem: "Bits in a byte?" } },
+        ],
+      },
+    });
+    routes["POST /practice/nit-practice/plan/sprints/1/quiz"] = () => ({ body: { score: 1, total: 2, passed: false, wrong: ["bits"], revise: 1, reward: { coins: 0, reasons: [] } } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/sprints/1/quiz");
+    await user.click(await screen.findByRole("radio", { name: "merge" }));
+    await user.type(screen.getByRole("textbox", { name: "Bits" }), "7");
+    await user.click(screen.getByRole("button", { name: "Hand in" }));
+    expect(await screen.findByText("1 of 2. 1 questions are back for revision, starting today.")).toBeTruthy();
+    expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/quiz"))!.body).toEqual({ answers: { stable: "1", bits: "7" } });
+  });
+
+  it("gathers a sprint's notes on one page", async () => {
+    routes["GET /practice/nit-practice/plan/sprints/2/notes"] = () => ({
+      body: { sprint: 2, items: [{ kind: "lesson", slug: "heaps", title: "Heaps", note: "Smallest on **top**." }, { kind: "problem", slug: "kth", title: "Kth largest", note: null }] },
+    });
+    open("/practice/nit-practice/sprints/2/notes");
+    const page = await screen.findByRole("article", { name: "Sprint 2 notes" });
+    expect(page.textContent).toContain("Smallest on top.");
+    expect(page.textContent).toContain("No note yet.");
   });
 });
 

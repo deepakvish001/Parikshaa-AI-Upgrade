@@ -431,6 +431,22 @@ export class PracticeClient {
     return this.#post("/plus/checkout", { productId, ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== undefined && v !== "")) });
   }
 
+  freezeToday(): Promise<{ readonly day: string; readonly freezesLeft: number; readonly moved: number }> {
+    return this.#post("/streak/freeze", {});
+  }
+
+  sprintQuiz(sprint: number): Promise<SprintQuiz> {
+    return this.#request(`/plan/sprints/${sprint}/quiz`);
+  }
+
+  takeSprintQuiz(sprint: number, answers: Readonly<Record<string, string>>): Promise<SprintQuizResult> {
+    return this.#post(`/plan/sprints/${sprint}/quiz`, { answers });
+  }
+
+  sprintNotes(sprint: number): Promise<{ readonly sprint: number; readonly items: readonly { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string; readonly note: string | null }[] }> {
+    return this.#request(`/plan/sprints/${sprint}/notes`);
+  }
+
   reminders(): Promise<{ readonly enabled: boolean; readonly hour: number; readonly email: boolean }> {
     return this.#request("/reminders");
   }
@@ -669,6 +685,29 @@ export interface Home {
     readonly next: { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string } | null;
   } | null;
   readonly solved: number;
+  /** Today was taken off. */
+  readonly frozenToday: boolean;
+  /** Days off left this month. */
+  readonly freezesLeft: number;
+}
+
+/** A sprint's quiz: the sprint's choice and number questions, once the sprint is done. */
+export interface SprintQuiz {
+  readonly sprint: number;
+  readonly open: boolean;
+  readonly passPercent: number;
+  readonly questions: readonly { readonly slug: string; readonly title: string; readonly question: { readonly kind: string; readonly stem: string; readonly options?: readonly string[] } }[];
+  readonly count: number;
+  readonly sittings: readonly { readonly score: number; readonly total: number; readonly passed: boolean; readonly takenAt: string }[];
+}
+
+export interface SprintQuizResult {
+  readonly score: number;
+  readonly total: number;
+  readonly passed: boolean;
+  readonly wrong: readonly string[];
+  readonly revise: number;
+  readonly reward: Reward;
 }
 
 export type Grade = "again" | "hard" | "good" | "easy";

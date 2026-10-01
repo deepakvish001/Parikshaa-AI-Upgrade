@@ -146,6 +146,14 @@ describe("the daily reminder", () => {
     await worker.tick();
     expect(reminders()).toEqual([]);
   });
+  it("is not sent on a day the learner took off", async () => {
+    const asha = await signUp("asha@example.com", "Asha");
+    await ok("POST", asha, `${S}/plan`, plan);
+    await ok("PUT", asha, `${S}/reminders`, { enabled: true, hour: 19 });
+    await ok("POST", asha, `${S}/streak/freeze`, undefined, 200);
+    clock = at("2026-10-05T19:05:00");
+    expect(await engage.queueDue(["org-a"])).toBe(0);
+  });
 });
 
 describe("analytics", () => {

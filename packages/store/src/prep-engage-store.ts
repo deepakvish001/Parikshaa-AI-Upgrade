@@ -100,6 +100,7 @@ export class PrepEngageStore {
            FROM prep_reminders r
            JOIN learners l ON l.id = r.learner_id AND l.org_id = r.org_id AND l.erased_at IS NULL
           WHERE r.org_id = $1 AND r.enabled AND r.hour = $3
+            AND NOT EXISTS (SELECT 1 FROM prep_freezes f WHERE f.org_id = r.org_id AND f.learner_id = r.learner_id AND f.day = $2::date)
             AND (EXISTS (SELECT 1 FROM prep_tasks t JOIN prep_plans p ON p.org_id = t.org_id AND p.id = t.plan_id AND p.status = 'active'
                           WHERE t.org_id = r.org_id AND t.learner_id = r.learner_id AND t.day <= $2::date AND t.done_at IS NULL)
               OR EXISTS (SELECT 1 FROM prep_cards c WHERE c.org_id = r.org_id AND c.learner_id = r.learner_id AND c.due_on <= $2::date))

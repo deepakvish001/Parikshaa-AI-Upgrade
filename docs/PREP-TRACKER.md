@@ -27,17 +27,17 @@ Status ka matlab:
 
 | Hissa | ✅ | 🟡 | ⬜ | ❌ |
 |---|---|---|---|---|
-| Dashboard aur planner | 7 | 2 | 6 | 0 |
+| Dashboard aur planner | 9 | 2 | 4 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 4 | 1 | 2 | 0 |
 | Sahayak AI | 12 | 3 | 3 | 0 |
 | Plus aur payment | 9 | 0 | 4 | 0 |
-| Coins, store, gamification | 10 | 2 | 3 | 0 |
+| Coins, store, gamification | 10 | 3 | 2 | 0 |
 | Company prep aur community | 8 | 1 | 6 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
 | Platform, quality, B2B | 8 | 2 | 3 | 0 |
-| **Kul** | **70** | **15** | **36** | **1** |
+| **Kul** | **72** | **16** | **33** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -68,8 +68,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Apne custom tasks | ✅ | `POST /plan/tasks` | |
 | Study mode / focus timer, hafte ka total | ✅ | `FocusTimer`; `prep_focus` | |
 | Plan settings (deadline ya time badalna) | 🟡 | `DELETE /plan` | Abhi plan band karke naya banana padta hai |
-| Streak freeze ("aaj chhutti") | ⬜ | | |
-| Sprint ke revision notes + sprint quiz | ⬜ | | Blueprint F7 |
+| Streak freeze ("aaj chhutti") | ✅ | `prep_freezes` (migration 0031), `POST /streak/freeze`, dashboard par "Take today off" | Mahine me 2. Streak na badhta na tootta; aaj ke tasks aage; us din reminder nahi. Coins se aur freeze kharidna nahi |
+| Sprint ke revision notes + sprint quiz | ✅ | `prep.ts` `sprintQuiz`/`takeSprintQuiz`/`sprintNotes`, `/sprints/:n/quiz`, `/sprints/:n/notes` | Quiz me sirf MCQ/numeric sawaal (10 tak); code problems quiz me nahi aate. 70% se kam par galat sawaal revise task + aaj due card. Notes page browser se print/PDF |
 | Finish date badalne par email | ⬜ | | Reminders ke saath aayega |
 
 ### 3. Learn aur practice (S3, S4, F3, F10)
@@ -157,7 +157,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Titles (Newbie → Grandmaster) aur 13 achievements | ✅ | `RatingPage` | Computed, store nahi hote |
 | "Mahine me 1" jaisi limit | 🟡 | `per_learner` | Abhi kul limit hai, mahine wali nahi |
 | Title naam ke saath har jagah | 🟡 | | Rating page par dikhta hai |
-| Quiz pass par +20, contest rank par coins | ⬜ | | |
+| Quiz pass par +20, contest rank par coins | 🟡 | coin rule `quiz` | Sprint quiz pass par +20 (ek baar). Contest rank par coins baaki |
 | Shareable achievement cards | ⬜ | | |
 | Store me coupons | ⬜ | | |
 
@@ -232,7 +232,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
 | P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Passes, trial, refund |
-| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Sprint quiz, streak freeze, reminders, placement quiz |
+| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Placement quiz, plan settings |
 | P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, notes draft, 180 din delete |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Company Pass, readiness, contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting, PDF export, AI draft |
@@ -248,7 +248,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
 | F5 Submit ke baad review | 🟡 | Fixed JSON format baaki |
 | F6 Chhoota task reschedule | ✅ | App kholne par. Cron aur email baaki |
-| F7 Sprint notes + quiz | ⬜ | |
+| F7 Sprint notes + quiz | ✅ | MCQ/numeric sawaalon ke saath |
 | F8 Spaced revision | ✅ | |
 | F9 Company prep | 🟡 | Folder, readiness baaki |
 | F10 POTD, streak, coins | ✅ | |
@@ -294,7 +294,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 1b | **Static hint 1 + solution par coins aadhe** (shuru: 30 Sep 2026). Admin har problem par ek "pehla hint" likh sake (console). Hint ladder ka rung 1 us problem par wahi hint dikhaye: model call nahi, credits 0. Hint na likha ho to pehle jaisa AI rung 1. Jis learner ne rung 4 (poora solution) le liya, us problem ko solve karne par coins aadhe | §14, F4 | AI ka kharcha bachana, aur solution dekh kar coins kamane par rok | Tests: static hint par model call nahi aur credit nahi katta; hint na ho to AI; rung 4 ke baad solve par aadhe coins; console me hint likhna/badalna | ✅ ban gaya (30 Sep 2026) |
 | 2 | **Coupons, GST invoices, pricing page ka GST breakup** (shuru: 1 Oct 2026). Staff coupon banaye (% ya flat, kis plan par, kitni baar, kab tak, affiliate ka naam); learner checkout par code daale ya `?ref=CODE` link se aaye; har paid order par apni series (`PKP/…`) ka GST tax invoice, learner ke state ke hisaab se CGST+SGST ya IGST; pricing page par har plan ka GST breakup aur FAQ; console me coupons aur kis coupon/affiliate se kitni bikri | §16, F12 | Paid launch ke liye zaroori | Tests: coupon ki saari shartein, discount ke baad sahi amount Razorpay ko, paid hone par ek hi invoice, invoice number series, `?ref=` se code bhara jaana; console aur learner pages | ✅ ban gaya (1 Oct 2026) |
 | 3 | **Roz ke reminders + analytics** (shuru: 1 Oct 2026). Learner plan page par roz ka email reminder chaalu kare aur samay chune (IST); har din ek hi email: aaj ke baaki tasks, revise ke cards, streak; email me ek click se band karne ka link. Analytics: signup, plan, solve, lesson, task, hint, purchase aur roz ka khulna — maujooda tables se gine jaate hain; console me activation (7 din me pehla solve), D1/D7 retention, funnel, roz ke active learners | F2, §17 | Retention aur metrics naapna | Tests: sahi ghante par sirf baaki kaam wale learners ko ek hi email, band karne ka link, analytics ke numbers; console aur learner pages | ✅ ban gaya (1 Oct 2026) |
-| 4 | Sprint quiz + revision notes, streak freeze | F7, 13.2 | Planner poora | Sprint ke ant me quiz, 70% se kam par revise tasks | ⬜ |
+| 4 | **Sprint quiz + revision notes, streak freeze** (shuru: 1 Oct 2026). Sprint ke saare tasks ho jaayein ya uske din nikal jaayein to quiz khule: us sprint ke MCQ/numeric sawaal (10 tak), 70% se kam par galat wale sawaal agle study day par revise tasks ban jaayein aur revision card aaj due ho; pass par coins. Sprint ke revision notes: us sprint ke lessons/problems par learner ke apne notes ek page par. Streak freeze ("aaj chhutti"): mahine me 2, streak nahi tootta, aaj ke tasks aage khisak jaate hain, us din reminder nahi | F7, 13.2 | Planner poora | Tests: quiz kab khulta hai, grading, 70% ka niyam aur revise tasks, coins ek baar; notes page; freeze ki limit, streak par asar, tasks ka khisakna; learner pages | ✅ ban gaya (1 Oct 2026) |
 | 5 | Playwright e2e: F1, F3, F12, F13 ke click-through flows | §20 | Regression se bachav | CI me chalein | ⬜ |
 | 6 | Company v2: readiness, "list shuru karo", Company Pass | F9 | Company prep poora | Readiness dashboard par | ⬜ |
 | 7 | NoteSpace: AI draft, PDF export | F15 | Phase 5 | Topic ke notes ek PDF me | ⬜ |

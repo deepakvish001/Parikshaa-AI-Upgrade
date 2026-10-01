@@ -49,6 +49,8 @@ const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
 const plusPages = () => import("./PlusPages.tsx");
 const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
+const SprintQuizPage = lazy(() => prep().then((m) => ({ default: m.SprintQuizPage })));
+const SprintNotesPage = lazy(() => prep().then((m) => ({ default: m.SprintNotesPage })));
 const RemindersOffPage = lazy(() => prep().then((m) => ({ default: m.RemindersOffPage })));
 const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
 const community = () => import("./CommunityPages.tsx");
@@ -89,6 +91,7 @@ export type Route =
   | { readonly page: "plus" }
   | { readonly page: "invoice"; readonly number: string }
   | { readonly page: "reminders"; readonly token: string | undefined }
+  | { readonly page: "sprint"; readonly sprint: number; readonly view: "quiz" | "notes" }
   | { readonly page: "companies" }
   | { readonly page: "company"; readonly slug: string }
   | { readonly page: "experiences"; readonly company: string | undefined }
@@ -106,7 +109,7 @@ export function siteOf(pathname: string): string | null {
 export function parseRoute(pathname: string, search: string): Route {
   const rest = pathname.replace(/^\/practice\/[^/]+/, "").replace(/\/+$/, "");
   const query = new URLSearchParams(search);
-  const [, first, second] = rest.split("/").map(decodeURIComponent);
+  const [, first, second, third] = rest.split("/").map(decodeURIComponent);
   const next = query.get("next") ?? undefined;
   switch (first) {
     case "problems":
@@ -137,6 +140,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "coins" };
     case "plus":
       return { page: "plus" };
+    case "sprints":
+      return /^\d+$/.test(second ?? "") && (third === "quiz" || third === "notes") ? { page: "sprint", sprint: Number(second), view: third } : { page: "plan", track: undefined };
     case "reminders":
       return { page: "reminders", token: query.get("off") ?? undefined };
     case "invoices":
@@ -414,13 +419,19 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
-        ) : route.page === "home" || route.page === "plan" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
+        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
           ) : route.page === "home" ? (
             <HomePage {...context} learner={learner} />
           ) : route.page === "plan" ? (
             <PlanPage {...context} learner={learner} track={route.track} />
+          ) : route.page === "sprint" ? (
+            route.view === "quiz" ? (
+              <SprintQuizPage {...context} learner={learner} sprint={route.sprint} />
+            ) : (
+              <SprintNotesPage {...context} learner={learner} sprint={route.sprint} />
+            )
           ) : route.page === "revise" ? (
             <RevisePage {...context} learner={learner} />
           ) : route.page === "lists" ? (

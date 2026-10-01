@@ -31055,6 +31055,14 @@
                     },
                     "solved": {
                       "type": "number"
+                    },
+                    "frozenToday": {
+                      "type": "boolean",
+                      "description": "Today was taken off: the streak neither grows nor breaks."
+                    },
+                    "freezesLeft": {
+                      "type": "number",
+                      "description": "Days off left this month."
                     }
                   },
                   "required": [
@@ -31069,7 +31077,9 @@
                     "potd",
                     "plan",
                     "continue",
-                    "solved"
+                    "solved",
+                    "frozenToday",
+                    "freezesLeft"
                   ],
                   "additionalProperties": false
                 }
@@ -34493,6 +34503,1787 @@
                   },
                   "required": [
                     "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/practice/{site}/plan/sprints/{sprint}/quiz": {
+      "get": {
+        "summary": "A sprint's quiz",
+        "tags": [
+          "Prep"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "in": "path",
+            "name": "sprint",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sprint": {
+                      "type": "number"
+                    },
+                    "open": {
+                      "type": "boolean",
+                      "description": "Once the sprint's tasks are done, or its days are over."
+                    },
+                    "passPercent": {
+                      "type": "number"
+                    },
+                    "questions": {
+                      "readOnly": true,
+                      "description": "Empty until open.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "slug": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "question": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "mcq"
+                                    ]
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "options": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "multiple": {
+                                    "type": "boolean",
+                                    "description": "Choose every right option rather than one; answer with their positions, comma-separated."
+                                  },
+                                  "negativeMarks": {
+                                    "type": "number",
+                                    "description": "Marks lost for a wrong answer; 0 for none."
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
+                                  "images": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "media": {
+                                          "type": "string",
+                                          "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                        },
+                                        "alt": {
+                                          "type": "string",
+                                          "description": "What the picture shows, for a screen reader."
+                                        }
+                                      },
+                                      "required": [
+                                        "media",
+                                        "alt"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "passage": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Shared by every question about this passage."
+                                          },
+                                          "title": {
+                                            "type": "string"
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          },
+                                          "images": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "media": {
+                                                  "type": "string",
+                                                  "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                                },
+                                                "alt": {
+                                                  "type": "string",
+                                                  "description": "What the picture shows, for a screen reader."
+                                                }
+                                              },
+                                              "required": [
+                                                "media",
+                                                "alt"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "text"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "A passage several questions are about: comprehension, a data set, a case."
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "stem",
+                                  "maxScore",
+                                  "options",
+                                  "multiple",
+                                  "negativeMarks",
+                                  "translations",
+                                  "images",
+                                  "passage"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "short"
+                                    ]
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
+                                  "images": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "media": {
+                                          "type": "string",
+                                          "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                        },
+                                        "alt": {
+                                          "type": "string",
+                                          "description": "What the picture shows, for a screen reader."
+                                        }
+                                      },
+                                      "required": [
+                                        "media",
+                                        "alt"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "passage": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Shared by every question about this passage."
+                                          },
+                                          "title": {
+                                            "type": "string"
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          },
+                                          "images": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "media": {
+                                                  "type": "string",
+                                                  "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                                },
+                                                "alt": {
+                                                  "type": "string",
+                                                  "description": "What the picture shows, for a screen reader."
+                                                }
+                                              },
+                                              "required": [
+                                                "media",
+                                                "alt"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "text"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "A passage several questions are about: comprehension, a data set, a case."
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "stem",
+                                  "maxScore",
+                                  "translations",
+                                  "images",
+                                  "passage"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "numeric"
+                                    ]
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "negativeMarks": {
+                                    "type": "number",
+                                    "description": "Marks lost for a wrong answer; 0 for none."
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
+                                  "images": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "media": {
+                                          "type": "string",
+                                          "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                        },
+                                        "alt": {
+                                          "type": "string",
+                                          "description": "What the picture shows, for a screen reader."
+                                        }
+                                      },
+                                      "required": [
+                                        "media",
+                                        "alt"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "passage": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Shared by every question about this passage."
+                                          },
+                                          "title": {
+                                            "type": "string"
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          },
+                                          "images": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "media": {
+                                                  "type": "string",
+                                                  "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                                },
+                                                "alt": {
+                                                  "type": "string",
+                                                  "description": "What the picture shows, for a screen reader."
+                                                }
+                                              },
+                                              "required": [
+                                                "media",
+                                                "alt"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "text"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "A passage several questions are about: comprehension, a data set, a case."
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "stem",
+                                  "maxScore",
+                                  "negativeMarks",
+                                  "translations",
+                                  "images",
+                                  "passage"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "code"
+                                    ]
+                                  },
+                                  "stem": {
+                                    "type": "string"
+                                  },
+                                  "maxScore": {
+                                    "type": "number"
+                                  },
+                                  "translations": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string",
+                                      "enum": [
+                                        "hi",
+                                        "bn",
+                                        "ta",
+                                        "te",
+                                        "mr",
+                                        "gu",
+                                        "kn",
+                                        "ml",
+                                        "pa",
+                                        "or"
+                                      ]
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "stem": {
+                                          "type": "string"
+                                        },
+                                        "options": {
+                                          "readOnly": true,
+                                          "type": "array",
+                                          "items": {
+                                            "type": "string"
+                                          }
+                                        }
+                                      },
+                                      "required": [
+                                        "stem"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
+                                  "images": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "media": {
+                                          "type": "string",
+                                          "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                        },
+                                        "alt": {
+                                          "type": "string",
+                                          "description": "What the picture shows, for a screen reader."
+                                        }
+                                      },
+                                      "required": [
+                                        "media",
+                                        "alt"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "passage": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "id": {
+                                            "type": "string",
+                                            "description": "Shared by every question about this passage."
+                                          },
+                                          "title": {
+                                            "type": "string"
+                                          },
+                                          "text": {
+                                            "type": "string"
+                                          },
+                                          "images": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "media": {
+                                                  "type": "string",
+                                                  "description": "SHA-256 of the picture, from POST /media. Served at /api/media/<sha256>."
+                                                },
+                                                "alt": {
+                                                  "type": "string",
+                                                  "description": "What the picture shows, for a screen reader."
+                                                }
+                                              },
+                                              "required": [
+                                                "media",
+                                                "alt"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          }
+                                        },
+                                        "required": [
+                                          "id",
+                                          "text"
+                                        ],
+                                        "additionalProperties": false,
+                                        "description": "A passage several questions are about: comprehension, a data set, a case."
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "language": {
+                                    "type": "string"
+                                  },
+                                  "languages": {
+                                    "readOnly": true,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "starter": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "starters": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    },
+                                    "description": "Starter code by language."
+                                  },
+                                  "function": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "params": {
+                                            "readOnly": true,
+                                            "type": "array",
+                                            "items": {
+                                              "type": "object",
+                                              "properties": {
+                                                "name": {
+                                                  "type": "string"
+                                                },
+                                                "type": {
+                                                  "type": "string",
+                                                  "enum": [
+                                                    "int",
+                                                    "long",
+                                                    "double",
+                                                    "boolean",
+                                                    "string",
+                                                    "int[]",
+                                                    "long[]",
+                                                    "double[]",
+                                                    "boolean[]",
+                                                    "string[]",
+                                                    "int[][]",
+                                                    "string[][]"
+                                                  ]
+                                                }
+                                              },
+                                              "required": [
+                                                "name",
+                                                "type"
+                                              ],
+                                              "additionalProperties": false
+                                            }
+                                          },
+                                          "returns": {
+                                            "type": "string",
+                                            "enum": [
+                                              "int",
+                                              "long",
+                                              "double",
+                                              "boolean",
+                                              "string",
+                                              "int[]",
+                                              "long[]",
+                                              "double[]",
+                                              "boolean[]",
+                                              "string[]",
+                                              "int[][]",
+                                              "string[][]"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "name",
+                                          "params",
+                                          "returns"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "The function to write, for a function question. Null: write a whole program that reads standard input."
+                                  },
+                                  "inputFormat": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "outputFormat": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "constraints": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "samples": {
+                                    "readOnly": true,
+                                    "description": "The visible tests, as worked examples.",
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "input": {
+                                          "type": "string"
+                                        },
+                                        "output": {
+                                          "type": "string"
+                                        },
+                                        "explanation": {
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "input",
+                                        "output",
+                                        "explanation"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "kind",
+                                  "stem",
+                                  "maxScore",
+                                  "translations",
+                                  "images",
+                                  "passage",
+                                  "language",
+                                  "languages",
+                                  "starter",
+                                  "starters",
+                                  "function",
+                                  "inputFormat",
+                                  "outputFormat",
+                                  "constraints",
+                                  "samples"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "slug",
+                          "title",
+                          "question"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "count": {
+                      "type": "number",
+                      "description": "Questions in the quiz: the sprint's choice and number questions, ten at most."
+                    },
+                    "sittings": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "score": {
+                            "type": "number"
+                          },
+                          "total": {
+                            "type": "number"
+                          },
+                          "passed": {
+                            "type": "boolean"
+                          },
+                          "takenAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "score",
+                          "total",
+                          "passed",
+                          "takenAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "sprint",
+                    "open",
+                    "passPercent",
+                    "questions",
+                    "count",
+                    "sittings"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Hand in a sprint's quiz",
+        "tags": [
+          "Prep"
+        ],
+        "description": "Answers by problem address: an option's index for a choice, a number for a number. Below the pass mark, each question got wrong is due for revision today and comes back as a task on the next study day. Passing pays coins once.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string",
+                      "maxLength": 80
+                    },
+                    "additionalProperties": {
+                      "type": "string",
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "required": [
+                  "answers"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "in": "path",
+            "name": "sprint",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "score": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "passed": {
+                      "type": "boolean"
+                    },
+                    "wrong": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "revise": {
+                      "type": "number",
+                      "description": "Revision tasks added."
+                    },
+                    "reward": {
+                      "type": "object",
+                      "properties": {
+                        "coins": {
+                          "type": "number"
+                        },
+                        "reasons": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "coins",
+                        "reasons"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Coins paid for what was just done; 0 when nothing new was earned."
+                    }
+                  },
+                  "required": [
+                    "score",
+                    "total",
+                    "passed",
+                    "wrong",
+                    "revise",
+                    "reward"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/practice/{site}/plan/sprints/{sprint}/notes": {
+      "get": {
+        "summary": "A sprint's revision notes: my notes on its lessons and problems, in order",
+        "tags": [
+          "Prep"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "in": "path",
+            "name": "sprint",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sprint": {
+                      "type": "number"
+                    },
+                    "items": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "problem",
+                              "lesson"
+                            ]
+                          },
+                          "slug": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "note": {
+                            "description": "Markdown.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "slug",
+                          "title",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "sprint",
+                    "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/practice/{site}/streak/freeze": {
+      "post": {
+        "summary": "Take today off",
+        "tags": [
+          "Prep"
+        ],
+        "description": "Two days a calendar month. The streak neither grows nor breaks, no reminder goes, and the day's open tasks move on.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "day": {
+                      "type": "string",
+                      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                      "description": "A date, YYYY-MM-DD, in India Standard Time."
+                    },
+                    "freezesLeft": {
+                      "type": "number"
+                    },
+                    "moved": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "day",
+                    "freezesLeft",
+                    "moved"
                   ],
                   "additionalProperties": false
                 }
