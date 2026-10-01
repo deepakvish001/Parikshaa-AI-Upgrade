@@ -10,6 +10,8 @@ import { execute, type CodeRunner } from "@parikshaa/runner";
 import { pgliteExecutor } from "@parikshaa/store";
 import { CS_FUNDAMENTALS } from "./content/cs-fundamentals.js";
 import { SQL_STARTER } from "./content/sql-starter.js";
+import { DSA_STARTER } from "./content/dsa-starter.js";
+import { DSA_TEXT } from "./content/dsa-starter-text.js";
 import { csLessons, sqlQuestion } from "./starter-packs.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
@@ -93,6 +95,7 @@ describe("taking a pack in", () => {
     expect(before.map((p: { name: string; imported: boolean }) => [p.name, p.imported])).toEqual([
       ["cs-fundamentals", false],
       ["sql-starter", false],
+      ["dsa-starter", false],
     ]);
     expect((await call("POST", viewer, "/practice-admin/starter-packs/sql-starter")).statusCode).toBe(403);
     const added = await call("POST", owner, "/practice-admin/starter-packs/sql-starter");
@@ -120,6 +123,43 @@ describe("taking a pack in", () => {
     );
     expect(right.json().status).toBe("passed");
   }, 60_000);
+
+  it("adds the DSA track by pattern, each problem with its hint, approaches and hidden tests, and solvable", async () => {
+    const added = await call("POST", owner, "/practice-admin/starter-packs/dsa-starter");
+    expect(added.statusCode, added.payload).toBe(201);
+    expect(added.json()).toEqual({ track: "dsa-starter", lessons: 0, problems: 40 });
+    const track = (await call("GET", null, "/practice/nit-practice/tracks/dsa-starter")).json();
+    expect(track.modules.map((m: { title: string }) => m.title)).toEqual([
+      "Arrays and prefix sums",
+      "Hashing and counting",
+      "Sorting and greedy",
+      "Two pointers and sliding windows",
+      "Binary search",
+      "Stacks and heaps",
+      "Dynamic programming",
+      "Divide and conquer, trees over values",
+      "Graphs",
+    ]);
+    expect(track.modules.flatMap((m: { items: { slug: string }[] }) => m.items.map((i) => i.slug)).sort()).toEqual(DSA_STARTER.problems.map((p) => p.slug).sort());
+
+    const view = (await call("GET", null, "/practice/nit-practice/problems/range-sum-queries")).json();
+    expect(view.question).toMatchObject({ kind: "code", language: "python", inputFormat: expect.stringContaining("`n` and `q`") });
+    // Only the examples go to the browser.
+    const pack = DSA_STARTER.problems.find((p) => p.slug === "range-sum-queries")!;
+    expect(JSON.stringify(view)).not.toContain(pack.tests.find((t) => t.hidden)!.input.slice(0, 40));
+
+    const token = (await call("POST", null, "/practice/nit-practice/signup", { name: "Asha", email: "asha@example.com", password: "a long enough password" })).json().token as string;
+    // The first hint is the pack's, free and without the model.
+    const hint = await call("POST", token, "/practice/nit-practice/problems/range-sum-queries/tutor/hint", {});
+    expect(hint.statusCode, hint.payload).toBe(200);
+    expect(hint.json()).toMatchObject({ hintLevel: 1, credits: 0, answer: DSA_TEXT["range-sum-queries"]!.hint });
+    const right = await call("POST", token, "/practice/nit-practice/problems/range-sum-queries/submit", { answer: pack.reference, language: "python" });
+    expect(right.statusCode, right.payload).toBe(200);
+    expect(right.json().status).toBe("passed");
+    const editorial = (await call("GET", token, "/practice/nit-practice/problems/range-sum-queries")).json().editorial as string;
+    expect(editorial).toMatch(/^## Brute force/);
+    expect(editorial).toContain("## Optimal");
+  }, 120_000);
 
   it("adds CS fundamentals as lessons, questions and a track by subject", async () => {
     const added = await call("POST", owner, "/practice-admin/starter-packs/cs-fundamentals");

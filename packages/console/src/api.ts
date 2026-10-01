@@ -2359,7 +2359,7 @@ export interface PrepAnalytics {
 }
 
 export interface StarterPack {
-  readonly name: "cs-fundamentals" | "sql-starter";
+  readonly name: "cs-fundamentals" | "sql-starter" | "dsa-starter";
   readonly title: string;
   readonly description: string;
   readonly lessons: number;

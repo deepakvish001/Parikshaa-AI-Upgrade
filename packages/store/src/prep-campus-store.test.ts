@@ -6,7 +6,7 @@ import { PracticeStore } from "./practice-store.js";
 import { CohortNameTaken, PrepCampusStore } from "./prep-campus-store.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
 
-/** Campus cohorts (migration 0034). Runs as `parikshaa_app`. */
+/** Campus cohorts (migration 0038). Runs as `parikshaa_app`. */
 
 const A = orgId("org-a");
 const B = orgId("org-b");

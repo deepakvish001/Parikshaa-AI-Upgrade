@@ -1,0 +1,398 @@
+/**
+ * The placement quiz (Prep blueprint S2, F1): forty questions written for
+ * Parikshaa on the basics a study plan builds on. A learner answers eight —
+ * three easy, three medium, two hard — and the score suggests the level their
+ * plan starts at. The answers stay on the server.
+ */
+
+export interface PlacementQuestion {
+  readonly id: string;
+  readonly level: "easy" | "medium" | "hard";
+  readonly topic: string;
+  /** Markdown. */
+  readonly text: string;
+  readonly options: readonly [string, string, string, string];
+  readonly correct: 0 | 1 | 2 | 3;
+  /** Why the right option is right, shown after the quiz. */
+  readonly why: string;
+}
+
+export const PLACEMENT_QUIZ: readonly PlacementQuestion[] = [
+  // --- complexity -----------------------------------------------------------------------------
+  {
+    id: "c1",
+    level: "easy",
+    topic: "Complexity",
+    text: "A loop runs `for i in range(n)` and does constant work inside. What is its time complexity?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    correct: 2,
+    why: "The body runs n times, each in constant time.",
+  },
+  {
+    id: "c2",
+    level: "easy",
+    topic: "Complexity",
+    text: "Two loops, one inside the other, each run from 0 to `n − 1`. How many times does the inner body run?",
+    options: ["n", "2n", "n²", "n log n"],
+    correct: 2,
+    why: "For each of the n outer steps the inner loop runs n times: n × n.",
+  },
+  {
+    id: "c3",
+    level: "medium",
+    topic: "Complexity",
+    text: "A loop starts with `i = n` and does `i = i // 2` until `i` is 0. About how many times does it run?",
+    options: ["n", "n / 2", "log₂ n", "√n"],
+    correct: 2,
+    why: "Halving n reaches 0 after about log₂ n steps.",
+  },
+  {
+    id: "c4",
+    level: "medium",
+    topic: "Complexity",
+    text: "An algorithm takes 1 second for n = 1,000 and is O(n²). Roughly how long does it take for n = 10,000?",
+    options: ["10 seconds", "100 seconds", "1,000 seconds", "20 seconds"],
+    correct: 1,
+    why: "n grows 10 times, so n² grows 100 times.",
+  },
+  {
+    id: "c5",
+    level: "hard",
+    topic: "Complexity",
+    text: "`for i in range(1, n + 1): for j in range(0, n, i): work()` — what is the total number of calls to `work`, as a complexity?",
+    options: ["O(n)", "O(n log n)", "O(n²)", "O(n √n)"],
+    correct: 1,
+    why: "The inner loop runs n / i times, and n/1 + n/2 + … + n/n is n times the harmonic sum, about n ln n.",
+  },
+  // --- arrays and strings -----------------------------------------------------------------------
+  {
+    id: "a1",
+    level: "easy",
+    topic: "Arrays",
+    text: "Reading the element at index `i` of an array takes how long?",
+    options: ["O(1)", "O(log n)", "O(i)", "O(n)"],
+    correct: 0,
+    why: "An array is one block of memory, so the address of element i is computed directly.",
+  },
+  {
+    id: "a2",
+    level: "easy",
+    topic: "Arrays",
+    text: "Inserting a value at the **front** of an array (list) of n elements, keeping the order of the rest, takes:",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    correct: 2,
+    why: "Every existing element moves one place to make room.",
+  },
+  {
+    id: "a3",
+    level: "medium",
+    topic: "Arrays",
+    text: "You need the sum of `a[l..r]` for many different `(l, r)` on an array that never changes. What should you build first?",
+    options: ["A sorted copy", "Prefix sums", "A hash set", "A linked list"],
+    correct: 1,
+    why: "With p[i] = a[0] + … + a[i−1], each range sum is p[r + 1] − p[l], in O(1).",
+  },
+  {
+    id: "a4",
+    level: "medium",
+    topic: "Strings",
+    text: "In Python, building a string of n characters by `s = s + ch` in a loop can take O(n²). Why?",
+    options: ["Python strings are linked lists", "Strings are immutable, so each `+` copies the whole string", "Each character takes O(n) to read", "The loop runs n² times"],
+    correct: 1,
+    why: "Each concatenation makes a new string the length of the old one plus one. Collect pieces in a list and `''.join` them instead.",
+  },
+  {
+    id: "a5",
+    level: "hard",
+    topic: "Arrays",
+    text: "In an array of n integers, at most how many contiguous non-empty subarrays are there?",
+    options: ["n", "2ⁿ", "n(n + 1) / 2", "n log n"],
+    correct: 2,
+    why: "Choose a start and an end with start ≤ end: n + (n − 1) + … + 1.",
+  },
+  // --- hashing ----------------------------------------------------------------------------------
+  {
+    id: "h1",
+    level: "easy",
+    topic: "Hashing",
+    text: "On average, how long does it take to check whether a value is in a hash set?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+    correct: 0,
+    why: "The hash points to the right bucket; on average each bucket holds a constant number of values.",
+  },
+  {
+    id: "h2",
+    level: "medium",
+    topic: "Hashing",
+    text: "You must find whether any two numbers in a list add up to `T`. Which is fastest on average?",
+    options: ["Check every pair", "Sort, then binary search each number's partner", "One pass with a hash set of numbers seen so far", "Sort, then check every pair"],
+    correct: 2,
+    why: "For each x, look up T − x among the numbers already seen: O(n) on average.",
+  },
+  {
+    id: "h3",
+    level: "medium",
+    topic: "Hashing",
+    text: "You count how often each word appears in a text of n words, using a hash map from word to count. On average this takes:",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    correct: 2,
+    why: "Each word is one average O(1) lookup and update, n times (taking a word's length as bounded).",
+  },
+  // --- stacks and queues -------------------------------------------------------------------------
+  {
+    id: "s1",
+    level: "easy",
+    topic: "Stacks and queues",
+    text: "Push 1, 2, 3 onto a stack, then pop twice. What comes out?",
+    options: ["1 then 2", "3 then 2", "2 then 3", "1 then 3"],
+    correct: 1,
+    why: "A stack is last in, first out.",
+  },
+  {
+    id: "s2",
+    level: "easy",
+    topic: "Stacks and queues",
+    text: "Which structure suits checking that brackets like `({[]})` are balanced?",
+    options: ["A queue", "A stack", "A heap", "A sorted array"],
+    correct: 1,
+    why: "Each closing bracket must match the most recent unmatched opening one: last in, first out.",
+  },
+  {
+    id: "s3",
+    level: "medium",
+    topic: "Stacks and queues",
+    text: "Breadth-first search on a graph keeps the vertices to visit next in a:",
+    options: ["Stack", "Queue", "Max-heap", "Hash set only"],
+    correct: 1,
+    why: "BFS visits vertices in the order they were found, first in, first out.",
+  },
+  {
+    id: "s4",
+    level: "hard",
+    topic: "Stacks and queues",
+    text: "For each element of an array you want the next greater element to its right. With a monotonic stack this takes:",
+    options: ["O(n²)", "O(n log n)", "O(n)", "O(log n)"],
+    correct: 2,
+    why: "Each element is pushed once and popped at most once.",
+  },
+  // --- recursion ----------------------------------------------------------------------------------
+  {
+    id: "r1",
+    level: "easy",
+    topic: "Recursion",
+    text: "What must every recursive function have so that it stops?",
+    options: ["A loop", "A base case", "A global variable", "Two recursive calls"],
+    correct: 1,
+    why: "A base case answers directly without recursing again.",
+  },
+  {
+    id: "r2",
+    level: "medium",
+    topic: "Recursion",
+    text: "`fib(n) = fib(n − 1) + fib(n − 2)`, written plainly with no memory of earlier results, takes time that grows:",
+    options: ["Linearly", "Quadratically", "Exponentially", "Logarithmically"],
+    correct: 2,
+    why: "The same values are recomputed again and again: the calls form a tree of size about φⁿ.",
+  },
+  {
+    id: "r3",
+    level: "medium",
+    topic: "Recursion",
+    text: "A recursive function calls itself on `n − 1` until `n` is 0. How much extra memory does the call stack use?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    correct: 2,
+    why: "n calls are open at the deepest point, each with its own frame.",
+  },
+  {
+    id: "r4",
+    level: "hard",
+    topic: "Recursion",
+    text: "Merge sort splits the array in half, sorts both halves and merges them in O(n). Its time is described by:",
+    options: ["T(n) = T(n − 1) + O(1)", "T(n) = 2T(n/2) + O(n)", "T(n) = T(n/2) + O(1)", "T(n) = 2T(n − 1) + O(1)"],
+    correct: 1,
+    why: "Two halves of size n/2, plus a linear merge; it solves to O(n log n).",
+  },
+  // --- sorting and searching ---------------------------------------------------------------------
+  {
+    id: "b1",
+    level: "easy",
+    topic: "Searching",
+    text: "Binary search needs the array to be:",
+    options: ["Of even length", "Sorted", "Without negative numbers", "Stored in a linked list"],
+    correct: 1,
+    why: "Comparing with the middle element only tells you which half to keep if the array is sorted.",
+  },
+  {
+    id: "b2",
+    level: "easy",
+    topic: "Searching",
+    text: "About how many comparisons does binary search need on a sorted array of 1,000,000 elements, at most?",
+    options: ["20", "1,000", "500,000", "1,000,000"],
+    correct: 0,
+    why: "log₂ 1,000,000 is just under 20.",
+  },
+  {
+    id: "b3",
+    level: "medium",
+    topic: "Sorting",
+    text: "Which sort is guaranteed O(n log n) in the worst case?",
+    options: ["Quick sort with the first element as pivot", "Merge sort", "Insertion sort", "Bubble sort"],
+    correct: 1,
+    why: "Merge sort always splits evenly; quick sort with a fixed pivot is O(n²) on sorted input.",
+  },
+  {
+    id: "b4",
+    level: "medium",
+    topic: "Sorting",
+    text: "A sort is **stable** if:",
+    options: ["It never uses extra memory", "Equal elements keep their original order", "It runs in O(n log n)", "It works on any data type"],
+    correct: 1,
+    why: "Stability is about ties: records with equal keys stay in the order they came.",
+  },
+  {
+    id: "b5",
+    level: "hard",
+    topic: "Searching",
+    text: "You must find the smallest speed `k` at which a task finishes in time; any speed above a working one also works. What fits best?",
+    options: ["Try every k from 1 upward", "Binary search over k", "Sort the inputs and pick the median", "Dynamic programming over k"],
+    correct: 1,
+    why: "\"Works\" is monotonic in k, so binary search on the answer finds the boundary in O(log range) checks.",
+  },
+  // --- trees and graphs ---------------------------------------------------------------------------
+  {
+    id: "t1",
+    level: "easy",
+    topic: "Trees",
+    text: "In a binary search tree, where are the values smaller than a node's value?",
+    options: ["In its right subtree", "In its left subtree", "Only in its parent", "Anywhere"],
+    correct: 1,
+    why: "A BST keeps smaller values to the left and larger to the right of every node.",
+  },
+  {
+    id: "t2",
+    level: "medium",
+    topic: "Trees",
+    text: "Which traversal of a binary search tree visits its values in sorted order?",
+    options: ["Pre-order", "In-order", "Post-order", "Level-order"],
+    correct: 1,
+    why: "In-order visits left subtree, node, right subtree: smaller, then equal, then larger.",
+  },
+  {
+    id: "t3",
+    level: "medium",
+    topic: "Graphs",
+    text: "A graph has V vertices and E edges, stored as adjacency lists. BFS from one vertex takes:",
+    options: ["O(V)", "O(E)", "O(V + E)", "O(V × E)"],
+    correct: 2,
+    why: "Each vertex is dequeued once and each edge is looked at a constant number of times.",
+  },
+  {
+    id: "t4",
+    level: "hard",
+    topic: "Graphs",
+    text: "Which algorithm finds shortest paths from one vertex when edge weights are non-negative?",
+    options: ["Depth-first search", "Dijkstra's algorithm", "Kruskal's algorithm", "Topological sort"],
+    correct: 1,
+    why: "Dijkstra settles vertices in order of distance; non-negative weights make that order final.",
+  },
+  {
+    id: "t5",
+    level: "hard",
+    topic: "Trees",
+    text: "A heap of n elements gives the minimum in O(1). How long does removing it take?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+    correct: 1,
+    why: "The last element moves to the root and sifts down one level at a time: the height is log n.",
+  },
+  // --- dynamic programming -------------------------------------------------------------------------
+  {
+    id: "d1",
+    level: "easy",
+    topic: "Dynamic programming",
+    text: "Dynamic programming helps most when a problem has:",
+    options: ["No repeated work", "Overlapping subproblems with an optimal substructure", "Only one input", "Random inputs"],
+    correct: 1,
+    why: "The same smaller problems recur, and the answer is built from their answers, so each is solved once.",
+  },
+  {
+    id: "d2",
+    level: "medium",
+    topic: "Dynamic programming",
+    text: "You may climb 1 or 2 steps at a time. If `ways(n)` counts the ways to reach step n, then `ways(n)` equals:",
+    options: ["ways(n − 1) × 2", "ways(n − 1) + ways(n − 2)", "n²", "ways(n − 2) + 1"],
+    correct: 1,
+    why: "The last move was 1 step (from n − 1) or 2 steps (from n − 2).",
+  },
+  {
+    id: "d3",
+    level: "medium",
+    topic: "Dynamic programming",
+    text: "In the 0/1 knapsack with a one-dimensional table `best[c]`, why go through capacities from high to low for each item?",
+    options: ["It is faster", "So each item is used at most once", "To find the smallest capacity first", "It does not matter"],
+    correct: 1,
+    why: "Going downward, best[c − w] still holds the value without this item; going upward could add the same item twice.",
+  },
+  {
+    id: "d4",
+    level: "hard",
+    topic: "Dynamic programming",
+    text: "Kadane's algorithm finds the largest sum of a contiguous subarray. What does it keep while walking the array?",
+    options: ["Every subarray's sum", "The best sum of a subarray ending at the current element", "A sorted copy", "The prefix sums of every length"],
+    correct: 1,
+    why: "best_here = max(x, best_here + x); the answer is the largest best_here seen. O(n).",
+  },
+  {
+    id: "d5",
+    level: "hard",
+    topic: "Dynamic programming",
+    text: "Counting the ways to pay an amount with coins where order does not matter, the coins loop should be:",
+    options: ["Inside the amounts loop", "Outside the amounts loop", "Either; both count the same", "Replaced by recursion"],
+    correct: 1,
+    why: "Coins outside counts each combination once; amounts outside counts every ordering (1+2 and 2+1) separately.",
+  },
+  // --- linked lists and miscellany ------------------------------------------------------------------
+  {
+    id: "l1",
+    level: "easy",
+    topic: "Linked lists",
+    text: "Given a pointer to a node in a singly linked list, inserting a new node right after it takes:",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    correct: 0,
+    why: "Point the new node at the next one, then point this node at the new one.",
+  },
+  {
+    id: "l2",
+    level: "medium",
+    topic: "Linked lists",
+    text: "How can you tell whether a singly linked list has a cycle using O(1) extra memory?",
+    options: ["Store every node in a set", "Move a slow and a fast pointer; they meet only if there is a cycle", "Sort the list", "Count the nodes"],
+    correct: 1,
+    why: "Floyd's method: the fast pointer gains one step a turn, so inside a cycle it must catch the slow one.",
+  },
+  {
+    id: "m1",
+    level: "medium",
+    topic: "Integers",
+    text: "Which value does **not** fit in a signed 32-bit integer?",
+    options: ["2,000,000,000", "−2,000,000,000", "3,000,000,000", "100,000"],
+    correct: 2,
+    why: "A signed 32-bit integer holds up to 2,147,483,647.",
+  },
+  {
+    id: "m2",
+    level: "hard",
+    topic: "Integers",
+    text: "Answers \"modulo 10⁹ + 7\" are asked for because:",
+    options: ["The answer is always below 10⁹ + 7", "The true answer can be huge, and the remainder keeps every step within 64-bit integers", "It makes the algorithm faster in theory", "It removes negative numbers"],
+    correct: 1,
+    why: "Taking the remainder after each step keeps numbers small; 10⁹ + 7 is a prime, and the product of two remainders fits in 64 bits.",
+  },
+];
+
+/** Three easy, three medium and two hard. */
+export const PLACEMENT_SHAPE = { easy: 3, medium: 3, hard: 2 } as const;
+
+/** The level a score out of eight suggests. */
+export function placementLevel(score: number): "beginner" | "intermediate" | "advanced" {
+  return score >= 7 ? "advanced" : score >= 4 ? "intermediate" : "beginner";
+}
