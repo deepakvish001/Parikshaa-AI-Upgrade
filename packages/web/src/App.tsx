@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type TouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
+import { DemoClient } from "./demo.ts";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type CandidateState } from "./api.ts";
 import { inline } from "@parikshaa/brand/markdown";
 import { AnswerInput } from "./components/AnswerInput.tsx";
@@ -122,6 +123,8 @@ const isInviteCode = (value: string) => !value.startsWith("eyJ") && value.split(
 export function App(props: { client?: ParikshaaClient } = {}) {
   const query = props.client === undefined ? new URLSearchParams(window.location.search) : null;
   const scorecard = query?.get("scorecard") ?? null;
+  // The practice test: the exam screen on a sample paper, answered in the browser alone.
+  const [demo] = useState(() => (query?.has("demo") === true ? new DemoClient().asClient() : null));
   const shortlist = query?.get("shortlist") ?? null;
   const apply = query?.get("apply") ?? null;
   const interview = query?.get("interview") ?? null;
@@ -152,7 +155,7 @@ export function App(props: { client?: ParikshaaClient } = {}) {
           <StatusPage code={status} />
         </Suspense>
       ) : (
-        <Screens {...props} />
+        <Screens {...props} {...(demo === null ? {} : { client: demo })} />
       )}
     </PreferencesProvider>
   );

@@ -292,6 +292,11 @@ function NotOpenYet({
         </span>
       </p>
       <p className="notice">{t("invite.earlyNote")}</p>
+      <p>
+        <a href="/?demo" target="_blank" rel="noopener">
+          {t("invite.practice")}
+        </a>
+      </p>
       {seat === null ? null : (
         <p className="seat-line">
           <strong>{t("invite.seat", { place: [seat.centre, seat.room, seat.seat].filter((p) => p !== "").join(" · ") })}</strong>{" "}
