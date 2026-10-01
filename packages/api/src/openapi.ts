@@ -8,6 +8,7 @@ import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
+import { InternalMarksService } from "./internal-marks.js";
 import { InterviewService } from "./interviews.js";
 import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
@@ -100,6 +101,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     handwriting: new HandwritingService({ scripts: new ScriptStore(unusable), ledger: store, exams: service }),
     interviews: new InterviewService({ store: new InterviewStore(unusable), exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(unusable), store, results, exams: service }),
+    internalMarks: new InternalMarksService({ results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(unusable), results, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     placement: new PlacementService({ placement: new PlacementStore(unusable), store, exams: service, invitations, results, bank: new QuestionBank(unusable), publicUrl: "https://example.invalid", identity }),
     rechecks: new RecheckService({ store, rechecks: new RecheckStore(unusable), invitations: invitationStore, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),

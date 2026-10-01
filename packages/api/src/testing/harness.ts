@@ -47,6 +47,7 @@ import { PlacementService } from "../placement.js";
 import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
 import { OutcomeService } from "../outcomes.js";
+import { InternalMarksService } from "../internal-marks.js";
 import { InterviewService } from "../interviews.js";
 import { StudentMessages } from "../student-messages.js";
 import { HandwritingService } from "../handwriting.js";
@@ -404,6 +405,7 @@ export async function wire(
     handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
+    internalMarks: new InternalMarksService({ results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,

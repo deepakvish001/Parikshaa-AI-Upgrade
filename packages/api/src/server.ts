@@ -57,6 +57,8 @@ import type { ShortlistService } from "./shortlists.js";
 import { registerShortlistRoutes } from "./shortlist-routes.js";
 import type { OutcomeService } from "./outcomes.js";
 import { registerOutcomeRoutes } from "./outcome-routes.js";
+import type { InternalMarksService } from "./internal-marks.js";
+import { registerInternalMarksRoutes } from "./internal-marks-routes.js";
 import type { InterviewService } from "./interviews.js";
 import { registerInterviewRoutes } from "./interview-routes.js";
 import type { HandwritingService } from "./handwriting.js";
@@ -146,6 +148,8 @@ export interface ServerOptions {
   readonly shortlists?: ShortlistService;
   /** Course outcomes and their attainment. Absent: none of their routes. */
   readonly outcomes?: OutcomeService;
+  /** Internal marks (CIA) across exams. Absent: no such route. */
+  readonly internalMarks?: InternalMarksService;
   /** The interview room. Absent: none of its routes. */
   readonly interviews?: InterviewService;
   /** Handwritten copy checking and moderation. Absent: none of its routes. */
@@ -1287,6 +1291,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.handwriting !== undefined) registerScriptRoutes(routes, { handwriting: options.handwriting, staff });
     if (options.interviews !== undefined) registerInterviewRoutes(routes, { interviews: options.interviews, throttle, staff });
     if (options.outcomes !== undefined) registerOutcomeRoutes(routes, { outcomes: options.outcomes, staff });
+    if (options.internalMarks !== undefined) registerInternalMarksRoutes(routes, { internalMarks: options.internalMarks, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });

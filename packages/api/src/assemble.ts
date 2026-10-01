@@ -10,6 +10,7 @@ import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
+import { InternalMarksService } from "./internal-marks.js";
 import { InterviewService } from "./interviews.js";
 import { StudentMessages } from "./student-messages.js";
 import { HandwritingService } from "./handwriting.js";
@@ -278,6 +279,7 @@ export function assemble(o: AssembleOptions): {
     handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service }),
     interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
+    internalMarks: new InternalMarksService({ results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,

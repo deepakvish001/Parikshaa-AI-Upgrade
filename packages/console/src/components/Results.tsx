@@ -11,6 +11,7 @@ import { IDENTITY_LABEL } from "./Proctoring.tsx";
 // Loaded when a sitting has results: most never has a recheck.
 const Rechecks = lazy(() => import("./Rechecks.tsx").then((m) => ({ default: m.Rechecks })));
 const Outcomes = lazy(() => import("./Outcomes.tsx").then((m) => ({ default: m.Outcomes })));
+const InternalMarks = lazy(() => import("./InternalMarks.tsx").then((m) => ({ default: m.InternalMarks })));
 const Shortlists = lazy(() => import("./Shortlists.tsx").then((m) => ({ default: m.Shortlists })));
 const ProxyCheck = lazy(() => import("./ProxyCheck.tsx").then((m) => ({ default: m.ProxyCheck })));
 const Copies = lazy(() => import("./Copies.tsx").then((m) => ({ default: m.Copies })));
@@ -183,6 +184,11 @@ export function ResultsPanel({
       {analytics.graded === 0 ? null : (
         <Suspense fallback={null}>
           <Outcomes client={client} examId={examId} canEdit={canGrade} />
+        </Suspense>
+      )}
+      {analytics.graded === 0 ? null : (
+        <Suspense fallback={null}>
+          <InternalMarks client={client} examId={examId} />
         </Suspense>
       )}
       {analytics.graded === 0 ? null : (

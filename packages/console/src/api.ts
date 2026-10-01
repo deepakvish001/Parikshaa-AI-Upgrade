@@ -296,6 +296,20 @@ export interface DriveApplication extends Student {
   readonly statusLink?: string;
 }
 
+export interface InternalMarksRequest {
+  readonly components: readonly { readonly examId: string; readonly label?: string; readonly marks: number }[];
+  readonly best?: number;
+  readonly rounding: "up" | "nearest" | "none";
+}
+
+export interface InternalMarks {
+  readonly columns: readonly { readonly examId: string; readonly label: string; readonly marks: number }[];
+  readonly outOf: number;
+  readonly best: number | null;
+  readonly rows: readonly { readonly ref: string; readonly name: string; readonly marks: readonly (number | null)[]; readonly total: number }[];
+  readonly csv: string;
+}
+
 export interface Departments {
   readonly departments: readonly string[];
   readonly staff: readonly { readonly userId: string; readonly department: string }[];
@@ -1761,6 +1775,10 @@ export class ConsoleClient {
 
   funnels(): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: "open" | "closed"; readonly funnel: DriveFunnel }[]> {
     return this.#request<{ drives: readonly { id: string; company: string; role: string; status: "open" | "closed"; funnel: DriveFunnel }[] }>("/placement/funnel").then((b) => b.drives);
+  }
+
+  internalMarks(request: InternalMarksRequest): Promise<InternalMarks> {
+    return this.#request("/reports/internal-marks", { method: "POST", body: JSON.stringify(request) });
   }
 
   departments(): Promise<Departments> {

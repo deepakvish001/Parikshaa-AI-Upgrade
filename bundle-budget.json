@@ -53,6 +53,7 @@
     "hindi-*.js": 3,
     "PaperReview-*.js": 2,
     "StaffSheet-*.js": 3,
+    "InternalMarks-*.js": 3,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5
