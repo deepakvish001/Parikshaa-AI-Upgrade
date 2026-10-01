@@ -49,6 +49,7 @@ function decodeImage(base64: string, max: number): Buffer {
 
 /** What an invigilator reviewing one attempt sees. */
 export interface ProctoringView {
+  readonly examId: string;
   readonly policy: ProctoringPolicy | null;
   readonly identity: {
     readonly selfie: MediaRecord | null;
@@ -177,6 +178,7 @@ export class ProctorService {
     const selfie = selfies[0] ?? null;
     const id = ids[0] ?? null;
     return {
+      examId: first.examId,
       policy: exam?.policy.proctoring ?? null,
       identity: {
         selfie,

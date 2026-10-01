@@ -52,6 +52,8 @@ export interface Payment {
   readonly status: "created" | "paid";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  /** The buyer's purchase order, on a quotation paid by bank transfer. */
+  readonly poNumber: string | null;
 }
 
 export interface Invoice {
@@ -167,9 +169,10 @@ interface PaymentRow {
   status: "created" | "paid";
   created_at: string | Date;
   paid_at: string | Date | null;
+  po_number: string | null;
 }
 
-const PAYMENT = `id, razorpay_order_id, razorpay_payment_id, credits, taxable_paise, tax_paise, amount_paise, buyer_state, status, created_at, paid_at`;
+const PAYMENT = `id, razorpay_order_id, razorpay_payment_id, credits, taxable_paise, tax_paise, amount_paise, buyer_state, status, created_at, paid_at, po_number`;
 
 const toPayment = (r: PaymentRow): Payment => ({
   id: r.id,
@@ -183,6 +186,7 @@ const toPayment = (r: PaymentRow): Payment => ({
   status: r.status,
   createdAt: new Date(r.created_at).toISOString(),
   paidAt: r.paid_at === null ? null : new Date(r.paid_at).toISOString(),
+  poNumber: r.po_number,
 });
 
 interface InvoiceRow {
@@ -394,13 +398,14 @@ export class BillingStore {
       readonly taxPaise: number;
       readonly amountPaise: number;
       readonly buyerState: string | null;
+      readonly poNumber?: string | null;
     },
   ): Promise<Payment> {
     return withScope(this.#sql, scope, async (tx) => {
       const rows = await tx.query<PaymentRow>(
-        `INSERT INTO payments (org_id, id, razorpay_order_id, credits, taxable_paise, tax_paise, amount_paise, buyer_state)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${PAYMENT}`,
-        [scope.orgId, payment.id, payment.orderId, payment.credits, payment.taxablePaise, payment.taxPaise, payment.amountPaise, payment.buyerState],
+        `INSERT INTO payments (org_id, id, razorpay_order_id, credits, taxable_paise, tax_paise, amount_paise, buyer_state, po_number)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${PAYMENT}`,
+        [scope.orgId, payment.id, payment.orderId, payment.credits, payment.taxablePaise, payment.taxPaise, payment.amountPaise, payment.buyerState, payment.poNumber ?? null],
       );
       return toPayment(rows[0]!);
     });

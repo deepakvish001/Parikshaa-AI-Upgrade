@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BriefcaseBusiness, Download, Pencil, Plus, Search, Send, Trash2, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, Copy, Download, Link2, Pencil, Plus, Search, Send, Trash2, UserPlus, Users } from "lucide-react";
 import { Drawer, TabPanel, Tabs, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, DRIVE_STAGES, type ConsoleClient, type Drive, type DriveDraft, type DriveStage, type StudentImport, type StudentRow } from "../api.ts";
+import "./Placement.css";
+import { Colleges, Offers } from "./DriveNetwork.tsx";
 import { Banner, DropZone, EmptyState, FigureStrip, PageActions, RowMenu, SkeletonRows, StatBar } from "./kit.tsx";
 
 /**
@@ -53,7 +55,7 @@ const lpa = (n: number | null) => (n === null ? "—" : `₹${n.toLocaleString("
 const failure = (error: unknown) => (error instanceof ConsoleError && error.detail !== undefined ? error.detail : "That did not work. Try again.");
 
 export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; canInvite: boolean }) {
-  const [tab, setTab] = useState<"students" | "drives">("drives");
+  const [tab, setTab] = useState<"students" | "drives" | "readiness" | "report">("drives");
   return (
     <>
       <Tabs
@@ -62,6 +64,8 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
         items={[
           { id: "drives", label: "Drives" },
           { id: "students", label: "Students" },
+          { id: "readiness", label: "Readiness" },
+          { id: "report", label: "NIRF / NAAC report" },
         ]}
         value={tab}
         onChange={setTab}
@@ -71,6 +75,12 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
       </TabPanel>
       <TabPanel idBase="placement" id="students" value={tab}>
         {tab === "students" ? <Students client={client} /> : null}
+      </TabPanel>
+      <TabPanel idBase="placement" id="readiness" value={tab}>
+        {tab === "readiness" ? <ReadinessView client={client} /> : null}
+      </TabPanel>
+      <TabPanel idBase="placement" id="report" value={tab}>
+        {tab === "report" ? <ReportView client={client} /> : null}
       </TabPanel>
     </>
   );
@@ -641,6 +651,10 @@ function DriveView({
         </div>
       </section>
 
+      <ApplyLink client={client} id={id} link={detail.data.applyLink ?? null} openToNew={drive.openToNew ?? false} onChange={refresh} />
+      <Colleges client={client} driveId={id} colleges={detail.data.colleges ?? []} onChange={refresh} />
+      {applications.length === 0 || detail.data.offers === undefined ? null : <Offers client={client} driveId={id} figures={detail.data.offers} applications={applications} onChange={refresh} />}
+
       <section className="card" aria-label="Students in the drive">
         {applications.length === 0 ? (
           <EmptyState icon={Users}>Students added to the drive appear here with their round, test result and offer.</EmptyState>
@@ -772,5 +786,242 @@ function SendTest({ client, id, count, onClose, onSent }: { client: ConsoleClien
         </button>
       </div>
     </Drawer>
+  );
+}
+
+// --- readiness ----------------------------------------------------------------------
+
+/** A cell's band, for its colour: the same five steps everywhere a percentage is shaded. */
+const band = (percent: number) => (percent < 40 ? 0 : percent < 55 ? 1 : percent < 70 ? 2 : percent < 85 ? 3 : 4);
+
+function ReadinessView({ client }: { client: ConsoleClient }) {
+  const students = useQuery({ queryKey: ["students"], queryFn: () => client.students() });
+  const [batch, setBatch] = useState<number | undefined>(undefined);
+  const readiness = useQuery({ queryKey: ["readiness", batch ?? "all"], queryFn: () => client.readiness(batch) });
+  const batches = [...new Set((students.data ?? []).map((s) => s.batch).filter((b): b is number => b !== null))].sort();
+  const data = readiness.data;
+  return (
+    <>
+      <section className="card" aria-label="Readiness by branch and topic">
+        <div className="bar filter-bar">
+          <div className="chips" role="group" aria-label="Batch">
+            <button type="button" className="chip" aria-pressed={batch === undefined} onClick={() => setBatch(undefined)}>
+              All batches
+            </button>
+            {batches.map((b) => (
+              <button key={b} type="button" className="chip" aria-pressed={batch === b} onClick={() => setBatch(b)}>
+                {b}
+              </button>
+            ))}
+          </div>
+          <span className="spacer" />
+          <span className="notice">{data === undefined ? "" : `From ${data.exams.length} recent test${data.exams.length === 1 ? "" : "s"}: ${data.exams.map((e) => e.title).join(", ")}`}</span>
+        </div>
+        {readiness.isPending ? (
+          <SkeletonRows rows={4} columns={5} label="Reading results…" />
+        ) : data === undefined || data.branches.length === 0 ? (
+          <EmptyState icon={Users}>Once your students have sat a graded test, each branch shows here topic by topic. Add students first, so their branch is known.</EmptyState>
+        ) : (
+          <div className="scroll">
+            <table className="heatmap">
+              <thead>
+                <tr>
+                  <th scope="col">Branch</th>
+                  <th scope="col" className="num">
+                    Students
+                  </th>
+                  {data.topics.map((t) => (
+                    <th key={t} scope="col" className="num">
+                      {t}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.branches.map((b) => (
+                  <tr key={b.branch}>
+                    <th scope="row">{b.branch}</th>
+                    <td className="num">{b.students}</td>
+                    {data.topics.map((t) => {
+                      const cell = b.cells[t];
+                      return cell === undefined ? (
+                        <td key={t} className="num notice">
+                          —
+                        </td>
+                      ) : (
+                        <td key={t} className={`num heat-${band(cell.percent)}`} title={`${cell.students} students`}>
+                          {Math.round(cell.percent)}%
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="notice">Average percentage of the marks on offer. A topic is where the question is filed in the question bank, else the section it came from.</p>
+      </section>
+      {data === undefined || data.atRisk.length === 0 ? null : (
+        <section className="card" aria-label="Students who need help">
+          <div className="bar">
+            <strong>Below 40% overall</strong>
+            <span className="notice">{data.atRisk.length} students, weakest topic first to work on</span>
+          </div>
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Roll no.</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col" className="num">
+                    Overall
+                  </th>
+                  <th scope="col">Weakest topic</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.atRisk.map((r) => (
+                  <tr key={r.ref}>
+                    <td className="mono">{r.ref}</td>
+                    <td>{r.name || "—"}</td>
+                    <td>{r.branch}</td>
+                    <td className="num failed">{Math.round(r.percent)}%</td>
+                    <td>{r.weakest}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+/** The drive's public link: students apply with their roll number and the email on file. */
+function ApplyLink({ client, id, link, openToNew, onChange }: { client: ConsoleClient; id: string; link: string | null; openToNew: boolean; onChange: () => void }) {
+  const toast = useToast();
+  const [offCampus, setOffCampus] = useState(openToNew);
+  const set = useMutation({
+    mutationFn: (open: boolean) => client.setApplyLink(id, open, offCampus),
+    onSuccess: async ({ link: made }) => {
+      onChange();
+      if (made !== null) {
+        await navigator.clipboard?.writeText(made).catch(() => undefined);
+        toast("Link copied: share it with students", "success");
+      }
+    },
+  });
+  return (
+    <section className="card" aria-label="Link to apply">
+      <div className="bar">
+        <Link2 aria-hidden="true" />
+        <strong>Link to apply</strong>
+        <span className="notice">{link === null ? "Students can apply themselves from a link, with their roll number and the email on file." : `Open${openToNew ? ", also to students not on your list" : ""}.`}</span>
+        <span className="spacer" />
+        {link === null ? (
+          <>
+            <label className="inline">
+              <input type="checkbox" checked={offCampus} onChange={(e) => setOffCampus(e.target.checked)} /> Off-campus: take people not on the list
+            </label>
+            <button type="button" onClick={() => set.mutate(true)} disabled={set.isPending}>
+              Open the link
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="secondary" onClick={() => void navigator.clipboard?.writeText(link).then(() => toast("Link copied", "success"))}>
+              <Copy aria-hidden="true" />
+              Copy the link
+            </button>
+            <button type="button" className="quiet" onClick={() => set.mutate(false)} disabled={set.isPending}>
+              Close it
+            </button>
+          </>
+        )}
+      </div>
+      {link === null ? null : <p className="mono notice">{link}</p>}
+    </section>
+  );
+}
+
+// --- the NIRF / NAAC placement report -------------------------------------------------
+
+function ReportView({ client }: { client: ConsoleClient }) {
+  const report = useQuery({ queryKey: ["placement-report"], queryFn: () => client.placementReport() });
+  const download = useMutation({ mutationFn: () => client.placementReportFile().then((blob) => save(blob, "placement-report.csv")) });
+  const n = (v: number | null) => (v === null ? "—" : v.toLocaleString("en-IN", { maximumFractionDigits: 2 }));
+  return (
+    <>
+      <PageActions>
+        <button type="button" className="secondary" onClick={() => download.mutate()} disabled={download.isPending}>
+          <Download aria-hidden="true" />
+          Download CSV
+        </button>
+      </PageActions>
+      {report.isPending ? (
+        <section className="card">
+          <SkeletonRows rows={4} columns={7} label="Counting offers…" />
+        </section>
+      ) : (report.data?.batches ?? []).length === 0 ? (
+        <section className="card">
+          <EmptyState icon={BriefcaseBusiness}>Add your students and record offers in drives: the report counts itself.</EmptyState>
+        </section>
+      ) : (
+        (report.data?.batches ?? []).map((b) => (
+          <section key={String(b.batch)} className="card" aria-label={`Passing in ${b.batch ?? "an unknown year"}`}>
+            <div className="bar">
+              <strong>Passing in {b.batch ?? "—"}</strong>
+              <span className="notice">
+                {b.placed} of {b.students} placed ({b.percent}%) · median ₹{n(b.medianLpa)} LPA · highest ₹{n(b.highestLpa)} LPA
+              </span>
+            </div>
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Branch</th>
+                    <th scope="col" className="num">
+                      Students
+                    </th>
+                    <th scope="col" className="num">
+                      Placed
+                    </th>
+                    <th scope="col" className="num">
+                      %
+                    </th>
+                    <th scope="col" className="num">
+                      Median (LPA)
+                    </th>
+                    <th scope="col" className="num">
+                      Highest
+                    </th>
+                    <th scope="col" className="num">
+                      Average
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {b.branches.map((r) => (
+                    <tr key={r.branch}>
+                      <th scope="row">{r.branch}</th>
+                      <td className="num">{r.students}</td>
+                      <td className="num">{r.placed}</td>
+                      <td className="num">{r.percent}</td>
+                      <td className="num">{n(r.medianLpa)}</td>
+                      <td className="num">{n(r.highestLpa)}</td>
+                      <td className="num">{n(r.averageLpa)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))
+      )}
+      <p className="notice">Placed means an offer, or joined, in any drive here; the package is each student's best offer. NIRF also asks for higher studies, which is not tracked here: add it from your own records.</p>
+    </>
   );
 }

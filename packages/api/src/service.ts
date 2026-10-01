@@ -252,15 +252,20 @@ export class ExamService {
 
   /**
    * A model call staff asked for outside any attempt — drafting a test from a
-   * job description. Refused once the month's spend cap is reached; its cost
-   * is counted with the rest of the organisation's, under the "author" route.
+   * job description, or reading a handwritten copy. Refused once the month's
+   * spend cap is reached; its cost is counted with the rest of the
+   * organisation's, under the route given ("author" unless said).
    */
-  async authoring<T>(actor: Actor, run: (client: Anthropic, model: string) => Promise<{ readonly result: T; readonly usage: ReportedUsage }>): Promise<T> {
-    const scope = this.#require(actor, "exam:write");
+  async authoring<T>(
+    actor: Actor,
+    run: (client: Anthropic, model: string) => Promise<{ readonly result: T; readonly usage: ReportedUsage }>,
+    options: { readonly permission?: Permission; readonly route?: "author" | "grade" | "assess" } = {},
+  ): Promise<T> {
+    const scope = this.#require(actor, options.permission ?? "exam:write");
     if (!(await this.#withinBudget(scope))) throw new SpendCapReached();
     const model = this.#engine.model ?? DEFAULT_MODEL;
     const { result, usage } = await run(this.#engine.client, model);
-    await this.#store.recordUsage(scope, { ...measure("author", model, usage), attemptId: null });
+    await this.#store.recordUsage(scope, { ...measure(options.route ?? "author", model, usage), attemptId: null });
     return result;
   }
 

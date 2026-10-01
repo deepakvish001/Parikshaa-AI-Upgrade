@@ -11,6 +11,9 @@ import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
 
 /** Pages opened from a link with no account; loaded only when one is. */
 const ShortlistPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ShortlistPage })));
+const InterviewPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.InterviewPage })));
+const OfferPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.OfferPage })));
+const ApplyPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ApplyPage })));
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { IdentityCapture } from "./components/IdentityCapture.tsx";
@@ -119,6 +122,9 @@ export function App(props: { client?: ParikshaaClient } = {}) {
   const query = props.client === undefined ? new URLSearchParams(window.location.search) : null;
   const scorecard = query?.get("scorecard") ?? null;
   const shortlist = query?.get("shortlist") ?? null;
+  const apply = query?.get("apply") ?? null;
+  const interview = query?.get("interview") ?? null;
+  const offer = query?.get("offer") ?? null;
   return (
     <PreferencesProvider>
       {scorecard !== null ? (
@@ -126,6 +132,18 @@ export function App(props: { client?: ParikshaaClient } = {}) {
       ) : shortlist !== null ? (
         <Suspense fallback={null}>
           <ShortlistPage code={shortlist} />
+        </Suspense>
+      ) : apply !== null ? (
+        <Suspense fallback={null}>
+          <ApplyPage code={apply} />
+        </Suspense>
+      ) : interview !== null ? (
+        <Suspense fallback={null}>
+          <InterviewPage code={interview} />
+        </Suspense>
+      ) : offer !== null ? (
+        <Suspense fallback={null}>
+          <OfferPage code={offer} />
         </Suspense>
       ) : (
         <Screens {...props} />

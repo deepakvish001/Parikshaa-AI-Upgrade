@@ -95,6 +95,8 @@ export interface InvitationServiceOptions {
   readonly lab?: LabService;
   /** Where a candidate sits on exam day, when the exam is held in rooms. */
   readonly seat?: (orgId: OrgId, examId: string, ref: string) => Promise<{ readonly centre: string; readonly room: string; readonly seat: string } | null>;
+  /** Where an attempt was opened from, for spotting a proxy. Never stops a candidate. */
+  readonly origin?: (orgId: OrgId, examId: string, attemptId: string, ref: string, ip: string, userAgent: string) => Promise<void>;
 }
 
 export interface ImportPreview {
@@ -106,10 +108,11 @@ export interface ImportPreview {
 }
 
 export class InvitationService {
-  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab" | "seat">>;
+  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab" | "seat" | "origin">>;
   readonly #seat: NonNullable<InvitationServiceOptions["seat"]>;
   readonly #notice: (orgId: OrgId) => Promise<Notice | null>;
   readonly #lab: LabService | null;
+  readonly #origin: NonNullable<InvitationServiceOptions["origin"]> | null;
   readonly #lead: number;
   readonly #now: () => number;
   readonly #newId: () => string;
@@ -121,6 +124,7 @@ export class InvitationService {
     this.#newId = options.newId ?? (() => crypto.randomUUID());
     this.#notice = options.notice ?? (async () => null);
     this.#lab = options.lab ?? null;
+    this.#origin = options.origin ?? null;
     this.#seat = options.seat ?? (async () => null);
   }
 
@@ -360,6 +364,8 @@ export class InvitationService {
     camera?: boolean,
     /** Where the request came from, for an exam limited to a lab's network. */
     ip?: string,
+    /** The browser's description of itself: with the address, a sign of one person sitting for several. */
+    userAgent?: string,
   ): Promise<{ token: string; attemptId: string; resumed: boolean }> {
     const named = this.#o.codes.verify(code);
     if (named === null) throw new InvalidInvitation();
@@ -411,6 +417,9 @@ export class InvitationService {
       { orgId, attemptId: claim.attemptId as AttemptId, examId: exam.id, candidateId: candidateId(invitation.candidateRef) },
       ttlSeconds,
     );
+    if (this.#origin !== null && ip !== undefined) {
+      await this.#origin(orgId, exam.id, claim.attemptId, invitation.candidateRef, ip, userAgent ?? "").catch(() => undefined);
+    }
     return { token, attemptId: claim.attemptId, resumed: !claim.claimed };
   }
 

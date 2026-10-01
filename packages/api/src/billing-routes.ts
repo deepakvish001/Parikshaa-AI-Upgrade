@@ -102,6 +102,7 @@ export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): v
                   status: z.enum(["created", "paid"]),
                   createdAt: z.string(),
                   paidAt: z.string().nullable(),
+                  poNumber: z.string().nullable(),
                 }),
               )
               .readonly(),
@@ -129,6 +130,7 @@ export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): v
               .readonly()
               .describe("Form 16A certificates received for TDS deducted."),
             checkout: z.object({ available: z.boolean(), keyId: z.string().nullable() }),
+            bankTransfer: z.boolean().describe("Whether a quotation can be had, to pay by bank transfer against a purchase order."),
             supplier: z.object({ legalName: z.string(), stateCode: z.string() }).nullable(),
           }),
           ...refusals,
@@ -164,6 +166,41 @@ export function registerBillingRoutes(routes: Routes, deps: BillingRouteDeps): v
       const actor = await staff(request, reply, "org:manage");
       if (actor === null) return;
       return reply.send(await billing.updateBuyer(actor, request.body));
+    },
+  );
+
+  routes.post(
+    "/billing/quotations",
+    {
+      schema: {
+        tags: TAG,
+        summary: "A quotation, to pay by bank transfer",
+        description:
+          "The same price and GST as Checkout, with the buyer's purchase order number if given. Download it as a PDF (with the account to pay into) and pay by NEFT, RTGS or IMPS quoting its reference; credits and the tax invoice follow once the operator matches the transfer. Audited.",
+        security: SECURED,
+        body: z.object({ credits: z.number().int().min(1).max(100_000), poNumber: z.string().max(60).nullable().default(null) }),
+        response: {
+          201: z.object({ id: z.string(), orderId: z.string(), credits: z.number(), taxablePaise: z.number(), taxPaise: z.number(), amountPaise: z.number(), poNumber: z.string().nullable() }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      const q = await billing.quote(actor, request.body.credits, request.body.poNumber);
+      return reply.code(201).send({ id: q.id, orderId: q.orderId, credits: q.credits, taxablePaise: q.taxablePaise, taxPaise: q.taxPaise, amountPaise: q.amountPaise, poNumber: q.poNumber });
+    },
+  );
+
+  routes.get(
+    "/billing/quotations/:id/pdf",
+    { schema: { tags: TAG, summary: "A quotation as a PDF", security: SECURED, params: z.object({ id: z.string() }) } },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      const bytes = await billing.quotationPdf(actor, request.params.id);
+      return reply.header("content-type", "application/pdf").header("content-disposition", `inline; filename="quotation.pdf"`).send(Buffer.from(bytes));
     },
   );
 

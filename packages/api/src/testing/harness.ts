@@ -27,6 +27,11 @@ import {
   PlacementStore,
   SeatStore,
   ShortlistStore,
+  OutcomeStore,
+  InterviewStore,
+  ScriptStore,
+  ProxyStore,
+  staffScope,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -39,6 +44,10 @@ import { MarkingService } from "../marking.js";
 import { PlacementService } from "../placement.js";
 import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
+import { OutcomeService } from "../outcomes.js";
+import { InterviewService } from "../interviews.js";
+import { HandwritingService } from "../handwriting.js";
+import { ProxyService } from "../proxy.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -88,6 +97,8 @@ export const SUPPLIER: Supplier = {
   address: "12 Residency Road, Bengaluru 560025",
   sac: "998399",
 };
+/** Where the tests' bank transfers go. */
+export const BANK = { accountName: "Parikshaa Assessments Pvt Ltd", accountNumber: "50200012345678", ifsc: "HDFC0001234", bank: "HDFC Bank, Residency Road" };
 
 /**
  * A migrated, empty database.
@@ -178,6 +189,7 @@ export async function wire(
     exams: service,
     gateway: razorpay,
     supplier: SUPPLIER,
+    bank: BANK,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);
@@ -191,11 +203,14 @@ export async function wire(
     exams: service,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
-  const lab = new LabService({ lab: new LabStore(sql), invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
+  const labStore = new LabStore(sql);
+  const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
+  let proxy: ProxyService | null = null;
   const seatStore = new SeatStore(sql);
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
     seat: async (orgId, examId, ref) => (await seatStore.seats(orgId, examId)).find((s) => s.ref === ref) ?? null,
+    origin: async (...args) => proxy?.recordOrigin(...args),
     lab,
     exams: service,
     store,
@@ -292,6 +307,21 @@ export async function wire(
     releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const proctorService = new ProctorService({
+    store,
+    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+    exams: service,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  proxy = new ProxyService({
+    store: new ProxyStore(sql),
+    proctor: proctorService,
+    results,
+    exams: service,
+    secret: TOKEN_SECRET,
+    labbed: async (orgId, examId) => (await labStore.get(staffScope(orgId), examId)).networks.length > 0,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const onboarding = new Onboarding({
     identity,
     auth,
@@ -322,19 +352,18 @@ export async function wire(
     }),
     privacy,
     billing,
-    proctor: new ProctorService({
-      store,
-      proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
-      exams: service,
-      ...(options.now === undefined ? {} : { now: options.now }),
-    }),
+    proctor: proctorService,
+    proxy,
     feedback: new FeedbackStore(sql),
     lab,
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
+    handwriting: new HandwritingService({ scripts: new ScriptStore(sql), ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
+    interviews: new InterviewService({ store: new InterviewStore(sql), exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
+    outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
-    placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
+    placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,
     auth,
     security,

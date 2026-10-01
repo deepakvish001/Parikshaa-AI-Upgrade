@@ -113,7 +113,7 @@ const kinds = {
     partialCredit: z.boolean().optional().describe("With several right options: a share for each right one chosen, if no wrong one is."),
     negativeMarks,
   },
-  short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
+  short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly(), spoken: z.boolean().optional().describe("Answered by speaking: the browser writes down what the candidate says; only the words are kept.") },
   numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number(), negativeMarks },
   code: {
     kind: z.literal("code"),
@@ -415,7 +415,7 @@ export const candidateQuestion = z.discriminatedUnion("kind", [
     translations,
     ...shown,
   }),
-  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations, ...shown }),
+  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations, spoken: z.boolean().optional(), ...shown }),
   z.object({
     id: z.string(),
     kind: z.literal("numeric"),

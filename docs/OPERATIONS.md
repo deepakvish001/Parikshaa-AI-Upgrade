@@ -251,6 +251,13 @@ without a credit; its owner buys more on the console's Billing page.
 | `RAZORPAY_WEBHOOK_SECRET` | The secret set on the webhook below. |
 | `PARIKSHAA_SUPPLIER_NAME`, `_GSTIN`, `_ADDRESS` | The registered legal name, GSTIN and address. The GSTIN is checked at boot. |
 | `PARIKSHAA_SUPPLIER_SAC` | Default `998399`; confirm with your accountant. |
+| `PARIKSHAA_BANK_ACCOUNT`, `PARIKSHAA_BANK_IFSC` | The current account colleges pay into by NEFT against a quotation; with `PARIKSHAA_BANK_ACCOUNT_NAME` (default: the supplier's name) and `PARIKSHAA_BANK_NAME`. Without them, quotations are not offered. |
+
+**Paying by bank transfer.** An owner gets a quotation on the Billing page (with their purchase order number, if any) and pays by NEFT quoting its `neft_…` reference. When the transfer shows in the bank statement, record it with its UTR:
+
+    npm run billing -w @parikshaa/api -- transfer <org> neft_… <UTR>
+
+That adds the credits and issues the GST tax invoice in one transaction, exactly as a Razorpay payment does. Recording the same quotation twice changes nothing; a UTR already used is refused.
 
 In the Razorpay dashboard, add a webhook to
 `https://<your host>/api/billing/razorpay/webhook` for `order.paid`, with the
