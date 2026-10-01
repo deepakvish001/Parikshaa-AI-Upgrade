@@ -38,6 +38,7 @@ import {
   type StaffRole,
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
+import type { JudgeOptions } from "../judge-queue.js";
 import { LabService } from "../lab.js";
 import { RecheckService } from "../rechecks.js";
 import { MarkingService } from "../marking.js";
@@ -148,6 +149,8 @@ export async function wire(
     readonly now?: () => Timestamp;
     readonly newId?: () => string;
     readonly runner?: CodeRunner;
+    /** The judge's queue for practice, when a test needs it small. */
+    readonly judge?: JudgeOptions;
     readonly server?: Partial<ServerOptions>;
     /** For integration tests against a local server. */
     readonly http?: SafeHttpOptions;
@@ -251,6 +254,7 @@ export async function wire(
     store: new PracticeStore(sql),
     bank: new QuestionBank(sql),
     ...(options.runner === undefined ? {} : { runner: options.runner }),
+    ...(options.judge === undefined ? {} : { judge: options.judge }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, supplier: SUPPLIER, ...(options.now === undefined ? {} : { now: options.now }) });

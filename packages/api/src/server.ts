@@ -14,6 +14,7 @@ import {
 } from "fastify-type-provider-zod";
 import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
 import { RunnerUnavailable } from "@parikshaa/runner";
+import { JudgeBusy } from "./judge-queue.js";
 import { ExamFrozen, type FeedbackStore, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
 import { registerAccountRoutes } from "./account-routes.js";
 import type { Onboarding } from "./onboarding.js";
@@ -526,6 +527,12 @@ export function buildServer(options: ServerOptions): FastifyInstance {
                 ? 429
                 : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
+    }
+    if (error instanceof JudgeBusy) {
+      return reply
+        .code(503)
+        .header("retry-after", "30")
+        .send({ error: "judge_busy", message: "The judge is busy just now, most likely with a contest. Try again in a minute." });
     }
     if (error instanceof RunnerUnavailable) {
       return reply.code(503).send({ error: "runner_unavailable", message: "Code cannot be run just now." });

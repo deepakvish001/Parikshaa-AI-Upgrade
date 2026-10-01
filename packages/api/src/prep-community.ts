@@ -42,6 +42,38 @@ export const READINESS_TOP = 50;
 /** Problems from target companies a study plan puts in its last days, at most. */
 export const PLAN_COMPANY_PROBLEMS = 10;
 export const EXPERIENCE_COINS = 100;
+/** Coins for a contest's first ten, in prize order (see `prizeOrder`), once it has ended. Only for those who solved something. */
+export const CONTEST_RANK_COINS: readonly number[] = [100, 75, 50, 30, 30, 20, 20, 20, 20, 20];
+
+/**
+ * The order a contest's prizes go in: the scoreboard's, with a tie (same
+ * problems, same penalty minutes) broken by whoever made their last accepted
+ * solve sooner, to the millisecond. A short contest ties many on the board;
+ * prizes still go to ten. Only those who solved something.
+ */
+export function prizeOrder<R extends { readonly learnerId: string; readonly rank: number; readonly solved: number; readonly name: string }>(
+  contest: { readonly startsAt: string; readonly endsAt: string; readonly problemIds: readonly string[] },
+  board: readonly R[],
+  submissions: readonly { readonly learnerId: string; readonly problemId: string; readonly status: string; readonly createdAt: string }[],
+): R[] {
+  const start = Date.parse(contest.startsAt);
+  const end = Date.parse(contest.endsAt);
+  const firstSolve = new Map<string, number>();
+  for (const s of submissions) {
+    const at = Date.parse(s.createdAt);
+    if (s.status !== "passed" || at < start || at >= end || !contest.problemIds.includes(s.problemId)) continue;
+    const key = `${s.learnerId}\u0000${s.problemId}`;
+    if (!firstSolve.has(key) || at < firstSolve.get(key)!) firstSolve.set(key, at);
+  }
+  const lastSolve = new Map<string, number>();
+  for (const [key, at] of firstSolve) {
+    const learnerId = key.split("\u0000")[0]!;
+    lastSolve.set(learnerId, Math.max(lastSolve.get(learnerId) ?? 0, at));
+  }
+  return board
+    .filter((r) => r.solved > 0)
+    .sort((a, b) => a.rank - b.rank || (lastSolve.get(a.learnerId) ?? end) - (lastSolve.get(b.learnerId) ?? end) || a.name.localeCompare(b.name));
+}
 /** How old an account must be before it spends coins: coins farmed by a new account wait. */
 export const STORE_MIN_AGE_DAYS = 14;
 export const WINDOWS = [30, 60, 180] as const;
@@ -413,8 +445,14 @@ export class PrepCommunity {
     const current = new Map<string, number>();
     for (const r of ratings) current.set(r.learnerId, r.after);
     for (const contest of pending) {
-      const board = scoreboard(contest, await this.#practice.contestSubmissions(orgId, contest.id));
+      const submissions = await this.#practice.contestSubmissions(orgId, contest.id);
+      const board = scoreboard(contest, submissions);
       if (board.length === 0) continue;
+      // Coins before the rating: both are once a contest, and paying first means a crash in between never skips them.
+      const winners = prizeOrder(contest, board, submissions).slice(0, CONTEST_RANK_COINS.length);
+      for (const [i, row] of winners.entries()) {
+        await this.#prep.award(orgId, row.learnerId, { rule: "contest_rank", amount: CONTEST_RANK_COINS[i]!, key: `contest_rank:${contest.id}` }, new Date(contest.endsAt));
+      }
       const changes = rateContest(board.map((row) => ({ learnerId: row.learnerId, rank: row.rank, before: current.get(row.learnerId) ?? START_RATING })));
       if (await this.#store.rate(orgId, contest.id, changes.map(({ learnerId, rank, before, after }) => ({ learnerId, rank, before, after })), new Date(contest.endsAt))) {
         for (const c of changes) current.set(c.learnerId, c.after);
@@ -429,8 +467,8 @@ export class PrepCommunity {
   async rating(site: PracticeSite, learner: Learner | null) {
     await this.#rateEnded(site.orgId);
     const scope = practiceStaff(site.orgId);
-    const [ratings, learners, contests] = await Promise.all([this.#store.ratings(scope), this.#practice.learners(site.orgId), this.#practice.contests(scope)]);
-    const names = new Map(learners.map((l) => [l.id, l.name]));
+    const [ratings, contests] = await Promise.all([this.#store.ratings(scope), this.#practice.contests(scope)]);
+    const names = await this.#practice.learnerNames(site.orgId, [...new Set(ratings.map((r) => r.learnerId))]);
     const latest = new Map<string, { rating: number; contests: number }>();
     for (const r of ratings) latest.set(r.learnerId, { rating: r.after, contests: (latest.get(r.learnerId)?.contests ?? 0) + 1 });
     const board = [...latest.entries()]

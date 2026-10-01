@@ -32,12 +32,12 @@ Status ka matlab:
 | Revision, lists, notes | 6 | 1 | 0 | 0 |
 | Sahayak AI | 13 | 3 | 2 | 0 |
 | Plus aur payment | 13 | 0 | 0 | 0 |
-| Coins, store, gamification | 12 | 2 | 1 | 0 |
+| Coins, store, gamification | 13 | 1 | 1 | 0 |
 | Company prep aur community | 11 | 1 | 3 | 0 |
-| Contests | 3 | 0 | 2 | 0 |
+| Contests | 3 | 1 | 1 | 0 |
 | Content | 5 | 3 | 2 | 1 |
-| Platform, quality, B2B | 9 | 1 | 3 | 0 |
-| **Kul** | **92** | **15** | **15** | **1** |
+| Platform, quality, B2B | 10 | 2 | 1 | 0 |
+| **Kul** | **94** | **16** | **12** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -159,7 +159,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Titles (Newbie → Grandmaster) aur 13 achievements | ✅ | `RatingPage` | Computed, store nahi hote |
 | "Mahine me 1" jaisi limit | ✅ | `prep_store_items.per_month` (migration 0042), `PrepCommunityStore.redeem` | Kul limit (`per_learner`) ke saath ab India ke calendar mahine ki limit bhi. Tests: store, API, console |
 | Title naam ke saath har jagah | 🟡 | | Rating page par dikhta hai |
-| Quiz pass par +20, contest rank par coins | 🟡 | coin rule `quiz` | Sprint quiz pass par +20 (ek baar). Contest rank par coins baaki |
+| Quiz pass par +20, contest rank par coins | ✅ | coin rules `quiz`, `contest_rank`; `CONTEST_RANK_COINS`, `prizeOrder` (`api/src/prep-community.ts`) | Sprint quiz pass par +20 (ek baar). Contest khatam hone par pehle 10 ko 100, 75, 50, 30, 30, 20×5 coins, ek hi baar (rating se pehle diye jaate hain, crash me bhi chhootte nahi). Sirf jisne kuch hal kiya. Tie (same solved, same penalty) me jisne aakhri sawaal pehle hal kiya woh aage, isliye inaam hamesha 10 ko hi. Daily coin cap se bahar. Tests: `prep-community.test.ts` |
 | Shareable achievement cards | ⬜ | | |
 | Store me coupons | ✅ | item kind `coupon` (migration 0042), `PrepCommunityStore.redeem`, `prep_coupons.learner_id` | Coins se Plus par N% ka coupon: code `COIN-…`, sirf khareedne wale ke liye, ek baar, 90 din tak; order ke note me code aata hai. Dusra learner use kare to "not valid". Tests: store, API, console |
 
@@ -190,7 +190,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Weekly contests, ICPC scoreboard | ✅ | §15 | |
 | Rating: Elo, contest khatam hone ke baad ek baar | ✅ | `api/src/prep-community.ts` | |
 | Contest me Sahayak aur editorial band | ✅ | | |
-| Judge ki priority lane, queue, autoscale | ⬜ | | Contest day ke liye |
+| Judge ki priority lane, queue, autoscale | 🟡 | `api/src/judge-queue.ts`, `PracticeService`, `GET /practice-admin/judge`, env `JUDGE_CONCURRENCY`, `JUDGE_QUEUE_MAX`, `JUDGE_WAIT_MS` | Queue ban gayi: ek saath utne hi program jitne runner sambhale, chalte contest ke pehle, par har 4 contest ke baad 1 practice (practice kabhi poora nahi rukta). Queue bhari ho ya intezaar lamba ho to 503 `judge_busy` + `Retry-After`, spinner nahi. Contest ka submission us pal ka gina jaata hai jab aaya, judge baad me kare to bhi. **Autoscale nahi**: queue har API process me alag hai, runner machines kitni hon ye deploy ka faisla (Ruka hua kaam). Tests: `judge-queue.test.ts`, `practice.test.ts` |
 | Public profile `/u/:username` | ⬜ | | |
 
 ### 10. Content (section 15)
@@ -223,8 +223,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Design system par prep pages, screenshots, visual baselines | ✅ | `e2e/visual/prep.visual.ts`, `docs/screenshots/prep-*` | 19 learner + 7 console screenshots, 17 visual baselines |
 | Analytics events (signup, task_done, hint_used, purchase…) | ✅ | `prep-engage-store.ts` `analytics`, `GET /practice-admin/analytics`, console Practice → Analytics | Activation (7 din me pehla solve), D1/D7, funnel (signup → plan → solve → tutor → kharid), roz ke active learners, 30 din. Alag events table nahi: maujooda tables se gina jaata hai (Faisle dekho). Page views aur click jaisi cheezein nahi gini jaatin |
 | Roz ke reminders (email/push) | ✅ | `prep_reminders` (migration 0034), `prep-engage.ts`, plan page par "Daily reminder", `REMINDER_WORKER` | Email: learner ka chuna ghanta (IST), din me ek, sirf jab kaam baaki ho; ek click se band. Push notification nahi (PWA push wali row) |
-| Contest load test (2,000 ek saath) | ⬜ | | |
-| Runner queue + autoscale | ⬜ | | |
+| Contest load test (2,000 ek saath) | ✅ | `e2e/src/contest-load.ts` (`npm run contest-load -w @parikshaa/e2e`), reports `e2e/contest-2000-judge32.txt`, `contest-2000-judge64.txt` | 2,000 contestants + 200 practice, 3 minute, asli Postgres, ek 4-core machine par (server, database aur sab learners ek hi jagah). **0 errors**, har jawab database me, inaam theek 10 ko. Judge 32 (×400 ms): judge hi rukaawat, contest submit p95 22 s, practice 1.3 s, scoreboard 0.6 s. Judge 64: ek API process khud bhar gaya (problem page p95 11 s). Matlab: blueprint ka "contest me verdict < 5 s" ek machine par **nahi** milta; zyada runner workers aur 2+ API processes chahiye. Is test ne 3 kamiyan pakdi aur theek hui: practice bhookha rehta tha (198 × 503), queue me ruka submission contest ke baad gina jaata tha, scoreboard aur rating page bahut mehenge the |
+| Runner queue + autoscale | 🟡 | `api/src/judge-queue.ts` | Queue ✅ (upar wali row). Autoscale ⬜: runner machines ka hisaab deploy par |
 | PWA push | ⬜ | | Phase 6 |
 
 ---
@@ -255,7 +255,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F8 Spaced revision | ✅ | |
 | F9 Company prep | ✅ | Target, readiness, list shuru karo, Company Pass, plan me company problems |
 | F10 POTD, streak, coins | ✅ | |
-| F11 Contest + rating | ✅ | Contest coins aur priority lane baaki |
+| F11 Contest + rating | ✅ | Rank coins aur judge ki priority lane ban gaye; autoscale baaki |
 | F12 Plus kharidna | ✅ | Coupon aur GST invoice ke saath |
 | F13 Coins se redeem | ✅ | |
 | F14 Interview experience | ✅ | |
@@ -280,6 +280,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Interview ka video | Apna video server nahi: recruiter ka apna link (Meet/Zoom/Teams) ya naya Jitsi room. Code editor aur scorecard hamare | 1 Oct 2026 |
 | Console Hindi | Pehle navigation, titles aur page ki line; pages ke andar ka text baad me, jab TPO feedback de | 1 Oct 2026 |
 | Migration ke number takraayein to | Do branches ek hi number le lein (jaise #36 aur #37 ne 0033–0038) to **file ka naam nahi badalte**: runner poore naam se, alphabetical kram me chalata hai (0024 pehle se do baar hai), aur naam badalne se deploy hua database wahi migration dobara chalaane lagega. Sirf migration test ki list theek karte hain | 2 Oct 2026 |
+| Contest inaam me tie | Blueprint: "top 10 ko coins". ICPC board par tie aam hai (chhote contest me sainkdon). Faisla: tie me jisne aakhri sawaal pehle hal kiya (millisecond tak) woh aage; inaam hamesha 10 ko | 2 Oct 2026 |
+| Judge ki queue | Har API process me apni queue; chalte contest ke pehle, par har 4 contest ke baad 1 practice. Exam ke code tests is queue me nahi (woh alag raste se runner jaate hain) | 2 Oct 2026 |
 | Sahayak evals ka size | Blueprint me 200 problems the; owner ne **40 problems × 3 galat programs** chune (har flow me 120 cases, kul 360). Problems apne likhe hain, kisi site se copy nahi | 30 Sep 2026 |
 
 ---
@@ -297,7 +299,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Bank transfer (NEFT) ke details** | Server env me `PARIKSHAA_BANK_ACCOUNT`, `PARIKSHAA_BANK_IFSC`, `PARIKSHAA_BANK_ACCOUNT_NAME`, `PARIKSHAA_BANK_NAME` | Quotation PDF par bank details chhapenge; tab tak console "bank details set nahi" batata hai | 1 Oct 2026 |
 | **DPA aur SLA par lawyer** | `docs/legal/DPA.md`, `SLA.md` ke [ ] wale hisse: company ka naam, liability, uptime target, support ghante, sub-processors ke region | Pehli badi company ko bhej sakte hain | 1 Oct 2026 |
 | **Asli model par pehla trial** | `ANTHROPIC_API_KEY` (upar wali hi) aur kuch asli samples: 3 JD, 5 handwritten copies (scan), 5 candidates ki photos (sahmati ke saath) | JD se test, handwritten marking aur proxy photo-check ki asli quality pata chalegi; abhi sab fake model se tested hain | 1 Oct 2026 |
-| **Prep ke agle features (Plan rows 34–41)** | Owner bataye kaunsa pehle (ya "sab"): contests v2, payments v2, planner settings, Sahayak v2, profile aur cards, community v2, learn v2, PWA | Chuni hui row "chal raha" hogi, phir build, tests, PR | 2 Oct 2026 |
+| **Contest day ke liye runner aur API ka size** (plan 34) | Kitne runner workers aur kitne API processes chalayein: load test (`e2e/contest-2000-*.txt`) batata hai ki ek 4-core machine par 2,000 ka contest bina error chalta hai, par verdict p95 ~22 s hai. 5 s ke liye zyada runner aur 2+ API processes chahiye: ye kharche ka faisla owner ka | `JUDGE_CONCURRENCY` set karke, aur machines badha kar, load test dobara | 2 Oct 2026 |
 | **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
 
 ## Plan: aage kya banega
@@ -342,7 +344,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 31 | **Offer tracking** (CO30): offer link (role, LPA, joining date, note), candidate ek baar accept/decline kare; drive me sent/accepted/declined/waiting/joined/"join nahi kiya" | V2-12 | Company aur college dono ko pata ho kaun join karega | Tests: link, ek hi jawab, ginti, joined | ✅ ban gaya (1 Oct 2026): migration 0039, `placement.ts` (sendOffer, respondToOffer); web OfferPage; console `DriveNetwork.tsx`. Offer email/WhatsApp se apne aap nahi jaata, link copy karke bhejna hai |
 | 32 | **Proxy pakadna** (CO19): ek network + browser se kai candidates, ek hi identity photo do attempts me, AI se selfie ↔ ID ↔ webcam photo milana (sirf sanket, faisla insaan) | V2-12 | Remote hiring test ka sabse bada dar | Tests: shared origin, lab me nahi ginna, reused photo, AI flag, audit | 🟡 (1 Oct 2026): migration 0040, `api/src/proxy.ts`; console `ProxyCheck.tsx`. Awaaz wala viva aur do device nahi; asli model par abhi nahi chalaya |
 | 33 | **Enterprise ke liye DPA aur SLA** (CO35): code se likhe templates, Annex me data, suraksha aur sub-processors; SECURITY.md me naya data | V2-12 | Badi company ka procurement | Lawyer review | 🟡 (1 Oct 2026): `docs/legal/DPA.md`, `docs/legal/SLA.md`. Lawyer aur owner ki terms baaki (Ruka hua kaam); status page aur questionnaire nahi |
-| 34 | **Contests v2** (F11, §20): contest me rank par coins (top 10 ko, ek baar), judge ki priority lane (contest ke submissions pehle), runner queue jo bheed me bhi kram se chale, 2,000 learners ek saath ka load test | F11, §20 | Contest bina atke chale, aur jeetne ka inaam | Tests: rank coins ek hi baar, queue ka kram aur timeout; load test ki report (p95, errors) | ⬜ pending |
+| 34 | **Contests v2** (F11, §20): contest me rank par coins (top 10 ko, ek baar), judge ki priority lane (contest ke submissions pehle), runner queue jo bheed me bhi kram se chale, 2,000 learners ek saath ka load test | F11, §20 | Contest bina atke chale, aur jeetne ka inaam | Tests: rank coins ek hi baar, queue ka kram aur timeout; load test ki report (p95, errors) | ✅ ban gaya (2 Oct 2026); autoscale ⬜ |
 | 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ✅ ban gaya (2 Oct 2026) |
 | 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
 | 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ⬜ pending (evals ka paid run alag se owner par) |

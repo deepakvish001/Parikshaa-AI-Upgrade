@@ -38,6 +38,15 @@ async function main(): Promise<void> {
   const runnerUrl = process.env["RUNNER_URL"];
   const runner =
     runnerUrl === undefined || runnerUrl === "" ? undefined : new HttpCodeRunner(runnerUrl, required("RUNNER_TOKEN"));
+  // Practice's programs queue for it: so many at once (match the runner's
+  // workers), contests first, and a learner told the judge is busy rather
+  // than left waiting past JUDGE_WAIT_MS.
+  const judgeNumber = (name: string) => (process.env[name] === undefined || process.env[name] === "" ? undefined : Number.parseInt(process.env[name]!, 10));
+  const judge = {
+    ...(judgeNumber("JUDGE_CONCURRENCY") === undefined ? {} : { concurrency: judgeNumber("JUDGE_CONCURRENCY")! }),
+    ...(judgeNumber("JUDGE_QUEUE_MAX") === undefined ? {} : { maxWaiting: judgeNumber("JUDGE_QUEUE_MAX")! }),
+    ...(judgeNumber("JUDGE_WAIT_MS") === undefined ? {} : { waitMs: judgeNumber("JUDGE_WAIT_MS")! }),
+  };
 
   // Built client bundles, when they are present beside the server. In
   // development the Vite dev servers proxy to this process instead.
@@ -99,6 +108,7 @@ async function main(): Promise<void> {
     pilotReportTo,
     sql,
     ...(runner === undefined ? {} : { runner }),
+    judge,
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
     // profile from the environment.
     client: new Anthropic(),

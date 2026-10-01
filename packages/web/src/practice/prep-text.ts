@@ -222,6 +222,7 @@ const en = {
   "coins.rule.store": "Spent in the store",
   "coins.rule.store_refund": "Order cancelled, returned",
   "coins.rule.grant": "Given by staff",
+  "coins.rule.contest_rank": "Top ten in a contest",
   "coins.store": "Spend coins",
 
   "common.loading": "Loading…",
@@ -540,6 +541,7 @@ const hi: Record<PrepKey, string> = {
   "coins.rule.store": "दुकान में ख़र्च",
   "coins.rule.store_refund": "ऑर्डर रद्द, वापस",
   "coins.rule.grant": "स्टाफ़ ने दिए",
+  "coins.rule.contest_rank": "कॉन्टेस्ट में पहले दस में",
   "coins.store": "सिक्के ख़र्च करें",
 
   "common.loading": "लोड हो रहा है…",

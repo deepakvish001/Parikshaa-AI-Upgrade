@@ -585,6 +585,38 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
   );
 
   routes.get(
+    "/practice-admin/judge",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "The judge's queue, on this server",
+        description: "Programs running and waiting, by lane (a running contest's go first), and how many were served and turned away since the server started.",
+        security: STAFF,
+        response: {
+          200: z.object({
+            judge: z
+              .object({
+                concurrency: z.number(),
+                running: z.number(),
+                waiting: z.object({ contest: z.number(), practice: z.number() }),
+                served: z.object({ contest: z.number(), practice: z.number() }),
+                refused: z.number(),
+              })
+              .nullable()
+              .describe("Null when no code runner is set up."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send({ judge: practice.judgeStats() });
+    },
+  );
+
+  routes.get(
     "/practice-admin/contests",
     { schema: { tags: ADMIN, summary: "Contests", security: STAFF, response: { 200: z.object({ contests: z.array(staffContest).readonly() }), ...refusals } } },
     async (request, reply) => {

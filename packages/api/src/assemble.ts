@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
+import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
@@ -54,6 +55,8 @@ export interface AssembleOptions {
   readonly sql: SqlExecutor;
   readonly client: Anthropic;
   readonly runner?: CodeRunner;
+  /** How practice's programs queue for the runner: at most so many at once, contests first. */
+  readonly judge?: JudgeOptions;
   /** The server's secret: attempt tokens, invitation codes and integration secrets derive from it. */
   readonly secret: string;
   /** Where candidates open their links. */
@@ -169,7 +172,7 @@ export function assemble(o: AssembleOptions): {
     publicUrl: o.publicUrl,
   });
   const practiceStore = new PracticeStore(o.sql);
-  const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }) });
+  const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }), ...(o.judge === undefined ? {} : { judge: o.judge }) });
   const prepCampus = new PrepCampus({ store: new PrepCampusStore(o.sql), plus: new PrepPlusStore(o.sql) });
   const practiceIdentity = new PracticeIdentity({
     store: practiceStore,

@@ -3,7 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pgliteExecutor } from "@parikshaa/store";
-import { rateContest, titleOf } from "./prep-community.js";
+import { prizeOrder, rateContest, titleOf } from "./prep-community.js";
 import type { FakeRazorpay } from "./razorpay.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
@@ -367,6 +367,15 @@ describe("ratings", () => {
     const again = await ok("GET", null, `${S}/rating`);
     expect(again.board).toEqual(rated.board.map((r: object) => ({ ...r, you: false })));
     expect(again.me).toBeNull();
+
+    // The top ten who solved something get coins for their rank, once.
+    const rankCoins = async (token: string) =>
+      ((await ok("GET", token, `${S}/coins`)).history as { rule: string; amount: number }[]).filter((h) => h.rule === "contest_rank").map((h) => h.amount);
+    expect(await rankCoins(asha)).toEqual([100]);
+    expect(await rankCoins(ravi)).toEqual([75]);
+    expect(await rankCoins(meena)).toEqual([]);
+    await ok("GET", ravi, `${S}/rating`);
+    expect(await rankCoins(asha)).toEqual([100]);
   });
 
   it("moves ratings by rank against expectation, summing to about nothing", () => {
@@ -382,5 +391,26 @@ describe("ratings", () => {
     expect(upset[0]!.after - 1200).toBeGreaterThan(60);
     expect(rateContest([{ learnerId: "solo", rank: 1, before: 1500 }])[0]!.after).toBe(1500);
     expect([titleOf(null), titleOf(1100), titleOf(1650), titleOf(2300)]).toEqual(["Unrated", "Newbie", "Expert", "Grandmaster"]);
+  });
+});
+
+describe("prize order", () => {
+  it("breaks a tie on the board by the sooner last solve, and leaves out those who solved nothing", () => {
+    const contest = { startsAt: "2026-10-05T10:00:00.000Z", endsAt: "2026-10-05T10:30:00.000Z", problemIds: ["p1", "p2"] };
+    const row = (learnerId: string, rank: number, solved: number) => ({ learnerId, name: learnerId, rank, solved });
+    const board = [row("asha", 1, 2), row("ravi", 1, 2), row("meena", 3, 1), row("kiran", 4, 0)];
+    const at = (minute: number, second: number) => new Date(Date.parse(contest.startsAt) + minute * 60_000 + second * 1000).toISOString();
+    const sub = (learnerId: string, problemId: string, status: string, createdAt: string) => ({ learnerId, problemId, status, createdAt });
+    const submissions = [
+      sub("asha", "p1", "passed", at(1, 10)),
+      sub("asha", "p2", "passed", at(2, 50)),
+      sub("ravi", "p1", "passed", at(1, 40)),
+      sub("ravi", "p2", "passed", at(2, 5)),
+      // A later pass does not move the first one.
+      sub("ravi", "p2", "passed", at(9, 0)),
+      sub("meena", "p1", "passed", at(0, 30)),
+      sub("kiran", "p1", "wrong_answer", at(0, 20)),
+    ];
+    expect(prizeOrder(contest, board, submissions).map((r) => r.learnerId)).toEqual(["ravi", "asha", "meena"]);
   });
 });

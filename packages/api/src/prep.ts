@@ -54,8 +54,8 @@ export const FREEZES_PER_MONTH = 2;
 export const QUIZ_PASS_PERCENT = 70;
 /** Questions in a sprint's quiz at most. */
 export const QUIZ_QUESTIONS = 10;
-// Paid outside the daily cap: milestones, a published interview experience, and coins a cancelled order gives back.
-const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant"];
+// Paid outside the daily cap: milestones, a published interview experience, a contest rank, and coins a cancelled order gives back.
+const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant", "contest_rank"];
 /** Cards shown for revision in a day, oldest first; the rest wait. */
 export const REVISE_PER_DAY = 15;
 const LIST_NAME = /^[\p{L}\p{N} _\-'&()]{1,60}$/u;
