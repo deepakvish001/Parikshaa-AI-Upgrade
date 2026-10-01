@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Mic, MicOff } from "lucide-react";
+import { usePreferences } from "../i18n.tsx";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome, SubmitOutcome } from "../api.ts";
 import { CodeAnswer } from "./CodeAnswer.tsx";
@@ -100,7 +102,9 @@ export function AnswerInput({ question, value, disabled, onChange, onRun, onSubm
       );
 
     case "short":
-      return (
+      return question.spoken === true ? (
+        <SpokenAnswer stem={question.stem} value={value} disabled={disabled} onChange={onChange} />
+      ) : (
         <textarea
           aria-label={question.stem}
           value={value}
@@ -109,4 +113,72 @@ export function AnswerInput({ question, value, disabled, onChange, onRun, onSubm
         />
       );
   }
+}
+
+interface Recognition {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+/**
+ * Answering by speaking (V2-12 CO10): the browser's own speech recognition
+ * writes down what the candidate says, in the language they chose, into the
+ * same box they can type in. Nothing but the words leaves the page; where the
+ * browser cannot listen, the box is simply typed in.
+ */
+function SpokenAnswer({ stem, value, disabled, onChange }: { stem: string; value: string; disabled: boolean; onChange: (value: string) => void }) {
+  const { t, language } = usePreferences();
+  const [listening, setListening] = useState(false);
+  const recognition = useRef<Recognition | null>(null);
+  const latest = useRef(value);
+  latest.current = value;
+  const Engine = (globalThis as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition }).SpeechRecognition ??
+    (globalThis as unknown as { webkitSpeechRecognition?: new () => Recognition }).webkitSpeechRecognition;
+  useEffect(() => () => recognition.current?.stop(), []);
+  useEffect(() => {
+    if (disabled) recognition.current?.stop();
+  }, [disabled]);
+
+  const start = () => {
+    if (Engine === undefined) return;
+    const r = new Engine();
+    r.lang = `${language}-IN`;
+    r.continuous = true;
+    r.interimResults = false;
+    r.onresult = (event) => {
+      const words: string[] = [];
+      for (let i = event.resultIndex; i < event.results.length; i++) if (event.results[i]!.isFinal) words.push(event.results[i]![0]!.transcript.trim());
+      if (words.length > 0) onChange(`${latest.current.trimEnd()}${latest.current.trim() === "" ? "" : " "}${words.join(" ")}`);
+    };
+    r.onend = () => setListening(false);
+    recognition.current = r;
+    r.start();
+    setListening(true);
+  };
+
+  return (
+    <div className="spoken-answer">
+      <textarea aria-label={stem} value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)} />
+      {Engine === undefined ? (
+        <p className="notice">{t("answer.noSpeech")}</p>
+      ) : (
+        <div className="row">
+          <button type="button" className={listening ? "danger" : "secondary"} disabled={disabled} onClick={() => (listening ? recognition.current?.stop() : start())} aria-pressed={listening}>
+            {listening ? <MicOff aria-hidden="true" /> : <Mic aria-hidden="true" />}
+            {listening ? t("answer.stopSpeaking") : t("answer.speak")}
+          </button>
+          {listening ? (
+            <span className="notice" role="status">
+              {t("answer.listening")}
+            </span>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
 }

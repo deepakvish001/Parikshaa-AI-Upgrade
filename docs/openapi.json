@@ -498,6 +498,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "spoken": {
+                              "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -1432,6 +1436,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "spoken": {
+                                    "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -4153,6 +4161,10 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "spoken": {
+                                "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -5120,6 +5132,10 @@
                                       "items": {
                                         "type": "string"
                                       }
+                                    },
+                                    "spoken": {
+                                      "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
@@ -8866,6 +8882,9 @@
                                       "additionalProperties": false
                                     },
                                     "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                                  },
+                                  "spoken": {
+                                    "type": "boolean"
                                   },
                                   "images": {
                                     "readOnly": true,
@@ -13017,6 +13036,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "spoken": {
+                                    "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -14102,6 +14125,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "spoken": {
+                            "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -15059,6 +15086,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "spoken": {
+                              "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -16174,6 +16205,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "spoken": {
+                            "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -17142,6 +17177,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "spoken": {
+                              "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -20872,6 +20911,9 @@
                                 "additionalProperties": false
                               },
                               "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
+                            },
+                            "spoken": {
+                              "type": "boolean"
                             },
                             "images": {
                               "readOnly": true,
@@ -25410,6 +25452,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "spoken": {
+                                    "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -26695,6 +26741,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "spoken": {
+                              "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -27975,6 +28025,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "spoken": {
+                              "description": "Answered by speaking: the browser writes down what the candidate says; only the words are kept.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
