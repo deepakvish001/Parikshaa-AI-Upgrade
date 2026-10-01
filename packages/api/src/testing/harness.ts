@@ -335,7 +335,14 @@ export async function wire(
     prepEngage,
     prepPlus: {
       plus: prepPlus,
-      tutor: new Sahayak({ client: options.client, practice: new PracticeStore(sql), prep: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+      tutor: new Sahayak({
+        client: options.client,
+        practice: new PracticeStore(sql),
+        prep: new PrepStore(sql),
+        plus: prepPlus,
+        lessonOpen: async (site, learner, slug) => !(await prepService.lesson(site, slug, learner)).locked,
+        ...(options.now === undefined ? {} : { now: options.now }),
+      }),
     },
     ...options.server,
   });

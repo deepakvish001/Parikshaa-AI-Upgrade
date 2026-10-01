@@ -33,7 +33,7 @@ function Failure({ error, onCredits }: { readonly error: unknown; readonly onCre
 
 function Answer({ entry }: { readonly entry: TutorAnswer & { readonly question?: string } }) {
   const p = usePrepText();
-  const label = entry.mode === "hint" ? p("tutor.hintLabel", { n: entry.hintLevel ?? 0 }) : entry.mode === "review" ? p("tutor.reviewLabel") : p("tutor.doubtLabel");
+  const label = entry.mode === "hint" ? p("tutor.hintLabel", { n: entry.hintLevel ?? 0 }) : entry.mode === "review" ? p("tutor.reviewLabel") : entry.mode === "notes" ? p("tutor.notesLabel") : p("tutor.doubtLabel");
   return (
     <article className="tutor-answer">
       <h3>

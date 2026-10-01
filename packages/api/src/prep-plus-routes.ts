@@ -58,7 +58,7 @@ const overview = z.object({
   invoices: z.boolean().describe("Paid orders get a GST tax invoice: the server knows its supplier."),
   products: z.array(learnerProduct).readonly(),
 });
-const tutorAnswer = z.object({ id: z.string(), mode: z.enum(["hint", "review", "doubt"]), hintLevel: z.number().nullable(), answer: z.string().describe("Markdown."), credits: z.number(), createdAt: z.string() });
+const tutorAnswer = z.object({ id: z.string(), mode: z.enum(["hint", "review", "doubt", "notes"]), hintLevel: z.number().nullable(), answer: z.string().describe("Markdown."), credits: z.number(), createdAt: z.string() });
 const tutorHistory = z.object({
   entries: z.array(tutorAnswer.omit({}).extend({ question: z.string() })).readonly(),
   nextHint: z.object({ level: z.number(), credits: z.number(), available: z.boolean().describe("The last rung opens after three wrong submissions.") }).nullable(),
@@ -347,6 +347,28 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
       limit(who.learner);
       const { problem, lesson, question, replyIn: language } = request.body;
       return reply.send(await tutor.doubt(who.site, who.learner, { problem, lesson }, question, language));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/tutor/notes",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Ask the tutor to draft my revision note on a lesson, or on a problem I have solved",
+        description: "The draft is not saved as a note: the learner changes it and saves it themselves.",
+        security: LEARNER,
+        params: siteParams,
+        body: z.object({ problem: z.string().max(80).optional(), lesson: z.string().max(80).optional(), replyIn }),
+        response: { 200: tutorAnswer, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      limit(who.learner);
+      const { problem, lesson, replyIn: language } = request.body;
+      return reply.send(await tutor.notesDraft(who.site, who.learner, { problem, lesson }, language));
     },
   );
 

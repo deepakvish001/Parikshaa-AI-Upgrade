@@ -29,15 +29,15 @@ Status ka matlab:
 |---|---|---|---|---|
 | Dashboard aur planner | 9 | 3 | 3 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
-| Revision, lists, notes | 4 | 1 | 2 | 0 |
-| Sahayak AI | 12 | 3 | 3 | 0 |
+| Revision, lists, notes | 6 | 1 | 0 | 0 |
+| Sahayak AI | 13 | 3 | 2 | 0 |
 | Plus aur payment | 9 | 1 | 3 | 0 |
 | Coins, store, gamification | 10 | 3 | 2 | 0 |
 | Company prep aur community | 11 | 1 | 3 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
 | Platform, quality, B2B | 8 | 2 | 3 | 0 |
-| **Kul** | **75** | **18** | **28** | **1** |
+| **Kul** | **78** | **18** | **25** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -96,8 +96,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Galat quiz sawaal ya note se bhi card | 🟡 | | Abhi sirf solved problems se |
 | Lists (bookmarks + apni lists) | ✅ | `SaveMenu`, `ListsPage` | |
 | Notes: problem, lesson ya topic par | ✅ | `NoteEditor`, `NotesPage` | |
-| Notes ka AI draft | ⬜ | | Sahayak ka "notes" mode |
-| Notes ka PDF export | ⬜ | | |
+| Notes ka AI draft | ✅ | `NoteEditor` → "Draft with Sahayak"; `POST /tutor/notes` | Lesson par, ya **solve kiye hue** problem par (learner ke accepted code se). 15 credits. Draft box me aata hai, save learner karta hai |
+| Notes ka PDF export | ✅ | `GET /notes/book?track=`, `NoteBookPage` (`/notes/print?track=`) | Ek track ke saare notes module ke kram me, topic notes aakhir me. PDF browser ke "Print → Save as PDF" se; server PDF file nahi banata |
 | Account delete par notes hat-te hain | ✅ | `eraseLearner` | |
 
 ### 5. Sahayak AI (section 14, F4, F5)
@@ -117,7 +117,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Pehla hint static (admin ka likha), AI ka kharcha bachane ke liye | ✅ | `practice_problems.hint` (migration 0024), `sahayak.ts`, console Problems → Edit → "First hint" | Hint likha ho to rung 1 wahi: model call nahi, 0 credit. Na likha ho to AI rung 1. Hints ka content (300) abhi likhna baaki, Content table dekho |
 | Poora solution dekhne par us problem ke coins aadhe | ✅ | `prep.ts` `afterSubmit`, coin rule `solve_after_solution` | Sirf Sahayak ka rung 4 (worked solution) ginta hai. 3 galat submit ke baad editorial khulna nahi ginta |
 | Review ka fixed JSON (logic, complexity, quality, edge cases) | 🟡 | | Review Markdown me aata hai, fixed JSON nahi |
-| Notes draft mode | ⬜ | | |
+| Notes draft mode | ✅ | `Sahayak.notesDraft` (migration 0033: tutor mode `notes`) | Bina solve kiye problem par mana (solution leak na ho). Contest ke dauran band. Plus wala lesson bina Plus ke tutor ko nahi padha jaata (doubt me bhi ye rok ab lagi) |
 | Interview follow-up sawaal | ⬜ | | Phase 6 |
 | Chats 180 din baad apne aap delete | ⬜ | | DPDP |
 | Evals (hint me code leak nahi, review bug pakde, doubt par solution nahi) | 🟡 | `api/src/testing/sahayak-eval/`, `.claude/hillclimb/sahayak-*` | 360 cases (40 problems), grading aur runner tests ke saath ban gaye. **Paid baseline run abhi nahi hua**: API key aur owner ki manzoori chahiye. Scores abhi nahi hain |
@@ -233,9 +233,9 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
 | P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
 | P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Placement quiz, plan settings |
-| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, notes draft, 180 din delete |
+| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, 180 din delete |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
-| P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting, PDF export, AI draft |
+| P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting aur videos |
 | P6 · Aage | Content, follow-ups, PWA, campus, subscriptions | ⬜ | |
 
 ## Flows (blueprint section 9)
@@ -256,7 +256,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F12 Plus kharidna | ✅ | Coupon aur GST invoice ke saath |
 | F13 Coins se redeem | ✅ | |
 | F14 Interview experience | ✅ | |
-| F15 Note se PDF | ⬜ | |
+| F15 Note se PDF | ✅ | Track ke notes ek printable page par; browser se PDF |
 | F16 Campus licence | 🟡 | Ek-ek grant. Bulk CSV aur college dashboard baaki |
 
 ## Faisle (blueprint section 21)
@@ -297,8 +297,8 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 4 | **Sprint quiz + revision notes, streak freeze** (shuru: 1 Oct 2026). Sprint ke saare tasks ho jaayein ya uske din nikal jaayein to quiz khule: us sprint ke MCQ/numeric sawaal (10 tak), 70% se kam par galat wale sawaal agle study day par revise tasks ban jaayein aur revision card aaj due ho; pass par coins. Sprint ke revision notes: us sprint ke lessons/problems par learner ke apne notes ek page par. Streak freeze ("aaj chhutti"): mahine me 2, streak nahi tootta, aaj ke tasks aage khisak jaate hain, us din reminder nahi | F7, 13.2 | Planner poora | Tests: quiz kab khulta hai, grading, 70% ka niyam aur revise tasks, coins ek baar; notes page; freeze ki limit, streak par asar, tasks ka khisakna; learner pages | ✅ ban gaya (1 Oct 2026) |
 | 5 | Playwright e2e: F1, F3, F12, F13 ke click-through flows | §20 | Regression se bachav | CI me chalein | ⬜ |
 | 6 | **Company v2: readiness, "list shuru karo", Company Pass** (shuru: 1 Oct 2026). Learner companies ko target kare (company page ya plan banate waqt); har target ka readiness score (pichhle 180 din ke sabse zyada poochhe gaye 50 problems me se kitne solve) company page aur dashboard par; "Is company ki list shuru karo" se company ke top problems ek apni list me; Company Pass: alag product jo sirf companies ki poori list kholta hai (Plus ke bina); plan banate waqt target companies ke unsolved problems plan ke aakhri 30% dino me | F9 | Company prep poora | Tests: readiness ginti, list banna aur Plus/Pass ke bina 5 ki seema, Company Pass kharidna aur uska asar, plan me company problems; learner aur console pages | ✅ ban gaya (1 Oct 2026) |
-| 7 | **NoteSpace: AI draft, PDF export** (shuru: 1 Oct 2026). Sahayak ka "notes" mode: lesson ya **solve kiye hue** problem par revision note ka draft (key idea, steps, complexity, galtiyan), learner ke apne accepted code ke saath; credits katte hain, note apne aap save nahi hota: learner editor me badal kar save karta hai. Bina solve kiye problem par draft nahi (solution leak na ho). PDF: ek track ke saare notes, module ke hisaab se (topic notes alag), ek printable page par; browser ke "Print → Save as PDF" se | F15, §14 | Phase 5 | Tests: draft ke credits aur refund, unsolved problem par mana, contest me band, history me "notes"; track ke notes module ke kram me; learner pages | 🟡 chal raha |
-| 8 | Campus licence: CSV se bulk Plus, college dashboard | F16 | B2B sales | 500 students ek CSV se | ⬜ |
+| 7 | **NoteSpace: AI draft, PDF export** (shuru: 1 Oct 2026). Sahayak ka "notes" mode: lesson ya **solve kiye hue** problem par revision note ka draft (key idea, steps, complexity, galtiyan), learner ke apne accepted code ke saath; credits katte hain, note apne aap save nahi hota: learner editor me badal kar save karta hai. Bina solve kiye problem par draft nahi (solution leak na ho). PDF: ek track ke saare notes, module ke hisaab se (topic notes alag), ek printable page par; browser ke "Print → Save as PDF" se | F15, §14 | Phase 5 | Tests: draft ke credits aur refund, unsolved problem par mana, contest me band, history me "notes"; track ke notes module ke kram me; learner pages | ✅ ban gaya (1 Oct 2026) |
+| 8 | **Campus licence: CSV se bulk Plus, college dashboard** (shuru: 1 Oct 2026). Staff console me ek "cohort" banaye (college/batch ka naam, Plus ke kitne din); emails ki CSV daale, pehle dry run (sahi, galat, dobara, pehle se, kitne abhi milenge, kitne signup ke baad); import par jinka email **verified** account hai unhe turant Plus, baaki ko jab wo us email se signup karke verify karein (ya Google se aayein). Har email ko ek hi baar. College dashboard: har cohort me kitne joined, kitno ko Plus mila, 7 din me active, solve ki ginti, aur har student ki line | F16 | B2B sales | Tests: CSV parse aur dry run ki ginti, verified ko turant, unverified/naye ko verify par, dobara import par dobara Plus nahi, dashboard ke numbers, sirf staff; console page | 🟡 chal raha |
 | 9 | Content: 150 editorials, 300 hints, 25 companies, videos | §15 | Log content ke liye aate hain | Har phase ka content target | ⬜ |
 
 ## Build log

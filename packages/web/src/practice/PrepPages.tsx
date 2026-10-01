@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Crown, Flame, ListChecks, Lock, NotebookPen, Play, Plus, Repeat, Square, Target, Timer } from "lucide-react";
+import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Crown, Flame, ListChecks, Lock, NotebookPen, Play, Plus, Printer, Repeat, Sparkles, Square, Target, Timer } from "lucide-react";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
@@ -481,6 +481,15 @@ export function NoteEditor({ client, site, kind, refId }: { readonly client: Con
     },
   });
   const value = body ?? note.data?.body ?? "";
+  const { language } = usePreferences();
+  // A draft goes into the box, after anything already written; saving stays the learner's.
+  const draft = useMutation({
+    mutationFn: () => client.notesDraft(kind === "problem" ? { problem: refId } : { lesson: refId }, language === "hi" ? "hi" : "en"),
+    onSuccess: (answer) => {
+      setBody(value.trim() === "" ? answer.answer : `${value.trimEnd()}\n\n${answer.answer}`);
+      save.reset();
+    },
+  });
   const submit = (e: FormEvent) => {
     e.preventDefault();
     save.mutate(value);
@@ -505,8 +514,15 @@ export function NoteEditor({ client, site, kind, refId }: { readonly client: Con
         <button type="submit" className="secondary" disabled={save.isPending || note.isPending}>
           {p("notes.save")}
         </button>
+        {kind === "topic" ? null : (
+          <button type="button" className="secondary" disabled={draft.isPending} onClick={() => draft.mutate()}>
+            <Sparkles aria-hidden="true" /> {p("notes.draft")}
+          </button>
+        )}
         {save.isSuccess ? <span className="notice">{p("notes.saved")}</span> : null}
+        {draft.isSuccess && !save.isSuccess ? <span className="notice" role="status">{p("notes.drafted")}</span> : null}
         {save.isError ? <Failed error={save.error} /> : null}
+        {draft.isError ? <Failed error={draft.error} /> : null}
       </div>
     </form>
   );
@@ -540,6 +556,7 @@ export function NotesPage({ client, nav, learner, site }: Signed) {
         </button>
       </form>
       {editing === null ? null : <NoteEditor key={editing} client={client} site={site} kind="topic" refId={editing} />}
+      <PrintPicker client={client} nav={nav} site={site} learner={learner} />
       {notes.isPending ? (
         <Loading />
       ) : notes.isError ? (
@@ -1232,6 +1249,80 @@ export function SprintNotesPage({ client, nav, learner, site, sprint }: Signed &
           {item.note === null ? <p className="notice">{p("sprint.noNote")}</p> : <Markdown source={item.note} />}
         </section>
       ))}
+    </article>
+  );
+}
+
+/** Pick a track whose notes to print. */
+function PrintPicker({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const tracks = useQuery({ queryKey: key(site, "tracks", learner.id), queryFn: () => client.tracks() });
+  const [track, setTrack] = useState("");
+  const chosen = track || tracks.data?.[0]?.slug || "";
+  if (tracks.data === undefined || tracks.data.length === 0) return null;
+  return (
+    <div className="card inline-form no-print">
+      <label htmlFor="print-track">{p("notes.print")}</label>
+      <select id="print-track" value={chosen} onChange={(e) => setTrack(e.target.value)}>
+        {tracks.data.map((t) => (
+          <option key={t.slug} value={t.slug}>
+            {t.title}
+          </option>
+        ))}
+      </select>
+      <Link nav={nav} to={`/notes/print?track=${encodeURIComponent(chosen)}`} className="button secondary">
+        <Printer aria-hidden="true" /> {p("notes.printGo")}
+      </Link>
+    </div>
+  );
+}
+
+/** A track's notes on one page, module by module: printed, or saved as a PDF by the browser. */
+export function NoteBookPage({ client, nav, learner, site, track }: Signed & { readonly track: string | undefined }) {
+  const p = usePrepText();
+  const book = useQuery({ queryKey: key(site, "note-book", learner.id, track), queryFn: () => client.noteBook(track!), enabled: track !== undefined });
+  if (track === undefined) return <Failed error={new Error(p("common.failed"))} />;
+  if (book.isPending) return <Loading />;
+  if (book.isError) return <Failed error={book.error} />;
+  const b = book.data;
+  return (
+    <article className="prep-page sprint-notes" aria-label={b.track.title}>
+      <header className="prep-head">
+        <div>
+          <h1>{b.track.title}</h1>
+          <p className="notice">{p("notes.title")}</p>
+        </div>
+        <button type="button" className="secondary no-print" onClick={() => window.print()}>
+          <Printer aria-hidden="true" /> {p("plus.print")}
+        </button>
+      </header>
+      {b.modules.length === 0 && b.topics.length === 0 ? <p className="notice">{p("notes.bookEmpty")}</p> : null}
+      {b.modules.map((m) => (
+        <section key={m.title} className="card">
+          <h2>{m.title}</h2>
+          {m.notes.map((n) => (
+            <div key={`${n.kind}:${n.slug}`}>
+              <h3>
+                <Link nav={nav} to={n.kind === "problem" ? `/problems/${n.slug}` : `/lessons/${n.slug}`}>
+                  {n.title}
+                </Link>
+              </h3>
+              <Markdown source={n.body} />
+            </div>
+          ))}
+        </section>
+      ))}
+      {b.topics.length === 0 ? null : (
+        <section className="card">
+          <h2>{p("notes.topics")}</h2>
+          {b.topics.map((t) => (
+            <div key={t.title}>
+              <h3>{t.title}</h3>
+              <Markdown source={t.body} />
+            </div>
+          ))}
+        </section>
+      )}
     </article>
   );
 }

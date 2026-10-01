@@ -51,6 +51,7 @@ const plusPages = () => import("./PlusPages.tsx");
 const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
 const SprintQuizPage = lazy(() => prep().then((m) => ({ default: m.SprintQuizPage })));
 const SprintNotesPage = lazy(() => prep().then((m) => ({ default: m.SprintNotesPage })));
+const NoteBookPage = lazy(() => prep().then((m) => ({ default: m.NoteBookPage })));
 const RemindersOffPage = lazy(() => prep().then((m) => ({ default: m.RemindersOffPage })));
 const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
 const community = () => import("./CommunityPages.tsx");
@@ -86,6 +87,7 @@ export type Route =
   | { readonly page: "revise" }
   | { readonly page: "lists" }
   | { readonly page: "notes" }
+  | { readonly page: "notebook"; readonly track: string | undefined }
   | { readonly page: "potd" }
   | { readonly page: "coins" }
   | { readonly page: "plus" }
@@ -133,7 +135,7 @@ export function parseRoute(pathname: string, search: string): Route {
     case "lists":
       return { page: "lists" };
     case "notes":
-      return { page: "notes" };
+      return second === "print" ? { page: "notebook", track: query.get("track") ?? undefined } : { page: "notes" };
     case "potd":
       return { page: "potd" };
     case "coins":
@@ -419,7 +421,7 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
-        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
+        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
           ) : route.page === "home" ? (
@@ -438,6 +440,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
             <ListsPage {...context} learner={learner} />
           ) : route.page === "notes" ? (
             <NotesPage {...context} learner={learner} />
+          ) : route.page === "notebook" ? (
+            <NoteBookPage {...context} learner={learner} track={route.track} />
           ) : (
             <CoinsPage {...context} learner={learner} />
           )

@@ -213,7 +213,7 @@ export function assemble(o: AssembleOptions): {
     starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
     prepCommunity,
     prepEngage,
-    prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus }) },
+    prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus, lessonOpen: async (site, learner, slug) => !(await prepService.lesson(site, slug, learner)).locked }) },
     ...o.server,
   });
 

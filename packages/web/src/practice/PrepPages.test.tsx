@@ -288,6 +288,50 @@ describe("the end of a sprint, and a day off", () => {
   });
 });
 
+describe("notes", () => {
+  it("drafts a note on a lesson with Sahayak, into the box, and saves it only when asked", async () => {
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "A heap.", videoUrl: null, estMinutes: 20, done: false, locked: false } });
+    routes["GET /practice/nit-practice/notes/lesson/heaps"] = () => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: "Mine first.", updatedAt: "2026-10-01T00:00:00Z" } });
+    routes["POST /practice/nit-practice/tutor/notes"] = () => ({ body: { id: "t1", mode: "notes", hintLevel: null, answer: "## Key ideas\nSmallest at the root.", credits: 15, createdAt: "2026-10-05T04:00:00Z" } });
+    routes["PUT /practice/nit-practice/notes/lesson/heaps"] = (init) => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: (JSON.parse(String(init.body)) as { body: string }).body, updatedAt: "2026-10-05T04:00:00Z" } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/lessons/heaps");
+    await user.click(await screen.findByRole("button", { name: /Draft with Sahayak/ }));
+    expect(await screen.findByText("Sahayak's draft is in the box. Change it, then save.")).toBeTruthy();
+    expect(calls.find((c) => c.path === "/practice/nit-practice/tutor/notes")!.body).toEqual({ lesson: "heaps", replyIn: "en" });
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+    const box = screen.getByRole("textbox", { name: /My notes/ }) as HTMLTextAreaElement;
+    expect(box.value).toBe("Mine first.\n\n## Key ideas\nSmallest at the root.");
+    await user.click(screen.getByRole("button", { name: "Save note" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PUT")!.body).toEqual({ body: "Mine first.\n\n## Key ideas\nSmallest at the root." }));
+  });
+
+  it("prints a track's notes, module by module", async () => {
+    routes["GET /practice/nit-practice/notes"] = () => ({ body: { notes: [] } });
+    routes["GET /practice/nit-practice/notes/book"] = (_init, url) => ({
+      body: {
+        track: { slug: url.searchParams.get("track"), title: "DSA Basics" },
+        modules: [{ title: "Arrays", notes: [{ kind: "problem", slug: "two-sum", title: "Two sum", body: "Use a map." }] }],
+        topics: [{ title: "Two pointers", body: "Ends move in." }],
+      },
+    });
+    const print = vi.fn();
+    window.print = print;
+    const user = userEvent.setup();
+    open("/practice/nit-practice/notes");
+    const go = await screen.findByRole("link", { name: /Open to print/ });
+    expect(go.getAttribute("href")).toBe("/practice/nit-practice/notes/print?track=dsa-basics");
+    await user.click(go);
+    expect(await screen.findByRole("heading", { name: "DSA Basics", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Arrays", level: 2 })).toBeTruthy();
+    expect(screen.getByText("Use a map.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Topic notes", level: 2 })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Print or save as PDF/ }));
+    expect(print).toHaveBeenCalled();
+    expect(parseRoute("/practice/nit-practice/notes/print", "?track=dsa-basics")).toEqual({ page: "notebook", track: "dsa-basics" });
+  });
+});
+
 describe("the daily reminder", () => {
   it("is turned on from the plan, at the hour chosen", async () => {
     let saved: unknown = null;

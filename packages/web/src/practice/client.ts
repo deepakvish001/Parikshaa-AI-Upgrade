@@ -491,6 +491,15 @@ export class PracticeClient {
     return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/review`, { replyIn });
   }
 
+  /** Sahayak's draft of a revision note: not saved until the learner saves it. */
+  notesDraft(about: { readonly problem?: string; readonly lesson?: string }, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    return this.#post("/tutor/notes", { ...about, replyIn });
+  }
+
+  noteBook(track: string): Promise<NoteBook> {
+    return this.#request(`/notes/book?track=${encodeURIComponent(track)}`);
+  }
+
   doubt(about: { readonly problem?: string; readonly lesson?: string }, question: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
     return this.#post("/tutor/doubt", { ...about, question, replyIn });
   }
@@ -856,7 +865,7 @@ export interface Credits {
 
 export interface TutorAnswer {
   readonly id: string;
-  readonly mode: "hint" | "review" | "doubt";
+  readonly mode: "hint" | "review" | "doubt" | "notes";
   readonly hintLevel: number | null;
   readonly answer: string;
   readonly credits: number;
@@ -886,6 +895,13 @@ export interface Readiness {
   readonly solved: number;
   readonly of: number;
   readonly percent: number;
+}
+
+/** A track's notes, module by module, to print. */
+export interface NoteBook {
+  readonly track: { readonly slug: string; readonly title: string };
+  readonly modules: readonly { readonly title: string; readonly notes: readonly { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string; readonly body: string }[] }[];
+  readonly topics: readonly { readonly title: string; readonly body: string }[];
 }
 
 export interface CompanyTarget {

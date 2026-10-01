@@ -106,6 +106,7 @@ describe("migrate", () => {
       "0030_prep_reminders.sql",
       "0031_prep_sprints.sql",
       "0032_company_v2.sql",
+      "0033_notes_draft.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,

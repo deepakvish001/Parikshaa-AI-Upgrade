@@ -776,6 +776,29 @@ export class PrepService {
     }));
   }
 
+  /**
+   * A track's notes in the track's order, module by module, to print as one
+   * document; and the learner's topic notes after them. Only what has a note.
+   */
+  async noteBook(site: PracticeSite, learner: Learner, trackSlug: string) {
+    const state = await this.#state(site, learner);
+    const track = state.tracks.find((t) => t.slug === trackSlug);
+    if (track === undefined) throw new PracticeError("not_found", "No such track");
+    const notes = await this.#store.notes(practiceLearner(site.orgId, learner.id));
+    const noteOf = new Map(notes.map((n) => [`${n.refKind}:${n.refId}`, n]));
+    const modules = this.#items(track, state)
+      .map((m) => ({
+        title: m.title,
+        notes: m.items.flatMap((i) => {
+          const note = noteOf.get(`${i.kind}:${i.id}`);
+          return note === undefined || note.body.trim() === "" ? [] : [{ kind: i.kind, slug: i.slug, title: i.title, body: note.body }];
+        }),
+      }))
+      .filter((m) => m.notes.length > 0);
+    const topics = notes.filter((n) => n.refKind === "topic" && n.body.trim() !== "").map((n) => ({ title: n.title, body: n.body }));
+    return { track: { slug: track.slug, title: track.title }, modules, topics };
+  }
+
   /** The stored reference: a problem's or a lesson's id, or a topic's own name. */
   async #ref(site: PracticeSite, learner: Learner, kind: string, ref: string): Promise<{ kind: NoteKind; id: string; title: string }> {
     const scope = practiceLearner(site.orgId, learner.id);

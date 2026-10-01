@@ -606,6 +606,32 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
 
   const noteParams = siteParams.extend({ kind: noteKind, ref: z.string().min(1).max(120) });
   routes.get(
+    "/practice/:site/notes/book",
+    {
+      schema: {
+        tags: PREP,
+        summary: "My notes on a track, module by module, to print or save as a PDF",
+        security: LEARNER,
+        params: siteParams,
+        querystring: z.object({ track: z.string().min(1).max(80) }),
+        response: {
+          200: z.object({
+            track: z.object({ slug: z.string(), title: z.string() }),
+            modules: z.array(z.object({ title: z.string(), notes: z.array(z.object({ kind: z.enum(["problem", "lesson"]), slug: z.string(), title: z.string(), body: z.string() })).readonly() })).readonly(),
+            topics: z.array(z.object({ title: z.string(), body: z.string() })).readonly().describe("The learner's topic notes, which belong to no track."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.noteBook(who.site, who.learner, request.query.track));
+    },
+  );
+
+  routes.get(
     "/practice/:site/notes/:kind/:ref",
     { schema: { tags: PREP, summary: "My note on a problem, a lesson or a topic", security: LEARNER, params: noteParams, response: { 200: noteView, ...refusals } } },
     async (request, reply) => {

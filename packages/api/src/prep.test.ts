@@ -208,6 +208,35 @@ describe("a learner's day", () => {
 });
 
 describe("lists, notes and the problem of the day", () => {
+  it("gathers a track's notes in its order, module by module, with topic notes after", async () => {
+    await buildTrack();
+    const asha = await signUp();
+    await ok("PUT", asha, `${S}/notes/problem/${problems.graphs!.slug}`, { body: "Queue, level by level." }, 200);
+    await ok("PUT", asha, `${S}/notes/lesson/what-an-array-is`, { body: "Indexing is O(1)." }, 200);
+    await ok("PUT", asha, `${S}/notes/problem/${problems.arrays!.slug}`, { body: "Contiguous." }, 200);
+    await ok("PUT", asha, `${S}/notes/topic/Two pointers`, { body: "Sorted input, ends moving in." }, 200);
+    const book = await ok("GET", asha, `${S}/notes/book?track=dsa-basics`);
+    expect(book).toEqual({
+      track: { slug: "dsa-basics", title: "DSA Basics" },
+      modules: [
+        {
+          title: "Arrays",
+          notes: [
+            { kind: "lesson", slug: "what-an-array-is", title: "What an array is", body: "Indexing is O(1)." },
+            { kind: "problem", slug: problems.arrays!.slug, title: "Arrays are stored how", body: "Contiguous." },
+          ],
+        },
+        { title: "Searching", notes: [{ kind: "problem", slug: problems.graphs!.slug, title: "BFS uses which structure", body: "Queue, level by level." }] },
+      ],
+      topics: [{ title: "Two pointers", body: "Sorted input, ends moving in." }],
+    });
+    // Another learner's book has none of them.
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect(await ok("GET", ravi, `${S}/notes/book?track=dsa-basics`)).toMatchObject({ modules: [], topics: [] });
+    expect((await call("GET", asha, `${S}/notes/book?track=nope`)).statusCode).toBe(404);
+    expect((await call("GET", null, `${S}/notes/book?track=dsa-basics`)).statusCode).toBe(401);
+  });
+
   it("keeps a learner's lists and notes, theirs alone", async () => {
     const asha = await signUp();
     const slug = problems.search!.slug;

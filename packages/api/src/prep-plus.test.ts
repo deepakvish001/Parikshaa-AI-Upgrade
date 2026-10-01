@@ -450,6 +450,55 @@ describe("the tutor", () => {
     expect(lesson.id).toBeTruthy();
   });
 
+  it("drafts a revision note on a problem only once it is solved, from the learner's own code, and saves nothing itself", async () => {
+    const asha = await signUp();
+    model.reply = () => ({ text: "## Key idea\nAdd the two numbers." });
+    const draft = (body: object) => call("POST", asha, `${S}/tutor/notes`, body);
+    const early = await draft({ problem: problems.code!.slug });
+    expect(early.statusCode).toBe(422);
+    expect(early.json().message).toMatch(/Solve the problem first/);
+    expect(model.requests).toHaveLength(0);
+    await ok("POST", asha, `${S}/problems/${problems.code!.slug}/submit`, { answer: "print(0)\n", language: "python" }, 200);
+    await ok("POST", asha, `${S}/problems/${problems.code!.slug}/submit`, { answer: "a, b = map(int, input().split())\nprint(a + b)\n", language: "python" }, 200);
+
+    const note = await draft({ problem: problems.code!.slug, replyIn: "hi" });
+    expect(note.statusCode, note.payload).toBe(200);
+    expect(note.json()).toMatchObject({ mode: "notes", credits: TUTOR_CREDITS.notes, answer: "## Key idea\nAdd the two numbers." });
+    const request = model.requests[0]!;
+    expect(request.user).toContain("revision note");
+    expect(request.user).toContain("Hindi");
+    expect(request.user).toContain("print(a + b)");
+    expect(request.system).not.toContain("SECRET-INPUT");
+    expect((await ok("GET", asha, `${S}/credits`)).balance).toBe(100 - TUTOR_CREDITS.notes);
+    // Kept with what the tutor said; not a note until the learner saves it.
+    expect((await ok("GET", asha, `${S}/problems/${problems.code!.slug}/tutor`)).entries.map((e: { mode: string }) => e.mode)).toEqual(["notes"]);
+    expect((await ok("GET", asha, `${S}/notes`)).notes).toEqual([]);
+    expect((await call("POST", asha, `${S}/tutor/notes`, {})).statusCode).toBe(422);
+    expect((await call("POST", asha, `${S}/tutor/notes`, { lesson: "nothing-here" })).statusCode).toBe(404);
+    // Closed while a contest that includes the problem runs.
+    await ok("POST", owner, "/practice-admin/contests", { title: "Weekly 2", description: "", startsAt: new Date(clock - 60_000).toISOString(), endsAt: new Date(clock + 3_600_000).toISOString(), problemIds: [problems.code!.id] });
+    expect((await draft({ problem: problems.code!.slug })).json().error).toBe("tutor_closed");
+    clock += 2 * 3_600_000;
+    // Failure gives the credits back.
+    model.fail = true;
+    expect((await draft({ problem: problems.code!.slug })).statusCode).toBe(503);
+    expect((await ok("GET", asha, `${S}/credits`)).balance).toBe(100 - TUTOR_CREDITS.notes);
+  });
+
+  it("reads a lesson that needs Plus to no learner without it, for a doubt or a note", async () => {
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true }, 200);
+    await paidTrack();
+    const asha = await signUp();
+    const locked = await call("POST", asha, `${S}/tutor/notes`, { lesson: "heaps" });
+    expect(locked.statusCode).toBe(402);
+    expect((await call("POST", asha, `${S}/tutor/doubt`, { lesson: "heaps", question: "Summarise this lesson for me." })).statusCode).toBe(402);
+    expect(model.requests).toHaveLength(0);
+    const free = await ok("POST", asha, `${S}/tutor/notes`, { lesson: "arrays" }, 200);
+    expect(free.mode).toBe("notes");
+    expect(model.requests[0]!.system).toContain("Free lesson.");
+    expect(model.requests[0]!.system).not.toContain("Paid lesson body.");
+  });
+
   it("stops for the month when the organisation's model budget is spent", async () => {
     await db.exec(`RESET ROLE`);
     await db.exec(`UPDATE organisations SET monthly_spend_cap_micro_usd = 1 WHERE id = 'org-a'`);

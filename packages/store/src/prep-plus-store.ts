@@ -174,7 +174,7 @@ export type CreditReason = "monthly" | "purchase" | "grant" | "spend" | "refund"
 
 export interface TutorEntry {
   readonly id: string;
-  readonly mode: "hint" | "review" | "doubt";
+  readonly mode: "hint" | "review" | "doubt" | "notes";
   readonly problemId: string | null;
   readonly lessonId: string | null;
   readonly hintLevel: number | null;
