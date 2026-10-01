@@ -175,6 +175,52 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
   );
 
   routes.get(
+    "/placement/report",
+    {
+      schema: {
+        tags: TAGS,
+        summary: "The placement report, for NIRF and NAAC",
+        description: "Per year of passing, then per branch: students, placed (an offer or joined, in any drive), placed %, and the median, highest and average of their best packages. Higher studies are not tracked here.",
+        security: SECURED,
+        response: {
+          200: z.object({
+            batches: z
+              .array(
+                z.object({
+                  batch: z.number().nullable(),
+                  students: z.number(),
+                  placed: z.number(),
+                  percent: z.number(),
+                  medianLpa: z.number().nullable(),
+                  highestLpa: z.number().nullable(),
+                  averageLpa: z.number().nullable(),
+                  branches: z.array(z.object({ branch: z.string(), students: z.number(), placed: z.number(), percent: z.number(), medianLpa: z.number().nullable(), highestLpa: z.number().nullable(), averageLpa: z.number().nullable() })).readonly(),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.send(await placement.placementReport(actor));
+    },
+  );
+
+  routes.get(
+    "/placement/report.csv",
+    { schema: { tags: TAGS, summary: "The placement report as CSV", description: "Audited, since it leaves the system.", security: SECURED } },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.header("content-type", "text/csv; charset=utf-8").header("content-disposition", `attachment; filename="placement-report.csv"`).send(await placement.placementReportCsv(actor));
+    },
+  );
+
+  routes.get(
     "/drives",
     { schema: { tags: TAGS, summary: "Recruitment drives", security: SECURED, response: { 200: z.object({ drives: z.array(drive).readonly() }), ...refusals } } },
     async (request, reply) => {

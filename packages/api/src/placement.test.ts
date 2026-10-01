@@ -276,3 +276,24 @@ describe("applying from a drive's link", () => {
     expect((await apply(code, { ref: "CS001", email: "ananya@college.test" })).statusCode).toBe(404);
   });
 });
+
+describe("the placement report", () => {
+  it("gives placed, median, highest and average per year of passing and branch", async () => {
+    await call("POST", "/students/import", owner, { csv: SHEET, dryRun: false });
+    const id = (await call("POST", "/drives", owner, { company: "Infosys", role: "SE" })).json().id;
+    const id2 = (await call("POST", "/drives", owner, { company: "Amazon", role: "SDE" })).json().id;
+    await call("POST", `/drives/${id}/students`, owner, { refs: ["CS001", "CS002", "EC001"] });
+    await call("POST", `/drives/${id2}/students`, owner, { refs: ["CS001"] });
+    await call("POST", `/drives/${id}/stage`, owner, { refs: ["CS001", "CS002"], stage: "offered", offerLpa: 3.6 });
+    await call("POST", `/drives/${id}/stage`, owner, { refs: ["EC001"], stage: "joined", offerLpa: 4 });
+    await call("POST", `/drives/${id2}/stage`, owner, { refs: ["CS001"], stage: "offered", offerLpa: 32 });
+
+    const report = (await call("GET", "/placement/report", owner)).json();
+    const y2027 = report.batches.find((b: { batch: number }) => b.batch === 2027);
+    // Five students in 2027 less CS101 (2028): CS001 32, CS002 3.6, EC001 4, ME001 none.
+    expect(y2027).toMatchObject({ students: 4, placed: 3, percent: 75, medianLpa: 4, highestLpa: 32, averageLpa: 13.2 });
+    expect(y2027.branches.find((b: { branch: string }) => b.branch === "CSE")).toMatchObject({ students: 2, placed: 2, medianLpa: 17.8 });
+    const csv = await call("GET", "/placement/report.csv", owner);
+    expect(csv.body).toContain("2027,All,4,3,75,4,32,13.2");
+  });
+});

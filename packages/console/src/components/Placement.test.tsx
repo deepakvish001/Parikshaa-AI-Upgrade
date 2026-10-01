@@ -242,3 +242,19 @@ describe("a drive's link to apply", () => {
     await waitFor(() => expect((client as unknown as { setApplyLink: ReturnType<typeof vi.fn> }).setApplyLink).toHaveBeenCalledWith("d1", true, true));
   });
 });
+
+describe("the NIRF / NAAC report", () => {
+  it("shows placed, median and highest per year of passing and branch", async () => {
+    const client = stub({
+      placementReport: vi.fn(async () => ({
+        batches: [{ batch: 2027, students: 120, placed: 96, percent: 80, medianLpa: 4.5, highestLpa: 32, averageLpa: 6.1, branches: [{ branch: "CSE", students: 60, placed: 55, percent: 91.7, medianLpa: 6, highestLpa: 32, averageLpa: 8 }] }],
+      })),
+    });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(screen.getByRole("tab", { name: "NIRF / NAAC report" }));
+    const year = await screen.findByRole("region", { name: "Passing in 2027" });
+    expect(year).toHaveTextContent("96 of 120 placed (80%) · median ₹4.5 LPA · highest ₹32 LPA");
+    expect(within(year).getByRole("rowheader", { name: "CSE" }).closest("tr")).toHaveTextContent("CSE605591.76328");
+  });
+});

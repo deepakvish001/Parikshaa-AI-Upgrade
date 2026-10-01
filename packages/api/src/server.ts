@@ -51,6 +51,8 @@ import type { SeatService } from "./seats.js";
 import { registerSeatRoutes } from "./seats-routes.js";
 import type { ShortlistService } from "./shortlists.js";
 import { registerShortlistRoutes } from "./shortlist-routes.js";
+import type { OutcomeService } from "./outcomes.js";
+import { registerOutcomeRoutes } from "./outcome-routes.js";
 import { registerJobTestRoutes } from "./job-test-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
@@ -125,6 +127,8 @@ export interface ServerOptions {
   readonly seats?: SeatService;
   /** Shortlist links for hiring managers. Absent: none of their routes. */
   readonly shortlists?: ShortlistService;
+  /** Course outcomes and their attainment. Absent: none of their routes. */
+  readonly outcomes?: OutcomeService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -1243,6 +1247,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff, throttle });
     registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
     if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
+    if (options.outcomes !== undefined) registerOutcomeRoutes(routes, { outcomes: options.outcomes, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });

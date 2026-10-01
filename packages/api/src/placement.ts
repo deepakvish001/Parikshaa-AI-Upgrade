@@ -39,6 +39,19 @@ export interface Readiness {
   readonly atRisk: readonly { readonly ref: string; readonly name: string; readonly branch: string; readonly percent: number; readonly weakest: string }[];
 }
 
+interface PlacementFigures {
+  readonly students: number;
+  readonly placed: number;
+  readonly percent: number;
+  readonly medianLpa: number | null;
+  readonly highestLpa: number | null;
+  readonly averageLpa: number | null;
+}
+
+export interface PlacementReport {
+  readonly batches: readonly (PlacementFigures & { readonly batch: number | null; readonly branches: readonly (PlacementFigures & { readonly branch: string })[] })[];
+}
+
 export interface DriveDetail {
   readonly drive: Drive;
   readonly applications: readonly DriveApplication[];
@@ -333,6 +346,53 @@ export class PlacementService {
         })),
       atRisk: overall.filter((o) => o.percent < AT_RISK_PERCENT).sort((a, b) => a.percent - b.percent),
     };
+  }
+
+  // --- the placement report (V2-12 CL54) ---------------------------------------------
+
+  /**
+   * What NIRF's graduation outcomes and NAAC's criterion 5.2 ask for, per year
+   * of passing: students, students placed (an offer, or joined, in any drive),
+   * and the median, highest and average package of their best offers; then
+   * the same by branch. Higher studies are not tracked here and are left for
+   * the college to add.
+   */
+  async placementReport(actor: Actor): Promise<PlacementReport> {
+    this.#require(actor);
+    const students = await this.#placement.students(actor.orgId);
+    const summarise = (group: readonly StudentRow[]) => {
+      const offers = group.filter((s) => s.offers > 0 && s.bestOfferLpa !== null).map((s) => s.bestOfferLpa!).sort((a, b) => a - b);
+      const placed = group.filter((s) => s.offers > 0).length;
+      const mid = offers.length / 2;
+      const median = offers.length === 0 ? null : offers.length % 2 === 1 ? offers[Math.floor(mid)]! : (offers[mid - 1]! + offers[mid]!) / 2;
+      return {
+        students: group.length,
+        placed,
+        percent: group.length === 0 ? 0 : Math.round((placed * 1000) / group.length) / 10,
+        medianLpa: median === null ? null : Math.round(median * 100) / 100,
+        highestLpa: offers.at(-1) ?? null,
+        averageLpa: offers.length === 0 ? null : Math.round((offers.reduce((n, o) => n + o, 0) / offers.length) * 100) / 100,
+      };
+    };
+    const batches = [...new Set(students.map((s) => s.batch))].sort((a, b) => (b ?? 0) - (a ?? 0));
+    return {
+      batches: batches.map((batch) => {
+        const group = students.filter((s) => s.batch === batch);
+        const branches = [...new Set(group.map((s) => s.branch || "No branch"))].sort();
+        return { batch, ...summarise(group), branches: branches.map((branch) => ({ branch, ...summarise(group.filter((s) => (s.branch || "No branch") === branch)) })) };
+      }),
+    };
+  }
+
+  async placementReportCsv(actor: Actor): Promise<string> {
+    const report = await this.placementReport(actor);
+    const head = ["Year of passing", "Branch", "Students", "Placed", "Placed (%)", "Median package (LPA)", "Highest (LPA)", "Average (LPA)"];
+    const rows = report.batches.flatMap((b) => [
+      [b.batch ?? "Not given", "All", b.students, b.placed, b.percent, b.medianLpa, b.highestLpa, b.averageLpa],
+      ...b.branches.map((r) => [b.batch ?? "Not given", r.branch, r.students, r.placed, r.percent, r.medianLpa, r.highestLpa, r.averageLpa]),
+    ]);
+    await this.#exams.recordAudit(actor, "placement.report_exported", "placement", {});
+    return `\ufeff${[head, ...rows].map((r) => r.map((v) => csvCell(v as string | number | null)).join(",")).join("\r\n")}\r\n`;
   }
 
   // --- applying from a link (V2-12 CO14) ------------------------------------------

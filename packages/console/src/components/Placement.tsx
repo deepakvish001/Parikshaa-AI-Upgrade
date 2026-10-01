@@ -54,7 +54,7 @@ const lpa = (n: number | null) => (n === null ? "—" : `₹${n.toLocaleString("
 const failure = (error: unknown) => (error instanceof ConsoleError && error.detail !== undefined ? error.detail : "That did not work. Try again.");
 
 export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; canInvite: boolean }) {
-  const [tab, setTab] = useState<"students" | "drives" | "readiness">("drives");
+  const [tab, setTab] = useState<"students" | "drives" | "readiness" | "report">("drives");
   return (
     <>
       <Tabs
@@ -64,6 +64,7 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
           { id: "drives", label: "Drives" },
           { id: "students", label: "Students" },
           { id: "readiness", label: "Readiness" },
+          { id: "report", label: "NIRF / NAAC report" },
         ]}
         value={tab}
         onChange={setTab}
@@ -76,6 +77,9 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
       </TabPanel>
       <TabPanel idBase="placement" id="readiness" value={tab}>
         {tab === "readiness" ? <ReadinessView client={client} /> : null}
+      </TabPanel>
+      <TabPanel idBase="placement" id="report" value={tab}>
+        {tab === "report" ? <ReportView client={client} /> : null}
       </TabPanel>
     </>
   );
@@ -937,5 +941,84 @@ function ApplyLink({ client, id, link, openToNew, onChange }: { client: ConsoleC
       </div>
       {link === null ? null : <p className="mono notice">{link}</p>}
     </section>
+  );
+}
+
+// --- the NIRF / NAAC placement report -------------------------------------------------
+
+function ReportView({ client }: { client: ConsoleClient }) {
+  const report = useQuery({ queryKey: ["placement-report"], queryFn: () => client.placementReport() });
+  const download = useMutation({ mutationFn: () => client.placementReportFile().then((blob) => save(blob, "placement-report.csv")) });
+  const n = (v: number | null) => (v === null ? "—" : v.toLocaleString("en-IN", { maximumFractionDigits: 2 }));
+  return (
+    <>
+      <PageActions>
+        <button type="button" className="secondary" onClick={() => download.mutate()} disabled={download.isPending}>
+          <Download aria-hidden="true" />
+          Download CSV
+        </button>
+      </PageActions>
+      {report.isPending ? (
+        <section className="card">
+          <SkeletonRows rows={4} columns={7} label="Counting offers…" />
+        </section>
+      ) : (report.data?.batches ?? []).length === 0 ? (
+        <section className="card">
+          <EmptyState icon={BriefcaseBusiness}>Add your students and record offers in drives: the report counts itself.</EmptyState>
+        </section>
+      ) : (
+        (report.data?.batches ?? []).map((b) => (
+          <section key={String(b.batch)} className="card" aria-label={`Passing in ${b.batch ?? "an unknown year"}`}>
+            <div className="bar">
+              <strong>Passing in {b.batch ?? "—"}</strong>
+              <span className="notice">
+                {b.placed} of {b.students} placed ({b.percent}%) · median ₹{n(b.medianLpa)} LPA · highest ₹{n(b.highestLpa)} LPA
+              </span>
+            </div>
+            <div className="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Branch</th>
+                    <th scope="col" className="num">
+                      Students
+                    </th>
+                    <th scope="col" className="num">
+                      Placed
+                    </th>
+                    <th scope="col" className="num">
+                      %
+                    </th>
+                    <th scope="col" className="num">
+                      Median (LPA)
+                    </th>
+                    <th scope="col" className="num">
+                      Highest
+                    </th>
+                    <th scope="col" className="num">
+                      Average
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {b.branches.map((r) => (
+                    <tr key={r.branch}>
+                      <th scope="row">{r.branch}</th>
+                      <td className="num">{r.students}</td>
+                      <td className="num">{r.placed}</td>
+                      <td className="num">{r.percent}</td>
+                      <td className="num">{n(r.medianLpa)}</td>
+                      <td className="num">{n(r.highestLpa)}</td>
+                      <td className="num">{n(r.averageLpa)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ))
+      )}
+      <p className="notice">Placed means an offer, or joined, in any drive here; the package is each student's best offer. NIRF also asks for higher studies, which is not tracked here: add it from your own records.</p>
+    </>
   );
 }

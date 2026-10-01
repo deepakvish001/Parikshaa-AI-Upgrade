@@ -25,3 +25,4 @@ export * from "./marking-store.js";
 export * from "./placement-store.js";
 export * from "./seat-store.js";
 export * from "./shortlist-store.js";
+export * from "./outcome-store.js";

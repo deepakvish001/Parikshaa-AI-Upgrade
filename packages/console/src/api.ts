@@ -297,6 +297,32 @@ export interface Readiness {
   readonly atRisk: readonly { readonly ref: string; readonly name: string; readonly branch: string; readonly percent: number; readonly weakest: string }[];
 }
 
+interface PlacementFigures {
+  readonly students: number;
+  readonly placed: number;
+  readonly percent: number;
+  readonly medianLpa: number | null;
+  readonly highestLpa: number | null;
+  readonly averageLpa: number | null;
+}
+
+export interface PlacementReport {
+  readonly batches: readonly (PlacementFigures & { readonly batch: number | null; readonly branches: readonly (PlacementFigures & { readonly branch: string })[] })[];
+}
+
+export interface OutcomeMap {
+  readonly mapping: Readonly<Record<string, readonly string[]>>;
+  readonly matrix: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  readonly threshold: number;
+}
+
+export interface Attainment {
+  readonly threshold: number;
+  readonly candidates: number;
+  readonly courseOutcomes: readonly { readonly co: string; readonly questions: number; readonly candidates: number; readonly attained: number; readonly percent: number; readonly level: number }[];
+  readonly programmeOutcomes: readonly { readonly po: string; readonly level: number }[];
+}
+
 export interface DriveDetail {
   readonly drive: Drive;
   readonly applications: readonly DriveApplication[];
@@ -1414,6 +1440,28 @@ export class ConsoleClient {
   /** Each branch in each topic across recent tests, and the students who need help. */
   readiness(batch?: number): Promise<Readiness> {
     return this.#request(`/placement/readiness${batch === undefined ? "" : `?batch=${batch}`}`);
+  }
+
+  placementReport(): Promise<PlacementReport> {
+    return this.#request("/placement/report");
+  }
+
+  async placementReportFile(): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/placement/report.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  outcomes(examId: string): Promise<OutcomeMap & { readonly questions: readonly { readonly id: string; readonly number: number; readonly stem: string; readonly maxScore: number }[] }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/outcomes`);
+  }
+
+  async saveOutcomes(examId: string, map: OutcomeMap): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/outcomes`, { method: "PUT", body: JSON.stringify(map) });
+  }
+
+  attainment(examId: string): Promise<Attainment> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/attainment`);
   }
 
   async drives(): Promise<readonly Drive[]> {

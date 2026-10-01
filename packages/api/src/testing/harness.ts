@@ -25,6 +25,7 @@ import {
   PlacementStore,
   SeatStore,
   ShortlistStore,
+  OutcomeStore,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -37,6 +38,7 @@ import { MarkingService } from "../marking.js";
 import { PlacementService } from "../placement.js";
 import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
+import { OutcomeService } from "../outcomes.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -312,6 +314,7 @@ export async function wire(
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
+    outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,

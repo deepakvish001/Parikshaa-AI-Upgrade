@@ -37,6 +37,7 @@
     "Rooms-*.css": 1,
     "Shortlists-*.js": 3,
     "BankTransfer-*.js": 2,
+    "Outcomes-*.js": 3,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5

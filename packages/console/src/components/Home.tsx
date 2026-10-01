@@ -90,6 +90,8 @@ export const ACTIONS: Record<string, string> = {
   "billing.quoted": "asked for a quotation",
   "drive.apply_opened": "opened a drive's link to apply",
   "drive.apply_closed": "closed a drive's link to apply",
+  "placement.report_exported": "downloaded the placement report",
+  "exam.outcomes_set": "mapped course outcomes",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",
