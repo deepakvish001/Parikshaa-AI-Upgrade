@@ -28,7 +28,7 @@ describe("signs of a proxy", () => {
     const onReview = vi.fn();
     wrap({ proxyReport: async () => report, compareIdentities }, onReview);
     expect(await screen.findByText(/for R1, R3/)).toBeInTheDocument();
-    expect(screen.getByText(/for R1, R2, 10:01 am–10:50 am/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem").map((li) => li.textContent).join(" ")).toMatch(/for R1, R2, 10:01 am–10:50 am/i);
     expect(screen.getByText(/Another person in photo 2/)).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(onReview).toHaveBeenCalledWith("a4");
