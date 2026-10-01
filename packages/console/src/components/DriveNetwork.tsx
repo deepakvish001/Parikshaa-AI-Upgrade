@@ -117,10 +117,14 @@ export function Offers({
   const [form, setForm] = useState({ ref: "", ctc: "", joining: "", note: "" });
   const send = useMutation({
     mutationFn: () => client.sendOffer(driveId, { ref: form.ref, ctcLpa: Number(form.ctc), joiningDate: form.joining === "" ? null : form.joining, note: form.note }),
-    onSuccess: async ({ link }) => {
+    onSuccess: async ({ link, sent = [] }) => {
       setForm({ ref: "", ctc: form.ctc, joining: form.joining, note: form.note });
       onChange();
-      await copy(link, toast, "Offer made: its link is copied to send the candidate");
+      await copy(
+        link,
+        toast,
+        sent.length === 0 ? "Offer made: its link is copied to send the candidate" : `Offer made and sent by ${sent.map((c) => (c === "email" ? "email" : "WhatsApp")).join(" and ")}; the link is copied too`,
+      );
     },
   });
   const sent = applications.filter((a) => a.offer !== undefined);

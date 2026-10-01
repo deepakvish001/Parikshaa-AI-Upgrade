@@ -11,6 +11,7 @@ import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
 import { InterviewService } from "./interviews.js";
+import { StudentMessages } from "./student-messages.js";
 import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
 import { AttemptTokens } from "./auth.js";
@@ -126,6 +127,15 @@ export function assemble(o: AssembleOptions): {
   const scriptStore = new ScriptStore(o.sql, keys.records("scripts"));
   const interviewStore = new InterviewStore(o.sql, keys.records("interviews"));
   const placementStore = new PlacementStore(o.sql, keys.records("students"));
+  const studentMessages = new StudentMessages({
+    placement: placementStore,
+    identity,
+    mailer: o.mailer ?? null,
+    whatsapp: o.whatsapp ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
+    offerLink: (org, code) => `${o.publicUrl.replace(/\/$/, "")}/?offer=${encodeURIComponent(`${org}.${code}`)}`,
+    applyLink: (org, code) => `${o.publicUrl.replace(/\/$/, "")}/?apply=${encodeURIComponent(`${org}.${code}`)}`,
+  });
   const privacy = new PrivacyService({
     store,
     privacy: new PrivacyStore(o.sql),
@@ -248,7 +258,7 @@ export function assemble(o: AssembleOptions): {
     interviews: new InterviewService({ store: interviewStore, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
-    placement: new PlacementService({ placement: placementStore, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
+    placement: new PlacementService({ placement: placementStore, messages: studentMessages, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,
     auth,
     security,
@@ -292,7 +302,8 @@ export function assemble(o: AssembleOptions): {
           : item.purpose === "pilot_report"
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
-      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
+      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)),
+      student: (item) => studentMessages.deliver(item) },
   });
 
   return { app, worker, privacy, billing, identity, dailyReport, prepEngage };

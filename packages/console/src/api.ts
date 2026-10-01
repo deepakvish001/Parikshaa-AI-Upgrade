@@ -1707,7 +1707,14 @@ export class ConsoleClient {
     await this.#request(`/drives/${encodeURIComponent(id)}/colleges/${encodeURIComponent(collegeId)}`, { method: "DELETE" });
   }
 
-  sendOffer(id: string, offer: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+  alertDrive(id: string): Promise<{ readonly queued: number; readonly already: number; readonly unreachable: number }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/alert`, { method: "POST" });
+  }
+
+  sendOffer(
+    id: string,
+    offer: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string },
+  ): Promise<{ readonly link: string; readonly sent?: readonly ("email" | "whatsapp")[] }> {
     return this.#request(`/drives/${encodeURIComponent(id)}/offers`, { method: "POST", body: JSON.stringify(offer) });
   }
 

@@ -4,6 +4,7 @@ import { indianMobile } from "./candidate-import.js";
 import { eligible, staffScope, STAGES, type IdentityStore, type QuestionBank, type Application, type Drive, type DriveCollege, type DriveDraft, type Offer, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
 import type { Channel, InvitationService } from "./invitation-service.js";
 import type { ResultsService } from "./results.js";
+import type { StudentChannel, StudentMessages } from "./student-messages.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
 import { importStudents, type StudentProblem } from "./student-import.js";
@@ -102,6 +103,7 @@ export class PlacementService {
   readonly #bank: QuestionBank | null;
   readonly #publicUrl: string;
   readonly #identity: IdentityStore | null;
+  readonly #messages: StudentMessages | null;
   readonly #now: () => number;
   readonly #newId: () => string;
 
@@ -116,9 +118,12 @@ export class PlacementService {
     /** Where students open a drive's link to apply. */
     readonly publicUrl?: string;
     readonly identity?: IdentityStore;
+    /** Offers and new drives sent to students by email and WhatsApp (CO42, CL67). */
+    readonly messages?: StudentMessages;
     readonly now?: () => number;
     readonly newId?: () => string;
   }) {
+    this.#messages = options.messages ?? null;
     this.#placement = options.placement;
     this.#store = options.store;
     this.#exams = options.exams;
@@ -288,7 +293,11 @@ export class PlacementService {
    * package, and the link lets them accept or decline it. Sending it again
    * makes a new link and forgets the old answer. Audited.
    */
-  async sendOffer(actor: Actor, driveId: string, request: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+  async sendOffer(
+    actor: Actor,
+    driveId: string,
+    request: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string },
+  ): Promise<{ readonly link: string; readonly sent: readonly StudentChannel[] }> {
     this.#require(actor);
     const drive = await this.#drive(actor, driveId);
     if (drive.status === "closed") throw new AttemptError("invalid_state", "This drive is closed: open it again to make an offer");
@@ -302,8 +311,29 @@ export class PlacementService {
       at: new Date(this.#now()),
     });
     if (!made) throw new AttemptError("not_found", `${request.ref} is not in this drive`);
-    await this.#exams.recordAudit(actor, "drive.offer_sent", driveId, { ref: request.ref, ctcLpa: request.ctcLpa });
-    return { link: this.offerLink(actor.orgId, code) };
+    // The link goes to the student by email and WhatsApp, where the college has them.
+    let sent: readonly StudentChannel[] = [];
+    if (this.#messages !== null) {
+      const student = (await this.#placement.applications(actor.orgId, driveId)).find((a) => a.ref === request.ref);
+      if (student !== undefined) sent = await this.#messages.queueOffer(actor.orgId, driveId, student, code);
+    }
+    await this.#exams.recordAudit(actor, "drive.offer_sent", driveId, { ref: request.ref, ctcLpa: request.ctcLpa, sent });
+    return { link: this.offerLink(actor.orgId, code), sent };
+  }
+
+  /**
+   * Tell every eligible student not in the drive yet about it, with its link
+   * to apply (CL67). Each student hears of a drive once. Audited.
+   */
+  async alertEligible(actor: Actor, driveId: string): Promise<{ readonly queued: number; readonly already: number; readonly unreachable: number }> {
+    this.#require(actor);
+    const drive = await this.#drive(actor, driveId);
+    if (drive.status === "closed") throw new AttemptError("invalid_state", "This drive is closed");
+    if (drive.applyCode === null) throw new AttemptError("invalid_state", "Open the drive's link to apply first: the message carries it");
+    if (this.#messages === null || this.#messages.channels().length === 0) throw new AttemptError("invalid_state", "Neither email nor WhatsApp is set up on this server");
+    const outcome = await this.#messages.queueDriveAlert(actor.orgId, drive);
+    await this.#exams.recordAudit(actor, "drive.alerted", driveId, outcome);
+    return outcome;
   }
 
   async #offer(code: string) {

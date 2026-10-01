@@ -914,6 +914,15 @@ function ApplyLink({ client, id, link, openToNew, onChange }: { client: ConsoleC
       }
     },
   });
+  const alert = useMutation({
+    mutationFn: () => client.alertDrive(id),
+    onSuccess: ({ queued, already, unreachable }) =>
+      toast(
+        [`${queued} eligible ${queued === 1 ? "student" : "students"} told`, already > 0 ? `${already} already told` : "", unreachable > 0 ? `${unreachable} with no email or phone` : ""].filter((p) => p !== "").join(" · "),
+        "success",
+      ),
+    onError: (error) => toast(failure(error), "error"),
+  });
   return (
     <section className="card" aria-label="Link to apply">
       <div className="bar">
@@ -932,6 +941,10 @@ function ApplyLink({ client, id, link, openToNew, onChange }: { client: ConsoleC
           </>
         ) : (
           <>
+            <button type="button" disabled={alert.isPending} onClick={() => alert.mutate()}>
+              <Send aria-hidden="true" />
+              Tell eligible students
+            </button>
             <button type="button" className="secondary" onClick={() => void navigator.clipboard?.writeText(link).then(() => toast("Link copied", "success"))}>
               <Copy aria-hidden="true" />
               Copy the link

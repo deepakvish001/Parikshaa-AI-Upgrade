@@ -447,13 +447,33 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
           joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
           note: z.string().max(2000).default(""),
         }),
-        response: { 201: z.object({ link: z.string() }), ...refusals },
+        response: { 201: z.object({ link: z.string(), sent: z.array(z.enum(["email", "whatsapp"])).readonly().describe("How the link went to the student: by the email and phone on the student list, where this server can send.") }), ...refusals },
       },
     },
     async (request, reply) => {
       const actor = await staff(request, reply, "attempt:review");
       if (actor === null) return;
       return reply.code(201).send(await placement.sendOffer(actor, request.params.driveId, request.body));
+    },
+  );
+
+  routes.post(
+    "/drives/:driveId/alert",
+    {
+      schema: {
+        tags: TAGS,
+        summary: "Tell eligible students about the drive",
+        description:
+          "Every student on the list who meets the drive's criteria and is not in it yet hears of it by email and WhatsApp, with the link to apply. Each student hears of a drive once. Needs the drive's link to apply open. Audited.",
+        security: SECURED,
+        params: driveParams,
+        response: { 200: z.object({ queued: z.number(), already: z.number(), unreachable: z.number() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.send(await placement.alertEligible(actor, request.params.driveId));
     },
   );
 

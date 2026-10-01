@@ -93,6 +93,7 @@ export const ACTIONS: Record<string, string> = {
   "drive.college_added": "added a college to a drive",
   "drive.college_removed": "removed a college from a drive",
   "drive.offer_sent": "made an offer",
+  "drive.alerted": "told eligible students about a drive",
   "placement.report_exported": "downloaded the placement report",
   "exam.outcomes_set": "mapped course outcomes",
   "interview.scheduled": "scheduled an interview",

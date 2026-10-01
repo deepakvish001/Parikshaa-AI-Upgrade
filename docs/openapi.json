@@ -63567,6 +63567,13 @@
                             ],
                             "description": "Against the exam's cut-off, once graded; null without one."
                           },
+                          "paper": {
+                            "description": "Marks from a handwritten copy checked here; its attemptId is `paper:<copy>` and it has no scorecard.",
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
+                          },
                           "ref": {
                             "type": "string"
                           },
@@ -64799,6 +64806,13 @@
                             }
                           ],
                           "description": "Against the exam's cut-off, once graded; null without one."
+                        },
+                        "paper": {
+                          "description": "Marks from a handwritten copy checked here; its attemptId is `paper:<copy>` and it has no scorecard.",
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         }
                       },
                       "required": [
@@ -81136,10 +81150,215 @@
                   "properties": {
                     "link": {
                       "type": "string"
+                    },
+                    "sent": {
+                      "readOnly": true,
+                      "description": "How the link went to the student: by the email and phone on the student list, where this server can send.",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "email",
+                          "whatsapp"
+                        ]
+                      }
                     }
                   },
                   "required": [
-                    "link"
+                    "link",
+                    "sent"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/drives/{driveId}/alert": {
+      "post": {
+        "summary": "Tell eligible students about the drive",
+        "tags": [
+          "Placement"
+        ],
+        "description": "Every student on the list who meets the drive's criteria and is not in it yet hears of it by email and WhatsApp, with the link to apply. Each student hears of a drive once. Needs the drive's link to apply open. Audited.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "driveId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "number"
+                    },
+                    "already": {
+                      "type": "number"
+                    },
+                    "unreachable": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "queued",
+                    "already",
+                    "unreachable"
                   ],
                   "additionalProperties": false
                 }

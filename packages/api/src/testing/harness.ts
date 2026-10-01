@@ -46,6 +46,7 @@ import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
 import { OutcomeService } from "../outcomes.js";
 import { InterviewService } from "../interviews.js";
+import { StudentMessages } from "../student-messages.js";
 import { HandwritingService } from "../handwriting.js";
 import { ProxyService } from "../proxy.js";
 import { AttemptTokens } from "../auth.js";
@@ -74,7 +75,7 @@ import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
 import { StaffSecrets } from "../staff-secrets.js";
 import { StaffSecurity } from "../staff-security.js";
-import type { ItemHandler, Mailer } from "../delivery.js";
+import type { ItemHandler, Mailer, WhatsAppSender } from "../delivery.js";
 import type { AtsBaseUrls } from "../ats.js";
 
 /**
@@ -125,7 +126,7 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
-  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler };
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler; readonly student: ItemHandler };
   /** For a delivery worker's candidate results (DeliveryWorkerOptions.result). */
   readonly results: ResultsService;
   /** For a delivery worker's recheck messages (DeliveryWorkerOptions.recheck). */
@@ -156,6 +157,8 @@ export async function wire(
     readonly mailer?: Mailer;
     /** Results may go by WhatsApp too, as when the server has it set up. */
     readonly whatsapp?: boolean;
+    /** What WhatsApp messages to students (offers, drive alerts) are sent with. */
+    readonly whatsappSender?: WhatsAppSender;
     /**
      * The clock staff sign-in runs on. Off by default, so sessions do not
      * expire when a test moves `now` on by days; a second-factor test needs it.
@@ -198,6 +201,16 @@ export async function wire(
   const scriptStore = new ScriptStore(sql, records.records("scripts"));
   const interviewStore = new InterviewStore(sql, records.records("interviews"));
   const placementStore = new PlacementStore(sql, records.records("students"));
+  const studentMessages = new StudentMessages({
+    placement: placementStore,
+    identity,
+    mailer: options.mailer ?? null,
+    whatsapp: options.whatsappSender ?? null,
+    enqueue: (orgId, drafts) => invitationStore.enqueue(staffScope(orgId), drafts),
+    offerLink: (orgId, code) => `${PUBLIC_URL}/?offer=${encodeURIComponent(`${orgId}.${code}`)}`,
+    applyLink: (orgId, code) => `${PUBLIC_URL}/?apply=${encodeURIComponent(`${orgId}.${code}`)}`,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const privacy = new PrivacyService({
     records: [
       { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
@@ -371,7 +384,7 @@ export async function wire(
     interviews: new InterviewService({ store: interviewStore, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
-    placement: new PlacementService({ placement: placementStore, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
+    placement: new PlacementService({ placement: placementStore, messages: studentMessages, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,
     auth,
     security,
@@ -413,7 +426,7 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item) },
   };
 }
 
