@@ -25,6 +25,7 @@ To report a vulnerability, see [`.github/SECURITY.md`](../.github/SECURITY.md).
 | Scanned handwritten answer pages, and what the model read from them | Candidate | `answer_scripts`, `answer_script_pages` | Sealed (AES-256-GCM) under a key derived from `PARIKSHAA_DATA_KEY`, bound to the copy and page; removed by the retention sweep |
 | Student list (roll number, contact, CGPA, placement, offers) | Student | `students`, `drive_applications` | Email and phone sealed under a derived key, bound to the student; the rest under row-level security; removed when the college removes the student (not by the retention sweep: it is the college's register) |
 | Interview code, notes and scorecard | Candidate | `interviews` | Candidate's email, code and the interviewer's notes sealed under a derived key; finished interviews removed by the retention sweep |
+| Arrangements for a disability | Candidate | `accommodations` | The note (which may name a condition) sealed under a derived key; never shown to the candidate or written to the audit log; the extra time itself is in the attempt's ledger with who granted it |
 
 Secrets that are **derived, not stored** — invitation codes, webhook signing
 secrets, the Greenhouse key, password-reset links: each is an HMAC under a

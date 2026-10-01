@@ -59,6 +59,8 @@ import type { OutcomeService } from "./outcomes.js";
 import { registerOutcomeRoutes } from "./outcome-routes.js";
 import type { InternalMarksService } from "./internal-marks.js";
 import { registerInternalMarksRoutes } from "./internal-marks-routes.js";
+import type { AccommodationService } from "./accommodations.js";
+import { registerAccommodationRoutes } from "./accommodation-routes.js";
 import type { InterviewService } from "./interviews.js";
 import { registerInterviewRoutes } from "./interview-routes.js";
 import type { HandwritingService } from "./handwriting.js";
@@ -150,6 +152,8 @@ export interface ServerOptions {
   readonly outcomes?: OutcomeService;
   /** Internal marks (CIA) across exams. Absent: no such route. */
   readonly internalMarks?: InternalMarksService;
+  /** Arrangements for candidates with a disability. Absent: none of their routes. */
+  readonly accommodations?: AccommodationService;
   /** The interview room. Absent: none of its routes. */
   readonly interviews?: InterviewService;
   /** Handwritten copy checking and moderation. Absent: none of its routes. */
@@ -1292,6 +1296,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.interviews !== undefined) registerInterviewRoutes(routes, { interviews: options.interviews, throttle, staff });
     if (options.outcomes !== undefined) registerOutcomeRoutes(routes, { outcomes: options.outcomes, staff });
     if (options.internalMarks !== undefined) registerInternalMarksRoutes(routes, { internalMarks: options.internalMarks, staff });
+    if (options.accommodations !== undefined) registerAccommodationRoutes(routes, { accommodations: options.accommodations, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });

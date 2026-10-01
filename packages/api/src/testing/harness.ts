@@ -29,6 +29,7 @@ import {
   ShortlistStore,
   OutcomeStore,
   InterviewStore,
+  AccommodationStore,
   ScriptStore,
   ProxyStore,
   ReviewStore,
@@ -48,6 +49,7 @@ import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
 import { OutcomeService } from "../outcomes.js";
 import { InternalMarksService } from "../internal-marks.js";
+import { AccommodationService } from "../accommodations.js";
 import { InterviewService } from "../interviews.js";
 import { StudentMessages } from "../student-messages.js";
 import { HandwritingService } from "../handwriting.js";
@@ -211,6 +213,7 @@ export async function wire(
   const scriptStore = new ScriptStore(sql, records.records("scripts"));
   const interviewStore = new InterviewStore(sql, records.records("interviews"));
   const placementStore = new PlacementStore(sql, records.records("students"));
+  const accommodations = new AccommodationService({ store: new AccommodationStore(sql, records.records("accommodations")), exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
   const interviews = new InterviewService({
     store: interviewStore,
     exams: service,
@@ -260,6 +263,7 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  invitations.arrangements = accommodations;
   const integrations = buildIntegrations({
     sql,
     store,
@@ -406,6 +410,7 @@ export async function wire(
     interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
     internalMarks: new InternalMarksService({ results, exams: service }),
+    accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,

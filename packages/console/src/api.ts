@@ -296,6 +296,16 @@ export interface DriveApplication extends Student {
   readonly statusLink?: string;
 }
 
+export interface Arrangement {
+  readonly candidateRef: string;
+  readonly extraPercent: number;
+  readonly scribe: boolean;
+  readonly largeText: boolean;
+  readonly note: string;
+  readonly setBy: { readonly userId: string; readonly name: string };
+  readonly setAt: string;
+}
+
 export interface InternalMarksRequest {
   readonly components: readonly { readonly examId: string; readonly label?: string; readonly marks: number }[];
   readonly best?: number;
@@ -1775,6 +1785,18 @@ export class ConsoleClient {
 
   funnels(): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: "open" | "closed"; readonly funnel: DriveFunnel }[]> {
     return this.#request<{ drives: readonly { id: string; company: string; role: string; status: "open" | "closed"; funnel: DriveFunnel }[] }>("/placement/funnel").then((b) => b.drives);
+  }
+
+  arrangements(examId: string): Promise<readonly Arrangement[]> {
+    return this.#request<{ accommodations: Arrangement[] }>(`/exams/${encodeURIComponent(examId)}/accommodations`).then((r) => r.accommodations);
+  }
+
+  setArrangement(examId: string, ref: string, body: { readonly extraPercent: number; readonly scribe: boolean; readonly largeText: boolean; readonly note: string }): Promise<Arrangement> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/accommodations/${encodeURIComponent(ref)}`, { method: "PUT", body: JSON.stringify(body) });
+  }
+
+  removeArrangement(examId: string, ref: string): Promise<void> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/accommodations/${encodeURIComponent(ref)}`, { method: "DELETE" }).then(() => undefined);
   }
 
   internalMarks(request: InternalMarksRequest): Promise<InternalMarks> {

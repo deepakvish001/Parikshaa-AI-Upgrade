@@ -730,6 +730,8 @@ export class ExamService {
     loaded?: Exam,
     /** The privacy notice the candidate agreed to before starting, if they were asked. */
     consent?: { readonly noticeVersion: number; readonly noticeHash: string },
+    /** Compensatory time set for this candidate beforehand (CL62): in the ledger from the start, with who set it. */
+    extra?: { readonly extraMs: number; readonly reason: string; readonly decidedBy: { readonly userId: string; readonly name: string } } | null,
   ): Promise<void> {
     const scope = staffScope(orgId);
     const exam = loaded ?? (await this.#store.loadExam(scope, examId));
@@ -772,6 +774,7 @@ export class ExamService {
         });
     }
     if (!started) return;
+    if (extra != null) await this.#store.append(scope, attemptId, { type: "time_extended", attemptId, extraMs: extra.extraMs, reason: extra.reason, decidedBy: extra.decidedBy });
     // The audit log is append-only and outlives an erasure, so it names the
     // invitation and the attempt, never the candidate.
     await this.#store.appendAudit(scope, {

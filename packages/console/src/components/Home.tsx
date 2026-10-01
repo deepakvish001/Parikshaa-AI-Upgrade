@@ -105,6 +105,8 @@ export const ACTIONS: Record<string, string> = {
   "exam.approved": "approved and locked a paper",
   "staff.imported": "added staff from a sheet",
   "results.internal_exported": "worked out internal marks across exams",
+  "candidate.accommodated": "set arrangements for a candidate with a disability",
+  "candidate.accommodation_removed": "removed a candidate's arrangements",
   "staff.department_set": "set a staff member's department",
   "exam.department_set": "set an exam's department",
   "exam.returned": "returned a paper with a comment",

@@ -2,7 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore,
+  AccommodationStore, ScriptStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -11,6 +12,7 @@ import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
 import { InternalMarksService } from "./internal-marks.js";
+import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
 import { StudentMessages } from "./student-messages.js";
 import { HandwritingService } from "./handwriting.js";
@@ -137,6 +139,7 @@ export function assemble(o: AssembleOptions): {
   const scriptStore = new ScriptStore(o.sql, keys.records("scripts"));
   const interviewStore = new InterviewStore(o.sql, keys.records("interviews"));
   const placementStore = new PlacementStore(o.sql, keys.records("students"));
+  const accommodations = new AccommodationService({ store: new AccommodationStore(o.sql, keys.records("accommodations")), exams: service });
   const interviews = new InterviewService({
     store: interviewStore,
     exams: service,
@@ -184,6 +187,7 @@ export function assemble(o: AssembleOptions): {
     tokens,
     publicUrl: o.publicUrl,
   });
+  invitations.arrangements = accommodations;
   const integrations = buildIntegrations({
     sql: o.sql,
     store,
@@ -280,6 +284,7 @@ export function assemble(o: AssembleOptions): {
     interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
     internalMarks: new InternalMarksService({ results, exams: service }),
+    accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,
