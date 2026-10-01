@@ -159,6 +159,26 @@ export function loadToken(site: string): string | null {
   }
 }
 
+const refKey = (site: string) => `parikshaa.ref.${site}`;
+
+/** A coupon a `?ref=` link brought: kept on this device for checkout, until it is used or replaced. */
+export function loadRef(site: string): string | null {
+  try {
+    return localStorage.getItem(refKey(site));
+  } catch {
+    return null;
+  }
+}
+
+export function saveRef(site: string, code: string | null): void {
+  try {
+    if (code === null) localStorage.removeItem(refKey(site));
+    else localStorage.setItem(refKey(site), code);
+  } catch {
+    // A private window: the code is typed in by hand instead.
+  }
+}
+
 export function saveToken(site: string, token: string | null): void {
   try {
     if (token === null) localStorage.removeItem(tokenKey(site));
@@ -407,8 +427,44 @@ export class PracticeClient {
     return this.#request("/plus");
   }
 
-  checkout(productId: string): Promise<CheckoutOrder> {
-    return this.#post("/plus/checkout", { productId });
+  checkout(productId: string, extra: Billing = {}): Promise<CheckoutOrder> {
+    return this.#post("/plus/checkout", { productId, ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== undefined && v !== "")) });
+  }
+
+  freezeToday(): Promise<{ readonly day: string; readonly freezesLeft: number; readonly moved: number }> {
+    return this.#post("/streak/freeze", {});
+  }
+
+  sprintQuiz(sprint: number): Promise<SprintQuiz> {
+    return this.#request(`/plan/sprints/${sprint}/quiz`);
+  }
+
+  takeSprintQuiz(sprint: number, answers: Readonly<Record<string, string>>): Promise<SprintQuizResult> {
+    return this.#post(`/plan/sprints/${sprint}/quiz`, { answers });
+  }
+
+  sprintNotes(sprint: number): Promise<{ readonly sprint: number; readonly items: readonly { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string; readonly note: string | null }[] }> {
+    return this.#request(`/plan/sprints/${sprint}/notes`);
+  }
+
+  reminders(): Promise<{ readonly enabled: boolean; readonly hour: number; readonly email: boolean }> {
+    return this.#request("/reminders");
+  }
+
+  saveReminders(prefs: { readonly enabled: boolean; readonly hour: number }): Promise<{ readonly enabled: boolean; readonly hour: number }> {
+    return this.#request("/reminders", { method: "PUT", body: JSON.stringify(prefs) });
+  }
+
+  turnOffReminders(token: string): Promise<{ readonly off: true }> {
+    return this.#post("/reminders/off", { token });
+  }
+
+  quote(productId: string, coupon: string): Promise<Quote> {
+    return this.#post("/plus/quote", { productId, coupon });
+  }
+
+  invoice(number: string): Promise<InvoiceView> {
+    return this.#request(`/invoices/${encodeURIComponent(number)}`);
   }
 
   confirmPayment(orderId: string, paymentId: string, signature: string): Promise<{ readonly order: PlusOrder; readonly plus: { readonly active: boolean; readonly until: string | null } }> {
@@ -435,6 +491,15 @@ export class PracticeClient {
     return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/review`, { replyIn });
   }
 
+  /** Sahayak's draft of a revision note: not saved until the learner saves it. */
+  notesDraft(about: { readonly problem?: string; readonly lesson?: string }, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    return this.#post("/tutor/notes", { ...about, replyIn });
+  }
+
+  noteBook(track: string): Promise<NoteBook> {
+    return this.#request(`/notes/book?track=${encodeURIComponent(track)}`);
+  }
+
   doubt(about: { readonly problem?: string; readonly lesson?: string }, question: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
     return this.#post("/tutor/doubt", { ...about, question, replyIn });
   }
@@ -455,6 +520,18 @@ export class PracticeClient {
 
   company(slug: string, window: CompanyWindow): Promise<CompanyPage> {
     return this.#request(`/companies/${encodeURIComponent(slug)}?window=${window}`);
+  }
+
+  async targets(): Promise<readonly CompanyTarget[]> {
+    return (await this.#request<{ targets: CompanyTarget[] }>("/companies/targets")).targets;
+  }
+
+  async setTarget(slug: string, on: boolean): Promise<void> {
+    await this.#request(`/companies/${encodeURIComponent(slug)}/target`, { method: "PUT", body: JSON.stringify({ on }) });
+  }
+
+  startCompanyList(slug: string): Promise<{ readonly list: string; readonly added: number; readonly locked: number }> {
+    return this.#post(`/companies/${encodeURIComponent(slug)}/start`);
   }
 
   async experiences(company?: string): Promise<readonly InterviewExperience[]> {
@@ -629,6 +706,29 @@ export interface Home {
     readonly next: { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string } | null;
   } | null;
   readonly solved: number;
+  /** Today was taken off. */
+  readonly frozenToday: boolean;
+  /** Days off left this month. */
+  readonly freezesLeft: number;
+}
+
+/** A sprint's quiz: the sprint's choice and number questions, once the sprint is done. */
+export interface SprintQuiz {
+  readonly sprint: number;
+  readonly open: boolean;
+  readonly passPercent: number;
+  readonly questions: readonly { readonly slug: string; readonly title: string; readonly question: { readonly kind: string; readonly stem: string; readonly options?: readonly string[] } }[];
+  readonly count: number;
+  readonly sittings: readonly { readonly score: number; readonly total: number; readonly passed: boolean; readonly takenAt: string }[];
+}
+
+export interface SprintQuizResult {
+  readonly score: number;
+  readonly total: number;
+  readonly passed: boolean;
+  readonly wrong: readonly string[];
+  readonly revise: number;
+  readonly reward: Reward;
 }
 
 export type Grade = "again" | "hard" | "good" | "easy";
@@ -673,10 +773,52 @@ export interface Coins {
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "credits";
+  readonly kind: "plus" | "company" | "credits";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
+  /** The GST within the price. */
+  readonly taxPaise: number;
+}
+
+/** Who the invoice is made out to, and a coupon. */
+export interface Billing {
+  readonly coupon?: string | undefined;
+  readonly name?: string | undefined;
+  readonly stateCode?: string | undefined;
+  readonly gstin?: string | undefined;
+}
+
+export interface Quote {
+  readonly productId: string;
+  readonly title: string;
+  readonly listPaise: number;
+  readonly discountPaise: number;
+  readonly pricePaise: number;
+  readonly taxPaise: number;
+  readonly coupon: string | null;
+}
+
+/** A tax invoice as it was issued: the document is printed as it stands. */
+export interface InvoiceView {
+  readonly number: string;
+  readonly issuedAt: string;
+  readonly document: InvoiceDocument;
+}
+
+export interface InvoiceDocument {
+  readonly title: string;
+  readonly number: string;
+  readonly date: string;
+  readonly supplier: { readonly legalName: string; readonly gstin: string; readonly address: string; readonly state: string; readonly sac: string };
+  readonly buyer: { readonly legalName: string; readonly gstin: string | null; readonly state: string | null };
+  readonly placeOfSupply: { readonly code: string; readonly state: string };
+  readonly lines: readonly { readonly description: string; readonly quantity: number; readonly sac: string; readonly amountPaise: number }[];
+  readonly taxablePaise: number;
+  readonly taxes: readonly { readonly name: string; readonly ratePercent: number; readonly amountPaise: number }[];
+  readonly totalPaise: number;
+  readonly totalInWords: string;
+  readonly note?: string;
 }
 
 export interface PlusOverview {
@@ -687,6 +829,8 @@ export interface PlusOverview {
   readonly monthlyCredits: number;
   readonly tutor: boolean;
   readonly checkout: boolean;
+  /** Paid orders get a GST tax invoice. */
+  readonly invoices: boolean;
   readonly products: readonly PlusProduct[];
 }
 
@@ -703,11 +847,15 @@ export interface PlusOrder {
   readonly title: string;
   readonly days: number;
   readonly credits: number;
+  readonly listPaise: number;
+  readonly coupon: string | null;
+  readonly discountPaise: number;
   readonly amountPaise: number;
   readonly taxPaise: number;
   readonly status: "created" | "paid";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  readonly invoice: string | null;
 }
 
 export interface Credits {
@@ -717,7 +865,7 @@ export interface Credits {
 
 export interface TutorAnswer {
   readonly id: string;
-  readonly mode: "hint" | "review" | "doubt";
+  readonly mode: "hint" | "review" | "doubt" | "notes";
   readonly hintLevel: number | null;
   readonly answer: string;
   readonly credits: number;
@@ -741,6 +889,25 @@ export interface CompanyCard {
   /** Problems asked in the last 180 days. */
   readonly problems: number;
   readonly experiences: number;
+}
+
+export interface Readiness {
+  readonly solved: number;
+  readonly of: number;
+  readonly percent: number;
+}
+
+/** A track's notes, module by module, to print. */
+export interface NoteBook {
+  readonly track: { readonly slug: string; readonly title: string };
+  readonly modules: readonly { readonly title: string; readonly notes: readonly { readonly kind: "problem" | "lesson"; readonly slug: string; readonly title: string; readonly body: string }[] }[];
+  readonly topics: readonly { readonly title: string; readonly body: string }[];
+}
+
+export interface CompanyTarget {
+  readonly slug: string;
+  readonly name: string;
+  readonly readiness: Readiness;
 }
 
 export interface InterviewRound {
@@ -792,8 +959,11 @@ export interface CompanyPage {
     readonly lastAsked: string;
     readonly solved: boolean;
   }[];
-  /** More problems in the window, which come with Plus. */
+  /** More problems in the window, which come with Plus or a Company Pass. */
   readonly locked: number;
+  /** Signed in: of the 50 most asked in the last 180 days, how many are solved. */
+  readonly readiness: Readiness | null;
+  readonly target: boolean;
   readonly topics: readonly { readonly tag: string; readonly problems: number }[];
   readonly difficulty: { readonly easy: number; readonly medium: number; readonly hard: number };
   readonly experiences: readonly InterviewExperience[];

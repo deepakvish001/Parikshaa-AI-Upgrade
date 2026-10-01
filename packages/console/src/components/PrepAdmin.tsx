@@ -447,17 +447,16 @@ const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { 
 export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canManage: boolean }) {
   const queryClient = useQueryClient();
   const admin = useQuery({ queryKey: ["prep", "plus"], queryFn: () => client.plusAdmin() });
-  const orders = useQuery({ queryKey: ["prep", "plus-orders"], queryFn: () => client.plusOrders(), enabled: canManage });
   const learners = useQuery({ queryKey: ["practice", "learners"], queryFn: () => client.practiceLearners(), enabled: canManage });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep", "plus"] });
   const settings = useMutation({ mutationFn: (patch: Parameters<ConsoleClient["savePlusSettings"]>[0]) => client.savePlusSettings(patch), onSuccess: refresh });
-  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "credits", days: 90, credits: 1000, rupees: 999 });
+  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "company" | "credits", days: 90, credits: 1000, rupees: 999 });
   const addProduct = useMutation({
     mutationFn: () =>
       client.savePlusProduct(null, {
         title: product.title.trim(),
         kind: product.kind,
-        days: product.kind === "plus" ? product.days : 0,
+        days: product.kind === "credits" ? 0 : product.days,
         credits: product.credits,
         pricePaise: Math.round(product.rupees * 100),
         active: true,
@@ -468,7 +467,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
     },
   });
   const toggle = useMutation({
-    mutationFn: (p: { id: string; title: string; kind: "plus" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
+    mutationFn: (p: { id: string; title: string; kind: "plus" | "company" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
       client.savePlusProduct(p.id, { title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise, active: !p.active }),
     onSuccess: refresh,
   });
@@ -478,7 +477,6 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
 
   if (admin.data === undefined) return <p className="notice">Loading…</p>;
   const s = admin.data.settings;
-  const nameOf = new Map((learners.data ?? []).map((l) => [l.id, l.name]));
   return (
     <>
       <section className="card prep-card" aria-label="Plus and the tutor">
@@ -539,7 +537,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
                 <tr key={p.id}>
                   <td>{p.title}</td>
                   <td>
-                    {p.days > 0 ? `${p.days} days of Plus` : ""}
+                    {p.days > 0 ? `${p.days} days of ${p.kind === "company" ? "Company Pass" : "Plus"}` : ""}
                     {p.days > 0 && p.credits > 0 ? " + " : ""}
                     {p.credits > 0 ? `${p.credits.toLocaleString("en-IN")} credits` : ""}
                   </td>
@@ -572,12 +570,13 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
             </label>
             <label>
               Kind
-              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "credits" })}>
+              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "company" | "credits" })}>
                 <option value="plus">Plus</option>
+                <option value="company">Company Pass (every company list, nothing else)</option>
                 <option value="credits">Credits pack</option>
               </select>
             </label>
-            {product.kind === "plus" ? (
+            {product.kind !== "credits" ? (
               <label>
                 Days
                 <input type="number" min={1} max={1100} value={product.days} onChange={(e) => setProduct({ ...product, days: Number(e.target.value) })} />
@@ -644,37 +643,6 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
         </section>
       ) : null}
 
-      {canManage && (orders.data ?? []).length > 0 ? (
-        <section className="card prep-card" aria-label="Plans bought">
-          <div className="bar">
-            <strong>Plans bought</strong>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">When</th>
-                <th scope="col">Learner</th>
-                <th scope="col">Plan</th>
-                <th scope="col">Amount</th>
-                <th scope="col">GST within</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.data!
-                .filter((o) => o.status === "paid")
-                .map((o) => (
-                  <tr key={o.id}>
-                    <td>{new Date(o.paidAt ?? o.createdAt).toLocaleDateString("en-IN")}</td>
-                    <td>{nameOf.get(o.learnerId) ?? "—"}</td>
-                    <td>{o.title}</td>
-                    <td>{rupees(o.amountPaise)}</td>
-                    <td>{rupees(o.taxPaise)}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
     </>
   );
 }

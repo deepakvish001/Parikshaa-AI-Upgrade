@@ -1,5 +1,20 @@
 import type { OrgId } from "@parikshaa/core";
-import { DEFAULT_PREP_SETTINGS, practiceLearner, practiceStaff, type Learner, type PracticeSite, type PracticeStore, type PrepPlusStore, type PrepProduct, type PrepSettings } from "@parikshaa/store";
+import {
+  CouponTaken,
+  DEFAULT_PREP_SETTINGS,
+  practiceLearner,
+  practiceStaff,
+  type Learner,
+  type PracticeSite,
+  type PracticeStore,
+  type PrepCoupon,
+  type PrepInvoiceBuilder,
+  type PrepOrder,
+  type PrepPlusStore,
+  type PrepProduct,
+  type PrepSettings,
+} from "@parikshaa/store";
+import { STATES, inclusiveInvoice, validGstin, type Supplier } from "./gst.js";
 import { PracticeError, istDay } from "./practice.js";
 import { GatewayUnavailable, type PaymentGateway } from "./razorpay.js";
 
@@ -17,11 +32,36 @@ import { GatewayUnavailable, type PaymentGateway } from "./razorpay.js";
  * made on the server at the product's price, and nothing is given until
  * Checkout's signature, or the webhook's, checks out — a browser can say
  * anything. Confirming twice, or the webhook arriving too, changes nothing.
+ *
+ * A coupon takes a share or a sum off the price; its limits are checked when
+ * the order is made. Every paid order gets a tax invoice, issued in the same
+ * transaction that pays it, with Parikshaa's operator as the supplier — when
+ * the server knows who that is (`PARIKSHAA_SUPPLIER_*`).
  */
 
 /** The share of a price that is GST, when the price includes it at 18%. */
 export const taxIn = (pricePaise: number): number => Math.round(pricePaise - pricePaise / 1.18);
 
+/** No coupon takes a price below a rupee: Razorpay takes nothing smaller. */
+export const MIN_PRICE_PAISE = 100;
+const COUPON = /^[A-Z0-9][A-Z0-9-]{2,29}$/;
+export const normaliseCode = (code: string) => code.trim().toUpperCase();
+
+/** What a plan costs with a coupon, before anything is bought. */
+export interface Quote {
+  readonly productId: string;
+  readonly title: string;
+  readonly listPaise: number;
+  readonly discountPaise: number;
+  readonly pricePaise: number;
+  readonly taxPaise: number;
+  readonly coupon: string | null;
+}
+
+export const discountOf = (coupon: Pick<PrepCoupon, "kind" | "value">, listPaise: number): number => {
+  const off = coupon.kind === "percent" ? Math.floor((listPaise * coupon.value) / 100) : coupon.value;
+  return Math.max(0, Math.min(off, listPaise - MIN_PRICE_PAISE));
+};
 const monthOf = (ms: number) => istDay(ms).slice(0, 7);
 
 export interface PlusStatus {
@@ -34,12 +74,14 @@ export class PrepPlus {
   readonly #store: PrepPlusStore;
   readonly #practice: PracticeStore;
   readonly #gateway: PaymentGateway | null;
+  readonly #supplier: Supplier | null;
   readonly #now: () => number;
 
-  constructor(options: { store: PrepPlusStore; practice: PracticeStore; gateway?: PaymentGateway | null; now?: () => number }) {
+  constructor(options: { store: PrepPlusStore; practice: PracticeStore; gateway?: PaymentGateway | null; supplier?: Supplier | null; now?: () => number }) {
     this.#store = options.store;
     this.#practice = options.practice;
     this.#gateway = options.gateway ?? null;
+    this.#supplier = options.supplier ?? null;
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -53,11 +95,22 @@ export class PrepPlus {
 
   /** Whether a learner holds Plus now; with Plus off, everyone is treated as holding it. */
   async status(site: PracticeSite, learner: Learner | null): Promise<PlusStatus> {
+    return this.#holds(site, learner, "plus");
+  }
+
+  /** Whether a learner may see every company's full list: Plus, or a Company Pass. */
+  async companyAccess(site: PracticeSite, learner: Learner | null): Promise<PlusStatus> {
+    const plus = await this.#holds(site, learner, "plus");
+    if (plus.active) return plus;
+    return this.#holds(site, learner, "company");
+  }
+
+  async #holds(site: PracticeSite, learner: Learner | null, pass: "plus" | "company"): Promise<PlusStatus> {
     const settings = await this.#store.settings(practiceLearner(site.orgId, null));
     if (!settings.plusEnabled) return { enabled: false, active: true, until: null };
     if (learner === null) return { enabled: true, active: false, until: null };
     const now = this.#now();
-    const spans = await this.#store.plus(practiceLearner(site.orgId, learner.id));
+    const spans = (await this.#store.plus(practiceLearner(site.orgId, learner.id))).filter((s) => s.pass === pass);
     const current = spans.filter((s) => Date.parse(s.startsAt) <= now && Date.parse(s.endsAt) > now);
     // Spans that run on from the current one make one stretch.
     let until = current.length === 0 ? null : Math.max(...current.map((s) => Date.parse(s.endsAt)));
@@ -111,8 +164,71 @@ export class PrepPlus {
       monthlyCredits: settings.monthlyCredits,
       tutor: settings.tutorEnabled,
       checkout: this.#gateway !== null,
-      products: products.map((p) => ({ id: p.id, title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise })),
+      invoices: this.#supplier !== null,
+      products: products.map((p) => ({ id: p.id, title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise, taxPaise: taxIn(p.pricePaise) })),
     };
+  }
+
+  /**
+   * A plan's price with a coupon, checked as checkout checks it: there, at
+   * the plan, for this learner, with uses left and not past its date.
+   */
+  async quote(site: PracticeSite, learner: Learner | null, productId: string, code: string | undefined): Promise<Quote> {
+    const settings = await this.#store.settings(practiceLearner(site.orgId, null));
+    const product = (await this.#store.products(practiceLearner(site.orgId, null))).find((p) => p.id === productId);
+    if (product === undefined || (product.kind !== "credits" && !settings.plusEnabled)) throw new PracticeError("not_found", "No such plan");
+    const listPaise = product.pricePaise;
+    const plain = { productId: product.id, title: product.title, listPaise, discountPaise: 0, pricePaise: listPaise, taxPaise: taxIn(listPaise), coupon: null };
+    if (code === undefined || code.trim() === "") return plain;
+    const coupon = await this.#coupon(site, learner, product, normaliseCode(code));
+    const discountPaise = discountOf(coupon, listPaise);
+    const pricePaise = listPaise - discountPaise;
+    return { ...plain, discountPaise, pricePaise, taxPaise: taxIn(pricePaise), coupon: coupon.code };
+  }
+
+  async #coupon(site: PracticeSite, learner: Learner | null, product: PrepProduct, code: string): Promise<PrepCoupon> {
+    const refuse = (message: string): never => {
+      throw new PracticeError("coupon_invalid", message);
+    };
+    const coupon = COUPON.test(code) ? await this.#store.coupon(site.orgId, code) : null;
+    if (coupon === null || !coupon.active) return refuse("That coupon code is not valid");
+    if (coupon.endsAt !== null && Date.parse(coupon.endsAt) <= this.#now()) return refuse("That coupon has expired");
+    if (coupon.productId !== null && coupon.productId !== product.id) return refuse("That coupon is for a different plan");
+    const uses = await this.#store.couponUses(site.orgId, coupon.code, learner?.id ?? "");
+    if (coupon.maxUses !== null && uses.total >= coupon.maxUses) return refuse("That coupon has been used up");
+    if (uses.mine > 0) return refuse("You have used that coupon already");
+    return coupon;
+  }
+
+  /** Who an order's invoice is made out to: checked here, so the invoice never carries a wrong state or GSTIN. */
+  #buyer(learner: Learner, input: { name?: string | undefined; stateCode?: string | undefined; gstin?: string | undefined }) {
+    const name = (input.name ?? "").trim() || learner.name;
+    if (name.length > 160) throw new PracticeError("invalid", "A name on an invoice is at most 160 characters");
+    const gstin = (input.gstin ?? "").trim().toUpperCase();
+    if (gstin !== "" && !validGstin(gstin)) throw new PracticeError("invalid", "That GSTIN is not valid");
+    const state = gstin !== "" ? gstin.slice(0, 2) : (input.stateCode ?? "").trim();
+    if (state !== "" && STATES[state] === undefined) throw new PracticeError("invalid", "No such state code");
+    return { buyerName: name, buyerState: state === "" ? null : state, buyerGstin: gstin === "" ? null : gstin };
+  }
+
+  /** The invoice for an order, built when it is paid. */
+  #invoice(): PrepInvoiceBuilder | undefined {
+    const supplier = this.#supplier;
+    if (supplier === null) return undefined;
+    return (number, order: PrepOrder, at) =>
+      inclusiveInvoice({
+        number,
+        issuedAt: at,
+        supplier,
+        buyer: { legalName: order.buyerName, gstin: order.buyerGstin, stateCode: order.buyerState, address: "" },
+        description:
+          order.days > 0
+            ? `${order.title}: ${order.pass === "company" ? "Company Pass" : "Plus"} for ${order.days} days${order.credits > 0 ? ` and ${order.credits} AI credits` : ""}`
+            : `${order.title}: ${order.credits} AI credits`,
+        totalPaise: order.amountPaise,
+        taxPaise: order.taxPaise,
+        ...(order.couponCode === null ? {} : { note: `Coupon ${order.couponCode}: ₹${(order.discountPaise / 100).toFixed(2)} off the list price of ₹${(order.listPaise / 100).toFixed(2)}.` }),
+      });
   }
 
   #gatewayOrRefuse(): PaymentGateway {
@@ -120,18 +236,22 @@ export class PrepPlus {
     return this.#gateway;
   }
 
-  async checkout(site: PracticeSite, learner: Learner, productId: string) {
+  async checkout(
+    site: PracticeSite,
+    learner: Learner,
+    productId: string,
+    extra: { coupon?: string | undefined; name?: string | undefined; stateCode?: string | undefined; gstin?: string | undefined } = {},
+  ) {
     const gateway = this.#gatewayOrRefuse();
-    const settings = await this.#store.settings(practiceLearner(site.orgId, null));
-    const product = (await this.#store.products(practiceLearner(site.orgId, null))).find((p) => p.id === productId);
-    if (product === undefined) throw new PracticeError("not_found", "No such plan");
-    if (product.kind === "plus" && !settings.plusEnabled) throw new PracticeError("not_found", "No such plan");
+    const quote = await this.quote(site, learner, productId, extra.coupon);
+    const product = (await this.#store.products(practiceLearner(site.orgId, null))).find((p) => p.id === productId)!;
+    const buyer = this.#buyer(learner, extra);
     let order: { id: string };
     try {
       order = await gateway.createOrder({
-        amountPaise: product.pricePaise,
+        amountPaise: quote.pricePaise,
         receipt: `prep-${learner.id.slice(0, 20)}-${this.#now()}`.slice(0, 40),
-        notes: { kind: "prep", orgId: site.orgId, learnerId: learner.id, productId: product.id },
+        notes: { kind: "prep", orgId: site.orgId, learnerId: learner.id, productId: product.id, ...(quote.coupon === null ? {} : { coupon: quote.coupon }) },
       });
     } catch (error) {
       if (error instanceof GatewayUnavailable) throw new PracticeError("unavailable", "Payments are not reachable just now. Try again in a minute.");
@@ -143,11 +263,16 @@ export class PrepPlus {
       title: product.title,
       days: product.days,
       credits: product.credits,
-      amountPaise: product.pricePaise,
-      taxPaise: taxIn(product.pricePaise),
+      listPaise: quote.listPaise,
+      couponCode: quote.coupon,
+      discountPaise: quote.discountPaise,
+      amountPaise: quote.pricePaise,
+      taxPaise: quote.taxPaise,
+      ...buyer,
+      pass: product.kind === "company" ? "company" : "plus",
       gatewayOrderId: order.id,
     });
-    return { keyId: gateway.keyId, orderId: order.id, amountPaise: product.pricePaise, title: product.title, learner: { name: learner.name, email: learner.email } };
+    return { keyId: gateway.keyId, orderId: order.id, amountPaise: quote.pricePaise, title: product.title, learner: { name: learner.name, email: learner.email } };
   }
 
   /** Checkout came back: believed only if its signature checks out. */
@@ -156,7 +281,7 @@ export class PrepPlus {
     if (!gateway.verifyPayment(input.orderId, input.paymentId, input.signature)) throw new PracticeError("payment_invalid", "That payment could not be verified");
     const mine = (await this.#store.orders(practiceLearner(site.orgId, learner.id))).find((o) => o.gatewayOrderId === input.orderId);
     if (mine === undefined) throw new PracticeError("not_found", "No such order");
-    const paid = await this.#store.markPaid(site.orgId, input.orderId, input.paymentId, new Date(this.#now()));
+    const paid = await this.#store.markPaid(site.orgId, input.orderId, input.paymentId, new Date(this.#now()), this.#invoice());
     if (paid === null) throw new PracticeError("not_found", "No such order");
     return { order: paid.order, plus: await this.status(site, learner) };
   }
@@ -175,22 +300,36 @@ export class PrepPlus {
     const notes = order?.notes ?? payment?.notes ?? {};
     const orderId = order?.id ?? payment?.order_id;
     if (notes["kind"] !== "prep" || notes["orgId"] === undefined || orderId === undefined || payment?.id === undefined) return { handled: false };
-    const paid = await this.#store.markPaid(notes["orgId"] as OrgId, orderId, payment.id, new Date(this.#now()));
+    const paid = await this.#store.markPaid(notes["orgId"] as OrgId, orderId, payment.id, new Date(this.#now()), this.#invoice());
     return { handled: paid !== null };
   }
 
   async orders(site: PracticeSite, learner: Learner) {
-    return (await this.#store.orders(practiceLearner(site.orgId, learner.id))).map(({ id, title, days, credits, amountPaise, taxPaise, status, createdAt, paidAt }) => ({
+    const scope = practiceLearner(site.orgId, learner.id);
+    const [orders, invoices] = await Promise.all([this.#store.orders(scope), this.#store.invoices(scope)]);
+    const invoiceOf = new Map(invoices.map((i) => [i.orderId, i.number]));
+    return orders.map(({ id, title, days, credits, listPaise, couponCode, discountPaise, amountPaise, taxPaise, status, createdAt, paidAt }) => ({
       id,
       title,
       days,
       credits,
+      listPaise,
+      coupon: couponCode,
+      discountPaise,
       amountPaise,
       taxPaise,
       status,
       createdAt,
       paidAt,
+      invoice: invoiceOf.get(id) ?? null,
     }));
+  }
+
+  /** A learner's own invoice, to read and print. */
+  async invoice(site: PracticeSite, learner: Learner, number: string) {
+    const found = (await this.#store.invoices(practiceLearner(site.orgId, learner.id))).find((i) => i.number === number);
+    if (found === undefined) throw new PracticeError("not_found", "No such invoice");
+    return { number: found.number, issuedAt: found.issuedAt, document: found.document };
   }
 
   // --- staff ----------------------------------------------------------------------------------------
@@ -212,14 +351,14 @@ export class PrepPlus {
     const title = input.title.trim();
     if (title.length < 1 || title.length > 120) throw new PracticeError("invalid", "A plan's name is 1 to 120 characters");
     if (!Number.isInteger(input.pricePaise) || input.pricePaise < 100 || input.pricePaise > 100_000_000) throw new PracticeError("invalid", "A price is ₹1 to ₹10,00,000");
-    if (input.kind === "plus" && (!Number.isInteger(input.days) || input.days < 1 || input.days > 1100)) throw new PracticeError("invalid", "Plus lasts 1 to 1,100 days");
+    if (input.kind !== "credits" && (!Number.isInteger(input.days) || input.days < 1 || input.days > 1100)) throw new PracticeError("invalid", "A pass lasts 1 to 1,100 days");
     if (input.kind === "credits" && (!Number.isInteger(input.credits) || input.credits < 1 || input.days !== 0)) throw new PracticeError("invalid", "A credits pack has credits and no days");
     if (!Number.isInteger(input.credits) || input.credits < 0 || input.credits > 1_000_000) throw new PracticeError("invalid", "Credits are 0 to 1,000,000");
     const existing = await this.#store.products(practiceStaff(orgId));
     const saved = await this.#store.saveProduct(orgId, id, {
       title,
       kind: input.kind,
-      days: input.kind === "plus" ? input.days : 0,
+      days: input.kind === "credits" ? 0 : input.days,
       credits: input.credits,
       pricePaise: input.pricePaise,
       active: input.active,
@@ -244,6 +383,53 @@ export class PrepPlus {
   }
 
   async staffOrders(orgId: OrgId) {
-    return this.#store.orders(practiceStaff(orgId));
+    const [orders, invoices] = await Promise.all([this.#store.orders(practiceStaff(orgId)), this.#store.invoices(practiceStaff(orgId))]);
+    const invoiceOf = new Map(invoices.map((i) => [i.orderId, i.number]));
+    return orders.map((o) => ({ ...o, invoice: invoiceOf.get(o.id) ?? null }));
+  }
+
+  async staffInvoice(orgId: OrgId, number: string) {
+    const found = (await this.#store.invoices(practiceStaff(orgId))).find((i) => i.number === number);
+    if (found === undefined) throw new PracticeError("not_found", "No such invoice");
+    return { number: found.number, issuedAt: found.issuedAt, document: found.document };
+  }
+
+  // --- coupons -------------------------------------------------------------------------------------
+
+  async coupons(orgId: OrgId) {
+    return this.#store.coupons(orgId);
+  }
+
+  /** Make a coupon (create) or change one; its code never changes. */
+  async saveCoupon(
+    orgId: OrgId,
+    input: { code: string; kind: "percent" | "flat"; value: number; productId?: string | null | undefined; maxUses?: number | null | undefined; endsAt?: string | null | undefined; affiliate?: string | undefined; active?: boolean | undefined },
+    create: boolean,
+  ): Promise<PrepCoupon> {
+    const code = normaliseCode(input.code);
+    if (!COUPON.test(code)) throw new PracticeError("invalid", "A code is 3 to 30 letters, digits and dashes");
+    if (!Number.isInteger(input.value) || input.value < 1) throw new PracticeError("invalid", "A coupon takes off a whole number");
+    if (input.kind === "percent" && input.value > 90) throw new PracticeError("invalid", "A coupon takes off 1% to 90%");
+    if (input.kind === "flat" && input.value > 100_000_000) throw new PracticeError("invalid", "A coupon takes off at most ₹10,00,000");
+    const productId = input.productId ?? null;
+    if (productId !== null && !(await this.#store.products(practiceStaff(orgId))).some((p) => p.id === productId)) throw new PracticeError("not_found", "No such plan");
+    const maxUses = input.maxUses ?? null;
+    if (maxUses !== null && (!Number.isInteger(maxUses) || maxUses < 1 || maxUses > 1_000_000)) throw new PracticeError("invalid", "Uses are 1 to 1,000,000, or unlimited");
+    const endsAt = input.endsAt ?? null;
+    if (endsAt !== null && Number.isNaN(Date.parse(endsAt))) throw new PracticeError("invalid", "That end date is not a date");
+    const affiliate = (input.affiliate ?? "").trim();
+    if (affiliate.length > 120) throw new PracticeError("invalid", "An affiliate's name is at most 120 characters");
+    try {
+      const saved = await this.#store.saveCoupon(
+        orgId,
+        { code, kind: input.kind, value: input.value, productId, maxUses, endsAt: endsAt === null ? null : new Date(endsAt).toISOString(), affiliate, active: input.active ?? true },
+        create,
+      );
+      if (saved === null) throw new PracticeError("not_found", "No such coupon");
+      return saved;
+    } catch (error) {
+      if (error instanceof CouponTaken) throw new PracticeError("slug_taken", "A coupon with that code exists");
+      throw error;
+    }
   }
 }

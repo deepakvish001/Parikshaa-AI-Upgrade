@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Crown, Flame, ListChecks, Lock, NotebookPen, Play, Plus, Repeat, Square, Target, Timer } from "lucide-react";
+import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Crown, Flame, ListChecks, Lock, NotebookPen, Play, Plus, Printer, Repeat, Sparkles, Square, Target, Timer } from "lucide-react";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
 import type { Grade, Level, Note, NoteKind, PlanInput, PlanTask, Reward } from "./client.ts";
-import { loadCheckout, type RazorpayConstructor } from "./checkout.ts";
 import { LessonDoubt } from "./Tutor.tsx";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context } from "./parts.tsx";
 import { usePrepText, type PrepKey } from "./prep-text.ts";
@@ -53,6 +52,37 @@ function Failed({ error }: { readonly error: unknown }) {
   );
 }
 
+/** "Aaj chhutti": today off, the streak kept. */
+function DayOff({ client, site, frozen, left }: { readonly client: Context["client"]; readonly site: string; readonly frozen: boolean; readonly left: number }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const [asking, setAsking] = useState(false);
+  const off = useMutation({
+    mutationFn: () => client.freezeToday(),
+    onSuccess: () => {
+      setAsking(false);
+      void queryClient.invalidateQueries({ queryKey: key(site) });
+    },
+  });
+  if (frozen) return <span className="stat-chip">{p("freeze.today")}</span>;
+  if (left === 0) return null;
+  return asking ? (
+    <span className="stat-chip">
+      {p("freeze.confirm", { n: left })}{" "}
+      <button type="button" className="link-button" disabled={off.isPending} onClick={() => off.mutate()}>
+        {p("freeze.yes")}
+      </button>{" "}
+      <button type="button" className="link-button" onClick={() => setAsking(false)}>
+        ✕
+      </button>
+    </span>
+  ) : (
+    <button type="button" className="stat-chip link-button" onClick={() => setAsking(true)} aria-label={p("freeze.ask", { n: left })}>
+      {p("freeze.button")}
+    </button>
+  );
+}
+
 // --- the dashboard -------------------------------------------------------------------------
 
 export function HomePage({ client, nav, learner, site }: Signed) {
@@ -81,6 +111,7 @@ export function HomePage({ client, nav, learner, site }: Signed) {
           <span className="stat-chip streak-chip">
             <Flame aria-hidden="true" /> {p("home.streak", { n: h.streak })}
           </span>
+          <DayOff client={client} site={site} frozen={h.frozenToday} left={h.freezesLeft} />
           <Link nav={nav} to="/coins" className="stat-chip">
             <Coins aria-hidden="true" /> {p("home.coins", { n: h.coins.toLocaleString("en-IN") })}
           </Link>
@@ -148,6 +179,7 @@ export function HomePage({ client, nav, learner, site }: Signed) {
               </Link>
             ) : null}
           </section>
+          <TargetsCard client={client} nav={nav} site={site} learner={learner} />
           <section className="card prep-figures" aria-label={p("home.focus")}>
             <div>
               <span className="prep-figure">{h.focusMinutesToday}</span>
@@ -449,6 +481,15 @@ export function NoteEditor({ client, site, kind, refId }: { readonly client: Con
     },
   });
   const value = body ?? note.data?.body ?? "";
+  const { language } = usePreferences();
+  // A draft goes into the box, after anything already written; saving stays the learner's.
+  const draft = useMutation({
+    mutationFn: () => client.notesDraft(kind === "problem" ? { problem: refId } : { lesson: refId }, language === "hi" ? "hi" : "en"),
+    onSuccess: (answer) => {
+      setBody(value.trim() === "" ? answer.answer : `${value.trimEnd()}\n\n${answer.answer}`);
+      save.reset();
+    },
+  });
   const submit = (e: FormEvent) => {
     e.preventDefault();
     save.mutate(value);
@@ -473,8 +514,15 @@ export function NoteEditor({ client, site, kind, refId }: { readonly client: Con
         <button type="submit" className="secondary" disabled={save.isPending || note.isPending}>
           {p("notes.save")}
         </button>
+        {kind === "topic" ? null : (
+          <button type="button" className="secondary" disabled={draft.isPending} onClick={() => draft.mutate()}>
+            <Sparkles aria-hidden="true" /> {p("notes.draft")}
+          </button>
+        )}
         {save.isSuccess ? <span className="notice">{p("notes.saved")}</span> : null}
+        {draft.isSuccess && !save.isSuccess ? <span className="notice" role="status">{p("notes.drafted")}</span> : null}
         {save.isError ? <Failed error={save.error} /> : null}
+        {draft.isError ? <Failed error={draft.error} /> : null}
       </div>
     </form>
   );
@@ -508,6 +556,7 @@ export function NotesPage({ client, nav, learner, site }: Signed) {
         </button>
       </form>
       {editing === null ? null : <NoteEditor key={editing} client={client} site={site} kind="topic" refId={editing} />}
+      <PrintPicker client={client} nav={nav} site={site} learner={learner} />
       {notes.isPending ? (
         <Loading />
       ) : notes.isError ? (
@@ -754,6 +803,55 @@ export function PlanPage({ client, nav, learner, site, track: wanted }: Signed &
   );
 }
 
+/** The companies the learner aims for, and how ready they are for each. */
+function TargetsCard({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const targets = useQuery({ queryKey: key(site, "targets", learner.id), queryFn: () => client.targets() });
+  if (targets.data === undefined || targets.data.length === 0) return null;
+  return (
+    <section className="card" aria-labelledby="targets-title">
+      <h2 id="targets-title">{p("home.targets")}</h2>
+      <ul className="item-list">
+        {targets.data.map((t) => (
+          <li key={t.slug}>
+            <Link nav={nav} to={`/companies/${t.slug}`}>
+              {t.name}
+            </Link>{" "}
+            <span className="notice">{p("home.ready", { ...t.readiness })}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Pick the companies to aim for while planning: optional, saved as each box is ticked. */
+function TargetPicker({ client, site, learner }: Pick<Signed, "client" | "site" | "learner">) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const companies = useQuery({ queryKey: key(site, "company-names"), queryFn: () => client.companies() });
+  const targets = useQuery({ queryKey: key(site, "targets", learner.id), queryFn: () => client.targets() });
+  const aim = useMutation({
+    mutationFn: ({ slug, on }: { slug: string; on: boolean }) => client.setTarget(slug, on),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key(site, "targets") }),
+  });
+  if (companies.data === undefined || companies.data.length === 0 || targets.data === undefined) return null;
+  const aimed = new Set(targets.data.map((t) => t.slug));
+  return (
+    <fieldset>
+      <legend>{p("plan.targets")}</legend>
+      <div className="weekday-row">
+        {companies.data.map((c) => (
+          <label key={c.slug} className="check-row">
+            <input type="checkbox" checked={aimed.has(c.slug)} disabled={aim.isPending} onChange={(e) => aim.mutate({ slug: c.slug, on: e.target.checked })} /> {c.name}
+          </label>
+        ))}
+      </div>
+      {aim.isError ? <Failed error={aim.error} /> : null}
+    </fieldset>
+  );
+}
+
 function PlanSetup({ client, nav, learner, site, track: wanted }: Signed & { readonly track: string | undefined }) {
   const p = usePrepText();
   const day = useDay();
@@ -826,6 +924,7 @@ function PlanSetup({ client, nav, learner, site, track: wanted }: Signed & { rea
               ))}
             </div>
           </fieldset>
+          <TargetPicker client={client} site={site} learner={learner} />
           <label htmlFor="plan-goal">{p("plan.goal")}</label>
           <input id="plan-goal" value={goal} maxLength={200} placeholder={p("plan.goalPlaceholder")} onChange={(e) => setGoal(e.target.value)} />
           <button type="submit" disabled={preview.isPending || input.track === ""}>
@@ -949,6 +1048,15 @@ function PlanView({ client, nav, learner, site }: Signed) {
                   <span className="notice">
                     {s.done}/{s.tasks} · {day(s.from)}–{day(s.to)}
                   </span>
+                  <span className="sprint-links">
+                    <Link nav={nav} to={`/sprints/${s.sprint}/quiz`}>
+                      {p("sprint.quiz")}
+                    </Link>{" "}
+                    ·{" "}
+                    <Link nav={nav} to={`/sprints/${s.sprint}/notes`}>
+                      {p("sprint.notes")}
+                    </Link>
+                  </span>
                 </li>
               ))}
             </ol>
@@ -978,6 +1086,7 @@ function PlanView({ client, nav, learner, site }: Signed) {
         </section>
         <FocusTimer client={client} site={site} learner={learner} tasks={pl.today.filter((t) => !t.done)} />
       </div>
+      <ReminderCard client={client} site={site} learner={learner} />
 
       <div className="danger-zone">
         {confirmStop ? (
@@ -997,6 +1106,248 @@ function PlanView({ client, nav, learner, site }: Signed) {
         )}
       </div>
     </div>
+  );
+}
+
+/** The daily email: off until turned on, at an hour of the learner's choosing. */
+function ReminderCard({ client, site, learner }: { readonly client: Context["client"]; readonly site: string; readonly learner: Signed["learner"] }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const k = key(site, "reminders", learner.id);
+  const prefs = useQuery({ queryKey: k, queryFn: () => client.reminders() });
+  const save = useMutation({
+    mutationFn: (next: { enabled: boolean; hour: number }) => client.saveReminders(next),
+    onSuccess: (saved) => queryClient.setQueryData(k, { ...prefs.data, ...saved }),
+  });
+  if (prefs.data === undefined || !prefs.data.email) return null;
+  const r = prefs.data;
+  return (
+    <section className="card reminder-card" aria-labelledby="reminder-title">
+      <h2 id="reminder-title">{p("reminder.title")}</h2>
+      <label className="check">
+        <input type="checkbox" checked={r.enabled} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: e.target.checked, hour: r.hour })} /> {p("reminder.on")}
+      </label>
+      <label>
+        {p("reminder.at")}{" "}
+        <select value={r.hour} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: r.enabled, hour: Number(e.target.value) })}>
+          {Array.from({ length: 24 }, (_, h) => (
+            <option key={h} value={h}>
+              {`${String(h).padStart(2, "0")}:00`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="notice">{p("reminder.hint")}</p>
+      {save.isError ? <Failed error={save.error} /> : null}
+    </section>
+  );
+}
+
+/** A sprint's quiz: choice and number questions, handed in together. */
+export function SprintQuizPage({ client, nav, learner, site, sprint }: Signed & { readonly sprint: number }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const quiz = useQuery({ queryKey: key(site, "quiz", learner.id, sprint), queryFn: () => client.sprintQuiz(sprint) });
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const hand = useMutation({
+    mutationFn: () => client.takeSprintQuiz(sprint, answers),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: key(site) }),
+  });
+  if (quiz.isPending) return <Loading />;
+  if (quiz.isError) return <Failed error={quiz.error} />;
+  const q = quiz.data;
+  const result = hand.data;
+  return (
+    <div className="prep-page">
+      <header className="prep-head">
+        <div>
+          <h1>{p("sprint.quizTitle", { n: sprint })}</h1>
+          <p className="notice">{p("sprint.quizHint", { pass: q.passPercent })}</p>
+        </div>
+        <Link nav={nav} to="/plan">
+          ← {p("plan.title")}
+        </Link>
+      </header>
+      {q.count === 0 ? (
+        <p className="notice">{p("sprint.noQuestions")}</p>
+      ) : !q.open ? (
+        <p className="notice">{p("sprint.notYet")}</p>
+      ) : (
+        <form
+          className="card quiz-form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            hand.mutate();
+          }}
+        >
+          {q.questions.map((item, i) => (
+            <fieldset key={item.slug} className={result === undefined ? "" : result.wrong.includes(item.slug) ? "wrong" : "right"}>
+              <legend>
+                {i + 1}. <Markdown source={item.question.stem} />
+              </legend>
+              {item.question.kind === "mcq" ? (
+                (item.question.options ?? []).map((option, j) => (
+                  <label key={j} className="check">
+                    <input type="radio" name={item.slug} value={String(j)} checked={answers[item.slug] === String(j)} onChange={() => setAnswers({ ...answers, [item.slug]: String(j) })} />{" "}
+                    {option}
+                  </label>
+                ))
+              ) : (
+                <input aria-label={item.title} inputMode="decimal" value={answers[item.slug] ?? ""} onChange={(e) => setAnswers({ ...answers, [item.slug]: e.target.value })} />
+              )}
+            </fieldset>
+          ))}
+          <button type="submit" disabled={hand.isPending}>
+            {p("sprint.handIn")}
+          </button>
+          {hand.isError ? <Failed error={hand.error} /> : null}
+        </form>
+      )}
+      {result === undefined ? null : (
+        <p className={`alert ${result.passed ? "ok" : "warn"}`} role="status">
+          {result.passed ? p("sprint.passed", { score: result.score, total: result.total }) : p("sprint.failed", { score: result.score, total: result.total, n: result.revise })}
+        </p>
+      )}
+      <RewardNote reward={result?.reward} />
+      {q.sittings.length === 0 ? null : (
+        <section className="card">
+          <h2>{p("sprint.sittings")}</h2>
+          <ul>
+            {q.sittings.map((s) => (
+              <li key={s.takenAt}>
+                {s.score}/{s.total} {s.passed ? "✓" : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** A sprint's revision notes: the learner's own notes on its lessons and problems, to read or print. */
+export function SprintNotesPage({ client, nav, learner, site, sprint }: Signed & { readonly sprint: number }) {
+  const p = usePrepText();
+  const notes = useQuery({ queryKey: key(site, "sprint-notes", learner.id, sprint), queryFn: () => client.sprintNotes(sprint) });
+  if (notes.isPending) return <Loading />;
+  if (notes.isError) return <Failed error={notes.error} />;
+  return (
+    <article className="prep-page sprint-notes" aria-label={p("sprint.notesTitle", { n: sprint })}>
+      <header className="prep-head">
+        <h1>{p("sprint.notesTitle", { n: sprint })}</h1>
+        <button type="button" className="secondary no-print" onClick={() => window.print()}>
+          {p("plus.print")}
+        </button>
+      </header>
+      {notes.data.items.map((item) => (
+        <section key={`${item.kind}:${item.slug}`} className="card">
+          <h2>
+            <Link nav={nav} to={item.kind === "problem" ? `/problems/${item.slug}` : `/lessons/${item.slug}`}>
+              {item.title}
+            </Link>
+          </h2>
+          {item.note === null ? <p className="notice">{p("sprint.noNote")}</p> : <Markdown source={item.note} />}
+        </section>
+      ))}
+    </article>
+  );
+}
+
+/** Pick a track whose notes to print. */
+function PrintPicker({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const tracks = useQuery({ queryKey: key(site, "tracks", learner.id), queryFn: () => client.tracks() });
+  const [track, setTrack] = useState("");
+  const chosen = track || tracks.data?.[0]?.slug || "";
+  if (tracks.data === undefined || tracks.data.length === 0) return null;
+  return (
+    <div className="card inline-form no-print">
+      <label htmlFor="print-track">{p("notes.print")}</label>
+      <select id="print-track" value={chosen} onChange={(e) => setTrack(e.target.value)}>
+        {tracks.data.map((t) => (
+          <option key={t.slug} value={t.slug}>
+            {t.title}
+          </option>
+        ))}
+      </select>
+      <Link nav={nav} to={`/notes/print?track=${encodeURIComponent(chosen)}`} className="button secondary">
+        <Printer aria-hidden="true" /> {p("notes.printGo")}
+      </Link>
+    </div>
+  );
+}
+
+/** A track's notes on one page, module by module: printed, or saved as a PDF by the browser. */
+export function NoteBookPage({ client, nav, learner, site, track }: Signed & { readonly track: string | undefined }) {
+  const p = usePrepText();
+  const book = useQuery({ queryKey: key(site, "note-book", learner.id, track), queryFn: () => client.noteBook(track!), enabled: track !== undefined });
+  if (track === undefined) return <Failed error={new Error(p("common.failed"))} />;
+  if (book.isPending) return <Loading />;
+  if (book.isError) return <Failed error={book.error} />;
+  const b = book.data;
+  return (
+    <article className="prep-page sprint-notes" aria-label={b.track.title}>
+      <header className="prep-head">
+        <div>
+          <h1>{b.track.title}</h1>
+          <p className="notice">{p("notes.title")}</p>
+        </div>
+        <button type="button" className="secondary no-print" onClick={() => window.print()}>
+          <Printer aria-hidden="true" /> {p("plus.print")}
+        </button>
+      </header>
+      {b.modules.length === 0 && b.topics.length === 0 ? <p className="notice">{p("notes.bookEmpty")}</p> : null}
+      {b.modules.map((m) => (
+        <section key={m.title} className="card">
+          <h2>{m.title}</h2>
+          {m.notes.map((n) => (
+            <div key={`${n.kind}:${n.slug}`}>
+              <h3>
+                <Link nav={nav} to={n.kind === "problem" ? `/problems/${n.slug}` : `/lessons/${n.slug}`}>
+                  {n.title}
+                </Link>
+              </h3>
+              <Markdown source={n.body} />
+            </div>
+          ))}
+        </section>
+      ))}
+      {b.topics.length === 0 ? null : (
+        <section className="card">
+          <h2>{p("notes.topics")}</h2>
+          {b.topics.map((t) => (
+            <div key={t.title}>
+              <h3>{t.title}</h3>
+              <Markdown source={t.body} />
+            </div>
+          ))}
+        </section>
+      )}
+    </article>
+  );
+}
+
+/** Where a reminder email's "stop" link lands: turns the reminder off, no sign-in needed. */
+export function RemindersOffPage({ client, nav, token }: Context & { readonly token: string | undefined }) {
+  const p = usePrepText();
+  const off = useMutation({ mutationFn: (t: string) => client.turnOffReminders(t) });
+  useEffect(() => {
+    if (token !== undefined && off.isIdle) off.mutate(token);
+  }, [token, off]);
+  return (
+    <section className="card">
+      <h1>{p("reminder.title")}</h1>
+      {token === undefined || off.isError ? (
+        <p className="error" role="alert">{p("reminder.badLink")}</p>
+      ) : off.isSuccess ? (
+        <p role="status">{p("reminder.stopped")}</p>
+      ) : (
+        <p className="notice">{p("common.loading")}</p>
+      )}
+      <Link nav={nav} to="/plan">
+        {p("reminder.toPlan")}
+      </Link>
+    </section>
   );
 }
 
@@ -1210,126 +1561,6 @@ export function CoinsPage({ client, nav, learner, site }: Signed) {
           </ol>
         </section>
       </div>
-    </div>
-  );
-}
-
-// --- Plus -----------------------------------------------------------------------------------------------
-
-const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-
-export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }: Context & { readonly checkout?: () => Promise<RazorpayConstructor> }) {
-  const p = usePrepText();
-  const day = useDay();
-  const when = useWhen();
-  const queryClient = useQueryClient();
-  const plus = useQuery({ queryKey: key(site, "plus", learner?.id ?? null), queryFn: () => client.plus() });
-  const credits = useQuery({ queryKey: key(site, "credits"), queryFn: () => client.credits(), enabled: learner !== null });
-  const orders = useQuery({ queryKey: key(site, "orders", learner?.id ?? null), queryFn: () => client.orders(), enabled: learner !== null });
-  const [outcome, setOutcome] = useState<"paid" | "failed" | null>(null);
-  const buy = useMutation({
-    mutationFn: async (productId: string) => {
-      const [order, Razorpay] = await Promise.all([client.checkout(productId), checkout()]);
-      await new Promise<void>((resolve, reject) => {
-        const rz = new Razorpay({
-          key: order.keyId,
-          order_id: order.orderId,
-          amount: order.amountPaise,
-          currency: "INR",
-          name: order.title,
-          prefill: { name: order.learner.name, email: order.learner.email },
-          handler: (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-            client.confirmPayment(r.razorpay_order_id, r.razorpay_payment_id, r.razorpay_signature).then(() => resolve(), reject);
-          },
-          modal: { ondismiss: () => reject(new Error("dismissed")) },
-        });
-        rz.on("payment.failed", () => reject(new Error("failed")));
-        rz.open();
-      });
-    },
-    onSuccess: () => {
-      setOutcome("paid");
-      void queryClient.invalidateQueries({ queryKey: ["practice", site] });
-    },
-    onError: () => setOutcome("failed"),
-  });
-  if (plus.isPending) return <Loading />;
-  if (plus.isError) return <Failed error={plus.error} />;
-  const o = plus.data;
-  return (
-    <div className="prep-page">
-      <header className="prep-head">
-        <div>
-          <h1>
-            <Crown aria-hidden="true" /> {p("plus.title")}
-          </h1>
-          <p className="notice">{o.enabled ? p("plus.hint") : p("plus.off")}</p>
-        </div>
-        {o.enabled && learner !== null ? (
-          <span className={`pill ${o.active ? "ok" : ""}`}>{o.active && o.until !== null ? p("plus.active", { date: day(o.until.slice(0, 10)) }) : p("plus.none")}</span>
-        ) : null}
-      </header>
-      {outcome === "paid" ? <p className="alert ok" role="status">{p("plus.paid")}</p> : outcome === "failed" ? <p className="alert warn" role="alert">{p("plus.failed")}</p> : null}
-      {o.products.length === 0 ? null : (
-        <div className="track-cards">
-          {o.products.map((product) => (
-            <section key={product.id} className="card plan-card" aria-label={product.title}>
-              <h2>{product.title}</h2>
-              <p className="price">{rupees(product.pricePaise)}</p>
-              <p className="notice">{p("plus.gst")}</p>
-              <ul>
-                {product.days > 0 ? <li>{p("plus.days", { n: product.days })}</li> : null}
-                {product.credits > 0 ? <li>{p("plus.credits", { n: product.credits.toLocaleString("en-IN") })}</li> : null}
-              </ul>
-              {learner === null ? (
-                <SignInNeeded nav={nav} next="/plus" />
-              ) : o.checkout ? (
-                <button type="button" disabled={buy.isPending} onClick={() => { setOutcome(null); buy.mutate(product.id); }}>
-                  {p("plus.buy", { price: rupees(product.pricePaise) })}
-                </button>
-              ) : (
-                <p className="notice">{p("plus.noCheckout")}</p>
-              )}
-            </section>
-          ))}
-        </div>
-      )}
-      {learner === null ? null : (
-        <div className="plan-layout">
-          <section className="card" aria-labelledby="credits-title">
-            <h2 id="credits-title">{p("credits.title")}</h2>
-            <p className="coin-balance">{p("credits.balance", { n: credits.data?.balance ?? 0 })}</p>
-            {o.monthlyCredits > 0 ? <p className="notice">{p("credits.monthly", { n: o.monthlyCredits })}</p> : null}
-            <ul className="coin-history">
-              {(credits.data?.history ?? []).map((h, i) => (
-                <li key={`${h.at}-${i}`}>
-                  <span>{p(`credits.reason.${h.reason}` as PrepKey)}</span>
-                  <span className="notice">{when(h.at)}</span>
-                  <strong className={h.delta > 0 ? "plus" : "minus"}>
-                    {h.delta > 0 ? "+" : ""}
-                    {h.delta}
-                  </strong>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section className="card" aria-labelledby="orders-title">
-            <h2 id="orders-title">{p("plus.orders")}</h2>
-            {(orders.data ?? []).every((x) => x.status !== "paid") ? <p className="notice">{p("plus.noOrders")}</p> : null}
-            <ul className="coin-history">
-              {(orders.data ?? [])
-                .filter((x) => x.status === "paid")
-                .map((x) => (
-                  <li key={x.id}>
-                    <span>{x.title}</span>
-                    <span className="notice">{x.paidAt === null ? "" : when(x.paidAt)}</span>
-                    <strong>{rupees(x.amountPaise)}</strong>
-                  </li>
-                ))}
-            </ul>
-          </section>
-        </div>
-      )}
     </div>
   );
 }

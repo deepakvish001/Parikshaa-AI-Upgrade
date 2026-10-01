@@ -94,7 +94,7 @@ async function main(): Promise<void> {
   // The pilot report each morning goes where new sign-ups are announced; PILOT_REPORT=off keeps it quiet.
   const pilotReportTo = process.env["PILOT_REPORT"] === "off" ? null : process.env["SIGNUP_NOTIFY_EMAIL"] || null;
 
-  const { app, worker, privacy, billing, identity, dailyReport } = assemble({
+  const { app, worker, privacy, billing, identity, dailyReport, prepEngage } = assemble({
     signup,
     pilotReportTo,
     sql,
@@ -195,6 +195,21 @@ async function main(): Promise<void> {
     setTimeout(check, 90_000).unref();
   }
 
+  // Learners' daily reminders (Prep blueprint F2): checked every quarter hour
+  // for the hour's; each learner is taken once a day, so several instances
+  // and restarts send each reminder once.
+  let reminding: ReturnType<typeof setInterval> | undefined;
+  if (process.env["REMINDER_WORKER"] !== "off") {
+    const remind = () =>
+      identity
+        .organisationIds()
+        .then((orgs) => prepEngage.queueDue(orgs))
+        .then((queued) => (queued > 0 ? app.log.info({ queued }, "learner reminders") : undefined))
+        .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "learner reminders failed"));
+    reminding = setInterval(remind, 15 * 60 * 1000);
+    setTimeout(remind, 150_000).unref();
+  }
+
   const port = Number.parseInt(process.env["PORT"] ?? "3000", 10);
   await app.listen({ port, host: "0.0.0.0" });
   app.log.info({ port }, "listening");
@@ -205,6 +220,7 @@ async function main(): Promise<void> {
       clearInterval(retaining);
       clearInterval(invoicing);
       clearInterval(reporting);
+      clearInterval(reminding);
       void app.close().then(() => sql.end()).then(() => process.exit(0));
     });
   }

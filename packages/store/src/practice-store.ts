@@ -444,7 +444,9 @@ export class PracticeStore {
       // interview write-up stays for others to read, under no one's name.
       await tx.query(`DELETE FROM prep_notes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_tutor WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_reminders WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_experience_votes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_targets WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`UPDATE prep_store_orders SET address = '' WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`UPDATE prep_experiences SET author_name = 'Anonymous' WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
     }, { "parikshaa.org_id": orgId, "parikshaa.actor": "staff", "parikshaa.attempt_id": "", "parikshaa.learner_id": "" });

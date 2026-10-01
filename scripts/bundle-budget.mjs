@@ -21,8 +21,13 @@ for (const [dir, patterns] of Object.entries(budgets)) {
   const assets = join(dir, "assets");
   const files = readdirSync(assets).filter((f) => /\.(js|css)$/.test(f));
   const claimed = new Set();
+  // A file is held to the most specific pattern it matches: `prep-text-*.js`, not `prep-*.js`.
+  const ownerOf = (file) =>
+    Object.keys(patterns)
+      .filter((p) => glob(p).test(file))
+      .sort((a, b) => b.length - a.length)[0];
   for (const [pattern, kb] of Object.entries(patterns)) {
-    const matching = files.filter((f) => glob(pattern).test(f));
+    const matching = files.filter((f) => glob(pattern).test(f) && ownerOf(f) === pattern);
     if (matching.length === 0) {
       console.error(`✗ ${dir}: nothing matches ${pattern}`);
       failed = true;

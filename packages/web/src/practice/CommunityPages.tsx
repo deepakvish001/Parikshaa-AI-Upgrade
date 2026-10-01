@@ -74,7 +74,11 @@ export function CompanyPage({ client, nav, learner, site, slug }: Context & { re
   const c = useCommunityText();
   const when = useWhen();
   const [span, setSpan] = useState<CompanyWindow>("60");
+  const queries = useQueryClient();
   const page = useQuery({ queryKey: key(site, "company", slug, span, learner?.id ?? null), queryFn: () => client.company(slug, span) });
+  const refresh = () => queries.invalidateQueries({ queryKey: key(site, "company", slug) });
+  const aim = useMutation({ mutationFn: (on: boolean) => client.setTarget(slug, on), onSuccess: refresh });
+  const start = useMutation({ mutationFn: () => client.startCompanyList(slug), onSuccess: refresh });
   if (page.isPending) return <Loading />;
   if (page.isError) return <Failed error={page.error} />;
   const data = page.data;
@@ -90,6 +94,34 @@ export function CompanyPage({ client, nav, learner, site, slug }: Context & { re
           {c("company.write")}
         </Link>
       </header>
+      {learner === null || data.readiness === null ? null : (
+        <section className="card company-ready" aria-label={c("company.ready.title")}>
+          <p>
+            <strong>{c("company.ready", { solved: data.readiness.solved, of: data.readiness.of, percent: data.readiness.percent })}</strong>
+          </p>
+          <div className="meter" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={data.readiness.percent} aria-label={c("company.ready.title")}>
+            <span style={{ width: `${data.readiness.percent}%` }} />
+          </div>
+          <div className="actions">
+            <button type="button" className={data.target ? "secondary" : ""} aria-pressed={data.target} disabled={aim.isPending} onClick={() => aim.mutate(!data.target)}>
+              {data.target ? c("company.aiming") : c("company.aim")}
+            </button>
+            <button type="button" className="secondary" disabled={start.isPending} onClick={() => start.mutate()}>
+              {c("company.start")}
+            </button>
+          </div>
+          {start.data === undefined ? null : (
+            <p className="notice" role="status">
+              {c("company.started", { n: start.data.added, list: start.data.list })}{" "}
+              {start.data.locked > 0 ? c("company.startLocked", { n: start.data.locked }) : null}{" "}
+              <Link nav={nav} to="/lists">
+                {c("company.openLists")}
+              </Link>
+            </p>
+          )}
+          {aim.isError || start.isError ? <Failed error={aim.error ?? start.error} /> : null}
+        </section>
+      )}
       <div className="window-row" role="radiogroup" aria-label={c("company.window")}>
         {WINDOWS.map((w) => (
           <button key={w} type="button" role="radio" aria-checked={span === w} className={span === w ? "chip on" : "chip"} onClick={() => setSpan(w)}>

@@ -15,6 +15,7 @@ import {
   asSubmitOutcome,
   loadToken,
   PracticeClient,
+  saveRef,
   saveToken,
   type Contest,
   type ContestSummary,
@@ -46,7 +47,13 @@ const CoinsPage = lazy(() => prep().then((m) => ({ default: m.CoinsPage })));
 const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
 const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
-const PlusPage = lazy(() => prep().then((m) => ({ default: m.PlusPage })));
+const plusPages = () => import("./PlusPages.tsx");
+const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
+const SprintQuizPage = lazy(() => prep().then((m) => ({ default: m.SprintQuizPage })));
+const SprintNotesPage = lazy(() => prep().then((m) => ({ default: m.SprintNotesPage })));
+const NoteBookPage = lazy(() => prep().then((m) => ({ default: m.NoteBookPage })));
+const RemindersOffPage = lazy(() => prep().then((m) => ({ default: m.RemindersOffPage })));
+const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
 const community = () => import("./CommunityPages.tsx");
 const CompaniesPage = lazy(() => community().then((m) => ({ default: m.CompaniesPage })));
 const CompanyPage = lazy(() => community().then((m) => ({ default: m.CompanyPage })));
@@ -80,9 +87,13 @@ export type Route =
   | { readonly page: "revise" }
   | { readonly page: "lists" }
   | { readonly page: "notes" }
+  | { readonly page: "notebook"; readonly track: string | undefined }
   | { readonly page: "potd" }
   | { readonly page: "coins" }
   | { readonly page: "plus" }
+  | { readonly page: "invoice"; readonly number: string }
+  | { readonly page: "reminders"; readonly token: string | undefined }
+  | { readonly page: "sprint"; readonly sprint: number; readonly view: "quiz" | "notes" }
   | { readonly page: "companies" }
   | { readonly page: "company"; readonly slug: string }
   | { readonly page: "experiences"; readonly company: string | undefined }
@@ -100,7 +111,7 @@ export function siteOf(pathname: string): string | null {
 export function parseRoute(pathname: string, search: string): Route {
   const rest = pathname.replace(/^\/practice\/[^/]+/, "").replace(/\/+$/, "");
   const query = new URLSearchParams(search);
-  const [, first, second] = rest.split("/").map(decodeURIComponent);
+  const [, first, second, third] = rest.split("/").map(decodeURIComponent);
   const next = query.get("next") ?? undefined;
   switch (first) {
     case "problems":
@@ -124,13 +135,19 @@ export function parseRoute(pathname: string, search: string): Route {
     case "lists":
       return { page: "lists" };
     case "notes":
-      return { page: "notes" };
+      return second === "print" ? { page: "notebook", track: query.get("track") ?? undefined } : { page: "notes" };
     case "potd":
       return { page: "potd" };
     case "coins":
       return { page: "coins" };
     case "plus":
       return { page: "plus" };
+    case "sprints":
+      return /^\d+$/.test(second ?? "") && (third === "quiz" || third === "notes") ? { page: "sprint", sprint: Number(second), view: third } : { page: "plan", track: undefined };
+    case "reminders":
+      return { page: "reminders", token: query.get("off") ?? undefined };
+    case "invoices":
+      return second === undefined ? { page: "plus" } : { page: "invoice", number: second };
     case "companies":
       return second === undefined ? { page: "companies" } : { page: "company", slug: second };
     case "experiences":
@@ -167,9 +184,13 @@ function arrival(site: string): { session: string | null; verify: string | null;
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(window.location.search);
   const found = { session: hash.get("session"), verify: query.get("verify"), signinError: query.get("signin_error") };
-  if (found.session !== null || found.verify !== null || found.signinError !== null) {
+  // An affiliate's link: its coupon waits for checkout.
+  const ref = query.get("ref");
+  if (ref !== null && /^[A-Za-z0-9][A-Za-z0-9-]{2,29}$/.test(ref)) saveRef(site, ref.toUpperCase());
+  if (found.session !== null || found.verify !== null || found.signinError !== null || ref !== null) {
     query.delete("verify");
     query.delete("signin_error");
+    query.delete("ref");
     const rest = query.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${rest === "" ? "" : `?${rest}`}`);
   }
@@ -384,6 +405,10 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <LessonPage {...context} slug={route.slug} />
         ) : route.page === "potd" ? (
           <PotdPage {...context} />
+        ) : route.page === "reminders" ? (
+          <RemindersOffPage {...context} token={route.token} />
+        ) : route.page === "invoice" ? (
+          <InvoicePage {...context} number={route.number} />
         ) : route.page === "plus" ? (
           <PlusPage {...context} />
         ) : route.page === "companies" ? (
@@ -396,19 +421,27 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
-        ) : route.page === "home" || route.page === "plan" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "coins" ? (
+        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
           ) : route.page === "home" ? (
             <HomePage {...context} learner={learner} />
           ) : route.page === "plan" ? (
             <PlanPage {...context} learner={learner} track={route.track} />
+          ) : route.page === "sprint" ? (
+            route.view === "quiz" ? (
+              <SprintQuizPage {...context} learner={learner} sprint={route.sprint} />
+            ) : (
+              <SprintNotesPage {...context} learner={learner} sprint={route.sprint} />
+            )
           ) : route.page === "revise" ? (
             <RevisePage {...context} learner={learner} />
           ) : route.page === "lists" ? (
             <ListsPage {...context} learner={learner} />
           ) : route.page === "notes" ? (
             <NotesPage {...context} learner={learner} />
+          ) : route.page === "notebook" ? (
+            <NoteBookPage {...context} learner={learner} track={route.track} />
           ) : (
             <CoinsPage {...context} learner={learner} />
           )

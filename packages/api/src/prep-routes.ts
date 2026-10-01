@@ -131,6 +131,18 @@ const homeView = z.object({
     .object({ slug: z.string(), title: z.string(), items: z.number(), done: z.number(), next: z.object({ kind: z.enum(["problem", "lesson"]), slug: z.string(), title: z.string() }).nullable() })
     .nullable(),
   solved: z.number(),
+  frozenToday: z.boolean().describe("Today was taken off: the streak neither grows nor breaks."),
+  freezesLeft: z.number().describe("Days off left this month."),
+});
+
+const sprintParams = siteParams.extend({ sprint: z.coerce.number().int().min(1).max(1000) });
+const quizView = z.object({
+  sprint: z.number(),
+  open: z.boolean().describe("Once the sprint's tasks are done, or its days are over."),
+  passPercent: z.number(),
+  questions: z.array(z.object({ slug: z.string(), title: z.string(), question: S.candidateQuestion })).readonly().describe("Empty until open."),
+  count: z.number().describe("Questions in the quiz: the sprint's choice and number questions, ten at most."),
+  sittings: z.array(z.object({ score: z.number(), total: z.number(), passed: z.boolean(), takenAt: z.string() })).readonly(),
 });
 
 const reviseView = z.object({
@@ -378,6 +390,81 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
     },
   );
 
+  // --- the end of a sprint, and a day off ---------------------------------------------------------
+
+  routes.get(
+    "/practice/:site/plan/sprints/:sprint/quiz",
+    { schema: { tags: PREP, summary: "A sprint's quiz", security: LEARNER, params: sprintParams, response: { 200: quizView, ...refusals } } },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.sprintQuiz(who.site, who.learner, request.params.sprint));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/plan/sprints/:sprint/quiz",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Hand in a sprint's quiz",
+        description: "Answers by problem address: an option's index for a choice, a number for a number. Below the pass mark, each question got wrong is due for revision today and comes back as a task on the next study day. Passing pays coins once.",
+        security: LEARNER,
+        params: sprintParams,
+        body: z.object({ answers: z.record(z.string().max(80), z.string().max(200)) }),
+        response: {
+          200: z.object({ score: z.number(), total: z.number(), passed: z.boolean(), wrong: z.array(z.string()).readonly(), revise: z.number().describe("Revision tasks added."), reward }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.takeSprintQuiz(who.site, who.learner, request.params.sprint, request.body.answers));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/plan/sprints/:sprint/notes",
+    {
+      schema: {
+        tags: PREP,
+        summary: "A sprint's revision notes: my notes on its lessons and problems, in order",
+        security: LEARNER,
+        params: sprintParams,
+        response: {
+          200: z.object({ sprint: z.number(), items: z.array(z.object({ kind: z.enum(["problem", "lesson"]), slug: z.string(), title: z.string(), note: z.string().nullable().describe("Markdown.") })).readonly() }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.sprintNotes(who.site, who.learner, request.params.sprint));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/streak/freeze",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Take today off",
+        description: "Two days a calendar month. The streak neither grows nor breaks, no reminder goes, and the day's open tasks move on.",
+        security: LEARNER,
+        params: siteParams,
+        response: { 200: z.object({ day, freezesLeft: z.number(), moved: z.number() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.freeze(who.site, who.learner));
+    },
+  );
+
   // --- focus -------------------------------------------------------------------------------------
 
   routes.get(
@@ -518,6 +605,32 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
   );
 
   const noteParams = siteParams.extend({ kind: noteKind, ref: z.string().min(1).max(120) });
+  routes.get(
+    "/practice/:site/notes/book",
+    {
+      schema: {
+        tags: PREP,
+        summary: "My notes on a track, module by module, to print or save as a PDF",
+        security: LEARNER,
+        params: siteParams,
+        querystring: z.object({ track: z.string().min(1).max(80) }),
+        response: {
+          200: z.object({
+            track: z.object({ slug: z.string(), title: z.string() }),
+            modules: z.array(z.object({ title: z.string(), notes: z.array(z.object({ kind: z.enum(["problem", "lesson"]), slug: z.string(), title: z.string(), body: z.string() })).readonly() })).readonly(),
+            topics: z.array(z.object({ title: z.string(), body: z.string() })).readonly().describe("The learner's topic notes, which belong to no track."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.noteBook(who.site, who.learner, request.query.track));
+    },
+  );
+
   routes.get(
     "/practice/:site/notes/:kind/:ref",
     { schema: { tags: PREP, summary: "My note on a problem, a lesson or a topic", security: LEARNER, params: noteParams, response: { 200: noteView, ...refusals } } },

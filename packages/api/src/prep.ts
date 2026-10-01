@@ -1,4 +1,4 @@
-import type { OrgId } from "@parikshaa/core";
+import { candidateQuestion, scoreDeterministic, type OrgId } from "@parikshaa/core";
 import {
   practiceLearner,
   practiceStaff,
@@ -13,10 +13,11 @@ import {
   type PracticeStore,
   type PrepStore,
   type Task,
+  type TaskDraft,
   type Track,
 } from "@parikshaa/store";
 import { PracticeError, istDay, slugOf, streaks } from "./practice.js";
-import { addDays, countStudyDays, daysBetween, generatePlan, reschedule, review, type PlanItem } from "./prep-plan.js";
+import { addDays, countStudyDays, daysBetween, generatePlan, reschedule, review, studyDays, type PlanItem } from "./prep-plan.js";
 import type { PrepPlus } from "./prep-plus.js";
 
 /**
@@ -35,6 +36,8 @@ export const COINS = {
   solve: { easy: 10, medium: 15, hard: 20 } as Record<Difficulty, number>,
   potd: 5,
   lesson: 5,
+  /** A sprint's quiz passed. */
+  quiz: 20,
   module: 100,
   track: 1000,
   streak: new Map<number, number>([
@@ -45,6 +48,12 @@ export const COINS = {
   ]),
 } as const;
 export const DAILY_COIN_CAP = 300;
+/** Days off a learner may take in a calendar month without breaking their streak. */
+export const FREEZES_PER_MONTH = 2;
+/** A sprint's quiz is passed at this share right, in percent; below it, what was missed comes back as revision. */
+export const QUIZ_PASS_PERCENT = 70;
+/** Questions in a sprint's quiz at most. */
+export const QUIZ_QUESTIONS = 10;
 // Paid outside the daily cap: milestones, a published interview experience, and coins a cancelled order gives back.
 const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant"];
 /** Cards shown for revision in a day, oldest first; the rest wait. */
@@ -79,6 +88,8 @@ interface State {
   readonly progress: { readonly days: readonly { readonly day: string; readonly accepted: number }[] };
   /** IST days on which a lesson was finished. */
   readonly doneDays: readonly string[];
+  /** Days taken off on purpose. */
+  readonly frozen: ReadonlySet<string>;
 }
 
 const levels: readonly PlanLevel[] = ["beginner", "intermediate", "advanced"];
@@ -89,11 +100,20 @@ export class PrepService {
   readonly #store: PrepStore;
   readonly #now: () => number;
   readonly #plus: PrepPlus | null;
+  readonly #companyProblems: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
 
-  constructor(options: { practice: PracticeStore; store: PrepStore; plus?: PrepPlus | null; now?: () => number }) {
+  constructor(options: {
+    practice: PracticeStore;
+    store: PrepStore;
+    plus?: PrepPlus | null;
+    /** The learner's target companies' unsolved problems, most asked first: a plan puts them in its last days. */
+    companyProblems?: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
+    now?: () => number;
+  }) {
     this.#practice = options.practice;
     this.#store = options.store;
     this.#plus = options.plus ?? null;
+    this.#companyProblems = options.companyProblems ?? (async () => []);
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -130,12 +150,13 @@ export class PrepService {
 
   async #state(site: PracticeSite, learner: Learner | null): Promise<State> {
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
-    const [problems, lessons, tracks, progress, done] = await Promise.all([
+    const [problems, lessons, tracks, progress, done, frozen] = await Promise.all([
       this.#practice.problems(scope),
       this.#store.lessons(scope),
       this.#store.tracks(scope),
       this.#practice.progress(scope),
       this.#store.lessonsDone(scope),
+      this.#store.freezes(scope),
     ]);
     return {
       problems: new Map(problems.map((p) => [p.id, p])),
@@ -146,6 +167,7 @@ export class PrepService {
       lessonsDone: new Set(done.map((d) => d.lessonId)),
       progress,
       doneDays: done.map((d) => istDay(Date.parse(d.at))),
+      frozen: new Set(frozen),
     };
   }
 
@@ -268,7 +290,7 @@ export class PrepService {
 
   #streak(state: State) {
     const days = [...state.progress.days, ...state.doneDays.map((day) => ({ day, accepted: 1 }))];
-    return streaks(days, this.#today());
+    return streaks(days, this.#today(), state.frozen);
   }
 
   /**
@@ -331,7 +353,150 @@ export class PrepService {
       plan: plan === null ? null : { track: plan.track, finishOn: plan.finishOn, deadline: plan.deadline, sprint: plan.sprint, sprints: plan.sprints, today: plan.today, moved: plan.moved },
       continue: active ?? continuing[0] ?? null,
       solved: state.solved.size,
+      frozenToday: state.frozen.has(today),
+      freezesLeft: Math.max(0, FREEZES_PER_MONTH - [...state.frozen].filter((d) => d.slice(0, 7) === today.slice(0, 7)).length),
     };
+  }
+
+  /**
+   * What a reminder says: the day's tasks still open, the cards due, the
+   * streak. Read without paying the day's check-in: opening the email is not
+   * opening the dashboard.
+   */
+  async digest(site: PracticeSite, learner: Learner) {
+    const today = this.#today();
+    const [state, cards, plan] = await Promise.all([this.#state(site, learner), this.#store.cards(practiceLearner(site.orgId, learner.id)), this.plan(site, learner)]);
+    return {
+      today,
+      tasks: (plan?.today ?? []).filter((t) => !t.done).map((t) => ({ title: t.title, estMinutes: t.estMinutes })),
+      dueCards: Math.min(REVISE_PER_DAY, cards.filter((c) => c.dueOn <= today).length),
+      streak: this.#streak(state).current,
+    };
+  }
+
+  // --- a day off ----------------------------------------------------------------------------------
+
+  /**
+   * Take today off: the streak neither grows nor breaks, no reminder goes,
+   * and the day's open tasks move on to the days ahead.
+   */
+  async freeze(site: PracticeSite, learner: Learner) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const today = this.#today();
+    const taken = await this.#store.freezes(scope);
+    const thisMonth = taken.filter((d) => d.slice(0, 7) === today.slice(0, 7));
+    if (!taken.includes(today)) {
+      if (thisMonth.length >= FREEZES_PER_MONTH) throw new PracticeError("limit_reached", `A month has ${FREEZES_PER_MONTH} days off; this month's are taken`);
+      await this.#store.freeze(scope, today);
+    }
+    let moved = 0;
+    const plan = await this.#store.activePlan(scope);
+    if (plan !== null) {
+      // As if today were already over.
+      const { moves } = reschedule(await this.#store.tasks(scope, plan.id), addDays(today, 1), plan.dailyMinutes, plan.offDays);
+      await this.#store.moveTasks(scope, moves);
+      moved = moves.length;
+    }
+    const used = thisMonth.length + (taken.includes(today) ? 0 : 1);
+    return { day: today, freezesLeft: Math.max(0, FREEZES_PER_MONTH - used), moved };
+  }
+
+  // --- the end of a sprint ----------------------------------------------------------------------
+
+  async #sprint(site: PracticeSite, learner: Learner, sprint: number) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const plan = await this.#store.activePlan(scope);
+    if (plan === null) throw new PracticeError("not_found", "No study plan");
+    const tasks = (await this.#store.tasks(scope, plan.id)).filter((t) => t.sprint === sprint);
+    if (tasks.length === 0) throw new PracticeError("not_found", "No such sprint");
+    const today = this.#today();
+    // The sprint's days as planned: work missed is moved on, but the sprint still ends when it
+    // was meant to; and the revision a quiz sent back does not keep it open.
+    const lastDay = tasks
+      .filter((t) => !(t.kind === "revise" && t.itemId !== null))
+      .map((t) => t.rescheduledFrom ?? t.day)
+      .sort()
+      .at(-1)!;
+    // Open once its work is done, or its days are over.
+    const open = tasks.every((t) => t.doneAt !== null) || today > lastDay;
+    const problems = new Map((await this.#practice.problems(practiceStaff(site.orgId))).map((p) => [p.id, p]));
+    const asked = [...new Set(tasks.filter((t) => t.kind === "practice" && t.itemId !== null).map((t) => t.itemId!))]
+      .map((id) => problems.get(id))
+      .filter((p): p is PracticeProblem => p !== undefined && (p.question.kind === "mcq" || p.question.kind === "numeric"))
+      .slice(0, QUIZ_QUESTIONS);
+    return { scope, plan, tasks, today, open, asked };
+  }
+
+  /** A sprint's quiz: the sprint's questions that can be checked at once, when the sprint is done. */
+  async sprintQuiz(site: PracticeSite, learner: Learner, sprint: number) {
+    const { scope, plan, open, asked } = await this.#sprint(site, learner, sprint);
+    const sittings = (await this.#store.sprintQuizzes(scope, plan.id)).filter((q) => q.sprint === sprint);
+    return {
+      sprint,
+      open,
+      passPercent: QUIZ_PASS_PERCENT,
+      questions: open ? asked.map((p) => ({ slug: p.slug, title: p.title, question: candidateQuestion(p.question) })) : [],
+      count: asked.length,
+      sittings: sittings.map((q) => ({ score: q.score, total: q.total, passed: q.score * 100 >= QUIZ_PASS_PERCENT * q.total, takenAt: q.takenAt })),
+    };
+  }
+
+  /**
+   * Hand in a sprint's quiz. Passed, it pays once; below the pass mark, each
+   * question got wrong is due for revision today and comes back as a task on
+   * the next study day.
+   */
+  async takeSprintQuiz(site: PracticeSite, learner: Learner, sprint: number, answers: Readonly<Record<string, string>>) {
+    const { scope, plan, tasks, today, open, asked } = await this.#sprint(site, learner, sprint);
+    if (!open) throw new PracticeError("invalid", "The quiz opens when the sprint's work is done, or its days are over");
+    if (asked.length === 0) throw new PracticeError("invalid", "This sprint has no questions that can be checked at once");
+    const results: Record<string, boolean> = {};
+    for (const p of asked) {
+      const score = scoreDeterministic(p.question, answers[p.slug] ?? "");
+      results[p.id] = score !== null && score.score >= p.question.maxScore;
+    }
+    const score = Object.values(results).filter(Boolean).length;
+    const passed = score * 100 >= QUIZ_PASS_PERCENT * asked.length;
+    await this.#store.addSprintQuiz(scope, plan.id, { sprint, score, total: asked.length, results }, new Date(this.#now()));
+    const wrong = asked.filter((p) => !results[p.id]);
+    let revise = 0;
+    if (!passed && wrong.length > 0) {
+      const cards = new Map((await this.#store.cards(scope)).map((c) => [c.problemId, c]));
+      const next = studyDays(addDays(today, 1), plan.offDays).next().value as string;
+      const all = await this.#store.tasks(scope, plan.id);
+      let position = Math.max(-1, ...all.filter((t) => t.day === next).map((t) => t.position));
+      const onDay = all.find((t) => t.day === next)?.sprint ?? sprint;
+      for (const p of wrong) {
+        const card = cards.get(p.id);
+        if (card === undefined) await this.#store.addCard(scope, p.id, today);
+        else if (card.dueOn > today) await this.#store.saveCard(scope, { ...card, dueOn: today });
+        await this.#store.addTask(scope, plan.id, { day: next, sprint: onDay, position: ++position, kind: "revise", itemId: p.id, title: `Revise: ${p.title}`, estMinutes: 15 });
+        revise++;
+      }
+    }
+    const reward = passed ? await this.#pay(site, learner, "quiz", COINS.quiz, `quiz:${plan.id}:${sprint}`) : NONE;
+    return { score, total: asked.length, passed, wrong: wrong.map((p) => p.slug), revise, reward };
+  }
+
+  /** A sprint's revision notes: the learner's own notes on its lessons and problems, in the order they came. */
+  async sprintNotes(site: PracticeSite, learner: Learner, sprint: number) {
+    const { scope, tasks } = await this.#sprint(site, learner, sprint);
+    const staff = practiceStaff(site.orgId);
+    const [problems, lessons, notes] = await Promise.all([this.#practice.problems(staff), this.#store.lessons(staff), this.#store.notes(scope)]);
+    const problemOf = new Map(problems.map((p) => [p.id, p]));
+    const lessonOf = new Map(lessons.map((l) => [l.id, l]));
+    const noteOf = new Map(notes.map((n) => [`${n.refKind}:${n.refId}`, n]));
+    const seen = new Set<string>();
+    const items = [];
+    for (const t of [...tasks].sort((a, b) => a.day.localeCompare(b.day) || a.position - b.position)) {
+      if (t.itemId === null || seen.has(t.itemId)) continue;
+      seen.add(t.itemId);
+      const p = problemOf.get(t.itemId);
+      const l = lessonOf.get(t.itemId);
+      if (p !== undefined) items.push({ kind: "problem" as const, slug: p.slug, title: p.title, note: noteOf.get(`problem:${p.id}`)?.body ?? null });
+      else if (l !== undefined) items.push({ kind: "lesson" as const, slug: l.slug, title: l.title, note: noteOf.get(`lesson:${l.id}`)?.body ?? null });
+    }
+    return { sprint, items };
   }
 
   // --- the plan ------------------------------------------------------------------------------------
@@ -383,12 +548,43 @@ export class PrepService {
     await this.#planAllowed(site, learner);
     const { track, level, offDays, outcome } = await this.#planFor(site, learner, input);
     const goal = (input.goal ?? "").trim().slice(0, 200);
+    const tasks = await this.#withCompanies(site, learner, outcome.tasks);
     await this.#store.startPlan(
       practiceLearner(site.orgId, learner.id),
       { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, offDays, goal },
-      outcome.tasks,
+      tasks,
     );
     return (await this.plan(site, learner))!;
+  }
+
+  /**
+   * The target companies' problems, in the plan's last 30% of study days: one
+   * a day, in turn, after the day's own work. Problems the track already has
+   * are left where they are.
+   */
+  async #withCompanies(site: PracticeSite, learner: Learner, tasks: readonly TaskDraft[]): Promise<readonly TaskDraft[]> {
+    const ids = (await this.#companyProblems(site, learner)).filter((id) => !tasks.some((t) => t.itemId === id));
+    if (ids.length === 0 || tasks.length === 0) return tasks;
+    const problems = new Map((await this.#practice.problems(practiceStaff(site.orgId))).map((p) => [p.id, p]));
+    const days = [...new Set(tasks.map((t) => t.day))].sort();
+    const tail = days.slice(Math.floor(days.length * 0.7));
+    const out = [...tasks];
+    ids.forEach((id, i) => {
+      const p = problems.get(id);
+      if (p === undefined) return;
+      const day = tail[i % tail.length]!;
+      const onDay = out.filter((t) => t.day === day);
+      out.push({
+        day,
+        sprint: onDay[0]?.sprint ?? Math.max(...tasks.map((t) => t.sprint)),
+        position: Math.max(-1, ...onDay.map((t) => t.position)) + 1,
+        kind: "practice",
+        itemId: p.id,
+        title: p.title,
+        estMinutes: { easy: 20, medium: 40, hard: 60 }[p.difficulty],
+      });
+    });
+    return out;
   }
 
   async archivePlan(site: PracticeSite, learner: Learner): Promise<void> {
@@ -578,6 +774,29 @@ export class PrepService {
       body: n.body,
       updatedAt: n.updatedAt,
     }));
+  }
+
+  /**
+   * A track's notes in the track's order, module by module, to print as one
+   * document; and the learner's topic notes after them. Only what has a note.
+   */
+  async noteBook(site: PracticeSite, learner: Learner, trackSlug: string) {
+    const state = await this.#state(site, learner);
+    const track = state.tracks.find((t) => t.slug === trackSlug);
+    if (track === undefined) throw new PracticeError("not_found", "No such track");
+    const notes = await this.#store.notes(practiceLearner(site.orgId, learner.id));
+    const noteOf = new Map(notes.map((n) => [`${n.refKind}:${n.refId}`, n]));
+    const modules = this.#items(track, state)
+      .map((m) => ({
+        title: m.title,
+        notes: m.items.flatMap((i) => {
+          const note = noteOf.get(`${i.kind}:${i.id}`);
+          return note === undefined || note.body.trim() === "" ? [] : [{ kind: i.kind, slug: i.slug, title: i.title, body: note.body }];
+        }),
+      }))
+      .filter((m) => m.notes.length > 0);
+    const topics = notes.filter((n) => n.refKind === "topic" && n.body.trim() !== "").map((n) => ({ title: n.title, body: n.body }));
+    return { track: { slug: track.slug, title: track.title }, modules, topics };
   }
 
   /** The stored reference: a problem's or a lesson's id, or a topic's own name. */

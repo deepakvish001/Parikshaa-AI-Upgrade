@@ -39,6 +39,7 @@ export class PracticeIdentity {
   readonly #issuer: string;
   readonly #now: () => number;
   readonly #key: Buffer;
+  readonly #onVerified: (orgId: OrgId, learner: { readonly id: string; readonly email: string }) => Promise<unknown>;
   /** Three verification emails an hour per learner: enough for a typo'd spam filter, not a mail bomb. */
   readonly #resends = new RateLimiter({ perSecond: 1 / 1200, burst: 3 });
 
@@ -53,6 +54,8 @@ export class PracticeIdentity {
     /** Google's, unless a test stands in for it. */
     readonly issuer?: string;
     readonly now?: () => number;
+    /** Told when an address is proved a learner's: a campus cohort may be holding Plus for it. */
+    readonly onVerified?: (orgId: OrgId, learner: { readonly id: string; readonly email: string }) => Promise<unknown>;
   }) {
     this.#store = options.store;
     this.#practice = options.practice;
@@ -61,6 +64,7 @@ export class PracticeIdentity {
     this.#mailer = options.mailer ?? null;
     this.#issuer = options.issuer ?? GOOGLE_ISSUER;
     this.#now = options.now ?? (() => Date.now());
+    this.#onVerified = options.onVerified ?? (async () => undefined);
     this.#oidc = new OidcClient({ ...(options.http === undefined ? {} : { http: options.http }), now: this.#now });
     this.#key = createHmac("sha256", options.secret).update("parikshaa-learner-verification").digest();
   }
@@ -98,6 +102,7 @@ export class PracticeIdentity {
       throw new PracticeError("invalid", "This link is not valid. Ask for a new one from your account.");
     }
     await this.#store.markVerified(site.orgId, learner.id, learner.email);
+    await this.#onVerified(site.orgId, learner);
   }
 
   /** Refuse what a site keeps for verified learners — submitting and discussing — to one who is not. */
@@ -228,6 +233,7 @@ export class PracticeIdentity {
       const { passwordHash: _, ...rest } = existing;
       learner = { ...rest, emailVerified: true };
     }
+    await this.#onVerified(site.orgId, learner);
     return this.#practice.sessionFor(learner);
   }
 }

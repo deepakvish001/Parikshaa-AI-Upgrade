@@ -7,6 +7,7 @@ import {
   type Experience,
   type ExperienceRound,
   type Learner,
+  type PracticeProblem,
   type PracticeSite,
   type PracticeStore,
   type PrepCommunityStore,
@@ -36,6 +37,10 @@ export const START_RATING = 1500;
 const K = 64;
 /** A company page's free share when the site sells Plus. */
 export const FREE_COMPANY_PROBLEMS = 5;
+/** Readiness for a company: of its this many most asked problems (the last 180 days), how many are solved. */
+export const READINESS_TOP = 50;
+/** Problems from target companies a study plan puts in its last days, at most. */
+export const PLAN_COMPANY_PROBLEMS = 10;
 export const EXPERIENCE_COINS = 100;
 /** How old an account must be before it spends coins: coins farmed by a new account wait. */
 export const STORE_MIN_AGE_DAYS = 14;
@@ -101,8 +106,92 @@ export class PrepCommunity {
     return istDay(this.#now());
   }
 
+  /** Plus, or a Company Pass, opens every company's full list. */
   async #holdsPlus(site: PracticeSite, learner: Learner | null): Promise<boolean> {
-    return this.#plus === null ? true : (await this.#plus.status(site, learner)).active;
+    return this.#plus === null ? true : (await this.#plus.companyAccess(site, learner)).active;
+  }
+
+  /** A company's published problems, most asked in the last 180 days first. */
+  async #ranked(site: PracticeSite, companyId: string): Promise<readonly PracticeProblem[]> {
+    const scope = practiceLearner(site.orgId, null);
+    const [reports, problems] = await Promise.all([this.#store.reports(scope, companyId), this.#practice.problems(scope)]);
+    const byId = new Map(problems.filter((p) => p.published).map((p) => [p.id, p]));
+    const since = addDays(this.#today(), -180);
+    const asked = new Map<string, { times: number; last: string }>();
+    for (const r of reports) {
+      if (!byId.has(r.problemId) || r.reportedOn < since) continue;
+      const seen = asked.get(r.problemId) ?? { times: 0, last: r.reportedOn };
+      asked.set(r.problemId, { times: seen.times + 1, last: seen.last > r.reportedOn ? seen.last : r.reportedOn });
+    }
+    return [...asked.entries()]
+      .sort((a, b) => b[1].times - a[1].times || b[1].last.localeCompare(a[1].last) || byId.get(a[0])!.title.localeCompare(byId.get(b[0])!.title))
+      .map(([id]) => byId.get(id)!);
+  }
+
+  /** Of a company's most asked problems, how many this learner has solved. */
+  async #readiness(site: PracticeSite, companyId: string, solved: ReadonlySet<string>) {
+    const top = (await this.#ranked(site, companyId)).slice(0, READINESS_TOP);
+    const done = top.filter((p) => solved.has(p.id)).length;
+    return { solved: done, of: top.length, percent: top.length === 0 ? 0 : Math.round((done / top.length) * 100) };
+  }
+
+  // --- the companies a learner aims for -----------------------------------------------------
+
+  async targets(site: PracticeSite, learner: Learner) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const [ids, companies, progress] = await Promise.all([this.#store.targets(scope), this.#store.companies(scope), this.#practice.progress(scope)]);
+    const solved = new Set(progress.solved.map((s) => s.problemId));
+    const byId = new Map(companies.map((c) => [c.id, c]));
+    const out = [];
+    for (const id of ids) {
+      const c = byId.get(id);
+      if (c !== undefined) out.push({ slug: c.slug, name: c.name, readiness: await this.#readiness(site, c.id, solved) });
+    }
+    return out;
+  }
+
+  async setTarget(site: PracticeSite, learner: Learner, slug: string, on: boolean): Promise<void> {
+    const company = await this.#company(site, slug);
+    const scope = practiceLearner(site.orgId, learner.id);
+    if (on && !(await this.#store.targets(scope)).includes(company.id) && (await this.#store.targets(scope)).length >= 10) {
+      throw new PracticeError("limit_reached", "Aim for 10 companies at most");
+    }
+    await this.#store.setTarget({ ...scope, learnerId: learner.id }, company.id, on);
+  }
+
+  /**
+   * "Start this company's list": aim for the company, and save its most asked
+   * problems to a list of its name — all of them with Plus or a Company Pass,
+   * the free few without.
+   */
+  async startList(site: PracticeSite, learner: Learner, slug: string) {
+    const company = await this.#company(site, slug);
+    await this.setTarget(site, learner, slug, true);
+    const ranked = (await this.#ranked(site, company.id)).slice(0, READINESS_TOP);
+    const open = await this.#holdsPlus(site, learner);
+    const shown = open ? ranked : ranked.slice(0, FREE_COMPANY_PROBLEMS);
+    const name = company.name.replace(/[^\p{L}\p{N} _\-'&()]/gu, " ").replace(/\s+/g, " ").trim().slice(0, 60) || "Company";
+    const scope = practiceLearner(site.orgId, learner.id);
+    for (const p of shown) await this.#prep.save(scope, name, p.id);
+    return { list: name, added: shown.length, locked: ranked.length - shown.length };
+  }
+
+  /** For a new study plan: unsolved problems of the learner's target companies, most asked first. */
+  async targetProblems(site: PracticeSite, learner: Learner): Promise<readonly string[]> {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const [ids, progress, open] = await Promise.all([this.#store.targets(scope), this.#practice.progress(scope), this.#holdsPlus(site, learner)]);
+    const solved = new Set(progress.solved.map((s) => s.problemId));
+    const picked: string[] = [];
+    // Without Plus or a Company Pass, only the share a company page shows free.
+    const lists = (await Promise.all(ids.map((id) => this.#ranked(site, id)))).map((l) => (open ? l : l.slice(0, FREE_COMPANY_PROBLEMS)));
+    // Take from each company in turn, so every target is in the plan.
+    for (let i = 0; picked.length < PLAN_COMPANY_PROBLEMS && lists.some((l) => l.length > i); i++) {
+      for (const list of lists) {
+        const p = list[i];
+        if (p !== undefined && !solved.has(p.id) && !picked.includes(p.id) && picked.length < PLAN_COMPANY_PROBLEMS) picked.push(p.id);
+      }
+    }
+    return picked;
   }
 
   // --- companies ------------------------------------------------------------------------------
@@ -165,10 +254,13 @@ export class PrepCommunity {
       for (const tag of problem.tags) topics.set(tag, (topics.get(tag) ?? 0) + 1);
     }
     const shown = plus ? rows : rows.slice(0, FREE_COMPANY_PROBLEMS);
+    const target = learner === null ? false : (await this.#store.targets(practiceLearner(site.orgId, learner.id))).includes(company.id);
     return {
       slug: company.slug,
       name: company.name,
       about: company.about,
+      readiness: learner === null ? null : await this.#readiness(site, company.id, solved),
+      target,
       window: String(window),
       counts,
       problems: shown.map(({ problem, times, last }) => ({
