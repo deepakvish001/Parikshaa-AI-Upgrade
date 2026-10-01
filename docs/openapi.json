@@ -35534,6 +35534,9 @@
                                     },
                                     "description": "The question in other languages. An mcq's options come in the original's order: the answer is recorded by position."
                                   },
+                                  "spoken": {
+                                    "type": "boolean"
+                                  },
                                   "images": {
                                     "readOnly": true,
                                     "type": "array",
