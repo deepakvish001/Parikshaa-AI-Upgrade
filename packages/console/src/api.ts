@@ -1272,6 +1272,10 @@ export class ConsoleClient {
     return this.#request(`/practice-admin/plus/orders/${encodeURIComponent(id)}/refund`, { method: "POST", body: JSON.stringify({ reason }) });
   }
 
+  tutorEvals(): Promise<TutorEvals> {
+    return this.#request("/practice-admin/tutor/evals");
+  }
+
   async plusOrders(): Promise<readonly PlusOrder[]> {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
@@ -2303,6 +2307,18 @@ export interface PlusProduct {
   readonly pricePaise: number;
   readonly active: boolean;
   readonly position: number;
+}
+
+/** Sahayak's eval scores against their targets: every score null before the first run. */
+export interface TutorEvals {
+  readonly recordedAt: string | null;
+  readonly model: string | null;
+  readonly flows: readonly {
+    readonly flow: "hint" | "review" | "doubt";
+    readonly version: string | null;
+    readonly cases: number;
+    readonly metrics: readonly { readonly id: string; readonly label: string; readonly target: number | null; readonly percent: number | null; readonly met: boolean | null }[];
+  }[];
 }
 
 export interface PlusOrder {

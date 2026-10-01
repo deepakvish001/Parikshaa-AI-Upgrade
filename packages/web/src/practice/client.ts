@@ -503,6 +503,14 @@ export class PracticeClient {
     return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/hint`, { replyIn, ...(code === undefined ? {} : { code: code.source, language: code.language }) });
   }
 
+  followups(slug: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/followups`, { replyIn });
+  }
+
+  replyToFollowup(slug: string, id: string, question: number, answer: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/followups/${encodeURIComponent(id)}/reply`, { question, answer, replyIn });
+  }
+
   review(slug: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
     return this.#post(`/problems/${encodeURIComponent(slug)}/tutor/review`, { replyIn });
   }
@@ -917,18 +925,20 @@ export interface Credits {
 
 export interface TutorAnswer {
   readonly id: string;
-  readonly mode: "hint" | "review" | "doubt" | "notes";
+  readonly mode: "hint" | "review" | "doubt" | "notes" | "followup" | "followup_reply";
   readonly hintLevel: number | null;
   readonly answer: string;
   readonly credits: number;
   readonly createdAt: string;
+  /** A review's findings, follow-up questions ({ questions }), or a reply's verdict; null for the rest. */
+  readonly data?: Record<string, unknown> | null;
 }
 
 export interface TutorHistory {
   readonly entries: readonly (TutorAnswer & { readonly question: string })[];
   readonly nextHint: { readonly level: number; readonly credits: number; readonly available: boolean } | null;
   readonly failures: number;
-  readonly costs: { readonly hint1: number; readonly hint: number; readonly review: number; readonly doubt: number };
+  readonly costs: { readonly hint1: number; readonly hint: number; readonly review: number; readonly doubt: number; readonly followup?: number; readonly followupReply?: number };
 }
 
 // --- companies, experiences, the store, ratings ------------------------------------------------

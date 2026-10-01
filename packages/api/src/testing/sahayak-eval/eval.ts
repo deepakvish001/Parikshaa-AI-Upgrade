@@ -86,11 +86,14 @@ export function clientOf(): Anthropic {
  */
 function dryClient(): Anthropic {
   const create = async (params: Anthropic.MessageCreateParamsNonStreaming) => {
-    const judging = params.output_config?.format != null;
     const schema = params.output_config?.format?.schema as { required?: string[] } | undefined;
-    const text = judging
-      ? JSON.stringify(Object.fromEntries((schema?.required ?? []).map((k) => [k, { reasoning: "dry run", verdict: "pass" }])))
-      : "Look at where your loop stops.";
+    // The tutor's review answers in a fixed shape too; the judge's shape is per-criterion verdicts.
+    const reviewing = schema?.required?.includes("logic") === true;
+    const text = reviewing
+      ? JSON.stringify({ verdict: "partly", summary: "Look at where your loop stops.", logic: { right: [], wrong: ["The loop stops early."] }, complexity: { time: "O(n)", space: "O(1)", better: "" }, quality: [], edgeCases: [] })
+      : schema !== undefined
+        ? JSON.stringify(Object.fromEntries((schema.required ?? []).map((k) => [k, { reasoning: "dry run", verdict: "pass" }])))
+        : "Look at where your loop stops.";
     return { id: "dry", type: "message", role: "assistant", model: params.model, content: [{ type: "text", text }], stop_reason: "end_turn", stop_sequence: null, usage: { input_tokens: 1, output_tokens: 1 } };
   };
   return { messages: { create } } as unknown as Anthropic;

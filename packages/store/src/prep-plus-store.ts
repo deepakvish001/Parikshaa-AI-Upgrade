@@ -192,7 +192,7 @@ export type CreditReason = "monthly" | "purchase" | "grant" | "spend" | "refund"
 
 export interface TutorEntry {
   readonly id: string;
-  readonly mode: "hint" | "review" | "doubt" | "notes";
+  readonly mode: "hint" | "review" | "doubt" | "notes" | "followup" | "followup_reply";
   readonly problemId: string | null;
   readonly lessonId: string | null;
   readonly hintLevel: number | null;
@@ -201,7 +201,12 @@ export interface TutorEntry {
   readonly credits: number;
   readonly model: string;
   readonly createdAt: string;
+  /** What the answer said in a fixed shape: a review's findings, follow-up questions, a reply's verdict. Null otherwise. */
+  readonly data?: Record<string, unknown> | null;
 }
+
+/** Days what the tutor said is kept (DPDP): then the retention sweep deletes it. */
+export const TUTOR_KEEP_DAYS = 180;
 
 interface OrderRow {
   id: string;
@@ -696,11 +701,11 @@ export class PrepPlusStore {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const id = this.#newId();
       await tx.query(
-        `INSERT INTO prep_tutor (org_id, id, learner_id, mode, problem_id, lesson_id, hint_level, question, answer, credits, model, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        [orgId, id, learnerId, entry.mode, entry.problemId, entry.lessonId, entry.hintLevel, entry.question, entry.answer, entry.credits, entry.model, at],
+        `INSERT INTO prep_tutor (org_id, id, learner_id, mode, problem_id, lesson_id, hint_level, question, answer, credits, model, created_at, data)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+        [orgId, id, learnerId, entry.mode, entry.problemId, entry.lessonId, entry.hintLevel, entry.question, entry.answer, entry.credits, entry.model, at, (entry.data ?? null) === null ? null : JSON.stringify(entry.data)],
       );
-      return { ...entry, id, createdAt: at.toISOString() };
+      return { ...entry, data: entry.data ?? null, id, createdAt: at.toISOString() };
     });
   }
 
@@ -719,8 +724,9 @@ export class PrepPlusStore {
           credits: number;
           model: string;
           created_at: string | Date;
+          data: Record<string, unknown> | string | null;
         }>(
-          `SELECT id, mode, problem_id, lesson_id, hint_level, question, answer, credits, model, created_at FROM prep_tutor
+          `SELECT id, mode, problem_id, lesson_id, hint_level, question, answer, credits, model, created_at, data FROM prep_tutor
             WHERE org_id = $1 AND learner_id = $2 AND ($3::text IS NULL OR problem_id = $3) AND ($4::text IS NULL OR lesson_id = $4)
             ORDER BY created_at, hint_level NULLS LAST, id LIMIT 200`,
           [scope.orgId, own(scope), filter.problemId ?? null, filter.lessonId ?? null],
@@ -736,7 +742,15 @@ export class PrepPlusStore {
         credits: Number(r.credits),
         model: r.model,
         createdAt: iso(r.created_at),
+        data: r.data === null ? null : typeof r.data === "string" ? (JSON.parse(r.data) as Record<string, unknown>) : r.data,
       })),
+    );
+  }
+
+  /** Delete what the tutor said before `before` (the retention sweep); how many entries went. */
+  async purgeTutor(orgId: OrgId, before: Date): Promise<number> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (await tx.query<{ id: string }>(`DELETE FROM prep_tutor WHERE org_id = $1 AND created_at < $2 RETURNING id`, [orgId, before])).length,
     );
   }
 

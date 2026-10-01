@@ -13,7 +13,7 @@ import {
 import { DifficultyBadge, KIND_NAME } from "./Bank.tsx";
 import { EmptyState, SkeletonRows } from "./kit.tsx";
 import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
-import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
+import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks, TutorEvals } from "./PrepAdmin.tsx";
 
 // Coupons and sales are a manager's, and seldom opened: a chunk of their own.
 const Sales = lazy(() => import("./Sales.tsx").then((m) => ({ default: m.Sales })));
@@ -83,7 +83,12 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
       ) : null}
       {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
       {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
-      {tab === "plus" ? <PlusAdmin client={client} canManage={can.manage} /> : null}
+      {tab === "plus" ? (
+        <>
+          <PlusAdmin client={client} canManage={can.manage} />
+          <TutorEvals client={client} />
+        </>
+      ) : null}
       {tab === "analytics" ? (
         <Suspense fallback={<p className="notice">Loading…</p>}>
           <Analytics client={client} />

@@ -125,7 +125,7 @@ export function assemble(o: AssembleOptions): {
   });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
-  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
+  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore, tutor: new PrepPlusStore(o.sql) });
   const labStore = new LabStore(o.sql);
   const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service });
   // Made below, once the results it reads exist; the hook is called only when a candidate starts.

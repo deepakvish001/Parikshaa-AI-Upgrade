@@ -204,6 +204,7 @@ export async function wire(
     invitations: invitationStore,
     identity,
     exams: service,
+    tutor: new PrepPlusStore(sql),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const labStore = new LabStore(sql);

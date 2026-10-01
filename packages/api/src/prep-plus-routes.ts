@@ -2,6 +2,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest, 
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { Learner, PracticeSite } from "@parikshaa/store";
+import { SAHAYAK_EVAL_METRICS, SAHAYAK_EVAL_SCORES, type EvalScores } from "./content/sahayak-eval-scores.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import type { PrepPlus } from "./prep-plus.js";
 import type { Sahayak } from "./sahayak.js";
@@ -60,12 +61,25 @@ const overview = z.object({
   invoices: z.boolean().describe("Paid orders get a GST tax invoice: the server knows its supplier."),
   products: z.array(learnerProduct).readonly(),
 });
-const tutorAnswer = z.object({ id: z.string(), mode: z.enum(["hint", "review", "doubt", "notes"]), hintLevel: z.number().nullable(), answer: z.string().describe("Markdown."), credits: z.number(), createdAt: z.string() });
+const tutorAnswer = z.object({
+  id: z.string(),
+  mode: z.enum(["hint", "review", "doubt", "notes", "followup", "followup_reply"]),
+  hintLevel: z.number().nullable(),
+  answer: z.string().describe("Markdown."),
+  credits: z.number(),
+  createdAt: z.string(),
+  data: z
+    .record(z.string(), z.unknown())
+    .nullable()
+    .describe(
+      "The answer in a fixed shape. A review: { verdict: correct|partly|wrong, summary, logic: { right[], wrong[] }, complexity: { time, space, better }, quality[], edgeCases[] }. Follow-ups: { questions: [two] }. A reply to one: { verdict: strong|partial|missing, feedback, stronger }. Null for hints, doubts and notes.",
+    ),
+});
 const tutorHistory = z.object({
   entries: z.array(tutorAnswer.omit({}).extend({ question: z.string() })).readonly(),
   nextHint: z.object({ level: z.number(), credits: z.number(), available: z.boolean().describe("The last rung opens after three wrong submissions.") }).nullable(),
   failures: z.number(),
-  costs: z.object({ hint1: z.number(), hint: z.number(), review: z.number(), doubt: z.number() }),
+  costs: z.object({ hint1: z.number(), hint: z.number(), review: z.number(), doubt: z.number(), followup: z.number(), followupReply: z.number() }),
 });
 const order = z.object({
   id: z.string(),
@@ -125,6 +139,26 @@ const productBody = z.object({
   active: z.boolean().default(true),
   position: z.number().int().optional(),
 });
+
+/** The eval scores as staff read them: each metric's share passed, beside its target. */
+export function sahayakEvalReport(scores: EvalScores = SAHAYAK_EVAL_SCORES) {
+  return {
+    recordedAt: scores.recordedAt,
+    model: scores.model,
+    flows: (["hint", "review", "doubt"] as const).map((flow) => {
+      const run = scores.flows[flow];
+      return {
+        flow,
+        version: run?.version ?? null,
+        cases: run?.cases ?? 0,
+        metrics: SAHAYAK_EVAL_METRICS[flow].map(({ id, label, target }) => {
+          const percent = run === undefined || run.cases === 0 ? null : Math.round(((run.passed[id] ?? 0) / run.cases) * 1000) / 10;
+          return { id, label, target, percent, met: percent === null || target === null ? null : percent >= target };
+        }),
+      };
+    }),
+  };
+}
 
 /**
  * Plus and the tutor (ROADMAP §16): what a learner buys and asks, under
@@ -339,6 +373,48 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
   );
 
   routes.post(
+    "/practice/:site/problems/:problem/tutor/followups",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Two interview follow-up questions on a problem I have solved",
+        description: "What an interviewer asks once the code works: a changed constraint, a harder variant, a trade-off. Refused until the problem is solved.",
+        security: LEARNER,
+        params: problemParams,
+        body: z.object({ replyIn }),
+        response: { 200: tutorAnswer, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      limit(who.learner);
+      return reply.send(await tutor.followups(who.site, who.learner, request.params.problem, request.body.replyIn));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/problems/:problem/tutor/followups/:id/reply",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Answer one of the follow-up questions, and hear how an interviewer would take it",
+        security: LEARNER,
+        params: problemParams.extend({ id: z.string().min(1).max(80) }),
+        body: z.object({ question: z.number().int().min(0).max(1).describe("Which of the two: 0 or 1."), answer: z.string().max(4000), replyIn }),
+        response: { 200: tutorAnswer, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      limit(who.learner);
+      const { question, answer, replyIn: language } = request.body;
+      return reply.send(await tutor.replyToFollowup(who.site, who.learner, request.params.problem, request.params.id, question, answer, language));
+    },
+  );
+
+  routes.post(
     "/practice/:site/problems/:problem/tutor/review",
     {
       schema: {
@@ -422,6 +498,50 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
   );
 
   // --- staff ------------------------------------------------------------------------------------
+
+  routes.get(
+    "/practice-admin/tutor/evals",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Sahayak's eval scores against their targets",
+        description: "From the last recorded run of the tutor's evals (hints, reviews, doubts); every score null before the first run.",
+        security: STAFF,
+        response: {
+          200: z.object({
+            recordedAt: z.string().nullable(),
+            model: z.string().nullable(),
+            flows: z
+              .array(
+                z.object({
+                  flow: z.enum(["hint", "review", "doubt"]),
+                  version: z.string().nullable(),
+                  cases: z.number(),
+                  metrics: z
+                    .array(
+                      z.object({
+                        id: z.string(),
+                        label: z.string(),
+                        target: z.number().nullable().describe("Percent that must pass; null when watched without one."),
+                        percent: z.number().nullable().describe("Percent that passed, one decimal; null before a run."),
+                        met: z.boolean().nullable(),
+                      }),
+                    )
+                    .readonly(),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send(sahayakEvalReport());
+    },
+  );
 
   routes.get("/practice-admin/plus", { schema: { tags: ADMIN, summary: "Plus and the tutor: settings and plans", security: STAFF, response: { 200: z.object({ settings, products: z.array(staffProduct).readonly() }), ...refusals } } }, async (request, reply) => {
     const actor = await staff(request, reply, "exam:read");

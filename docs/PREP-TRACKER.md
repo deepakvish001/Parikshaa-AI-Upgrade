@@ -30,14 +30,14 @@ Status ka matlab:
 | Dashboard aur planner | 14 | 1 | 0 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 6 | 1 | 0 | 0 |
-| Sahayak AI | 13 | 3 | 2 | 0 |
+| Sahayak AI | 17 | 1 | 0 | 0 |
 | Plus aur payment | 13 | 0 | 0 | 0 |
 | Coins, store, gamification | 13 | 1 | 1 | 0 |
 | Company prep aur community | 11 | 1 | 3 | 0 |
 | Contests | 3 | 1 | 1 | 0 |
 | Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 10 | 2 | 1 | 0 |
-| **Kul** | **94** | **16** | **12** | **1** |
+| **Kul** | **98** | **14** | **10** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -118,12 +118,12 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Learner apni baatcheet mita sake | ✅ | `DELETE /tutor` | |
 | Pehla hint static (admin ka likha), AI ka kharcha bachane ke liye | ✅ | `practice_problems.hint` (migration 0024), `sahayak.ts`, console Problems → Edit → "First hint" | Hint likha ho to rung 1 wahi: model call nahi, 0 credit. Na likha ho to AI rung 1. Hints ka content (300) abhi likhna baaki, Content table dekho |
 | Poora solution dekhne par us problem ke coins aadhe | ✅ | `prep.ts` `afterSubmit`, coin rule `solve_after_solution` | Sirf Sahayak ka rung 4 (worked solution) ginta hai. 3 galat submit ke baad editorial khulna nahi ginta |
-| Review ka fixed JSON (logic, complexity, quality, edge cases) | 🟡 | | Review Markdown me aata hai, fixed JSON nahi |
+| Review ka fixed JSON (logic, complexity, quality, edge cases) | ✅ | `sahayak.ts` `ReviewData`, `reviewMarkdown`; tutor entry `data` (migration 0043) | Model se structured output (JSON schema): verdict, summary, logic (sahi/galat), complexity (time, space, behtar), quality, edge cases. Learner wahi Markdown me padhta hai (Hindi headings bhi), API `data` me JSON deti hai. JSON galat shakl me aaye to credits wapas aur 503. Evals bhi yahi Markdown grade karte hain. Tests: `prep-plus.test.ts`, `sahayak-eval.test.ts` |
 | Notes draft mode | ✅ | `Sahayak.notesDraft` (migration 0037: tutor mode `notes`) | Bina solve kiye problem par mana (solution leak na ho). Contest ke dauran band. Plus wala lesson bina Plus ke tutor ko nahi padha jaata (doubt me bhi ye rok ab lagi) |
-| Interview follow-up sawaal | ⬜ | | Phase 6 |
-| Chats 180 din baad apne aap delete | ⬜ | | DPDP |
+| Interview follow-up sawaal | ✅ | `Sahayak.followups`, `replyToFollowup`; `POST …/tutor/followups`, `…/followups/:id/reply`; web Sahayak tab | Solve ke baad hi: interviewer ke 2 agle sawaal (15 credit). Har sawaal ka jawab likho, Sahayak interviewer ki tarah bataye: strong / partial / missing, kya chhoota, ek behtar jawab (10 credit). Dusre learner ke sawaal ka jawab nahi de sakte. Awaaz wala mock interview (A8) alag hai, nahi bana. Tests: API, web |
+| Chats 180 din baad apne aap delete | ✅ | `PrivacyService.sweepTutor`, `PrepPlusStore.purgeTutor`, `TUTOR_KEEP_DAYS`, retention worker (`main.ts`) | Har ghante wale retention sweep me, har organisation ke 180 din se purane tutor entries mit jaate hain. Learner ko Sahayak tab me ye likha dikhta hai. Tests: `prep-plus.test.ts` (179 din par nahi, 181 par haan) |
 | Evals (hint me code leak nahi, review bug pakde, doubt par solution nahi) | 🟡 | `api/src/testing/sahayak-eval/`, `.claude/hillclimb/sahayak-*` | 360 cases (40 problems), grading aur runner tests ke saath ban gaye. **Paid baseline run abhi nahi hua**: API key aur owner ki manzoori chahiye. Scores abhi nahi hain |
-| Admin page par AI kharcha aur eval scores | 🟡 | console Usage page | Kharcha dikhta hai, evals nahi |
+| Admin page par AI kharcha aur eval scores | ✅ | console Usage page (kharcha); console Practice → Plus → "Sahayak evals", `GET /practice-admin/tutor/evals`, `content/sahayak-eval-scores.ts`, `testing/sahayak-eval/record-scores.ts` | Har check (leak, bug pakda, complexity, solution nahi diya…) apne target ke saath. Scores eval run ke baad `record-scores.ts` se file me aate hain, haath se kabhi nahi. **Abhi "Not run"**: paid run owner par ruka hai (Ruka hua kaam). Tests: API, console |
 
 ### 6. Plus aur payment (section 16, F12, F16)
 
@@ -236,7 +236,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
 | P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
 | P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | ✅ | |
-| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, 180 din delete |
+| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run (180 din delete, fixed JSON review, follow-ups ban gaye) |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting aur videos |
 | P6 · Aage | Content, follow-ups, PWA, campus, subscriptions | 🟡 | Campus ban gaya. Content, interview follow-ups, PWA, subscriptions baaki |
@@ -295,7 +295,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Companies ka asli data** (plan 9) | Har company ke asli reports (kaunsa problem kab poocha gaya). Hum ye bana nahi sakte: galat data learners ko gumraah karega. Owner/content team console → Companies me reports jode, ya interview experiences se aata rahe | Company pages, readiness aur plan me company problems apne aap bhar jaayenge | 1 Oct 2026 |
 | **Video lessons** (plan 9) | Kaun banayega, kis bhasha me, hosting kahan (Faisle me "baaki"). Lesson me `videoUrl` field taiyaar hai | Lessons me video dikhne lagega | 1 Oct 2026 |
 | **Baaki editorials aur hints** (plan 9) | 110 editorials aur 260 hints ke liye pehle utne naye problems chahiye (apne likhe, asli tests ke saath). Content team ya owner ki haan ki main aur problems likhoon | DSA pack jaisa hi naya pack | 1 Oct 2026 |
-| **Sahayak evals ka paid run** (plan 1a) | Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, tracker me scores | 30 Sep 2026 |
+| **Sahayak evals ka paid run** (plan 1a) | (2 Oct: review ab fixed JSON me hai, isliye eval ki files badli; run se pehle `--approve-harness` dobara.) Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, `record-scores.ts` se console aur tracker me scores | 30 Sep 2026 |
 | **Bank transfer (NEFT) ke details** | Server env me `PARIKSHAA_BANK_ACCOUNT`, `PARIKSHAA_BANK_IFSC`, `PARIKSHAA_BANK_ACCOUNT_NAME`, `PARIKSHAA_BANK_NAME` | Quotation PDF par bank details chhapenge; tab tak console "bank details set nahi" batata hai | 1 Oct 2026 |
 | **DPA aur SLA par lawyer** | `docs/legal/DPA.md`, `SLA.md` ke [ ] wale hisse: company ka naam, liability, uptime target, support ghante, sub-processors ke region | Pehli badi company ko bhej sakte hain | 1 Oct 2026 |
 | **Asli model par pehla trial** | `ANTHROPIC_API_KEY` (upar wali hi) aur kuch asli samples: 3 JD, 5 handwritten copies (scan), 5 candidates ki photos (sahmati ke saath) | JD se test, handwritten marking aur proxy photo-check ki asli quality pata chalegi; abhi sab fake model se tested hain | 1 Oct 2026 |
@@ -347,7 +347,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 34 | **Contests v2** (F11, §20): contest me rank par coins (top 10 ko, ek baar), judge ki priority lane (contest ke submissions pehle), runner queue jo bheed me bhi kram se chale, 2,000 learners ek saath ka load test | F11, §20 | Contest bina atke chale, aur jeetne ka inaam | Tests: rank coins ek hi baar, queue ka kram aur timeout; load test ki report (p95, errors) | ✅ ban gaya (2 Oct 2026); autoscale ⬜ |
 | 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ✅ ban gaya (2 Oct 2026) |
 | 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
-| 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ⬜ pending (evals ka paid run alag se owner par) |
+| 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ✅ ban gaya (2 Oct 2026); evals ka paid run alag se owner par |
 | 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ⬜ pending |
 | 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ⬜ pending |
 | 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ⬜ pending |

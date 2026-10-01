@@ -172,6 +172,8 @@ async function main(): Promise<void> {
       privacy
         .sweep()
         .then((erased) => (erased > 0 ? app.log.info({ erased }, "retention sweep") : undefined))
+        .then(() => privacy.sweepTutor())
+        .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "tutor chats past 180 days deleted") : undefined))
         .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "retention sweep failed"));
     retaining = setInterval(sweep, 60 * 60 * 1000);
     setTimeout(sweep, 60_000).unref();

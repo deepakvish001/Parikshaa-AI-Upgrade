@@ -11,7 +11,7 @@
     "Tutor-*.js": 4,
     "prep-*.css": 3,
     "prep-*.js": 1,
-    "prep-text-*.js": 10,
+    "prep-text-*.js": 11,
     "PlusPages-*.js": 7,
     "coins-*.js": 1,
     "CommunityPages-*.js": 9,
@@ -24,7 +24,7 @@
   "packages/console/dist": {
     "index-*.js": 178,
     "index-*.css": 19,
-    "Practice-*.js": 14,
+    "Practice-*.js": 15,
     "Sales-*.js": 3,
     "PrepAnalytics-*.js": 3,
     "Campus-*.js": 3,

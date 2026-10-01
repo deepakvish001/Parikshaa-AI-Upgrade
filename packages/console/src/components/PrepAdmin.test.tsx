@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ConsoleClient, PrepLesson, PrepTrack } from "../api.ts";
-import { Lessons, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
+import { Lessons, ProblemOfTheDay, Tracks, TutorEvals } from "./PrepAdmin.tsx";
 
 /** Prep content in the console (ROADMAP §16), against a stub of its client. */
 
@@ -148,5 +148,46 @@ describe("Plus", () => {
     await user.click(screen.getByRole("button", { name: "Give Plus" }));
     await waitFor(() => expect(client.grantPlus).toHaveBeenCalledWith("l1", 180));
     expect(await screen.findByText(/Given, until/)).toBeTruthy();
+  });
+});
+
+describe("Sahayak evals", () => {
+  it("shows each check beside its target, and says when no run has been made", async () => {
+    const metric = (id: string, label: string, target: number | null, percent: number | null) => ({ id, label, target, percent, met: percent === null || target === null ? null : percent >= target });
+    const client = {
+      tutorEvals: vi
+        .fn()
+        .mockResolvedValueOnce({
+          recordedAt: null,
+          model: null,
+          flows: [{ flow: "review", version: null, cases: 0, metrics: [metric("bug_found", "Bug found", 90, null)] }],
+        })
+        .mockResolvedValueOnce({
+          recordedAt: "2026-10-02T00:00:00Z",
+          model: "claude-opus-5-5",
+          flows: [{ flow: "review", version: "v2", cases: 120, metrics: [metric("bug_found", "Bug found", 90, 92.5), metric("complexity_right", "Complexity right", 95, 80)] }],
+        }),
+    };
+    const first = render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <TutorEvals client={client as unknown as ConsoleClient} />
+      </QueryClientProvider>,
+    );
+    const section = await screen.findByRole("region", { name: "Sahayak evals" });
+    expect(section.textContent).toContain("No eval run yet");
+    expect(within(section).getByText("Not run")).toBeTruthy();
+    expect(section.textContent).toContain("≥ 90%");
+    first.unmount();
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <TutorEvals client={client as unknown as ConsoleClient} />
+      </QueryClientProvider>,
+    );
+    const run = await screen.findByRole("region", { name: "Sahayak evals" });
+    expect(run.textContent).toContain("model claude-opus-5-5");
+    expect(within(run).getByText("92.5%").className).toContain("ok");
+    expect(within(run).getByText("80%").className).toContain("warn");
+    expect(run.textContent).toContain("Reviews (120 cases)");
   });
 });

@@ -546,6 +546,37 @@ describe("Sahayak on a problem", () => {
     expect(screen.getByRole("button", { name: "Get credits" })).toBeTruthy();
   });
 
+  it("asks the interview follow-ups and sends an answer to one", async () => {
+    routes["GET /practice/nit-practice/problems/stable-sort"] = () => ({ body: mcq });
+    routes["GET /practice/nit-practice/problems/stable-sort/comments"] = () => ({ body: { comments: [] } });
+    routes["GET /practice/nit-practice/lists"] = () => ({ body: { lists: [{ name: "Bookmarks", solved: 0, problems: [] }] } });
+    let entries: object[] = [];
+    routes["GET /practice/nit-practice/problems/stable-sort/tutor"] = () => ({
+      body: { entries, nextHint: null, failures: 0, costs: { hint1: 10, hint: 20, review: 40, doubt: 15, followup: 15, followupReply: 10 } },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [] } });
+    const asked = { id: "f1", mode: "followup", hintLevel: null, answer: "1. Why is merge sort stable?\n2. Can heapsort be made stable?", credits: 15, createdAt: "2026-10-05T04:00:00Z", question: "", data: { questions: ["Why is merge sort stable?", "Can heapsort be made stable?"] } };
+    routes["POST /practice/nit-practice/problems/stable-sort/tutor/followups"] = () => {
+      entries = [asked];
+      return { body: asked };
+    };
+    routes["POST /practice/nit-practice/problems/stable-sort/tutor/followups/f1/reply"] = () => {
+      const replied = { id: "r1", mode: "followup_reply", hintLevel: null, answer: "**Strong.** You named the tie rule.", credits: 10, createdAt: "2026-10-05T04:01:00Z", question: "It takes from the left on a tie", data: { verdict: "strong" } };
+      entries = [asked, replied];
+      return { body: replied };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/problems/stable-sort");
+    await user.click(await screen.findByRole("tab", { name: "Sahayak" }));
+    await user.click(await screen.findByRole("button", { name: "Interview follow-ups · 15 credits" }));
+    expect(await screen.findByText("Why is merge sort stable?")).toBeTruthy();
+    await user.type(screen.getByLabelText("Your answer to question 1"), "It takes from the left on a tie");
+    await user.click(screen.getByRole("button", { name: "Answer question 1" }));
+    expect(await screen.findByText("You named the tie rule.")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/followups/f1/reply"))!.body).toEqual({ question: 0, answer: "It takes from the left on a tie", replyIn: "en" });
+    expect(screen.getByText("What Sahayak says is deleted after 180 days.")).toBeTruthy();
+  });
+
   it("says so when the first hint is free: the problem's author wrote it", async () => {
     routes["GET /practice/nit-practice/problems/stable-sort"] = () => ({ body: mcq });
     routes["GET /practice/nit-practice/problems/stable-sort/comments"] = () => ({ body: { comments: [] } });

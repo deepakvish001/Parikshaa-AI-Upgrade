@@ -444,6 +444,49 @@ export function ProblemOfTheDay({ client, canWrite }: { client: ConsoleClient; c
 
 const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
+const FLOW_NAMES = { hint: "Hints", review: "Reviews", doubt: "Doubts" } as const;
+
+/** Sahayak's eval scores beside their targets (Prep blueprint §14): how far the tutor can be trusted. */
+export function TutorEvals({ client }: { client: ConsoleClient }) {
+  const evals = useQuery({ queryKey: ["prep", "tutor-evals"], queryFn: () => client.tutorEvals() });
+  if (evals.data === undefined) return null;
+  const e = evals.data;
+  return (
+    <section className="card prep-card" aria-label="Sahayak evals">
+      <div className="bar">
+        <strong>Sahayak evals</strong>
+      </div>
+      <p className="notice">
+        {e.recordedAt === null
+          ? "No eval run yet: 360 cases (40 problems) wait on the first paid run. Until then the tutor is tested only against a stand-in model."
+          : `Last run ${new Date(e.recordedAt).toLocaleDateString("en-IN")}, model ${e.model ?? "unknown"}.`}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Flow</th>
+            <th scope="col">Check</th>
+            <th scope="col">Target</th>
+            <th scope="col">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {e.flows.flatMap((f) =>
+            f.metrics.map((m, i) => (
+              <tr key={`${f.flow}-${m.id}`}>
+                <td>{i === 0 ? `${FLOW_NAMES[f.flow]}${f.cases > 0 ? ` (${f.cases} cases)` : ""}` : ""}</td>
+                <td>{m.label}</td>
+                <td>{m.target === null ? "—" : `≥ ${m.target}%`}</td>
+                <td>{m.percent === null ? <span className="notice">Not run</span> : <span className={`pill ${m.met === false ? "warn" : "ok"}`}>{m.percent}%</span>}</td>
+              </tr>
+            )),
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canManage: boolean }) {
   const queryClient = useQueryClient();
   const admin = useQuery({ queryKey: ["prep", "plus"], queryFn: () => client.plusAdmin() });
