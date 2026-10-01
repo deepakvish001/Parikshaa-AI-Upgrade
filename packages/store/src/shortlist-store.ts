@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Shortlists for hiring managers, and their decisions (migration 0032). */
+/** Shortlists for hiring managers, and their decisions (migration 0038). */
 
 export type ShortlistDecision = "shortlist" | "hold" | "reject";
 

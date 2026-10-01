@@ -17,6 +17,8 @@ export * from "./lti-store.js";
 export * from "./prep-store.js";
 export * from "./prep-plus-store.js";
 export * from "./prep-community-store.js";
+export * from "./prep-engage-store.js";
+export * from "./prep-campus-store.js";
 export * from "./report-store.js";
 export * from "./feedback-store.js";
 export * from "./lab-store.js";

@@ -3,7 +3,7 @@ import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
 /**
- * A placement cell's records (migration 0029): its students, entered once,
+ * A placement cell's records (migration 0035): its students, entered once,
  * and its recruitment drives with how far each student got in each.
  */
 

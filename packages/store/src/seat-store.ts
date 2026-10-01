@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Seats and attendance for an exam held in rooms (migration 0031). */
+/** Seats and attendance for an exam held in rooms (migration 0037). */
 
 export interface Seat {
   readonly ref: string;

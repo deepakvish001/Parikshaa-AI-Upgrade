@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Interviews: the room, the candidate's code, the notes and the scorecard (migration 0036). */
+/** Interviews: the room, the candidate's code, the notes and the scorecard (migration 0042). */
 
 export type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
 

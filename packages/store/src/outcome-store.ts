@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** An exam's course outcomes and their mapping to programme outcomes (migration 0035). */
+/** An exam's course outcomes and their mapping to programme outcomes (migration 0041). */
 export interface OutcomeMap {
   readonly mapping: Readonly<Record<string, readonly string[]>>;
   readonly matrix: Readonly<Record<string, Readonly<Record<string, number>>>>;
