@@ -319,6 +319,10 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
             notice: noticeSchema
               .nullable()
               .describe("The privacy notice opening will ask agreement to, so it can be shown first; null when there is none or the attempt has begun."),
+            seat: z
+              .object({ centre: z.string(), room: z.string(), seat: z.string() })
+              .nullable()
+              .describe("Where to sit, when the exam is held in rooms; the admit card (GET /invitations/admit-card.pdf) says the same."),
           }),
           404: S.errorResponse,
           429: S.errorResponse,

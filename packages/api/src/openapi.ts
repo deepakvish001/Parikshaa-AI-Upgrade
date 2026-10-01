@@ -1,10 +1,11 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
 import { PlacementService } from "./placement.js";
+import { SeatService } from "./seats.js";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -83,6 +84,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     feedback: new FeedbackStore(unusable),
     lab: new LabService({ lab: new LabStore(unusable), invitations: invitationStore, store, exams: service }),
     marking: new MarkingService({ store, marking: new MarkingStore(unusable), exams: service }),
+    seats: new SeatService({ seats: new SeatStore(unusable), invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes("x".repeat(40)), secret: "x".repeat(40) }),
     placement: new PlacementService({ placement: new PlacementStore(unusable), store, exams: service, invitations, results }),
     rechecks: new RecheckService({ store, rechecks: new RecheckStore(unusable), invitations: invitationStore, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     tokens,

@@ -83,6 +83,8 @@ export const ACTIONS: Record<string, string> = {
   "drive.students_added": "added students to a drive",
   "drive.stage_set": "moved students to the next round",
   "drive.exported": "downloaded a drive's students",
+  "exam.seats_allocated": "seated the candidates",
+  "exam.attendance_marked": "marked a candidate present",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",

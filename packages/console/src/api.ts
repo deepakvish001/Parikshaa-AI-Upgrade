@@ -326,6 +326,25 @@ export interface JobDraft {
   readonly notes: readonly string[];
 }
 
+/** A candidate's seat for an exam held in rooms, and whether they are in the room. */
+export interface SeatRow {
+  readonly ref: string;
+  readonly name: string;
+  readonly centre: string;
+  readonly room: string;
+  readonly seat: string;
+  readonly present: boolean;
+  readonly attemptState: string;
+}
+
+export interface Marked {
+  readonly ref: string;
+  readonly name: string;
+  readonly room: string;
+  readonly seat: string;
+  readonly already: { readonly by: string; readonly at: string } | null;
+}
+
 /** A candidate's request to recheck one question, with what it is about. */
 export interface RecheckRow {
   readonly id: string;
@@ -1314,6 +1333,28 @@ export class ConsoleClient {
   /** Keep or change one answer's mark, and record it as read. */
   markAnswer(examId: string, attemptId: string, questionId: string, score: number): Promise<{ readonly score: number; readonly changed: boolean }> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/marking`, { method: "POST", body: JSON.stringify({ attemptId, questionId, score }) });
+  }
+
+  // --- seats, admit cards, attendance ---------------------------------------------
+
+  async seats(examId: string): Promise<readonly SeatRow[]> {
+    return (await this.#request<{ seats: readonly SeatRow[] }>(`/exams/${encodeURIComponent(examId)}/seats`)).seats;
+  }
+
+  allocateSeats(examId: string, rooms: readonly { readonly centre: string; readonly room: string; readonly seats: number }[]): Promise<{ readonly seated: number; readonly spare: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/seats`, { method: "POST", body: JSON.stringify({ rooms }) });
+  }
+
+  async admitCards(examId: string, ref?: string): Promise<Blob> {
+    const query = ref === undefined ? "" : `?ref=${encodeURIComponent(ref)}`;
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/admit-cards.pdf${query}`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  /** Mark a candidate present: the admit card's code as scanned, or a roll number. */
+  markPresent(examId: string, code: string): Promise<Marked> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/attendance`, { method: "POST", body: JSON.stringify({ code }) });
   }
 
   // --- the placement cell -------------------------------------------------------

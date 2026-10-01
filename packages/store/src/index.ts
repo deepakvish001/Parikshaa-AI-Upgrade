@@ -23,3 +23,4 @@ export * from "./lab-store.js";
 export * from "./recheck-store.js";
 export * from "./marking-store.js";
 export * from "./placement-store.js";
+export * from "./seat-store.js";

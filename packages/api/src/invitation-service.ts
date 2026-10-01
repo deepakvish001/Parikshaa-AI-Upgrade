@@ -93,6 +93,8 @@ export interface InvitationServiceOptions {
   readonly notice?: (orgId: OrgId) => Promise<Notice | null>;
   /** Lab mode: where an exam may be taken from, and whether it waits for its invigilator. */
   readonly lab?: LabService;
+  /** Where a candidate sits on exam day, when the exam is held in rooms. */
+  readonly seat?: (orgId: OrgId, examId: string, ref: string) => Promise<{ readonly centre: string; readonly room: string; readonly seat: string } | null>;
 }
 
 export interface ImportPreview {
@@ -104,7 +106,8 @@ export interface ImportPreview {
 }
 
 export class InvitationService {
-  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab">>;
+  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab" | "seat">>;
+  readonly #seat: NonNullable<InvitationServiceOptions["seat"]>;
   readonly #notice: (orgId: OrgId) => Promise<Notice | null>;
   readonly #lab: LabService | null;
   readonly #lead: number;
@@ -118,6 +121,7 @@ export class InvitationService {
     this.#newId = options.newId ?? (() => crypto.randomUUID());
     this.#notice = options.notice ?? (async () => null);
     this.#lab = options.lab ?? null;
+    this.#seat = options.seat ?? (async () => null);
   }
 
   #require(actor: Actor, permission: Permission) {
@@ -430,7 +434,8 @@ export class InvitationService {
     const started = invitation.attemptId !== null && (await this.#o.store.hasStarted(scope, invitation.attemptId as AttemptId));
     // What opening will ask for, so the page can ask it first: the same notice and camera redeem would refuse without.
     const notice = started ? null : await this.#notice(toOrgId(named.orgId));
-    return { ...briefingOf(exam, invitation, started), notice };
+    const seat = await this.#seat(toOrgId(named.orgId), invitation.examId, invitation.candidateRef);
+    return { ...briefingOf(exam, invitation, started), notice, seat };
   }
 }
 
@@ -461,13 +466,15 @@ export interface Briefing {
    * show it first, in its place among the steps, instead of on refusal.
    */
   readonly notice: Notice | null;
+  /** Where to sit, when the exam is held in rooms; the admit card says the same. */
+  readonly seat: { readonly centre: string; readonly room: string; readonly seat: string } | null;
 }
 
 export function briefingOf(
   exam: Exam,
   invitation: Pick<Invitation, "name" | "candidateRef" | "opensAt" | "closesAt">,
   started: boolean,
-): Omit<Briefing, "notice"> {
+): Omit<Briefing, "notice" | "seat"> {
   const sections = exam.sections ?? [];
   const every = [...exam.questions, ...sections.flatMap((s) => s.pool)];
   const kinds = new Set<Briefing["kinds"][number]>();

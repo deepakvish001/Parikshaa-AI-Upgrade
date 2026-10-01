@@ -47,6 +47,8 @@ import { registerProgressRoutes } from "./progress-routes.js";
 import type { PlacementService } from "./placement.js";
 import { registerPlacementRoutes } from "./placement-routes.js";
 import { JobTestService } from "./job-test.js";
+import type { SeatService } from "./seats.js";
+import { registerSeatRoutes } from "./seats-routes.js";
 import { registerJobTestRoutes } from "./job-test-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
@@ -117,6 +119,8 @@ export interface ServerOptions {
   readonly marking?: MarkingService;
   /** The placement cell: students on file and recruitment drives. Absent: none of their routes. */
   readonly placement?: PlacementService;
+  /** Seats, admit cards and attendance. Absent: none of their routes. */
+  readonly seats?: SeatService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -1232,6 +1236,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.marking !== undefined) registerMarkingRoutes(routes, { marking: options.marking, staff });
     if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff });
     registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
+    if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });

@@ -71,7 +71,8 @@ describe("the OpenAPI document", () => {
     // <img> fetches with no session and only a holder of the picture can name.
     // And the ways back in for someone who cannot sign in: a password reset
     // (whose link is the proof) and their organisation's own sign-in provider.
-    // And a scorecard's check, whose code — printed on the scorecard — is the proof.
+    // And a scorecard's check, whose code — printed on the scorecard — is the proof;
+    // likewise a candidate's admit card, by the code in their invitation link.
     const open = new Set([
       "get /health",
       "get /openapi.json",
@@ -81,6 +82,7 @@ describe("the OpenAPI document", () => {
       "post /auth/verify-email",
       "post /invitations/redeem",
       "post /invitations/briefing",
+      "get /invitations/admit-card.pdf",
       "get /media/{sha256}",
       "post /auth/password-reset",
       "post /auth/password-reset/confirm",
@@ -107,7 +109,7 @@ describe("the OpenAPI document", () => {
 
     // Everything a candidate does is to their own attempt, addressed as `me` —
     // except reading and opening the invitation that gives them one.
-    expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me") || p === "/invitations/redeem" || p === "/invitations/briefing")).toBe(true);
+    expect(tagged("Candidate").every((p) => p.startsWith("/attempts/me") || p === "/invitations/redeem" || p === "/invitations/briefing" || p === "/invitations/admit-card.pdf")).toBe(true);
     expect(tagged("Institution").some((p) => p === "/exams")).toBe(true);
     // A practice learner reaches only their site's pages; staff run it from /practice-admin.
     expect(tagged("Practice").length).toBeGreaterThan(10);

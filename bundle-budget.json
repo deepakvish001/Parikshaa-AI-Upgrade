@@ -28,6 +28,8 @@
     "Placement-*.js": 7,
     "JobTest-*.js": 3,
     "arrow-left-*.js": 1,
+    "Rooms-*.js": 4,
+    "Rooms-*.css": 1,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5
