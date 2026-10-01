@@ -17,7 +17,7 @@ let app: FastifyInstance;
 let owner: string;
 let invigilator: string;
 
-const call = (method: "GET" | "POST", url: string, token: string, payload?: object) =>
+const call = (method: "GET" | "POST" | "PUT", url: string, token: string, payload?: object) =>
   app.inject({ method, url, headers: bearer(token), ...(payload === undefined ? {} : { payload }) });
 
 beforeEach(async () => {

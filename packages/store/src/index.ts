@@ -26,3 +26,4 @@ export * from "./placement-store.js";
 export * from "./seat-store.js";
 export * from "./shortlist-store.js";
 export * from "./outcome-store.js";
+export * from "./interview-store.js";

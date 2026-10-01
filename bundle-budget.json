@@ -38,6 +38,8 @@
     "Shortlists-*.js": 3,
     "BankTransfer-*.js": 2,
     "Outcomes-*.js": 3,
+    "Interviews-*.js": 4,
+    "Interviews-*.css": 1,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5

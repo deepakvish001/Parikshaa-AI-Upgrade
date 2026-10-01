@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApplyPage, ShortlistPage } from "./components/PublicPages.tsx";
+import { ApplyPage, InterviewPage, ShortlistPage } from "./components/PublicPages.tsx";
 import { PreferencesProvider } from "./i18n.tsx";
 
 /** Pages opened from a link with no account. */
@@ -90,5 +90,54 @@ describe("applying to a drive from its link", () => {
     await user.type(screen.getByLabelText("Email (the one the college has)"), "r@college.test");
     await user.click(screen.getByRole("button", { name: "Apply" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("criteria");
+  });
+});
+
+describe("a candidate's interview room", () => {
+  const room = {
+    title: "Backend round 1",
+    candidateName: "Ananya",
+    interviewer: "Priya",
+    scheduledAt: "2026-10-06T04:30:00.000Z",
+    minutes: 45,
+    meetingUrl: "https://meet.jit.si/parikshaa-x",
+    problem: "Reverse a linked list",
+    language: "python",
+    code: "",
+    status: "scheduled",
+  };
+
+  it("shows the problem and the call, and sends the code as it is typed", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "PUT" ? json({ savedAt: "2026-10-06T04:31:00.000Z" }) : json(room)));
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <InterviewPage code="org-a.i1.mac" />
+      </PreferencesProvider>,
+    );
+    const page = await screen.findByRole("region", { name: "Interview" });
+    expect(page).toHaveTextContent("Reverse a linked list");
+    expect(screen.getByRole("link", { name: /Join the video call/ })).toHaveAttribute("href", room.meetingUrl);
+    await user.type(screen.getByRole("textbox", { name: "Code editor" }), "print(1)");
+    await waitFor(
+      () =>
+        expect(fetch).toHaveBeenCalledWith(
+          "/api/interviews/room/org-a.i1.mac/code",
+          expect.objectContaining({ method: "PUT", body: JSON.stringify({ code: "print(1)", language: "python" }) }),
+        ),
+      { timeout: 3000 },
+    );
+    expect(await screen.findByText(/your interviewer can see it/)).toBeInTheDocument();
+  });
+
+  it("says when the link no longer works", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "interview_not_found" }, 404)));
+    render(
+      <PreferencesProvider>
+        <InterviewPage code="org-a.i1.bad" />
+      </PreferencesProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "This interview link does not work" })).toBeInTheDocument();
   });
 });

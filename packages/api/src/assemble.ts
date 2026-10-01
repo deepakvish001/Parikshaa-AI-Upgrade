@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -10,6 +10,7 @@ import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
+import { InterviewService } from "./interviews.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -196,6 +197,7 @@ export function assemble(o: AssembleOptions): {
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
+    interviews: new InterviewService({ store: new InterviewStore(o.sql), exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: new PlacementStore(o.sql), store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),

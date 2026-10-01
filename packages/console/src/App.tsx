@@ -19,6 +19,7 @@ import {
   Search,
   Shield,
   Users,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar, Wordmark } from "@parikshaa/brand/react";
@@ -52,6 +53,7 @@ import { remembered, SignIn } from "./components/SignIn.tsx";
 /** The tour, taken once or twice by each account, likewise. */
 const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
+const InterviewsPanel = lazy(() => import("./components/Interviews.tsx").then((m) => ({ default: m.InterviewsPanel })));
 const PlacementPanel = lazy(() => import("./components/Placement.tsx").then((m) => ({ default: m.PlacementPanel })));
 const JobTestDrawer = lazy(() => import("./components/JobTest.tsx").then((m) => ({ default: m.JobTestDrawer })));
 const PracticePanel = lazy(() => import("./components/Practice.tsx").then((m) => ({ default: m.PracticePanel })));
@@ -68,6 +70,7 @@ type View =
   | { readonly name: "practice" }
   | { readonly name: "insights" }
   | { readonly name: "placement" }
+  | { readonly name: "interviews" }
   | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "results"; readonly examId: string }
   | { readonly name: "live"; readonly examId: string }
@@ -416,6 +419,7 @@ function Console({
     { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key", group: "assess", icon: Library },
     { view: { name: "insights" }, label: "Insights", permission: "attempt:review", group: "assess", icon: TrendingUp },
     { view: { name: "placement" }, label: "Placement", permission: "attempt:review", group: "assess", icon: BriefcaseBusiness },
+    { view: { name: "interviews" }, label: "Interviews", permission: "attempt:review", group: "assess", icon: Video },
     { view: { name: "practice" }, label: "Practice", permission: "exam:read_key", group: "assess", icon: GraduationCap },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage", group: "org", icon: Users },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage", group: "org", icon: KeySquare },
@@ -886,6 +890,11 @@ function Console({
                 <PlacementPanel client={client} canInvite={can("attempt:start")} />
               </Suspense>
             ) : null}
+            {view.name === "interviews" ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={4} label="Loading interviews…" />}>
+                <InterviewsPanel client={client} />
+              </Suspense>
+            ) : null}
             {view.name === "practice" ? (
               <Suspense fallback={<SkeletonRows rows={5} columns={3} label="Loading the practice site…" />}>
                 <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
@@ -970,6 +979,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   practice: "practice",
   insights: "insights",
   placement: "placement",
+  interviews: "interviews",
   staff: "staff",
   keys: "keys",
   usage: "usage",
@@ -1010,6 +1020,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Insights";
     case "placement":
       return "Placement";
+    case "interviews":
+      return "Interviews";
     case "staff":
       return "Staff";
     case "keys":
@@ -1053,6 +1065,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   practice: "A practice site for your learners: problems from the bank, contests, and their progress. Nothing there is an exam.",
   insights: "Candidates across every test, lined up by roll number, and the questions worth a second look.",
   placement: "Your students, entered once, and every company's drive: who is eligible, the test, each round and the offers.",
+  interviews: "Interviews with a video call and a shared code editor: watch the candidate type, keep notes, score it.",
   staff: "Who can sign in to this console, and what each can do.",
   keys: "Keys for your own systems to call Parikshaa.",
   usage: "What the AI model has cost this month, and the cap on it.",

@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-import { BriefcaseBusiness, CheckCircle2, CircleX, Loader, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { BriefcaseBusiness, CheckCircle2, CircleX, Code2, Loader, Users, Video } from "lucide-react";
 import { GateShell } from "./Chrome.tsx";
 import "./PublicPages.css";
 
 /**
  * Pages opened from a link by someone with no account here: a hiring
- * manager's shortlist, and a placement drive's page to apply. They are written in English, for the companies and
+ * manager's shortlist, a placement drive's page to apply, and a candidate's
+ * interview room. They are written in English, for the companies and
  * recruiters who open them, and load only when such a link is opened.
  */
 
@@ -326,6 +327,137 @@ export function ApplyPage({ code }: { readonly code: string }) {
             </button>
           </form>
         )}
+      </section>
+    </GateShell>
+  );
+}
+
+interface Room {
+  readonly title: string;
+  readonly candidateName: string;
+  readonly interviewer: string;
+  readonly scheduledAt: string;
+  readonly minutes: number;
+  readonly meetingUrl: string;
+  readonly problem: string;
+  readonly language: string;
+  readonly code: string;
+  readonly status: "scheduled" | "done" | "cancelled";
+}
+
+const LANGUAGES = ["python", "javascript", "java", "cpp", "c", "sql", "text"] as const;
+
+/**
+ * The candidate's side of an interview: the video call opens in its own tab;
+ * here are the problem (which the interviewer may change, so it is fetched
+ * every few seconds) and an editor the interviewer watches as it is typed.
+ */
+export function InterviewPage({ code }: { readonly code: string }) {
+  const [room, setRoom] = useState<Room | "missing" | null>(null);
+  const [source, setSource] = useState<string | null>(null);
+  const [language, setLanguage] = useState<string>("python");
+  const [saved, setSaved] = useState<"saved" | "saving" | "failed" | null>(null);
+  const url = `/api/interviews/room/${encodeURIComponent(code)}`;
+  const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      const response = await fetch(url).catch(() => null);
+      if (!alive) return;
+      if (response === null) return;
+      if (!response.ok) return setRoom("missing");
+      const body = (await response.json()) as Room;
+      setRoom(body);
+      // The code is the candidate's own: take it from the server only when the page opens.
+      setSource((s) => s ?? body.code);
+      setLanguage((l) => (l === "python" && body.language !== "" ? body.language : l));
+    };
+    void load();
+    const timer = setInterval(() => void load(), 3000);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [url]);
+
+  const write = (next: string, lang: string) => {
+    setSource(next);
+    setSaved("saving");
+    if (pending.current !== null) clearTimeout(pending.current);
+    pending.current = setTimeout(async () => {
+      const response = await fetch(`${url}/code`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: next, language: lang }) }).catch(() => null);
+      setSaved(response?.ok === true ? "saved" : "failed");
+    }, 1200);
+  };
+
+  if (room === null) {
+    return (
+      <GateShell width="narrow">
+        <section className="gate-card status-card" aria-busy="true" aria-label="Interview">
+          <Loader className="status-icon spin" aria-hidden="true" />
+          <h1>Opening your interview…</h1>
+        </section>
+      </GateShell>
+    );
+  }
+  if (room === "missing") return <Problem title="This interview link does not work" note="It may have been cancelled. Ask the person who invited you for the current link." />;
+  const at = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(room.scheduledAt));
+  const open = room.status === "scheduled";
+
+  return (
+    <GateShell width="full">
+      <section className="gate-card public-page interview" aria-label="Interview">
+        <p className="notice">
+          {room.title} · with {room.interviewer} · {at} · {room.minutes} minutes
+        </p>
+        <h1>Hello {room.candidateName}</h1>
+        <p>
+          <a className="button" href={room.meetingUrl} target="_blank" rel="noreferrer">
+            <Video aria-hidden="true" className="inline-icon" /> Join the video call
+          </a>{" "}
+          <span className="notice">It opens in a new tab. Keep this page open beside it: your interviewer sees what you type here.</span>
+        </p>
+        <div className="interview-grid">
+          <section aria-label="Problem">
+            <h2>Problem</h2>
+            <p className="problem">{room.problem === "" ? "Your interviewer will put the problem here." : room.problem}</p>
+          </section>
+          <section aria-label="Your code">
+            <div className="editor-bar">
+              <h2>
+                <Code2 aria-hidden="true" className="inline-icon" /> Your code
+              </h2>
+              <select aria-label="Language" value={language} disabled={!open} onChange={(e) => (setLanguage(e.target.value), write(source ?? "", e.target.value))}>
+                {LANGUAGES.map((l) => (
+                  <option key={l}>{l}</option>
+                ))}
+              </select>
+              <span className="notice" role="status">
+                {saved === "saving" ? "Saving…" : saved === "saved" ? "Saved — your interviewer can see it" : saved === "failed" ? "Not saved: check your connection" : ""}
+              </span>
+            </div>
+            <textarea
+              aria-label="Code editor"
+              className="code"
+              spellCheck={false}
+              readOnly={!open}
+              value={source ?? ""}
+              onChange={(e) => write(e.target.value, language)}
+              onKeyDown={(e) => {
+                // Tab indents rather than leaving the editor.
+                if (e.key !== "Tab" || e.shiftKey) return;
+                e.preventDefault();
+                const el = e.currentTarget;
+                const next = `${el.value.slice(0, el.selectionStart)}    ${el.value.slice(el.selectionEnd)}`;
+                const caret = el.selectionStart + 4;
+                write(next, language);
+                requestAnimationFrame(() => el.setSelectionRange(caret, caret));
+              }}
+            />
+            {open ? null : <p className="notice">This interview has finished. Thank you.</p>}
+          </section>
+        </div>
       </section>
     </GateShell>
   );

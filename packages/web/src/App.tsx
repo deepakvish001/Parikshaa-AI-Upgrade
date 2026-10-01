@@ -11,6 +11,7 @@ import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
 
 /** Pages opened from a link with no account; loaded only when one is. */
 const ShortlistPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ShortlistPage })));
+const InterviewPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.InterviewPage })));
 const ApplyPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ApplyPage })));
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
@@ -121,6 +122,7 @@ export function App(props: { client?: ParikshaaClient } = {}) {
   const scorecard = query?.get("scorecard") ?? null;
   const shortlist = query?.get("shortlist") ?? null;
   const apply = query?.get("apply") ?? null;
+  const interview = query?.get("interview") ?? null;
   return (
     <PreferencesProvider>
       {scorecard !== null ? (
@@ -132,6 +134,10 @@ export function App(props: { client?: ParikshaaClient } = {}) {
       ) : apply !== null ? (
         <Suspense fallback={null}>
           <ApplyPage code={apply} />
+        </Suspense>
+      ) : interview !== null ? (
+        <Suspense fallback={null}>
+          <InterviewPage code={interview} />
         </Suspense>
       ) : (
         <Screens {...props} />

@@ -306,6 +306,34 @@ interface PlacementFigures {
   readonly averageLpa: number | null;
 }
 
+export type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
+
+export interface InterviewScorecard {
+  readonly criteria: readonly { readonly name: string; readonly score: number }[];
+  readonly recommendation: Recommendation;
+  readonly summary: string;
+}
+
+export interface Interview {
+  readonly id: string;
+  readonly title: string;
+  readonly candidateRef: string;
+  readonly candidateName: string;
+  readonly candidateEmail: string | null;
+  readonly interviewer: string;
+  readonly scheduledAt: string;
+  readonly minutes: number;
+  readonly meetingUrl: string;
+  readonly problem: string;
+  readonly language: string;
+  readonly code: string;
+  readonly codeUpdatedAt: string | null;
+  readonly notes: string;
+  readonly scorecard: InterviewScorecard | null;
+  readonly status: "scheduled" | "done" | "cancelled";
+  readonly link: string;
+}
+
 export interface PlacementReport {
   readonly batches: readonly (PlacementFigures & { readonly batch: number | null; readonly branches: readonly (PlacementFigures & { readonly branch: string })[] })[];
 }
@@ -1440,6 +1468,38 @@ export class ConsoleClient {
   /** Each branch in each topic across recent tests, and the students who need help. */
   readiness(batch?: number): Promise<Readiness> {
     return this.#request(`/placement/readiness${batch === undefined ? "" : `?batch=${batch}`}`);
+  }
+
+  // --- interviews ---------------------------------------------------------------
+
+  interviews(): Promise<readonly Interview[]> {
+    return this.#request<{ interviews: readonly Interview[] }>("/interviews").then((b) => b.interviews);
+  }
+
+  interview(id: string): Promise<Interview> {
+    return this.#request(`/interviews/${encodeURIComponent(id)}`);
+  }
+
+  scheduleInterview(request: {
+    readonly title: string;
+    readonly candidateName: string;
+    readonly candidateRef: string;
+    readonly candidateEmail: string | null;
+    readonly scheduledAt: string;
+    readonly minutes: number;
+    readonly meetingUrl: string | null;
+    readonly problem: string;
+    readonly language: string;
+  }): Promise<Interview> {
+    return this.#request("/interviews", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  editInterview(id: string, patch: { readonly problem?: string; readonly notes?: string; readonly cancel?: boolean }): Promise<Interview> {
+    return this.#request(`/interviews/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(patch) });
+  }
+
+  scoreInterview(id: string, card: InterviewScorecard): Promise<Interview> {
+    return this.#request(`/interviews/${encodeURIComponent(id)}/scorecard`, { method: "POST", body: JSON.stringify(card) });
   }
 
   placementReport(): Promise<PlacementReport> {
