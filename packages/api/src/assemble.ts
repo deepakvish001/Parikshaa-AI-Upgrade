@@ -122,7 +122,22 @@ export function assemble(o: AssembleOptions): {
   });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
-  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
+  // Records kept sealed outside the ledger (T1), and swept with the retention period.
+  const scriptStore = new ScriptStore(o.sql, keys.records("scripts"));
+  const interviewStore = new InterviewStore(o.sql, keys.records("interviews"));
+  const placementStore = new PlacementStore(o.sql, keys.records("students"));
+  const privacy = new PrivacyService({
+    store,
+    privacy: new PrivacyStore(o.sql),
+    invitations: invitationStore,
+    identity,
+    exams: service,
+    proctor: proctorStore,
+    records: [
+      { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
+      { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
+    ],
+  });
   const labStore = new LabStore(o.sql);
   const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service });
   // Made below, once the results it reads exist; the hook is called only when a candidate starts.
@@ -229,11 +244,11 @@ export function assemble(o: AssembleOptions): {
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
-    handwriting: new HandwritingService({ scripts: new ScriptStore(o.sql), ledger: store, exams: service }),
-    interviews: new InterviewService({ store: new InterviewStore(o.sql), exams: service, secret: o.secret, publicUrl: o.publicUrl }),
+    handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service }),
+    interviews: new InterviewService({ store: interviewStore, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
-    placement: new PlacementService({ placement: new PlacementStore(o.sql), store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
+    placement: new PlacementService({ placement: placementStore, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,
     auth,
     security,

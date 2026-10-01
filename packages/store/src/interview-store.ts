@@ -1,4 +1,5 @@
 import { staffScope, withScope } from "./ledger-store.js";
+import { NO_SEAL, type RecordSeal } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
@@ -77,11 +78,21 @@ const toInterview = (r: Row): Interview => ({
   createdAt: iso(r.created_at),
 });
 
+const aad = (orgId: string, id: string, field: "email" | "code" | "notes") => `interviews/${orgId}/${id}/${field}`;
+
 export class InterviewStore {
   readonly #sql: SqlExecutor;
+  readonly #seal: RecordSeal;
 
-  constructor(sql: SqlExecutor) {
+  /** `seal`: the candidate's email, their code and the interviewer's notes are kept sealed (T1). */
+  constructor(sql: SqlExecutor, seal: RecordSeal = NO_SEAL) {
     this.#sql = sql;
+    this.#seal = seal;
+  }
+
+  #open(orgId: string, r: Row): Interview {
+    const i = toInterview(r);
+    return { ...i, candidateEmail: this.#seal.open(i.candidateEmail, aad(orgId, i.id, "email")), code: this.#seal.open(i.code, aad(orgId, i.id, "code")), notes: this.#seal.open(i.notes, aad(orgId, i.id, "notes")) };
   }
 
   async create(orgId: OrgId, i: Omit<Interview, "code" | "codeUpdatedAt" | "notes" | "scorecard" | "status" | "language"> & { readonly language: string }): Promise<Interview> {
@@ -89,22 +100,22 @@ export class InterviewStore {
       const rows = await tx.query<Row>(
         `INSERT INTO interviews (org_id, id, title, candidate_ref, candidate_name, candidate_email, interviewer, scheduled_at, minutes, meeting_url, problem, language, drive_id, created_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING ${COLUMNS}`,
-        [orgId, i.id, i.title, i.candidateRef, i.candidateName, i.candidateEmail, i.interviewer, i.scheduledAt, i.minutes, i.meetingUrl, i.problem, i.language, i.driveId, i.createdAt],
+        [orgId, i.id, i.title, i.candidateRef, i.candidateName, this.#seal.text(i.candidateEmail, aad(orgId, i.id, "email")), i.interviewer, i.scheduledAt, i.minutes, i.meetingUrl, i.problem, i.language, i.driveId, i.createdAt],
       );
-      return toInterview(rows[0]!);
+      return this.#open(orgId, rows[0]!);
     });
   }
 
   async get(orgId: OrgId, id: string): Promise<Interview | null> {
     return withScope(this.#sql, staffScope(orgId), async (tx) => {
       const rows = await tx.query<Row>(`SELECT ${COLUMNS} FROM interviews WHERE org_id = $1 AND id = $2`, [orgId, id]);
-      return rows[0] === undefined ? null : toInterview(rows[0]);
+      return rows[0] === undefined ? null : this.#open(orgId, rows[0]);
     });
   }
 
   async list(orgId: OrgId): Promise<readonly Interview[]> {
     return withScope(this.#sql, staffScope(orgId), async (tx) =>
-      (await tx.query<Row>(`SELECT ${COLUMNS} FROM interviews WHERE org_id = $1 ORDER BY scheduled_at DESC LIMIT 500`, [orgId])).map(toInterview),
+      (await tx.query<Row>(`SELECT ${COLUMNS} FROM interviews WHERE org_id = $1 ORDER BY scheduled_at DESC LIMIT 500`, [orgId])).map((r) => this.#open(orgId, r)),
     );
   }
 
@@ -120,15 +131,22 @@ export class InterviewStore {
           orgId,
           id,
           patch.problem ?? null,
-          patch.notes ?? null,
+          patch.notes === undefined ? null : this.#seal.text(patch.notes, aad(orgId, id, "notes")),
           patch.language ?? null,
-          patch.code ?? null,
+          patch.code === undefined ? null : this.#seal.text(patch.code, aad(orgId, id, "code")),
           patch.codeAt?.toISOString() ?? null,
           patch.scorecard === undefined ? null : JSON.stringify(patch.scorecard),
           patch.status ?? null,
         ],
       );
-      return rows[0] === undefined ? null : toInterview(rows[0]);
+      return rows[0] === undefined ? null : this.#open(orgId, rows[0]);
     });
+  }
+
+  /** Interviews done or cancelled before `before`: removed by the retention sweep (T1). Returns how many. */
+  async sweep(orgId: OrgId, before: Date): Promise<number> {
+    return withScope(this.#sql, staffScope(orgId), async (tx) =>
+      (await tx.query(`DELETE FROM interviews WHERE org_id = $1 AND status <> 'scheduled' AND scheduled_at < $2 RETURNING id`, [orgId, before.toISOString()])).length,
+    );
   }
 }

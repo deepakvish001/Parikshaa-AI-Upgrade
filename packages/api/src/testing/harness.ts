@@ -194,7 +194,15 @@ export async function wire(
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);
   const invitationStore = new InvitationStore(sql);
+  const records = new DataKeys(DATA_KEY);
+  const scriptStore = new ScriptStore(sql, records.records("scripts"));
+  const interviewStore = new InterviewStore(sql, records.records("interviews"));
+  const placementStore = new PlacementStore(sql, records.records("students"));
   const privacy = new PrivacyService({
+    records: [
+      { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
+      { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
+    ],
     store,
     proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
     privacy: new PrivacyStore(sql),
@@ -359,11 +367,11 @@ export async function wire(
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
-    handwriting: new HandwritingService({ scripts: new ScriptStore(sql), ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
-    interviews: new InterviewService({ store: new InterviewStore(sql), exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
+    handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
+    interviews: new InterviewService({ store: interviewStore, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
-    placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
+    placement: new PlacementService({ placement: placementStore, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,
     auth,
     security,

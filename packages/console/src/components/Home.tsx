@@ -98,6 +98,7 @@ export const ACTIONS: Record<string, string> = {
   "interview.scheduled": "scheduled an interview",
   "interview.cancelled": "cancelled an interview",
   "interview.scored": "scored an interview",
+  "records.erased": "erased old records past the retention period",
   "attempt.identity_compared": "had the model compare a candidate's photos",
   "script.suggested": "had the model suggest marks for a handwritten copy",
   "script.checked": "checked a handwritten copy",

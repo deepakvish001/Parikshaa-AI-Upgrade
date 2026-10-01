@@ -22,9 +22,9 @@ To report a vulnerability, see [`.github/SECURITY.md`](../.github/SECURITY.md).
 | Payments, invoices | Organisation | `payments`, `invoices`, `credit_ledger` | No card data ever reaches Parikshaa: Razorpay Checkout collects it |
 | Where an attempt was opened from (proctored or not) | Candidate | `attempt_origins` | Only a keyed hash of the network address and a hash of the browser description; deleted on erasure |
 | The model's comparison of identity photos | Candidate | `identity_checks` | Row-level security; deleted on erasure |
-| Scanned handwritten answer pages | Candidate | `answer_scripts`, `answer_script_pages` | Row-level security only: **not** sealed under a per-record key, and not yet in the retention sweep |
-| Student list (roll number, contact, CGPA, placement, offers) | Student | `students`, `drive_applications` | Row-level security only; removed when the college removes the student |
-| Interview code, notes and scorecard | Candidate | `interviews` | Row-level security only; not yet in the retention sweep |
+| Scanned handwritten answer pages, and what the model read from them | Candidate | `answer_scripts`, `answer_script_pages` | Sealed (AES-256-GCM) under a key derived from `PARIKSHAA_DATA_KEY`, bound to the copy and page; removed by the retention sweep |
+| Student list (roll number, contact, CGPA, placement, offers) | Student | `students`, `drive_applications` | Email and phone sealed under a derived key, bound to the student; the rest under row-level security; removed when the college removes the student (not by the retention sweep: it is the college's register) |
+| Interview code, notes and scorecard | Candidate | `interviews` | Candidate's email, code and the interviewer's notes sealed under a derived key; finished interviews removed by the retention sweep |
 
 Secrets that are **derived, not stored** — invitation codes, webhook signing
 secrets, the Greenhouse key, password-reset links: each is an HMAC under a

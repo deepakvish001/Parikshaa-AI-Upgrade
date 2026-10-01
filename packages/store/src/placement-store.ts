@@ -1,4 +1,5 @@
 import { staffScope, withScope } from "./ledger-store.js";
+import { NO_SEAL, type RecordSeal } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
@@ -109,6 +110,9 @@ interface StudentDb {
   college?: string | null;
 }
 
+/** What a sealed student field is bound to: the organisation, the roll number and the field. */
+const aad = (orgId: string, ref: string, field: "email" | "phone") => `students/${orgId}/${ref}/${field}`;
+
 const toStudent = (r: StudentDb): Student => ({
   ref: r.ref,
   name: r.name,
@@ -194,9 +198,17 @@ export function eligible(student: Student, rule: Eligibility): boolean {
 
 export class PlacementStore {
   readonly #sql: SqlExecutor;
+  readonly #seal: RecordSeal;
 
-  constructor(sql: SqlExecutor) {
+  /** `seal`: a student's email and phone are kept sealed (T1); without one, plain. */
+  constructor(sql: SqlExecutor, seal: RecordSeal = NO_SEAL) {
+    this.#seal = seal;
     this.#sql = sql;
+  }
+
+  #student(orgId: string, r: StudentDb): Student {
+    const s = toStudent(r);
+    return { ...s, email: this.#seal.open(s.email, aad(orgId, s.ref, "email")), phone: this.#seal.open(s.phone, aad(orgId, s.ref, "phone")) };
   }
 
   // --- students ---------------------------------------------------------------
@@ -214,7 +226,7 @@ export class PlacementStore {
           ORDER BY s.ref`,
         [orgId],
       );
-      return rows.map((r) => ({ ...toStudent(r), offers: Number(r.offers), bestOfferLpa: num(r.best) }));
+      return rows.map((r) => ({ ...this.#student(orgId, r), offers: Number(r.offers), bestOfferLpa: num(r.best) }));
     });
   }
 
@@ -236,7 +248,7 @@ export class PlacementStore {
            ON CONFLICT (org_id, ref) DO UPDATE SET name = EXCLUDED.name, email = EXCLUDED.email, phone = EXCLUDED.phone,
              branch = EXCLUDED.branch, batch = EXCLUDED.batch, cgpa = EXCLUDED.cgpa, backlogs = EXCLUDED.backlogs, updated_at = EXCLUDED.updated_at
            RETURNING (xmax = 0) AS inserted`,
-          [orgId, s.ref, s.name, s.email, s.phone, s.branch, s.batch, s.cgpa, s.backlogs, at.toISOString()],
+          [orgId, s.ref, s.name, this.#seal.text(s.email, aad(orgId, s.ref, "email")), this.#seal.text(s.phone, aad(orgId, s.ref, "phone")), s.branch, s.batch, s.cgpa, s.backlogs, at.toISOString()],
         );
         if (rows[0]?.inserted === true) added++;
       }
@@ -381,7 +393,7 @@ export class PlacementStore {
         [orgId, f.drive_id, f.student_ref],
       );
       const r = apps[0]!;
-      return { drive: toDrive(drives[0]), application: { ...toStudent(r), stage: r.stage, offerLpa: num(r.offer_lpa), updatedAt: iso(r.updated_at), ...(toOffer(r) === null ? {} : { offer: toOffer(r)! }) } };
+      return { drive: toDrive(drives[0]), application: { ...this.#student(orgId, r), stage: r.stage, offerLpa: num(r.offer_lpa), updatedAt: iso(r.updated_at), ...(toOffer(r) === null ? {} : { offer: toOffer(r)! }) } };
     });
   }
 
@@ -406,7 +418,7 @@ export class PlacementStore {
         await tx.query(
           `INSERT INTO students (org_id, ref, name, email, phone, branch, batch, cgpa, backlogs, created_at, updated_at, self_registered, college)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, true, $11) ON CONFLICT (org_id, ref) DO NOTHING RETURNING ref`,
-          [orgId, student.ref, student.name, student.email, student.phone, student.branch, student.batch, student.cgpa, student.backlogs, at.toISOString(), student.college ?? null],
+          [orgId, student.ref, student.name, this.#seal.text(student.email, aad(orgId, student.ref, "email")), this.#seal.text(student.phone, aad(orgId, student.ref, "phone")), student.branch, student.batch, student.cgpa, student.backlogs, at.toISOString(), student.college ?? null],
         )
       ).length > 0,
     );
@@ -422,7 +434,7 @@ export class PlacementStore {
           ORDER BY s.ref`,
         [orgId, driveId],
       );
-      return rows.map((r) => ({ ...toStudent(r), stage: r.stage, offerLpa: num(r.offer_lpa), updatedAt: iso(r.updated_at), ...(toOffer(r) === null ? {} : { offer: toOffer(r)! }) }));
+      return rows.map((r) => ({ ...this.#student(orgId, r), stage: r.stage, offerLpa: num(r.offer_lpa), updatedAt: iso(r.updated_at), ...(toOffer(r) === null ? {} : { offer: toOffer(r)! }) }));
     });
   }
 

@@ -1,4 +1,5 @@
 import { staffScope, withScope } from "./ledger-store.js";
+import { NO_SEAL, type RecordSeal } from "./sealing.js";
 import type { ImageMime } from "./question-media.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
@@ -79,11 +80,24 @@ const toScript = (r: Row): AnswerScript => ({
   createdAt: iso(r.created_at),
 });
 
+const pageAad = (orgId: string, scriptId: string, page: number) => `scripts/${orgId}/${scriptId}/page/${page}`;
+const suggestionAad = (orgId: string, scriptId: string) => `scripts/${orgId}/${scriptId}/suggestion`;
+
 export class ScriptStore {
   readonly #sql: SqlExecutor;
+  readonly #seal: RecordSeal;
 
-  constructor(sql: SqlExecutor) {
+  /** `seal`: the scanned pages, and what the model read from them, are kept sealed (T1). */
+  constructor(sql: SqlExecutor, seal: RecordSeal = NO_SEAL) {
     this.#sql = sql;
+    this.#seal = seal;
+  }
+
+  /** A row, with the suggestion opened: stored sealed as a JSON string, or plain from before sealing. */
+  #open(orgId: string, r: Row): AnswerScript {
+    const raw = r.suggestion;
+    const opened = typeof raw === "string" && raw.startsWith("enc:") ? (JSON.parse(this.#seal.open(raw, suggestionAad(orgId, r.id))) as ScriptSuggestion) : raw;
+    return toScript({ ...r, suggestion: opened });
   }
 
   /** The candidate's copy in this exam, made on its first page. */
@@ -95,45 +109,53 @@ export class ScriptStore {
         [orgId, s.id, s.examId, s.candidateRef, s.candidateName, s.uploadedBy, s.createdAt],
       );
       const rows = await tx.query<Row>(`SELECT ${COLUMNS} FROM answer_scripts s WHERE s.org_id = $1 AND s.exam_id = $2 AND s.candidate_ref = $3`, [orgId, s.examId, s.candidateRef]);
-      return toScript(rows[0]!);
+      return this.#open(orgId, rows[0]!);
     });
   }
 
   /** Adds a page after the last. Returns its number. */
   async addPage(orgId: OrgId, scriptId: string, mime: ImageMime, bytes: Uint8Array): Promise<number> {
     return withScope(this.#sql, staffScope(orgId), async (tx) => {
-      const rows = await tx.query<{ page: number }>(
-        `INSERT INTO answer_script_pages (org_id, script_id, page, mime, bytes)
-         VALUES ($1, $2, (SELECT coalesce(max(page), 0) + 1 FROM answer_script_pages WHERE org_id = $1 AND script_id = $2), $3, $4) RETURNING page`,
-        [orgId, scriptId, mime, Buffer.from(bytes)],
-      );
-      return rows[0]!.page;
+      const next = (await tx.query<{ page: number }>(`SELECT coalesce(max(page), 0) + 1 AS page FROM answer_script_pages WHERE org_id = $1 AND script_id = $2`, [orgId, scriptId]))[0]!.page;
+      await tx.query(`INSERT INTO answer_script_pages (org_id, script_id, page, mime, bytes, sealed) VALUES ($1, $2, $3, $4, $5, $6)`, [
+        orgId,
+        scriptId,
+        next,
+        mime,
+        this.#seal.bytes(bytes, pageAad(orgId, scriptId, next)),
+        this.#seal !== NO_SEAL,
+      ]);
+      return next;
     });
   }
 
   async get(orgId: OrgId, id: string): Promise<AnswerScript | null> {
     return withScope(this.#sql, staffScope(orgId), async (tx) => {
       const rows = await tx.query<Row>(`SELECT ${COLUMNS} FROM answer_scripts s WHERE s.org_id = $1 AND s.id = $2`, [orgId, id]);
-      return rows[0] === undefined ? null : toScript(rows[0]);
+      return rows[0] === undefined ? null : this.#open(orgId, rows[0]);
     });
   }
 
   async forExam(orgId: OrgId, examId: string): Promise<readonly AnswerScript[]> {
     return withScope(this.#sql, staffScope(orgId), async (tx) =>
-      (await tx.query<Row>(`SELECT ${COLUMNS} FROM answer_scripts s WHERE s.org_id = $1 AND s.exam_id = $2 ORDER BY s.candidate_ref`, [orgId, examId])).map(toScript),
+      (await tx.query<Row>(`SELECT ${COLUMNS} FROM answer_scripts s WHERE s.org_id = $1 AND s.exam_id = $2 ORDER BY s.candidate_ref`, [orgId, examId])).map((r) => this.#open(orgId, r)),
     );
   }
 
   async page(orgId: OrgId, id: string, page: number): Promise<{ readonly mime: ImageMime; readonly bytes: Buffer } | null> {
     return withScope(this.#sql, staffScope(orgId), async (tx) => {
-      const rows = await tx.query<{ mime: ImageMime; bytes: Uint8Array }>(`SELECT mime, bytes FROM answer_script_pages WHERE org_id = $1 AND script_id = $2 AND page = $3`, [orgId, id, page]);
-      return rows[0] === undefined ? null : { mime: rows[0].mime, bytes: Buffer.from(rows[0].bytes) };
+      const rows = await tx.query<{ mime: ImageMime; bytes: Uint8Array; sealed: boolean }>(`SELECT mime, bytes, sealed FROM answer_script_pages WHERE org_id = $1 AND script_id = $2 AND page = $3`, [orgId, id, page]);
+      const r = rows[0];
+      return r === undefined ? null : { mime: r.mime, bytes: r.sealed ? this.#seal.openBytes(Buffer.from(r.bytes), pageAad(orgId, id, page)) : Buffer.from(r.bytes) };
     });
   }
 
   async pages(orgId: OrgId, id: string): Promise<readonly { readonly mime: ImageMime; readonly bytes: Buffer }[]> {
     return withScope(this.#sql, staffScope(orgId), async (tx) =>
-      (await tx.query<{ mime: ImageMime; bytes: Uint8Array }>(`SELECT mime, bytes FROM answer_script_pages WHERE org_id = $1 AND script_id = $2 ORDER BY page`, [orgId, id])).map((r) => ({ mime: r.mime, bytes: Buffer.from(r.bytes) })),
+      (await tx.query<{ page: number; mime: ImageMime; bytes: Uint8Array; sealed: boolean }>(`SELECT page, mime, bytes, sealed FROM answer_script_pages WHERE org_id = $1 AND script_id = $2 ORDER BY page`, [orgId, id])).map((r) => ({
+        mime: r.mime,
+        bytes: r.sealed ? this.#seal.openBytes(Buffer.from(r.bytes), pageAad(orgId, id, r.page)) : Buffer.from(r.bytes),
+      })),
     );
   }
 
@@ -160,7 +182,7 @@ export class ScriptStore {
         [
           orgId,
           id,
-          patch.suggestion === undefined ? null : JSON.stringify(patch.suggestion),
+          patch.suggestion === undefined ? null : JSON.stringify(this.#seal === NO_SEAL ? patch.suggestion : this.#seal.text(JSON.stringify(patch.suggestion), suggestionAad(orgId, id))),
           patch.marks === undefined ? null : JSON.stringify(patch.marks),
           patch.checkedBy ?? null,
           patch.checkedAt ?? null,
@@ -171,8 +193,13 @@ export class ScriptStore {
       );
       if (changed.length === 0) return null;
       const rows = await tx.query<Row>(`SELECT ${COLUMNS} FROM answer_scripts s WHERE s.org_id = $1 AND s.id = $2`, [orgId, id]);
-      return toScript(rows[0]!);
+      return this.#open(orgId, rows[0]!);
     });
+  }
+
+  /** Copies made before `before`: removed, pages and all, by the retention sweep (T1). Returns how many. */
+  async sweep(orgId: OrgId, before: Date): Promise<number> {
+    return withScope(this.#sql, staffScope(orgId), async (tx) => (await tx.query(`DELETE FROM answer_scripts WHERE org_id = $1 AND created_at < $2 RETURNING id`, [orgId, before.toISOString()])).length);
   }
 
   async remove(orgId: OrgId, id: string): Promise<boolean> {
