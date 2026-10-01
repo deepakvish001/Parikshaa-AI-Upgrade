@@ -72,7 +72,8 @@ export class PracticeError extends Error {
       | "no_coins"
       | "sold_out"
       | "limit_reached"
-      | "too_new",
+      | "too_new"
+      | "coupon_invalid",
     message: string,
   ) {
     super(message);

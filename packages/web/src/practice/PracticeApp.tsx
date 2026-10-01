@@ -15,6 +15,7 @@ import {
   asSubmitOutcome,
   loadToken,
   PracticeClient,
+  saveRef,
   saveToken,
   type Contest,
   type ContestSummary,
@@ -46,7 +47,9 @@ const CoinsPage = lazy(() => prep().then((m) => ({ default: m.CoinsPage })));
 const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
 const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
-const PlusPage = lazy(() => prep().then((m) => ({ default: m.PlusPage })));
+const plusPages = () => import("./PlusPages.tsx");
+const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
+const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
 const community = () => import("./CommunityPages.tsx");
 const CompaniesPage = lazy(() => community().then((m) => ({ default: m.CompaniesPage })));
 const CompanyPage = lazy(() => community().then((m) => ({ default: m.CompanyPage })));
@@ -83,6 +86,7 @@ export type Route =
   | { readonly page: "potd" }
   | { readonly page: "coins" }
   | { readonly page: "plus" }
+  | { readonly page: "invoice"; readonly number: string }
   | { readonly page: "companies" }
   | { readonly page: "company"; readonly slug: string }
   | { readonly page: "experiences"; readonly company: string | undefined }
@@ -131,6 +135,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "coins" };
     case "plus":
       return { page: "plus" };
+    case "invoices":
+      return second === undefined ? { page: "plus" } : { page: "invoice", number: second };
     case "companies":
       return second === undefined ? { page: "companies" } : { page: "company", slug: second };
     case "experiences":
@@ -167,9 +173,13 @@ function arrival(site: string): { session: string | null; verify: string | null;
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const query = new URLSearchParams(window.location.search);
   const found = { session: hash.get("session"), verify: query.get("verify"), signinError: query.get("signin_error") };
-  if (found.session !== null || found.verify !== null || found.signinError !== null) {
+  // An affiliate's link: its coupon waits for checkout.
+  const ref = query.get("ref");
+  if (ref !== null && /^[A-Za-z0-9][A-Za-z0-9-]{2,29}$/.test(ref)) saveRef(site, ref.toUpperCase());
+  if (found.session !== null || found.verify !== null || found.signinError !== null || ref !== null) {
     query.delete("verify");
     query.delete("signin_error");
+    query.delete("ref");
     const rest = query.toString();
     window.history.replaceState(null, "", `${window.location.pathname}${rest === "" ? "" : `?${rest}`}`);
   }
@@ -384,6 +394,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <LessonPage {...context} slug={route.slug} />
         ) : route.page === "potd" ? (
           <PotdPage {...context} />
+        ) : route.page === "invoice" ? (
+          <InvoicePage {...context} number={route.number} />
         ) : route.page === "plus" ? (
           <PlusPage {...context} />
         ) : route.page === "companies" ? (

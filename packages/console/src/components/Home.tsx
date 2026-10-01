@@ -131,6 +131,8 @@ export const ACTIONS: Record<string, string> = {
   "prep.lesson_changed": "changed a lesson",
   "prep.plan_created": "added a study plan",
   "prep.plan_changed": "changed a study plan",
+  "prep.coupon_created": "made a coupon",
+  "prep.coupon_changed": "changed a coupon",
   "prep.potd_set": "set the problem of the day",
   "prep.plus_settings": "changed the Plus settings",
   "prep.plus_granted": "gave a learner Plus",

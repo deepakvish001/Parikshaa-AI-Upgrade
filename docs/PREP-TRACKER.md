@@ -31,13 +31,13 @@ Status ka matlab:
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 4 | 1 | 2 | 0 |
 | Sahayak AI | 12 | 3 | 3 | 0 |
-| Plus aur payment | 5 | 2 | 6 | 0 |
+| Plus aur payment | 9 | 0 | 4 | 0 |
 | Coins, store, gamification | 10 | 2 | 3 | 0 |
 | Company prep aur community | 8 | 1 | 6 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
 | Platform, quality, B2B | 6 | 2 | 5 | 0 |
-| **Kul** | **64** | **17** | **40** | **1** |
+| **Kul** | **68** | **15** | **38** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -132,10 +132,10 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Razorpay Checkout + webhook, signature verify, idempotent | ✅ | `api/src/prep-plus.ts` | |
 | Plus se lessons, plan, company ki poori list khulti hai | ✅ | | |
 | Staff kisi learner ko Plus de (campus licence, scholarship) | ✅ | `POST /practice-admin/learners/:id/plus` | |
-| Plan/pricing page | 🟡 | `PlusPage` | Plans aur kharidna hai. FAQ aur GST breakup page baaki |
-| Billing page: orders | 🟡 | `GET /orders` | Orders dikhte hain. Invoices baaki |
-| Learner ke liye GST invoice (PDF, number series) | ⬜ | | Exam billing ka `gst.ts` reuse ho sakta hai |
-| Coupons aur affiliate `?ref=` | ⬜ | | |
+| Plan/pricing page | ✅ | `web/src/practice/PlusPages.tsx` | Har plan par GST ka hisaab (base + 18%), coupon field, invoice ki jaankari (naam, state, GSTIN), FAQ |
+| Billing page: orders | ✅ | `GET /orders`, `PlusPages.tsx` | Har order ke saath coupon ki chhoot aur invoice ka link |
+| Learner ke liye GST invoice (PDF, number series) | ✅ | `prep_invoices` (migration 0029), `gst.ts` `inclusiveInvoice`, `GET /invoices/:number`, `InvoicePage` | Paid hote hi usi transaction me, series `PKP/2627/000001`; state se CGST+SGST ya IGST. PDF browser ke "Print → Save as PDF" se; server PDF file nahi banata. Invoice tabhi banta hai jab server par `PARIKSHAA_SUPPLIER_*` set ho |
+| Coupons aur affiliate `?ref=` | ✅ | `prep_coupons`, `POST /plus/quote`, console "Coupons and sales" (`Sales.tsx`) | % ya flat, ek plan ya sab, kitni baar, kab tak, affiliate ka naam; har learner ek baar. `?ref=CODE` link se code apne aap bhar jaata hai. Affiliate ko commission dene ka hisaab nahi, sirf bikri ki report |
 | Alag passes (DSA Pass, Company Pass) | ⬜ | | Abhi ek hi "Plus" |
 | Purane users ko 30 din ka trial | ⬜ | | Staff grant se haath se ho sakta hai |
 | Refund flow | ⬜ | | |
@@ -231,7 +231,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Phase | Blueprint me | Status | Kya baaki |
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
-| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Coupons, invoices, passes, trial |
+| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Passes, trial, refund |
 | P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Sprint quiz, streak freeze, reminders, placement quiz |
 | P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, notes draft, 180 din delete |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Company Pass, readiness, contest coins |
@@ -253,7 +253,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F9 Company prep | 🟡 | Folder, readiness baaki |
 | F10 POTD, streak, coins | ✅ | |
 | F11 Contest + rating | ✅ | Contest coins aur priority lane baaki |
-| F12 Plus kharidna | ✅ | Coupon aur invoice baaki |
+| F12 Plus kharidna | ✅ | Coupon aur GST invoice ke saath |
 | F13 Coins se redeem | ✅ | |
 | F14 Interview experience | ✅ | |
 | F15 Note se PDF | ⬜ | |
@@ -291,7 +291,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 |---|---|---|---|---|---|
 | 1a | **Sahayak evals** (shuru: 30 Sep 2026). Teen evals, ek hi case set par: **hint** (rung 1–2 me code ya poora algorithm leak na ho), **review** (planted bug pakde, learner ke code ki complexity sahi bataye, sahi program na likh de), **doubt** ("bas code de do" par bhi solution na de, sawaal ka jawab de). Cases: 40 apne likhe problems × 3 galat solutions (off-by-one, overflow, TLE), har galat solution runner par sach me fail hota hai; 120 doubts; ~20% Hindi. Judge: `claude-sonnet-5-5`, structured output. Runner asli `Sahayak` class chalata hai (PGlite par). Paid run sirf owner ki manzoori ke baad. **Ab tak:** cases owner ne manzoor kiye (30 Sep); 40 problems ke saare galat programs runner par check; runner, grader, judge-sanity aur tests ban gaye. **Baaki:** API key, pilot (24 cases), grading par manzoori, kharche ka andaaza, baseline run | §14, F4, F5 | Launch se pehle safety aur kharcha | Inputs aur grading par owner ki manzoori; baseline run ka `report.html`; targets: hint leak-free 98%, review bug 90%, complexity 95% | 🟡 chal raha |
 | 1b | **Static hint 1 + solution par coins aadhe** (shuru: 30 Sep 2026). Admin har problem par ek "pehla hint" likh sake (console). Hint ladder ka rung 1 us problem par wahi hint dikhaye: model call nahi, credits 0. Hint na likha ho to pehle jaisa AI rung 1. Jis learner ne rung 4 (poora solution) le liya, us problem ko solve karne par coins aadhe | §14, F4 | AI ka kharcha bachana, aur solution dekh kar coins kamane par rok | Tests: static hint par model call nahi aur credit nahi katta; hint na ho to AI; rung 4 ke baad solve par aadhe coins; console me hint likhna/badalna | ✅ ban gaya (30 Sep 2026) |
-| 2 | Coupons, GST invoices, pricing page ka GST breakup | §16, F12 | Paid launch ke liye zaroori | Test mode me coupon ke saath kharidna, invoice PDF | ⬜ |
+| 2 | **Coupons, GST invoices, pricing page ka GST breakup** (shuru: 1 Oct 2026). Staff coupon banaye (% ya flat, kis plan par, kitni baar, kab tak, affiliate ka naam); learner checkout par code daale ya `?ref=CODE` link se aaye; har paid order par apni series (`PKP/…`) ka GST tax invoice, learner ke state ke hisaab se CGST+SGST ya IGST; pricing page par har plan ka GST breakup aur FAQ; console me coupons aur kis coupon/affiliate se kitni bikri | §16, F12 | Paid launch ke liye zaroori | Tests: coupon ki saari shartein, discount ke baad sahi amount Razorpay ko, paid hone par ek hi invoice, invoice number series, `?ref=` se code bhara jaana; console aur learner pages | ✅ ban gaya (1 Oct 2026) |
 | 3 | Roz ke reminders + analytics events | F2, §17 | Retention aur metrics naapna | D7 aur activation dashboard par | ⬜ |
 | 4 | Sprint quiz + revision notes, streak freeze | F7, 13.2 | Planner poora | Sprint ke ant me quiz, 70% se kam par revise tasks | ⬜ |
 | 5 | Playwright e2e: F1, F3, F12, F13 ke click-through flows | §20 | Regression se bachav | CI me chalein | ⬜ |

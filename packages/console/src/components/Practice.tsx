@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type FormEvent } from "react";
+import { Fragment, lazy, Suspense, useEffect, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BookOpen, ExternalLink, EyeOff, Eye, MessageSquare, Trophy, Users } from "lucide-react";
 import {
@@ -15,6 +15,9 @@ import { EmptyState, SkeletonRows } from "./kit.tsx";
 import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
 import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
 
+// Coupons and sales are a manager's, and seldom opened: a chunk of their own.
+const Sales = lazy(() => import("./Sales.tsx").then((m) => ({ default: m.Sales })));
+
 /**
  * A practice site (ROADMAP §15): the organisation's problems at
  * /practice/<address>, for learners with accounts of their own. Problems are
@@ -22,7 +25,7 @@ import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
  * nothing published.
  */
 
-type Tab = "site" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "companies" | "experiences" | "store" | "contests" | "learners" | "discussion";
+type Tab = "site" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "sales" | "companies" | "experiences" | "store" | "contests" | "learners" | "discussion";
 
 export interface PracticeCan {
   readonly manage: boolean;
@@ -44,6 +47,7 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
     ["lessons", "Lessons"],
     ["potd", "Problem of the day"],
     ["plus", "Plus"],
+    ...(can.manage ? ([["sales", "Coupons and sales"]] as [Tab, string][]) : []),
     ["companies", "Companies"],
     ["experiences", "Experiences"],
     ["store", "Coin store"],
@@ -76,6 +80,11 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
       {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
       {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
       {tab === "plus" ? <PlusAdmin client={client} canManage={can.manage} /> : null}
+      {tab === "sales" ? (
+        <Suspense fallback={<p className="notice">Loading…</p>}>
+          <Sales client={client} />
+        </Suspense>
+      ) : null}
       {tab === "companies" ? <Companies client={client} canWrite={can.write} /> : null}
       {tab === "experiences" ? <Experiences client={client} canWrite={can.write} /> : null}
       {tab === "store" ? <CoinStore client={client} canManage={can.manage} /> : null}

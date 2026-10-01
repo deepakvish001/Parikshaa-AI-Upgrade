@@ -5,7 +5,6 @@ import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
 import type { Grade, Level, Note, NoteKind, PlanInput, PlanTask, Reward } from "./client.ts";
-import { loadCheckout, type RazorpayConstructor } from "./checkout.ts";
 import { LessonDoubt } from "./Tutor.tsx";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context } from "./parts.tsx";
 import { usePrepText, type PrepKey } from "./prep-text.ts";
@@ -1210,126 +1209,6 @@ export function CoinsPage({ client, nav, learner, site }: Signed) {
           </ol>
         </section>
       </div>
-    </div>
-  );
-}
-
-// --- Plus -----------------------------------------------------------------------------------------------
-
-const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
-
-export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }: Context & { readonly checkout?: () => Promise<RazorpayConstructor> }) {
-  const p = usePrepText();
-  const day = useDay();
-  const when = useWhen();
-  const queryClient = useQueryClient();
-  const plus = useQuery({ queryKey: key(site, "plus", learner?.id ?? null), queryFn: () => client.plus() });
-  const credits = useQuery({ queryKey: key(site, "credits"), queryFn: () => client.credits(), enabled: learner !== null });
-  const orders = useQuery({ queryKey: key(site, "orders", learner?.id ?? null), queryFn: () => client.orders(), enabled: learner !== null });
-  const [outcome, setOutcome] = useState<"paid" | "failed" | null>(null);
-  const buy = useMutation({
-    mutationFn: async (productId: string) => {
-      const [order, Razorpay] = await Promise.all([client.checkout(productId), checkout()]);
-      await new Promise<void>((resolve, reject) => {
-        const rz = new Razorpay({
-          key: order.keyId,
-          order_id: order.orderId,
-          amount: order.amountPaise,
-          currency: "INR",
-          name: order.title,
-          prefill: { name: order.learner.name, email: order.learner.email },
-          handler: (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-            client.confirmPayment(r.razorpay_order_id, r.razorpay_payment_id, r.razorpay_signature).then(() => resolve(), reject);
-          },
-          modal: { ondismiss: () => reject(new Error("dismissed")) },
-        });
-        rz.on("payment.failed", () => reject(new Error("failed")));
-        rz.open();
-      });
-    },
-    onSuccess: () => {
-      setOutcome("paid");
-      void queryClient.invalidateQueries({ queryKey: ["practice", site] });
-    },
-    onError: () => setOutcome("failed"),
-  });
-  if (plus.isPending) return <Loading />;
-  if (plus.isError) return <Failed error={plus.error} />;
-  const o = plus.data;
-  return (
-    <div className="prep-page">
-      <header className="prep-head">
-        <div>
-          <h1>
-            <Crown aria-hidden="true" /> {p("plus.title")}
-          </h1>
-          <p className="notice">{o.enabled ? p("plus.hint") : p("plus.off")}</p>
-        </div>
-        {o.enabled && learner !== null ? (
-          <span className={`pill ${o.active ? "ok" : ""}`}>{o.active && o.until !== null ? p("plus.active", { date: day(o.until.slice(0, 10)) }) : p("plus.none")}</span>
-        ) : null}
-      </header>
-      {outcome === "paid" ? <p className="alert ok" role="status">{p("plus.paid")}</p> : outcome === "failed" ? <p className="alert warn" role="alert">{p("plus.failed")}</p> : null}
-      {o.products.length === 0 ? null : (
-        <div className="track-cards">
-          {o.products.map((product) => (
-            <section key={product.id} className="card plan-card" aria-label={product.title}>
-              <h2>{product.title}</h2>
-              <p className="price">{rupees(product.pricePaise)}</p>
-              <p className="notice">{p("plus.gst")}</p>
-              <ul>
-                {product.days > 0 ? <li>{p("plus.days", { n: product.days })}</li> : null}
-                {product.credits > 0 ? <li>{p("plus.credits", { n: product.credits.toLocaleString("en-IN") })}</li> : null}
-              </ul>
-              {learner === null ? (
-                <SignInNeeded nav={nav} next="/plus" />
-              ) : o.checkout ? (
-                <button type="button" disabled={buy.isPending} onClick={() => { setOutcome(null); buy.mutate(product.id); }}>
-                  {p("plus.buy", { price: rupees(product.pricePaise) })}
-                </button>
-              ) : (
-                <p className="notice">{p("plus.noCheckout")}</p>
-              )}
-            </section>
-          ))}
-        </div>
-      )}
-      {learner === null ? null : (
-        <div className="plan-layout">
-          <section className="card" aria-labelledby="credits-title">
-            <h2 id="credits-title">{p("credits.title")}</h2>
-            <p className="coin-balance">{p("credits.balance", { n: credits.data?.balance ?? 0 })}</p>
-            {o.monthlyCredits > 0 ? <p className="notice">{p("credits.monthly", { n: o.monthlyCredits })}</p> : null}
-            <ul className="coin-history">
-              {(credits.data?.history ?? []).map((h, i) => (
-                <li key={`${h.at}-${i}`}>
-                  <span>{p(`credits.reason.${h.reason}` as PrepKey)}</span>
-                  <span className="notice">{when(h.at)}</span>
-                  <strong className={h.delta > 0 ? "plus" : "minus"}>
-                    {h.delta > 0 ? "+" : ""}
-                    {h.delta}
-                  </strong>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <section className="card" aria-labelledby="orders-title">
-            <h2 id="orders-title">{p("plus.orders")}</h2>
-            {(orders.data ?? []).every((x) => x.status !== "paid") ? <p className="notice">{p("plus.noOrders")}</p> : null}
-            <ul className="coin-history">
-              {(orders.data ?? [])
-                .filter((x) => x.status === "paid")
-                .map((x) => (
-                  <li key={x.id}>
-                    <span>{x.title}</span>
-                    <span className="notice">{x.paidAt === null ? "" : when(x.paidAt)}</span>
-                    <strong>{rupees(x.amountPaise)}</strong>
-                  </li>
-                ))}
-            </ul>
-          </section>
-        </div>
-      )}
     </div>
   );
 }

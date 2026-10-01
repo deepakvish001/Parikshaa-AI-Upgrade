@@ -46,6 +46,7 @@ const problemParams = siteParams.extend({ problem: z.string().min(1).max(80) });
 const replyIn = z.enum(["en", "hi"]).default("en").describe("The language the tutor answers in.");
 
 const product = z.object({ id: z.string(), title: z.string(), kind: z.enum(["plus", "credits"]), days: z.number(), credits: z.number(), pricePaise: z.number().describe("GST included.") });
+const learnerProduct = product.extend({ taxPaise: z.number().describe("The GST within the price, at 18%.") });
 const overview = z.object({
   enabled: z.boolean().describe("The site sells Plus. When false, nothing is locked."),
   active: z.boolean(),
@@ -54,7 +55,8 @@ const overview = z.object({
   monthlyCredits: z.number(),
   tutor: z.boolean(),
   checkout: z.boolean().describe("Payments are set up on this server."),
-  products: z.array(product).readonly(),
+  invoices: z.boolean().describe("Paid orders get a GST tax invoice: the server knows its supplier."),
+  products: z.array(learnerProduct).readonly(),
 });
 const tutorAnswer = z.object({ id: z.string(), mode: z.enum(["hint", "review", "doubt"]), hintLevel: z.number().nullable(), answer: z.string().describe("Markdown."), credits: z.number(), createdAt: z.string() });
 const tutorHistory = z.object({
@@ -68,11 +70,39 @@ const order = z.object({
   title: z.string(),
   days: z.number(),
   credits: z.number(),
-  amountPaise: z.number(),
+  listPaise: z.number().describe("The plan's price before the coupon."),
+  coupon: z.string().nullable(),
+  discountPaise: z.number(),
+  amountPaise: z.number().describe("What was charged, GST included."),
   taxPaise: z.number().describe("The GST within the amount."),
   status: z.enum(["created", "paid"]),
   createdAt: z.string(),
   paidAt: z.string().nullable(),
+  invoice: z.string().nullable().describe("The tax invoice's number, once paid."),
+});
+const quote = z.object({ productId: z.string(), title: z.string(), listPaise: z.number(), discountPaise: z.number(), pricePaise: z.number(), taxPaise: z.number(), coupon: z.string().nullable() });
+const couponCode = z.string().max(40).optional().describe("A coupon code, any case.");
+const invoiceView = z.object({ number: z.string(), issuedAt: z.string(), document: z.record(z.string(), z.unknown()).describe("Everything printed on the tax invoice, fixed when it was issued.") });
+const coupon = z.object({
+  code: z.string(),
+  kind: z.enum(["percent", "flat"]),
+  value: z.number().describe("A percentage, or paise off."),
+  productId: z.string().nullable().describe("The plan it is for; null for any."),
+  maxUses: z.number().nullable(),
+  endsAt: z.string().nullable(),
+  affiliate: z.string().describe("Who hands it out. A `?ref=CODE` link fills the code in at checkout."),
+  active: z.boolean(),
+  createdAt: z.string(),
+});
+const couponReport = coupon.extend({ uses: z.number(), revenuePaise: z.number(), discountPaise: z.number() });
+const couponBody = z.object({
+  kind: z.enum(["percent", "flat"]),
+  value: z.number().int(),
+  productId: z.string().nullable().optional(),
+  maxUses: z.number().int().nullable().optional(),
+  endsAt: z.string().nullable().optional(),
+  affiliate: z.string().max(120).optional(),
+  active: z.boolean().optional(),
 });
 const settings = z.object({ plusEnabled: z.boolean(), freeModules: z.number().int(), monthlyCredits: z.number().int(), tutorEnabled: z.boolean() });
 const staffProduct = product.extend({ active: z.boolean(), position: z.number() });
@@ -132,7 +162,13 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
         description: "Open Razorpay Checkout with the key and order returned, then confirm with what Checkout hands back.",
         security: LEARNER,
         params: siteParams,
-        body: z.object({ productId: z.string().min(1).max(80) }),
+        body: z.object({
+          productId: z.string().min(1).max(80),
+          coupon: couponCode,
+          name: z.string().max(160).optional().describe("The name for the invoice; the learner's own when absent."),
+          stateCode: z.string().max(2).optional().describe("The GST state code of the learner's address: it decides CGST and SGST against IGST."),
+          gstin: z.string().max(15).optional().describe("A GSTIN, to claim the tax: printed on the invoice, and its state used."),
+        }),
         response: {
           201: z.object({ keyId: z.string(), orderId: z.string(), amountPaise: z.number(), title: z.string(), learner: z.object({ name: z.string(), email: z.string() }) }),
           ...refusals,
@@ -142,7 +178,45 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
     async (request, reply) => {
       const who = await signedIn(request, reply);
       if (who === null) return;
-      return reply.code(201).send(await plus.checkout(who.site, who.learner, request.body.productId));
+      const { productId, ...extra } = request.body;
+      return reply.code(201).send(await plus.checkout(who.site, who.learner, productId, extra));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/plus/quote",
+    {
+      schema: {
+        tags: PREP,
+        summary: "A plan's price with a coupon, before buying",
+        description: "Checks the coupon as checkout will: active, not past its date, for this plan, with uses left, and not used by this learner before.",
+        security: OPEN,
+        params: siteParams,
+        body: z.object({ productId: z.string().min(1).max(80), coupon: couponCode }),
+        response: { 200: quote, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const site = await siteOf(request);
+      return reply.send(await plus.quote(site, await practice.learner(site, bearer(request) ?? undefined), request.body.productId, request.body.coupon));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/invoices/:number",
+    {
+      schema: {
+        tags: PREP,
+        summary: "One of my tax invoices",
+        security: LEARNER,
+        params: siteParams.extend({ number: z.string().min(1).max(20) }),
+        response: { 200: invoiceView, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await plus.invoice(who.site, who.learner, request.params.number));
     },
   );
 
@@ -163,8 +237,8 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
       const who = await signedIn(request, reply);
       if (who === null) return;
       const { order: paid, plus: status } = await plus.confirm(who.site, who.learner, request.body);
-      const { id, title, days, credits, amountPaise, taxPaise, status: state, createdAt, paidAt } = paid;
-      return reply.send({ order: { id, title, days, credits, amountPaise, taxPaise, status: state, createdAt, paidAt }, plus: status });
+      const mine = (await plus.orders(who.site, who.learner)).find((o) => o.id === paid.id)!;
+      return reply.send({ order: mine, plus: status });
     },
   );
 
@@ -366,8 +440,80 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
     const actor = await staff(request, reply, "org:manage");
     if (actor === null) return;
     const orders = await plus.staffOrders(actor.orgId);
-    return reply.send({ orders: orders.map(({ id, learnerId, title, days, credits, amountPaise, taxPaise, status, createdAt, paidAt }) => ({ id, learnerId, title, days, credits, amountPaise, taxPaise, status, createdAt, paidAt })) });
+    return reply.send({
+      orders: orders.map(({ id, learnerId, title, days, credits, listPaise, couponCode, discountPaise, amountPaise, taxPaise, status, createdAt, paidAt, invoice }) => ({
+        id,
+        learnerId,
+        title,
+        days,
+        credits,
+        listPaise,
+        coupon: couponCode,
+        discountPaise,
+        amountPaise,
+        taxPaise,
+        status,
+        createdAt,
+        paidAt,
+        invoice,
+      })),
+    });
   });
+
+  routes.get(
+    "/practice-admin/plus/invoices/:number",
+    { schema: { tags: ADMIN, summary: "A learner's tax invoice", security: STAFF, params: z.object({ number: z.string().min(1).max(20) }), response: { 200: invoiceView, ...refusals } } },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.send(await plus.staffInvoice(actor.orgId, request.params.number));
+    },
+  );
+
+  routes.get(
+    "/practice-admin/plus/coupons",
+    { schema: { tags: ADMIN, summary: "Coupons, with what each has sold", description: "Uses, revenue and discount count paid orders only.", security: STAFF, response: { 200: z.object({ coupons: z.array(couponReport).readonly() }), ...refusals } } },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      return reply.send({ coupons: await plus.coupons(actor.orgId) });
+    },
+  );
+
+  routes.post(
+    "/practice-admin/plus/coupons",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Make a coupon",
+        description: "A code of 3 to 30 letters, digits and dashes (kept in capitals); a percentage (1 to 90) or a sum in paise off; optionally for one plan, a number of uses, an end date and an affiliate. No coupon takes a price below ₹1.",
+        security: STAFF,
+        body: couponBody.extend({ code: z.string().min(1).max(40) }),
+        response: { 201: coupon, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      const saved = await plus.saveCoupon(actor.orgId, request.body, true);
+      await service.recordAudit(actor, "prep.coupon_created", saved.code, { kind: saved.kind, value: saved.value, affiliate: saved.affiliate });
+      return reply.code(201).send(saved);
+    },
+  );
+
+  routes.put(
+    "/practice-admin/plus/coupons/:code",
+    {
+      schema: { tags: ADMIN, summary: "Change a coupon, or turn it off", security: STAFF, params: z.object({ code: z.string().min(1).max(40) }), body: couponBody, response: { 200: coupon, ...refusals } },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      const saved = await plus.saveCoupon(actor.orgId, { ...request.body, code: request.params.code }, false);
+      await service.recordAudit(actor, "prep.coupon_changed", saved.code, { kind: saved.kind, value: saved.value, active: saved.active });
+      return reply.send(saved);
+    },
+  );
 
   // Razorpay's webhook signs the body exactly as sent, so it is read as a string.
   void routes.register(async (raw) => {

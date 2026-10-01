@@ -159,7 +159,7 @@ export function assemble(o: AssembleOptions): {
     mailer: o.mailer ?? null,
   });
   const prepStore = new PrepStore(o.sql);
-  const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null });
+  const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null, supplier: o.supplier ?? null });
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
   const recheckStore = new RecheckStore(o.sql);
   const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });

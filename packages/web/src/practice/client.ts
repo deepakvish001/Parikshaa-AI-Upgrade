@@ -159,6 +159,26 @@ export function loadToken(site: string): string | null {
   }
 }
 
+const refKey = (site: string) => `parikshaa.ref.${site}`;
+
+/** A coupon a `?ref=` link brought: kept on this device for checkout, until it is used or replaced. */
+export function loadRef(site: string): string | null {
+  try {
+    return localStorage.getItem(refKey(site));
+  } catch {
+    return null;
+  }
+}
+
+export function saveRef(site: string, code: string | null): void {
+  try {
+    if (code === null) localStorage.removeItem(refKey(site));
+    else localStorage.setItem(refKey(site), code);
+  } catch {
+    // A private window: the code is typed in by hand instead.
+  }
+}
+
 export function saveToken(site: string, token: string | null): void {
   try {
     if (token === null) localStorage.removeItem(tokenKey(site));
@@ -407,8 +427,16 @@ export class PracticeClient {
     return this.#request("/plus");
   }
 
-  checkout(productId: string): Promise<CheckoutOrder> {
-    return this.#post("/plus/checkout", { productId });
+  checkout(productId: string, extra: Billing = {}): Promise<CheckoutOrder> {
+    return this.#post("/plus/checkout", { productId, ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== undefined && v !== "")) });
+  }
+
+  quote(productId: string, coupon: string): Promise<Quote> {
+    return this.#post("/plus/quote", { productId, coupon });
+  }
+
+  invoice(number: string): Promise<InvoiceView> {
+    return this.#request(`/invoices/${encodeURIComponent(number)}`);
   }
 
   confirmPayment(orderId: string, paymentId: string, signature: string): Promise<{ readonly order: PlusOrder; readonly plus: { readonly active: boolean; readonly until: string | null } }> {
@@ -677,6 +705,48 @@ export interface PlusProduct {
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
+  /** The GST within the price. */
+  readonly taxPaise: number;
+}
+
+/** Who the invoice is made out to, and a coupon. */
+export interface Billing {
+  readonly coupon?: string | undefined;
+  readonly name?: string | undefined;
+  readonly stateCode?: string | undefined;
+  readonly gstin?: string | undefined;
+}
+
+export interface Quote {
+  readonly productId: string;
+  readonly title: string;
+  readonly listPaise: number;
+  readonly discountPaise: number;
+  readonly pricePaise: number;
+  readonly taxPaise: number;
+  readonly coupon: string | null;
+}
+
+/** A tax invoice as it was issued: the document is printed as it stands. */
+export interface InvoiceView {
+  readonly number: string;
+  readonly issuedAt: string;
+  readonly document: InvoiceDocument;
+}
+
+export interface InvoiceDocument {
+  readonly title: string;
+  readonly number: string;
+  readonly date: string;
+  readonly supplier: { readonly legalName: string; readonly gstin: string; readonly address: string; readonly state: string; readonly sac: string };
+  readonly buyer: { readonly legalName: string; readonly gstin: string | null; readonly state: string | null };
+  readonly placeOfSupply: { readonly code: string; readonly state: string };
+  readonly lines: readonly { readonly description: string; readonly quantity: number; readonly sac: string; readonly amountPaise: number }[];
+  readonly taxablePaise: number;
+  readonly taxes: readonly { readonly name: string; readonly ratePercent: number; readonly amountPaise: number }[];
+  readonly totalPaise: number;
+  readonly totalInWords: string;
+  readonly note?: string;
 }
 
 export interface PlusOverview {
@@ -687,6 +757,8 @@ export interface PlusOverview {
   readonly monthlyCredits: number;
   readonly tutor: boolean;
   readonly checkout: boolean;
+  /** Paid orders get a GST tax invoice. */
+  readonly invoices: boolean;
   readonly products: readonly PlusProduct[];
 }
 
@@ -703,11 +775,15 @@ export interface PlusOrder {
   readonly title: string;
   readonly days: number;
   readonly credits: number;
+  readonly listPaise: number;
+  readonly coupon: string | null;
+  readonly discountPaise: number;
   readonly amountPaise: number;
   readonly taxPaise: number;
   readonly status: "created" | "paid";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  readonly invoice: string | null;
 }
 
 export interface Credits {

@@ -447,7 +447,6 @@ const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { 
 export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canManage: boolean }) {
   const queryClient = useQueryClient();
   const admin = useQuery({ queryKey: ["prep", "plus"], queryFn: () => client.plusAdmin() });
-  const orders = useQuery({ queryKey: ["prep", "plus-orders"], queryFn: () => client.plusOrders(), enabled: canManage });
   const learners = useQuery({ queryKey: ["practice", "learners"], queryFn: () => client.practiceLearners(), enabled: canManage });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep", "plus"] });
   const settings = useMutation({ mutationFn: (patch: Parameters<ConsoleClient["savePlusSettings"]>[0]) => client.savePlusSettings(patch), onSuccess: refresh });
@@ -478,7 +477,6 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
 
   if (admin.data === undefined) return <p className="notice">Loading…</p>;
   const s = admin.data.settings;
-  const nameOf = new Map((learners.data ?? []).map((l) => [l.id, l.name]));
   return (
     <>
       <section className="card prep-card" aria-label="Plus and the tutor">
@@ -644,37 +642,6 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
         </section>
       ) : null}
 
-      {canManage && (orders.data ?? []).length > 0 ? (
-        <section className="card prep-card" aria-label="Plans bought">
-          <div className="bar">
-            <strong>Plans bought</strong>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">When</th>
-                <th scope="col">Learner</th>
-                <th scope="col">Plan</th>
-                <th scope="col">Amount</th>
-                <th scope="col">GST within</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.data!
-                .filter((o) => o.status === "paid")
-                .map((o) => (
-                  <tr key={o.id}>
-                    <td>{new Date(o.paidAt ?? o.createdAt).toLocaleDateString("en-IN")}</td>
-                    <td>{nameOf.get(o.learnerId) ?? "—"}</td>
-                    <td>{o.title}</td>
-                    <td>{rupees(o.amountPaise)}</td>
-                    <td>{rupees(o.taxPaise)}</td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </section>
-      ) : null}
     </>
   );
 }

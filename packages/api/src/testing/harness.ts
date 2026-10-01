@@ -225,7 +225,7 @@ export async function wire(
     ...(options.runner === undefined ? {} : { runner: options.runner }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
-  const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, ...(options.now === undefined ? {} : { now: options.now }) });
+  const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, supplier: SUPPLIER, ...(options.now === undefined ? {} : { now: options.now }) });
   const prepService = new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) });
   const practiceIdentity = new PracticeIdentity({
     store: new PracticeStore(sql),

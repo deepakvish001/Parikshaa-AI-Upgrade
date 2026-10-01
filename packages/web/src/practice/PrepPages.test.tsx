@@ -324,7 +324,8 @@ describe("Plus", () => {
         monthlyCredits: 100,
         tutor: true,
         checkout: true,
-        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900 }],
+        invoices: true,
+        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900, taxPaise: 15_239 }],
       },
     });
     routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [{ delta: 100, reason: "monthly", at: "2026-10-05T04:00:00Z" }] } });
@@ -350,11 +351,106 @@ describe("Plus", () => {
     open("/practice/nit-practice/plus");
     expect(await screen.findByText("₹999")).toBeTruthy();
     expect(screen.getByText("90 days of Plus")).toBeTruthy();
+    expect(screen.getByText("₹846.61 + ₹152.39 GST (18%)")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Buy for ₹999" }));
     expect(await screen.findByText("Paid. Thank you!")).toBeTruthy();
     expect(opened).toMatchObject({ key: "rzp_test", order_id: "order_1", amount: 99_900 });
     expect(calls.find((c) => c.path.endsWith("/plus/confirm"))!.body).toEqual({ orderId: "order_1", paymentId: "pay_1", signature: "sig" });
     delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  it("takes the coupon an affiliate's link brought, prices every plan with it, and buys with it and the invoice details", async () => {
+    routes["GET /practice/nit-practice/plus"] = () => ({
+      body: {
+        enabled: true,
+        active: false,
+        until: null,
+        freeModules: 1,
+        monthlyCredits: 100,
+        tutor: true,
+        checkout: true,
+        invoices: true,
+        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900, taxPaise: 15_239 }],
+      },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({ body: { orders: [] } });
+    routes["POST /practice/nit-practice/plus/quote"] = (init) => {
+      const { coupon } = JSON.parse(String(init.body)) as { coupon: string };
+      return coupon === "LAUNCH20"
+        ? { body: { productId: "pr1", title: "Plus, 3 months", listPaise: 99_900, discountPaise: 19_980, pricePaise: 79_920, taxPaise: 12_191, coupon: "LAUNCH20" } }
+        : { status: 422, body: { error: "coupon_invalid", message: "That coupon code is not valid" } };
+    };
+    routes["POST /practice/nit-practice/plus/checkout"] = () => ({ status: 201, body: { keyId: "rzp_test", orderId: "order_1", amountPaise: 79_920, title: "Plus, 3 months", learner: { name: "Asha Rao", email: "asha@example.com" } } });
+    routes["POST /practice/nit-practice/plus/confirm"] = () => ({ body: { order: { status: "paid" }, plus: { active: true, until: "2027-01-03T04:00:00Z" } } });
+    class FakeCheckout {
+      constructor(readonly options: Record<string, unknown>) {}
+      on() {}
+      open() {
+        (this.options["handler"] as (r: object) => void)({ razorpay_order_id: "order_1", razorpay_payment_id: "pay_1", razorpay_signature: "sig" });
+      }
+    }
+    (window as { Razorpay?: unknown }).Razorpay = FakeCheckout;
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus?ref=launch20");
+    expect(await screen.findByText("You save ₹199.80")).toBeTruthy();
+    // The link's code is kept for checkout, and taken out of the address.
+    expect(window.location.search).toBe("");
+    expect(screen.getByRole("textbox", { name: /Have a coupon/ })).toHaveProperty("value", "LAUNCH20");
+    await user.selectOptions(screen.getByLabelText("Your state"), "27");
+    await user.click(screen.getByRole("button", { name: "Buy for ₹799.20" }));
+    expect(await screen.findByText("Paid. Thank you!")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/plus/checkout"))!.body).toEqual({ productId: "pr1", coupon: "LAUNCH20", stateCode: "27" });
+    // Used: not offered again.
+    expect(localStorage.getItem("parikshaa.ref.nit-practice")).toBeNull();
+
+    // A code no plan takes says why.
+    await user.clear(screen.getByRole("textbox", { name: /Have a coupon/ }));
+    await user.type(screen.getByRole("textbox", { name: /Have a coupon/ }), "nope1");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByText("That coupon code is not valid")).toBeTruthy();
+    delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  it("lists each order with its invoice, and opens the invoice to print", async () => {
+    routes["GET /practice/nit-practice/plus"] = () => ({ body: { enabled: true, active: true, until: "2027-01-03T04:00:00Z", freeModules: 1, monthlyCredits: 100, tutor: true, checkout: true, invoices: true, products: [] } });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({
+      body: {
+        orders: [
+          { id: "o1", title: "Plus, 3 months", days: 90, credits: 1000, listPaise: 99_900, coupon: "LAUNCH20", discountPaise: 19_980, amountPaise: 79_920, taxPaise: 12_191, status: "paid", createdAt: "2026-10-05T04:00:00Z", paidAt: "2026-10-05T04:01:00Z", invoice: "PKP/2627/000001" },
+        ],
+      },
+    });
+    routes["GET /practice/nit-practice/invoices/PKP/2627/000001"] = () => ({
+      body: {
+        number: "PKP/2627/000001",
+        issuedAt: "2026-10-05T04:01:00Z",
+        document: {
+          title: "Tax Invoice",
+          number: "PKP/2627/000001",
+          date: "5 Oct 2026",
+          supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru 560025", state: "Karnataka", sac: "998399" },
+          buyer: { legalName: "Asha Rao", gstin: null, state: "Maharashtra" },
+          placeOfSupply: { code: "27", state: "Maharashtra" },
+          lines: [{ description: "Plus, 3 months: Plus for 90 days and 1000 AI credits", quantity: 1, sac: "998399", amountPaise: 67_729 }],
+          taxablePaise: 67_729,
+          taxes: [{ name: "IGST", ratePercent: 18, amountPaise: 12_191 }],
+          totalPaise: 79_920,
+          totalInWords: "Rupees Seven Hundred Ninety Nine and Twenty Paise Only",
+          note: "Coupon LAUNCH20: ₹199.80 off the list price of ₹999.00.",
+        },
+      },
+    });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus");
+    expect(await screen.findByText(/coupon LAUNCH20, ₹199.80 off/)).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: /Invoice PKP\/2627\/000001/ }));
+    const invoice = await screen.findByRole("article", { name: "Tax Invoice PKP/2627/000001" });
+    expect(invoice.textContent).toContain("IGST @ 18%");
+    expect(invoice.textContent).toContain("₹799.20");
+    expect(invoice.textContent).toContain("Rupees Seven Hundred Ninety Nine and Twenty Paise Only");
+    expect(screen.getByRole("button", { name: /Print or save as PDF/ })).toBeTruthy();
   });
 
   it("shows a locked lesson by name, with the way to Plus", async () => {

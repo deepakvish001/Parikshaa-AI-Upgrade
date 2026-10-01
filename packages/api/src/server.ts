@@ -464,6 +464,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         sold_out: 409,
         limit_reached: 409,
         too_new: 403,
+        coupon_invalid: 422,
       }[error.code];
       return reply.code(status).send({ error: error.code, message: error.message });
     }
