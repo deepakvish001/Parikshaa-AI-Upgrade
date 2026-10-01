@@ -4,7 +4,7 @@ import { ArrowLeft, BriefcaseBusiness, Copy, Download, Link2, Pencil, Plus, Sear
 import { Drawer, TabPanel, Tabs, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, DRIVE_STAGES, type ConsoleClient, type Drive, type DriveDraft, type DriveStage, type StudentImport, type StudentRow } from "../api.ts";
 import "./Placement.css";
-import { Colleges, Offers } from "./DriveNetwork.tsx";
+import { Colleges, FunnelCard, FunnelTable, Offers } from "./DriveNetwork.tsx";
 import { Banner, DropZone, EmptyState, FigureStrip, PageActions, RowMenu, SkeletonRows, StatBar } from "./kit.tsx";
 
 /**
@@ -55,7 +55,7 @@ const lpa = (n: number | null) => (n === null ? "—" : `₹${n.toLocaleString("
 const failure = (error: unknown) => (error instanceof ConsoleError && error.detail !== undefined ? error.detail : "That did not work. Try again.");
 
 export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; canInvite: boolean }) {
-  const [tab, setTab] = useState<"students" | "drives" | "readiness" | "report">("drives");
+  const [tab, setTab] = useState<"students" | "drives" | "funnel" | "readiness" | "report">("drives");
   return (
     <>
       <Tabs
@@ -64,6 +64,7 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
         items={[
           { id: "drives", label: "Drives" },
           { id: "students", label: "Students" },
+          { id: "funnel", label: "Funnel" },
           { id: "readiness", label: "Readiness" },
           { id: "report", label: "NIRF / NAAC report" },
         ]}
@@ -75,6 +76,9 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
       </TabPanel>
       <TabPanel idBase="placement" id="students" value={tab}>
         {tab === "students" ? <Students client={client} /> : null}
+      </TabPanel>
+      <TabPanel idBase="placement" id="funnel" value={tab}>
+        {tab === "funnel" ? <FunnelTable client={client} /> : null}
       </TabPanel>
       <TabPanel idBase="placement" id="readiness" value={tab}>
         {tab === "readiness" ? <ReadinessView client={client} /> : null}
@@ -652,6 +656,7 @@ function DriveView({
       </section>
 
       <ApplyLink client={client} id={id} link={detail.data.applyLink ?? null} openToNew={drive.openToNew ?? false} onChange={refresh} />
+      {detail.data.funnel === undefined || applications.length === 0 ? null : <FunnelCard funnel={detail.data.funnel} />}
       <Colleges client={client} driveId={id} colleges={detail.data.colleges ?? []} onChange={refresh} />
       {applications.length === 0 || detail.data.offers === undefined ? null : <Offers client={client} driveId={id} figures={detail.data.offers} applications={applications} onChange={refresh} />}
 
@@ -701,6 +706,9 @@ function DriveView({
                     </th>
                     <th scope="col">Round</th>
                     <th scope="col">Offer</th>
+                    <th scope="col">
+                      <span className="sr-only">Status link</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -728,6 +736,19 @@ function DriveView({
                         <span className={`pill tone-${STAGE_TONE[a.stage]}`}>{STAGE_WORDS[a.stage]}</span>
                       </td>
                       <td>{a.offerLpa === null ? <span className="notice">—</span> : lpa(a.offerLpa)}</td>
+                      <td>
+                        {a.statusLink === undefined ? null : (
+                          <button
+                            type="button"
+                            className="quiet icon-only"
+                            aria-label={`Copy ${a.ref}'s status link`}
+                            title="The student's own page to follow this application"
+                            onClick={() => void navigator.clipboard?.writeText(a.statusLink!).then(() => toast("Status link copied", "success"))}
+                          >
+                            <Link2 aria-hidden="true" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

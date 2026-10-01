@@ -290,6 +290,17 @@ export interface DriveApplication extends Student {
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
   readonly college?: string | null;
   readonly offer?: SentOffer;
+  /** The student's own page to follow this application. */
+  readonly statusLink?: string;
+}
+
+export interface DriveFunnel {
+  readonly applied: number;
+  readonly test: number;
+  readonly interview: number;
+  readonly offered: number;
+  readonly joined: number;
+  readonly dropped: number;
 }
 
 export interface Readiness {
@@ -393,6 +404,7 @@ export interface DriveDetail {
   /** A company's drive across colleges: each partner college and its own link. */
   readonly colleges?: readonly DriveCollege[];
   readonly offers?: OfferFigures;
+  readonly funnel?: DriveFunnel & { readonly colleges: readonly (DriveFunnel & { readonly college: string })[] };
 }
 
 export interface DriveCollege {
@@ -1705,6 +1717,10 @@ export class ConsoleClient {
 
   async removeDriveCollege(id: string, collegeId: string): Promise<void> {
     await this.#request(`/drives/${encodeURIComponent(id)}/colleges/${encodeURIComponent(collegeId)}`, { method: "DELETE" });
+  }
+
+  funnels(): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: "open" | "closed"; readonly funnel: DriveFunnel }[]> {
+    return this.#request<{ drives: readonly { id: string; company: string; role: string; status: "open" | "closed"; funnel: DriveFunnel }[] }>("/placement/funnel").then((b) => b.drives);
   }
 
   alertDrive(id: string): Promise<{ readonly queued: number; readonly already: number; readonly unreachable: number }> {

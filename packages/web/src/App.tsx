@@ -13,6 +13,7 @@ import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
 const ShortlistPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ShortlistPage })));
 const InterviewPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.InterviewPage })));
 const OfferPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.OfferPage })));
+const StatusPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.StatusPage })));
 const ApplyPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ApplyPage })));
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
@@ -125,6 +126,7 @@ export function App(props: { client?: ParikshaaClient } = {}) {
   const apply = query?.get("apply") ?? null;
   const interview = query?.get("interview") ?? null;
   const offer = query?.get("offer") ?? null;
+  const status = query?.get("status") ?? null;
   return (
     <PreferencesProvider>
       {scorecard !== null ? (
@@ -144,6 +146,10 @@ export function App(props: { client?: ParikshaaClient } = {}) {
       ) : offer !== null ? (
         <Suspense fallback={null}>
           <OfferPage code={offer} />
+        </Suspense>
+      ) : status !== null ? (
+        <Suspense fallback={null}>
+          <StatusPage code={status} />
         </Suspense>
       ) : (
         <Screens {...props} />

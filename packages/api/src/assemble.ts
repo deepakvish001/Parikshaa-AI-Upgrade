@@ -258,7 +258,7 @@ export function assemble(o: AssembleOptions): {
     interviews: new InterviewService({ store: interviewStore, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
-    placement: new PlacementService({ placement: placementStore, messages: studentMessages, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
+    placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,
     auth,
     security,

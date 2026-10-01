@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApplyPage, InterviewPage, OfferPage, ShortlistPage } from "./components/PublicPages.tsx";
+import { ApplyPage, InterviewPage, OfferPage, ShortlistPage, StatusPage } from "./components/PublicPages.tsx";
 import { PreferencesProvider } from "./i18n.tsx";
 
 /** Pages opened from a link with no account. */
@@ -185,5 +185,34 @@ describe("a college's link in a company's drive", () => {
     );
     expect(await screen.findByText("Zoho · campus drive for PSG Tech")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Roll number at PSG Tech" })).toBeInTheDocument();
+  });
+});
+
+describe("a student's own application page", () => {
+  it("shows the rounds reached, and the offer waiting for an answer", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        json({ institution: "Acme College", company: "Infosys", role: "Systems Engineer", name: "Ananya", stage: "offered", updatedAt: "2026-10-05T05:00:00Z", offer: { ctcLpa: 4, joiningDate: null, response: null, link: "https://exam.test/?offer=o" } }),
+      ),
+    );
+    render(
+      <PreferencesProvider>
+        <StatusPage code="org-a.d1.Q1MwMDE.mac" />
+      </PreferencesProvider>,
+    );
+    const rounds = await screen.findByRole("list", { name: "Rounds" });
+    expect(within(rounds).getByText("Offer")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByRole("link", { name: "See it and answer" })).toHaveAttribute("href", "https://exam.test/?offer=o");
+  });
+
+  it("says when the link opens nothing", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "not_found" }, 404)));
+    render(
+      <PreferencesProvider>
+        <StatusPage code="bad" />
+      </PreferencesProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "This link does not open an application" })).toBeInTheDocument();
   });
 });

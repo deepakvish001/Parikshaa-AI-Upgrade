@@ -249,8 +249,8 @@ describe("applying from a drive's link", () => {
     const shown = (await app.inject({ method: "GET", url: `/apply/${encodeURIComponent(code)}` })).json();
     expect(shown).toMatchObject({ institution: "Acme Engineering College", company: "Wipro", closed: false, openToNew: false, eligibility: { minCgpa: 7 } });
 
-    expect((await apply(code, { ref: "CS001", email: "ANANYA@college.test" })).json()).toEqual({ status: "applied" });
-    expect((await apply(code, { ref: "CS001", email: "ananya@college.test" })).json()).toEqual({ status: "already" });
+    expect((await apply(code, { ref: "CS001", email: "ANANYA@college.test" })).json()).toMatchObject({ status: "applied" });
+    expect((await apply(code, { ref: "CS001", email: "ananya@college.test" })).json()).toMatchObject({ status: "already" });
     // The email must be the one on file; the CGPA on file decides, not what is typed.
     expect((await apply(code, { ref: "CS002", email: "someone@else.test" })).statusCode).toBe(404);
     expect((await apply(code, { ref: "CS002", email: "rohan@college.test", cgpa: 9.9 })).json().message).toMatch(/criteria/);
@@ -264,7 +264,7 @@ describe("applying from a drive's link", () => {
   it("takes people not on the list for an off-campus drive, and stops when closed or past the date", async () => {
     const id = (await call("POST", "/drives", owner, { company: "TCS", role: "Ninja", eligibility: { minCgpa: 6 }, applyBy: "2026-10-05" })).json().id;
     const code = codeOf((await call("POST", `/drives/${id}/apply-link`, owner, { open: true, openToNew: true })).json().link);
-    expect((await apply(code, { ref: "OFF01", email: "off@x.test", name: "Off Campus", branch: "IT", batch: 2026, cgpa: 7.5, phone: "9812345678" })).json()).toEqual({ status: "applied" });
+    expect((await apply(code, { ref: "OFF01", email: "off@x.test", name: "Off Campus", branch: "IT", batch: 2026, cgpa: 7.5, phone: "9812345678" })).json()).toMatchObject({ status: "applied" });
     expect((await apply(code, { ref: "OFF02", email: "low@x.test", name: "Low", cgpa: 5 })).statusCode).toBe(409);
     const students = (await call("GET", "/students", owner)).json().students;
     expect(students.find((s: { ref: string }) => s.ref === "OFF01")).toMatchObject({ name: "Off Campus", branch: "IT", cgpa: 7.5, phone: "919812345678" });
@@ -288,9 +288,9 @@ describe("applying from a drive's link", () => {
     expect(shown).toMatchObject({ company: "Zoho", college: "NIT Tiruchirappalli", openToNew: true });
     const form = { email: "a@nitt.test", name: "Arun", branch: "CSE", batch: 2027, cgpa: 8 };
     // The same roll number at two colleges is two students.
-    expect((await apply(codeOf(nitt.link), { ref: "21CS001", ...form })).json()).toEqual({ status: "applied" });
-    expect((await apply(codeOf(psg.link), { ref: "21CS001", ...form, email: "b@psg.test", name: "Bala" })).json()).toEqual({ status: "applied" });
-    expect((await apply(codeOf(nitt.link), { ref: "21CS001", ...form })).json()).toEqual({ status: "already" });
+    expect((await apply(codeOf(nitt.link), { ref: "21CS001", ...form })).json()).toMatchObject({ status: "applied" });
+    expect((await apply(codeOf(psg.link), { ref: "21CS001", ...form, email: "b@psg.test", name: "Bala" })).json()).toMatchObject({ status: "applied" });
+    expect((await apply(codeOf(nitt.link), { ref: "21CS001", ...form })).json()).toMatchObject({ status: "already" });
 
     const detail = (await call("GET", `/drives/${id}`, owner)).json();
     expect(detail.applications.map((a: { ref: string; college: string }) => [a.ref, a.college])).toEqual([
@@ -337,6 +337,40 @@ describe("offers", () => {
     await call("POST", `/drives/${id}/stage`, owner, { refs: ["CS001"], stage: "joined", offerLpa: 3.6 });
     expect((await call("GET", `/drives/${id}`, owner)).json().offers).toMatchObject({ joined: 1, notJoined: 0 });
     expect(JSON.stringify((await call("GET", "/audit", owner)).json())).toContain("drive.offer_sent");
+  });
+});
+
+describe("following a drive", () => {
+  it("counts how many reached each round, by college too, and lets each student follow their own application", async () => {
+    await call("POST", "/students/import", owner, { csv: SHEET, dryRun: false });
+    const id = (await call("POST", "/drives", owner, { company: "Infosys", role: "Systems Engineer" })).json().id;
+    await call("POST", `/drives/${id}/students`, owner, { refs: ["CS001", "CS002", "EC001", "ME001"] });
+    await call("POST", `/drives/${id}/stage`, owner, { refs: ["CS001", "CS002"], stage: "interview" });
+    await call("POST", `/drives/${id}/stage`, owner, { refs: ["EC001"], stage: "rejected" });
+    await call("POST", `/drives/${id}/offers`, owner, { ref: "CS001", ctcLpa: 4 });
+
+    const detail = (await call("GET", `/drives/${id}`, owner)).json();
+    expect(detail.funnel).toEqual({ applied: 4, test: 2, interview: 2, offered: 1, joined: 0, dropped: 1, colleges: [] });
+    expect((await call("GET", "/placement/funnel", owner)).json().drives).toEqual([expect.objectContaining({ id, company: "Infosys", funnel: expect.objectContaining({ applied: 4, offered: 1 }) })]);
+
+    const link = detail.applications.find((a: { ref: string }) => a.ref === "CS001").statusLink;
+    const code = encodeURIComponent(new URL(link).searchParams.get("status")!);
+    const page = (await app.inject({ method: "GET", url: `/status/${code}` })).json();
+    expect(page).toMatchObject({ company: "Infosys", name: "Ananya Iyer", stage: "offered", offer: { ctcLpa: 4, response: null, link: expect.stringContaining("?offer=") } });
+    expect(JSON.stringify(page)).not.toMatch(/Rohan|CS002/);
+    // Changing the roll number in the link breaks its signature.
+    const [org, drive, , mac] = decodeURIComponent(code).split(".");
+    const forged = `${org}.${drive}.${Buffer.from("CS002").toString("base64url")}.${mac}`;
+    expect((await app.inject({ method: "GET", url: `/status/${encodeURIComponent(forged)}` })).statusCode).toBe(404);
+  });
+
+  it("gives the student the link to follow their application when they apply", async () => {
+    await call("POST", "/students/import", owner, { csv: SHEET, dryRun: false });
+    const id = (await call("POST", "/drives", owner, { company: "Wipro", role: "Project Engineer" })).json().id;
+    const code = new URL((await call("POST", `/drives/${id}/apply-link`, owner, { open: true })).json().link).searchParams.get("apply")!;
+    const applied = (await app.inject({ method: "POST", url: `/apply/${encodeURIComponent(code)}`, payload: { ref: "CS001", email: "ananya@college.test" } })).json();
+    const status = new URL(applied.statusLink).searchParams.get("status")!;
+    expect((await app.inject({ method: "GET", url: `/status/${encodeURIComponent(status)}` })).json()).toMatchObject({ company: "Wipro", stage: "applied", offer: null });
   });
 });
 
