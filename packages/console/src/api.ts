@@ -404,6 +404,10 @@ export interface Interview {
   readonly scorecard: InterviewScorecard | null;
   readonly status: "scheduled" | "done" | "cancelled";
   readonly link: string;
+  /** The staff on its panel, and who has scored; an older server leaves it out. */
+  readonly panel?: readonly { readonly userId: string; readonly name: string; readonly scored: boolean }[];
+  /** Each panel member's own scorecard; the interview's scorecard is their average. */
+  readonly scores?: readonly { readonly userId: string; readonly name: string; readonly scorecard: InterviewScorecard; readonly scoredAt: string }[];
 }
 
 export interface PlacementReport {
@@ -1629,8 +1633,16 @@ export class ConsoleClient {
     readonly meetingUrl: string | null;
     readonly problem: string;
     readonly language: string;
+    readonly panel?: readonly string[];
   }): Promise<Interview> {
     return this.#request("/interviews", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  /** The interview as a calendar file (.ics). */
+  async interviewCalendar(id: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/interviews/${encodeURIComponent(id)}/calendar`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
   }
 
   editInterview(id: string, patch: { readonly problem?: string; readonly notes?: string; readonly cancel?: boolean }): Promise<Interview> {

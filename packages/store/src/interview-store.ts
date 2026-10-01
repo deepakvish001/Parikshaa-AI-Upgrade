@@ -32,6 +32,16 @@ export interface Interview {
   readonly status: "scheduled" | "done" | "cancelled";
   readonly driveId: string | null;
   readonly createdAt: string;
+  /** The staff on its panel, by id; the one who set it up first. Empty for an interview from before panels. */
+  readonly panel: readonly string[];
+}
+
+/** One panel member's own scorecard (CO41). */
+export interface PanelScore {
+  readonly userId: string;
+  readonly name: string;
+  readonly scorecard: Scorecard;
+  readonly scoredAt: string;
 }
 
 interface Row {
@@ -53,10 +63,11 @@ interface Row {
   status: Interview["status"];
   drive_id: string | null;
   created_at: string | Date;
+  panel: string[] | string | null;
 }
 
 const iso = (v: string | Date) => new Date(v).toISOString();
-const COLUMNS = `id, title, candidate_ref, candidate_name, candidate_email, interviewer, scheduled_at, minutes, meeting_url, problem, language, code, code_updated_at, notes, scorecard, status, drive_id, created_at`;
+const COLUMNS = `id, title, candidate_ref, candidate_name, candidate_email, interviewer, scheduled_at, minutes, meeting_url, problem, language, code, code_updated_at, notes, scorecard, status, drive_id, created_at, panel`;
 const toInterview = (r: Row): Interview => ({
   id: r.id,
   title: r.title,
@@ -76,6 +87,7 @@ const toInterview = (r: Row): Interview => ({
   status: r.status,
   driveId: r.drive_id,
   createdAt: iso(r.created_at),
+  panel: Array.isArray(r.panel) ? r.panel : [],
 });
 
 const aad = (orgId: string, id: string, field: "email" | "code" | "notes") => `interviews/${orgId}/${id}/${field}`;
@@ -95,12 +107,12 @@ export class InterviewStore {
     return { ...i, candidateEmail: this.#seal.open(i.candidateEmail, aad(orgId, i.id, "email")), code: this.#seal.open(i.code, aad(orgId, i.id, "code")), notes: this.#seal.open(i.notes, aad(orgId, i.id, "notes")) };
   }
 
-  async create(orgId: OrgId, i: Omit<Interview, "code" | "codeUpdatedAt" | "notes" | "scorecard" | "status" | "language"> & { readonly language: string }): Promise<Interview> {
+  async create(orgId: OrgId, i: Omit<Interview, "code" | "codeUpdatedAt" | "notes" | "scorecard" | "status" | "language" | "panel"> & { readonly language: string; readonly panel?: readonly string[] }): Promise<Interview> {
     return withScope(this.#sql, staffScope(orgId), async (tx) => {
       const rows = await tx.query<Row>(
-        `INSERT INTO interviews (org_id, id, title, candidate_ref, candidate_name, candidate_email, interviewer, scheduled_at, minutes, meeting_url, problem, language, drive_id, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING ${COLUMNS}`,
-        [orgId, i.id, i.title, i.candidateRef, i.candidateName, this.#seal.text(i.candidateEmail, aad(orgId, i.id, "email")), i.interviewer, i.scheduledAt, i.minutes, i.meetingUrl, i.problem, i.language, i.driveId, i.createdAt],
+        `INSERT INTO interviews (org_id, id, title, candidate_ref, candidate_name, candidate_email, interviewer, scheduled_at, minutes, meeting_url, problem, language, drive_id, created_at, panel)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING ${COLUMNS}`,
+        [orgId, i.id, i.title, i.candidateRef, i.candidateName, this.#seal.text(i.candidateEmail, aad(orgId, i.id, "email")), i.interviewer, i.scheduledAt, i.minutes, i.meetingUrl, i.problem, i.language, i.driveId, i.createdAt, [...(i.panel ?? [])]],
       );
       return this.#open(orgId, rows[0]!);
     });
@@ -140,6 +152,35 @@ export class InterviewStore {
         ],
       );
       return rows[0] === undefined ? null : this.#open(orgId, rows[0]);
+    });
+  }
+
+  /** The panel's own scorecards, for these interviews. */
+  async scores(orgId: OrgId, ids: readonly string[]): Promise<ReadonlyMap<string, readonly PanelScore[]>> {
+    if (ids.length === 0) return new Map();
+    return withScope(this.#sql, staffScope(orgId), async (tx) => {
+      const rows = await tx.query<{ interview_id: string; user_id: string; name: string; scorecard: Scorecard | string; scored_at: string | Date }>(
+        `SELECT interview_id, user_id, name, scorecard, scored_at FROM interview_scores WHERE org_id = $1 AND interview_id = ANY($2) ORDER BY scored_at`,
+        [orgId, [...ids]],
+      );
+      const out = new Map<string, PanelScore[]>();
+      for (const r of rows) {
+        const list = out.get(r.interview_id) ?? [];
+        list.push({ userId: r.user_id, name: r.name, scorecard: typeof r.scorecard === "string" ? (JSON.parse(r.scorecard) as Scorecard) : r.scorecard, scoredAt: iso(r.scored_at) });
+        out.set(r.interview_id, list);
+      }
+      return out;
+    });
+  }
+
+  /** A panel member's scorecard; a second one from them replaces the first. */
+  async putScore(orgId: OrgId, id: string, score: PanelScore): Promise<void> {
+    await withScope(this.#sql, staffScope(orgId), async (tx) => {
+      await tx.query(
+        `INSERT INTO interview_scores (org_id, interview_id, user_id, name, scorecard, scored_at) VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+         ON CONFLICT (org_id, interview_id, user_id) DO UPDATE SET name = EXCLUDED.name, scorecard = EXCLUDED.scorecard, scored_at = EXCLUDED.scored_at`,
+        [orgId, id, score.userId, score.name, JSON.stringify(score.scorecard), score.scoredAt],
+      );
     });
   }
 

@@ -136,6 +136,15 @@ export function assemble(o: AssembleOptions): {
   const scriptStore = new ScriptStore(o.sql, keys.records("scripts"));
   const interviewStore = new InterviewStore(o.sql, keys.records("interviews"));
   const placementStore = new PlacementStore(o.sql, keys.records("students"));
+  const interviews = new InterviewService({
+    store: interviewStore,
+    exams: service,
+    secret: o.secret,
+    publicUrl: o.publicUrl,
+    staff: (org) => identity.listUsers(org),
+    mailer: o.mailer ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
+  });
   const studentMessages = new StudentMessages({
     placement: placementStore,
     identity,
@@ -267,7 +276,7 @@ export function assemble(o: AssembleOptions): {
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
     handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service }),
-    interviews: new InterviewService({ store: interviewStore, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
+    interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
@@ -315,7 +324,7 @@ export function assemble(o: AssembleOptions): {
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
       learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)),
-      student: (item) => studentMessages.deliver(item) },
+      student: (item) => studentMessages.deliver(item), interview: (item) => interviews.deliver(item) },
   });
 
   return { app, worker, privacy, billing, identity, dailyReport, prepEngage };

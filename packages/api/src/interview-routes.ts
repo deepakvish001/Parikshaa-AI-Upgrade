@@ -29,6 +29,8 @@ const refusals = { 401: S.errorResponse, 403: S.errorResponse, 404: S.errorRespo
 const recommendation = z.enum(["strong_yes", "yes", "no", "strong_no"]);
 const scorecard = z.object({ criteria: z.array(z.object({ name: z.string().min(1).max(100), score: z.number().int() })).min(1).max(12).readonly(), recommendation, summary: z.string().max(5000).default("") });
 const language = z.enum(LANGUAGES);
+/** As it is read back: on a panel, each criterion is the average, so not a whole number. */
+const card = z.object({ criteria: z.array(z.object({ name: z.string(), score: z.number() })).readonly(), recommendation, summary: z.string() });
 const interview = z.object({
   id: z.string(),
   title: z.string(),
@@ -44,11 +46,13 @@ const interview = z.object({
   code: z.string(),
   codeUpdatedAt: z.string().nullable(),
   notes: z.string(),
-  scorecard: scorecard.nullable(),
+  scorecard: card.nullable().describe("On a panel, the average of its members' scorecards."),
   status: z.enum(["scheduled", "done", "cancelled"]),
   driveId: z.string().nullable(),
   createdAt: z.string(),
   link: z.string().describe("The candidate's link to the room."),
+  panel: z.array(z.object({ userId: z.string(), name: z.string(), scored: z.boolean() })).readonly().describe("The staff on its panel, the one who set it up first."),
+  scores: z.array(z.object({ userId: z.string(), name: z.string(), scorecard: card, scoredAt: z.string() })).readonly().describe("Each panel member's own scorecard."),
 });
 const idParams = z.object({ id: z.string() });
 const codeParams = z.object({ code: z.string().min(5).max(300) });
@@ -88,6 +92,7 @@ export function registerInterviewRoutes(routes: Routes, deps: InterviewRouteDeps
           problem: z.string().max(20000).default(""),
           language: language.default("python"),
           driveId: z.string().nullable().default(null),
+          panel: z.array(z.string()).max(7).default([]).describe("Other staff on the panel, by id: each scores for themselves, and each gets the calendar invite."),
         }),
         response: { 201: interview, ...refusals },
       },
@@ -119,6 +124,26 @@ export function registerInterviewRoutes(routes: Routes, deps: InterviewRouteDeps
     },
   );
 
+  routes.get(
+    "/interviews/:id/calendar",
+    {
+      schema: {
+        tags: TAGS,
+        summary: "The interview as a calendar file (.ics)",
+        description: "The same invite the panel is emailed, to add to any calendar.",
+        security: SECURED,
+        params: idParams,
+        response: { 200: z.string(), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      const file = await interviews.calendarFile(actor, request.params.id);
+      return reply.header("content-type", "text/calendar; charset=utf-8").header("content-disposition", 'attachment; filename="interview.ics"').send(file);
+    },
+  );
+
   routes.put(
     "/interviews/:id",
     {
@@ -141,7 +166,7 @@ export function registerInterviewRoutes(routes: Routes, deps: InterviewRouteDeps
   routes.post(
     "/interviews/:id/scorecard",
     {
-      schema: { tags: TAGS, summary: "Score the interview, and close it", description: "Criteria on 1–5 and a recommendation. Audited.", security: SECURED, params: idParams, body: scorecard, response: { 200: interview, ...refusals } },
+      schema: { tags: TAGS, summary: "Score the interview", description: "Criteria on 1–5 and a recommendation. On a panel, each member scores for themselves and the interview closes once all have; otherwise the scorecard closes it. Audited.", security: SECURED, params: idParams, body: scorecard, response: { 200: interview, ...refusals } },
     },
     async (request, reply) => {
       const actor = await staff(request, reply, "attempt:review");

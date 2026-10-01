@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Copy, Plus, Video } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Copy, Plus, Users, Video } from "lucide-react";
 import { Drawer, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type ConsoleClient, type Interview, type Recommendation } from "../api.ts";
 import { EmptyState } from "./kit.tsx";
@@ -11,8 +11,19 @@ import "./Interviews.css";
  * interview and send the candidate their link; in the room, the video call
  * opens in its own tab while the candidate's code shows here as they type,
  * beside the problem (which can be changed mid-way), your notes, and the
- * scorecard that closes it.
+ * scorecard. A panel (CO41) scores one by one, and the interview's card is
+ * their average; each person on it, and the candidate, is emailed a calendar
+ * invite (CO27), which can also be downloaded here.
  */
+
+function save(blob: Blob, name: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const LANGUAGES = ["python", "javascript", "java", "cpp", "c", "sql", "text"] as const;
 const CRITERIA = ["Problem solving", "Code quality", "Communication", "Fundamentals"];
@@ -100,6 +111,11 @@ function Schedule({ client, onClose, onMade }: { client: ConsoleClient; onClose:
   const queryClient = useQueryClient();
   const toast = useToast();
   const [form, setForm] = useState({ title: "", candidateName: "", candidateRef: "", candidateEmail: "", at: "", minutes: "45", meetingUrl: "", problem: "", language: "python" });
+  const [panel, setPanel] = useState<readonly string[]>([]);
+  // Only someone who may see the staff list picks a panel.
+  const staff = useQuery({ queryKey: ["staff"], queryFn: () => client.listStaff(), retry: false });
+  const me = useQuery({ queryKey: ["me"], queryFn: () => client.me(), retry: false });
+  const others = (staff.data ?? []).filter((u) => !u.disabled && u.id !== me.data?.id && u.role !== "viewer" && u.role !== "invigilator");
   const make = useMutation({
     mutationFn: () =>
       client.scheduleInterview({
@@ -113,11 +129,12 @@ function Schedule({ client, onClose, onMade }: { client: ConsoleClient; onClose:
         meetingUrl: form.meetingUrl.trim() === "" ? null : form.meetingUrl.trim(),
         problem: form.problem,
         language: form.language,
+        panel,
       }),
     onSuccess: async (made) => {
       void queryClient.invalidateQueries({ queryKey: ["interviews"] });
       await navigator.clipboard?.writeText(made.link).catch(() => undefined);
-      toast("Scheduled. The candidate's link is copied", "success");
+      toast(`Scheduled. The candidate's link is copied${panel.length > 0 ? `; ${panel.length + 1} on the panel` : ""}`, "success");
       onClose();
       onMade(made.id);
     },
@@ -153,6 +170,17 @@ function Schedule({ client, onClose, onMade }: { client: ConsoleClient; onClose:
             ))}
           </select>
         </label>
+        {others.length === 0 ? null : (
+          <fieldset className="field">
+            <legend>Also on the panel (each scores for themselves)</legend>
+            {others.map((u) => (
+              <label key={u.id} className="check">
+                <input type="checkbox" checked={panel.includes(u.id)} disabled={!panel.includes(u.id) && panel.length >= 7} onChange={(e) => setPanel(e.target.checked ? [...panel, u.id] : panel.filter((p) => p !== u.id))} />
+                {u.name}
+              </label>
+            ))}
+          </fieldset>
+        )}
         <label className="field">
           Problem to start with
           <textarea rows={5} value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} />
@@ -193,7 +221,7 @@ function Room({ client, id, onBack }: { client: ConsoleClient; id: string; onBac
     onSuccess: (u) => {
       saved(u);
       void queryClient.invalidateQueries({ queryKey: ["interviews"] });
-      toast("Scorecard saved", "success");
+      toast(u.status === "done" ? "Scorecard saved" : "Your scorecard is saved; waiting for the rest of the panel", "success");
     },
   });
   if (i === undefined) return <p className="notice">Opening the room…</p>;
@@ -229,6 +257,10 @@ function Room({ client, id, onBack }: { client: ConsoleClient; id: string; onBac
           <Copy aria-hidden="true" />
           Copy the candidate's link
         </button>
+        <button type="button" className="quiet" onClick={async () => save(await client.interviewCalendar(id), "interview.ics")}>
+          <CalendarPlus aria-hidden="true" />
+          Add to calendar
+        </button>
         {open ? (
           <button type="button" className="quiet danger" onClick={() => edit.mutate({ cancel: true })}>
             Cancel the interview
@@ -260,9 +292,16 @@ function Room({ client, id, onBack }: { client: ConsoleClient; id: string; onBac
           </pre>
         </div>
       </div>
-      {i.scorecard !== null ? (
+      {(i.panel?.length ?? 0) > 1 ? (
+        <p className="notice" aria-label="Panel">
+          <Users aria-hidden="true" /> Panel: {i.panel!.map((p) => `${p.name}${p.scored ? " ✓" : ""}`).join(" · ")}
+        </p>
+      ) : null}
+      {i.scorecard !== null && !(open && (i.panel?.length ?? 0) > 1) ? (
         <section aria-label="Scorecard" className="scorecard">
-          <h3>Scorecard — {RECOMMENDATIONS.find(([r]) => r === i.scorecard?.recommendation)?.[1]}</h3>
+          <h3>
+            {(i.scores?.length ?? 0) > 1 ? `Panel average (${i.scores!.length})` : "Scorecard"} — {RECOMMENDATIONS.find(([r]) => r === i.scorecard?.recommendation)?.[1]}
+          </h3>
           <ul>
             {i.scorecard.criteria.map((c) => (
               <li key={c.name}>
@@ -270,7 +309,21 @@ function Room({ client, id, onBack }: { client: ConsoleClient; id: string; onBac
               </li>
             ))}
           </ul>
-          {i.scorecard.summary === "" ? null : <p>{i.scorecard.summary}</p>}
+          {i.scorecard.summary === "" ? null : <p className="pre-line">{i.scorecard.summary}</p>}
+          {(i.scores?.length ?? 0) > 1 ? (
+            <table>
+              <caption>Each member's scorecard</caption>
+              <tbody>
+                {i.scores!.map((s) => (
+                  <tr key={s.userId}>
+                    <th scope="row">{s.name}</th>
+                    <td>{s.scorecard.criteria.map((c) => `${c.name} ${c.score}`).join(" · ")}</td>
+                    <td>{RECOMMENDATIONS.find(([r]) => r === s.scorecard.recommendation)?.[1]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
         </section>
       ) : open ? (
         <form
@@ -309,7 +362,7 @@ function Room({ client, id, onBack }: { client: ConsoleClient; id: string; onBac
             </p>
           )}
           <button type="submit" disabled={recommendation === null || Object.keys(scores).length === 0 || score.isPending}>
-            Save the scorecard and close
+            {(i.panel?.length ?? 0) > 1 ? "Save my scorecard" : "Save the scorecard and close"}
           </button>
         </form>
       ) : null}
