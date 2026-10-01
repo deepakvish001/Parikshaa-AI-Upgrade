@@ -72,7 +72,8 @@ describe("the OpenAPI document", () => {
     // And the ways back in for someone who cannot sign in: a password reset
     // (whose link is the proof) and their organisation's own sign-in provider.
     // And a scorecard's check, whose code — printed on the scorecard — is the proof;
-    // likewise a candidate's admit card, by the code in their invitation link.
+    // likewise a candidate's admit card, by the code in their invitation link, and a
+    // hiring manager's shortlist, by the code in theirs.
     const open = new Set([
       "get /health",
       "get /openapi.json",
@@ -83,6 +84,8 @@ describe("the OpenAPI document", () => {
       "post /invitations/redeem",
       "post /invitations/briefing",
       "get /invitations/admit-card.pdf",
+      "get /shortlists/view/{code}",
+      "post /shortlists/view/{code}/decisions",
       "get /media/{sha256}",
       "post /auth/password-reset",
       "post /auth/password-reset/confirm",

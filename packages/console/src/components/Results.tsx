@@ -10,6 +10,7 @@ import { IDENTITY_LABEL } from "./Proctoring.tsx";
 
 // Loaded when a sitting has results: most never has a recheck.
 const Rechecks = lazy(() => import("./Rechecks.tsx").then((m) => ({ default: m.Rechecks })));
+const Shortlists = lazy(() => import("./Shortlists.tsx").then((m) => ({ default: m.Shortlists })));
 const Marking = lazy(() => import("./Marking.tsx").then((m) => ({ default: m.Marking })));
 
 /**
@@ -166,6 +167,11 @@ export function ResultsPanel({
       {rows.length === 0 ? null : (
         <Suspense fallback={null}>
           <Rechecks client={client} examId={examId} canAnswer={canGrade} />
+        </Suspense>
+      )}
+      {analytics.graded === 0 ? null : (
+        <Suspense fallback={null}>
+          <Shortlists client={client} examId={examId} qualified={rows.filter((r) => r.outcome === "qualified").length} />
         </Suspense>
       )}
       {rows.length === 0 ? null : <CandidateFeedback client={client} examId={examId} />}

@@ -345,6 +345,19 @@ export interface Marked {
   readonly already: { readonly by: string; readonly at: string } | null;
 }
 
+export interface ShortlistRow {
+  readonly id: string;
+  readonly title: string;
+  readonly candidates: number;
+  readonly createdBy: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly revoked: boolean;
+  readonly decided: { readonly shortlist: number; readonly hold: number; readonly reject: number };
+  readonly link: string;
+  readonly decisions?: readonly { readonly ref: string; readonly decision: "shortlist" | "hold" | "reject"; readonly comment: string; readonly by: string; readonly at: string }[];
+}
+
 /** A candidate's request to recheck one question, with what it is about. */
 export interface RecheckRow {
   readonly id: string;
@@ -1333,6 +1346,21 @@ export class ConsoleClient {
   /** Keep or change one answer's mark, and record it as read. */
   markAnswer(examId: string, attemptId: string, questionId: string, score: number): Promise<{ readonly score: number; readonly changed: boolean }> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/marking`, { method: "POST", body: JSON.stringify({ attemptId, questionId, score }) });
+  }
+
+  // --- shortlists for hiring managers ---------------------------------------------
+
+  async shortlists(examId: string): Promise<readonly ShortlistRow[]> {
+    return (await this.#request<{ shortlists: readonly ShortlistRow[] }>(`/exams/${encodeURIComponent(examId)}/shortlists`)).shortlists;
+  }
+
+  /** A link for a hiring manager: the roll numbers given, or (null) everyone who qualified. */
+  createShortlist(examId: string, request: { readonly title: string; readonly refs: readonly string[] | null; readonly days: number }): Promise<ShortlistRow> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/shortlists`, { method: "POST", body: JSON.stringify(request) });
+  }
+
+  async withdrawShortlist(id: string): Promise<void> {
+    await this.#request(`/shortlists/${encodeURIComponent(id)}/withdraw`, { method: "POST" });
   }
 
   // --- seats, admit cards, attendance ---------------------------------------------
