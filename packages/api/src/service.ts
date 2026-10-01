@@ -134,6 +134,8 @@ export interface ServiceOptions {
    * refuses the start by throwing. Without one, nothing is metered.
    */
   readonly meter?: Meter;
+  /** Which exams this member of staff sees, and each exam's department (CL6). */
+  readonly departments?: (actor: Actor) => Promise<{ readonly visible: (examId: string) => boolean; readonly of: (examId: string) => string | null }>;
   /** Whether a paper is with its reviewer or approved, and so locked against change (CL60). */
   readonly locked?: (orgId: OrgId, examId: string) => Promise<string | null>;
 }
@@ -188,10 +190,12 @@ export class ExamService {
 
   readonly #meter: Meter | null;
   readonly #locked: ((orgId: OrgId, examId: string) => Promise<string | null>) | null;
+  readonly #departments: ServiceOptions["departments"] | null;
 
   constructor(options: ServiceOptions) {
     this.#meter = options.meter ?? null;
     this.#locked = options.locked ?? null;
+    this.#departments = options.departments ?? null;
     this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
@@ -387,8 +391,11 @@ export class ExamService {
     await this.#audit(actor, archived ? "exam.archived" : "exam.restored", id, {});
   }
 
-  listExams(actor: Actor): Promise<readonly ExamSummary[]> {
-    return this.#store.listExams(this.#require(actor, "exam:read"));
+  async listExams(actor: Actor): Promise<readonly (ExamSummary & { readonly department?: string | null })[]> {
+    const exams = await this.#store.listExams(this.#require(actor, "exam:read"));
+    if (this.#departments === null || this.#departments === undefined) return exams;
+    const { visible, of } = await this.#departments(actor);
+    return exams.filter((e) => visible(e.id)).map((e) => ({ ...e, department: of(e.id) }));
   }
 
   /** The exam in full, answer key included. */

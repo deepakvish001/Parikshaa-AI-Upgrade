@@ -65,6 +65,8 @@ import type { ProxyService } from "./proxy.js";
 import { registerProxyRoutes } from "./proxy-routes.js";
 import type { ExamReviewService } from "./exam-review.js";
 import { registerExamReviewRoutes } from "./exam-review-routes.js";
+import type { DepartmentService } from "./departments.js";
+import { registerDepartmentRoutes } from "./department-routes.js";
 import { registerJobTestRoutes } from "./job-test-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
@@ -152,6 +154,8 @@ export interface ServerOptions {
   readonly proxy?: ProxyService;
   /** A paper's review and lock. Absent: none of its routes. */
   readonly examReviews?: ExamReviewService;
+  /** Departments, and staff from a sheet. Absent: none of their routes. */
+  readonly departments?: DepartmentService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -1277,6 +1281,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff, throttle });
     registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
     if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
+    if (options.departments !== undefined) registerDepartmentRoutes(routes, { departments: options.departments, staff });
     if (options.examReviews !== undefined) registerExamReviewRoutes(routes, { reviews: options.examReviews, staff });
     if (options.proxy !== undefined) registerProxyRoutes(routes, { proxy: options.proxy, staff });
     if (options.handwriting !== undefined) registerScriptRoutes(routes, { handwriting: options.handwriting, staff });

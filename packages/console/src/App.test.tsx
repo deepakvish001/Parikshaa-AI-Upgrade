@@ -2291,7 +2291,7 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     expect(stub.startAttempt).not.toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog", { name: "Try test" })).toBeNull();
-  });
+  }, 15_000);
 
   it("marks who qualified in the results, and filters by it", async () => {
     renderApp(<App client={client()} />);

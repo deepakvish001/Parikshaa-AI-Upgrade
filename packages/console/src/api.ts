@@ -23,6 +23,8 @@ export interface ExamSummary {
   readonly window?: { readonly opensAt: string; readonly closesAt: string } | null;
   /** When it was put away, or null while it is current. */
   readonly archivedAt?: string | null;
+  /** The department that owns it, if one is set. */
+  readonly department?: string | null;
 }
 
 export interface AttemptSummary {
@@ -292,6 +294,20 @@ export interface DriveApplication extends Student {
   readonly offer?: SentOffer;
   /** The student's own page to follow this application. */
   readonly statusLink?: string;
+}
+
+export interface Departments {
+  readonly departments: readonly string[];
+  readonly staff: readonly { readonly userId: string; readonly department: string }[];
+  readonly exams: readonly { readonly examId: string; readonly department: string }[];
+}
+
+export interface StaffImport {
+  readonly dryRun: boolean;
+  readonly added: number;
+  readonly skipped: number;
+  readonly problems: readonly { readonly row: number; readonly message: string }[];
+  readonly preview: readonly { readonly row: number; readonly email: string; readonly name: string; readonly role: string; readonly department: string | null }[];
 }
 
 export interface ExamReview {
@@ -1733,6 +1749,22 @@ export class ConsoleClient {
 
   funnels(): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: "open" | "closed"; readonly funnel: DriveFunnel }[]> {
     return this.#request<{ drives: readonly { id: string; company: string; role: string; status: "open" | "closed"; funnel: DriveFunnel }[] }>("/placement/funnel").then((b) => b.drives);
+  }
+
+  departments(): Promise<Departments> {
+    return this.#request("/departments");
+  }
+
+  setStaffDepartment(userId: string, department: string | null): Promise<void> {
+    return this.#request(`/staff/${encodeURIComponent(userId)}/department`, { method: "PUT", body: JSON.stringify({ department }) }).then(() => undefined);
+  }
+
+  setExamDepartment(examId: string, department: string | null): Promise<void> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/department`, { method: "PUT", body: JSON.stringify({ department }) }).then(() => undefined);
+  }
+
+  importStaff(csv: string, dryRun: boolean): Promise<StaffImport> {
+    return this.#request("/staff/import", { method: "POST", body: JSON.stringify({ csv, dryRun }) });
   }
 
   examReview(examId: string): Promise<ExamReview | null> {

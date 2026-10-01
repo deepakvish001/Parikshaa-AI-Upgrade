@@ -1,6 +1,6 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ReviewStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -12,6 +12,7 @@ import { InterviewService } from "./interviews.js";
 import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
 import { ExamReviewService } from "./exam-review.js";
+import { DepartmentService } from "./departments.js";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -89,6 +90,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     privacy: new PrivacyService({ store, privacy: new PrivacyStore(unusable), invitations: invitationStore, identity, exams: service }),
     billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),
     proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }),
+    departments: new DepartmentService({ departments: new DepartmentStore(unusable), identity, exams: service, invite: async () => null }),
     examReviews: new ExamReviewService({ reviews: new ReviewStore(unusable), ledger: store, exams: service }),
     proxy: new ProxyService({ store: new ProxyStore(unusable), proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }), results, exams: service, secret: "x".repeat(40) }),
     feedback: new FeedbackStore(unusable),

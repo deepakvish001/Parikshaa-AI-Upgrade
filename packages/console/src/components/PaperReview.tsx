@@ -27,7 +27,17 @@ export function PaperReview({ client, examId, selfId, canWrite, canReopen }: { c
   const send = useMutation({ mutationFn: () => client.sendForReview(examId, text), onSuccess: done("Sent for review: the paper is locked until it is decided") });
   const decide = useMutation({ mutationFn: (decision: "approve" | "return") => client.decideReview(examId, decision, text), onSuccess: done("Decision saved") });
   const reopen = useMutation({ mutationFn: () => client.reopenReview(examId, text), onSuccess: done("Reopened for changes") });
-  const error = [send.error, decide.error, reopen.error].find((e) => e !== null);
+  const departments = useQuery({ queryKey: ["departments"], queryFn: () => client.departments(), enabled: canWrite, retry: false });
+  const department = useMutation({
+    mutationFn: (name: string | null) => client.setExamDepartment(examId, name),
+    onSuccess: () => {
+      toast("Department saved", "success");
+      void queryClient.invalidateQueries({ queryKey: ["departments"] });
+      void queryClient.invalidateQueries({ queryKey: ["exams"] });
+    },
+  });
+  const error = [send.error, decide.error, reopen.error, department.error].find((e) => e !== null);
+  const owner = departments.data?.exams.find((e) => e.examId === examId)?.department ?? "";
   if (review.data === undefined) return null;
   const r = review.data;
   const mine = r !== null && r.submittedById === selfId;
@@ -71,6 +81,25 @@ export function PaperReview({ client, examId, selfId, canWrite, canReopen }: { c
               Reopen for changes
             </button>
           ) : null}
+        </div>
+      ) : null}
+      {canWrite && departments.data !== undefined ? (
+        <div className="row">
+          <input
+            aria-label="Department"
+            list="exam-department-names"
+            defaultValue={owner}
+            placeholder="Department (none)"
+            onBlur={(e) => {
+              const next = e.target.value.trim();
+              if (next !== owner) department.mutate(next === "" ? null : next);
+            }}
+          />
+          <datalist id="exam-department-names">
+            {departments.data.departments.map((d) => (
+              <option key={d} value={d} />
+            ))}
+          </datalist>
         </div>
       ) : null}
       {error === undefined ? null : (

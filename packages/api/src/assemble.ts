@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ReviewStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -15,6 +15,7 @@ import { StudentMessages } from "./student-messages.js";
 import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
 import { ExamReviewService } from "./exam-review.js";
+import { DepartmentService } from "./departments.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -108,7 +109,9 @@ export function assemble(o: AssembleOptions): {
   const reviewStore = new ReviewStore(o.sql);
   // A paper with its reviewer, or approved, is locked (CL60): bound late, as the review service audits through the exam service.
   let examReviews: ExamReviewService | undefined;
+  let departments: DepartmentService | undefined;
   const service = new ExamService({
+    departments: (actor) => departments!.scope(actor),
     store,
     identity,
     client: o.client,
@@ -186,6 +189,7 @@ export function assemble(o: AssembleOptions): {
   const secrets = new StaffSecrets(o.secret);
   const auth = new StaffAuth(identity, { secrets });
   const security = new StaffSecurity({ identity, auth, secrets, publicUrl: o.publicUrl, mailer: o.mailer ?? null });
+  departments = new DepartmentService({ departments: new DepartmentStore(o.sql), identity, exams: service, invite: (email) => security.requestReset(email) });
 
   const bank = new QuestionBank(o.sql);
   const onboarding = new Onboarding({
@@ -256,6 +260,7 @@ export function assemble(o: AssembleOptions): {
     proctor: proctorService,
     proxy,
     examReviews,
+    departments,
     feedback: new FeedbackStore(o.sql),
     lab,
     rechecks,

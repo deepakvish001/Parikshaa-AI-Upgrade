@@ -32,6 +32,7 @@ import {
   ScriptStore,
   ProxyStore,
   ReviewStore,
+  DepartmentStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -51,6 +52,7 @@ import { StudentMessages } from "../student-messages.js";
 import { HandwritingService } from "../handwriting.js";
 import { ProxyService } from "../proxy.js";
 import { ExamReviewService } from "../exam-review.js";
+import { DepartmentService } from "../departments.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -178,7 +180,9 @@ export async function wire(
   const identity = new IdentityStore(sql);
   let billing: BillingService | undefined;
   let examReviews: ExamReviewService | undefined;
+  let departments: DepartmentService | undefined;
   const service = new ExamService({
+    departments: (actor) => departments!.scope(actor),
     store,
     identity,
     locked: (org, exam) => examReviews?.locked(org, exam) ?? Promise.resolve(null),
@@ -273,6 +277,7 @@ export async function wire(
     ...(options.http === undefined ? {} : { http: options.http }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  departments = new DepartmentService({ departments: new DepartmentStore(sql), identity, exams: service, invite: (email) => security.requestReset(email) });
   const practice = new PracticeService({
     store: new PracticeStore(sql),
     bank: new QuestionBank(sql),
@@ -381,6 +386,7 @@ export async function wire(
     proctor: proctorService,
     proxy,
     examReviews,
+    departments,
     feedback: new FeedbackStore(sql),
     lab,
     rechecks,
