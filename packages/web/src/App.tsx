@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type TouchEvent } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactElement, type TouchEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type CandidateState } from "./api.ts";
@@ -8,6 +8,9 @@ import { splitStem } from "./components/code-meta.ts";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
 import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
+
+/** Pages opened from a link with no account; loaded only when one is. */
+const ShortlistPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ShortlistPage })));
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { IdentityCapture } from "./components/IdentityCapture.tsx";
@@ -113,13 +116,19 @@ const isInviteCode = (value: string) => !value.startsWith("eyJ") && value.split(
 
 
 export function App(props: { client?: ParikshaaClient } = {}) {
-  const scorecard = props.client === undefined ? new URLSearchParams(window.location.search).get("scorecard") : null;
+  const query = props.client === undefined ? new URLSearchParams(window.location.search) : null;
+  const scorecard = query?.get("scorecard") ?? null;
+  const shortlist = query?.get("shortlist") ?? null;
   return (
     <PreferencesProvider>
-      {scorecard === null ? (
-        <Screens {...props} />
-      ) : (
+      {scorecard !== null ? (
         <ScorecardCheck code={scorecard} />
+      ) : shortlist !== null ? (
+        <Suspense fallback={null}>
+          <ShortlistPage code={shortlist} />
+        </Suspense>
+      ) : (
+        <Screens {...props} />
       )}
     </PreferencesProvider>
   );

@@ -7,6 +7,7 @@ import { TimeDialog } from "./Intervene.tsx";
 import { Banner, EmptyState, PageActions, RowMenu, SkeletonRows, StatBar, StateBadge, ago } from "./kit.tsx";
 import { IDENTITY_LABEL, ProctoringReview } from "./Proctoring.tsx";
 // Loaded when the Live page is: most staff never open it.
+const RoomsCard = lazy(() => import("./Rooms.tsx").then((m) => ({ default: m.RoomsCard })));
 const LabCard = lazy(() => import("./Lab.tsx").then((m) => ({ default: m.LabCard })));
 
 /**
@@ -162,6 +163,9 @@ export function LivePanel({
 
       <Suspense fallback={null}>
         <LabCard client={client} examId={examId} canStart={canIntervene} canConfigure={canConfigure} />
+      </Suspense>
+      <Suspense fallback={null}>
+        <RoomsCard client={client} examId={examId} />
       </Suspense>
 
       {announcements.length === 0 ? null : (

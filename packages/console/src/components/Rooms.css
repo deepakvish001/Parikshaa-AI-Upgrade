@@ -1,0 +1,54 @@
+/* Seats, rooms and the door: loaded with them. */
+.room-row > input:first-child {
+  flex: 1;
+}
+.room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.room-tile {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+.room-tile h3 {
+  margin: 0 0 var(--space-2);
+  font-size: 1rem;
+}
+.room-tile dl {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0;
+}
+.room-tile dd {
+  margin: 0;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+.room-tile dt {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+.door-camera video {
+  width: 100%;
+  border-radius: var(--radius);
+  margin-bottom: var(--space-2);
+}
+.door-log {
+  list-style: none;
+  padding: 0;
+}
+.door-log li {
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+.door-log li.ok svg {
+  color: var(--success);
+}
+.door-log li.warn svg {
+  color: var(--warning);
+}
+.door-log li.bad {
+  color: var(--danger);
+}

@@ -2,10 +2,13 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
+import { PlacementService } from "./placement.js";
+import { SeatService } from "./seats.js";
+import { ShortlistService } from "./shortlists.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -110,8 +113,10 @@ export function assemble(o: AssembleOptions): {
   const invitationStore = new InvitationStore(o.sql);
   const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
   const lab = new LabService({ lab: new LabStore(o.sql), invitations: invitationStore, store, exams: service });
+  const seatStore = new SeatStore(o.sql);
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
+    seat: async (orgId, examId, ref) => (await seatStore.seats(orgId, examId)).find((s) => s.ref === ref) ?? null,
     lab,
     exams: service,
     store,
@@ -186,6 +191,9 @@ export function assemble(o: AssembleOptions): {
     lab,
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
+    seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
+    shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
+    placement: new PlacementService({ placement: new PlacementStore(o.sql), store, exams: service, invitations, results }),
     tokens,
     auth,
     security,

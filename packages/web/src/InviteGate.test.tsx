@@ -170,6 +170,19 @@ describe("an invitation link", () => {
     expect(fetch).not.toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
   });
 
+  it("says where to sit and links the admit card, when the exam is held in rooms", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    const opensAt = new Date(Date.now() + 90 * 60_000).toISOString();
+    const seated = { ...brief, opensAt, seat: { centre: "Main block", room: "Lab 2", seat: "07" } };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (url.endsWith("/invitations/briefing") ? json(seated) : json({ error: "not_open_yet", opensAt }, 403))));
+
+    renderApp(<App />);
+
+    const page = await screen.findByRole("region", { name: "Not open yet" });
+    expect(page).toHaveTextContent("Your seat: Main block · Lab 2 · 07");
+    expect(within(page).getByRole("link", { name: "Download your admit card" })).toHaveAttribute("href", `/api/invitations/admit-card.pdf?code=${encodeURIComponent("org-a.inv-1.MAC")}`);
+  });
+
   it("waits for the invigilator in lab mode, asking again by itself without flashing", async () => {
     window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
     const fetch = vi.fn(async (url: string) =>

@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Mail, MessageCircle, MessageSquare, RotateCw, Send, UserX, Users } from "lucide-react";
 import type { ExamProblem } from "@parikshaa/core/browser";
 import { Tooltip, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type Channel, type ConsoleClient, type Delivery, type ImportResult, type InvitationRow } from "../api.ts";
 import { Banner, DropZone, EmptyState, PageActions, RowMenu, SkeletonRows, StateBadge } from "./kit.tsx";
+
+const SeatingCard = lazy(() => import("./Rooms.tsx").then((m) => ({ default: m.SeatingCard })));
 
 /**
  * A sitting: when it runs, who is invited, and whether each has their link
@@ -148,6 +150,10 @@ export function Candidates({ client, examId, canInvite }: { client: ConsoleClien
       )}
 
       {canInvite ? <Importer client={client} examId={examId} onImported={refresh} hasWindow={window.data !== null && window.data !== undefined} /> : null}
+
+      <Suspense fallback={null}>
+        <SeatingCard client={client} examId={examId} canSeat={canInvite} />
+      </Suspense>
 
       <section className="card" aria-label="Invited candidates">
         <div className="bar">

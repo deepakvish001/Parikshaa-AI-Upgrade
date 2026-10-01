@@ -44,6 +44,14 @@ import type { MarkingService } from "./marking.js";
 import { registerMarkingRoutes } from "./marking-routes.js";
 import { ProgressService } from "./progress.js";
 import { registerProgressRoutes } from "./progress-routes.js";
+import type { PlacementService } from "./placement.js";
+import { registerPlacementRoutes } from "./placement-routes.js";
+import { JobTestService } from "./job-test.js";
+import type { SeatService } from "./seats.js";
+import { registerSeatRoutes } from "./seats-routes.js";
+import type { ShortlistService } from "./shortlists.js";
+import { registerShortlistRoutes } from "./shortlist-routes.js";
+import { registerJobTestRoutes } from "./job-test-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
 import { registerAtsRoutes } from "./ats-routes.js";
@@ -111,6 +119,12 @@ export interface ServerOptions {
   readonly rechecks?: RecheckService;
   /** Marking by hand: written answers read after the model. */
   readonly marking?: MarkingService;
+  /** The placement cell: students on file and recruitment drives. Absent: none of their routes. */
+  readonly placement?: PlacementService;
+  /** Seats, admit cards and attendance. Absent: none of their routes. */
+  readonly seats?: SeatService;
+  /** Shortlist links for hiring managers. Absent: none of their routes. */
+  readonly shortlists?: ShortlistService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -248,6 +262,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
+        { name: "Shortlist", description: "What a hiring manager opens from a shortlist link: marks only, and their decision on each candidate. No account; the link is the proof." },
+        { name: "Placement", description: "A placement cell's students on file, and its recruitment drives from eligibility to offer." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
         { name: "Privacy", description: "The DPDP Act: the notice candidates agree to, retention, and erasure." },
@@ -1223,6 +1239,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
     if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
     if (options.marking !== undefined) registerMarkingRoutes(routes, { marking: options.marking, staff });
+    if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff });
+    registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
+    if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
+    if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });

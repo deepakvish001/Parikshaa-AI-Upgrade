@@ -13,7 +13,10 @@
     "prep-*.js": 1,
     "CommunityPages-*.js": 9,
     "CommunityPages-*.css": 2,
-    "??-*.js": 12
+    "??-*.js": 12,
+    "i18n-*.js": 26,
+    "PublicPages-*.js": 6,
+    "PublicPages-*.css": 1
   },
   "packages/console/dist": {
     "index-*.js": 178,
@@ -25,6 +28,12 @@
     "Rechecks-*.js": 3,
     "Marking-*.js": 3,
     "Insights-*.js": 3,
+    "Placement-*.js": 7,
+    "JobTest-*.js": 3,
+    "arrow-left-*.js": 1,
+    "Rooms-*.js": 4,
+    "Rooms-*.css": 1,
+    "Shortlists-*.js": 3,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5

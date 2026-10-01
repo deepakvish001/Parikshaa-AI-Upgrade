@@ -705,7 +705,7 @@ export const createApiKeyResponse = z.object({
 export const apiKeyParams = z.object({ keyId: z.string().min(1) });
 
 const routeUsage = z.object({
-  route: z.enum(["probe", "assess", "grade", "tutor"]),
+  route: z.enum(["probe", "assess", "grade", "tutor", "author"]),
   calls: z.number(),
   inputTokens: z.number(),
   outputTokens: z.number(),

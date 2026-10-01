@@ -285,6 +285,8 @@ export const bn: Messages = {
   "invite.opensIn": "{time} পরে খুলবে",
   "invite.opensInLabel": "খুলতে বাকি",
   "invite.earlyNote": "এই পেজটি খোলা রাখুন, ওই সময়ে এটি আপনাকে ঢুকতে দেবে; অথবা তখন একই লিংকে ফিরে আসুন। এখনও কিছু শুরু হয়নি।",
+  "invite.seat": "আপনার আসন: {place}",
+  "invite.admitCard": "আপনার প্রবেশপত্র ডাউনলোড করুন",
   "invite.prepare": "অপেক্ষার সময়ে",
   "invite.prepId": "আপনার ছবিযুক্ত পরিচয়পত্র সঙ্গে রাখুন।",
   "invite.prepRoom": "এমন একটি শান্ত ঘর বেছে নিন যেখানে কেউ আপনাকে বিরক্ত করবে না।",

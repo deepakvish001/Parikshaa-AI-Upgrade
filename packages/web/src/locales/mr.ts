@@ -285,6 +285,8 @@ export const mr: Messages = {
   "invite.opensIn": "{time} मध्ये उघडेल",
   "invite.opensInLabel": "उघडायला",
   "invite.earlyNote": "हे पान उघडे ठेवा, त्या वेळी ते तुम्हाला आत घेईल; किंवा तेव्हा याच लिंकवर परत या. अजून काहीही सुरू झालेले नाही.",
+  "invite.seat": "तुमची जागा: {place}",
+  "invite.admitCard": "तुमचे प्रवेशपत्र डाउनलोड करा",
   "invite.prepare": "वाट पाहताना",
   "invite.prepId": "तुमचे फोटो ओळखपत्र जवळ ठेवा.",
   "invite.prepRoom": "कोणी त्रास देणार नाही अशी शांत खोली निवडा.",
