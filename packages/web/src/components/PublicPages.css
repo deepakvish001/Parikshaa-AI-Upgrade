@@ -31,3 +31,44 @@
   background: var(--danger-soft);
   border-color: var(--danger);
 }
+.drive-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-2);
+}
+.drive-facts dt {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+.drive-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+.drive-description {
+  white-space: pre-line;
+}
+.applied {
+  color: var(--success);
+  font-weight: 600;
+}
+.interview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+}
+.interview .problem {
+  white-space: pre-wrap;
+}
+.interview .editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.interview textarea.code {
+  width: 100%;
+  min-height: 22rem;
+  font-family: var(--font-mono);
+  tab-size: 4;
+  white-space: pre;
+}

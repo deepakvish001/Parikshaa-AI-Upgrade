@@ -18,7 +18,8 @@ import { addOrganisation, addStaff, bearer, freshDatabase, PUBLIC_URL, signIn, T
  */
 
 const HOUR = 3_600_000;
-const START = Date.parse("2026-10-01T04:30:00Z");
+// Ahead of the real clock: the ledger writes its webhook items at the real time, and the worker sends what is due by this one.
+const START = Date.parse("2036-10-01T04:30:00Z");
 
 interface Received {
   readonly method: string;

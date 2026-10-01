@@ -1,0 +1,25 @@
+/* The placement cell's readiness heatmap: loaded with the page. */
+.heatmap th[scope="row"] {
+  text-align: left;
+  font-weight: 600;
+}
+.heatmap td.heat-0 {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.heatmap td.heat-1 {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.heatmap td.heat-2 {
+  background: var(--surface-sunken);
+}
+.heatmap td.heat-3 {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.heatmap td.heat-4 {
+  background: var(--success-soft);
+  color: var(--success);
+  font-weight: 700;
+}

@@ -248,3 +248,45 @@ describe("GST arithmetic", () => {
     expect(validGstin(KARNATAKA_GSTIN) && validGstin(MAHARASHTRA_GSTIN) && !validGstin("29AAGCP4401A1ZX")).toBe(true);
   });
 });
+
+describe("paying by bank transfer against a quotation", () => {
+  beforeEach(async () => {
+    await plans.setPlan(staffScope(ORG), "prepaid", 5000);
+    await details(MAHARASHTRA_GSTIN);
+  });
+
+  it("quotes with the purchase order, prints the account to pay into, and credits once the transfer is recorded", async () => {
+    expect((await call("GET", owner, "/billing")).json().bankTransfer).toBe(true);
+    const made = await call("POST", owner, "/billing/quotations", { credits: 200, poNumber: "PO/2026/118" });
+    expect(made.statusCode).toBe(201);
+    const quote = made.json();
+    expect(quote).toMatchObject({ credits: 200, taxablePaise: 1_000_000, taxPaise: 180_000, amountPaise: 1_180_000, poNumber: "PO/2026/118" });
+    expect(quote.orderId).toMatch(/^neft_/);
+
+    const pdf = await call("GET", owner, `/billing/quotations/${quote.id}/pdf`);
+    expect(pdf.headers["content-type"]).toBe("application/pdf");
+    expect(pdf.body).toContain("(PO/2026/118)");
+    expect(pdf.body).toContain("(HDFC0001234)");
+    expect(pdf.body).toContain(`(${quote.orderId})`);
+
+    // Nothing is credited on a quotation alone.
+    expect((await call("GET", owner, "/billing")).json().account.credits).toBe(0);
+    const first = await billing.recordTransfer(ORG, quote.orderId, "hdfcr52026100112345");
+    expect(first).toMatchObject({ credits: 200, newlyPaid: true });
+    const again = await billing.recordTransfer(ORG, quote.orderId, "HDFCR52026100112345");
+    expect(again.newlyPaid).toBe(false);
+    const summary = (await call("GET", owner, "/billing")).json();
+    expect(summary.account.credits).toBe(200);
+    expect(summary.payments.find((p: { id: string }) => p.id === quote.id)).toMatchObject({ status: "paid", poNumber: "PO/2026/118", paymentId: "utr_HDFCR52026100112345" });
+    expect(summary.invoices).toHaveLength(1);
+  });
+
+  it("refuses a bad UTR, an unknown quotation, and an invoiced organisation", async () => {
+    const quote = (await call("POST", owner, "/billing/quotations", { credits: 10 })).json();
+    await expect(billing.recordTransfer(ORG, quote.orderId, "12")).rejects.toThrow(/UTR/);
+    await expect(billing.recordTransfer(ORG, "neft_nope", "ABCDEFGH1234")).rejects.toThrow(/No such quotation/);
+    await expect(billing.recordTransfer(ORG, "order_x", "ABCDEFGH1234")).rejects.toThrow(/neft_/);
+    await plans.setPlan(staffScope(ORG), "invoiced", 5000);
+    expect((await call("POST", owner, "/billing/quotations", { credits: 10 })).statusCode).toBe(409);
+  });
+});

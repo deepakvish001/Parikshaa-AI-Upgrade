@@ -60,6 +60,7 @@ function stub(patch: Record<string, unknown> = {}) {
     sendDriveTest: vi.fn(async () => ({ invited: 1, skipped: 0 })),
     driveFile: vi.fn(async () => new Blob(["x"])),
     listExams: vi.fn(async () => [{ id: "infosys-oa", title: "Infosys online test", questionCount: 20 }]),
+    readiness: vi.fn(async (_batch?: number) => ({ exams: [], topics: [] as string[], branches: [] as unknown[], atRisk: [] as unknown[] })),
     ...patch,
   };
 }
@@ -203,5 +204,57 @@ describe("a test from a job", () => {
     await user.type(screen.getByLabelText("Paste the job description"), "Freshers for a support desk role.");
     await user.click(screen.getByRole("button", { name: "Draft the test" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("spend cap is reached: choose a role instead");
+  });
+});
+
+describe("readiness", () => {
+  it("shades each branch's topics and lists the students below 40%", async () => {
+    const client = stub({
+      readiness: vi.fn(async () => ({
+        exams: [{ id: "m1", title: "Mock 1" }],
+        topics: ["Aptitude", "OS"],
+        branches: [{ branch: "CSE", students: 40, cells: { Aptitude: { percent: 72, students: 40 }, OS: { percent: 31, students: 40 } } }],
+        atRisk: [{ ref: "CS017", name: "Kiran", branch: "CSE", percent: 28, weakest: "OS" }],
+      })),
+    });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(screen.getByRole("tab", { name: "Readiness" }));
+    const map = await screen.findByRole("region", { name: "Readiness by branch and topic" });
+    const cse = within(map).getByRole("rowheader", { name: "CSE" }).closest("tr")!;
+    expect(within(cse).getByText("31%")).toHaveClass("heat-0");
+    expect(within(cse).getByText("72%")).toHaveClass("heat-3");
+    expect(screen.getByRole("region", { name: "Students who need help" })).toHaveTextContent("CS017Kiran CSE28%OS".replace(" ", ""));
+    await user.click(within(map).getByRole("button", { name: "2028" }));
+    await waitFor(() => expect(client.readiness).toHaveBeenLastCalledWith(2028));
+  });
+});
+
+describe("a drive's link to apply", () => {
+  it("opens the link, off-campus if asked, and shows it", async () => {
+    const client = stub({ setApplyLink: vi.fn(async () => ({ link: "https://exam.test/?apply=org-a.abc" })) });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(within(await screen.findByRole("region", { name: "Drives" })).getByRole("button", { name: "Infosys" }));
+    const card = await screen.findByRole("region", { name: "Link to apply" });
+    await user.click(within(card).getByRole("checkbox", { name: /Off-campus/ }));
+    await user.click(within(card).getByRole("button", { name: "Open the link" }));
+    await waitFor(() => expect((client as unknown as { setApplyLink: ReturnType<typeof vi.fn> }).setApplyLink).toHaveBeenCalledWith("d1", true, true));
+  });
+});
+
+describe("the NIRF / NAAC report", () => {
+  it("shows placed, median and highest per year of passing and branch", async () => {
+    const client = stub({
+      placementReport: vi.fn(async () => ({
+        batches: [{ batch: 2027, students: 120, placed: 96, percent: 80, medianLpa: 4.5, highestLpa: 32, averageLpa: 6.1, branches: [{ branch: "CSE", students: 60, placed: 55, percent: 91.7, medianLpa: 6, highestLpa: 32, averageLpa: 8 }] }],
+      })),
+    });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(screen.getByRole("tab", { name: "NIRF / NAAC report" }));
+    const year = await screen.findByRole("region", { name: "Passing in 2027" });
+    expect(year).toHaveTextContent("96 of 120 placed (80%) · median ₹4.5 LPA · highest ₹32 LPA");
+    expect(within(year).getByRole("rowheader", { name: "CSE" }).closest("tr")).toHaveTextContent("CSE605591.76328");
   });
 });

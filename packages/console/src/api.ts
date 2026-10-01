@@ -278,6 +278,8 @@ export interface DriveDraft {
 export interface Drive extends DriveDraft {
   readonly id: string;
   readonly createdAt: string;
+  readonly applyCode?: string | null;
+  readonly openToNew?: boolean;
   readonly stages: Readonly<Record<DriveStage, number>>;
 }
 
@@ -286,12 +288,137 @@ export interface DriveApplication extends Student {
   readonly offerLpa: number | null;
   readonly updatedAt: string;
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
+  readonly college?: string | null;
+  readonly offer?: SentOffer;
+}
+
+export interface Readiness {
+  readonly exams: readonly { readonly id: string; readonly title: string }[];
+  readonly topics: readonly string[];
+  readonly branches: readonly { readonly branch: string; readonly students: number; readonly cells: Readonly<Record<string, { readonly percent: number; readonly students: number }>> }[];
+  readonly atRisk: readonly { readonly ref: string; readonly name: string; readonly branch: string; readonly percent: number; readonly weakest: string }[];
+}
+
+interface PlacementFigures {
+  readonly students: number;
+  readonly placed: number;
+  readonly percent: number;
+  readonly medianLpa: number | null;
+  readonly highestLpa: number | null;
+  readonly averageLpa: number | null;
+}
+
+export interface ProxyReport {
+  readonly lab: boolean;
+  readonly sharedOrigins: readonly { readonly candidates: readonly string[]; readonly attempts: number; readonly from: string; readonly to: string }[];
+  readonly reusedPhotos: readonly { readonly candidates: readonly string[] }[];
+  readonly checks: readonly { readonly attemptId: string; readonly ref: string; readonly flagged: boolean; readonly flags: readonly string[]; readonly summary: string; readonly checkedAt: string }[];
+  readonly unchecked: number;
+}
+
+export type ScriptMarks = Readonly<Record<string, { readonly score: number; readonly comment: string }>>;
+
+export interface AnswerScript {
+  readonly id: string;
+  readonly candidateRef: string;
+  readonly candidateName: string;
+  readonly status: "uploaded" | "checked" | "moderated" | "disputed";
+  readonly pages: number;
+  readonly suggestion: { readonly at: string; readonly questions: readonly { readonly questionId: string; readonly score: number; readonly reason: string; readonly transcript: string }[] } | null;
+  readonly marks: ScriptMarks | null;
+  readonly checkedBy: string | null;
+  readonly moderation: { readonly marks: ScriptMarks; readonly by: string; readonly gap: number; readonly resolvedBy?: string } | null;
+  readonly finalTotal: number | null;
+}
+
+export interface ScriptBook {
+  readonly title: string;
+  readonly questions: readonly { readonly id: string; readonly number: number; readonly stem: string; readonly maxScore: number }[];
+  readonly total: number;
+  readonly tolerancePercent: number;
+  readonly scripts: readonly AnswerScript[];
+}
+
+export type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
+
+export interface InterviewScorecard {
+  readonly criteria: readonly { readonly name: string; readonly score: number }[];
+  readonly recommendation: Recommendation;
+  readonly summary: string;
+}
+
+export interface Interview {
+  readonly id: string;
+  readonly title: string;
+  readonly candidateRef: string;
+  readonly candidateName: string;
+  readonly candidateEmail: string | null;
+  readonly interviewer: string;
+  readonly scheduledAt: string;
+  readonly minutes: number;
+  readonly meetingUrl: string;
+  readonly problem: string;
+  readonly language: string;
+  readonly code: string;
+  readonly codeUpdatedAt: string | null;
+  readonly notes: string;
+  readonly scorecard: InterviewScorecard | null;
+  readonly status: "scheduled" | "done" | "cancelled";
+  readonly link: string;
+}
+
+export interface PlacementReport {
+  readonly batches: readonly (PlacementFigures & { readonly batch: number | null; readonly branches: readonly (PlacementFigures & { readonly branch: string })[] })[];
+}
+
+export interface OutcomeMap {
+  readonly mapping: Readonly<Record<string, readonly string[]>>;
+  readonly matrix: Readonly<Record<string, Readonly<Record<string, number>>>>;
+  readonly threshold: number;
+}
+
+export interface Attainment {
+  readonly threshold: number;
+  readonly candidates: number;
+  readonly courseOutcomes: readonly { readonly co: string; readonly questions: number; readonly candidates: number; readonly attained: number; readonly percent: number; readonly level: number }[];
+  readonly programmeOutcomes: readonly { readonly po: string; readonly level: number }[];
 }
 
 export interface DriveDetail {
   readonly drive: Drive;
   readonly applications: readonly DriveApplication[];
   readonly eligibleNotAdded: number;
+  /** The link students apply with; null when the drive has none. */
+  readonly applyLink?: string | null;
+  /** A company's drive across colleges: each partner college and its own link. */
+  readonly colleges?: readonly DriveCollege[];
+  readonly offers?: OfferFigures;
+}
+
+export interface DriveCollege {
+  readonly id: string;
+  readonly name: string;
+  readonly code: string;
+  readonly applied: number;
+  readonly link: string;
+}
+
+export interface OfferFigures {
+  readonly sent: number;
+  readonly accepted: number;
+  readonly declined: number;
+  readonly pending: number;
+  readonly joined: number;
+  readonly notJoined: number;
+}
+
+export interface SentOffer {
+  readonly link: string;
+  readonly sentAt: string;
+  readonly response: "accepted" | "declined" | null;
+  readonly respondedAt: string | null;
+  readonly joiningDate: string | null;
+  readonly note: string;
 }
 
 export type QuestionKindName = "mcq" | "numeric" | "short" | "code";
@@ -1435,6 +1562,121 @@ export class ConsoleClient {
     await this.#request(`/students/${encodeURIComponent(ref)}`, { method: "DELETE" });
   }
 
+  /** Each branch in each topic across recent tests, and the students who need help. */
+  readiness(batch?: number): Promise<Readiness> {
+    return this.#request(`/placement/readiness${batch === undefined ? "" : `?batch=${batch}`}`);
+  }
+
+  // --- interviews ---------------------------------------------------------------
+
+  interviews(): Promise<readonly Interview[]> {
+    return this.#request<{ interviews: readonly Interview[] }>("/interviews").then((b) => b.interviews);
+  }
+
+  interview(id: string): Promise<Interview> {
+    return this.#request(`/interviews/${encodeURIComponent(id)}`);
+  }
+
+  scheduleInterview(request: {
+    readonly title: string;
+    readonly candidateName: string;
+    readonly candidateRef: string;
+    readonly candidateEmail: string | null;
+    readonly scheduledAt: string;
+    readonly minutes: number;
+    readonly meetingUrl: string | null;
+    readonly problem: string;
+    readonly language: string;
+  }): Promise<Interview> {
+    return this.#request("/interviews", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  editInterview(id: string, patch: { readonly problem?: string; readonly notes?: string; readonly cancel?: boolean }): Promise<Interview> {
+    return this.#request(`/interviews/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(patch) });
+  }
+
+  scoreInterview(id: string, card: InterviewScorecard): Promise<Interview> {
+    return this.#request(`/interviews/${encodeURIComponent(id)}/scorecard`, { method: "POST", body: JSON.stringify(card) });
+  }
+
+  placementReport(): Promise<PlacementReport> {
+    return this.#request("/placement/report");
+  }
+
+  async placementReportFile(): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/placement/report.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  // --- signs of a proxy ------------------------------------------------------------
+
+  proxyReport(examId: string): Promise<ProxyReport> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/proxy-report`);
+  }
+
+  compareIdentities(examId: string, limit = 50): Promise<{ readonly checked: number; readonly flagged: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/identity/compare`, { method: "POST", body: JSON.stringify({ limit }) });
+  }
+
+  // --- handwritten copies -------------------------------------------------------
+
+  scripts(examId: string): Promise<ScriptBook> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/scripts`);
+  }
+
+  addScriptPage(examId: string, page: { readonly ref: string; readonly name: string; readonly image: string }): Promise<{ readonly script: AnswerScript; readonly page: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/scripts/pages`, { method: "POST", body: JSON.stringify(page) });
+  }
+
+  async scriptPage(id: string, page: number): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/scripts/${encodeURIComponent(id)}/pages/${page}`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  async scriptsFile(examId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/scripts.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  suggestScript(id: string): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/suggest`, { method: "POST" });
+  }
+
+  checkScript(id: string, marks: ScriptMarks): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/marks`, { method: "PUT", body: JSON.stringify({ marks }) });
+  }
+
+  moderateScript(id: string, marks: ScriptMarks): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/moderation`, { method: "POST", body: JSON.stringify({ marks }) });
+  }
+
+  resolveScript(id: string, marks: ScriptMarks): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/resolution`, { method: "POST", body: JSON.stringify({ marks }) });
+  }
+
+  sampleScripts(examId: string, percent: number): Promise<readonly string[]> {
+    return this.#request<{ scripts: readonly string[] }>(`/exams/${encodeURIComponent(examId)}/scripts/sample`, { method: "POST", body: JSON.stringify({ percent }) }).then((b) => b.scripts);
+  }
+
+  async removeScript(id: string): Promise<void> {
+    await this.#request(`/scripts/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
+  outcomes(examId: string): Promise<OutcomeMap & { readonly questions: readonly { readonly id: string; readonly number: number; readonly stem: string; readonly maxScore: number }[] }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/outcomes`);
+  }
+
+  async saveOutcomes(examId: string, map: OutcomeMap): Promise<void> {
+    await this.#request(`/exams/${encodeURIComponent(examId)}/outcomes`, { method: "PUT", body: JSON.stringify(map) });
+  }
+
+  attainment(examId: string): Promise<Attainment> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/attainment`);
+  }
+
   async drives(): Promise<readonly Drive[]> {
     return (await this.#request<{ drives: readonly Drive[] }>("/drives")).drives;
   }
@@ -1452,6 +1694,23 @@ export class ConsoleClient {
   /** Add every eligible student not in the drive yet, or the roll numbers given. */
   addDriveStudents(id: string, refs: readonly string[] | "eligible"): Promise<{ readonly added: number }> {
     return this.#request(`/drives/${encodeURIComponent(id)}/students`, { method: "POST", body: JSON.stringify(refs === "eligible" ? { eligible: true } : { refs }) });
+  }
+
+  /** Open the drive's link to apply (also to people not on the list, with `openToNew`), or close it. */
+  addDriveCollege(id: string, college: { readonly name: string; readonly code: string }): Promise<DriveCollege> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/colleges`, { method: "POST", body: JSON.stringify(college) });
+  }
+
+  async removeDriveCollege(id: string, collegeId: string): Promise<void> {
+    await this.#request(`/drives/${encodeURIComponent(id)}/colleges/${encodeURIComponent(collegeId)}`, { method: "DELETE" });
+  }
+
+  sendOffer(id: string, offer: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/offers`, { method: "POST", body: JSON.stringify(offer) });
+  }
+
+  setApplyLink(id: string, open: boolean, openToNew = false): Promise<{ readonly link: string | null }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/apply-link`, { method: "POST", body: JSON.stringify({ open, openToNew }) });
   }
 
   setDriveStage(id: string, refs: readonly string[], stage: DriveStage, offerLpa: number | null = null): Promise<{ readonly moved: number }> {
@@ -1681,6 +1940,17 @@ export class ConsoleClient {
     return this.#request("/billing/details", { method: "PUT", body: JSON.stringify(details) });
   }
 
+  /** A quotation to pay by bank transfer, with the buyer's purchase order. */
+  createQuotation(credits: number, poNumber: string | null): Promise<{ readonly id: string; readonly orderId: string; readonly credits: number; readonly amountPaise: number; readonly poNumber: string | null }> {
+    return this.#request("/billing/quotations", { method: "POST", body: JSON.stringify({ credits, poNumber }) });
+  }
+
+  async quotationPdf(id: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/billing/quotations/${encodeURIComponent(id)}/pdf`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
   createOrder(credits: number): Promise<BillingOrder> {
     return this.#request("/billing/orders", { method: "POST", body: JSON.stringify({ credits }) });
   }
@@ -1815,6 +2085,8 @@ export interface InvoiceDocument {
 
 export interface BillingSummary {
   readonly account: BillingAccount | null;
+  /** Payments: Razorpay orders, and quotations to pay by bank transfer (reference neft_…). */
+  readonly payments: readonly { readonly id: string; readonly orderId: string; readonly paymentId: string | null; readonly credits: number; readonly amountPaise: number; readonly status: "created" | "paid"; readonly createdAt: string; readonly poNumber?: string | null }[];
   readonly history: readonly {
     readonly id: string;
     readonly delta: number;
@@ -1826,6 +2098,8 @@ export interface BillingSummary {
   }[];
   readonly invoices: readonly InvoiceSummary[];
   readonly checkout: { readonly available: boolean; readonly keyId: string | null };
+  /** A quotation can be had, to pay by bank transfer; absent from an older server. */
+  readonly bankTransfer?: boolean;
   readonly supplier: { readonly legalName: string; readonly stateCode: string } | null;
 }
 

@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { ConsoleError, type BillingAccount, type BillingOrder, type BillingSummary, type BuyerDetails, type ConsoleClient, type InvoiceDocument } from "../api.ts";
 import { Banner, SettingsGroup, SkeletonRows } from "./kit.tsx";
 import { QrCode } from "./Security.tsx";
+
+const BankTransfer = lazy(() => import("./BankTransfer.tsx").then((m) => ({ default: m.BankTransfer })));
 
 /**
  * Billing (ROADMAP §12): the balance, the details a tax invoice carries,
@@ -115,6 +117,11 @@ export function BillingPanel({ client, checkout = loadCheckout }: { client: Cons
             Write to us and we will add them.
           </Banner>
         )
+      ) : null}
+      {account?.mode === "prepaid" && summary.data.bankTransfer === true ? (
+        <Suspense fallback={null}>
+          <BankTransfer client={client} summary={summary.data} />
+        </Suspense>
       ) : null}
 
       {invoices.length === 0 ? null : (

@@ -123,6 +123,13 @@ export interface McqQuestion extends QuestionBase {
 export interface ShortQuestion extends QuestionBase {
   readonly kind: "short";
   readonly expectedPoints: readonly string[];
+  /**
+   * Answered by speaking (V2-12 CO10): the candidate's browser writes down
+   * what they say, in their language, and they can correct it before it is
+   * saved. Only the words are kept, never a recording; it is graded as any
+   * written answer.
+   */
+  readonly spoken?: boolean;
 }
 
 export interface NumericQuestion extends QuestionBase {

@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ShortlistPage } from "./components/PublicPages.tsx";
+import { ApplyPage, InterviewPage, OfferPage, ShortlistPage } from "./components/PublicPages.tsx";
 import { PreferencesProvider } from "./i18n.tsx";
 
 /** Pages opened from a link with no account. */
@@ -53,5 +53,137 @@ describe("a hiring manager's shortlist", () => {
       </PreferencesProvider>,
     );
     expect(await screen.findByRole("heading", { name: "This shortlist has expired" })).toBeInTheDocument();
+  });
+});
+
+describe("applying to a drive from its link", () => {
+  const drive = { institution: "Acme College", company: "Wipro", role: "Project Engineer", ctcLpa: 3.5, location: "Pune", description: "", applyBy: "2026-10-30", eligibility: { minCgpa: 7 }, openToNew: false, closed: false };
+
+  it("shows the drive and applies with the roll number and email", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "POST" ? json({ status: "applied" }) : json(drive)));
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <ApplyPage code="org-a.abc" />
+      </PreferencesProvider>,
+    );
+    const page = await screen.findByRole("region", { name: "Apply" });
+    expect(page).toHaveTextContent("Wipro — Project Engineer");
+    expect(page).toHaveTextContent("CGPA 7 or more");
+    await user.type(screen.getByLabelText("Roll number"), "CS001");
+    await user.type(screen.getByLabelText("Email (the one the college has)"), "a@college.test");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("You have applied");
+    expect(fetch).toHaveBeenCalledWith("/api/apply/org-a.abc", expect.objectContaining({ body: JSON.stringify({ ref: "CS001", email: "a@college.test" }) }));
+  });
+
+  it("says why an application was refused", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "POST" ? json({ error: "invalid_state", message: "You do not meet this drive's criteria" }, 409) : json(drive))));
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <ApplyPage code="org-a.abc" />
+      </PreferencesProvider>,
+    );
+    await user.type(await screen.findByLabelText("Roll number"), "CS002");
+    await user.type(screen.getByLabelText("Email (the one the college has)"), "r@college.test");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("criteria");
+  });
+});
+
+describe("a candidate's interview room", () => {
+  const room = {
+    title: "Backend round 1",
+    candidateName: "Ananya",
+    interviewer: "Priya",
+    scheduledAt: "2026-10-06T04:30:00.000Z",
+    minutes: 45,
+    meetingUrl: "https://meet.jit.si/parikshaa-x",
+    problem: "Reverse a linked list",
+    language: "python",
+    code: "",
+    status: "scheduled",
+  };
+
+  it("shows the problem and the call, and sends the code as it is typed", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "PUT" ? json({ savedAt: "2026-10-06T04:31:00.000Z" }) : json(room)));
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <InterviewPage code="org-a.i1.mac" />
+      </PreferencesProvider>,
+    );
+    const page = await screen.findByRole("region", { name: "Interview" });
+    expect(page).toHaveTextContent("Reverse a linked list");
+    expect(screen.getByRole("link", { name: /Join the video call/ })).toHaveAttribute("href", room.meetingUrl);
+    await user.type(screen.getByRole("textbox", { name: "Code editor" }), "print(1)");
+    await waitFor(
+      () =>
+        expect(fetch).toHaveBeenCalledWith(
+          "/api/interviews/room/org-a.i1.mac/code",
+          expect.objectContaining({ method: "PUT", body: JSON.stringify({ code: "print(1)", language: "python" }) }),
+        ),
+      { timeout: 3000 },
+    );
+    expect(await screen.findByText(/your interviewer can see it/)).toBeInTheDocument();
+  });
+
+  it("says when the link no longer works", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "interview_not_found" }, 404)));
+    render(
+      <PreferencesProvider>
+        <InterviewPage code="org-a.i1.bad" />
+      </PreferencesProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "This interview link does not work" })).toBeInTheDocument();
+  });
+});
+
+describe("a candidate's offer", () => {
+  const offer = { from: "Zoho", company: "Zoho", role: "Member Technical Staff", location: "Chennai", candidateName: "Arun", ctcLpa: 8.4, joiningDate: "2027-07-01", note: "Bring your ID", response: null, respondedAt: null, open: true };
+
+  it("shows the offer, and records an accept only once it is confirmed", async () => {
+    let answered: string | null = null;
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        answered = (JSON.parse(String(init.body)) as { response: string }).response;
+        return json({ response: answered });
+      }
+      return json({ ...offer, response: answered });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <OfferPage code="org-a.abc" />
+      </PreferencesProvider>,
+    );
+    const page = await screen.findByRole("region", { name: "Offer" });
+    expect(page).toHaveTextContent("₹8.4 lakh a year");
+    expect(page).toHaveTextContent("Bring your ID");
+    await user.click(screen.getByRole("button", { name: "Accept the offer" }));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Yes, accept" }));
+    expect(await screen.findByText(/You accepted this offer/)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("/api/offers/org-a.abc/response", expect.objectContaining({ method: "POST" }));
+  });
+});
+
+describe("a college's link in a company's drive", () => {
+  it("names the college, and asks for the roll number there", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ institution: "Zoho", company: "Zoho", role: "MTS", ctcLpa: null, location: "", description: "", applyBy: null, eligibility: {}, openToNew: true, college: "PSG Tech", closed: false })),
+    );
+    render(
+      <PreferencesProvider>
+        <ApplyPage code="org-a.c_x" />
+      </PreferencesProvider>,
+    );
+    expect(await screen.findByText("Zoho · campus drive for PSG Tech")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Roll number at PSG Tech" })).toBeInTheDocument();
   });
 });

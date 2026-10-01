@@ -1,0 +1,20 @@
+/* The interview room: loaded with the page. */
+.interview-room .room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-4);
+}
+.interview-room .live-code {
+  min-height: 16rem;
+  max-height: 32rem;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  white-space: pre;
+}
+.interview-room .scorecard .criterion {
+  min-width: 10rem;
+}

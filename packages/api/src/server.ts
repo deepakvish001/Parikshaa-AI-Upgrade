@@ -55,6 +55,14 @@ import type { SeatService } from "./seats.js";
 import { registerSeatRoutes } from "./seats-routes.js";
 import type { ShortlistService } from "./shortlists.js";
 import { registerShortlistRoutes } from "./shortlist-routes.js";
+import type { OutcomeService } from "./outcomes.js";
+import { registerOutcomeRoutes } from "./outcome-routes.js";
+import type { InterviewService } from "./interviews.js";
+import { registerInterviewRoutes } from "./interview-routes.js";
+import type { HandwritingService } from "./handwriting.js";
+import { registerScriptRoutes } from "./script-routes.js";
+import type { ProxyService } from "./proxy.js";
+import { registerProxyRoutes } from "./proxy-routes.js";
 import { registerJobTestRoutes } from "./job-test-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
@@ -132,6 +140,14 @@ export interface ServerOptions {
   readonly seats?: SeatService;
   /** Shortlist links for hiring managers. Absent: none of their routes. */
   readonly shortlists?: ShortlistService;
+  /** Course outcomes and their attainment. Absent: none of their routes. */
+  readonly outcomes?: OutcomeService;
+  /** The interview room. Absent: none of its routes. */
+  readonly interviews?: InterviewService;
+  /** Handwritten copy checking and moderation. Absent: none of its routes. */
+  readonly handwriting?: HandwritingService;
+  /** Signs of a proxy. Absent: none of its routes. */
+  readonly proxy?: ProxyService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -270,6 +286,11 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
         { name: "Shortlist", description: "What a hiring manager opens from a shortlist link: marks only, and their decision on each candidate. No account; the link is the proof." },
+        { name: "Handwritten copies", description: "Paper exams checked here: scanned copies, the model's suggested marks, the examiner's marks, moderation by a second examiner, and the marks sheet." },
+        { name: "Interviews", description: "Scheduling an interview, watching the candidate's code, notes and the scorecard." },
+        { name: "Interview room", description: "The candidate's side of an interview, by its link: the video call link, the problem, and their code as they type it." },
+        { name: "Offer", description: "A candidate's offer, by its link: what it is, and their answer." },
+        { name: "Apply", description: "A drive's public link: what a student sees, and applying with their roll number. No account; the link is the proof." },
         { name: "Placement", description: "A placement cell's students on file, and its recruitment drives from eligibility to offer." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
@@ -1249,9 +1270,13 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
     if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
     if (options.marking !== undefined) registerMarkingRoutes(routes, { marking: options.marking, staff });
-    if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff });
+    if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff, throttle });
     registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
     if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
+    if (options.proxy !== undefined) registerProxyRoutes(routes, { proxy: options.proxy, staff });
+    if (options.handwriting !== undefined) registerScriptRoutes(routes, { handwriting: options.handwriting, staff });
+    if (options.interviews !== undefined) registerInterviewRoutes(routes, { interviews: options.interviews, throttle, staff });
+    if (options.outcomes !== undefined) registerOutcomeRoutes(routes, { outcomes: options.outcomes, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });

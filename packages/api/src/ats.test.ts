@@ -37,7 +37,8 @@ let received: Received[];
 let handlers: Wiring["handlers"];
 
 beforeEach(async () => {
-  clock = Date.parse("2026-10-01T04:30:00Z");
+  // Ahead of the real clock: the ledger writes its webhook items at the real time, and the worker sends what is due by this one.
+  clock = Date.parse("2036-10-01T04:30:00Z");
   received = [];
   vendor = createServer((req, res) => {
     let body = "";

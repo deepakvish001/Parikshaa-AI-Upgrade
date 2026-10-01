@@ -5,7 +5,7 @@ import { HttpCodeRunner } from "@parikshaa/runner";
 import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
 import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
-import { supplierFromEnv } from "./gst.js";
+import { bankFromEnv, supplierFromEnv } from "./gst.js";
 import { RazorpayGateway } from "./razorpay.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
@@ -115,6 +115,7 @@ async function main(): Promise<void> {
     // The practice tutor's model (ROADMAP §16); Claude Opus 5.5 when unset.
     ...(process.env["TUTOR_MODEL"] === undefined || process.env["TUTOR_MODEL"] === "" ? {} : { tutorModel: process.env["TUTOR_MODEL"] }),
     supplier: supplierFromEnv(process.env),
+    bank: bankFromEnv(process.env),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
     whatsapp:

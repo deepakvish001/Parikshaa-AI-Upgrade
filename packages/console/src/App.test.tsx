@@ -585,6 +585,24 @@ describe("signing in", () => {
 });
 
 describe("console", () => {
+  it("shows its navigation, titles and page notes in Hindi on request, and remembers it", async () => {
+    const user = userEvent.setup();
+    const first = renderApp(<App client={stubClient()} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    await user.click(screen.getByRole("button", { name: "कंसोल हिन्दी में दिखाएँ" }));
+    expect(await screen.findByRole("button", { name: "परीक्षाएँ" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "होम" })).toBeInTheDocument();
+    expect(screen.getByText("अभी और आगे कौन-सी परीक्षा है, अभी क्या हुआ, और क्या सेट करना बाक़ी है।")).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("hi");
+    first.unmount();
+    renderApp(<App client={stubClient()} />);
+    await screen.findByRole("button", { name: "Algorithms" });
+    expect(await screen.findByRole("button", { name: "होम" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show the console in English" }));
+    expect(screen.getByRole("button", { name: "Home" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("en");
+  });
+
   it("lists exams", async () => {
     renderApp(<App client={stubClient()} />);
     expect(await screen.findByRole("button", { name: "Algorithms" })).toBeInTheDocument();
