@@ -193,3 +193,43 @@ describe("a drive", () => {
     expect(applications.find((a: { ref: string }) => a.ref === "CS002").test).toBeNull();
   });
 });
+
+describe("readiness", () => {
+  it("averages each branch in each topic, and names the students who need help", async () => {
+    await call("POST", "/students/import", owner, { csv: SHEET, dryRun: false });
+    // Two topics from the bank, one from a section's title.
+    const quant = (await call("POST", "/bank", owner, { question: { kind: "mcq", stem: "15% of 200?", maxScore: 1, rubric: [], options: ["30", "20"], correctIndex: 0 }, topic: "Quantitative aptitude", difficulty: "easy", tags: [] })).json();
+    const os = (await call("POST", "/bank", owner, { question: { kind: "mcq", stem: "What does a scheduler do?", maxScore: 1, rubric: [], options: ["Picks the next process", "Formats disks"], correctIndex: 0 }, topic: "Operating systems", difficulty: "easy", tags: [] })).json();
+    await call("POST", "/exams", owner, {
+      id: "mock",
+      title: "Mock test",
+      questions: [quant.question, os.question],
+      sections: [{ id: "s1", title: "Reasoning", pick: 1, pool: [{ id: "r1", kind: "mcq", stem: "Next: 2, 4, 8?", maxScore: 1, rubric: [], options: ["16", "10"], correctIndex: 0 }] }],
+      policy: { durationMs: HOUR, allowRevision: true, vivaTriggerRatio: 0.99 },
+    });
+    await call("PUT", "/exams/mock/window", owner, { opensAt: new Date(OPENS - 2 * HOUR).toISOString(), closesAt: new Date(OPENS + 3 * HOUR).toISOString() });
+    await call("POST", "/exams/mock/invitations/import", owner, { csv: "ref,name\nCS001,Ananya Iyer\nCS002,Rohan Verma\nEC001,Meera Nair", dryRun: false, channels: [] });
+    const codes = new InviteCodes(TOKEN_SECRET);
+    const invitations = (await call("GET", "/exams/mock/invitations", owner)).json().invitations as { id: string; candidateRef: string }[];
+    // CS001 gets everything right; CS002 and EC001 only the reasoning question.
+    for (const inv of invitations) {
+      const opened = (await app.inject({ method: "POST", url: "/invitations/redeem", payload: { code: codes.issue("org-a", inv.id) } })).json();
+      const strong = inv.candidateRef === "CS001";
+      await call("POST", "/attempts/me/answers", opened.token, { questionId: quant.question.id, answer: strong ? "0" : "1" });
+      await call("POST", "/attempts/me/answers", opened.token, { questionId: os.question.id, answer: strong ? "0" : "1" });
+      await call("POST", "/attempts/me/answers", opened.token, { questionId: "r1", answer: "0" });
+      await call("POST", "/attempts/me/submit", opened.token);
+      await call("POST", `/attempts/${opened.attemptId}/grade`, owner);
+    }
+
+    const readiness = (await call("GET", "/placement/readiness", owner)).json();
+    expect(readiness.exams).toEqual([{ id: "mock", title: "Mock test" }]);
+    expect(readiness.topics).toEqual(["Operating systems", "Quantitative aptitude", "Reasoning"]);
+    const cse = readiness.branches.find((b: { branch: string }) => b.branch === "CSE");
+    expect(cse).toMatchObject({ students: 2, cells: { "Quantitative aptitude": { percent: 50, students: 2 }, Reasoning: { percent: 100 } } });
+    expect(readiness.branches.find((b: { branch: string }) => b.branch === "ECE").cells["Operating systems"].percent).toBe(0);
+    expect(readiness.atRisk.map((r: { ref: string }) => r.ref).sort()).toEqual(["CS002", "EC001"]);
+    expect(readiness.atRisk[0]).toMatchObject({ percent: 33.3, weakest: "Operating systems" });
+    expect((await call("GET", "/placement/readiness?batch=2028", owner)).json().branches).toEqual([]);
+  });
+});

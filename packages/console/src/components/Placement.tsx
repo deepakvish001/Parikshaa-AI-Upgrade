@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BriefcaseBusiness, Download, Pencil, Plus, Search, Send, Trash2, UserPlus, Users } from "lucide-react";
 import { Drawer, TabPanel, Tabs, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, DRIVE_STAGES, type ConsoleClient, type Drive, type DriveDraft, type DriveStage, type StudentImport, type StudentRow } from "../api.ts";
+import "./Placement.css";
 import { Banner, DropZone, EmptyState, FigureStrip, PageActions, RowMenu, SkeletonRows, StatBar } from "./kit.tsx";
 
 /**
@@ -53,7 +54,7 @@ const lpa = (n: number | null) => (n === null ? "—" : `₹${n.toLocaleString("
 const failure = (error: unknown) => (error instanceof ConsoleError && error.detail !== undefined ? error.detail : "That did not work. Try again.");
 
 export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; canInvite: boolean }) {
-  const [tab, setTab] = useState<"students" | "drives">("drives");
+  const [tab, setTab] = useState<"students" | "drives" | "readiness">("drives");
   return (
     <>
       <Tabs
@@ -62,6 +63,7 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
         items={[
           { id: "drives", label: "Drives" },
           { id: "students", label: "Students" },
+          { id: "readiness", label: "Readiness" },
         ]}
         value={tab}
         onChange={setTab}
@@ -71,6 +73,9 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
       </TabPanel>
       <TabPanel idBase="placement" id="students" value={tab}>
         {tab === "students" ? <Students client={client} /> : null}
+      </TabPanel>
+      <TabPanel idBase="placement" id="readiness" value={tab}>
+        {tab === "readiness" ? <ReadinessView client={client} /> : null}
       </TabPanel>
     </>
   );
@@ -772,5 +777,116 @@ function SendTest({ client, id, count, onClose, onSent }: { client: ConsoleClien
         </button>
       </div>
     </Drawer>
+  );
+}
+
+// --- readiness ----------------------------------------------------------------------
+
+/** A cell's band, for its colour: the same five steps everywhere a percentage is shaded. */
+const band = (percent: number) => (percent < 40 ? 0 : percent < 55 ? 1 : percent < 70 ? 2 : percent < 85 ? 3 : 4);
+
+function ReadinessView({ client }: { client: ConsoleClient }) {
+  const students = useQuery({ queryKey: ["students"], queryFn: () => client.students() });
+  const [batch, setBatch] = useState<number | undefined>(undefined);
+  const readiness = useQuery({ queryKey: ["readiness", batch ?? "all"], queryFn: () => client.readiness(batch) });
+  const batches = [...new Set((students.data ?? []).map((s) => s.batch).filter((b): b is number => b !== null))].sort();
+  const data = readiness.data;
+  return (
+    <>
+      <section className="card" aria-label="Readiness by branch and topic">
+        <div className="bar filter-bar">
+          <div className="chips" role="group" aria-label="Batch">
+            <button type="button" className="chip" aria-pressed={batch === undefined} onClick={() => setBatch(undefined)}>
+              All batches
+            </button>
+            {batches.map((b) => (
+              <button key={b} type="button" className="chip" aria-pressed={batch === b} onClick={() => setBatch(b)}>
+                {b}
+              </button>
+            ))}
+          </div>
+          <span className="spacer" />
+          <span className="notice">{data === undefined ? "" : `From ${data.exams.length} recent test${data.exams.length === 1 ? "" : "s"}: ${data.exams.map((e) => e.title).join(", ")}`}</span>
+        </div>
+        {readiness.isPending ? (
+          <SkeletonRows rows={4} columns={5} label="Reading results…" />
+        ) : data === undefined || data.branches.length === 0 ? (
+          <EmptyState icon={Users}>Once your students have sat a graded test, each branch shows here topic by topic. Add students first, so their branch is known.</EmptyState>
+        ) : (
+          <div className="scroll">
+            <table className="heatmap">
+              <thead>
+                <tr>
+                  <th scope="col">Branch</th>
+                  <th scope="col" className="num">
+                    Students
+                  </th>
+                  {data.topics.map((t) => (
+                    <th key={t} scope="col" className="num">
+                      {t}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.branches.map((b) => (
+                  <tr key={b.branch}>
+                    <th scope="row">{b.branch}</th>
+                    <td className="num">{b.students}</td>
+                    {data.topics.map((t) => {
+                      const cell = b.cells[t];
+                      return cell === undefined ? (
+                        <td key={t} className="num notice">
+                          —
+                        </td>
+                      ) : (
+                        <td key={t} className={`num heat-${band(cell.percent)}`} title={`${cell.students} students`}>
+                          {Math.round(cell.percent)}%
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="notice">Average percentage of the marks on offer. A topic is where the question is filed in the question bank, else the section it came from.</p>
+      </section>
+      {data === undefined || data.atRisk.length === 0 ? null : (
+        <section className="card" aria-label="Students who need help">
+          <div className="bar">
+            <strong>Below 40% overall</strong>
+            <span className="notice">{data.atRisk.length} students, weakest topic first to work on</span>
+          </div>
+          <div className="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">Roll no.</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Branch</th>
+                  <th scope="col" className="num">
+                    Overall
+                  </th>
+                  <th scope="col">Weakest topic</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.atRisk.map((r) => (
+                  <tr key={r.ref}>
+                    <td className="mono">{r.ref}</td>
+                    <td>{r.name || "—"}</td>
+                    <td>{r.branch}</td>
+                    <td className="num failed">{Math.round(r.percent)}%</td>
+                    <td>{r.weakest}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </>
   );
 }

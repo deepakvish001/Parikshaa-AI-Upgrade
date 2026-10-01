@@ -288,6 +288,13 @@ export interface DriveApplication extends Student {
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
 }
 
+export interface Readiness {
+  readonly exams: readonly { readonly id: string; readonly title: string }[];
+  readonly topics: readonly string[];
+  readonly branches: readonly { readonly branch: string; readonly students: number; readonly cells: Readonly<Record<string, { readonly percent: number; readonly students: number }>> }[];
+  readonly atRisk: readonly { readonly ref: string; readonly name: string; readonly branch: string; readonly percent: number; readonly weakest: string }[];
+}
+
 export interface DriveDetail {
   readonly drive: Drive;
   readonly applications: readonly DriveApplication[];
@@ -1398,6 +1405,11 @@ export class ConsoleClient {
 
   async removeStudent(ref: string): Promise<void> {
     await this.#request(`/students/${encodeURIComponent(ref)}`, { method: "DELETE" });
+  }
+
+  /** Each branch in each topic across recent tests, and the students who need help. */
+  readiness(batch?: number): Promise<Readiness> {
+    return this.#request(`/placement/readiness${batch === undefined ? "" : `?batch=${batch}`}`);
   }
 
   async drives(): Promise<readonly Drive[]> {

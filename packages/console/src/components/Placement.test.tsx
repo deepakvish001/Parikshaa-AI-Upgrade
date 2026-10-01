@@ -60,6 +60,7 @@ function stub(patch: Record<string, unknown> = {}) {
     sendDriveTest: vi.fn(async () => ({ invited: 1, skipped: 0 })),
     driveFile: vi.fn(async () => new Blob(["x"])),
     listExams: vi.fn(async () => [{ id: "infosys-oa", title: "Infosys online test", questionCount: 20 }]),
+    readiness: vi.fn(async (_batch?: number) => ({ exams: [], topics: [] as string[], branches: [] as unknown[], atRisk: [] as unknown[] })),
     ...patch,
   };
 }
@@ -203,5 +204,28 @@ describe("a test from a job", () => {
     await user.type(screen.getByLabelText("Paste the job description"), "Freshers for a support desk role.");
     await user.click(screen.getByRole("button", { name: "Draft the test" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("spend cap is reached: choose a role instead");
+  });
+});
+
+describe("readiness", () => {
+  it("shades each branch's topics and lists the students below 40%", async () => {
+    const client = stub({
+      readiness: vi.fn(async () => ({
+        exams: [{ id: "m1", title: "Mock 1" }],
+        topics: ["Aptitude", "OS"],
+        branches: [{ branch: "CSE", students: 40, cells: { Aptitude: { percent: 72, students: 40 }, OS: { percent: 31, students: 40 } } }],
+        atRisk: [{ ref: "CS017", name: "Kiran", branch: "CSE", percent: 28, weakest: "OS" }],
+      })),
+    });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(screen.getByRole("tab", { name: "Readiness" }));
+    const map = await screen.findByRole("region", { name: "Readiness by branch and topic" });
+    const cse = within(map).getByRole("rowheader", { name: "CSE" }).closest("tr")!;
+    expect(within(cse).getByText("31%")).toHaveClass("heat-0");
+    expect(within(cse).getByText("72%")).toHaveClass("heat-3");
+    expect(screen.getByRole("region", { name: "Students who need help" })).toHaveTextContent("CS017Kiran CSE28%OS".replace(" ", ""));
+    await user.click(within(map).getByRole("button", { name: "2028" }));
+    await waitFor(() => expect(client.readiness).toHaveBeenLastCalledWith(2028));
   });
 });

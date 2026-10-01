@@ -144,6 +144,34 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
   );
 
   routes.get(
+    "/placement/readiness",
+    {
+      schema: {
+        tags: TAGS,
+        summary: "Readiness: each branch in each topic",
+        description:
+          "Across the organisation's recent graded tests (`exams`, default 6): each branch's average percentage in each topic, and the students below 40% overall with their weakest topic. A topic is where the question is filed in the bank, else the section it was drawn in.",
+        security: SECURED,
+        querystring: z.object({ batch: z.coerce.number().int().min(1990).max(2100).optional(), exams: z.coerce.number().int().min(1).max(24).optional() }),
+        response: {
+          200: z.object({
+            exams: z.array(z.object({ id: z.string(), title: z.string() })).readonly(),
+            topics: z.array(z.string()).readonly(),
+            branches: z.array(z.object({ branch: z.string(), students: z.number(), cells: z.record(z.string(), z.object({ percent: z.number(), students: z.number() })) })).readonly(),
+            atRisk: z.array(z.object({ ref: z.string(), name: z.string(), branch: z.string(), percent: z.number(), weakest: z.string() })).readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.send(await placement.readiness(actor, request.query));
+    },
+  );
+
+  routes.get(
     "/drives",
     { schema: { tags: TAGS, summary: "Recruitment drives", security: SECURED, response: { 200: z.object({ drives: z.array(drive).readonly() }), ...refusals } } },
     async (request, reply) => {

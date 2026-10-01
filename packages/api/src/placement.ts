@@ -1,5 +1,5 @@
-import { examId as toExamId } from "@parikshaa/core";
-import { eligible, staffScope, STAGES, type Application, type Drive, type DriveDraft, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
+import { allQuestions, examId as toExamId } from "@parikshaa/core";
+import { eligible, staffScope, STAGES, type QuestionBank, type Application, type Drive, type DriveDraft, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
 import type { Channel, InvitationService } from "./invitation-service.js";
 import type { ResultsService } from "./results.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
@@ -25,6 +25,16 @@ export class ImportRejected extends Error {
 export interface DriveApplication extends Application {
   /** The student's result in the drive's test, once graded there. */
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
+}
+
+/** Below this overall percentage across recent tests, a student is listed for extra help. */
+export const AT_RISK_PERCENT = 40;
+
+export interface Readiness {
+  readonly exams: readonly { readonly id: string; readonly title: string }[];
+  readonly topics: readonly string[];
+  readonly branches: readonly { readonly branch: string; readonly students: number; readonly cells: Readonly<Record<string, { readonly percent: number; readonly students: number }>> }[];
+  readonly atRisk: readonly { readonly ref: string; readonly name: string; readonly branch: string; readonly percent: number; readonly weakest: string }[];
 }
 
 export interface DriveDetail {
@@ -56,6 +66,7 @@ export class PlacementService {
   readonly #exams: ExamService;
   readonly #invitations: InvitationService;
   readonly #results: ResultsService;
+  readonly #bank: QuestionBank | null;
   readonly #now: () => number;
   readonly #newId: () => string;
 
@@ -65,6 +76,8 @@ export class PlacementService {
     readonly exams: ExamService;
     readonly invitations: InvitationService;
     readonly results: ResultsService;
+    /** Where a question's topic is filed, for the readiness heatmap. */
+    readonly bank?: QuestionBank;
     readonly now?: () => number;
     readonly newId?: () => string;
   }) {
@@ -73,6 +86,7 @@ export class PlacementService {
     this.#exams = options.exams;
     this.#invitations = options.invitations;
     this.#results = options.results;
+    this.#bank = options.bank ?? null;
     this.#now = options.now ?? (() => Date.now());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
   }
@@ -233,6 +247,80 @@ export class PlacementService {
     const result = await this.#invitations.inviteMany(actor, drive.examId, chosen, channels, { drive: id });
     await this.#placement.setStage(actor.orgId, id, chosen.filter((a) => a.stage === "applied").map((a) => a.ref), "test", null, actor.name, new Date(this.#now()));
     return result;
+  }
+
+  /**
+   * Readiness (V2-12 CL51): how each branch did in each topic, across the
+   * organisation's recent graded tests, and the students well below the
+   * rest. A question's topic is where it is filed in the question bank, else
+   * the section it was drawn in, else "General". A roll number joins a
+   * student's tests to their branch; one not on the student list is counted
+   * under "Not on the list".
+   */
+  async readiness(actor: Actor, options: { readonly batch?: number | undefined; readonly exams?: number | undefined } = {}): Promise<Readiness> {
+    this.#require(actor);
+    const listed = (await this.#exams.listExams(actor)).filter((e) => e.attempts.graded > 0);
+    const recent = listed.sort((a, b) => (b.window?.opensAt ?? b.createdAt).localeCompare(a.window?.opensAt ?? a.createdAt)).slice(0, options.exams ?? 6);
+    const [students, bank] = await Promise.all([this.#placement.students(actor.orgId), this.#bank === null ? [] : this.#bank.list(staffScope(actor.orgId))]);
+    const student = new Map(students.map((s) => [s.ref, s]));
+    const filed = new Map(bank.map((e) => [e.id, e.topic.trim()]));
+    // Per student and topic: marks earned and marks possible.
+    const marks = new Map<string, Map<string, { got: number; max: number }>>();
+    for (const summary of recent) {
+      const exam = await this.#store.loadExam(staffScope(actor.orgId), toExamId(summary.id));
+      if (exam === null) continue;
+      const topicOf = new Map<string, string>();
+      for (const q of allQuestions(exam)) topicOf.set(q.id, filed.get(q.id) || "General");
+      for (const section of exam.sections ?? []) for (const q of section.pool) if (!filed.get(q.id)) topicOf.set(q.id, section.title.trim() || "General");
+      const { rows } = await this.#results.results(actor, toExamId(summary.id));
+      for (const row of rows) {
+        if (row.state !== "graded") continue;
+        const s = student.get(row.ref);
+        if (options.batch !== undefined && s?.batch !== options.batch) continue;
+        const mine = marks.get(row.ref) ?? new Map<string, { got: number; max: number }>();
+        for (const [questionId, { score, max }] of Object.entries(row.scores)) {
+          if (max <= 0) continue;
+          const topic = topicOf.get(questionId) ?? "General";
+          const cell = mine.get(topic) ?? { got: 0, max: 0 };
+          cell.got += Math.max(0, score);
+          cell.max += max;
+          mine.set(topic, cell);
+        }
+        marks.set(row.ref, mine);
+      }
+    }
+    const topics = [...new Set([...marks.values()].flatMap((m) => [...m.keys()]))].sort((a, b) => (a === "General" ? 1 : b === "General" ? -1 : a.localeCompare(b)));
+    const percentOf = (c: { got: number; max: number }) => Math.round((c.got * 1000) / c.max) / 10;
+    const branches = new Map<string, { students: Set<string>; cells: Map<string, { sum: number; n: number }> }>();
+    const overall: { ref: string; name: string; branch: string; percent: number; weakest: string }[] = [];
+    for (const [ref, mine] of marks) {
+      const branch = student.get(ref)?.branch || (student.has(ref) ? "No branch" : "Not on the list");
+      const entry = branches.get(branch) ?? { students: new Set(), cells: new Map() };
+      entry.students.add(ref);
+      for (const [topic, c] of mine) {
+        const cell = entry.cells.get(topic) ?? { sum: 0, n: 0 };
+        cell.sum += percentOf(c);
+        cell.n += 1;
+        entry.cells.set(topic, cell);
+      }
+      branches.set(branch, entry);
+      const got = [...mine.values()].reduce((n, c) => n + c.got, 0);
+      const max = [...mine.values()].reduce((n, c) => n + c.max, 0);
+      const weakest = [...mine.entries()].sort((a, b) => percentOf(a[1]) - percentOf(b[1]) || a[0].localeCompare(b[0]))[0]?.[0] ?? "";
+      overall.push({ ref, name: student.get(ref)?.name ?? "", branch, percent: max === 0 ? 0 : percentOf({ got, max }), weakest });
+    }
+    return {
+      exams: recent.map((e) => ({ id: e.id as string, title: e.title })),
+      topics,
+      branches: [...branches.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([branch, e]) => ({
+          branch,
+          students: e.students.size,
+          cells: Object.fromEntries([...e.cells.entries()].map(([t, c]) => [t, { percent: Math.round((c.sum / c.n) * 10) / 10, students: c.n }])),
+        })),
+      atRisk: overall.filter((o) => o.percent < AT_RISK_PERCENT).sort((a, b) => a.percent - b.percent),
+    };
   }
 
   /** The drive's students as a spreadsheet, to send the company. Audited: it leaves the system. */
