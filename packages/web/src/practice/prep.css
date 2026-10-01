@@ -808,10 +808,10 @@
   overflow-x: auto;
   white-space: pre;
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.9rem;
+  font-size: var(--text-base);
 }
 
 .share-code input {
   width: min(100%, 28rem);
-  font-size: 0.85rem;
+  font-size: var(--text-base);
 }

@@ -1,7 +1,7 @@
 /* The placement cell's readiness heatmap: loaded with the page. */
 .heatmap th[scope="row"] {
   text-align: left;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .heatmap td.heat-0 {
   background: var(--danger-soft);
@@ -21,5 +21,5 @@
 .heatmap td.heat-4 {
   background: var(--success-soft);
   color: var(--success);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
