@@ -2,6 +2,7 @@ import type { OrgId } from "@parikshaa/core";
 import type { UsageRecord } from "./ledger-store.js";
 import { practiceStaff, type PracticeScope } from "./practice-store.js";
 import type { SqlExecutor } from "./sql.js";
+import { financialYear, invoiceNumber } from "./billing-store.js";
 
 /**
  * Plus and the tutor's credits (ROADMAP §16, migration 0020): what a practice
@@ -41,7 +42,8 @@ export const DEFAULT_PREP_SETTINGS: PrepSettings = { plusEnabled: false, freeMod
 export interface PrepProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "credits";
+  /** Plus, a Company Pass (the company lists alone), or tutor credits. */
+  readonly kind: "plus" | "credits" | "company";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -57,8 +59,19 @@ export interface PrepOrder {
   readonly title: string;
   readonly days: number;
   readonly credits: number;
+  /** What the plan cost before the coupon. */
+  readonly listPaise: number;
+  readonly couponCode: string | null;
+  readonly discountPaise: number;
+  /** What was charged, GST included. */
   readonly amountPaise: number;
   readonly taxPaise: number;
+  /** Who the invoice is made out to, and the state that decides its taxes. */
+  readonly buyerName: string;
+  readonly buyerState: string | null;
+  readonly buyerGstin: string | null;
+  /** Which pass its days are for. */
+  readonly pass: "plus" | "company";
   readonly gatewayOrderId: string;
   readonly paymentId: string | null;
   readonly status: "created" | "paid";
@@ -66,17 +79,102 @@ export interface PrepOrder {
   readonly paidAt: string | null;
 }
 
+export interface PrepCoupon {
+  /** Upper case: what a learner types, and what a `?ref=` link carries. */
+  readonly code: string;
+  readonly kind: "percent" | "flat";
+  /** A percentage, or paise off. */
+  readonly value: number;
+  /** For one plan; null for any. */
+  readonly productId: string | null;
+  readonly maxUses: number | null;
+  readonly endsAt: string | null;
+  /** Who hands it out, for the sales report; empty for none. */
+  readonly affiliate: string;
+  readonly active: boolean;
+  readonly createdAt: string;
+}
+
+/** A coupon with what it has brought in: paid orders only. */
+export interface CouponReport extends PrepCoupon {
+  readonly uses: number;
+  readonly revenuePaise: number;
+  readonly discountPaise: number;
+}
+
+export interface PrepInvoice {
+  readonly id: string;
+  readonly orderId: string;
+  readonly learnerId: string;
+  readonly number: string;
+  readonly document: Record<string, unknown>;
+  readonly totalPaise: number;
+  readonly issuedAt: string;
+}
+
+/** Builds an order's invoice once its number is known: the document, and its total. */
+export type PrepInvoiceBuilder = (number: string, order: PrepOrder, at: Date) => { readonly document: Record<string, unknown>; readonly totalPaise: number };
+
+interface CouponRow {
+  code: string;
+  kind: "percent" | "flat";
+  value: number;
+  product_id: string | null;
+  max_uses: number | null;
+  ends_at: string | Date | null;
+  affiliate: string;
+  active: boolean;
+  created_at: string | Date;
+}
+const COUPON_COLUMNS = "code, kind, value, product_id, max_uses, ends_at, affiliate, active, created_at";
+const toCoupon = (r: CouponRow): PrepCoupon => ({
+  code: r.code,
+  kind: r.kind,
+  value: Number(r.value),
+  productId: r.product_id,
+  maxUses: r.max_uses === null ? null : Number(r.max_uses),
+  endsAt: r.ends_at === null ? null : new Date(r.ends_at).toISOString(),
+  affiliate: r.affiliate,
+  active: r.active,
+  createdAt: new Date(r.created_at).toISOString(),
+});
+
+interface InvoiceRow {
+  id: string;
+  order_id: string;
+  learner_id: string;
+  number: string;
+  document: Record<string, unknown>;
+  total_paise: number;
+  issued_at: string | Date;
+}
+const INVOICE_COLUMNS = "id, order_id, learner_id, number, document, total_paise, issued_at";
+const toInvoice = (r: InvoiceRow): PrepInvoice => ({
+  id: r.id,
+  orderId: r.order_id,
+  learnerId: r.learner_id,
+  number: r.number,
+  document: r.document,
+  totalPaise: Number(r.total_paise),
+  issuedAt: new Date(r.issued_at).toISOString(),
+});
+
+/** Learners' invoices are numbered in a series of their own: `PKP/2627/000001`. */
+export const prepInvoiceNumber = (fy: string, serial: number): string => invoiceNumber(fy, serial, "PKP");
+
 export interface PlusSpan {
   readonly startsAt: string;
   readonly endsAt: string;
   readonly source: "payment" | "grant" | "coins";
+  /** Plus, or a Company Pass. */
+  readonly pass: "plus" | "company";
 }
 
 export type CreditReason = "monthly" | "purchase" | "grant" | "spend" | "refund";
 
 export interface TutorEntry {
   readonly id: string;
-  readonly mode: "hint" | "review" | "doubt";
+  readonly mode: "hint" | "review" | "doubt" | "notes";
   readonly problemId: string | null;
   readonly lessonId: string | null;
   readonly hintLevel: number | null;
@@ -94,15 +192,23 @@ interface OrderRow {
   title: string;
   days: number;
   credits: number;
+  list_paise: number;
+  coupon_code: string | null;
+  discount_paise: number;
   amount_paise: number;
   tax_paise: number;
+  buyer_name: string;
+  buyer_state: string | null;
+  buyer_gstin: string | null;
+  pass: "plus" | "company";
   gateway_order_id: string;
   payment_id: string | null;
   status: "created" | "paid";
   created_at: string | Date;
   paid_at: string | Date | null;
 }
-const ORDER_COLUMNS = "id, learner_id, product_id, title, days, credits, amount_paise, tax_paise, gateway_order_id, payment_id, status, created_at, paid_at";
+const ORDER_COLUMNS =
+  "id, learner_id, product_id, title, days, credits, list_paise, coupon_code, discount_paise, amount_paise, tax_paise, buyer_name, buyer_state, buyer_gstin, pass, gateway_order_id, payment_id, status, created_at, paid_at";
 const toOrder = (r: OrderRow): PrepOrder => ({
   id: r.id,
   learnerId: r.learner_id,
@@ -110,8 +216,15 @@ const toOrder = (r: OrderRow): PrepOrder => ({
   title: r.title,
   days: Number(r.days),
   credits: Number(r.credits),
+  listPaise: Number(r.list_paise),
+  couponCode: r.coupon_code,
+  discountPaise: Number(r.discount_paise),
   amountPaise: Number(r.amount_paise),
   taxPaise: Number(r.tax_paise),
+  buyerName: r.buyer_name,
+  buyerState: r.buyer_state,
+  buyerGstin: r.buyer_gstin,
+  pass: r.pass,
   gatewayOrderId: r.gateway_order_id,
   paymentId: r.payment_id,
   status: r.status,
@@ -122,7 +235,7 @@ const toOrder = (r: OrderRow): PrepOrder => ({
 interface ProductRow {
   id: string;
   title: string;
-  kind: "plus" | "credits";
+  kind: "plus" | "credits" | "company";
   days: number;
   credits: number;
   price_paise: number;
@@ -139,6 +252,13 @@ const toProduct = (r: ProductRow): PrepProduct => ({
   active: r.active,
   position: Number(r.position),
 });
+
+export class CouponTaken extends Error {
+  constructor() {
+    super("A coupon with that code exists");
+    this.name = "CouponTaken";
+  }
+}
 
 export class PrepPlusStore {
   readonly #sql: SqlExecutor;
@@ -209,9 +329,28 @@ export class PrepPlusStore {
   async createOrder(orgId: OrgId, order: Omit<PrepOrder, "id" | "paymentId" | "status" | "createdAt" | "paidAt">): Promise<PrepOrder> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const rows = await tx.query<OrderRow>(
-        `INSERT INTO prep_orders (org_id, id, learner_id, product_id, title, days, credits, amount_paise, tax_paise, gateway_order_id)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING ${ORDER_COLUMNS}`,
-        [orgId, this.#newId(), order.learnerId, order.productId, order.title, order.days, order.credits, order.amountPaise, order.taxPaise, order.gatewayOrderId],
+        `INSERT INTO prep_orders (org_id, id, learner_id, product_id, title, days, credits, amount_paise, tax_paise, gateway_order_id,
+                                  list_paise, coupon_code, discount_paise, buyer_name, buyer_state, buyer_gstin, pass)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING ${ORDER_COLUMNS}`,
+        [
+          orgId,
+          this.#newId(),
+          order.learnerId,
+          order.productId,
+          order.title,
+          order.days,
+          order.credits,
+          order.amountPaise,
+          order.taxPaise,
+          order.gatewayOrderId,
+          order.listPaise,
+          order.couponCode,
+          order.discountPaise,
+          order.buyerName,
+          order.buyerState,
+          order.buyerGstin,
+          order.pass,
+        ],
       );
       return toOrder(rows[0]!);
     });
@@ -234,7 +373,13 @@ export class PrepPlusStore {
    * transaction, each under a key that makes a second confirmation a no-op.
    * Null when there is no such order.
    */
-  async markPaid(orgId: OrgId, gatewayOrderId: string, paymentId: string, at: Date): Promise<{ readonly order: PrepOrder; readonly newlyPaid: boolean } | null> {
+  async markPaid(
+    orgId: OrgId,
+    gatewayOrderId: string,
+    paymentId: string,
+    at: Date,
+    invoice?: PrepInvoiceBuilder,
+  ): Promise<{ readonly order: PrepOrder; readonly newlyPaid: boolean } | null> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const found = await tx.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM prep_orders WHERE org_id = $1 AND gateway_order_id = $2 FOR UPDATE`, [orgId, gatewayOrderId]);
       if (found[0] === undefined) return null;
@@ -246,14 +391,15 @@ export class PrepPlusStore {
       const order = toOrder(rows[0]!);
       if (order.days > 0) {
         // Plus bought while Plus is held runs on from the end of what is held.
+        // A pass bought while the same pass is held runs on from the end of what is held.
         const held = await tx.query<{ ends_at: string | Date | null }>(
-          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3`,
-          [orgId, order.learnerId, at],
+          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3 AND pass = $4`,
+          [orgId, order.learnerId, at, order.pass],
         );
         const from = held[0]?.ends_at === null || held[0]?.ends_at === undefined ? at : new Date(held[0].ends_at);
         await tx.query(
-          `INSERT INTO prep_plus (org_id, id, learner_id, starts_at, ends_at, source, ref) VALUES ($1, $2, $3, $4, $5, 'payment', $6) ON CONFLICT DO NOTHING`,
-          [orgId, this.#newId(), order.learnerId, from, new Date(from.getTime() + order.days * 86_400_000), order.id],
+          `INSERT INTO prep_plus (org_id, id, learner_id, starts_at, ends_at, source, ref, pass) VALUES ($1, $2, $3, $4, $5, 'payment', $6, $7) ON CONFLICT DO NOTHING`,
+          [orgId, this.#newId(), order.learnerId, from, new Date(from.getTime() + order.days * 86_400_000), order.id, order.pass],
         );
       }
       if (order.credits > 0) {
@@ -262,7 +408,102 @@ export class PrepPlusStore {
           [orgId, this.#newId(), order.learnerId, order.credits, `order:${order.id}`],
         );
       }
+      if (invoice !== undefined) await this.#issue(tx, orgId, order, invoice, at);
       return { order, newlyPaid: true };
+    });
+  }
+
+  /**
+   * Number and store an order's invoice, in the transaction that pays it: the
+   * serial is taken there, so a failure leaves no gap in the series.
+   */
+  async #issue(tx: SqlExecutor, orgId: OrgId, order: PrepOrder, build: PrepInvoiceBuilder, at: Date): Promise<PrepInvoice> {
+    const fy = financialYear(at);
+    const counter = await tx.query<{ last: number }>(
+      `INSERT INTO invoice_counters (fy, last) VALUES ($1, 1) ON CONFLICT (fy) DO UPDATE SET last = invoice_counters.last + 1 RETURNING last`,
+      [`PP:${fy}`],
+    );
+    const number = prepInvoiceNumber(fy, Number(counter[0]!.last));
+    const { document, totalPaise } = build(number, order, at);
+    const rows = await tx.query<InvoiceRow>(
+      `INSERT INTO prep_invoices (org_id, id, order_id, learner_id, number, document, total_paise, issued_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${INVOICE_COLUMNS}`,
+      [orgId, this.#newId(), order.id, order.learnerId, number, JSON.stringify(document), totalPaise, at.toISOString()],
+    );
+    return toInvoice(rows[0]!);
+  }
+
+  /** A learner's invoices, or (staff) everyone's; newest first. */
+  async invoices(scope: PracticeScope): Promise<readonly PrepInvoice[]> {
+    if (scope.actor === "learner" && scope.learnerId === null) return [];
+    return scoped(this.#sql, scope, async (tx) =>
+      (
+        await tx.query<InvoiceRow>(
+          `SELECT ${INVOICE_COLUMNS} FROM prep_invoices WHERE org_id = $1 AND ($2::text IS NULL OR learner_id = $2) ORDER BY issued_at DESC, number DESC LIMIT 1000`,
+          [scope.orgId, scope.actor === "learner" ? own(scope) : null],
+        )
+      ).map(toInvoice),
+    );
+  }
+
+  // --- coupons ----------------------------------------------------------------------------------
+
+  async coupons(orgId: OrgId): Promise<readonly CouponReport[]> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (
+        await tx.query<CouponRow & { uses: number; revenue: number; discount: number }>(
+          `SELECT ${COUPON_COLUMNS.split(", ").map((c) => `c.${c}`).join(", ")},
+                  count(o.id)::int AS uses, coalesce(sum(o.amount_paise), 0)::bigint AS revenue, coalesce(sum(o.discount_paise), 0)::bigint AS discount
+             FROM prep_coupons c
+             LEFT JOIN prep_orders o ON o.org_id = c.org_id AND o.coupon_code = c.code AND o.status = 'paid'
+            WHERE c.org_id = $1
+            GROUP BY c.org_id, c.code
+            ORDER BY c.created_at DESC`,
+          [orgId],
+        )
+      ).map((r) => ({ ...toCoupon(r), uses: Number(r.uses), revenuePaise: Number(r.revenue), discountPaise: Number(r.discount) })),
+    );
+  }
+
+  async coupon(orgId: OrgId, code: string): Promise<PrepCoupon | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<CouponRow>(`SELECT ${COUPON_COLUMNS} FROM prep_coupons WHERE org_id = $1 AND code = $2`, [orgId, code]);
+      return rows[0] === undefined ? null : toCoupon(rows[0]);
+    });
+  }
+
+  /** Paid uses of a coupon: in all, and by one learner. */
+  async couponUses(orgId: OrgId, code: string, learnerId: string): Promise<{ readonly total: number; readonly mine: number }> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ total: number; mine: number }>(
+        `SELECT count(*)::int AS total, count(*) FILTER (WHERE learner_id = $3)::int AS mine FROM prep_orders WHERE org_id = $1 AND coupon_code = $2 AND status = 'paid'`,
+        [orgId, code, learnerId],
+      );
+      return { total: Number(rows[0]?.total ?? 0), mine: Number(rows[0]?.mine ?? 0) };
+    });
+  }
+
+  /** A new coupon, or a change to one; the code itself never changes. Null when changing one that is not there. */
+  async saveCoupon(orgId: OrgId, coupon: Omit<PrepCoupon, "createdAt">, create: boolean): Promise<PrepCoupon | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const params = [orgId, coupon.code, coupon.kind, coupon.value, coupon.productId, coupon.maxUses, coupon.endsAt, coupon.affiliate, coupon.active];
+      try {
+        const rows = create
+          ? await tx.query<CouponRow>(
+              `INSERT INTO prep_coupons (org_id, code, kind, value, product_id, max_uses, ends_at, affiliate, active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+               RETURNING ${COUPON_COLUMNS}`,
+              params,
+            )
+          : await tx.query<CouponRow>(
+              `UPDATE prep_coupons SET kind = $3, value = $4, product_id = $5, max_uses = $6, ends_at = $7, affiliate = $8, active = $9
+                WHERE org_id = $1 AND code = $2 RETURNING ${COUPON_COLUMNS}`,
+              params,
+            );
+        return rows[0] === undefined ? null : toCoupon(rows[0]);
+      } catch (error) {
+        if ((error as { code?: string }).code === "23505") throw new CouponTaken();
+        throw error;
+      }
     });
   }
 
@@ -273,11 +514,11 @@ export class PrepPlusStore {
     if (who === null) return [];
     return scoped(this.#sql, scope, async (tx) =>
       (
-        await tx.query<{ starts_at: string | Date; ends_at: string | Date; source: PlusSpan["source"] }>(
-          `SELECT starts_at, ends_at, source FROM prep_plus WHERE org_id = $1 AND learner_id = $2 ORDER BY ends_at`,
+        await tx.query<{ starts_at: string | Date; ends_at: string | Date; source: PlusSpan["source"]; pass: PlusSpan["pass"] }>(
+          `SELECT starts_at, ends_at, source, pass FROM prep_plus WHERE org_id = $1 AND learner_id = $2 ORDER BY ends_at`,
           [scope.orgId, who],
         )
-      ).map((r) => ({ startsAt: iso(r.starts_at), endsAt: iso(r.ends_at), source: r.source })),
+      ).map((r) => ({ startsAt: iso(r.starts_at), endsAt: iso(r.ends_at), source: r.source, pass: r.pass })),
     );
   }
 

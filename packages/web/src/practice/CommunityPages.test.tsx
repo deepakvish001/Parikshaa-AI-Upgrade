@@ -92,6 +92,8 @@ describe("a company", () => {
           { slug: "lru", title: "LRU cache", difficulty: "medium", tags: ["design"], times: 2, lastAsked: "2026-09-01", solved: false },
         ],
         locked: 3,
+        readiness: { solved: 1, of: 2, percent: 50 },
+        target: false,
         topics: [
           { tag: "arrays", problems: 1 },
           { tag: "design", problems: 1 },
@@ -105,11 +107,61 @@ describe("a company", () => {
     await user.click(await screen.findByRole("link", { name: /Acme/ }));
     expect(await screen.findByRole("heading", { name: "Acme", level: 1 })).toBeTruthy();
     expect(screen.getByText("Asked 4×")).toBeTruthy();
-    expect(screen.getByText("3 more with Plus")).toBeTruthy();
+    expect(screen.getByText("3 more with Plus or a Company Pass")).toBeTruthy();
+    expect(screen.getByText("Ready: 1 of the 2 most asked in 6 months (50%)")).toBeTruthy();
     expect(calls.find((c) => c.path === "/practice/nit-practice/companies/acme")!.search).toBe("?window=60");
     await user.click(screen.getByRole("radio", { name: /30 days/ }));
     await waitFor(() => expect(calls.some((c) => c.search === "?window=30")).toBe(true));
     expect(screen.getByRole("article", { name: "Acme, SDE 1" })).toBeTruthy();
+  });
+});
+
+describe("aiming for a company", () => {
+  it("aims for it, and starts its list", async () => {
+    let target = false;
+    routes["GET /practice/nit-practice/companies/acme"] = () => ({
+      body: {
+        slug: "acme",
+        name: "Acme",
+        about: "",
+        window: "60",
+        counts: { "30": 0, "60": 1, "180": 1, all: 1 },
+        problems: [{ slug: "two-sum", title: "Two sum", difficulty: "easy", tags: [], times: 1, lastAsked: "2026-09-20", solved: false }],
+        locked: 0,
+        readiness: { solved: 0, of: 1, percent: 0 },
+        target,
+        topics: [],
+        difficulty: { easy: 1, medium: 0, hard: 0 },
+        experiences: [],
+      },
+    });
+    routes["PUT /practice/nit-practice/companies/acme/target"] = (init) => {
+      target = (JSON.parse(String(init.body)) as { on: boolean }).on;
+      return { body: { ok: true } };
+    };
+    routes["POST /practice/nit-practice/companies/acme/start"] = () => {
+      target = true;
+      return { body: { list: "Acme", added: 5, locked: 2 } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/companies/acme");
+    await user.click(await screen.findByRole("button", { name: "Aim for this company" }));
+    expect(calls.find((c) => c.method === "PUT")!.body).toEqual({ on: true });
+    expect(await screen.findByRole("button", { name: "Aiming for it — stop", pressed: true })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Start this company's list" }));
+    expect(await screen.findByText(/Saved 5 problems to your list “Acme”\. 2 more come with Plus or a Company Pass\./)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open your lists" })).toBeTruthy();
+  });
+
+  it("is not offered to a visitor who is not signed in", async () => {
+    localStorage.clear();
+    routes["GET /practice/nit-practice/me"] = () => ({ status: 401, body: { error: "unauthenticated" } });
+    routes["GET /practice/nit-practice/companies/acme"] = () => ({
+      body: { slug: "acme", name: "Acme", about: "", window: "60", counts: {}, problems: [], locked: 0, readiness: null, target: false, topics: [], difficulty: { easy: 0, medium: 0, hard: 0 }, experiences: [] },
+    });
+    open("/practice/nit-practice/companies/acme");
+    expect(await screen.findByRole("heading", { name: "Acme", level: 1 })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Aim for this company" })).toBeNull();
   });
 });
 

@@ -207,6 +207,59 @@ export function taxInvoice(input: {
 }
 
 /**
+ * A tax invoice for a sale whose price already includes GST, as a learner's
+ * plan is sold: the tax is the price's 18/118 share, rounded once, and split
+ * into CGST and SGST (the odd paisa to SGST) unless the buyer's state differs
+ * from the supplier's, when it is IGST. The total is always what was paid.
+ */
+export function inclusiveInvoice(input: {
+  readonly number: string;
+  readonly issuedAt: Date;
+  readonly supplier: Supplier;
+  readonly buyer: Buyer;
+  readonly description: string;
+  readonly totalPaise: number;
+  readonly taxPaise: number;
+  readonly note?: string;
+}): { document: Record<string, unknown>; totalPaise: number } {
+  const supplierState = stateOf(input.supplier.gstin);
+  const placeOfSupply = input.buyer.stateCode ?? supplierState;
+  const intraState = placeOfSupply === supplierState;
+  const half = GST_RATE_PERCENT / 2;
+  const taxablePaise = input.totalPaise - input.taxPaise;
+  const cgst = Math.floor(input.taxPaise / 2);
+  return {
+    totalPaise: input.totalPaise,
+    document: {
+      title: "Tax Invoice",
+      number: input.number,
+      date: new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium" }).format(input.issuedAt),
+      supplier: { ...input.supplier, state: STATES[supplierState] ?? supplierState, stateCode: supplierState },
+      buyer: {
+        legalName: input.buyer.legalName,
+        gstin: input.buyer.gstin,
+        address: input.buyer.address,
+        state: input.buyer.stateCode === null ? null : (STATES[input.buyer.stateCode] ?? input.buyer.stateCode),
+        stateCode: input.buyer.stateCode,
+      },
+      placeOfSupply: { code: placeOfSupply, state: STATES[placeOfSupply] ?? placeOfSupply },
+      reverseCharge: false,
+      lines: [{ description: input.description, quantity: 1, ratePaise: taxablePaise, sac: input.supplier.sac, amountPaise: taxablePaise }],
+      taxablePaise,
+      taxes: intraState
+        ? [
+            { name: "CGST", ratePercent: half, amountPaise: cgst },
+            { name: "SGST", ratePercent: half, amountPaise: input.taxPaise - cgst },
+          ]
+        : [{ name: "IGST", ratePercent: GST_RATE_PERCENT, amountPaise: input.taxPaise }],
+      totalPaise: input.totalPaise,
+      totalInWords: rupeesInWords(input.totalPaise),
+      ...(input.note === undefined ? {} : { note: input.note }),
+    },
+  };
+}
+
+/**
  * TDS under section 194J: the buyer deducts it from what they pay, on the
  * value before GST (CBDT circular 23/2017, where GST is shown separately),
  * and pays it to the government in the supplier's name. The invoice says

@@ -100,6 +100,16 @@ export interface Note {
   readonly updatedAt: string;
 }
 
+/** One sitting of a sprint's quiz. */
+export interface SprintQuiz {
+  readonly sprint: number;
+  readonly score: number;
+  readonly total: number;
+  /** Problem id to whether it was answered right. */
+  readonly results: Readonly<Record<string, boolean>>;
+  readonly takenAt: string;
+}
+
 export type Grade = "again" | "hard" | "good" | "easy";
 export interface Card {
   readonly problemId: string;
@@ -459,6 +469,58 @@ export class PrepStore {
         `DELETE FROM prep_notes WHERE org_id = $1 AND learner_id = $2 AND ref_kind = $3 AND ref_id = $4 RETURNING ref_id`,
         [scope.orgId, own(scope), refKind, refId],
       );
+      return rows.length > 0;
+    });
+  }
+
+  // --- sprint quizzes and days off ------------------------------------------------------------------
+
+  async sprintQuizzes(scope: PracticeScope, planId: string): Promise<readonly SprintQuiz[]> {
+    if (scope.actor === "learner" && scope.learnerId === null) return [];
+    return scoped(this.#sql, scope, async (tx) =>
+      (
+        await tx.query<{ sprint: number; score: number; total: number; results: Record<string, boolean>; taken_at: string | Date }>(
+          `SELECT sprint, score, total, results, taken_at FROM prep_sprint_quizzes WHERE org_id = $1 AND learner_id = $2 AND plan_id = $3 ORDER BY taken_at`,
+          [scope.orgId, own(scope), planId],
+        )
+      ).map((r) => ({ sprint: Number(r.sprint), score: Number(r.score), total: Number(r.total), results: r.results, takenAt: iso(r.taken_at) })),
+    );
+  }
+
+  async addSprintQuiz(scope: PracticeScope, planId: string, quiz: Omit<SprintQuiz, "takenAt">, at: Date): Promise<void> {
+    await scoped(this.#sql, scope, (tx) =>
+      tx.query(`INSERT INTO prep_sprint_quizzes (org_id, id, learner_id, plan_id, sprint, score, total, results, taken_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`, [
+        scope.orgId,
+        this.#newId(),
+        own(scope),
+        planId,
+        quiz.sprint,
+        quiz.score,
+        quiz.total,
+        JSON.stringify(quiz.results),
+        at,
+      ]),
+    );
+  }
+
+  /** The days a learner took off on purpose, oldest first. */
+  async freezes(scope: PracticeScope): Promise<readonly string[]> {
+    if (scope.actor === "learner" && scope.learnerId === null) return [];
+    return scoped(this.#sql, scope, async (tx) =>
+      (await tx.query<{ day: string }>(`SELECT to_char(day, 'YYYY-MM-DD') AS day FROM prep_freezes WHERE org_id = $1 AND learner_id = $2 ORDER BY day`, [scope.orgId, own(scope)])).map(
+        (r) => r.day,
+      ),
+    );
+  }
+
+  /** Take a day off. False when it was taken already. */
+  async freeze(scope: PracticeScope, day: string): Promise<boolean> {
+    return scoped(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ day: string }>(`INSERT INTO prep_freezes (org_id, learner_id, day) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING day`, [
+        scope.orgId,
+        own(scope),
+        day,
+      ]);
       return rows.length > 0;
     });
   }

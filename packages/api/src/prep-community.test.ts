@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pgliteExecutor } from "@parikshaa/store";
 import { rateContest, titleOf } from "./prep-community.js";
+import type { FakeRazorpay } from "./razorpay.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
 /**
@@ -22,6 +23,7 @@ const dayOf = (ms: number) => new Date(ms + 5.5 * 3_600_000).toISOString().slice
 
 let db: PGlite;
 let app: FastifyInstance;
+let razorpay: FakeRazorpay;
 let owner: string;
 let viewer: string;
 const problems: { id: string; slug: string }[] = [];
@@ -42,7 +44,7 @@ beforeEach(async () => {
   problems.length = 0;
   db = await freshDatabase();
   let identity;
-  ({ app, identity } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic, now: () => clock }));
+  ({ app, identity, razorpay } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic, now: () => clock }));
   const org = await addOrganisation(identity, "org-a", "NIT Trichy");
   await addStaff(identity, org, "owner@nit.test", "owner", "Ravi Kumar");
   await addStaff(identity, org, "viewer@nit.test", "viewer");
@@ -97,6 +99,91 @@ describe("companies", () => {
     await ok("POST", owner, `/practice-admin/learners/${learners[0]!.id}/plus`, { days: 30 }, 200);
     expect((await ok("GET", asha, `${S}/companies/acme-corp?window=all`)).locked).toBe(0);
     expect((await call("GET", null, `${S}/companies/nobody`)).statusCode).toBe(404);
+  });
+
+  /** Acme asked problem 0 three times, 1 twice, and 2 to 6 once, all within six months. */
+  async function acme() {
+    const company = await ok("POST", owner, "/practice-admin/companies", { name: "Acme Corp" });
+    const report = (ids: string[], daysAgo: number) => ok("POST", owner, `/practice-admin/companies/${company.id}/reports`, { problemIds: ids, reportedOn: dayOf(clock - daysAgo * DAY) });
+    await report(problems.map((p) => p.id), 30);
+    await report([problems[0]!.id, problems[1]!.id], 20);
+    await report([problems[0]!.id], 10);
+    return company;
+  }
+
+  it("tells a learner how ready they are, keeps the companies they aim for, and starts a company's list", async () => {
+    await acme();
+    expect((await ok("GET", null, `${S}/companies/acme-corp`)).readiness).toBeNull();
+    const asha = await signUp("asha@example.com", "Asha");
+    let page = await ok("GET", asha, `${S}/companies/acme-corp`);
+    expect(page).toMatchObject({ readiness: { solved: 0, of: 7, percent: 0 }, target: false });
+    await ok("POST", asha, `${S}/problems/${problems[0]!.slug}/submit`, { answer: "1" }, 200);
+    await ok("POST", asha, `${S}/problems/${problems[1]!.slug}/submit`, { answer: "0" }, 200);
+    page = await ok("GET", asha, `${S}/companies/acme-corp`);
+    expect(page.readiness).toEqual({ solved: 1, of: 7, percent: 14 });
+
+    await ok("PUT", asha, `${S}/companies/acme-corp/target`, { on: true }, 200);
+    expect((await ok("GET", asha, `${S}/companies/acme-corp`)).target).toBe(true);
+    expect((await ok("GET", asha, `${S}/companies/targets`)).targets).toEqual([{ slug: "acme-corp", name: "Acme Corp", readiness: { solved: 1, of: 7, percent: 14 } }]);
+    await ok("PUT", asha, `${S}/companies/acme-corp/target`, { on: false }, 200);
+    expect((await ok("GET", asha, `${S}/companies/targets`)).targets).toEqual([]);
+    expect((await call("PUT", asha, `${S}/companies/nobody/target`, { on: true })).statusCode).toBe(404);
+    expect((await call("PUT", null, `${S}/companies/acme-corp/target`, { on: true })).statusCode).toBe(401);
+
+    // Without Plus on sale, the whole list, most asked first; starting it aims for the company too.
+    const started = await ok("POST", asha, `${S}/companies/acme-corp/start`, undefined, 200);
+    expect(started).toEqual({ list: "Acme Corp", added: 7, locked: 0 });
+    const list = ((await ok("GET", asha, `${S}/lists`)).lists as { name: string; problems: { slug: string }[] }[]).find((l) => l.name === "Acme Corp")!;
+    expect(list.problems.map((p) => p.slug).sort()).toEqual(problems.map((p) => p.slug).sort());
+    expect((await ok("GET", asha, `${S}/companies/targets`)).targets).toHaveLength(1);
+    // Starting it again adds nothing twice.
+    await ok("POST", asha, `${S}/companies/acme-corp/start`, undefined, 200);
+    const again = ((await ok("GET", asha, `${S}/lists`)).lists as { name: string; problems: unknown[] }[]).find((l) => l.name === "Acme Corp")!;
+    expect(again.problems).toHaveLength(7);
+  });
+
+  it("opens every company's full list with a Company Pass, and nothing that needs Plus", async () => {
+    await acme();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, checkout: true });
+    const pass = await ok("POST", owner, "/practice-admin/plus/products", { title: "Company Pass, a month", kind: "company", days: 30, pricePaise: 29_900 });
+    expect((await call("POST", owner, "/practice-admin/plus/products", { title: "Bad pass", kind: "company", days: 0, pricePaise: 100 })).statusCode).toBe(422);
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect(await ok("POST", ravi, `${S}/companies/acme-corp/start`, undefined, 200)).toEqual({ list: "Acme Corp", added: 5, locked: 2 });
+    expect((await ok("GET", ravi, `${S}/companies/acme-corp?window=all`)).locked).toBe(2);
+
+    const checkout = await ok("POST", ravi, `${S}/plus/checkout`, { productId: pass.id });
+    const paymentId = `pay_${checkout.orderId}`;
+    const confirmed = await ok("POST", ravi, `${S}/plus/confirm`, { orderId: checkout.orderId, paymentId, signature: razorpay.sign(checkout.orderId, paymentId) }, 200);
+    // The pass is not Plus: Plus stays off, the company lists open.
+    expect(confirmed.plus.active).toBe(false);
+    expect((await ok("GET", ravi, `${S}/plus`)).active).toBe(false);
+    expect((await ok("GET", ravi, `${S}/companies/acme-corp?window=all`)).locked).toBe(0);
+    expect(await ok("POST", ravi, `${S}/companies/acme-corp/start`, undefined, 200)).toMatchObject({ added: 7, locked: 0 });
+    const planInput = { track: "dsa", level: "beginner", deadline: dayOf(clock + 60 * DAY), dailyMinutes: 60, offDays: [] };
+    expect((await call("POST", ravi, `${S}/plan/preview`, planInput)).statusCode).toBe(402);
+    // Its invoice names what was bought.
+    const invoice = await ok("GET", ravi, `${S}/invoices/${encodeURIComponent(confirmed.order.invoice)}`);
+    expect(JSON.stringify(invoice.document)).toMatch(/Company Pass for 30 days/);
+  });
+
+  it("puts the target companies' unsolved problems in a new plan's last days", async () => {
+    await acme();
+    const lessons = [];
+    for (let i = 0; i < 10; i++) lessons.push(await ok("POST", owner, "/practice-admin/lessons", { title: `Lesson ${i + 1}`, body: "Read this.", estMinutes: 45, published: true }));
+    await ok("POST", owner, "/practice-admin/tracks", { title: "DSA", description: "", published: true, modules: [{ title: "All", items: lessons.map((l) => ({ lessonId: l.id })) }] });
+    const asha = await signUp("asha@example.com", "Asha");
+    await ok("POST", asha, `${S}/problems/${problems[0]!.slug}/submit`, { answer: "1" }, 200);
+    await ok("PUT", asha, `${S}/companies/acme-corp/target`, { on: true }, 200);
+
+    const { plan } = await ok("POST", asha, `${S}/plan`, { track: "dsa", level: "beginner", deadline: dayOf(clock + 60 * DAY), dailyMinutes: 60, offDays: [] });
+    type Task = { day: string; kind: string; link: { kind: string; slug: string } | null };
+    const tasks = [...plan.today, ...plan.upcoming] as Task[];
+    const fromCompany = tasks.filter((t) => t.link?.kind === "problem");
+    // The six unsolved, never the one already solved.
+    expect(fromCompany.map((t) => t.link!.slug).sort()).toEqual(problems.slice(1).map((p) => p.slug).sort());
+    const days = [...new Set(tasks.filter((t) => t.kind === "learn").map((t) => t.day))].sort();
+    const tail = days.slice(Math.floor(days.length * 0.7));
+    for (const t of fromCompany) expect(tail).toContain(t.day);
   });
 });
 

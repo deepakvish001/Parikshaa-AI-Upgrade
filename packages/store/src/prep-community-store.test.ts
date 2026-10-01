@@ -64,6 +64,27 @@ describe("companies and reports", () => {
     expect(await store.reports(practiceStaff(B))).toEqual([]);
     expect(await store.companies(practiceLearner(B, null))).toEqual([]);
   });
+
+  it("keeps the companies a learner aims for theirs alone", async () => {
+    const acme = await company();
+    const zeta = await company("zeta");
+    const beta = await company("beta");
+    const asha = await learner();
+    const ravi = await learner(A, "ravi@example.com");
+    const own = (id: string) => ({ ...practiceLearner(A, id), learnerId: id });
+    await store.setTarget(own(asha.id), acme.id, true);
+    await store.setTarget(own(asha.id), acme.id, true);
+    await store.setTarget(own(asha.id), zeta.id, true);
+    expect(await store.targets(practiceLearner(A, asha.id))).toEqual([acme.id, zeta.id]);
+    expect(await store.targets(practiceLearner(A, ravi.id))).toEqual([]);
+    // Another learner can neither read them nor write in their name.
+    expect(await sql.transaction((tx) => tx.query(`SELECT * FROM prep_targets`), asLearner(ravi.id))).toEqual([]);
+    await expect(
+      sql.transaction((tx) => tx.query(`INSERT INTO prep_targets (org_id, learner_id, company_id) VALUES ($1, $2, $3)`, [A, asha.id, beta.id]), asLearner(ravi.id)),
+    ).rejects.toThrow(/row-level security/);
+    await store.setTarget(own(asha.id), acme.id, false);
+    expect(await store.targets(practiceLearner(A, asha.id))).toEqual([zeta.id]);
+  });
 });
 
 describe("experiences", () => {

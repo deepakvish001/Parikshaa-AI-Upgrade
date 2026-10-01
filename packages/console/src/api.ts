@@ -1145,6 +1145,41 @@ export class ConsoleClient {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
 
+  async cohorts(): Promise<readonly CohortSummary[]> {
+    return (await this.#request<{ cohorts: CohortSummary[] }>("/practice-admin/cohorts")).cohorts;
+  }
+
+  createCohort(name: string, plusDays: number): Promise<Cohort> {
+    return this.#request("/practice-admin/cohorts", { method: "POST", body: JSON.stringify({ name, plusDays }) });
+  }
+
+  importCohort(id: string, csv: string, dryRun: boolean): Promise<CohortImport> {
+    return this.#request(`/practice-admin/cohorts/${encodeURIComponent(id)}/members`, { method: "POST", body: JSON.stringify({ csv, dryRun }) });
+  }
+
+  cohortReport(id: string): Promise<CohortReport> {
+    return this.#request(`/practice-admin/cohorts/${encodeURIComponent(id)}`);
+  }
+
+  prepAnalytics(): Promise<PrepAnalytics> {
+    return this.#request("/practice-admin/analytics");
+  }
+
+  async plusCoupons(): Promise<readonly PlusCoupon[]> {
+    return (await this.#request<{ coupons: PlusCoupon[] }>("/practice-admin/plus/coupons")).coupons;
+  }
+
+  savePlusCoupon(draft: PlusCouponDraft, create: boolean): Promise<PlusCoupon> {
+    const { code, ...body } = draft;
+    return create
+      ? this.#request("/practice-admin/plus/coupons", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/practice-admin/plus/coupons/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(body) });
+  }
+
+  plusInvoice(number: string): Promise<PlusInvoice> {
+    return this.#request(`/practice-admin/plus/invoices/${encodeURIComponent(number)}`);
+  }
+
   grantPlus(learnerId: string, days: number): Promise<{ readonly until: string }> {
     return this.#request(`/practice-admin/learners/${encodeURIComponent(learnerId)}/plus`, { method: "POST", body: JSON.stringify({ days }) });
   }
@@ -1982,7 +2017,7 @@ export interface PlusSettings {
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "credits";
+  readonly kind: "plus" | "company" | "credits";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -1996,11 +2031,57 @@ export interface PlusOrder {
   readonly title: string;
   readonly days: number;
   readonly credits: number;
+  readonly listPaise: number;
+  readonly coupon: string | null;
+  readonly discountPaise: number;
   readonly amountPaise: number;
   readonly taxPaise: number;
+  /** The tax invoice's number, once paid. */
+  readonly invoice: string | null;
   readonly status: "created" | "paid";
   readonly createdAt: string;
   readonly paidAt: string | null;
+}
+
+export interface PlusCoupon {
+  readonly code: string;
+  readonly kind: "percent" | "flat";
+  /** A percentage, or paise off. */
+  readonly value: number;
+  readonly productId: string | null;
+  readonly maxUses: number | null;
+  readonly endsAt: string | null;
+  readonly affiliate: string;
+  readonly active: boolean;
+  readonly createdAt: string;
+  /** Paid orders only. */
+  readonly uses: number;
+  readonly revenuePaise: number;
+  readonly discountPaise: number;
+}
+
+export type PlusCouponDraft = Omit<PlusCoupon, "createdAt" | "uses" | "revenuePaise" | "discountPaise">;
+
+export interface PlusInvoice {
+  readonly number: string;
+  readonly issuedAt: string;
+  readonly document: {
+    readonly buyer: { readonly legalName: string; readonly gstin: string | null; readonly state: string | null };
+    readonly placeOfSupply: { readonly state: string };
+    readonly taxablePaise: number;
+    readonly taxes: readonly { readonly name: string; readonly ratePercent: number; readonly amountPaise: number }[];
+    readonly totalPaise: number;
+  };
+}
+
+export interface PrepAnalytics {
+  readonly from: string;
+  readonly to: string;
+  readonly funnel: { readonly signedUp: number; readonly startedPlan: number; readonly solvedOne: number; readonly usedTutor: number; readonly bought: number };
+  readonly activation: { readonly cohort: number; readonly activated: number };
+  readonly retention: { readonly d1: { readonly cohort: number; readonly returned: number }; readonly d7: { readonly cohort: number; readonly returned: number } };
+  readonly days: readonly { readonly day: string; readonly active: number; readonly signups: number; readonly solves: number }[];
+  readonly reminders: { readonly enabled: number; readonly sentInWindow: number };
 }
 
 export interface StarterPack {
@@ -2068,4 +2149,47 @@ export interface StoreOrder {
   readonly learnerId: string;
   readonly learnerName: string;
   readonly learnerEmail: string;
+}
+
+// --- campus licences (Prep blueprint F16) ------------------------------------------------
+
+export interface Cohort {
+  readonly id: string;
+  readonly name: string;
+  readonly plusDays: number;
+  readonly createdBy: string;
+  readonly createdAt: string;
+}
+
+export interface CohortSummary extends Cohort {
+  readonly members: number;
+  readonly joined: number;
+  readonly given: number;
+  readonly active7: number;
+  readonly solved: number;
+}
+
+export interface CohortImport {
+  readonly rows: number;
+  readonly added: number;
+  readonly invalid: readonly { readonly line: number; readonly value: string }[];
+  readonly duplicates: number;
+  readonly already: number;
+  readonly givenNow: number;
+  readonly onSignup: number;
+  readonly dryRun: boolean;
+}
+
+export interface CohortReport {
+  readonly cohort: Cohort;
+  readonly students: readonly {
+    readonly email: string;
+    readonly name: string | null;
+    readonly joined: boolean;
+    readonly verified: boolean;
+    readonly plusUntil: string | null;
+    readonly solved: number;
+    readonly submissions: number;
+    readonly lastActiveAt: string | null;
+  }[];
 }

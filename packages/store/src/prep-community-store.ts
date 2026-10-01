@@ -233,6 +233,24 @@ export class PrepCommunityStore {
     });
   }
 
+  /** The companies a learner is aiming for: their ids. */
+  async targets(scope: PracticeScope & { readonly actor: "learner" }): Promise<readonly string[]> {
+    if (scope.learnerId === null) return [];
+    return scoped(this.#sql, scope, async (tx) =>
+      (await tx.query<{ company_id: string }>(`SELECT company_id FROM prep_targets WHERE org_id = $1 AND learner_id = $2 ORDER BY created_at`, [scope.orgId, scope.learnerId])).map(
+        (r) => r.company_id,
+      ),
+    );
+  }
+
+  async setTarget(scope: PracticeScope & { readonly actor: "learner"; readonly learnerId: string }, companyId: string, on: boolean): Promise<void> {
+    await scoped(this.#sql, scope, (tx) =>
+      on
+        ? tx.query(`INSERT INTO prep_targets (org_id, learner_id, company_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [scope.orgId, scope.learnerId, companyId])
+        : tx.query(`DELETE FROM prep_targets WHERE org_id = $1 AND learner_id = $2 AND company_id = $3`, [scope.orgId, scope.learnerId, companyId]),
+    );
+  }
+
   async reports(scope: PracticeScope, companyId?: string): Promise<readonly CompanyReport[]> {
     return scoped(this.#sql, scope, async (tx) =>
       (

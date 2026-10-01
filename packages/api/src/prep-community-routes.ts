@@ -69,6 +69,7 @@ const experience = z.object({
   mine: z.boolean(),
   at: z.string(),
 });
+const readiness = z.object({ solved: z.number(), of: z.number(), percent: z.number() });
 const companyCard = z.object({ slug: z.string(), name: z.string(), problems: z.number().describe("Problems asked in the last 180 days."), experiences: z.number() });
 const companyPage = z.object({
   slug: z.string(),
@@ -79,7 +80,9 @@ const companyPage = z.object({
   problems: z
     .array(z.object({ slug: z.string(), title: z.string(), difficulty, tags: z.array(z.string()).readonly(), times: z.number(), lastAsked: z.string(), solved: z.boolean() }))
     .readonly(),
-  locked: z.number().describe("More problems in this window, which come with Plus."),
+  locked: z.number().describe("More problems in this window, which come with Plus or a Company Pass."),
+  readiness: readiness.nullable().describe("Signed in: of the company's 50 most asked problems in the last 180 days, how many are solved."),
+  target: z.boolean().describe("Signed in: the learner aims for this company."),
   topics: z.array(z.object({ tag: z.string(), problems: z.number() })).readonly(),
   difficulty: z.object({ easy: z.number(), medium: z.number(), hard: z.number() }),
   experiences: z.array(experience).readonly(),
@@ -221,6 +224,64 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
       const { site, learner } = await maybe(request);
       const w = request.query.window;
       return reply.send(await community.company(site, request.params.company, learner, w === "all" ? "all" : (Number(w) as 30 | 60 | 180)));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/companies/targets",
+    {
+      schema: {
+        tags: PREP,
+        summary: "The companies I aim for, and how ready I am for each",
+        security: LEARNER,
+        params: siteParams,
+        response: { 200: z.object({ targets: z.array(z.object({ slug: z.string(), name: z.string(), readiness })).readonly() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send({ targets: await community.targets(who.site, who.learner) });
+    },
+  );
+
+  routes.put(
+    "/practice/:site/companies/:company/target",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Aim for a company, or stop",
+        description: "Ten companies at most. A study plan started afterwards puts their unsolved problems in its last days.",
+        security: LEARNER,
+        params: siteParams.extend({ company: z.string().min(1).max(80) }),
+        body: z.object({ on: z.boolean() }),
+        response: { 200: S.okResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      await community.setTarget(who.site, who.learner, request.params.company, request.body.on);
+      return reply.send({ ok: true });
+    },
+  );
+
+  routes.post(
+    "/practice/:site/companies/:company/start",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Start this company's list",
+        description: "Aims for the company, and saves its most asked problems (the last 180 days, 50 at most) to a list of its name: all of them with Plus or a Company Pass, the five most asked without.",
+        security: LEARNER,
+        params: siteParams.extend({ company: z.string().min(1).max(80) }),
+        response: { 200: z.object({ list: z.string(), added: z.number(), locked: z.number() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await community.startList(who.site, who.learner, request.params.company));
     },
   );
 

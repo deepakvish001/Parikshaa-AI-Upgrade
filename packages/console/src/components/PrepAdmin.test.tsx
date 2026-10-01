@@ -133,6 +133,16 @@ describe("Plus", () => {
     await user.type(within(form).getByLabelText("Price, ₹"), "499");
     await user.click(within(form).getByRole("button", { name: "Add plan" }));
     await waitFor(() => expect(saved).toEqual([{ title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 49_900, active: true }]));
+    // A Company Pass opens the company lists alone, for its days.
+    await user.clear(within(form).getByLabelText("Plan name"));
+    await user.type(within(form).getByLabelText("Plan name"), "Company Pass, a month");
+    await user.selectOptions(within(form).getByLabelText("Kind"), "company");
+    await user.clear(within(form).getByLabelText("Days"));
+    await user.type(within(form).getByLabelText("Days"), "30");
+    await user.clear(within(form).getByLabelText("Credits"));
+    await user.type(within(form).getByLabelText("Credits"), "0");
+    await user.click(within(form).getByRole("button", { name: "Add plan" }));
+    await waitFor(() => expect(saved[1]).toMatchObject({ title: "Company Pass, a month", kind: "company", days: 30, credits: 0 }));
 
     await user.selectOptions(await screen.findByLabelText("Learner"), "l1");
     await user.click(screen.getByRole("button", { name: "Give Plus" }));

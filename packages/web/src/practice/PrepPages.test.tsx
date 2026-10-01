@@ -67,6 +67,8 @@ const home = {
   plan,
   continue: { slug: "dsa-basics", title: "DSA Basics", items: 30, done: 1, next: { kind: "problem", slug: "two-sum", title: "Two sum" } },
   solved: 57,
+  frozenToday: false,
+  freezesLeft: 2,
 };
 
 beforeEach(() => {
@@ -147,6 +149,14 @@ describe("the dashboard", () => {
     expect(screen.getByText("3 problems due for revision")).toBeTruthy();
   });
 
+  it("says how ready the learner is for each company they aim for", async () => {
+    routes["GET /practice/nit-practice/companies/targets"] = () => ({ body: { targets: [{ slug: "acme", name: "Acme", readiness: { solved: 12, of: 50, percent: 24 } }] } });
+    open("/practice/nit-practice/home");
+    const card = await screen.findByRole("region", { name: "Your target companies" });
+    expect(within(card).getByRole("link", { name: "Acme" }).getAttribute("href")).toBe("/practice/nit-practice/companies/acme");
+    expect(within(card).getByText("24% ready (12/50)")).toBeTruthy();
+  });
+
   it("asks a learner without a plan to make one", async () => {
     routes["GET /practice/nit-practice/home"] = () => ({ body: { ...home, plan: null, checkin: 0 } });
     open("/practice/nit-practice/home");
@@ -199,6 +209,24 @@ describe("the plan", () => {
     expect(started).toMatchObject({ track: "dsa-basics", dailyMinutes: 150, offDays: [0] });
   });
 
+  it("lets the learner pick target companies while planning", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    routes["GET /practice/nit-practice/companies"] = () => ({ body: { companies: [{ slug: "acme", name: "Acme", problems: 9, experiences: 0 }, { slug: "zeta", name: "Zeta", problems: 4, experiences: 1 }] } });
+    let aimed: { slug: string; name: string; readiness: object }[] = [{ slug: "zeta", name: "Zeta", readiness: { solved: 0, of: 4, percent: 0 } }];
+    routes["GET /practice/nit-practice/companies/targets"] = () => ({ body: { targets: aimed } });
+    routes["PUT /practice/nit-practice/companies/acme/target"] = () => {
+      aimed = [...aimed, { slug: "acme", name: "Acme", readiness: { solved: 0, of: 9, percent: 0 } }];
+      return { body: { ok: true } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan");
+    const zeta = await screen.findByRole("checkbox", { name: "Zeta" });
+    expect((zeta as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByRole("checkbox", { name: "Acme" }));
+    await waitFor(() => expect((screen.getByRole("checkbox", { name: "Acme" }) as HTMLInputElement).checked).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")).toMatchObject({ path: "/practice/nit-practice/companies/acme/target", body: { on: true } });
+  });
+
   it("ticks a task of the learner's own; a problem's task is done by solving it", async () => {
     routes["PUT /practice/nit-practice/plan/tasks/t3"] = () => ({ body: { ok: true } });
     const user = userEvent.setup();
@@ -207,6 +235,132 @@ describe("the plan", () => {
     expect(screen.queryByRole("checkbox", { name: "Two sum" })).toBeNull();
     await user.click(screen.getByRole("checkbox", { name: "Update my resume" }));
     await waitFor(() => expect(calls.find((c) => c.method === "PUT")?.body).toEqual({ done: true }));
+  });
+});
+
+describe("the end of a sprint, and a day off", () => {
+  it("takes today off from the dashboard, after asking", async () => {
+    let frozen = false;
+    routes["GET /practice/nit-practice/home"] = () => ({ body: { ...home, frozenToday: frozen, freezesLeft: frozen ? 1 : 2 } });
+    routes["POST /practice/nit-practice/streak/freeze"] = () => {
+      frozen = true;
+      return { body: { day: "2026-10-05", freezesLeft: 1, moved: 2 } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/home");
+    await user.click(await screen.findByRole("button", { name: /Take today off: your streak stays, 2 days off left/ }));
+    await user.click(screen.getByRole("button", { name: "Yes" }));
+    expect(await screen.findByText("Today off")).toBeTruthy();
+  });
+
+  it("hands in a sprint's quiz and says what comes back to revise", async () => {
+    routes["GET /practice/nit-practice/plan/sprints/1/quiz"] = () => ({
+      body: {
+        sprint: 1,
+        open: true,
+        passPercent: 70,
+        count: 2,
+        sittings: [],
+        questions: [
+          { slug: "stable", title: "Stable sort", question: { kind: "mcq", stem: "Which sort is **stable**?", options: ["quick", "merge"] } },
+          { slug: "bits", title: "Bits", question: { kind: "numeric", stem: "Bits in a byte?" } },
+        ],
+      },
+    });
+    routes["POST /practice/nit-practice/plan/sprints/1/quiz"] = () => ({ body: { score: 1, total: 2, passed: false, wrong: ["bits"], revise: 1, reward: { coins: 0, reasons: [] } } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/sprints/1/quiz");
+    await user.click(await screen.findByRole("radio", { name: "merge" }));
+    await user.type(screen.getByRole("textbox", { name: "Bits" }), "7");
+    await user.click(screen.getByRole("button", { name: "Hand in" }));
+    expect(await screen.findByText("1 of 2. 1 questions are back for revision, starting today.")).toBeTruthy();
+    expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/quiz"))!.body).toEqual({ answers: { stable: "1", bits: "7" } });
+  });
+
+  it("gathers a sprint's notes on one page", async () => {
+    routes["GET /practice/nit-practice/plan/sprints/2/notes"] = () => ({
+      body: { sprint: 2, items: [{ kind: "lesson", slug: "heaps", title: "Heaps", note: "Smallest on **top**." }, { kind: "problem", slug: "kth", title: "Kth largest", note: null }] },
+    });
+    open("/practice/nit-practice/sprints/2/notes");
+    const page = await screen.findByRole("article", { name: "Sprint 2 notes" });
+    expect(page.textContent).toContain("Smallest on top.");
+    expect(page.textContent).toContain("No note yet.");
+  });
+});
+
+describe("notes", () => {
+  it("drafts a note on a lesson with Sahayak, into the box, and saves it only when asked", async () => {
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "A heap.", videoUrl: null, estMinutes: 20, done: false, locked: false } });
+    routes["GET /practice/nit-practice/notes/lesson/heaps"] = () => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: "Mine first.", updatedAt: "2026-10-01T00:00:00Z" } });
+    routes["POST /practice/nit-practice/tutor/notes"] = () => ({ body: { id: "t1", mode: "notes", hintLevel: null, answer: "## Key ideas\nSmallest at the root.", credits: 15, createdAt: "2026-10-05T04:00:00Z" } });
+    routes["PUT /practice/nit-practice/notes/lesson/heaps"] = (init) => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: (JSON.parse(String(init.body)) as { body: string }).body, updatedAt: "2026-10-05T04:00:00Z" } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/lessons/heaps");
+    await user.click(await screen.findByRole("button", { name: /Draft with Sahayak/ }));
+    expect(await screen.findByText("Sahayak's draft is in the box. Change it, then save.")).toBeTruthy();
+    expect(calls.find((c) => c.path === "/practice/nit-practice/tutor/notes")!.body).toEqual({ lesson: "heaps", replyIn: "en" });
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
+    const box = screen.getByRole("textbox", { name: /My notes/ }) as HTMLTextAreaElement;
+    expect(box.value).toBe("Mine first.\n\n## Key ideas\nSmallest at the root.");
+    await user.click(screen.getByRole("button", { name: "Save note" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PUT")!.body).toEqual({ body: "Mine first.\n\n## Key ideas\nSmallest at the root." }));
+  });
+
+  it("prints a track's notes, module by module", async () => {
+    routes["GET /practice/nit-practice/notes"] = () => ({ body: { notes: [] } });
+    routes["GET /practice/nit-practice/notes/book"] = (_init, url) => ({
+      body: {
+        track: { slug: url.searchParams.get("track"), title: "DSA Basics" },
+        modules: [{ title: "Arrays", notes: [{ kind: "problem", slug: "two-sum", title: "Two sum", body: "Use a map." }] }],
+        topics: [{ title: "Two pointers", body: "Ends move in." }],
+      },
+    });
+    const print = vi.fn();
+    window.print = print;
+    const user = userEvent.setup();
+    open("/practice/nit-practice/notes");
+    const go = await screen.findByRole("link", { name: /Open to print/ });
+    expect(go.getAttribute("href")).toBe("/practice/nit-practice/notes/print?track=dsa-basics");
+    await user.click(go);
+    expect(await screen.findByRole("heading", { name: "DSA Basics", level: 1 })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Arrays", level: 2 })).toBeTruthy();
+    expect(screen.getByText("Use a map.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Topic notes", level: 2 })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: /Print or save as PDF/ }));
+    expect(print).toHaveBeenCalled();
+    expect(parseRoute("/practice/nit-practice/notes/print", "?track=dsa-basics")).toEqual({ page: "notebook", track: "dsa-basics" });
+  });
+});
+
+describe("the daily reminder", () => {
+  it("is turned on from the plan, at the hour chosen", async () => {
+    let saved: unknown = null;
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: false, hour: 19, email: true } });
+    routes["PUT /practice/nit-practice/reminders"] = (init) => {
+      saved = JSON.parse(String(init.body));
+      return { body: saved };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan");
+    await user.click(await screen.findByRole("checkbox", { name: /Email me when today's tasks are not done/ }));
+    await waitFor(() => expect(saved).toEqual({ enabled: true, hour: 19 }));
+    await user.selectOptions(screen.getByRole("combobox", { name: /At/ }), "7");
+    await waitFor(() => expect(saved).toEqual({ enabled: true, hour: 7 }));
+  });
+
+  it("is not offered where the server cannot send email", async () => {
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: false, hour: 19, email: false } });
+    open("/practice/nit-practice/plan");
+    await screen.findByRole("heading", { name: "Study plan: DSA Basics" });
+    expect(screen.queryByRole("heading", { name: "Daily reminder" })).toBeNull();
+  });
+
+  it("is turned off by the link in its email, without signing in", async () => {
+    localStorage.clear();
+    routes["POST /practice/nit-practice/reminders/off"] = () => ({ body: { off: true } });
+    open("/practice/nit-practice/reminders?off=l1.abc");
+    expect(await screen.findByText(/Daily reminders are off/)).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/reminders/off"))!.body).toEqual({ token: "l1.abc" });
   });
 });
 
@@ -324,7 +478,8 @@ describe("Plus", () => {
         monthlyCredits: 100,
         tutor: true,
         checkout: true,
-        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900 }],
+        invoices: true,
+        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900, taxPaise: 15_239 }],
       },
     });
     routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [{ delta: 100, reason: "monthly", at: "2026-10-05T04:00:00Z" }] } });
@@ -350,11 +505,106 @@ describe("Plus", () => {
     open("/practice/nit-practice/plus");
     expect(await screen.findByText("₹999")).toBeTruthy();
     expect(screen.getByText("90 days of Plus")).toBeTruthy();
+    expect(screen.getByText("₹846.61 + ₹152.39 GST (18%)")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Buy for ₹999" }));
     expect(await screen.findByText("Paid. Thank you!")).toBeTruthy();
     expect(opened).toMatchObject({ key: "rzp_test", order_id: "order_1", amount: 99_900 });
     expect(calls.find((c) => c.path.endsWith("/plus/confirm"))!.body).toEqual({ orderId: "order_1", paymentId: "pay_1", signature: "sig" });
     delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  it("takes the coupon an affiliate's link brought, prices every plan with it, and buys with it and the invoice details", async () => {
+    routes["GET /practice/nit-practice/plus"] = () => ({
+      body: {
+        enabled: true,
+        active: false,
+        until: null,
+        freeModules: 1,
+        monthlyCredits: 100,
+        tutor: true,
+        checkout: true,
+        invoices: true,
+        products: [{ id: "pr1", title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900, taxPaise: 15_239 }],
+      },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({ body: { orders: [] } });
+    routes["POST /practice/nit-practice/plus/quote"] = (init) => {
+      const { coupon } = JSON.parse(String(init.body)) as { coupon: string };
+      return coupon === "LAUNCH20"
+        ? { body: { productId: "pr1", title: "Plus, 3 months", listPaise: 99_900, discountPaise: 19_980, pricePaise: 79_920, taxPaise: 12_191, coupon: "LAUNCH20" } }
+        : { status: 422, body: { error: "coupon_invalid", message: "That coupon code is not valid" } };
+    };
+    routes["POST /practice/nit-practice/plus/checkout"] = () => ({ status: 201, body: { keyId: "rzp_test", orderId: "order_1", amountPaise: 79_920, title: "Plus, 3 months", learner: { name: "Asha Rao", email: "asha@example.com" } } });
+    routes["POST /practice/nit-practice/plus/confirm"] = () => ({ body: { order: { status: "paid" }, plus: { active: true, until: "2027-01-03T04:00:00Z" } } });
+    class FakeCheckout {
+      constructor(readonly options: Record<string, unknown>) {}
+      on() {}
+      open() {
+        (this.options["handler"] as (r: object) => void)({ razorpay_order_id: "order_1", razorpay_payment_id: "pay_1", razorpay_signature: "sig" });
+      }
+    }
+    (window as { Razorpay?: unknown }).Razorpay = FakeCheckout;
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus?ref=launch20");
+    expect(await screen.findByText("You save ₹199.80")).toBeTruthy();
+    // The link's code is kept for checkout, and taken out of the address.
+    expect(window.location.search).toBe("");
+    expect(screen.getByRole("textbox", { name: /Have a coupon/ })).toHaveProperty("value", "LAUNCH20");
+    await user.selectOptions(screen.getByLabelText("Your state"), "27");
+    await user.click(screen.getByRole("button", { name: "Buy for ₹799.20" }));
+    expect(await screen.findByText("Paid. Thank you!")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/plus/checkout"))!.body).toEqual({ productId: "pr1", coupon: "LAUNCH20", stateCode: "27" });
+    // Used: not offered again.
+    expect(localStorage.getItem("parikshaa.ref.nit-practice")).toBeNull();
+
+    // A code no plan takes says why.
+    await user.clear(screen.getByRole("textbox", { name: /Have a coupon/ }));
+    await user.type(screen.getByRole("textbox", { name: /Have a coupon/ }), "nope1");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByText("That coupon code is not valid")).toBeTruthy();
+    delete (window as { Razorpay?: unknown }).Razorpay;
+  });
+
+  it("lists each order with its invoice, and opens the invoice to print", async () => {
+    routes["GET /practice/nit-practice/plus"] = () => ({ body: { enabled: true, active: true, until: "2027-01-03T04:00:00Z", freeModules: 1, monthlyCredits: 100, tutor: true, checkout: true, invoices: true, products: [] } });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({
+      body: {
+        orders: [
+          { id: "o1", title: "Plus, 3 months", days: 90, credits: 1000, listPaise: 99_900, coupon: "LAUNCH20", discountPaise: 19_980, amountPaise: 79_920, taxPaise: 12_191, status: "paid", createdAt: "2026-10-05T04:00:00Z", paidAt: "2026-10-05T04:01:00Z", invoice: "PKP/2627/000001" },
+        ],
+      },
+    });
+    routes["GET /practice/nit-practice/invoices/PKP/2627/000001"] = () => ({
+      body: {
+        number: "PKP/2627/000001",
+        issuedAt: "2026-10-05T04:01:00Z",
+        document: {
+          title: "Tax Invoice",
+          number: "PKP/2627/000001",
+          date: "5 Oct 2026",
+          supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru 560025", state: "Karnataka", sac: "998399" },
+          buyer: { legalName: "Asha Rao", gstin: null, state: "Maharashtra" },
+          placeOfSupply: { code: "27", state: "Maharashtra" },
+          lines: [{ description: "Plus, 3 months: Plus for 90 days and 1000 AI credits", quantity: 1, sac: "998399", amountPaise: 67_729 }],
+          taxablePaise: 67_729,
+          taxes: [{ name: "IGST", ratePercent: 18, amountPaise: 12_191 }],
+          totalPaise: 79_920,
+          totalInWords: "Rupees Seven Hundred Ninety Nine and Twenty Paise Only",
+          note: "Coupon LAUNCH20: ₹199.80 off the list price of ₹999.00.",
+        },
+      },
+    });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus");
+    expect(await screen.findByText(/coupon LAUNCH20, ₹199.80 off/)).toBeTruthy();
+    await user.click(screen.getByRole("link", { name: /Invoice PKP\/2627\/000001/ }));
+    const invoice = await screen.findByRole("article", { name: "Tax Invoice PKP/2627/000001" });
+    expect(invoice.textContent).toContain("IGST @ 18%");
+    expect(invoice.textContent).toContain("₹799.20");
+    expect(invoice.textContent).toContain("Rupees Seven Hundred Ninety Nine and Twenty Paise Only");
+    expect(screen.getByRole("button", { name: /Print or save as PDF/ })).toBeTruthy();
   });
 
   it("shows a locked lesson by name, with the way to Plus", async () => {
