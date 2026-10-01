@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
-import { attemptId, examId, orgId } from "@parikshaa/core";
+import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
@@ -210,7 +210,7 @@ export function assemble(o: AssembleOptions): {
   });
   const recheckStore = new RecheckStore(o.sql);
   const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
-  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, paperCopies: (orgId, examId) => scriptStore.forExam(orgId as OrgId, examId), releases: recheckStore });
   const proctorService = new ProctorService({ store, proctor: proctorStore, exams: service });
   proxy = new ProxyService({
     store: new ProxyStore(o.sql),

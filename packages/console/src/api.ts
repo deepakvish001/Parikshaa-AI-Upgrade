@@ -633,6 +633,8 @@ export interface ResultRow {
   readonly sections?: readonly SectionScore[];
   /** Against the exam's cut-off, once graded; null without one. */
   readonly outcome?: Outcome | null;
+  /** Marks from a handwritten copy checked here: no online attempt, no scorecard. */
+  readonly paper?: true;
 }
 
 export type Outcome = "qualified" | "failed";

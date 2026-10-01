@@ -408,9 +408,13 @@ function CandidateTable({ rows, onReport }: { rows: Results["rows"]; onReport: (
                     </td>
                   ) : null}
                   <td className="row-end">
-                    <button type="button" className="quiet" onClick={() => onReport(r.attemptId)}>
-                      Scorecard
-                    </button>
+                    {r.paper === true ? (
+                      <span className="badge muted">Paper copy</span>
+                    ) : (
+                      <button type="button" className="quiet" onClick={() => onReport(r.attemptId)}>
+                        Scorecard
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

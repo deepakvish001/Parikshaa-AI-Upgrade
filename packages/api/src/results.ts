@@ -3,6 +3,7 @@ import {
   cohortAnalytics,
   decodeCodeAnswer,
   examId,
+  outcomeOf,
   percentileOf,
   foldAttempt,
   paperOf,
@@ -39,6 +40,19 @@ export interface ResultRow extends AttemptResult {
   readonly ref: string;
   readonly name: string;
   readonly email: string | null;
+  /** Marks from a handwritten copy, checked here (CL63): no online attempt, no scorecard of its own. */
+  readonly paper?: true;
+}
+
+/** A checked handwritten copy, as results read it. */
+export interface PaperCopy {
+  readonly id: string;
+  readonly candidateRef: string;
+  readonly candidateName: string;
+  readonly status: "uploaded" | "checked" | "moderated" | "disputed";
+  readonly marks: Readonly<Record<string, { readonly score: number }>> | null;
+  readonly finalTotal: number | null;
+  readonly checkedAt: string | null;
 }
 
 /** The exam, with its qualifying mark for the charts to draw. */
@@ -138,6 +152,7 @@ export class ResultsService {
   readonly #whatsapp: boolean;
   readonly #releases: RecheckStore | null;
   readonly #now: () => number;
+  readonly #paperCopies: ((orgId: string, examId: string) => Promise<readonly PaperCopy[]>) | null;
 
   constructor(options: {
     readonly store: LedgerStore;
@@ -151,8 +166,11 @@ export class ResultsService {
     readonly whatsapp?: boolean;
     /** Where a release is recorded, so candidates see their result and may ask for a recheck. */
     readonly releases?: RecheckStore | null;
+    /** An exam's handwritten copies, whose checked marks count as results (CL63). */
+    readonly paperCopies?: (orgId: string, examId: string) => Promise<readonly PaperCopy[]>;
     readonly now?: () => number;
   }) {
+    this.#paperCopies = options.paperCopies ?? null;
     this.#proctor = options.proctor ?? null;
     this.#store = options.store;
     this.#invitations = options.invitations;
@@ -305,6 +323,39 @@ export class ResultsService {
         name: invitation?.name ?? "",
         email: invitation?.email ?? null,
       });
+    }
+    // A paper sat on paper: each checked copy is that candidate's result. A
+    // disputed copy waits for its head examiner; one not yet checked has no marks.
+    if (this.#paperCopies !== null) {
+      const online = new Set(rows.map((r) => r.ref));
+      const questions = allQuestions(definition);
+      const maxTotal = questions.reduce((n, q) => n + q.maxScore, 0);
+      for (const copy of await this.#paperCopies(actor.orgId, examId)) {
+        if ((copy.status !== "checked" && copy.status !== "moderated") || copy.marks === null || copy.finalTotal === null || online.has(copy.candidateRef)) continue;
+        const scores = Object.fromEntries(questions.map((q) => [q.id as string, { score: copy.marks?.[q.id]?.score ?? 0, max: q.maxScore }]));
+        const percent = maxTotal === 0 ? null : Math.round((copy.finalTotal * 1000) / maxTotal) / 10;
+        const at = copy.checkedAt === null ? 0 : Date.parse(copy.checkedAt);
+        rows.push({
+          attemptId: `paper:${copy.id}`,
+          candidateId: copy.candidateRef,
+          state: "graded",
+          total: copy.finalTotal,
+          maxTotal,
+          percent,
+          startedAt: at,
+          submittedAt: at,
+          durationMs: null,
+          scores,
+          probes: { asked: 0, replied: 0, verdicts: {} },
+          voidReason: null,
+          sections: [],
+          outcome: outcomeOf(definition.policy.cutoff, percent, []),
+          ref: copy.candidateRef,
+          name: copy.candidateName,
+          email: null,
+          paper: true,
+        });
+      }
     }
     return { exam: examHead(definition), rows, analytics: cohortAnalytics(rows, definition) };
   }

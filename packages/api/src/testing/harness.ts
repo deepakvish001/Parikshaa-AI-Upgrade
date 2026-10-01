@@ -312,7 +312,7 @@ export async function wire(
     identity,
     mailer: options.mailer ?? null,
     whatsapp: options.whatsapp ?? false,
-    releases: recheckStore,
+    paperCopies: (orgId, examId) => scriptStore.forExam(orgId as OrgId, examId), releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const proctorService = new ProctorService({
