@@ -4,6 +4,7 @@ import { ArrowLeft, BriefcaseBusiness, Copy, Download, Link2, Pencil, Plus, Sear
 import { Drawer, TabPanel, Tabs, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, DRIVE_STAGES, type ConsoleClient, type Drive, type DriveDraft, type DriveStage, type StudentImport, type StudentRow } from "../api.ts";
 import "./Placement.css";
+import { Colleges, Offers } from "./DriveNetwork.tsx";
 import { Banner, DropZone, EmptyState, FigureStrip, PageActions, RowMenu, SkeletonRows, StatBar } from "./kit.tsx";
 
 /**
@@ -651,6 +652,8 @@ function DriveView({
       </section>
 
       <ApplyLink client={client} id={id} link={detail.data.applyLink ?? null} openToNew={drive.openToNew ?? false} onChange={refresh} />
+      <Colleges client={client} driveId={id} colleges={detail.data.colleges ?? []} onChange={refresh} />
+      {applications.length === 0 || detail.data.offers === undefined ? null : <Offers client={client} driveId={id} figures={detail.data.offers} applications={applications} onChange={refresh} />}
 
       <section className="card" aria-label="Students in the drive">
         {applications.length === 0 ? (

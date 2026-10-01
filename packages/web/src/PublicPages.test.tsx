@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApplyPage, InterviewPage, ShortlistPage } from "./components/PublicPages.tsx";
+import { ApplyPage, InterviewPage, OfferPage, ShortlistPage } from "./components/PublicPages.tsx";
 import { PreferencesProvider } from "./i18n.tsx";
 
 /** Pages opened from a link with no account. */
@@ -139,5 +139,51 @@ describe("a candidate's interview room", () => {
       </PreferencesProvider>,
     );
     expect(await screen.findByRole("heading", { name: "This interview link does not work" })).toBeInTheDocument();
+  });
+});
+
+describe("a candidate's offer", () => {
+  const offer = { from: "Zoho", company: "Zoho", role: "Member Technical Staff", location: "Chennai", candidateName: "Arun", ctcLpa: 8.4, joiningDate: "2027-07-01", note: "Bring your ID", response: null, respondedAt: null, open: true };
+
+  it("shows the offer, and records an accept only once it is confirmed", async () => {
+    let answered: string | null = null;
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        answered = (JSON.parse(String(init.body)) as { response: string }).response;
+        return json({ response: answered });
+      }
+      return json({ ...offer, response: answered });
+    });
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <OfferPage code="org-a.abc" />
+      </PreferencesProvider>,
+    );
+    const page = await screen.findByRole("region", { name: "Offer" });
+    expect(page).toHaveTextContent("₹8.4 lakh a year");
+    expect(page).toHaveTextContent("Bring your ID");
+    await user.click(screen.getByRole("button", { name: "Accept the offer" }));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await user.click(screen.getByRole("button", { name: "Yes, accept" }));
+    expect(await screen.findByText(/You accepted this offer/)).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("/api/offers/org-a.abc/response", expect.objectContaining({ method: "POST" }));
+  });
+});
+
+describe("a college's link in a company's drive", () => {
+  it("names the college, and asks for the roll number there", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ institution: "Zoho", company: "Zoho", role: "MTS", ctcLpa: null, location: "", description: "", applyBy: null, eligibility: {}, openToNew: true, college: "PSG Tech", closed: false })),
+    );
+    render(
+      <PreferencesProvider>
+        <ApplyPage code="org-a.c_x" />
+      </PreferencesProvider>,
+    );
+    expect(await screen.findByText("Zoho · campus drive for PSG Tech")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Roll number at PSG Tech" })).toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { allQuestions, examId as toExamId, orgId as toOrgId } from "@parikshaa/core";
 import { indianMobile } from "./candidate-import.js";
-import { eligible, staffScope, STAGES, type IdentityStore, type QuestionBank, type Application, type Drive, type DriveDraft, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
+import { eligible, staffScope, STAGES, type IdentityStore, type QuestionBank, type Application, type Drive, type DriveCollege, type DriveDraft, type Offer, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
 import type { Channel, InvitationService } from "./invitation-service.js";
 import type { ResultsService } from "./results.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
@@ -24,9 +24,11 @@ export class ImportRejected extends Error {
   }
 }
 
-export interface DriveApplication extends Application {
+export interface DriveApplication extends Omit<Application, "offer"> {
   /** The student's result in the drive's test, once graded there. */
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
+  /** An offer sent with a link, and the link. */
+  readonly offer?: Offer & { readonly link: string };
 }
 
 /** Below this overall percentage across recent tests, a student is listed for extra help. */
@@ -59,6 +61,20 @@ export interface DriveDetail {
   readonly eligibleNotAdded: number;
   /** The link students apply with; null when the drive has none. */
   readonly applyLink: string | null;
+  /** For a drive across colleges: each partner college, its own link, and how many applied through it. */
+  readonly colleges: readonly (DriveCollege & { readonly link: string })[];
+  /** Offers sent with a link, and how they stand. */
+  readonly offers: OfferFigures;
+}
+
+export interface OfferFigures {
+  readonly sent: number;
+  readonly accepted: number;
+  readonly declined: number;
+  readonly pending: number;
+  readonly joined: number;
+  /** Accepted, the joining date has passed, and not marked joined. */
+  readonly notJoined: number;
 }
 
 const csvCell = (v: string | number | null) => {
@@ -210,21 +226,128 @@ export class PlacementService {
   async drive(actor: Actor, id: string): Promise<DriveDetail> {
     this.#require(actor);
     const drive = await this.#drive(actor, id);
-    const [applications, students, results] = await Promise.all([
+    const [applications, students, results, colleges] = await Promise.all([
       this.#placement.applications(actor.orgId, id),
       this.#placement.students(actor.orgId),
       drive.examId === null ? null : this.#results.results(actor, toExamId(drive.examId)).catch(() => null),
+      this.#placement.colleges(actor.orgId, id),
     ]);
     const graded = new Map(
       (results?.rows ?? []).filter((r) => r.state === "graded" && r.percent !== null).map((r) => [r.ref, { percent: Math.round(r.percent! * 10) / 10, outcome: r.outcome }] as const),
     );
     const inDrive = new Set(applications.map((a) => a.ref));
+    const today = this.#today();
+    const sent = applications.filter((a) => a.offer !== undefined);
+    const offers: OfferFigures = {
+      sent: sent.length,
+      accepted: sent.filter((a) => a.offer!.response === "accepted").length,
+      declined: sent.filter((a) => a.offer!.response === "declined").length,
+      pending: sent.filter((a) => a.offer!.response === null && a.stage === "offered").length,
+      joined: sent.filter((a) => a.stage === "joined").length,
+      notJoined: sent.filter((a) => a.offer!.response === "accepted" && a.stage === "offered" && a.offer!.joiningDate !== null && a.offer!.joiningDate < today).length,
+    };
     return {
       drive,
-      applications: applications.map((a) => ({ ...a, test: graded.get(a.ref) ?? null })),
+      offers,
+      applications: applications.map(({ offer, ...a }) => ({ ...a, test: graded.get(a.ref) ?? null, ...(offer === undefined ? {} : { offer: { ...offer, link: this.offerLink(actor.orgId, offer.code) } }) })),
       eligibleNotAdded: students.filter((s) => !inDrive.has(s.ref) && eligible(s, drive.eligibility)).length,
       applyLink: drive.applyCode === null ? null : this.applyLink(actor.orgId, drive.applyCode),
+      colleges: colleges.map((c) => ({ ...c, link: this.applyLink(actor.orgId, c.applyCode) })),
     };
+  }
+
+  /**
+   * A partner college for a drive across colleges (V2-12 CO15), with its own
+   * link. Who applies through it is that college's student: their roll number
+   * is prefixed with its short code, so two colleges' numbers never meet.
+   */
+  async addCollege(actor: Actor, driveId: string, request: { readonly name: string; readonly code: string }) {
+    this.#require(actor);
+    await this.#drive(actor, driveId);
+    const code = request.code.trim().toUpperCase();
+    if (!/^[A-Z0-9]{2,12}$/.test(code)) throw new AttemptError("invalid_state", "The short code is 2 to 12 letters or digits, like IITB or NITT");
+    if ((await this.#placement.colleges(actor.orgId, driveId)).some((c) => c.code === code)) throw new AttemptError("invalid_state", `${code} is already a college of this drive`);
+    const college = await this.#placement.addCollege(actor.orgId, {
+      id: this.#newId(),
+      driveId,
+      name: request.name.trim().slice(0, 200),
+      code,
+      applyCode: `c_${randomBytes(9).toString("base64url")}`,
+      createdAt: new Date(this.#now()).toISOString(),
+    });
+    await this.#exams.recordAudit(actor, "drive.college_added", driveId, { college: college.name, code });
+    return { ...college, link: this.applyLink(actor.orgId, college.applyCode) };
+  }
+
+  offerLink(orgId: string, code: string): string {
+    return `${this.#publicUrl}/?offer=${encodeURIComponent(`${orgId}.${code}`)}`;
+  }
+
+  /**
+   * An offer with a link (V2-12 CO33): the student moves to "offered" with the
+   * package, and the link lets them accept or decline it. Sending it again
+   * makes a new link and forgets the old answer. Audited.
+   */
+  async sendOffer(actor: Actor, driveId: string, request: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+    this.#require(actor);
+    const drive = await this.#drive(actor, driveId);
+    if (drive.status === "closed") throw new AttemptError("invalid_state", "This drive is closed: open it again to make an offer");
+    const code = randomBytes(12).toString("base64url");
+    const made = await this.#placement.sendOffer(actor.orgId, driveId, request.ref, {
+      code,
+      ctcLpa: request.ctcLpa,
+      joiningDate: request.joiningDate,
+      note: request.note.trim().slice(0, 2000),
+      by: actor.name,
+      at: new Date(this.#now()),
+    });
+    if (!made) throw new AttemptError("not_found", `${request.ref} is not in this drive`);
+    await this.#exams.recordAudit(actor, "drive.offer_sent", driveId, { ref: request.ref, ctcLpa: request.ctcLpa });
+    return { link: this.offerLink(actor.orgId, code) };
+  }
+
+  async #offer(code: string) {
+    const dot = code.indexOf(".");
+    if (dot < 1) throw new AttemptError("not_found", "This link is not an offer of ours");
+    const orgId = toOrgId(code.slice(0, dot));
+    const found = await this.#placement.offerByCode(orgId, code.slice(dot + 1));
+    if (found === null || found.application.offer === undefined) throw new AttemptError("not_found", "This link is not an offer of ours, or it was replaced by a newer one");
+    return { orgId, ...found, offer: found.application.offer };
+  }
+
+  /** What the candidate's offer link shows. */
+  async offerView(code: string) {
+    const { orgId, drive, application: a, offer } = await this.#offer(code);
+    const org = this.#identity === null ? null : await this.#identity.getOrganisation(orgId);
+    return {
+      from: org?.name ?? "",
+      company: drive.company,
+      role: drive.role,
+      location: drive.location,
+      candidateName: a.name,
+      ctcLpa: a.offerLpa,
+      joiningDate: offer.joiningDate,
+      note: offer.note,
+      response: offer.response,
+      respondedAt: offer.respondedAt,
+      // Withdrawn or replaced: the offer no longer stands.
+      open: a.stage === "offered" || a.stage === "joined",
+    };
+  }
+
+  /** The candidate accepts or declines. Once: a change of mind goes through the hiring team. */
+  async respondToOffer(code: string, response: "accepted" | "declined"): Promise<{ readonly response: "accepted" | "declined" }> {
+    const { orgId, application: a, offer } = await this.#offer(code);
+    if (a.stage !== "offered") throw new AttemptError("invalid_state", "This offer no longer stands");
+    if (offer.response !== null) throw new AttemptError("invalid_state", `You have already ${offer.response} this offer: write to the hiring team to change it`);
+    await this.#placement.respondToOffer(orgId, offer.code, response, new Date(this.#now()));
+    return { response };
+  }
+
+  async removeCollege(actor: Actor, driveId: string, collegeId: string): Promise<void> {
+    this.#require(actor);
+    if (!(await this.#placement.removeCollege(actor.orgId, driveId, collegeId))) throw new AttemptError("not_found", "No such college in this drive");
+    await this.#exams.recordAudit(actor, "drive.college_removed", driveId, { collegeId });
   }
 
   /** Put students in the drive: those named, or every eligible student not in it yet. Names not on file are refused. */
@@ -411,18 +534,25 @@ export class PlacementService {
     return { link: code === null ? null : this.applyLink(actor.orgId, code) };
   }
 
-  async #byCode(code: string): Promise<{ orgId: ReturnType<typeof toOrgId>; drive: Drive }> {
+  async #byCode(code: string): Promise<{ orgId: ReturnType<typeof toOrgId>; drive: Drive; college: DriveCollege | null }> {
     const dot = code.indexOf(".");
     if (dot < 1) throw new AttemptError("not_found", "This link is not a drive of ours");
     const orgId = toOrgId(code.slice(0, dot));
-    const drive = await this.#placement.driveByCode(orgId, code.slice(dot + 1));
+    const rest = code.slice(dot + 1);
+    if (rest.startsWith("c_")) {
+      const found = await this.#placement.driveByCollegeCode(orgId, rest);
+      if (found === null) throw new AttemptError("not_found", "This link is not a drive of ours, or it has been closed");
+      // Through a college's link, anyone from that college may apply: the company has no list of them.
+      return { orgId, drive: { ...found.drive, openToNew: true }, college: found.college };
+    }
+    const drive = await this.#placement.driveByCode(orgId, rest);
     if (drive === null) throw new AttemptError("not_found", "This link is not a drive of ours, or it has been closed");
-    return { orgId, drive };
+    return { orgId, drive, college: null };
   }
 
   /** What the link shows before applying: the drive and who may apply. Never another student. */
   async publicDrive(code: string) {
-    const { orgId, drive } = await this.#byCode(code);
+    const { orgId, drive, college } = await this.#byCode(code);
     const org = this.#identity === null ? null : await this.#identity.getOrganisation(orgId);
     const closed = drive.status === "closed" || (drive.applyBy !== null && drive.applyBy < this.#today());
     return {
@@ -435,6 +565,7 @@ export class PlacementService {
       applyBy: drive.applyBy,
       eligibility: drive.eligibility,
       openToNew: drive.openToNew,
+      college: college?.name ?? null,
       closed,
     };
   }
@@ -451,9 +582,10 @@ export class PlacementService {
    * nothing.
    */
   async apply(code: string, form: Student): Promise<{ readonly status: "applied" | "already" }> {
-    const { orgId, drive } = await this.#byCode(code);
+    const { orgId, drive, college } = await this.#byCode(code);
     if (drive.status === "closed" || (drive.applyBy !== null && drive.applyBy < this.#today())) throw new AttemptError("invalid_state", "Applications to this drive have closed");
-    const ref = form.ref.trim();
+    const given = form.ref.trim();
+    const ref = college === null || given === "" || given.toUpperCase().startsWith(`${college.code}-`) ? given : `${college.code}-${given}`;
     const email = (form.email ?? "").trim().toLowerCase();
     if (ref === "" || email === "") throw new AttemptError("invalid_state", "Give your roll number and email");
     const onFile = (await this.#placement.students(orgId)).find((s) => s.ref.toLowerCase() === ref.toLowerCase());
@@ -465,7 +597,7 @@ export class PlacementService {
       if (!drive.openToNew) throw new AttemptError("not_found", "That roll number is not on the college's list: ask your placement cell to add you");
       const phone = form.phone === null || form.phone.trim() === "" ? null : indianMobile(form.phone);
       if (form.phone !== null && form.phone.trim() !== "" && phone === null) throw new AttemptError("invalid_state", "That is not an Indian mobile number");
-      student = { ...form, ref, email, phone, name: form.name.trim().slice(0, 200), branch: form.branch.trim().slice(0, 100) };
+      student = { ...form, ref, email, phone, name: form.name.trim().slice(0, 200), branch: form.branch.trim().slice(0, 100), college: college?.name ?? null };
       if (student.name === "") throw new AttemptError("invalid_state", "Give your name");
       await this.#placement.register(orgId, student, new Date(this.#now()));
     }
@@ -477,8 +609,23 @@ export class PlacementService {
   /** The drive's students as a spreadsheet, to send the company. Audited: it leaves the system. */
   async exportCsv(actor: Actor, id: string): Promise<{ readonly filename: string; readonly csv: string }> {
     const { drive, applications } = await this.drive(actor, id);
-    const head = ["Roll no.", "Name", "Email", "Phone", "Branch", "Batch", "CGPA", "Backlogs", "Stage", "Test (%)", "Offer (LPA)"];
-    const rows = applications.map((a) => [a.ref, a.name, a.email, a.phone === null ? null : `+${a.phone}`, a.branch, a.batch, a.cgpa, a.backlogs, STAGE_WORDS[a.stage], a.test?.percent ?? null, a.offerLpa]);
+    // A college column only for a drive across colleges.
+    const across = applications.some((a) => (a.college ?? null) !== null);
+    const head = ["Roll no.", "Name", ...(across ? ["College"] : []), "Email", "Phone", "Branch", "Batch", "CGPA", "Backlogs", "Stage", "Test (%)", "Offer (LPA)"];
+    const rows = applications.map((a) => [
+      a.ref,
+      a.name,
+      ...(across ? [a.college ?? null] : []),
+      a.email,
+      a.phone === null ? null : `+${a.phone}`,
+      a.branch,
+      a.batch,
+      a.cgpa,
+      a.backlogs,
+      STAGE_WORDS[a.stage],
+      a.test?.percent ?? null,
+      a.offerLpa,
+    ]);
     await this.#exams.recordAudit(actor, "drive.exported", id, { students: rows.length });
     const slug = `${drive.company}-${drive.role}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
     return { filename: `${slug || "drive"}.csv`, csv: `﻿${[head, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n")}\r\n` };

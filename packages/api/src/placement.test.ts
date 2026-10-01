@@ -275,6 +275,69 @@ describe("applying from a drive's link", () => {
     await call("POST", `/drives/${id}/apply-link`, owner, { open: false });
     expect((await apply(code, { ref: "CS001", email: "ananya@college.test" })).statusCode).toBe(404);
   });
+
+  it("runs one drive across colleges, each with its own link, keeping their roll numbers apart", async () => {
+    const id = (await call("POST", "/drives", owner, { company: "Zoho", role: "Member Technical Staff", eligibility: { minCgpa: 6 } })).json().id;
+    const nitt = (await call("POST", `/drives/${id}/colleges`, owner, { name: "NIT Tiruchirappalli", code: "nitt" })).json();
+    const psg = (await call("POST", `/drives/${id}/colleges`, owner, { name: "PSG Tech", code: "PSG" })).json();
+    expect(nitt).toMatchObject({ code: "NITT", applied: 0 });
+    expect((await call("POST", `/drives/${id}/colleges`, owner, { name: "Again", code: "NITT" })).statusCode).toBe(409);
+    expect((await call("POST", `/drives/${id}/colleges`, owner, { name: "Bad", code: "a b" })).statusCode).toBe(409);
+
+    const shown = (await app.inject({ method: "GET", url: `/apply/${encodeURIComponent(codeOf(nitt.link))}` })).json();
+    expect(shown).toMatchObject({ company: "Zoho", college: "NIT Tiruchirappalli", openToNew: true });
+    const form = { email: "a@nitt.test", name: "Arun", branch: "CSE", batch: 2027, cgpa: 8 };
+    // The same roll number at two colleges is two students.
+    expect((await apply(codeOf(nitt.link), { ref: "21CS001", ...form })).json()).toEqual({ status: "applied" });
+    expect((await apply(codeOf(psg.link), { ref: "21CS001", ...form, email: "b@psg.test", name: "Bala" })).json()).toEqual({ status: "applied" });
+    expect((await apply(codeOf(nitt.link), { ref: "21CS001", ...form })).json()).toEqual({ status: "already" });
+
+    const detail = (await call("GET", `/drives/${id}`, owner)).json();
+    expect(detail.applications.map((a: { ref: string; college: string }) => [a.ref, a.college])).toEqual([
+      ["NITT-21CS001", "NIT Tiruchirappalli"],
+      ["PSG-21CS001", "PSG Tech"],
+    ]);
+    expect(detail.colleges.map((c: { code: string; applied: number }) => [c.code, c.applied])).toEqual([
+      ["NITT", 1],
+      ["PSG", 1],
+    ]);
+    expect((await call("GET", `/drives/${id}/students.csv`, owner)).body).toContain("NITT-21CS001,Arun,NIT Tiruchirappalli");
+
+    await call("DELETE", `/drives/${id}/colleges/${psg.id}`, owner);
+    expect((await apply(codeOf(psg.link), { ref: "21CS002", ...form })).statusCode).toBe(404);
+  });
+});
+
+describe("offers", () => {
+  const offerCode = (link: string) => encodeURIComponent(new URL(link).searchParams.get("offer")!);
+  const open = (method: "GET" | "POST", url: string, payload?: object) => app.inject({ method, url, ...(payload === undefined ? {} : { payload }) });
+
+  it("sends an offer with a link, takes the candidate's answer once, and counts who has not joined", async () => {
+    await call("POST", "/students/import", owner, { csv: SHEET, dryRun: false });
+    const id = (await call("POST", "/drives", owner, { company: "Infosys", role: "Systems Engineer", location: "Mysuru" })).json().id;
+    await call("POST", `/drives/${id}/students`, owner, { refs: ["CS001", "CS002", "EC001"] });
+    expect((await call("POST", `/drives/${id}/offers`, owner, { ref: "ME001", ctcLpa: 3.6 })).statusCode).toBe(404);
+
+    const first = (await call("POST", `/drives/${id}/offers`, owner, { ref: "CS001", ctcLpa: 3.6, joiningDate: "2026-10-01", note: "Report at 9 am" })).json();
+    const second = (await call("POST", `/drives/${id}/offers`, owner, { ref: "CS002", ctcLpa: 3.6, joiningDate: "2027-07-01" })).json();
+    await call("POST", `/drives/${id}/offers`, owner, { ref: "EC001", ctcLpa: 3.6 });
+
+    const shown = (await open("GET", `/offers/${offerCode(first.link)}`)).json();
+    expect(shown).toMatchObject({ company: "Infosys", role: "Systems Engineer", candidateName: "Ananya Iyer", ctcLpa: 3.6, joiningDate: "2026-10-01", note: "Report at 9 am", response: null, open: true });
+    expect((await open("POST", `/offers/${offerCode(first.link)}/response`, { response: "accepted" })).json()).toEqual({ response: "accepted" });
+    expect((await open("POST", `/offers/${offerCode(first.link)}/response`, { response: "declined" })).statusCode).toBe(409);
+    await open("POST", `/offers/${offerCode(second.link)}/response`, { response: "declined" });
+    expect((await open("GET", "/offers/org-a.nope")).statusCode).toBe(404);
+
+    const detail = (await call("GET", `/drives/${id}`, owner)).json();
+    // CS001 accepted and the joining date (1 Oct) has passed without joining; EC001 has not answered.
+    expect(detail.offers).toEqual({ sent: 3, accepted: 1, declined: 1, pending: 1, joined: 0, notJoined: 1 });
+    expect(detail.applications.find((a: { ref: string }) => a.ref === "CS001").offer).toMatchObject({ response: "accepted", link: first.link });
+
+    await call("POST", `/drives/${id}/stage`, owner, { refs: ["CS001"], stage: "joined", offerLpa: 3.6 });
+    expect((await call("GET", `/drives/${id}`, owner)).json().offers).toMatchObject({ joined: 1, notJoined: 0 });
+    expect(JSON.stringify((await call("GET", "/audit", owner)).json())).toContain("drive.offer_sent");
+  });
 });
 
 describe("the placement report", () => {

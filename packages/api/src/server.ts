@@ -278,6 +278,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Handwritten copies", description: "Paper exams checked here: scanned copies, the model's suggested marks, the examiner's marks, moderation by a second examiner, and the marks sheet." },
         { name: "Interviews", description: "Scheduling an interview, watching the candidate's code, notes and the scorecard." },
         { name: "Interview room", description: "The candidate's side of an interview, by its link: the video call link, the problem, and their code as they type it." },
+        { name: "Offer", description: "A candidate's offer, by its link: what it is, and their answer." },
         { name: "Apply", description: "A drive's public link: what a student sees, and applying with their roll number. No account; the link is the proof." },
         { name: "Placement", description: "A placement cell's students on file, and its recruitment drives from eligibility to offer." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },

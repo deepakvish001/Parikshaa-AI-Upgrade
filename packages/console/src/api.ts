@@ -288,6 +288,8 @@ export interface DriveApplication extends Student {
   readonly offerLpa: number | null;
   readonly updatedAt: string;
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
+  readonly college?: string | null;
+  readonly offer?: SentOffer;
 }
 
 export interface Readiness {
@@ -380,6 +382,35 @@ export interface DriveDetail {
   readonly eligibleNotAdded: number;
   /** The link students apply with; null when the drive has none. */
   readonly applyLink?: string | null;
+  /** A company's drive across colleges: each partner college and its own link. */
+  readonly colleges?: readonly DriveCollege[];
+  readonly offers?: OfferFigures;
+}
+
+export interface DriveCollege {
+  readonly id: string;
+  readonly name: string;
+  readonly code: string;
+  readonly applied: number;
+  readonly link: string;
+}
+
+export interface OfferFigures {
+  readonly sent: number;
+  readonly accepted: number;
+  readonly declined: number;
+  readonly pending: number;
+  readonly joined: number;
+  readonly notJoined: number;
+}
+
+export interface SentOffer {
+  readonly link: string;
+  readonly sentAt: string;
+  readonly response: "accepted" | "declined" | null;
+  readonly respondedAt: string | null;
+  readonly joiningDate: string | null;
+  readonly note: string;
 }
 
 export type QuestionKindName = "mcq" | "numeric" | "short" | "code";
@@ -1613,6 +1644,18 @@ export class ConsoleClient {
   }
 
   /** Open the drive's link to apply (also to people not on the list, with `openToNew`), or close it. */
+  addDriveCollege(id: string, college: { readonly name: string; readonly code: string }): Promise<DriveCollege> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/colleges`, { method: "POST", body: JSON.stringify(college) });
+  }
+
+  async removeDriveCollege(id: string, collegeId: string): Promise<void> {
+    await this.#request(`/drives/${encodeURIComponent(id)}/colleges/${encodeURIComponent(collegeId)}`, { method: "DELETE" });
+  }
+
+  sendOffer(id: string, offer: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/offers`, { method: "POST", body: JSON.stringify(offer) });
+  }
+
   setApplyLink(id: string, open: boolean, openToNew = false): Promise<{ readonly link: string | null }> {
     return this.#request(`/drives/${encodeURIComponent(id)}/apply-link`, { method: "POST", body: JSON.stringify({ open, openToNew }) });
   }
