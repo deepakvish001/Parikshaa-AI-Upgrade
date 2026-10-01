@@ -28,6 +28,8 @@ import type { PrepCommunity } from "./prep-community.js";
 import { registerPrepCommunityRoutes } from "./prep-community-routes.js";
 import type { StarterPacks } from "./starter-packs.js";
 import { registerPrepPlusRoutes } from "./prep-plus-routes.js";
+import { registerPrepEngageRoutes } from "./prep-engage-routes.js";
+import type { PrepEngage } from "./prep-engage.js";
 import type { Sahayak } from "./sahayak.js";
 import type { PracticeIdentity } from "./practice-identity.js";
 import { registerPracticeIdentityRoutes } from "./practice-identity-routes.js";
@@ -87,6 +89,8 @@ export interface ServerOptions {
   readonly prep?: PrepService;
   /** Plus, credits and the tutor (ROADMAP §16). Needs `practice`. */
   readonly prepPlus?: { readonly plus: PrepPlus; readonly tutor: Sahayak };
+  /** Daily reminders and the console's analytics. */
+  readonly prepEngage?: PrepEngage;
   /** Companies, interview experiences, the coin store and ratings (ROADMAP §16). Needs `practice`. */
   readonly prepCommunity?: PrepCommunity;
   /** Starter content for practice sites (ROADMAP §16). Needs `prepCommunity`. */
@@ -1209,6 +1213,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       registerPracticeRoutes(routes, { practice: options.practice, service, staff, bearer, throttle, ...(identity === undefined ? {} : { identity }), ...(prep === undefined ? {} : { prep }) });
       if (prep !== undefined) registerPrepRoutes(routes, { practice: options.practice, prep, service, staff, bearer });
       if (options.prepPlus !== undefined) registerPrepPlusRoutes(routes, { practice: options.practice, ...options.prepPlus, service, staff, bearer });
+      if (options.prepEngage !== undefined) registerPrepEngageRoutes(routes, { practice: options.practice, engage: options.prepEngage, staff, bearer });
       if (options.prepCommunity !== undefined) registerPrepCommunityRoutes(routes, { practice: options.practice, community: options.prepCommunity, packs: options.starterPacks, service, staff, bearer });
       if (identity !== undefined) registerPracticeIdentityRoutes(routes, { practice: options.practice, identity, service, bearer, staff });
     }

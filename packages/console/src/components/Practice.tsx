@@ -17,6 +17,7 @@ import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
 
 // Coupons and sales are a manager's, and seldom opened: a chunk of their own.
 const Sales = lazy(() => import("./Sales.tsx").then((m) => ({ default: m.Sales })));
+const Analytics = lazy(() => import("./PrepAnalytics.tsx").then((m) => ({ default: m.PrepAnalyticsPanel })));
 
 /**
  * A practice site (ROADMAP §15): the organisation's problems at
@@ -25,7 +26,7 @@ const Sales = lazy(() => import("./Sales.tsx").then((m) => ({ default: m.Sales }
  * nothing published.
  */
 
-type Tab = "site" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "sales" | "companies" | "experiences" | "store" | "contests" | "learners" | "discussion";
+type Tab = "site" | "analytics" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "sales" | "companies" | "experiences" | "store" | "contests" | "learners" | "discussion";
 
 export interface PracticeCan {
   readonly manage: boolean;
@@ -42,6 +43,7 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
   const [tab, setTab] = useState<Tab>("site");
   const tabs: [Tab, string][] = [
     ["site", "Site"],
+    ["analytics", "Analytics"],
     ["problems", "Problems"],
     ["tracks", "Tracks"],
     ["lessons", "Lessons"],
@@ -80,6 +82,11 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
       {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
       {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
       {tab === "plus" ? <PlusAdmin client={client} canManage={can.manage} /> : null}
+      {tab === "analytics" ? (
+        <Suspense fallback={<p className="notice">Loading…</p>}>
+          <Analytics client={client} />
+        </Suspense>
+      ) : null}
       {tab === "sales" ? (
         <Suspense fallback={<p className="notice">Loading…</p>}>
           <Sales client={client} />

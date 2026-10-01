@@ -4239,3 +4239,29 @@ button.month-day.picked::after {
   margin: var(--space-2) 0 0;
   padding-left: var(--space-5);
 }
+
+/* Practice analytics (PrepAnalytics.tsx) */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+.stat-row dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.stat-row dd {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+.day-bar {
+  display: inline-block;
+  height: 0.6rem;
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+  vertical-align: middle;
+}

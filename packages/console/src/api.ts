@@ -1014,6 +1014,10 @@ export class ConsoleClient {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
 
+  prepAnalytics(): Promise<PrepAnalytics> {
+    return this.#request("/practice-admin/analytics");
+  }
+
   async plusCoupons(): Promise<readonly PlusCoupon[]> {
     return (await this.#request<{ coupons: PlusCoupon[] }>("/practice-admin/plus/coupons")).coupons;
   }
@@ -1815,6 +1819,16 @@ export interface PlusInvoice {
     readonly taxes: readonly { readonly name: string; readonly ratePercent: number; readonly amountPaise: number }[];
     readonly totalPaise: number;
   };
+}
+
+export interface PrepAnalytics {
+  readonly from: string;
+  readonly to: string;
+  readonly funnel: { readonly signedUp: number; readonly startedPlan: number; readonly solvedOne: number; readonly usedTutor: number; readonly bought: number };
+  readonly activation: { readonly cohort: number; readonly activated: number };
+  readonly retention: { readonly d1: { readonly cohort: number; readonly returned: number }; readonly d7: { readonly cohort: number; readonly returned: number } };
+  readonly days: readonly { readonly day: string; readonly active: number; readonly signups: number; readonly solves: number }[];
+  readonly reminders: { readonly enabled: number; readonly sentInWindow: number };
 }
 
 export interface StarterPack {

@@ -49,6 +49,7 @@ const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
 const plusPages = () => import("./PlusPages.tsx");
 const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
+const RemindersOffPage = lazy(() => prep().then((m) => ({ default: m.RemindersOffPage })));
 const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
 const community = () => import("./CommunityPages.tsx");
 const CompaniesPage = lazy(() => community().then((m) => ({ default: m.CompaniesPage })));
@@ -87,6 +88,7 @@ export type Route =
   | { readonly page: "coins" }
   | { readonly page: "plus" }
   | { readonly page: "invoice"; readonly number: string }
+  | { readonly page: "reminders"; readonly token: string | undefined }
   | { readonly page: "companies" }
   | { readonly page: "company"; readonly slug: string }
   | { readonly page: "experiences"; readonly company: string | undefined }
@@ -135,6 +137,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "coins" };
     case "plus":
       return { page: "plus" };
+    case "reminders":
+      return { page: "reminders", token: query.get("off") ?? undefined };
     case "invoices":
       return second === undefined ? { page: "plus" } : { page: "invoice", number: second };
     case "companies":
@@ -394,6 +398,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <LessonPage {...context} slug={route.slug} />
         ) : route.page === "potd" ? (
           <PotdPage {...context} />
+        ) : route.page === "reminders" ? (
+          <RemindersOffPage {...context} token={route.token} />
         ) : route.page === "invoice" ? (
           <InvoicePage {...context} number={route.number} />
         ) : route.page === "plus" ? (

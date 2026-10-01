@@ -334,6 +334,22 @@ export class PrepService {
     };
   }
 
+  /**
+   * What a reminder says: the day's tasks still open, the cards due, the
+   * streak. Read without paying the day's check-in: opening the email is not
+   * opening the dashboard.
+   */
+  async digest(site: PracticeSite, learner: Learner) {
+    const today = this.#today();
+    const [state, cards, plan] = await Promise.all([this.#state(site, learner), this.#store.cards(practiceLearner(site.orgId, learner.id)), this.plan(site, learner)]);
+    return {
+      today,
+      tasks: (plan?.today ?? []).filter((t) => !t.done).map((t) => ({ title: t.title, estMinutes: t.estMinutes })),
+      dueCards: Math.min(REVISE_PER_DAY, cards.filter((c) => c.dueOn <= today).length),
+      streak: this.#streak(state).current,
+    };
+  }
+
   // --- the plan ------------------------------------------------------------------------------------
 
   #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {

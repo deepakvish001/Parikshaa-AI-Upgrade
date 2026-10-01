@@ -210,6 +210,38 @@ describe("the plan", () => {
   });
 });
 
+describe("the daily reminder", () => {
+  it("is turned on from the plan, at the hour chosen", async () => {
+    let saved: unknown = null;
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: false, hour: 19, email: true } });
+    routes["PUT /practice/nit-practice/reminders"] = (init) => {
+      saved = JSON.parse(String(init.body));
+      return { body: saved };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan");
+    await user.click(await screen.findByRole("checkbox", { name: /Email me when today's tasks are not done/ }));
+    await waitFor(() => expect(saved).toEqual({ enabled: true, hour: 19 }));
+    await user.selectOptions(screen.getByRole("combobox", { name: /At/ }), "7");
+    await waitFor(() => expect(saved).toEqual({ enabled: true, hour: 7 }));
+  });
+
+  it("is not offered where the server cannot send email", async () => {
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: false, hour: 19, email: false } });
+    open("/practice/nit-practice/plan");
+    await screen.findByRole("heading", { name: "Study plan: DSA Basics" });
+    expect(screen.queryByRole("heading", { name: "Daily reminder" })).toBeNull();
+  });
+
+  it("is turned off by the link in its email, without signing in", async () => {
+    localStorage.clear();
+    routes["POST /practice/nit-practice/reminders/off"] = () => ({ body: { off: true } });
+    open("/practice/nit-practice/reminders?off=l1.abc");
+    expect(await screen.findByText(/Daily reminders are off/)).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/reminders/off"))!.body).toEqual({ token: "l1.abc" });
+  });
+});
+
 describe("revision", () => {
   it("shows the note on request and sends how it went", async () => {
     routes["GET /practice/nit-practice/revise"] = () => ({

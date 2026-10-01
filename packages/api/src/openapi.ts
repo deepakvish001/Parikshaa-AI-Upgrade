@@ -1,6 +1,7 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore,
+  PrepEngageStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -16,6 +17,7 @@ import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepPlus } from "./prep-plus.js";
+import { PrepEngage } from "./prep-engage.js";
 import { PrepCommunity } from "./prep-community.js";
 import { StarterPacks } from "./starter-packs.js";
 import { Sahayak } from "./sahayak.js";
@@ -98,6 +100,15 @@ export async function specDocument(): Promise<Record<string, unknown>> {
       service: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
     }),
     prepCommunity: new PrepCommunity({ practice: new PracticeStore(unusable), prep: new PrepStore(unusable), store: new PrepCommunityStore(unusable) }),
+    prepEngage: new PrepEngage({
+      store: new PrepEngageStore(unusable),
+      practiceStore: new PracticeStore(unusable),
+      practice,
+      prep: new PrepService({ practice: new PracticeStore(unusable), store: new PrepStore(unusable) }),
+      mailer: null,
+      secret: "x".repeat(40),
+      publicUrl: "https://example.invalid",
+    }),
     prepPlus: (() => {
       const plus = new PrepPlus({ store: new PrepPlusStore(unusable), practice: new PracticeStore(unusable) });
       return { plus, tutor: new Sahayak({ client: null, practice: new PracticeStore(unusable), prep: new PrepStore(unusable), plus }) };

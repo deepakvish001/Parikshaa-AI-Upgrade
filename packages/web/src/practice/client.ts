@@ -431,6 +431,18 @@ export class PracticeClient {
     return this.#post("/plus/checkout", { productId, ...Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== undefined && v !== "")) });
   }
 
+  reminders(): Promise<{ readonly enabled: boolean; readonly hour: number; readonly email: boolean }> {
+    return this.#request("/reminders");
+  }
+
+  saveReminders(prefs: { readonly enabled: boolean; readonly hour: number }): Promise<{ readonly enabled: boolean; readonly hour: number }> {
+    return this.#request("/reminders", { method: "PUT", body: JSON.stringify(prefs) });
+  }
+
+  turnOffReminders(token: string): Promise<{ readonly off: true }> {
+    return this.#post("/reminders/off", { token });
+  }
+
   quote(productId: string, coupon: string): Promise<Quote> {
     return this.#post("/plus/quote", { productId, coupon });
   }

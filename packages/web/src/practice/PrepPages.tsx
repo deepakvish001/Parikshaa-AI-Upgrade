@@ -977,6 +977,7 @@ function PlanView({ client, nav, learner, site }: Signed) {
         </section>
         <FocusTimer client={client} site={site} learner={learner} tasks={pl.today.filter((t) => !t.done)} />
       </div>
+      <ReminderCard client={client} site={site} learner={learner} />
 
       <div className="danger-zone">
         {confirmStop ? (
@@ -996,6 +997,64 @@ function PlanView({ client, nav, learner, site }: Signed) {
         )}
       </div>
     </div>
+  );
+}
+
+/** The daily email: off until turned on, at an hour of the learner's choosing. */
+function ReminderCard({ client, site, learner }: { readonly client: Context["client"]; readonly site: string; readonly learner: Signed["learner"] }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const k = key(site, "reminders", learner.id);
+  const prefs = useQuery({ queryKey: k, queryFn: () => client.reminders() });
+  const save = useMutation({
+    mutationFn: (next: { enabled: boolean; hour: number }) => client.saveReminders(next),
+    onSuccess: (saved) => queryClient.setQueryData(k, { ...prefs.data, ...saved }),
+  });
+  if (prefs.data === undefined || !prefs.data.email) return null;
+  const r = prefs.data;
+  return (
+    <section className="card reminder-card" aria-labelledby="reminder-title">
+      <h2 id="reminder-title">{p("reminder.title")}</h2>
+      <label className="check">
+        <input type="checkbox" checked={r.enabled} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: e.target.checked, hour: r.hour })} /> {p("reminder.on")}
+      </label>
+      <label>
+        {p("reminder.at")}{" "}
+        <select value={r.hour} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: r.enabled, hour: Number(e.target.value) })}>
+          {Array.from({ length: 24 }, (_, h) => (
+            <option key={h} value={h}>
+              {`${String(h).padStart(2, "0")}:00`}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="notice">{p("reminder.hint")}</p>
+      {save.isError ? <Failed error={save.error} /> : null}
+    </section>
+  );
+}
+
+/** Where a reminder email's "stop" link lands: turns the reminder off, no sign-in needed. */
+export function RemindersOffPage({ client, nav, token }: Context & { readonly token: string | undefined }) {
+  const p = usePrepText();
+  const off = useMutation({ mutationFn: (t: string) => client.turnOffReminders(t) });
+  useEffect(() => {
+    if (token !== undefined && off.isIdle) off.mutate(token);
+  }, [token, off]);
+  return (
+    <section className="card">
+      <h1>{p("reminder.title")}</h1>
+      {token === undefined || off.isError ? (
+        <p className="error" role="alert">{p("reminder.badLink")}</p>
+      ) : off.isSuccess ? (
+        <p role="status">{p("reminder.stopped")}</p>
+      ) : (
+        <p className="notice">{p("common.loading")}</p>
+      )}
+      <Link nav={nav} to="/plan">
+        {p("reminder.toPlan")}
+      </Link>
+    </section>
   );
 }
 

@@ -15,6 +15,7 @@ import {
   PrepStore,
   PrepCommunityStore,
   PrepPlusStore,
+  PrepEngageStore,
   QuestionBank,
   QuestionMedia,
   DataKeys,
@@ -47,6 +48,7 @@ import { PracticeService } from "../practice.js";
 import { PrepService } from "../prep.js";
 import { PrepPlus } from "../prep-plus.js";
 import { PrepCommunity } from "../prep-community.js";
+import { PrepEngage } from "../prep-engage.js";
 import { StarterPacks } from "../starter-packs.js";
 import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
@@ -117,6 +119,7 @@ export interface Wiring {
   readonly razorpay: FakeRazorpay;
   readonly security: StaffSecurity;
   readonly app: FastifyInstance;
+  readonly prepEngage: PrepEngage;
 }
 
 export async function wire(
@@ -227,6 +230,16 @@ export async function wire(
   });
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, supplier: SUPPLIER, ...(options.now === undefined ? {} : { now: options.now }) });
   const prepService = new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) });
+  const prepEngage = new PrepEngage({
+    store: new PrepEngageStore(sql),
+    practiceStore: new PracticeStore(sql),
+    practice,
+    prep: prepService,
+    mailer: options.mailer ?? null,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const practiceIdentity = new PracticeIdentity({
     store: new PracticeStore(sql),
     practice,
@@ -312,6 +325,7 @@ export async function wire(
     prep: prepService,
     starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
     prepCommunity: new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+    prepEngage,
     prepPlus: {
       plus: prepPlus,
       tutor: new Sahayak({ client: options.client, practice: new PracticeStore(sql), prep: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
@@ -328,10 +342,11 @@ export async function wire(
     razorpay,
     security,
     app,
+    prepEngage,
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: practiceIdentity.verificationMail },
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
   };
 }
 

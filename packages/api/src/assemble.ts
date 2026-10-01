@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -22,6 +22,7 @@ import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
+import { PrepEngage } from "./prep-engage.js";
 import { PrepPlus } from "./prep-plus.js";
 import { PrepCommunity } from "./prep-community.js";
 import { StarterPacks } from "./starter-packs.js";
@@ -83,6 +84,8 @@ export function assemble(o: AssembleOptions): {
   identity: IdentityStore;
   /** Null unless {@link AssembleOptions.pilotReportTo} is given. */
   dailyReport: DailyPilotReport | null;
+  /** Queues the hour's daily reminders. */
+  prepEngage: PrepEngage;
 } {
   const keys = new DataKeys(o.dataKey);
   const proctorStore = new ProctorStore(o.sql, keys);
@@ -161,6 +164,15 @@ export function assemble(o: AssembleOptions): {
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null, supplier: o.supplier ?? null });
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
+  const prepEngage = new PrepEngage({
+    store: new PrepEngageStore(o.sql),
+    practiceStore,
+    practice,
+    prep: prepService,
+    mailer: o.mailer ?? null,
+    secret: o.secret,
+    publicUrl: o.publicUrl,
+  });
   const recheckStore = new RecheckStore(o.sql);
   const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
   const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
@@ -199,6 +211,7 @@ export function assemble(o: AssembleOptions): {
     prep: prepService,
     starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
     prepCommunity: new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus }),
+    prepEngage,
     prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus }) },
     ...o.server,
   });
@@ -227,8 +240,8 @@ export function assemble(o: AssembleOptions): {
           : item.purpose === "pilot_report"
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
-      learner_email: practiceIdentity.verificationMail },
+      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
   });
 
-  return { app, worker, privacy, billing, identity, dailyReport };
+  return { app, worker, privacy, billing, identity, dailyReport, prepEngage };
 }
