@@ -138,9 +138,30 @@ describe("the coin store", () => {
     await user.type(within(form).getByLabelText("Price in coins"), "2000");
     await user.click(within(form).getByRole("button", { name: "Add item" }));
     await waitFor(() =>
-      expect(client.saveStoreItem).toHaveBeenCalledWith(null, { title: "Plus, a month", description: "", kind: "plus", plusDays: 30, priceCoins: 2000, stock: null, perLearner: 1, active: true }),
+      expect(client.saveStoreItem).toHaveBeenCalledWith(null, {
+        title: "Plus, a month",
+        description: "",
+        kind: "plus",
+        plusDays: 30,
+        couponPercent: 0,
+        perMonth: null,
+        priceCoins: 2000,
+        stock: null,
+        perLearner: 1,
+        active: true,
+      }),
     );
     expect(await screen.findByText("(30 days of Plus)")).toBeTruthy();
+
+    // A coupon, at most one a month.
+    await user.type(within(form).getByLabelText("Item"), "25% off Plus");
+    await user.selectOptions(within(form).getByLabelText("Kind"), "coupon");
+    await user.clear(within(form).getByLabelText("Percent off"));
+    await user.type(within(form).getByLabelText("Percent off"), "25");
+    await user.type(within(form).getByLabelText(/A month/), "1");
+    await user.click(within(form).getByRole("button", { name: "Add item" }));
+    await waitFor(() => expect(client.saveStoreItem).toHaveBeenLastCalledWith(null, expect.objectContaining({ kind: "coupon", couponPercent: 25, perMonth: 1, plusDays: 0 })));
+    expect(await screen.findByText("(25% off Plus, for the buyer alone)")).toBeTruthy();
 
     const orders = screen.getByRole("region", { name: "Store orders" });
     expect(within(orders).getByText("12 MG Road, Pune")).toBeTruthy();

@@ -70,6 +70,39 @@ describe("money and credits", () => {
     expect(seen).toEqual([{ number: "PKP/2627/000001" }]);
   });
 
+  it("gives a trial once, and refunds an order: its pass revoked, its unspent credits taken back, a credit note in its own series", async () => {
+    const asha = await learner();
+    const at = new Date("2026-10-05T00:00:00Z");
+    expect(await store.hadTrial(A, asha.id)).toBe(false);
+    expect(await store.startTrial(A, asha.id, 7, at)).toBe(true);
+    expect(await store.startTrial(A, asha.id, 7, at)).toBe(false);
+    expect(await store.hadTrial(A, asha.id)).toBe(true);
+    expect((await store.plus(practiceStaff(A), asha.id)).map((p) => [p.source, p.endsAt])).toEqual([["trial", "2026-10-12T00:00:00.000Z"]]);
+
+    const product = (await store.saveProduct(A, null, { title: "Plus", kind: "plus", days: 30, credits: 500, pricePaise: 49_900, active: true, position: 0 }))!;
+    const base = { productId: product.id, title: "Plus", days: 30, credits: 500, listPaise: 49_900, couponCode: null, discountPaise: 0, buyerName: "Asha", buyerState: null, buyerGstin: null, pass: "plus" as const, amountPaise: 49_900, taxPaise: 7_612 };
+    const order = await store.createOrder(A, { ...base, learnerId: asha.id, gatewayOrderId: "order_a" });
+    await store.markPaid(A, "order_a", "pay_a", at, (number) => ({ document: { number }, totalPaise: 49_900 }));
+    await store.spend(A, asha.id, 200, "spent", at);
+    expect((await store.credits(practiceLearner(A, asha.id))).balance).toBe(300);
+
+    const note = (number: string, o: { id: string }, invoice: { number: string } | null) => ({ document: { number, order: o.id, against: invoice?.number ?? null }, totalPaise: 49_900 });
+    const refunded = await store.refundOrder(A, order.id, { refundId: "rfnd_1", reason: "Asked within a week" }, new Date("2026-10-06T00:00:00Z"), note);
+    expect(refunded).toMatchObject({ order: { status: "refunded", refundReason: "Asked within a week" }, creditsTaken: 300 });
+    expect(refunded!.creditNote).toMatchObject({ number: "PKC/2627/000001", document: { against: "PKP/2627/000001" } });
+    expect((await store.credits(practiceLearner(A, asha.id))).balance).toBe(0);
+    // The order's Plus is gone; the trial stays.
+    expect((await store.plus(practiceStaff(A), asha.id)).map((p) => p.source)).toEqual(["trial"]);
+    // Refunding again changes nothing.
+    const again = await store.refundOrder(A, order.id, { refundId: "rfnd_2", reason: "again" }, new Date(), note);
+    expect(again).toMatchObject({ creditsTaken: 0, creditNote: { number: "PKC/2627/000001" } });
+    expect(await store.refundOrder(A, "no-such-order", { refundId: "x", reason: "" }, new Date(), note)).toBeNull();
+    // A learner reads their own credit notes and nobody else's.
+    const ravi = await learner("ravi@example.com");
+    expect((await store.creditNotes(practiceLearner(A, asha.id))).map((n) => n.number)).toEqual(["PKC/2627/000001"]);
+    expect(await store.creditNotes(practiceLearner(A, ravi.id))).toEqual([]);
+  });
+
   it("spends only what is there, once per key, and a second spend cannot take the last credits twice", async () => {
     const asha = await learner();
     expect(await store.credit(A, asha.id, { delta: 30, reason: "monthly", key: "monthly:2026-10" })).toBe(true);

@@ -43825,6 +43825,17 @@
                         "null"
                       ]
                     },
+                    "dsaUntil": {
+                      "description": "Without Plus: when the learner's DSA Pass ends, if they hold one.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "trialDays": {
+                      "type": "number",
+                      "description": "Days of free Plus this learner may start now; 0 when there is no trial for them."
+                    },
                     "freeModules": {
                       "type": "number"
                     },
@@ -43859,9 +43870,10 @@
                             "enum": [
                               "plus",
                               "credits",
-                              "company"
+                              "company",
+                              "dsa"
                             ],
-                            "description": "Plus; credits for the tutor; or a Company Pass, which opens every company's full list."
+                            "description": "Plus; credits for the tutor; a Company Pass, which opens every company's full list; or a DSA Pass, which opens every lesson and the study plan."
                           },
                           "days": {
                             "type": "number"
@@ -43895,6 +43907,8 @@
                     "enabled",
                     "active",
                     "until",
+                    "dsaUntil",
+                    "trialDays",
                     "freeModules",
                     "monthlyCredits",
                     "tutor",
@@ -44440,6 +44454,267 @@
         }
       }
     },
+    "/practice/{site}/plus/trial": {
+      "post": {
+        "summary": "Start my free trial of Plus",
+        "tags": [
+          "Prep"
+        ],
+        "description": "Once per learner, for as many days as the site gives; refused to one who holds Plus.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "active": {
+                      "type": "boolean"
+                    },
+                    "until": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "active",
+                    "until"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/practice/{site}/plus/quote": {
       "post": {
         "summary": "A plan's price with a coupon, before buying",
@@ -44744,7 +45019,7 @@
     },
     "/practice/{site}/invoices/{number}": {
       "get": {
-        "summary": "One of my tax invoices",
+        "summary": "One of my tax invoices or credit notes",
         "tags": [
           "Prep"
         ],
@@ -45122,7 +45397,8 @@
                           "type": "string",
                           "enum": [
                             "created",
-                            "paid"
+                            "paid",
+                            "refunded"
                           ]
                         },
                         "createdAt": {
@@ -45134,8 +45410,21 @@
                             "null"
                           ]
                         },
+                        "refundedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "invoice": {
                           "description": "The tax invoice's number, once paid.",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "creditNote": {
+                          "description": "The credit note's number, once refunded.",
                           "type": [
                             "string",
                             "null"
@@ -45155,7 +45444,9 @@
                         "status",
                         "createdAt",
                         "paidAt",
-                        "invoice"
+                        "refundedAt",
+                        "invoice",
+                        "creditNote"
                       ],
                       "additionalProperties": false
                     },
@@ -45476,7 +45767,8 @@
                             "type": "string",
                             "enum": [
                               "created",
-                              "paid"
+                              "paid",
+                              "refunded"
                             ]
                           },
                           "createdAt": {
@@ -45488,8 +45780,21 @@
                               "null"
                             ]
                           },
+                          "refundedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "invoice": {
                             "description": "The tax invoice's number, once paid.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "creditNote": {
+                            "description": "The credit note's number, once refunded.",
                             "type": [
                               "string",
                               "null"
@@ -45509,7 +45814,9 @@
                           "status",
                           "createdAt",
                           "paidAt",
-                          "invoice"
+                          "refundedAt",
+                          "invoice",
+                          "creditNote"
                         ],
                         "additionalProperties": false
                       }
@@ -45784,7 +46091,8 @@
                               "purchase",
                               "grant",
                               "spend",
-                              "refund"
+                              "refund",
+                              "order_refund"
                             ]
                           },
                           "at": {
@@ -47956,13 +48264,20 @@
                         },
                         "tutorEnabled": {
                           "type": "boolean"
+                        },
+                        "trialDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Days of free Plus each learner may start once; 0 for no trial."
                         }
                       },
                       "required": [
                         "plusEnabled",
                         "freeModules",
                         "monthlyCredits",
-                        "tutorEnabled"
+                        "tutorEnabled",
+                        "trialDays"
                       ],
                       "additionalProperties": false
                     },
@@ -47983,9 +48298,10 @@
                             "enum": [
                               "plus",
                               "credits",
-                              "company"
+                              "company",
+                              "dsa"
                             ],
-                            "description": "Plus; credits for the tutor; or a Company Pass, which opens every company's full list."
+                            "description": "Plus; credits for the tutor; a Company Pass, which opens every company's full list; or a DSA Pass, which opens every lesson and the study plan."
                           },
                           "days": {
                             "type": "number"
@@ -48263,6 +48579,12 @@
                   },
                   "tutorEnabled": {
                     "type": "boolean"
+                  },
+                  "trialDays": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "Days of free Plus each learner may start once; 0 for no trial."
                   }
                 }
               }
@@ -48297,13 +48619,20 @@
                     },
                     "tutorEnabled": {
                       "type": "boolean"
+                    },
+                    "trialDays": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "Days of free Plus each learner may start once; 0 for no trial."
                     }
                   },
                   "required": [
                     "plusEnabled",
                     "freeModules",
                     "monthlyCredits",
-                    "tutorEnabled"
+                    "tutorEnabled",
+                    "trialDays"
                   ],
                   "additionalProperties": false
                 }
@@ -48543,7 +48872,8 @@
                     "enum": [
                       "plus",
                       "credits",
-                      "company"
+                      "company",
+                      "dsa"
                     ]
                   },
                   "days": {
@@ -48606,9 +48936,10 @@
                       "enum": [
                         "plus",
                         "credits",
-                        "company"
+                        "company",
+                        "dsa"
                       ],
-                      "description": "Plus; credits for the tutor; or a Company Pass, which opens every company's full list."
+                      "description": "Plus; credits for the tutor; a Company Pass, which opens every company's full list; or a DSA Pass, which opens every lesson and the study plan."
                     },
                     "days": {
                       "type": "number"
@@ -48875,7 +49206,8 @@
                     "enum": [
                       "plus",
                       "credits",
-                      "company"
+                      "company",
+                      "dsa"
                     ]
                   },
                   "days": {
@@ -48949,9 +49281,10 @@
                       "enum": [
                         "plus",
                         "credits",
-                        "company"
+                        "company",
+                        "dsa"
                       ],
-                      "description": "Plus; credits for the tutor; or a Company Pass, which opens every company's full list."
+                      "description": "Plus; credits for the tutor; a Company Pass, which opens every company's full list; or a DSA Pass, which opens every lesson and the study plan."
                     },
                     "days": {
                       "type": "number"
@@ -49530,7 +49863,8 @@
                             "type": "string",
                             "enum": [
                               "created",
-                              "paid"
+                              "paid",
+                              "refunded"
                             ]
                           },
                           "createdAt": {
@@ -49542,8 +49876,21 @@
                               "null"
                             ]
                           },
+                          "refundedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "invoice": {
                             "description": "The tax invoice's number, once paid.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "creditNote": {
+                            "description": "The credit note's number, once refunded.",
                             "type": [
                               "string",
                               "null"
@@ -49566,7 +49913,9 @@
                           "status",
                           "createdAt",
                           "paidAt",
+                          "refundedAt",
                           "invoice",
+                          "creditNote",
                           "learnerId"
                         ],
                         "additionalProperties": false
@@ -49575,6 +49924,292 @@
                   },
                   "required": [
                     "orders"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/practice-admin/plus/orders/{id}/refund": {
+      "post": {
+        "summary": "Refund a paid order in full",
+        "tags": [
+          "Prep (staff)"
+        ],
+        "description": "Gives the money back through Razorpay, takes away the pass the order gave, takes back its credits as far as they are unspent, and issues a GST credit note against its invoice. Refunding a refunded order changes nothing.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "refunded"
+                      ]
+                    },
+                    "creditNote": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "creditsTaken": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "creditNote",
+                    "creditsTaken"
                   ],
                   "additionalProperties": false
                 }
@@ -55758,12 +56393,24 @@
                             "type": "string",
                             "enum": [
                               "plus",
+                              "coupon",
                               "digital",
                               "physical"
                             ]
                           },
                           "plusDays": {
                             "type": "number"
+                          },
+                          "couponPercent": {
+                            "type": "number",
+                            "description": "For a coupon item: the share it takes off a Plus plan."
+                          },
+                          "perMonth": {
+                            "description": "How many one learner may buy in a calendar month; null for no such limit.",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
                           },
                           "priceCoins": {
                             "type": "number"
@@ -55790,6 +56437,8 @@
                           "description",
                           "kind",
                           "plusDays",
+                          "couponPercent",
+                          "perMonth",
                           "priceCoins",
                           "soldOut",
                           "left",
@@ -59168,12 +59817,22 @@
                             "type": "string",
                             "enum": [
                               "plus",
+                              "coupon",
                               "digital",
                               "physical"
                             ]
                           },
                           "plusDays": {
                             "type": "number"
+                          },
+                          "couponPercent": {
+                            "type": "number"
+                          },
+                          "perMonth": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
                           },
                           "priceCoins": {
                             "type": "number"
@@ -59197,6 +59856,8 @@
                           "description",
                           "kind",
                           "plusDays",
+                          "couponPercent",
+                          "perMonth",
                           "priceCoins",
                           "stock",
                           "perLearner",
@@ -59426,6 +60087,7 @@
                     "type": "string",
                     "enum": [
                       "plus",
+                      "coupon",
                       "digital",
                       "physical"
                     ]
@@ -59435,6 +60097,26 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 400
+                  },
+                  "couponPercent": {
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 90
+                  },
+                  "perMonth": {
+                    "default": null,
+                    "description": "Null: no monthly limit.",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "priceCoins": {
                     "type": "integer",
@@ -59501,12 +60183,22 @@
                       "type": "string",
                       "enum": [
                         "plus",
+                        "coupon",
                         "digital",
                         "physical"
                       ]
                     },
                     "plusDays": {
                       "type": "number"
+                    },
+                    "couponPercent": {
+                      "type": "number"
+                    },
+                    "perMonth": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
                     },
                     "priceCoins": {
                       "type": "number"
@@ -59530,6 +60222,8 @@
                     "description",
                     "kind",
                     "plusDays",
+                    "couponPercent",
+                    "perMonth",
                     "priceCoins",
                     "stock",
                     "perLearner",
@@ -59754,6 +60448,7 @@
                     "type": "string",
                     "enum": [
                       "plus",
+                      "coupon",
                       "digital",
                       "physical"
                     ]
@@ -59763,6 +60458,26 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 400
+                  },
+                  "couponPercent": {
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 90
+                  },
+                  "perMonth": {
+                    "default": null,
+                    "description": "Null: no monthly limit.",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "priceCoins": {
                     "type": "integer",
@@ -59840,12 +60555,22 @@
                       "type": "string",
                       "enum": [
                         "plus",
+                        "coupon",
                         "digital",
                         "physical"
                       ]
                     },
                     "plusDays": {
                       "type": "number"
+                    },
+                    "couponPercent": {
+                      "type": "number"
+                    },
+                    "perMonth": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
                     },
                     "priceCoins": {
                       "type": "number"
@@ -59869,6 +60594,8 @@
                     "description",
                     "kind",
                     "plusDays",
+                    "couponPercent",
+                    "perMonth",
                     "priceCoins",
                     "stock",
                     "perLearner",

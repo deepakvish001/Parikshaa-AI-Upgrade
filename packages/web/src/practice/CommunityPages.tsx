@@ -487,6 +487,8 @@ export function StorePage({ client, nav, learner, site }: Context) {
                   {item.kind === "plus" ? <Crown aria-hidden="true" /> : <ShoppingBag aria-hidden="true" />} {item.title}
                 </strong>
                 {item.kind === "plus" ? <span className="notice">{c("store.plus", { days: item.plusDays })}</span> : null}
+                {item.kind === "coupon" ? <span className="notice">{c("store.coupon", { percent: item.couponPercent })}</span> : null}
+                {item.perMonth === null ? null : <span className="notice">{c("store.perMonth", { n: item.perMonth })}</span>}
                 {item.description === "" ? null : <p>{item.description}</p>}
                 <span className="notice">{item.soldOut ? c("store.soldOut") : item.left === null ? "" : c("store.left", { n: item.left })}</span>
                 {done ? <span className="stat-chip">{c("store.bought")}</span> : null}

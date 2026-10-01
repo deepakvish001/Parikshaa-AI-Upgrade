@@ -471,6 +471,10 @@ export class PracticeClient {
     return this.#post("/reminders/off", { token });
   }
 
+  startTrial(): Promise<{ readonly active: boolean; readonly until: string | null }> {
+    return this.#post("/plus/trial", {});
+  }
+
   quote(productId: string, coupon: string): Promise<Quote> {
     return this.#post("/plus/quote", { productId, coupon });
   }
@@ -815,7 +819,7 @@ export interface Coins {
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "company" | "credits";
+  readonly kind: "plus" | "company" | "credits" | "dsa";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -867,6 +871,10 @@ export interface PlusOverview {
   readonly enabled: boolean;
   readonly active: boolean;
   readonly until: string | null;
+  /** Without Plus: when the learner's DSA Pass ends, if they hold one. */
+  readonly dsaUntil: string | null;
+  /** Days of free Plus this learner may start now; 0 for none. */
+  readonly trialDays: number;
   readonly freeModules: number;
   readonly monthlyCredits: number;
   readonly tutor: boolean;
@@ -894,15 +902,17 @@ export interface PlusOrder {
   readonly discountPaise: number;
   readonly amountPaise: number;
   readonly taxPaise: number;
-  readonly status: "created" | "paid";
+  readonly status: "created" | "paid" | "refunded";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  readonly refundedAt: string | null;
   readonly invoice: string | null;
+  readonly creditNote: string | null;
 }
 
 export interface Credits {
   readonly balance: number;
-  readonly history: readonly { readonly delta: number; readonly reason: "monthly" | "purchase" | "grant" | "spend" | "refund"; readonly at: string }[];
+  readonly history: readonly { readonly delta: number; readonly reason: "monthly" | "purchase" | "grant" | "spend" | "refund" | "order_refund"; readonly at: string }[];
 }
 
 export interface TutorAnswer {
@@ -1028,8 +1038,10 @@ export interface CoinStore {
     readonly id: string;
     readonly title: string;
     readonly description: string;
-    readonly kind: "plus" | "digital" | "physical";
+    readonly kind: "plus" | "coupon" | "digital" | "physical";
     readonly plusDays: number;
+    readonly couponPercent: number;
+    readonly perMonth: number | null;
     readonly priceCoins: number;
     readonly soldOut: boolean;
     readonly left: number | null;

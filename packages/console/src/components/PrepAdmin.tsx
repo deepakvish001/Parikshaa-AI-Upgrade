@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, BookOpen, Plus, Route, Trash2 } from "lucide-react";
-import { ConsoleError, type ConsoleClient, type PrepLesson, type PrepTrack } from "../api.ts";
+import { ConsoleError, type ConsoleClient, type PlusProduct, type PrepLesson, type PrepTrack } from "../api.ts";
 import { EmptyState, SkeletonRows } from "./kit.tsx";
 
 /**
@@ -450,7 +450,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
   const learners = useQuery({ queryKey: ["practice", "learners"], queryFn: () => client.practiceLearners(), enabled: canManage });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep", "plus"] });
   const settings = useMutation({ mutationFn: (patch: Parameters<ConsoleClient["savePlusSettings"]>[0]) => client.savePlusSettings(patch), onSuccess: refresh });
-  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "company" | "credits", days: 90, credits: 1000, rupees: 999 });
+  const [product, setProduct] = useState({ title: "", kind: "plus" as PlusProduct["kind"], days: 90, credits: 1000, rupees: 999 });
   const addProduct = useMutation({
     mutationFn: () =>
       client.savePlusProduct(null, {
@@ -467,7 +467,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
     },
   });
   const toggle = useMutation({
-    mutationFn: (p: { id: string; title: string; kind: "plus" | "company" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
+    mutationFn: (p: { id: string; title: string; kind: PlusProduct["kind"]; days: number; credits: number; pricePaise: number; active: boolean }) =>
       client.savePlusProduct(p.id, { title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise, active: !p.active }),
     onSuccess: refresh,
   });
@@ -505,6 +505,10 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
             Free tutor credits a month
             <input type="number" min={0} max={100000} defaultValue={s.monthlyCredits} disabled={!canManage} onBlur={(e) => settings.mutate({ monthlyCredits: Number(e.target.value) })} />
           </label>
+          <label>
+            Free trial, days (0: none)
+            <input type="number" min={0} max={60} defaultValue={s.trialDays ?? 0} disabled={!canManage} onBlur={(e) => settings.mutate({ trialDays: Number(e.target.value) })} />
+          </label>
         </div>
         {settings.isError ? (
           <p className="error" role="alert">
@@ -537,7 +541,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
                 <tr key={p.id}>
                   <td>{p.title}</td>
                   <td>
-                    {p.days > 0 ? `${p.days} days of ${p.kind === "company" ? "Company Pass" : "Plus"}` : ""}
+                    {p.days > 0 ? `${p.days} days of ${p.kind === "company" ? "Company Pass" : p.kind === "dsa" ? "DSA Pass" : "Plus"}` : ""}
                     {p.days > 0 && p.credits > 0 ? " + " : ""}
                     {p.credits > 0 ? `${p.credits.toLocaleString("en-IN")} credits` : ""}
                   </td>
@@ -570,9 +574,10 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
             </label>
             <label>
               Kind
-              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "company" | "credits" })}>
+              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as PlusProduct["kind"] })}>
                 <option value="plus">Plus</option>
                 <option value="company">Company Pass (every company list, nothing else)</option>
+                <option value="dsa">DSA Pass (every lesson and the study plan, nothing else)</option>
                 <option value="credits">Credits pack</option>
               </select>
             </label>

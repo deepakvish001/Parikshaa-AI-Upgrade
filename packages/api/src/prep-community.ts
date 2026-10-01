@@ -366,12 +366,14 @@ export class PrepCommunity {
     return {
       balance: coins.balance,
       opensAt: from !== null && Date.parse(from) > this.#now() ? from : null,
-      items: items.map(({ id, title, description, kind, plusDays, priceCoins, stock, perLearner }) => ({
+      items: items.map(({ id, title, description, kind, plusDays, couponPercent, perMonth, priceCoins, stock, perLearner }) => ({
         id,
         title,
         description,
         kind,
         plusDays,
+        couponPercent,
+        perMonth,
         priceCoins,
         soldOut: stock !== null && stock <= 0,
         left: stock,
@@ -392,6 +394,7 @@ export class PrepCommunity {
     if (result === "no_item") throw new PracticeError("not_found", "No such item");
     if (result === "sold_out") throw new PracticeError("sold_out", "That is all gone");
     if (result === "limit") throw new PracticeError("limit_reached", "You have bought as many of these as one learner may");
+    if (result === "month_limit") throw new PracticeError("limit_reached", `You may buy ${item.perMonth === 1 ? "one of these" : `${item.perMonth} of these`} a month; try again next month`);
     if (result === "coins") throw new PracticeError("no_coins", "Not enough coins for that yet");
     const { id, title, priceCoins, status, note, createdAt, closedAt } = result;
     return { order: { id, title, priceCoins, status, note, createdAt, closedAt }, balance: (await this.#prep.coins(practiceLearner(site.orgId, learner.id), 0)).balance };
@@ -557,7 +560,12 @@ export class PrepCommunity {
 
   async saveItem(orgId: OrgId, id: string | null, draft: StoreItemDraft) {
     if (draft.kind === "plus" && draft.plusDays <= 0) throw new PracticeError("invalid", "A Plus item gives at least a day of Plus");
-    const saved = await this.#store.saveItem(orgId, id, { ...draft, plusDays: draft.kind === "plus" ? draft.plusDays : 0 });
+    if (draft.kind === "coupon" && (draft.couponPercent < 1 || draft.couponPercent > 90)) throw new PracticeError("invalid", "A coupon item takes 1% to 90% off");
+    const saved = await this.#store.saveItem(orgId, id, {
+      ...draft,
+      plusDays: draft.kind === "plus" ? draft.plusDays : 0,
+      couponPercent: draft.kind === "coupon" ? draft.couponPercent : 0,
+    });
     if (saved === null) throw new PracticeError("not_found", "No such item");
     return saved;
   }

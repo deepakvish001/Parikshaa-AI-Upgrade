@@ -300,6 +300,38 @@ describe("the coin store", () => {
     expect(gone.statusCode).toBe(409);
     expect(gone.json().error).toBe("sold_out");
   });
+
+  it("sells a coupon for its buyer alone, and holds an item to its monthly limit", async () => {
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true });
+    const plan = await ok("POST", owner, "/practice-admin/plus/products", { title: "Plus, 3 months", kind: "plus", days: 90, credits: 0, pricePaise: 99_900 });
+    expect((await call("POST", owner, "/practice-admin/store/items", { title: "Coupon", kind: "coupon", couponPercent: 95, priceCoins: 20 })).statusCode).toBe(400);
+    expect((await call("POST", owner, "/practice-admin/store/items", { title: "Coupon", kind: "coupon", priceCoins: 20 })).statusCode).toBe(422);
+    const item = await ok("POST", owner, "/practice-admin/store/items", { title: "25% off Plus", kind: "coupon", couponPercent: 25, priceCoins: 20, perLearner: 5, perMonth: 1 });
+    expect(item).toMatchObject({ kind: "coupon", couponPercent: 25, perMonth: 1, plusDays: 0 });
+    const asha = await signUp("asha@example.com", "Asha");
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    await earn(asha);
+    clock += 15 * DAY;
+    expect((await ok("GET", asha, `${S}/store`)).items[0]).toMatchObject({ kind: "coupon", couponPercent: 25, perMonth: 1 });
+
+    const bought = await ok("POST", asha, `${S}/store/${item.id}/redeem`, {});
+    expect(bought.order.status).toBe("fulfilled");
+    const code = /Your coupon: (COIN-[A-Z0-9]{8})/.exec(bought.order.note)![1]!;
+    expect((await ok("POST", asha, `${S}/plus/quote`, { productId: plan.id, coupon: code }, 200)).discountPaise).toBe(24_975);
+    // Another learner cannot use it.
+    expect((await call("POST", ravi, `${S}/plus/quote`, { productId: plan.id, coupon: code })).json().message).toBe("That coupon code is not valid");
+    expect((await call("POST", null, `${S}/plus/quote`, { productId: plan.id, coupon: code })).json().message).toBe("That coupon code is not valid");
+
+    // One a month.
+    const again = await call("POST", asha, `${S}/store/${item.id}/redeem`, {});
+    expect(again.statusCode).toBe(409);
+    expect(again.json()).toMatchObject({ error: "limit_reached", message: "You may buy one of these a month; try again next month" });
+    // The next month in India; signed in afresh, since a session lasts thirty days.
+    const ist = new Date(clock + 330 * 60_000);
+    clock = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() + 1, 1, 6, 0) - 330 * 60_000;
+    const again2 = (await ok("POST", null, `${S}/signin`, { email: "asha@example.com", password: PASSWORD }, 200)).token as string;
+    expect((await ok("POST", again2, `${S}/store/${item.id}/redeem`, {})).balance).toBe(60);
+  });
 });
 
 describe("ratings", () => {

@@ -73,11 +73,17 @@ export interface StoreItem {
   readonly id: string;
   readonly title: string;
   readonly description: string;
-  readonly kind: "plus" | "digital" | "physical";
+  /** 'plus' gives days of Plus at once, 'coupon' a coupon for Plus at once; staff fulfil the others. */
+  readonly kind: "plus" | "digital" | "physical" | "coupon";
   readonly plusDays: number;
+  /** A coupon item's share off a Plus plan, 1 to 90; 0 for other kinds. */
+  readonly couponPercent: number;
   readonly priceCoins: number;
   readonly stock: number | null;
+  /** How many one learner may have in all. */
   readonly perLearner: number;
+  /** And in one calendar month (India's); null for no monthly limit. */
+  readonly perMonth: number | null;
   readonly active: boolean;
 }
 export type StoreItemDraft = Omit<StoreItem, "id">;
@@ -95,7 +101,7 @@ export interface StoreOrder {
   readonly closedAt: string | null;
 }
 
-export type RedeemRefusal = "no_item" | "sold_out" | "limit" | "coins";
+export type RedeemRefusal = "no_item" | "sold_out" | "limit" | "month_limit" | "coins";
 
 export interface Rating {
   readonly contestId: string;
@@ -145,21 +151,25 @@ interface ItemRow {
   description: string;
   kind: StoreItem["kind"];
   plus_days: number;
+  coupon_percent: number;
   price_coins: number;
   stock: number | null;
   per_learner: number;
+  per_month: number | null;
   active: boolean;
 }
-const ITEM_COLUMNS = "id, title, description, kind, plus_days, price_coins, stock, per_learner, active";
+const ITEM_COLUMNS = "id, title, description, kind, plus_days, coupon_percent, price_coins, stock, per_learner, per_month, active";
 const toItem = (r: ItemRow): StoreItem => ({
   id: r.id,
   title: r.title,
   description: r.description,
   kind: r.kind,
   plusDays: Number(r.plus_days),
+  couponPercent: Number(r.coupon_percent),
   priceCoins: Number(r.price_coins),
   stock: r.stock === null ? null : Number(r.stock),
   perLearner: Number(r.per_learner),
+  perMonth: r.per_month === null ? null : Number(r.per_month),
   active: r.active,
 });
 
@@ -356,16 +366,30 @@ export class PrepCommunityStore {
 
   async saveItem(orgId: OrgId, id: string | null, draft: StoreItemDraft): Promise<StoreItem | null> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
-      const params = [orgId, id ?? this.#newId(), draft.title, draft.description, draft.kind, draft.plusDays, draft.priceCoins, draft.stock, draft.perLearner, draft.active];
+      const params = [
+        orgId,
+        id ?? this.#newId(),
+        draft.title,
+        draft.description,
+        draft.kind,
+        draft.plusDays,
+        draft.priceCoins,
+        draft.stock,
+        draft.perLearner,
+        draft.active,
+        draft.couponPercent,
+        draft.perMonth,
+      ];
       const rows =
         id === null
           ? await tx.query<ItemRow>(
-              `INSERT INTO prep_store_items (org_id, id, title, description, kind, plus_days, price_coins, stock, per_learner, active)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING ${ITEM_COLUMNS}`,
+              `INSERT INTO prep_store_items (org_id, id, title, description, kind, plus_days, price_coins, stock, per_learner, active, coupon_percent, per_month)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING ${ITEM_COLUMNS}`,
               params,
             )
           : await tx.query<ItemRow>(
-              `UPDATE prep_store_items SET title = $3, description = $4, kind = $5, plus_days = $6, price_coins = $7, stock = $8, per_learner = $9, active = $10
+              `UPDATE prep_store_items SET title = $3, description = $4, kind = $5, plus_days = $6, price_coins = $7, stock = $8, per_learner = $9, active = $10,
+                      coupon_percent = $11, per_month = $12
                 WHERE org_id = $1 AND id = $2 RETURNING ${ITEM_COLUMNS}`,
               params,
             );
@@ -389,6 +413,15 @@ export class PrepCommunityStore {
         [orgId, learnerId, itemId],
       );
       if (Number(taken[0]!.n) >= item.perLearner) return "limit";
+      if (item.perMonth !== null) {
+        // The calendar month in India.
+        const month = await tx.query<{ n: string }>(
+          `SELECT count(*) AS n FROM prep_store_orders WHERE org_id = $1 AND learner_id = $2 AND item_id = $3 AND status <> 'cancelled'
+              AND date_trunc('month', created_at AT TIME ZONE 'Asia/Kolkata') = date_trunc('month', $4::timestamptz AT TIME ZONE 'Asia/Kolkata')`,
+          [orgId, learnerId, itemId, at],
+        );
+        if (Number(month[0]!.n) >= item.perMonth) return "month_limit";
+      }
       const balance = await tx.query<{ total: string | null }>(`SELECT sum(amount) AS total FROM prep_coins WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       if (Number(balance[0]?.total ?? 0) < item.priceCoins) return "coins";
 
@@ -396,7 +429,7 @@ export class PrepCommunityStore {
       const rows = await tx.query<OrderRow>(
         `INSERT INTO prep_store_orders (org_id, id, learner_id, item_id, title, price_coins, address, status, created_at, closed_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING ${ORDER_COLUMNS}`,
-        [orgId, orderId, learnerId, item.id, item.title, item.priceCoins, address, item.kind === "plus" ? "fulfilled" : "placed", at, item.kind === "plus" ? at : null],
+        [orgId, orderId, learnerId, item.id, item.title, item.priceCoins, address, item.kind === "plus" || item.kind === "coupon" ? "fulfilled" : "placed", at, item.kind === "plus" || item.kind === "coupon" ? at : null],
       );
       await tx.query(`INSERT INTO prep_coins (org_id, id, learner_id, rule, amount, key, created_at) VALUES ($1, $2, $3, 'store', $4, $5, $6)`, [
         orgId,
@@ -408,11 +441,10 @@ export class PrepCommunityStore {
       ]);
       if (item.stock !== null) await tx.query(`UPDATE prep_store_items SET stock = stock - 1 WHERE org_id = $1 AND id = $2`, [orgId, item.id]);
       if (item.kind === "plus") {
-        const held = await tx.query<{ ends_at: string | Date | null }>(`SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3`, [
-          orgId,
-          learnerId,
-          at,
-        ]);
+        const held = await tx.query<{ ends_at: string | Date | null }>(
+          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3 AND pass = 'plus' AND revoked_at IS NULL`,
+          [orgId, learnerId, at],
+        );
         const from = held[0]?.ends_at === null || held[0]?.ends_at === undefined ? at : new Date(held[0].ends_at);
         await tx.query(`INSERT INTO prep_plus (org_id, id, learner_id, starts_at, ends_at, source, ref) VALUES ($1, $2, $3, $4, $5, 'coins', $6)`, [
           orgId,
@@ -422,6 +454,22 @@ export class PrepCommunityStore {
           new Date(from.getTime() + item.plusDays * 86_400_000),
           orderId,
         ]);
+      }
+      if (item.kind === "coupon") {
+        // A coupon for this learner alone, used once, for 90 days; its code goes on the order.
+        const code = `COIN-${[...crypto.getRandomValues(new Uint8Array(8))].map((b) => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[b % 32]).join("")}`;
+        const until = new Date(at.getTime() + 90 * 86_400_000);
+        await tx.query(
+          `INSERT INTO prep_coupons (org_id, code, kind, value, product_id, max_uses, ends_at, affiliate, active, created_at, learner_id)
+           VALUES ($1, $2, 'percent', $3, NULL, 1, $4, '', true, $5, $6)`,
+          [orgId, code, item.couponPercent, until, at, learnerId],
+        );
+        const noted = await tx.query<OrderRow>(`UPDATE prep_store_orders SET note = $3 WHERE org_id = $1 AND id = $2 RETURNING ${ORDER_COLUMNS}`, [
+          orgId,
+          orderId,
+          `Your coupon: ${code}, ${item.couponPercent}% off a Plus plan, for you alone, once, until ${until.toISOString().slice(0, 10)}.`,
+        ]);
+        return toOrder(noted[0]!);
       }
       return toOrder(rows[0]!);
     });

@@ -316,6 +316,103 @@ describe("coupons and invoices", () => {
   });
 });
 
+describe("trials, refunds and the DSA Pass", () => {
+  const planInput = { track: "dsa", level: "beginner", deadline: "2026-12-31", dailyMinutes: 60, offDays: [] };
+
+  it("gives each learner one free trial of Plus, when the site offers one", async () => {
+    await paidTrack();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, freeModules: 1 }, 200);
+    const asha = await signUp();
+    expect((await ok("GET", asha, `${S}/plus`)).trialDays).toBe(0);
+    expect((await call("POST", asha, `${S}/plus/trial`)).statusCode).toBe(404);
+    expect((await call("PUT", owner, "/practice-admin/plus", { trialDays: 61 })).statusCode).toBe(422);
+    expect(await ok("PUT", owner, "/practice-admin/plus", { trialDays: 30 }, 200)).toMatchObject({ trialDays: 30 });
+
+    expect((await ok("GET", null, `${S}/plus`)).trialDays).toBe(0);
+    expect((await ok("GET", asha, `${S}/plus`)).trialDays).toBe(30);
+    expect(await ok("POST", asha, `${S}/plus/trial`)).toEqual({ active: true, until: "2026-11-04T04:00:00.000Z" });
+    expect((await ok("GET", asha, `${S}/lessons/heaps`)).locked).toBe(false);
+    expect((await ok("GET", asha, `${S}/plus`)).trialDays).toBe(0);
+    expect((await call("POST", asha, `${S}/plus/trial`)).statusCode).toBe(409);
+    // Once over, it is not had again.
+    clock += 31 * DAY;
+    const after = await ok("POST", null, `${S}/signin`, { email: "asha@example.com", password: PASSWORD }, 200);
+    expect((await ok("GET", after.token, `${S}/lessons/heaps`)).locked).toBe(true);
+    expect((await ok("GET", after.token, `${S}/plus`)).trialDays).toBe(0);
+    const refused = await call("POST", after.token, `${S}/plus/trial`);
+    expect(refused.json()).toMatchObject({ error: "limit_reached", message: "You have had your free trial" });
+  });
+
+  it("refunds a paid order in full: the money back, the pass and unspent credits taken, a credit note against the invoice", async () => {
+    await paidTrack();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, freeModules: 1, monthlyCredits: 0 }, 200);
+    const plan = await ok("POST", owner, "/practice-admin/plus/products", { title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900 });
+    const asha = await signUp();
+    const purchase = await buy(asha, plan.id);
+    expect((await purchase.confirm()).statusCode).toBe(200);
+    const order = (await ok("GET", asha, `${S}/orders`)).orders[0];
+    expect(order).toMatchObject({ status: "paid", invoice: "PKP/2627/000001", creditNote: null, refundedAt: null });
+
+    expect((await call("POST", author, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" })).statusCode).toBe(403);
+    expect((await call("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "no" })).statusCode).toBe(422);
+    expect((await call("POST", owner, `/practice-admin/plus/orders/nothing/refund`, { reason: "Asked within a week" })).statusCode).toBe(404);
+    // Razorpay refusing changes nothing here.
+    razorpay.refuseRefunds = true;
+    expect((await call("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" })).statusCode).toBe(503);
+    expect((await ok("GET", asha, `${S}/plus`)).active).toBe(true);
+    razorpay.refuseRefunds = false;
+
+    clock += DAY;
+    expect(await ok("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" }, 200)).toEqual({
+      status: "refunded",
+      creditNote: "PKC/2627/000001",
+      creditsTaken: 1000,
+    });
+    expect(razorpay.refunds).toEqual([{ id: "rfnd_fake000001", paymentId: purchase.paymentId, amountPaise: 99_900, notes: { kind: "prep", orgId: "org-a", orderId: order.id } }]);
+    expect((await ok("GET", asha, `${S}/plus`)).active).toBe(false);
+    expect((await ok("GET", asha, `${S}/lessons/heaps`)).locked).toBe(true);
+    const credits = await ok("GET", asha, `${S}/credits`);
+    expect(credits.balance).toBe(0);
+    expect(credits.history[0]).toMatchObject({ delta: -1000, reason: "order_refund" });
+    const refunded = (await ok("GET", asha, `${S}/orders`)).orders[0];
+    expect(refunded).toMatchObject({ status: "refunded", invoice: "PKP/2627/000001", creditNote: "PKC/2627/000001", refundedAt: new Date(clock).toISOString() });
+    const note = await ok("GET", asha, `${S}/invoices/${encodeURIComponent("PKC/2627/000001")}`);
+    expect(note.document).toMatchObject({
+      title: "Credit Note",
+      against: { number: "PKP/2627/000001" },
+      reason: "Asked within a week",
+      totalPaise: 99_900,
+      taxablePaise: 99_900 - 15_239,
+    });
+    expect((await ok("GET", owner, "/practice-admin/plus/orders")).orders[0]).toMatchObject({ status: "refunded", creditNote: "PKC/2627/000001" });
+
+    // Twice is once.
+    expect(await ok("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" }, 200)).toMatchObject({ creditNote: "PKC/2627/000001", creditsTaken: 0 });
+    expect(razorpay.refunds).toHaveLength(1);
+    const audit = await ok("GET", owner, "/audit");
+    expect(JSON.stringify(audit)).toContain("prep.order_refunded");
+  });
+
+  it("sells a DSA Pass, which opens every lesson and the plan but is not Plus", async () => {
+    await paidTrack();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, freeModules: 1, monthlyCredits: 0 }, 200);
+    const pass = await ok("POST", owner, "/practice-admin/plus/products", { title: "DSA Pass", kind: "dsa", days: 60, pricePaise: 49_900 });
+    expect(pass).toMatchObject({ kind: "dsa", days: 60 });
+    const asha = await signUp();
+    expect((await call("POST", asha, `${S}/plan/preview`, planInput)).statusCode).toBe(402);
+    const purchase = await buy(asha, pass.id);
+    expect((await purchase.confirm()).statusCode).toBe(200);
+    expect(await ok("GET", asha, `${S}/plus`)).toMatchObject({ active: false, dsaUntil: "2026-12-04T04:00:00.000Z" });
+    expect((await ok("GET", asha, `${S}/lessons/heaps`)).locked).toBe(false);
+    expect((await ok("POST", asha, `${S}/plan/preview`, planInput, 200)).fits).toBe(true);
+    const invoice = await ok("GET", asha, `${S}/invoices/${encodeURIComponent("PKP/2627/000001")}`);
+    expect(invoice.document.lines[0].description).toBe("DSA Pass: DSA Pass for 60 days");
+    // A grant of Plus runs from today, not from the end of the DSA Pass.
+    const me = await ok("GET", asha, `${S}/me`);
+    expect(await ok("POST", owner, `/practice-admin/learners/${me.id}/plus`, { days: 10 }, 200)).toEqual({ until: "2026-10-15T04:00:00.000Z" });
+  });
+});
+
 describe("the tutor", () => {
   it("climbs the hint ladder a rung at a time, for credits, and keeps the solution until three wrong tries", async () => {
     const asha = await signUp();

@@ -130,7 +130,7 @@ export class PrepService {
    */
   async #locked(site: PracticeSite, learner: Learner | null, tracks: readonly Track[]): Promise<ReadonlySet<string>> {
     if (this.#plus === null) return new Set();
-    const status = await this.#plus.status(site, learner);
+    const status = await this.#plus.learnAccess(site, learner);
     if (status.active) return new Set();
     const { freeModules } = await this.#plus.settings(site.orgId);
     const free = new Set<string>();
@@ -146,7 +146,7 @@ export class PrepService {
   /** A study plan needs Plus when the site sells it. */
   async #planAllowed(site: PracticeSite, learner: Learner): Promise<void> {
     if (this.#plus === null) return;
-    if (!(await this.#plus.status(site, learner)).active) throw new PracticeError("plus_required", "A study plan comes with Plus");
+    if (!(await this.#plus.learnAccess(site, learner)).active) throw new PracticeError("plus_required", "A study plan comes with Plus");
   }
 
   #today(): string {

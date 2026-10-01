@@ -49,6 +49,8 @@ const item = (patch: Partial<StoreItemDraft> = {}): StoreItemDraft => ({
   priceCoins: 100,
   stock: 2,
   perLearner: 1,
+  couponPercent: 0,
+  perMonth: null,
   active: true,
   ...patch,
 });
@@ -148,6 +150,27 @@ describe("the coin store", () => {
     await give(asha.id, 100, "g2");
     expect(await store.redeem(A, asha.id, stickers.id, "Pune", new Date())).toBe("limit");
     expect(await store.redeem(A, asha.id, "missing", "", new Date())).toBe("no_item");
+  });
+
+  it("sells a coupon for its buyer alone, and holds an item to its monthly limit", async () => {
+    const asha = await learner();
+    await give(asha.id, 1000, "start");
+    const coupon = (await store.saveItem(A, null, item({ title: "20% off Plus", kind: "coupon", couponPercent: 20, stock: null, perLearner: 5, perMonth: 1 })))!;
+    const order = await store.redeem(A, asha.id, coupon.id, "", new Date("2026-10-05T10:00:00Z"));
+    if (typeof order === "string") throw new Error(order);
+    expect(order.status).toBe("fulfilled");
+    const code = /COIN-[A-Z0-9]{8}/.exec(order.note)![0];
+    const made = await sql.transaction((tx) => tx.query<{ value: number; max_uses: number; learner_id: string }>(`SELECT value, max_uses, learner_id FROM prep_coupons WHERE code = $1`, [code]), {
+      "parikshaa.org_id": A,
+      "parikshaa.actor": "staff",
+      "parikshaa.attempt_id": "",
+      "parikshaa.learner_id": "",
+    });
+    expect(made).toEqual([{ value: 20, max_uses: 1, learner_id: asha.id }]);
+    // One a month: refused again in October, sold again in November (India's calendar).
+    expect(await store.redeem(A, asha.id, coupon.id, "", new Date("2026-10-31T18:00:00Z"))).toBe("month_limit");
+    const november = await store.redeem(A, asha.id, coupon.id, "", new Date("2026-10-31T19:00:00Z"));
+    expect(typeof november).not.toBe("string");
   });
 
   it("sells the last one once when two learners ask at the same time", async () => {

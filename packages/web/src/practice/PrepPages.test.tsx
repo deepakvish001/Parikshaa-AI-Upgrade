@@ -701,6 +701,38 @@ describe("Plus", () => {
     expect(screen.getByRole("button", { name: /Print or save as PDF/ })).toBeTruthy();
   });
 
+  it("starts a free trial once, and shows a refunded order with its credit note", async () => {
+    let trialDays = 14;
+    routes["GET /practice/nit-practice/plus"] = () => ({
+      body: { enabled: true, active: trialDays === 0, until: trialDays === 0 ? "2026-10-19T04:00:00Z" : null, dsaUntil: null, trialDays, freeModules: 1, monthlyCredits: 0, tutor: true, checkout: true, invoices: true, products: [] },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 0, history: [{ delta: -1000, reason: "order_refund", at: "2026-10-06T04:00:00Z" }] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({
+      body: {
+        orders: [
+          { id: "o1", title: "Plus, 3 months", days: 90, credits: 1000, listPaise: 99_900, coupon: null, discountPaise: 0, amountPaise: 99_900, taxPaise: 15_239, status: "refunded", createdAt: "2026-10-05T04:00:00Z", paidAt: "2026-10-05T04:01:00Z", refundedAt: "2026-10-06T04:00:00Z", invoice: "PKP/2627/000001", creditNote: "PKC/2627/000001" },
+        ],
+      },
+    });
+    let started = 0;
+    routes["POST /practice/nit-practice/plus/trial"] = () => {
+      started += 1;
+      trialDays = 0;
+      return { status: 201, body: { active: true, until: "2026-10-19T04:00:00Z" } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus");
+    expect(await screen.findByRole("heading", { name: "Try Plus free for 14 days" })).toBeTruthy();
+    expect(await screen.findByText("Taken back with a refund")).toBeTruthy();
+    expect(screen.getByText(/^Refunded /)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Credit note PKC\/2627\/000001/ }).getAttribute("href")).toBe("/practice/nit-practice/invoices/PKC%2F2627%2F000001");
+    await user.click(screen.getByRole("button", { name: "Start my 14-day trial" }));
+    expect(await screen.findByText("Your free trial has started.")).toBeTruthy();
+    expect(started).toBe(1);
+    expect(await screen.findByText(/You have Plus until/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Start my/ })).toBeNull();
+  });
+
   it("shows a locked lesson by name, with the way to Plus", async () => {
     routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true } });
     open("/practice/nit-practice/lessons/heaps");

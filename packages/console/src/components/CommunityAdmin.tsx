@@ -316,7 +316,7 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
 
 // --- the coin store -----------------------------------------------------------------------------------
 
-const blank: Omit<StoreItem, "id"> = { title: "", description: "", kind: "digital", plusDays: 0, priceCoins: 500, stock: null, perLearner: 1, active: true };
+const blank: Omit<StoreItem, "id"> = { title: "", description: "", kind: "digital", plusDays: 0, couponPercent: 0, perMonth: null, priceCoins: 500, stock: null, perLearner: 1, active: true };
 
 export function CoinStore({ client, canManage }: { client: ConsoleClient; canManage: boolean }) {
   const queryClient = useQueryClient();
@@ -325,7 +325,8 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep"] });
   const [draft, setDraft] = useState(blank);
   const add = useMutation({
-    mutationFn: () => client.saveStoreItem(null, { ...draft, title: draft.title.trim(), plusDays: draft.kind === "plus" ? draft.plusDays : 0 }),
+    mutationFn: () =>
+      client.saveStoreItem(null, { ...draft, title: draft.title.trim(), plusDays: draft.kind === "plus" ? draft.plusDays : 0, couponPercent: draft.kind === "coupon" ? draft.couponPercent : 0 }),
     onSuccess: () => {
       setDraft(blank);
       void refresh();
@@ -368,7 +369,15 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
               {(items.data ?? []).map((item) => (
                 <tr key={item.id}>
                   <td>
-                    {item.title} {item.kind === "plus" ? <span className="notice">({item.plusDays} days of Plus)</span> : <span className="notice">({item.kind})</span>}
+                    {item.title}{" "}
+                    {item.kind === "plus" ? (
+                      <span className="notice">({item.plusDays} days of Plus)</span>
+                    ) : item.kind === "coupon" ? (
+                      <span className="notice">({item.couponPercent}% off Plus, for the buyer alone)</span>
+                    ) : (
+                      <span className="notice">({item.kind})</span>
+                    )}
+                    {(item.perMonth ?? null) === null ? null : <span className="notice"> · {item.perMonth} a month</span>}
                   </td>
                   <td>{item.priceCoins.toLocaleString("en-IN")} coins</td>
                   <td>{item.stock === null ? "No limit" : item.stock}</td>
@@ -392,6 +401,7 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
                 Kind
                 <select value={draft.kind} onChange={(e) => setDraft({ ...draft, kind: e.target.value as StoreItem["kind"] })}>
                   <option value="plus">Days of Plus</option>
+                  <option value="coupon">Coupon for Plus</option>
                   <option value="digital">Digital</option>
                   <option value="physical">Posted</option>
                 </select>
@@ -400,6 +410,12 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
                 <label>
                   Days of Plus
                   <input type="number" min={1} max={400} value={draft.plusDays} onChange={(e) => setDraft({ ...draft, plusDays: Number(e.target.value) })} />
+                </label>
+              ) : null}
+              {draft.kind === "coupon" ? (
+                <label>
+                  Percent off
+                  <input type="number" min={1} max={90} value={draft.couponPercent} onChange={(e) => setDraft({ ...draft, couponPercent: Number(e.target.value) })} />
                 </label>
               ) : null}
               <label>
@@ -413,6 +429,10 @@ export function CoinStore({ client, canManage }: { client: ConsoleClient; canMan
               <label>
                 Each learner may buy
                 <input type="number" min={1} max={100} value={draft.perLearner} onChange={(e) => setDraft({ ...draft, perLearner: Number(e.target.value) })} />
+              </label>
+              <label>
+                A month (blank: no limit)
+                <input type="number" min={1} max={100} value={draft.perMonth ?? ""} onChange={(e) => setDraft({ ...draft, perMonth: e.target.value === "" ? null : Number(e.target.value) })} />
               </label>
             </div>
             <label>

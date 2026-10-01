@@ -35,15 +35,17 @@ export interface PrepSettings {
   readonly freeModules: number;
   readonly monthlyCredits: number;
   readonly tutorEnabled: boolean;
+  /** Days of Plus a learner may try free, once; 0 for no trial. */
+  readonly trialDays: number;
 }
 
-export const DEFAULT_PREP_SETTINGS: PrepSettings = { plusEnabled: false, freeModules: 1, monthlyCredits: 100, tutorEnabled: true };
+export const DEFAULT_PREP_SETTINGS: PrepSettings = { plusEnabled: false, freeModules: 1, monthlyCredits: 100, tutorEnabled: true, trialDays: 0 };
 
 export interface PrepProduct {
   readonly id: string;
   readonly title: string;
-  /** Plus, a Company Pass (the company lists alone), or tutor credits. */
-  readonly kind: "plus" | "credits" | "company";
+  /** Plus, a Company Pass (the company lists alone), a DSA Pass (lessons and the plan alone), or tutor credits. */
+  readonly kind: "plus" | "credits" | "company" | "dsa";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -71,13 +73,17 @@ export interface PrepOrder {
   readonly buyerState: string | null;
   readonly buyerGstin: string | null;
   /** Which pass its days are for. */
-  readonly pass: "plus" | "company";
+  readonly pass: Pass;
   readonly gatewayOrderId: string;
   readonly paymentId: string | null;
-  readonly status: "created" | "paid";
+  readonly status: "created" | "paid" | "refunded";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  readonly refundedAt: string | null;
+  readonly refundReason: string;
 }
+
+export type Pass = "plus" | "company" | "dsa";
 
 export interface PrepCoupon {
   /** Upper case: what a learner types, and what a `?ref=` link carries. */
@@ -93,6 +99,8 @@ export interface PrepCoupon {
   readonly affiliate: string;
   readonly active: boolean;
   readonly createdAt: string;
+  /** For this learner alone (one bought with coins); null for anyone. */
+  readonly learnerId: string | null;
 }
 
 /** A coupon with what it has brought in: paid orders only. */
@@ -112,6 +120,12 @@ export interface PrepInvoice {
   readonly issuedAt: string;
 }
 
+/** A credit note: shaped as an invoice is. */
+export type PrepCreditNote = PrepInvoice;
+
+/** Builds a refunded order's credit note once its number is known, against the order's invoice (if one was issued). */
+export type PrepCreditNoteBuilder = (number: string, order: PrepOrder, invoice: PrepInvoice | null, at: Date) => { readonly document: Record<string, unknown>; readonly totalPaise: number };
+
 /** Builds an order's invoice once its number is known: the document, and its total. */
 export type PrepInvoiceBuilder = (number: string, order: PrepOrder, at: Date) => { readonly document: Record<string, unknown>; readonly totalPaise: number };
 
@@ -125,8 +139,9 @@ interface CouponRow {
   affiliate: string;
   active: boolean;
   created_at: string | Date;
+  learner_id: string | null;
 }
-const COUPON_COLUMNS = "code, kind, value, product_id, max_uses, ends_at, affiliate, active, created_at";
+const COUPON_COLUMNS = "code, kind, value, product_id, max_uses, ends_at, affiliate, active, created_at, learner_id";
 const toCoupon = (r: CouponRow): PrepCoupon => ({
   code: r.code,
   kind: r.kind,
@@ -137,6 +152,7 @@ const toCoupon = (r: CouponRow): PrepCoupon => ({
   affiliate: r.affiliate,
   active: r.active,
   createdAt: new Date(r.created_at).toISOString(),
+  learnerId: r.learner_id,
 });
 
 interface InvoiceRow {
@@ -161,16 +177,18 @@ const toInvoice = (r: InvoiceRow): PrepInvoice => ({
 
 /** Learners' invoices are numbered in a series of their own: `PKP/2627/000001`. */
 export const prepInvoiceNumber = (fy: string, serial: number): string => invoiceNumber(fy, serial, "PKP");
+/** And their credit notes in another: `PKC/2627/000001`. */
+export const prepCreditNoteNumber = (fy: string, serial: number): string => invoiceNumber(fy, serial, "PKC");
 
 export interface PlusSpan {
   readonly startsAt: string;
   readonly endsAt: string;
-  readonly source: "payment" | "grant" | "coins";
-  /** Plus, or a Company Pass. */
-  readonly pass: "plus" | "company";
+  readonly source: "payment" | "grant" | "coins" | "trial";
+  /** Plus, a Company Pass or a DSA Pass. */
+  readonly pass: Pass;
 }
 
-export type CreditReason = "monthly" | "purchase" | "grant" | "spend" | "refund";
+export type CreditReason = "monthly" | "purchase" | "grant" | "spend" | "refund" | "order_refund";
 
 export interface TutorEntry {
   readonly id: string;
@@ -200,15 +218,17 @@ interface OrderRow {
   buyer_name: string;
   buyer_state: string | null;
   buyer_gstin: string | null;
-  pass: "plus" | "company";
+  pass: Pass;
   gateway_order_id: string;
   payment_id: string | null;
-  status: "created" | "paid";
+  status: "created" | "paid" | "refunded";
   created_at: string | Date;
   paid_at: string | Date | null;
+  refunded_at: string | Date | null;
+  refund_reason: string;
 }
 const ORDER_COLUMNS =
-  "id, learner_id, product_id, title, days, credits, list_paise, coupon_code, discount_paise, amount_paise, tax_paise, buyer_name, buyer_state, buyer_gstin, pass, gateway_order_id, payment_id, status, created_at, paid_at";
+  "id, learner_id, product_id, title, days, credits, list_paise, coupon_code, discount_paise, amount_paise, tax_paise, buyer_name, buyer_state, buyer_gstin, pass, gateway_order_id, payment_id, status, created_at, paid_at, refunded_at, refund_reason";
 const toOrder = (r: OrderRow): PrepOrder => ({
   id: r.id,
   learnerId: r.learner_id,
@@ -230,6 +250,8 @@ const toOrder = (r: OrderRow): PrepOrder => ({
   status: r.status,
   createdAt: iso(r.created_at),
   paidAt: r.paid_at === null ? null : iso(r.paid_at),
+  refundedAt: r.refunded_at === null ? null : iso(r.refunded_at),
+  refundReason: r.refund_reason,
 });
 
 interface ProductRow {
@@ -273,23 +295,23 @@ export class PrepPlusStore {
 
   async settings(scope: PracticeScope): Promise<PrepSettings> {
     return scoped(this.#sql, scope, async (tx) => {
-      const rows = await tx.query<{ plus_enabled: boolean; free_modules: number; monthly_credits: number; tutor_enabled: boolean }>(
-        `SELECT plus_enabled, free_modules, monthly_credits, tutor_enabled FROM prep_settings WHERE org_id = $1`,
+      const rows = await tx.query<{ plus_enabled: boolean; free_modules: number; monthly_credits: number; tutor_enabled: boolean; trial_days: number }>(
+        `SELECT plus_enabled, free_modules, monthly_credits, tutor_enabled, trial_days FROM prep_settings WHERE org_id = $1`,
         [scope.orgId],
       );
       const r = rows[0];
       return r === undefined
         ? DEFAULT_PREP_SETTINGS
-        : { plusEnabled: r.plus_enabled, freeModules: Number(r.free_modules), monthlyCredits: Number(r.monthly_credits), tutorEnabled: r.tutor_enabled };
+        : { plusEnabled: r.plus_enabled, freeModules: Number(r.free_modules), monthlyCredits: Number(r.monthly_credits), tutorEnabled: r.tutor_enabled, trialDays: Number(r.trial_days) };
     });
   }
 
   async saveSettings(orgId: OrgId, settings: PrepSettings): Promise<void> {
     await scoped(this.#sql, practiceStaff(orgId), (tx) =>
       tx.query(
-        `INSERT INTO prep_settings (org_id, plus_enabled, free_modules, monthly_credits, tutor_enabled, updated_at) VALUES ($1, $2, $3, $4, $5, now())
-         ON CONFLICT (org_id) DO UPDATE SET plus_enabled = $2, free_modules = $3, monthly_credits = $4, tutor_enabled = $5, updated_at = now()`,
-        [orgId, settings.plusEnabled, settings.freeModules, settings.monthlyCredits, settings.tutorEnabled],
+        `INSERT INTO prep_settings (org_id, plus_enabled, free_modules, monthly_credits, tutor_enabled, trial_days, updated_at) VALUES ($1, $2, $3, $4, $5, $6, now())
+         ON CONFLICT (org_id) DO UPDATE SET plus_enabled = $2, free_modules = $3, monthly_credits = $4, tutor_enabled = $5, trial_days = $6, updated_at = now()`,
+        [orgId, settings.plusEnabled, settings.freeModules, settings.monthlyCredits, settings.tutorEnabled, settings.trialDays],
       ),
     );
   }
@@ -326,7 +348,7 @@ export class PrepPlusStore {
 
   // --- orders ---------------------------------------------------------------------------------
 
-  async createOrder(orgId: OrgId, order: Omit<PrepOrder, "id" | "paymentId" | "status" | "createdAt" | "paidAt">): Promise<PrepOrder> {
+  async createOrder(orgId: OrgId, order: Omit<PrepOrder, "id" | "paymentId" | "status" | "createdAt" | "paidAt" | "refundedAt" | "refundReason">): Promise<PrepOrder> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const rows = await tx.query<OrderRow>(
         `INSERT INTO prep_orders (org_id, id, learner_id, product_id, title, days, credits, amount_paise, tax_paise, gateway_order_id,
@@ -393,7 +415,7 @@ export class PrepPlusStore {
         // Plus bought while Plus is held runs on from the end of what is held.
         // A pass bought while the same pass is held runs on from the end of what is held.
         const held = await tx.query<{ ends_at: string | Date | null }>(
-          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3 AND pass = $4`,
+          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3 AND pass = $4 AND revoked_at IS NULL`,
           [orgId, order.learnerId, at, order.pass],
         );
         const from = held[0]?.ends_at === null || held[0]?.ends_at === undefined ? at : new Date(held[0].ends_at);
@@ -484,7 +506,7 @@ export class PrepPlusStore {
   }
 
   /** A new coupon, or a change to one; the code itself never changes. Null when changing one that is not there. */
-  async saveCoupon(orgId: OrgId, coupon: Omit<PrepCoupon, "createdAt">, create: boolean): Promise<PrepCoupon | null> {
+  async saveCoupon(orgId: OrgId, coupon: Omit<PrepCoupon, "createdAt" | "learnerId">, create: boolean): Promise<PrepCoupon | null> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const params = [orgId, coupon.code, coupon.kind, coupon.value, coupon.productId, coupon.maxUses, coupon.endsAt, coupon.affiliate, coupon.active];
       try {
@@ -515,7 +537,7 @@ export class PrepPlusStore {
     return scoped(this.#sql, scope, async (tx) =>
       (
         await tx.query<{ starts_at: string | Date; ends_at: string | Date; source: PlusSpan["source"]; pass: PlusSpan["pass"] }>(
-          `SELECT starts_at, ends_at, source, pass FROM prep_plus WHERE org_id = $1 AND learner_id = $2 ORDER BY ends_at`,
+          `SELECT starts_at, ends_at, source, pass FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND revoked_at IS NULL ORDER BY ends_at`,
           [scope.orgId, who],
         )
       ).map((r) => ({ startsAt: iso(r.starts_at), endsAt: iso(r.ends_at), source: r.source, pass: r.pass })),
@@ -531,6 +553,93 @@ export class PrepPlusStore {
       );
       return rows.length > 0;
     });
+  }
+
+  /** Start a learner's free trial of Plus, from `at`. False when they have had one. */
+  async startTrial(orgId: OrgId, learnerId: string, days: number, at: Date): Promise<boolean> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ id: string }>(
+        `INSERT INTO prep_plus (org_id, id, learner_id, starts_at, ends_at, source, ref, pass) VALUES ($1, $2, $3, $4, $5, 'trial', $6, 'plus') ON CONFLICT DO NOTHING RETURNING id`,
+        [orgId, this.#newId(), learnerId, at, new Date(at.getTime() + days * 86_400_000), `trial:${learnerId}`],
+      );
+      return rows.length > 0;
+    });
+  }
+
+  /** Whether a learner has had their trial. */
+  async hadTrial(orgId: OrgId, learnerId: string): Promise<boolean> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (await tx.query(`SELECT 1 FROM prep_plus WHERE org_id = $1 AND source = 'trial' AND ref = $2`, [orgId, `trial:${learnerId}`])).length > 0,
+    );
+  }
+
+  /**
+   * Record a refund given through the gateway: the order is refunded, the
+   * pass it gave revoked, its credits taken back as far as they are unspent,
+   * and a credit note issued against its invoice. Null when there is no such
+   * paid order; refunding twice changes nothing.
+   */
+  async refundOrder(
+    orgId: OrgId,
+    orderId: string,
+    refund: { readonly refundId: string; readonly reason: string },
+    at: Date,
+    creditNote?: PrepCreditNoteBuilder,
+  ): Promise<{ readonly order: PrepOrder; readonly creditNote: PrepCreditNote | null; readonly creditsTaken: number } | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const found = await tx.query<OrderRow>(`SELECT ${ORDER_COLUMNS} FROM prep_orders WHERE org_id = $1 AND id = $2 FOR UPDATE`, [orgId, orderId]);
+      if (found[0] === undefined || found[0].status === "created") return null;
+      if (found[0].status === "refunded") {
+        const notes = await tx.query<InvoiceRow>(`SELECT ${INVOICE_COLUMNS} FROM prep_credit_notes WHERE org_id = $1 AND order_id = $2`, [orgId, orderId]);
+        return { order: toOrder(found[0]), creditNote: notes[0] === undefined ? null : toInvoice(notes[0]), creditsTaken: 0 };
+      }
+      const rows = await tx.query<OrderRow>(
+        `UPDATE prep_orders SET status = 'refunded', refunded_at = $3, refund_id = $4, refund_reason = $5 WHERE org_id = $1 AND id = $2 RETURNING ${ORDER_COLUMNS}`,
+        [orgId, orderId, at, refund.refundId, refund.reason],
+      );
+      const order = toOrder(rows[0]!);
+      await tx.query(`UPDATE prep_plus SET revoked_at = $3 WHERE org_id = $1 AND source = 'payment' AND ref = $2 AND revoked_at IS NULL`, [orgId, order.id, at]);
+      let creditsTaken = 0;
+      if (order.credits > 0) {
+        const balance = await tx.query<{ total: string | null }>(`SELECT sum(delta) AS total FROM prep_credits WHERE org_id = $1 AND learner_id = $2`, [orgId, order.learnerId]);
+        creditsTaken = Math.max(0, Math.min(order.credits, Number(balance[0]?.total ?? 0)));
+        if (creditsTaken > 0) {
+          await tx.query(`INSERT INTO prep_credits (org_id, id, learner_id, delta, reason, key) VALUES ($1, $2, $3, $4, 'order_refund', $5) ON CONFLICT DO NOTHING`, [
+            orgId,
+            this.#newId(),
+            order.learnerId,
+            -creditsTaken,
+            `order_refund:${order.id}`,
+          ]);
+        }
+      }
+      let note: PrepCreditNote | null = null;
+      if (creditNote !== undefined) {
+        const invoices = await tx.query<InvoiceRow>(`SELECT ${INVOICE_COLUMNS} FROM prep_invoices WHERE org_id = $1 AND order_id = $2`, [orgId, order.id]);
+        const fy = financialYear(at);
+        const counter = await tx.query<{ last: number }>(
+          `INSERT INTO invoice_counters (fy, last) VALUES ($1, 1) ON CONFLICT (fy) DO UPDATE SET last = invoice_counters.last + 1 RETURNING last`,
+          [`PC:${fy}`],
+        );
+        const number = prepCreditNoteNumber(fy, Number(counter[0]!.last));
+        const { document, totalPaise } = creditNote(number, order, invoices[0] === undefined ? null : toInvoice(invoices[0]), at);
+        const inserted = await tx.query<InvoiceRow>(
+          `INSERT INTO prep_credit_notes (org_id, id, order_id, learner_id, number, document, total_paise, issued_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING ${INVOICE_COLUMNS}`,
+          [orgId, this.#newId(), order.id, order.learnerId, number, JSON.stringify(document), totalPaise, at.toISOString()],
+        );
+        note = toInvoice(inserted[0]!);
+      }
+      return { order, creditNote: note, creditsTaken };
+    });
+  }
+
+  /** A learner's credit notes, or (staff) everyone's; newest first. */
+  async creditNotes(scope: PracticeScope): Promise<readonly PrepCreditNote[]> {
+    if (scope.actor === "learner" && scope.learnerId === null) return [];
+    return scoped(this.#sql, scope, async (tx) =>
+      (await tx.query<InvoiceRow>(`SELECT ${INVOICE_COLUMNS} FROM prep_credit_notes WHERE org_id = $1 ORDER BY issued_at DESC LIMIT 2000`, [scope.orgId])).map(toInvoice),
+    );
   }
 
   // --- credits ------------------------------------------------------------------------------------

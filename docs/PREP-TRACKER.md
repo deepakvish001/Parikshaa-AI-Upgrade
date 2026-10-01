@@ -31,13 +31,13 @@ Status ka matlab:
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 6 | 1 | 0 | 0 |
 | Sahayak AI | 13 | 3 | 2 | 0 |
-| Plus aur payment | 10 | 1 | 2 | 0 |
-| Coins, store, gamification | 10 | 3 | 2 | 0 |
+| Plus aur payment | 13 | 0 | 0 | 0 |
+| Coins, store, gamification | 12 | 2 | 1 | 0 |
 | Company prep aur community | 11 | 1 | 3 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 9 | 1 | 3 | 0 |
-| **Kul** | **87** | **17** | **18** | **1** |
+| **Kul** | **92** | **15** | **15** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -138,9 +138,9 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Billing page: orders | ✅ | `GET /orders`, `PlusPages.tsx` | Har order ke saath coupon ki chhoot aur invoice ka link |
 | Learner ke liye GST invoice (PDF, number series) | ✅ | `prep_invoices` (migration 0033), `gst.ts` `inclusiveInvoice`, `GET /invoices/:number`, `InvoicePage` | Paid hote hi usi transaction me, series `PKP/2627/000001`; state se CGST+SGST ya IGST. PDF browser ke "Print → Save as PDF" se; server PDF file nahi banata. Invoice tabhi banta hai jab server par `PARIKSHAA_SUPPLIER_*` set ho |
 | Coupons aur affiliate `?ref=` | ✅ | `prep_coupons`, `POST /plus/quote`, console "Coupons and sales" (`Sales.tsx`) | % ya flat, ek plan ya sab, kitni baar, kab tak, affiliate ka naam; har learner ek baar. `?ref=CODE` link se code apne aap bhar jaata hai. Affiliate ko commission dene ka hisaab nahi, sirf bikri ki report |
-| Alag passes (DSA Pass, Company Pass) | 🟡 | product kind `company` (migration 0036), `PrepPlus.companyAccess` | **Company Pass** ban gaya: sirf companies ki poori list kholta hai, Plus nahi deta; invoice par "Company Pass" likha aata hai. Alag "DSA Pass" nahi: Plus hi lessons aur plan kholta hai |
-| Purane users ko 30 din ka trial | ⬜ | | Staff grant se haath se ho sakta hai |
-| Refund flow | ⬜ | | |
+| Alag passes (DSA Pass, Company Pass) | ✅ | product kinds `company` (migration 0036) aur `dsa` (migration 0042), `PrepPlus.companyAccess`, `PrepPlus.learnAccess` | **Company Pass** sirf companies ki poori list kholta hai. **DSA Pass** har lesson aur study plan kholta hai, par Plus nahi deta (tutor credits, company list nahi). Invoice par pass ka naam aata hai. Staff ka Plus grant DSA Pass ke baad nahi, aaj se chalta hai. Tests: `prep-plus.test.ts` "sells a DSA Pass" |
+| Purane users ko 30 din ka trial | ✅ | `prep_settings.trial_days` (migration 0042), `PrepPlus.startTrial`, `POST /practice/:site/plus/trial`, web `PlusPage`, console Plus settings | Owner trial ke din set kare (0–60); har learner ek baar khud shuru kare, koi paisa nahi, kuch apne-aap renew nahi. Jiske paas Plus hai use nahi milta. Purane users ko bulk me ek saath dena nahi bana: woh khud button dabaate hain. Tests: store, API, web |
+| Refund flow | ✅ | `PrepPlusStore.refundOrder`, `prep_credit_notes` (migration 0042), `PrepPlus.refundOrder`, `POST /practice-admin/plus/orders/:id/refund`, console Sales | Staff wajah likh kar poora refund kare: Razorpay refund, us order ka pass band, bache hue credits wapas (jitne kharch nahi hue), invoice ke against GST credit note (`PKC/…`), audit `prep.order_refunded`. Do baar refund = ek baar. Learner ko order par "Refunded" aur credit note dikhta hai. Aadha (partial) refund nahi bana. Tests: store, API, console |
 | Campus licence: CSV se bulk Plus, college dashboard | ✅ | `prep_cohorts` (migration 0038), `api/src/prep-campus.ts`, console → Practice → Campus | Cohort (college/batch + Plus ke din); emails ki CSV, pehle dry run; verified account ko turant Plus, baaki ko us email ke verify hone par (link ya Google). Har email ko ek baar. Dashboard: joined, Plus mila, 7 din me active, solved, har student ki line. College ke apne login wala dashboard nahi: staff console hi dikhata hai |
 
 ### 7. Coins, store, gamification (section 13.3, S7, F10, F13)
@@ -157,11 +157,11 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Physical item: address, fulfil/cancel, cancel par refund | ✅ | | |
 | Plus ke din coins se | ✅ | | |
 | Titles (Newbie → Grandmaster) aur 13 achievements | ✅ | `RatingPage` | Computed, store nahi hote |
-| "Mahine me 1" jaisi limit | 🟡 | `per_learner` | Abhi kul limit hai, mahine wali nahi |
+| "Mahine me 1" jaisi limit | ✅ | `prep_store_items.per_month` (migration 0042), `PrepCommunityStore.redeem` | Kul limit (`per_learner`) ke saath ab India ke calendar mahine ki limit bhi. Tests: store, API, console |
 | Title naam ke saath har jagah | 🟡 | | Rating page par dikhta hai |
 | Quiz pass par +20, contest rank par coins | 🟡 | coin rule `quiz` | Sprint quiz pass par +20 (ek baar). Contest rank par coins baaki |
 | Shareable achievement cards | ⬜ | | |
-| Store me coupons | ⬜ | | |
+| Store me coupons | ✅ | item kind `coupon` (migration 0042), `PrepCommunityStore.redeem`, `prep_coupons.learner_id` | Coins se Plus par N% ka coupon: code `COIN-…`, sirf khareedne wale ke liye, ek baar, 90 din tak; order ke note me code aata hai. Dusra learner use kare to "not valid". Tests: store, API, console |
 
 ### 8. Company prep aur community (S5, F9, F14)
 
@@ -343,7 +343,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 32 | **Proxy pakadna** (CO19): ek network + browser se kai candidates, ek hi identity photo do attempts me, AI se selfie ↔ ID ↔ webcam photo milana (sirf sanket, faisla insaan) | V2-12 | Remote hiring test ka sabse bada dar | Tests: shared origin, lab me nahi ginna, reused photo, AI flag, audit | 🟡 (1 Oct 2026): migration 0040, `api/src/proxy.ts`; console `ProxyCheck.tsx`. Awaaz wala viva aur do device nahi; asli model par abhi nahi chalaya |
 | 33 | **Enterprise ke liye DPA aur SLA** (CO35): code se likhe templates, Annex me data, suraksha aur sub-processors; SECURITY.md me naya data | V2-12 | Badi company ka procurement | Lawyer review | 🟡 (1 Oct 2026): `docs/legal/DPA.md`, `docs/legal/SLA.md`. Lawyer aur owner ki terms baaki (Ruka hua kaam); status page aur questionnaire nahi |
 | 34 | **Contests v2** (F11, §20): contest me rank par coins (top 10 ko, ek baar), judge ki priority lane (contest ke submissions pehle), runner queue jo bheed me bhi kram se chale, 2,000 learners ek saath ka load test | F11, §20 | Contest bina atke chale, aur jeetne ka inaam | Tests: rank coins ek hi baar, queue ka kram aur timeout; load test ki report (p95, errors) | ⬜ pending |
-| 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ⬜ pending |
+| 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ✅ ban gaya (2 Oct 2026) |
 | 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
 | 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ⬜ pending (evals ka paid run alag se owner par) |
 | 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ⬜ pending |

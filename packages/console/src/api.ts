@@ -1268,6 +1268,10 @@ export class ConsoleClient {
       : this.#request(`/practice-admin/plus/products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
   }
 
+  refundPlusOrder(id: string, reason: string): Promise<{ readonly status: "refunded"; readonly creditNote: string | null; readonly creditsTaken: number }> {
+    return this.#request(`/practice-admin/plus/orders/${encodeURIComponent(id)}/refund`, { method: "POST", body: JSON.stringify({ reason }) });
+  }
+
   async plusOrders(): Promise<readonly PlusOrder[]> {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
@@ -2286,12 +2290,14 @@ export interface PlusSettings {
   readonly freeModules: number;
   readonly monthlyCredits: number;
   readonly tutorEnabled: boolean;
+  /** Days of free Plus each learner may start once; 0 for no trial. */
+  readonly trialDays: number;
 }
 
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "company" | "credits";
+  readonly kind: "plus" | "company" | "credits" | "dsa";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -2312,9 +2318,12 @@ export interface PlusOrder {
   readonly taxPaise: number;
   /** The tax invoice's number, once paid. */
   readonly invoice: string | null;
-  readonly status: "created" | "paid";
+  /** The credit note's number, once refunded. */
+  readonly creditNote: string | null;
+  readonly status: "created" | "paid" | "refunded";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  readonly refundedAt: string | null;
 }
 
 export interface PlusCoupon {
@@ -2401,8 +2410,12 @@ export interface StoreItem {
   readonly id: string;
   readonly title: string;
   readonly description: string;
-  readonly kind: "plus" | "digital" | "physical";
+  readonly kind: "plus" | "coupon" | "digital" | "physical";
   readonly plusDays: number;
+  /** For a coupon item: the share it takes off a Plus plan. */
+  readonly couponPercent: number;
+  /** How many one learner may buy in a calendar month; null for no such limit. */
+  readonly perMonth: number | null;
   readonly priceCoins: number;
   /** Null: no limit. */
   readonly stock: number | null;

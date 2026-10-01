@@ -87,7 +87,7 @@ const companyPage = z.object({
   difficulty: z.object({ easy: z.number(), medium: z.number(), hard: z.number() }),
   experiences: z.array(experience).readonly(),
 });
-const itemKind = z.enum(["plus", "digital", "physical"]);
+const itemKind = z.enum(["plus", "coupon", "digital", "physical"]);
 const storeOrder = z.object({
   id: z.string(),
   title: z.string(),
@@ -108,6 +108,8 @@ const storeView = z.object({
         description: z.string(),
         kind: itemKind,
         plusDays: z.number(),
+        couponPercent: z.number().describe("For a coupon item: the share it takes off a Plus plan."),
+        perMonth: z.number().nullable().describe("How many one learner may buy in a calendar month; null for no such limit."),
         priceCoins: z.number(),
         soldOut: z.boolean(),
         left: z.number().nullable(),
@@ -138,6 +140,8 @@ const staffItem = z.object({
   description: z.string(),
   kind: itemKind,
   plusDays: z.number(),
+  couponPercent: z.number(),
+  perMonth: z.number().nullable(),
   priceCoins: z.number(),
   stock: z.number().nullable(),
   perLearner: z.number(),
@@ -148,6 +152,8 @@ const itemBody = z.object({
   description: z.string().max(2000).default(""),
   kind: itemKind,
   plusDays: z.number().int().min(0).max(400).default(0),
+  couponPercent: z.number().int().min(0).max(90).default(0),
+  perMonth: z.number().int().min(1).max(100).nullable().default(null).describe("Null: no monthly limit."),
   priceCoins: z.number().int().min(1).max(10_000_000),
   stock: z.number().int().min(0).nullable().default(null).describe("Null: no limit."),
   perLearner: z.number().int().min(1).max(100).default(1),
