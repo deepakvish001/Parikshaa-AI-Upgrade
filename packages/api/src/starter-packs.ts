@@ -1,7 +1,9 @@
 import { questionId, type OrgId, type Question } from "@parikshaa/core";
 import { practiceStaff, type PracticeStore, type PrepStore } from "@parikshaa/store";
 import { CS_FUNDAMENTALS } from "./content/cs-fundamentals.js";
-import type { CsPack, SqlPack } from "./content/packs.js";
+import { DSA_STARTER } from "./content/dsa-starter.js";
+import { DSA_TEXT } from "./content/dsa-starter-text.js";
+import type { CsPack, DsaPack, SqlPack } from "./content/packs.js";
 import { SQL_STARTER } from "./content/sql-starter.js";
 import { PracticeError, slugOf } from "./practice.js";
 import type { PrepService } from "./prep.js";
@@ -14,12 +16,14 @@ import type { PrepService } from "./prep.js";
  *   each question in it a practice MCQ whose editorial is the answer, and a
  *   track of them by subject.
  * - SQL: problems that run on SQLite, each with its approaches, and a track.
+ * - DSA: 40 problems written for Parikshaa (the Sahayak eval's), each with a
+ *   first hint, its brute force and optimal approaches, and a track by topic.
  *
  * A pack is taken in once: its track's address says it is there. Everything
  * it adds is the site's own afterwards, to change or hide like anything else.
  */
 
-export const PACKS = ["cs-fundamentals", "sql-starter"] as const;
+export const PACKS = ["cs-fundamentals", "sql-starter", "dsa-starter"] as const;
 export type PackName = (typeof PACKS)[number];
 
 export interface PackSummary {
@@ -36,6 +40,11 @@ const TRACK: Record<PackName, { slug: string; title: string; description: string
     slug: "cs-fundamentals",
     title: "CS fundamentals",
     description: "Operating systems, databases, networks, OOP, theory of computation and compilers: read each topic, then answer its questions.",
+  },
+  "dsa-starter": {
+    slug: "dsa-starter",
+    title: "DSA, the patterns interviews ask",
+    description: "Prefix sums, two pointers, sliding windows, stacks, heaps, binary search, dynamic programming and graphs: 40 problems, each with a first hint and its brute-force and optimal approaches.",
   },
   "sql-starter": {
     slug: "sql-starter",
@@ -80,6 +89,58 @@ export function sqlQuestion(problem: SqlPack["problems"][number]): Question {
   };
 }
 
+type DsaProblem = DsaPack["problems"][number];
+
+export function dsaQuestion(problem: DsaProblem): Question {
+  return {
+    id: questionId(`dsa-${problem.slug}`),
+    kind: "code",
+    stem: problem.statement,
+    maxScore: 10,
+    rubric: [],
+    language: "python",
+    languages: ["python", "cpp", "java"],
+    starter: "",
+    inputFormat: problem.inputFormat,
+    outputFormat: problem.outputFormat,
+    constraints: problem.constraints,
+    tests: problem.tests,
+    ...(problem.timeMs === undefined ? {} : { limits: { timeMs: problem.timeMs } }),
+  };
+}
+
+/** Brute force, then optimal, each a tab; the optimal with a right program in Python. */
+export function dsaEditorial(problem: DsaProblem, brute: string): string {
+  return [
+    "## Brute force",
+    brute,
+    "",
+    `Time: ${problem.bruteTime}. Too slow at the largest inputs.`,
+    "",
+    "## Optimal",
+    problem.optimal,
+    "",
+    `Time: ${problem.optimalTime}.`,
+    "",
+    "```python",
+    problem.reference.trim(),
+    "```",
+  ].join("\n");
+}
+
+/** The DSA track's modules, by pattern: every problem in exactly one. */
+const DSA_MODULES: readonly [string, readonly string[]][] = [
+  ["Arrays and prefix sums", ["range-sum-queries", "pairwise-product-sum", "range-bonus", "heaviest-square", "subarrays-summing-to-k", "total-pairwise-distance"]],
+  ["Hashing and counting", ["pairs-with-target-sum", "pairs-with-difference", "frequent-value-score", "largest-pair-product"]],
+  ["Sorting and greedy", ["closest-pair-gap", "make-equal-cost", "union-length", "rope-joining"]],
+  ["Two pointers and sliding windows", ["best-k-window", "two-lists-budget", "nearest-to-zero-pair", "widest-container", "longest-window-under-budget", "distinct-in-windows", "small-product-windows", "trapped-rainwater"]],
+  ["Binary search", ["slowest-eating-speed"]],
+  ["Stacks and heaps", ["wait-for-warmer", "largest-rectangle-histogram", "sum-of-window-minimums", "running-median-sum"]],
+  ["Dynamic programming", ["best-streak-sum", "circular-best-streak", "house-robber", "staircase-ways", "paint-houses", "grid-paths-with-blocks", "coin-change-ways", "knapsack-max-value"]],
+  ["Divide and conquer, trees over values", ["count-inversions", "double-trouble-pairs", "increasing-triplets", "range-min-sum"]],
+  ["Graphs", ["cheapest-route"]],
+];
+
 export class StarterPacks {
   readonly #practice: PracticeStore;
   readonly #prep: PrepStore;
@@ -98,6 +159,7 @@ export class StarterPacks {
     return [
       { name: "cs-fundamentals", ...pick(TRACK["cs-fundamentals"]), lessons: csLessons(CS_FUNDAMENTALS).length, problems: csCount, imported: has("cs-fundamentals") },
       { name: "sql-starter", ...pick(TRACK["sql-starter"]), lessons: 0, problems: SQL_STARTER.problems.length, imported: has("sql-starter") },
+      { name: "dsa-starter", ...pick(TRACK["dsa-starter"]), lessons: 0, problems: DSA_STARTER.problems.length, imported: has("dsa-starter") },
     ];
   }
 
@@ -113,7 +175,7 @@ export class StarterPacks {
       taken.add(slug);
       return slug;
     };
-    const addProblem = async (p: { slug: string; title: string; question: Question; difficulty: "easy" | "medium" | "hard"; tags: readonly string[]; editorial: string }) =>
+    const addProblem = async (p: { slug: string; title: string; question: Question; difficulty: "easy" | "medium" | "hard"; tags: readonly string[]; editorial: string; hint?: string }) =>
       (await this.#practice.addProblem(orgId, { ...p, slug: free(p.slug), fromBank: null, position: position++, published: true })).id;
 
     if (name === "cs-fundamentals") {
@@ -147,6 +209,17 @@ export class StarterPacks {
       }
       await this.#service.saveTrack(orgId, null, { ...TRACK[name], published: true, modules });
       return { track: TRACK[name].slug, lessons, problems };
+    }
+
+    if (name === "dsa-starter") {
+      const ids = new Map<string, string>();
+      for (const p of DSA_STARTER.problems) {
+        const text = DSA_TEXT[p.slug]!;
+        ids.set(p.slug, await addProblem({ slug: p.slug, title: p.title, question: dsaQuestion(p), difficulty: p.difficulty, tags: p.tags, editorial: dsaEditorial(p, text.brute), hint: text.hint }));
+      }
+      const modules = DSA_MODULES.map(([title, slugs]) => ({ title, items: slugs.flatMap((s) => (ids.has(s) ? [{ problemId: ids.get(s)! }] : [])) }));
+      await this.#service.saveTrack(orgId, null, { ...TRACK[name], published: true, modules });
+      return { track: TRACK[name].slug, lessons: 0, problems: ids.size };
     }
 
     const groups: [string, readonly string[]][] = [

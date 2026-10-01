@@ -27,7 +27,7 @@ Status ka matlab:
 
 | Hissa | ✅ | 🟡 | ⬜ | ❌ |
 |---|---|---|---|---|
-| Dashboard aur planner | 9 | 3 | 3 | 0 |
+| Dashboard aur planner | 10 | 3 | 2 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 6 | 1 | 0 | 0 |
 | Sahayak AI | 13 | 3 | 2 | 0 |
@@ -35,13 +35,13 @@ Status ka matlab:
 | Coins, store, gamification | 10 | 3 | 2 | 0 |
 | Company prep aur community | 11 | 1 | 3 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
-| Content | 3 | 1 | 5 | 1 |
+| Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 9 | 1 | 3 | 0 |
-| **Kul** | **80** | **17** | **24** | **1** |
+| **Kul** | **83** | **19** | **20** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
-Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sahayak → coins aur streak → company readiness) **chal raha hai**. Sabse bade baaki kaam hain: **content** (editorials, videos, static hints, company data), **payments ki poori dukaan** (coupons, invoices, passes), **Sahayak ke evals**, aur **reminders aur analytics**.
+Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sahayak → coins aur streak → company readiness) **chal raha hai**, aur plan 1b–9 ban gaye (PR #35). Ab sabse bade baaki kaam: **owner par ruke** (Sahayak evals ka paid run, companies ka asli data, videos, aur problems — "Ruka hua kaam" dekho), **contests** (contest coins, 2,000 ka load test), **PWA/push**, aur Master plan v2 par owner ka faisla.
 
 ---
 
@@ -53,7 +53,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 |---|---|---|---|
 | Dashboard: aaj ka plan sabse upar, streak, coins, POTD, due revision, "continue" | ✅ | `web/src/practice/PrepPages.tsx` → `HomePage`; API `GET /practice/:site/home` | Pehli visit par +1 coin check-in |
 | Onboarding: track, level, deadline, roz ke minutes, off days, plan preview | ✅ | `PlanSetup`; `POST /practice/:site/plan/preview` | |
-| Onboarding: 8 sawaal ka placement quiz | ⬜ | | Level abhi khud chunna padta hai |
+| Onboarding: 8 sawaal ka placement quiz | ✅ | `content/placement-quiz.ts`, `GET/POST /placement`, `PlacementPage` | 40 apne likhe sawaal; har baar 3 aasaan, 3 medium, 2 kathin; server jaanchta hai, jawab browser ko nahi jaate, kuch save nahi hota; nateeja level sujhata hai aur plan setup me bhar jaata hai |
 | Onboarding: target role aur companies | 🟡 | `PlanSetup` → `TargetPicker`; `PUT /companies/:company/target` | Plan banate waqt target companies chun sakte hain (company page se bhi). Unke problems plan ke aakhri 30% dino me. Target **role** abhi nahi |
 | Weekday aur weekend ke alag minutes | ⬜ | | Abhi ek hi "roz ke minutes" |
 
@@ -198,12 +198,13 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Content database me, console se edit | ✅ | tracks, lessons, problems | Deploy ki zaroorat nahi |
 | Starter pack: CS fundamentals (80 sawaal, 6 subjects, Parikshaa-New se) | ✅ | `api/src/content/cs-fundamentals.ts` | `scripts/cs-fundamentals-pack.mjs` se dobara banta hai |
 | Starter pack: SQL, 8 problems, approaches ke saath | ✅ | `api/src/content/sql-starter.ts` | Reference queries tests me asli runner par chalti hain |
-| Editorial code ka CI quality gate | 🟡 | `content.test.ts` | Sirf SQL pack ke liye. Har editorial ke liye baaki |
-| Top 150 problems ke Brute/Better/Optimal editorials | ⬜ | | Content team |
-| 300 static hints | ⬜ | | Parikshaa-New ka `problemHints.ts` LeetCode slugs par hai, apne problems banne par jodna |
+| Starter pack: DSA, 40 problems, hint + approaches ke saath | ✅ | `content/dsa-starter.ts`, `content-dsa.test.ts`, console → Practice → Tracks → Starter packs | Sahayak eval ke apne likhe problems; pattern ke hisaab se 9 modules. Tests: examples + chhote random + edge cases, expected reference program ka; test har baar asli runner par dobara banakar milata hai. **Bade (time-limit) tests nahi** (har problem ~1 MB ho jaata): sirf sahi/galat jaanchte hain |
+| Editorial code ka CI quality gate | 🟡 | `content.test.ts`, `content-dsa.test.ts` | SQL aur DSA pack ke reference programs har test par asli runner par chalte hain. Staff ke haath se likhe editorials ka code nahi jaancha jaata |
+| Top 150 problems ke Brute/Better/Optimal editorials | 🟡 | DSA starter pack (`content/dsa-starter.ts`) | **40** problems ke Brute force + Optimal (reference Python ke saath) ban gaye. "Better" alag tab nahi. Baaki 110 ke liye naye problems chahiye |
+| 300 static hints | 🟡 | `content/dsa-starter-text.ts` | **40** hints likhe (DSA pack ke har problem ka pehla hint, Sahayak rung 1 free). Baaki 260 ke liye naye problems chahiye. Parikshaa-New ke hints LeetCode slugs par hain, nahi liye |
 | 25 companies ka data | ⬜ | | Asli reports chahiye. Parikshaa-New ke company tags hash se bane hain, isliye nahi liye |
 | 60 video lessons | ⬜ | | |
-| Placement quiz ke 40 sawaal | ⬜ | | |
+| Placement quiz ke 40 sawaal | ✅ | `content/placement-quiz.ts` | Complexity, arrays, hashing, stack/queue, recursion, sorting/searching, trees/graphs, DP, linked lists, integers; har sawaal ke saath "kyun" |
 | Parikshaa-New ki baaki sheets | ❌ | | Ye LeetCode ke links hain, yahan chalne wale problems nahi. Apne problems banne par sheet bana sakte hain |
 
 ### 11. Platform, quality, B2B (sections 17, 20)
@@ -232,7 +233,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
 | P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
-| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Placement quiz, plan settings |
+| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Plan settings (weekday/weekend minutes) |
 | P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, 180 din delete |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting aur videos |
@@ -242,7 +243,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 
 | Flow | Status | Note |
 |---|---|---|
-| F1 Sign up → onboarding → pehla plan | 🟡 | Target companies ho gayi. Placement quiz baaki |
+| F1 Sign up → onboarding → pehla plan | ✅ | Placement quiz, target companies, plan preview; e2e bhi |
 | F2 Roz ka loop | ✅ | Reminder email ke saath |
 | F3 Run aur Submit | ✅ | |
 | F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
@@ -269,6 +270,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Naam aur brand | "Parikshaa Prep" kaam chalane ka naam. **Pakka karna baaki** | — |
 | Prices | Staff console me khud set karta hai. Blueprint ke numbers (₹3,999/₹6,999…) **pakka karna baaki** | — |
 | Videos: kaun, kis bhasha me, hosting kahan | **Baaki** | — |
+| Analytics kahan se | Blueprint me alag analytics events the. Ab tak ke numbers **maujooda tables** (signup, submissions, lessons, tasks, tutor, orders, roz ka check-in coin) se gine jaate hain: koi event chhootta nahi aur purana data bhi ginta hai. Page view ya click ginne ho to alag events table chahiye hogi | 1 Oct 2026 |
 | Scope: placement prep se aage (college ka TPO OS, company ka talent pool, coaching aur dusre exams) | **Prastaav**, [Master plan v2](#master-plan-v2-taiyaari-se-naukri-tak-ek-bharosemand-platform). Owner ki haan baaki | — |
 | Student ke liye core taiyaari, Parikshaa Score aur Pramaan hamesha free; paisa company, college aur coaching se | **Prastaav** (V2-7). Owner ki haan baaki | — |
 | Sahayak evals ka size | Blueprint me 200 problems the; owner ne **40 problems × 3 galat programs** chune (har flow me 120 cases, kul 360). Problems apne likhe hain, kisi site se copy nahi | 30 Sep 2026 |
@@ -281,6 +283,9 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 
 | Kaam | Kis cheez ka intezaar | Uske baad kya hoga | Kab se |
 |---|---|---|---|
+| **Companies ka asli data** (plan 9) | Har company ke asli reports (kaunsa problem kab poocha gaya). Hum ye bana nahi sakte: galat data learners ko gumraah karega. Owner/content team console → Companies me reports jode, ya interview experiences se aata rahe | Company pages, readiness aur plan me company problems apne aap bhar jaayenge | 1 Oct 2026 |
+| **Video lessons** (plan 9) | Kaun banayega, kis bhasha me, hosting kahan (Faisle me "baaki"). Lesson me `videoUrl` field taiyaar hai | Lessons me video dikhne lagega | 1 Oct 2026 |
+| **Baaki editorials aur hints** (plan 9) | 110 editorials aur 260 hints ke liye pehle utne naye problems chahiye (apne likhe, asli tests ke saath). Content team ya owner ki haan ki main aur problems likhoon | DSA pack jaisa hi naya pack | 1 Oct 2026 |
 | **Sahayak evals ka paid run** (plan 1a) | Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, tracker me scores | 30 Sep 2026 |
 | **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
 
@@ -301,7 +306,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 6 | **Company v2: readiness, "list shuru karo", Company Pass** (shuru: 1 Oct 2026). Learner companies ko target kare (company page ya plan banate waqt); har target ka readiness score (pichhle 180 din ke sabse zyada poochhe gaye 50 problems me se kitne solve) company page aur dashboard par; "Is company ki list shuru karo" se company ke top problems ek apni list me; Company Pass: alag product jo sirf companies ki poori list kholta hai (Plus ke bina); plan banate waqt target companies ke unsolved problems plan ke aakhri 30% dino me | F9 | Company prep poora | Tests: readiness ginti, list banna aur Plus/Pass ke bina 5 ki seema, Company Pass kharidna aur uska asar, plan me company problems; learner aur console pages | ✅ ban gaya (1 Oct 2026) |
 | 7 | **NoteSpace: AI draft, PDF export** (shuru: 1 Oct 2026). Sahayak ka "notes" mode: lesson ya **solve kiye hue** problem par revision note ka draft (key idea, steps, complexity, galtiyan), learner ke apne accepted code ke saath; credits katte hain, note apne aap save nahi hota: learner editor me badal kar save karta hai. Bina solve kiye problem par draft nahi (solution leak na ho). PDF: ek track ke saare notes, module ke hisaab se (topic notes alag), ek printable page par; browser ke "Print → Save as PDF" se | F15, §14 | Phase 5 | Tests: draft ke credits aur refund, unsolved problem par mana, contest me band, history me "notes"; track ke notes module ke kram me; learner pages | ✅ ban gaya (1 Oct 2026) |
 | 8 | **Campus licence: CSV se bulk Plus, college dashboard** (shuru: 1 Oct 2026). Staff console me ek "cohort" banaye (college/batch ka naam, Plus ke kitne din); emails ki CSV daale, pehle dry run (sahi, galat, dobara, pehle se, kitne abhi milenge, kitne signup ke baad); import par jinka email **verified** account hai unhe turant Plus, baaki ko jab wo us email se signup karke verify karein (ya Google se aayein). Har email ko ek hi baar. College dashboard: har cohort me kitne joined, kitno ko Plus mila, 7 din me active, solve ki ginti, aur har student ki line | F16 | B2B sales | Tests: CSV parse aur dry run ki ginti, verified ko turant, unverified/naye ko verify par, dobara import par dobara Plus nahi, dashboard ke numbers, sirf staff; console page | ✅ ban gaya (1 Oct 2026) |
-| 9 | Content: 150 editorials, 300 hints, 25 companies, videos | §15 | Log content ke liye aate hain | Har phase ka content target | ⬜ |
+| 9 | **Content: jo imaandari se likha ja sake** (shuru: 1 Oct 2026). (a) **DSA starter pack**: Sahayak eval ke 40 apne likhe problems (statement, formats, constraints, reference program) ek click me site par; har problem ka pehla hint aur brute-force approach naya likha, optimal approach + reference Python editorial me; tests = examples + chhote random + edge cases, expected output reference program ka (asli runner par), pattern ke hisaab se track. (b) **Placement quiz**: 40 apne likhe MCQ (complexity, arrays, hashing, stack/queue, recursion, sorting/searching, trees/graphs, DP); onboarding me 8 sawaal, server jaanchta hai aur level sujhata hai. **Owner ke bina nahi**: companies ka asli data (reports), videos, baaki 110 editorials/260 hints ke liye naye problems ("Ruka hua kaam" dekho) | §15, F1 | Log content ke liye aate hain | Tests: pack ke har reference ka har test asli runner par pass, pack dobara banane par wahi; import ke baad hint free aur editorial tabs; quiz ki grading aur level, jawab browser ko nahi jaate; learner page | 🟡 jo ho sakta tha ban gaya (1 Oct 2026); baaki owner par |
 | 10 | **V2-P0 Neev**: 1a–5 poore, PWA v1 (A1), achievement cards (C1), public profile (C6), pehla load test (G) | Master plan v2 | Baaki sab isi par khada hai | V2-8 ka gate: D1/D7 naap rahe; 1,000 ka exam start paas | ⬜ owner ki haan baaki |
 | 11 | **V2-P1 Saboot**: Pramaan (B1), viva-verified solves (B2), leak-proof paper (B4), Premier League, squads, referral, WhatsApp sawaal | Master plan v2 | Hamara sabse bada fark | 20 college, 10,000 learners, D7 ≥ 25% | ⬜ owner ki haan baaki |
 | 12 | **V2-P2 College**: TPO OS (D1–D5, D7; list [V2-12](#v2-12-college-aur-company-end-to-end-feature-list)), handwritten checking beta (D6), mock OA (A5) | Master plan v2 | Distribution ka sasta rasta | 50 college har hafte active; 3 paid pilot | ⬜ owner ki haan baaki |
@@ -777,6 +782,14 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 1 Oct 2026 | naya PR (#35 ke baad) | Content: DSA starter pack (40 apne problems, har ek ka hint + brute force + optimal, tests asli runner se), placement quiz (40 apne sawaal, 8 me level ka sujhav). Saath me #35 ke merge ki marammat: meri migrations 0033–0038, store exports, styles |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `13f8bd0` | Playwright e2e: F1 (signup → plan → dashboard), F3 (Run + Submit), F12 (Plus → invoice), F13 (coin store) |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `210889d` | Campus licence: cohort, emails ki CSV (dry run), verified ko turant Plus aur baaki ko verify par, console me college dashboard |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `9ade738` | NoteSpace: Sahayak se note ka draft (lesson ya solve kiya problem), track ke saare notes ek printable page par (PDF) |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `b344641` | Company v2: target companies, readiness score, "list shuru karo", Company Pass, plan ke aakhri 30% din me company problems |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `48106ad` | Sprint quiz (70% se kam par revise), sprint ke notes ek page par, streak freeze ("aaj chhutti", mahine me 2) |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `677e114` | Roz ka reminder email (learner ka ghanta, ek click se band), console me Analytics: activation, D1/D7, funnel, roz ke active learners |
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `7850198` | Coupons (affiliate `?ref=` ke saath), har paid order par GST tax invoice (`PKP/…`), pricing page par GST breakup aur FAQ, console me "Coupons and sales" |
 | 1 Oct 2026 | [#34](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/34) | Student master + drive manager (CL8, CL52), JD se test + 9 roles ki library (CO6, CO7); console me Placement page aur "From a job"; migrations 0029, 0030; screenshots `pilot-19`…`pilot-22` |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | V2-12: college aur company ka end-to-end feature list (94 features, har ek ka aaj ka status), 3 usool, pehle banne wale top 12 |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | Master plan v2 likha: competitors, dono taraf ki zaroorat, 6 bade daav, 9 stambh, phases, metrics, khatre. Abhi sirf plan, code nahi |

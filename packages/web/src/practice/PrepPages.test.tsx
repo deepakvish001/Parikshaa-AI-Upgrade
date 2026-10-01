@@ -209,6 +209,46 @@ describe("the plan", () => {
     expect(started).toMatchObject({ track: "dsa-basics", dailyMinutes: 150, offDays: [0] });
   });
 
+  it("suggests a level from the placement quiz, and plans with it", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    const questions = Array.from({ length: 8 }, (_, i) => ({ id: `q${i}`, level: i < 3 ? "easy" : i < 6 ? "medium" : "hard", topic: "Arrays", text: `Question ${i + 1}?`, options: ["A", "B", "C", "D"] }));
+    routes["GET /practice/nit-practice/placement"] = () => ({ body: { questions } });
+    routes["POST /practice/nit-practice/placement"] = (init) => {
+      const { answers } = JSON.parse(String(init.body)) as { answers: { id: string; choice: number }[] };
+      const results = answers.map((a) => ({ id: a.id, choice: a.choice, correct: 1, right: a.choice === 1, why: "Because." }));
+      return { body: { score: results.filter((r) => r.right).length, of: 8, level: "intermediate", results } };
+    };
+    let previewed: { level?: string } = {};
+    routes["POST /practice/nit-practice/plan/preview"] = (init) => {
+      previewed = JSON.parse(String(init.body)) as { level: string };
+      return { body: { track: { slug: "dsa-basics", title: "DSA Basics" }, tasks: 10, totalMinutes: 600, finishOn: "2026-12-20", deadline: "2026-12-31", fits: true, sprints: [], dailyMinutesToFit: null } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan?track=dsa-basics");
+    const take = await screen.findByRole("link", { name: "Not sure? Take an 8-question quiz" });
+    expect(take.getAttribute("href")).toBe("/practice/nit-practice/placement?track=dsa-basics");
+    await user.click(take);
+    await screen.findByRole("heading", { name: "Where should your plan start?" });
+    const mark = screen.getByRole("button", { name: "See how I did" });
+    for (let i = 0; i < 8; i++) {
+      expect((mark as HTMLButtonElement).disabled).toBe(true);
+      const group = screen.getByRole("group", { name: new RegExp(`Question ${i + 1}\\?`) });
+      await user.click(within(group).getByRole("radio", { name: i < 5 ? "B" : "C" }));
+    }
+    await user.click(mark);
+    const result = await screen.findByRole("status", { name: "Your result" });
+    expect(within(result).getByText("5 of 8 right")).toBeTruthy();
+    expect(screen.getAllByText(/The answer is “B”\. Because\./)).toHaveLength(3);
+    const plan = within(result).getByRole("link", { name: /Plan with this level/ });
+    expect(plan.getAttribute("href")).toBe("/practice/nit-practice/plan?level=intermediate&track=dsa-basics");
+    await user.click(plan);
+    expect(await screen.findByText("The quiz suggests: Intermediate: know the basics")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    await waitFor(() => expect(previewed.level).toBe("intermediate"));
+    expect(parseRoute("/practice/nit-practice/plan", "?level=advanced")).toEqual({ page: "plan", track: undefined, level: "advanced" });
+    expect(parseRoute("/practice/nit-practice/plan", "?level=wizard")).toEqual({ page: "plan", track: undefined });
+  });
+
   it("lets the learner pick target companies while planning", async () => {
     routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
     routes["GET /practice/nit-practice/companies"] = () => ({ body: { companies: [{ slug: "acme", name: "Acme", problems: 9, experiences: 0 }, { slug: "zeta", name: "Zeta", problems: 4, experiences: 1 }] } });
