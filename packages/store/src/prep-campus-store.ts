@@ -3,7 +3,7 @@ import { practiceStaff } from "./practice-store.js";
 import type { SqlExecutor } from "./sql.js";
 
 /**
- * Campus licences (Prep blueprint F16, migration 0034): cohorts of students a
+ * Campus licences (Prep blueprint F16, migration 0038): cohorts of students a
  * college has bought Plus for, by email. Staff only; the server gives the Plus.
  */
 

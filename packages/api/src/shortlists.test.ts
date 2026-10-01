@@ -17,7 +17,7 @@ let owner: string;
 let author: string;
 let clock = OPENS + 60_000;
 
-const call = (method: "GET" | "POST", url: string, token: string, payload?: object) =>
+const call = (method: "GET" | "POST" | "PUT", url: string, token: string, payload?: object) =>
   app.inject({ method, url, headers: bearer(token), ...(payload === undefined ? {} : { payload }) });
 const open = (method: "GET" | "POST", url: string, payload?: object) => app.inject({ method, url, ...(payload === undefined ? {} : { payload }) });
 const codeOf = (link: string) => new URL(link).searchParams.get("shortlist")!;
