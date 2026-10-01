@@ -88,6 +88,8 @@ export const ACTIONS: Record<string, string> = {
   "shortlist.created": "sent a shortlist to a hiring manager",
   "shortlist.withdrawn": "withdrew a shortlist link",
   "billing.quoted": "asked for a quotation",
+  "drive.apply_opened": "opened a drive's link to apply",
+  "drive.apply_closed": "closed a drive's link to apply",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",

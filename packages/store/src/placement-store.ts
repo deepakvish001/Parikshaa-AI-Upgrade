@@ -55,6 +55,10 @@ export type Stage = (typeof STAGES)[number];
 export interface Drive extends DriveDraft {
   readonly id: string;
   readonly createdAt: string;
+  /** The code in the drive's public link to apply; null when it has none. */
+  readonly applyCode: string | null;
+  /** Whether people not on the student list may apply (an off-campus drive). */
+  readonly openToNew: boolean;
   /** How many students are at each stage. */
   readonly stages: Readonly<Record<Stage, number>>;
 }
@@ -103,6 +107,8 @@ interface DriveDb {
   exam_id: string | null;
   status: "open" | "closed";
   created_at: string | Date;
+  apply_code: string | null;
+  open_to_new: boolean;
   stages: Record<string, number | string> | string | null;
 }
 
@@ -120,11 +126,13 @@ const toDrive = (r: DriveDb): Drive => {
     examId: r.exam_id,
     status: r.status,
     createdAt: iso(r.created_at),
+    applyCode: r.apply_code,
+    openToNew: r.open_to_new,
     stages: Object.fromEntries(STAGES.map((s) => [s, Number(counts[s] ?? 0)])) as Record<Stage, number>,
   };
 };
 
-const DRIVE_COLUMNS = `d.id, d.company, d.role, d.ctc_lpa, d.location, d.description, d.eligibility, d.apply_by, d.exam_id, d.status, d.created_at,
+const DRIVE_COLUMNS = `d.id, d.company, d.role, d.ctc_lpa, d.location, d.description, d.eligibility, d.apply_by, d.exam_id, d.status, d.created_at, d.apply_code, d.open_to_new,
   (SELECT jsonb_object_agg(stage, n) FROM (SELECT stage, count(*) AS n FROM drive_applications a
      WHERE a.org_id = d.org_id AND a.drive_id = d.id GROUP BY stage) s) AS stages`;
 
@@ -230,6 +238,33 @@ export class PlacementStore {
           );
       return rows.length > 0;
     });
+  }
+
+  /** Give a drive a public code to apply with, or take it away (null). */
+  async setApply(orgId: OrgId, driveId: string, code: string | null, openToNew: boolean): Promise<boolean> {
+    return withScope(this.#sql, staffScope(orgId), async (tx) =>
+      (await tx.query(`UPDATE drives SET apply_code = $3, open_to_new = $4 WHERE org_id = $1 AND id = $2 RETURNING id`, [orgId, driveId, code, openToNew])).length > 0,
+    );
+  }
+
+  async driveByCode(orgId: OrgId, code: string): Promise<Drive | null> {
+    return withScope(this.#sql, staffScope(orgId), async (tx) => {
+      const rows = await tx.query<DriveDb>(`SELECT ${DRIVE_COLUMNS} FROM drives d WHERE d.org_id = $1 AND d.apply_code = $2`, [orgId, code]);
+      return rows[0] === undefined ? null : toDrive(rows[0]);
+    });
+  }
+
+  /** Someone not on the list, applying to an off-campus drive: added with what they declared. False if the roll number is taken. */
+  async register(orgId: OrgId, student: Student, at: Date): Promise<boolean> {
+    return withScope(this.#sql, staffScope(orgId), async (tx) =>
+      (
+        await tx.query(
+          `INSERT INTO students (org_id, ref, name, email, phone, branch, batch, cgpa, backlogs, created_at, updated_at, self_registered)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10, true) ON CONFLICT (org_id, ref) DO NOTHING RETURNING ref`,
+          [orgId, student.ref, student.name, student.email, student.phone, student.branch, student.batch, student.cgpa, student.backlogs, at.toISOString()],
+        )
+      ).length > 0,
+    );
   }
 
   async applications(orgId: OrgId, driveId: string): Promise<readonly Application[]> {

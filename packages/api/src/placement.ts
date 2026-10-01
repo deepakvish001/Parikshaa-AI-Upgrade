@@ -1,5 +1,7 @@
-import { allQuestions, examId as toExamId } from "@parikshaa/core";
-import { eligible, staffScope, STAGES, type QuestionBank, type Application, type Drive, type DriveDraft, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
+import { randomBytes } from "node:crypto";
+import { allQuestions, examId as toExamId, orgId as toOrgId } from "@parikshaa/core";
+import { indianMobile } from "./candidate-import.js";
+import { eligible, staffScope, STAGES, type IdentityStore, type QuestionBank, type Application, type Drive, type DriveDraft, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
 import type { Channel, InvitationService } from "./invitation-service.js";
 import type { ResultsService } from "./results.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
@@ -42,6 +44,8 @@ export interface DriveDetail {
   readonly applications: readonly DriveApplication[];
   /** Students who meet the criteria and are not in the drive yet. */
   readonly eligibleNotAdded: number;
+  /** The link students apply with; null when the drive has none. */
+  readonly applyLink: string | null;
 }
 
 const csvCell = (v: string | number | null) => {
@@ -67,6 +71,8 @@ export class PlacementService {
   readonly #invitations: InvitationService;
   readonly #results: ResultsService;
   readonly #bank: QuestionBank | null;
+  readonly #publicUrl: string;
+  readonly #identity: IdentityStore | null;
   readonly #now: () => number;
   readonly #newId: () => string;
 
@@ -78,6 +84,9 @@ export class PlacementService {
     readonly results: ResultsService;
     /** Where a question's topic is filed, for the readiness heatmap. */
     readonly bank?: QuestionBank;
+    /** Where students open a drive's link to apply. */
+    readonly publicUrl?: string;
+    readonly identity?: IdentityStore;
     readonly now?: () => number;
     readonly newId?: () => string;
   }) {
@@ -87,6 +96,8 @@ export class PlacementService {
     this.#invitations = options.invitations;
     this.#results = options.results;
     this.#bank = options.bank ?? null;
+    this.#publicUrl = (options.publicUrl ?? "").replace(/\/$/, "");
+    this.#identity = options.identity ?? null;
     this.#now = options.now ?? (() => Date.now());
     this.#newId = options.newId ?? (() => crypto.randomUUID());
   }
@@ -199,6 +210,7 @@ export class PlacementService {
       drive,
       applications: applications.map((a) => ({ ...a, test: graded.get(a.ref) ?? null })),
       eligibleNotAdded: students.filter((s) => !inDrive.has(s.ref) && eligible(s, drive.eligibility)).length,
+      applyLink: drive.applyCode === null ? null : this.applyLink(actor.orgId, drive.applyCode),
     };
   }
 
@@ -321,6 +333,85 @@ export class PlacementService {
         })),
       atRisk: overall.filter((o) => o.percent < AT_RISK_PERCENT).sort((a, b) => a.percent - b.percent),
     };
+  }
+
+  // --- applying from a link (V2-12 CO14) ------------------------------------------
+
+  applyLink(orgId: string, code: string): string {
+    return `${this.#publicUrl}/?apply=${encodeURIComponent(`${orgId}.${code}`)}`;
+  }
+
+  /** Give the drive a link students apply with, or take it away. A new link replaces the old one. */
+  async setApplyLink(actor: Actor, id: string, open: boolean, openToNew: boolean): Promise<{ readonly link: string | null }> {
+    this.#require(actor);
+    const drive = await this.#drive(actor, id);
+    const code = open ? (drive.applyCode ?? randomBytes(9).toString("base64url")) : null;
+    await this.#placement.setApply(actor.orgId, id, code, open && openToNew);
+    await this.#exams.recordAudit(actor, open ? "drive.apply_opened" : "drive.apply_closed", id, open ? { openToNew } : {});
+    return { link: code === null ? null : this.applyLink(actor.orgId, code) };
+  }
+
+  async #byCode(code: string): Promise<{ orgId: ReturnType<typeof toOrgId>; drive: Drive }> {
+    const dot = code.indexOf(".");
+    if (dot < 1) throw new AttemptError("not_found", "This link is not a drive of ours");
+    const orgId = toOrgId(code.slice(0, dot));
+    const drive = await this.#placement.driveByCode(orgId, code.slice(dot + 1));
+    if (drive === null) throw new AttemptError("not_found", "This link is not a drive of ours, or it has been closed");
+    return { orgId, drive };
+  }
+
+  /** What the link shows before applying: the drive and who may apply. Never another student. */
+  async publicDrive(code: string) {
+    const { orgId, drive } = await this.#byCode(code);
+    const org = this.#identity === null ? null : await this.#identity.getOrganisation(orgId);
+    const closed = drive.status === "closed" || (drive.applyBy !== null && drive.applyBy < this.#today());
+    return {
+      institution: org?.name ?? "",
+      company: drive.company,
+      role: drive.role,
+      ctcLpa: drive.ctcLpa,
+      location: drive.location,
+      description: drive.description,
+      applyBy: drive.applyBy,
+      eligibility: drive.eligibility,
+      openToNew: drive.openToNew,
+      closed,
+    };
+  }
+
+  #today() {
+    return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(this.#now()));
+  }
+
+  /**
+   * Apply to a drive from its link. A student on the list applies as
+   * themselves: the email on file must match. Someone not on it may apply
+   * only to an off-campus drive, and is added with what they declared.
+   * Either way the drive's criteria are checked, and applying twice changes
+   * nothing.
+   */
+  async apply(code: string, form: Student): Promise<{ readonly status: "applied" | "already" }> {
+    const { orgId, drive } = await this.#byCode(code);
+    if (drive.status === "closed" || (drive.applyBy !== null && drive.applyBy < this.#today())) throw new AttemptError("invalid_state", "Applications to this drive have closed");
+    const ref = form.ref.trim();
+    const email = (form.email ?? "").trim().toLowerCase();
+    if (ref === "" || email === "") throw new AttemptError("invalid_state", "Give your roll number and email");
+    const onFile = (await this.#placement.students(orgId)).find((s) => s.ref.toLowerCase() === ref.toLowerCase());
+    let student: Student;
+    if (onFile !== undefined) {
+      if (onFile.email !== null && onFile.email !== email) throw new AttemptError("not_found", "That roll number and email do not match the college's list: check both, or ask your placement cell");
+      student = onFile;
+    } else {
+      if (!drive.openToNew) throw new AttemptError("not_found", "That roll number is not on the college's list: ask your placement cell to add you");
+      const phone = form.phone === null || form.phone.trim() === "" ? null : indianMobile(form.phone);
+      if (form.phone !== null && form.phone.trim() !== "" && phone === null) throw new AttemptError("invalid_state", "That is not an Indian mobile number");
+      student = { ...form, ref, email, phone, name: form.name.trim().slice(0, 200), branch: form.branch.trim().slice(0, 100) };
+      if (student.name === "") throw new AttemptError("invalid_state", "Give your name");
+      await this.#placement.register(orgId, student, new Date(this.#now()));
+    }
+    if (!eligible(student, drive.eligibility)) throw new AttemptError("invalid_state", "You do not meet this drive's criteria, as the college's records have them");
+    const added = await this.#placement.addApplications(orgId, drive.id, [student.ref], `${student.name || student.ref} (applied online)`, new Date(this.#now()));
+    return { status: added > 0 ? "applied" : "already" };
   }
 
   /** The drive's students as a spreadsheet, to send the company. Audited: it leaves the system. */

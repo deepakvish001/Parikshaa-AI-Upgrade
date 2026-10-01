@@ -263,6 +263,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
         { name: "Shortlist", description: "What a hiring manager opens from a shortlist link: marks only, and their decision on each candidate. No account; the link is the proof." },
+        { name: "Apply", description: "A drive's public link: what a student sees, and applying with their roll number. No account; the link is the proof." },
         { name: "Placement", description: "A placement cell's students on file, and its recruitment drives from eligibility to offer." },
         { name: "Integrations", description: "Signed webhooks, and setting up the Greenhouse connector." },
         { name: "Invigilation", description: "The sitting live: progress, who has gone quiet, announcements, and reopening an attempt." },
@@ -1239,7 +1240,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     registerProctoringRoutes(routes, { proctor: options.proctor, staff, candidate: requireAttempt });
     if (options.lab !== undefined) registerLabRoutes(routes, { lab: options.lab, staff });
     if (options.marking !== undefined) registerMarkingRoutes(routes, { marking: options.marking, staff });
-    if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff });
+    if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff, throttle });
     registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
     if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });

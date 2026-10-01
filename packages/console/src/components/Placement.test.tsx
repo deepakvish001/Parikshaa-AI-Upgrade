@@ -229,3 +229,16 @@ describe("readiness", () => {
     await waitFor(() => expect(client.readiness).toHaveBeenLastCalledWith(2028));
   });
 });
+
+describe("a drive's link to apply", () => {
+  it("opens the link, off-campus if asked, and shows it", async () => {
+    const client = stub({ setApplyLink: vi.fn(async () => ({ link: "https://exam.test/?apply=org-a.abc" })) });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(within(await screen.findByRole("region", { name: "Drives" })).getByRole("button", { name: "Infosys" }));
+    const card = await screen.findByRole("region", { name: "Link to apply" });
+    await user.click(within(card).getByRole("checkbox", { name: /Off-campus/ }));
+    await user.click(within(card).getByRole("button", { name: "Open the link" }));
+    await waitFor(() => expect((client as unknown as { setApplyLink: ReturnType<typeof vi.fn> }).setApplyLink).toHaveBeenCalledWith("d1", true, true));
+  });
+});

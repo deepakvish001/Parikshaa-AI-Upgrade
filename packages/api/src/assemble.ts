@@ -196,7 +196,7 @@ export function assemble(o: AssembleOptions): {
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
-    placement: new PlacementService({ placement: new PlacementStore(o.sql), store, exams: service, invitations, results, bank }),
+    placement: new PlacementService({ placement: new PlacementStore(o.sql), store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,
     auth,
     security,

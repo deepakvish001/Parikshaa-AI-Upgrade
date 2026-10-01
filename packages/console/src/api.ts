@@ -278,6 +278,8 @@ export interface DriveDraft {
 export interface Drive extends DriveDraft {
   readonly id: string;
   readonly createdAt: string;
+  readonly applyCode?: string | null;
+  readonly openToNew?: boolean;
   readonly stages: Readonly<Record<DriveStage, number>>;
 }
 
@@ -299,6 +301,8 @@ export interface DriveDetail {
   readonly drive: Drive;
   readonly applications: readonly DriveApplication[];
   readonly eligibleNotAdded: number;
+  /** The link students apply with; null when the drive has none. */
+  readonly applyLink?: string | null;
 }
 
 export type QuestionKindName = "mcq" | "numeric" | "short" | "code";
@@ -1429,6 +1433,11 @@ export class ConsoleClient {
   /** Add every eligible student not in the drive yet, or the roll numbers given. */
   addDriveStudents(id: string, refs: readonly string[] | "eligible"): Promise<{ readonly added: number }> {
     return this.#request(`/drives/${encodeURIComponent(id)}/students`, { method: "POST", body: JSON.stringify(refs === "eligible" ? { eligible: true } : { refs }) });
+  }
+
+  /** Open the drive's link to apply (also to people not on the list, with `openToNew`), or close it. */
+  setApplyLink(id: string, open: boolean, openToNew = false): Promise<{ readonly link: string | null }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/apply-link`, { method: "POST", body: JSON.stringify({ open, openToNew }) });
   }
 
   setDriveStage(id: string, refs: readonly string[], stage: DriveStage, offerLpa: number | null = null): Promise<{ readonly moved: number }> {

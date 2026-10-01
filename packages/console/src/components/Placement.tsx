@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BriefcaseBusiness, Download, Pencil, Plus, Search, Send, Trash2, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, Copy, Download, Link2, Pencil, Plus, Search, Send, Trash2, UserPlus, Users } from "lucide-react";
 import { Drawer, TabPanel, Tabs, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, DRIVE_STAGES, type ConsoleClient, type Drive, type DriveDraft, type DriveStage, type StudentImport, type StudentRow } from "../api.ts";
 import "./Placement.css";
@@ -646,6 +646,8 @@ function DriveView({
         </div>
       </section>
 
+      <ApplyLink client={client} id={id} link={detail.data.applyLink ?? null} openToNew={drive.openToNew ?? false} onChange={refresh} />
+
       <section className="card" aria-label="Students in the drive">
         {applications.length === 0 ? (
           <EmptyState icon={Users}>Students added to the drive appear here with their round, test result and offer.</EmptyState>
@@ -888,5 +890,52 @@ function ReadinessView({ client }: { client: ConsoleClient }) {
         </section>
       )}
     </>
+  );
+}
+
+/** The drive's public link: students apply with their roll number and the email on file. */
+function ApplyLink({ client, id, link, openToNew, onChange }: { client: ConsoleClient; id: string; link: string | null; openToNew: boolean; onChange: () => void }) {
+  const toast = useToast();
+  const [offCampus, setOffCampus] = useState(openToNew);
+  const set = useMutation({
+    mutationFn: (open: boolean) => client.setApplyLink(id, open, offCampus),
+    onSuccess: async ({ link: made }) => {
+      onChange();
+      if (made !== null) {
+        await navigator.clipboard?.writeText(made).catch(() => undefined);
+        toast("Link copied: share it with students", "success");
+      }
+    },
+  });
+  return (
+    <section className="card" aria-label="Link to apply">
+      <div className="bar">
+        <Link2 aria-hidden="true" />
+        <strong>Link to apply</strong>
+        <span className="notice">{link === null ? "Students can apply themselves from a link, with their roll number and the email on file." : `Open${openToNew ? ", also to students not on your list" : ""}.`}</span>
+        <span className="spacer" />
+        {link === null ? (
+          <>
+            <label className="inline">
+              <input type="checkbox" checked={offCampus} onChange={(e) => setOffCampus(e.target.checked)} /> Off-campus: take people not on the list
+            </label>
+            <button type="button" onClick={() => set.mutate(true)} disabled={set.isPending}>
+              Open the link
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" className="secondary" onClick={() => void navigator.clipboard?.writeText(link).then(() => toast("Link copied", "success"))}>
+              <Copy aria-hidden="true" />
+              Copy the link
+            </button>
+            <button type="button" className="quiet" onClick={() => set.mutate(false)} disabled={set.isPending}>
+              Close it
+            </button>
+          </>
+        )}
+      </div>
+      {link === null ? null : <p className="mono notice">{link}</p>}
+    </section>
   );
 }

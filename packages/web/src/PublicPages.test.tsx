@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ShortlistPage } from "./components/PublicPages.tsx";
+import { ApplyPage, ShortlistPage } from "./components/PublicPages.tsx";
 import { PreferencesProvider } from "./i18n.tsx";
 
 /** Pages opened from a link with no account. */
@@ -53,5 +53,42 @@ describe("a hiring manager's shortlist", () => {
       </PreferencesProvider>,
     );
     expect(await screen.findByRole("heading", { name: "This shortlist has expired" })).toBeInTheDocument();
+  });
+});
+
+describe("applying to a drive from its link", () => {
+  const drive = { institution: "Acme College", company: "Wipro", role: "Project Engineer", ctcLpa: 3.5, location: "Pune", description: "", applyBy: "2026-10-30", eligibility: { minCgpa: 7 }, openToNew: false, closed: false };
+
+  it("shows the drive and applies with the roll number and email", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "POST" ? json({ status: "applied" }) : json(drive)));
+    vi.stubGlobal("fetch", fetch);
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <ApplyPage code="org-a.abc" />
+      </PreferencesProvider>,
+    );
+    const page = await screen.findByRole("region", { name: "Apply" });
+    expect(page).toHaveTextContent("Wipro — Project Engineer");
+    expect(page).toHaveTextContent("CGPA 7 or more");
+    await user.type(screen.getByLabelText("Roll number"), "CS001");
+    await user.type(screen.getByLabelText("Email (the one the college has)"), "a@college.test");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("You have applied");
+    expect(fetch).toHaveBeenCalledWith("/api/apply/org-a.abc", expect.objectContaining({ body: JSON.stringify({ ref: "CS001", email: "a@college.test" }) }));
+  });
+
+  it("says why an application was refused", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => (init?.method === "POST" ? json({ error: "invalid_state", message: "You do not meet this drive's criteria" }, 409) : json(drive))));
+    const user = userEvent.setup();
+    render(
+      <PreferencesProvider>
+        <ApplyPage code="org-a.abc" />
+      </PreferencesProvider>,
+    );
+    await user.type(await screen.findByLabelText("Roll number"), "CS002");
+    await user.type(screen.getByLabelText("Email (the one the college has)"), "r@college.test");
+    await user.click(screen.getByRole("button", { name: "Apply" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("criteria");
   });
 });
