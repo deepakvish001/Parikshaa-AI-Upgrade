@@ -1014,6 +1014,22 @@ export class ConsoleClient {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
 
+  async cohorts(): Promise<readonly CohortSummary[]> {
+    return (await this.#request<{ cohorts: CohortSummary[] }>("/practice-admin/cohorts")).cohorts;
+  }
+
+  createCohort(name: string, plusDays: number): Promise<Cohort> {
+    return this.#request("/practice-admin/cohorts", { method: "POST", body: JSON.stringify({ name, plusDays }) });
+  }
+
+  importCohort(id: string, csv: string, dryRun: boolean): Promise<CohortImport> {
+    return this.#request(`/practice-admin/cohorts/${encodeURIComponent(id)}/members`, { method: "POST", body: JSON.stringify({ csv, dryRun }) });
+  }
+
+  cohortReport(id: string): Promise<CohortReport> {
+    return this.#request(`/practice-admin/cohorts/${encodeURIComponent(id)}`);
+  }
+
   prepAnalytics(): Promise<PrepAnalytics> {
     return this.#request("/practice-admin/analytics");
   }
@@ -1896,4 +1912,47 @@ export interface StoreOrder {
   readonly learnerId: string;
   readonly learnerName: string;
   readonly learnerEmail: string;
+}
+
+// --- campus licences (Prep blueprint F16) ------------------------------------------------
+
+export interface Cohort {
+  readonly id: string;
+  readonly name: string;
+  readonly plusDays: number;
+  readonly createdBy: string;
+  readonly createdAt: string;
+}
+
+export interface CohortSummary extends Cohort {
+  readonly members: number;
+  readonly joined: number;
+  readonly given: number;
+  readonly active7: number;
+  readonly solved: number;
+}
+
+export interface CohortImport {
+  readonly rows: number;
+  readonly added: number;
+  readonly invalid: readonly { readonly line: number; readonly value: string }[];
+  readonly duplicates: number;
+  readonly already: number;
+  readonly givenNow: number;
+  readonly onSignup: number;
+  readonly dryRun: boolean;
+}
+
+export interface CohortReport {
+  readonly cohort: Cohort;
+  readonly students: readonly {
+    readonly email: string;
+    readonly name: string | null;
+    readonly joined: boolean;
+    readonly verified: boolean;
+    readonly plusUntil: string | null;
+    readonly solved: number;
+    readonly submissions: number;
+    readonly lastActiveAt: string | null;
+  }[];
 }

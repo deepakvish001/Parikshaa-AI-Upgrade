@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -23,6 +23,7 @@ import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepEngage } from "./prep-engage.js";
+import { PrepCampus } from "./prep-campus.js";
 import { PrepPlus } from "./prep-plus.js";
 import { PrepCommunity } from "./prep-community.js";
 import { StarterPacks } from "./starter-packs.js";
@@ -153,6 +154,7 @@ export function assemble(o: AssembleOptions): {
   });
   const practiceStore = new PracticeStore(o.sql);
   const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }) });
+  const prepCampus = new PrepCampus({ store: new PrepCampusStore(o.sql), plus: new PrepPlusStore(o.sql) });
   const practiceIdentity = new PracticeIdentity({
     store: practiceStore,
     practice,
@@ -160,6 +162,7 @@ export function assemble(o: AssembleOptions): {
     secret: o.secret,
     publicUrl: o.publicUrl,
     mailer: o.mailer ?? null,
+    onVerified: (orgId, learner) => prepCampus.claim(orgId, learner),
   });
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null, supplier: o.supplier ?? null });
@@ -213,6 +216,7 @@ export function assemble(o: AssembleOptions): {
     starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
     prepCommunity,
     prepEngage,
+    prepCampus,
     prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus, lessonOpen: async (site, learner, slug) => !(await prepService.lesson(site, slug, learner)).locked }) },
     ...o.server,
   });

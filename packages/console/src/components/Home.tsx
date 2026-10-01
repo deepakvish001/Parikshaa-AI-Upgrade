@@ -136,6 +136,8 @@ export const ACTIONS: Record<string, string> = {
   "prep.potd_set": "set the problem of the day",
   "prep.plus_settings": "changed the Plus settings",
   "prep.plus_granted": "gave a learner Plus",
+  "prep.cohort_created": "made a campus cohort",
+  "prep.cohort_imported": "added students to a campus cohort",
   "prep.company_created": "added a company",
   "prep.starter_pack_imported": "imported a starter pack",
   "prep.store_item_created": "added an item to the coin store",

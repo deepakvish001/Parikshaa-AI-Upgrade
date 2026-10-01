@@ -1,7 +1,7 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore,
-  PrepEngageStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+  PrepEngageStore, PrepCampusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -18,6 +18,7 @@ import { PracticeService } from "./practice.js";
 import { PrepService } from "./prep.js";
 import { PrepPlus } from "./prep-plus.js";
 import { PrepEngage } from "./prep-engage.js";
+import { PrepCampus } from "./prep-campus.js";
 import { PrepCommunity } from "./prep-community.js";
 import { StarterPacks } from "./starter-packs.js";
 import { Sahayak } from "./sahayak.js";
@@ -109,6 +110,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
       secret: "x".repeat(40),
       publicUrl: "https://example.invalid",
     }),
+    prepCampus: new PrepCampus({ store: new PrepCampusStore(unusable), plus: new PrepPlusStore(unusable) }),
     prepPlus: (() => {
       const plus = new PrepPlus({ store: new PrepPlusStore(unusable), practice: new PracticeStore(unusable) });
       return { plus, tutor: new Sahayak({ client: null, practice: new PracticeStore(unusable), prep: new PrepStore(unusable), plus }) };

@@ -16,6 +16,7 @@ import {
   PrepCommunityStore,
   PrepPlusStore,
   PrepEngageStore,
+  PrepCampusStore,
   QuestionBank,
   QuestionMedia,
   DataKeys,
@@ -49,6 +50,7 @@ import { PrepService } from "../prep.js";
 import { PrepPlus } from "../prep-plus.js";
 import { PrepCommunity } from "../prep-community.js";
 import { PrepEngage } from "../prep-engage.js";
+import { PrepCampus } from "../prep-campus.js";
 import { StarterPacks } from "../starter-packs.js";
 import { Sahayak } from "../sahayak.js";
 import { PracticeIdentity } from "../practice-identity.js";
@@ -247,7 +249,9 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const prepCampus = new PrepCampus({ store: new PrepCampusStore(sql), plus: new PrepPlusStore(sql), ...(options.now === undefined ? {} : { now: options.now }) });
   const practiceIdentity = new PracticeIdentity({
+    onVerified: (orgId, learner) => prepCampus.claim(orgId, learner),
     store: new PracticeStore(sql),
     practice,
     secrets,
@@ -333,6 +337,7 @@ export async function wire(
     starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
     prepCommunity,
     prepEngage,
+    prepCampus,
     prepPlus: {
       plus: prepPlus,
       tutor: new Sahayak({
