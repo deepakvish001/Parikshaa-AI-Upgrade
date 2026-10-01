@@ -807,6 +807,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `e1b1892`, `2b543e2` | Main ki marammat (#36/#37 ke merge ke baad imports, migration list, openapi); baaki Prep features Plan me rows 34–41 |
 | 1 Oct 2026 | [#34](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/34) | Top 12 ke baaki 10 aur 6 aur: admit card + seats + attendance (0031), shortlist link (0032), PO/NEFT (0033), readiness heatmap, apply link (0034), NIRF report + CO–PO (0035), bolkar jawab, interview room (0036), handwritten checking + moderation (0037), kai college ki drive (0038), offer tracking (0039), proxy sanket (0040), console Hindi, DPA/SLA templates. e2e 39/39, visual 74/74 |
 | 1 Oct 2026 | [#34](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/34) | Student master + drive manager (CL8, CL52), JD se test + 9 roles ki library (CO6, CO7); console me Placement page aur "From a job"; migrations 0029, 0030; screenshots `pilot-19`…`pilot-22` |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | V2-12: college aur company ka end-to-end feature list (94 features, har ek ka aaj ka status), 3 usool, pehle banne wale top 12 |
