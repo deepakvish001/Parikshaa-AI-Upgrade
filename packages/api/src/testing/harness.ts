@@ -261,6 +261,7 @@ export async function wire(
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, supplier: SUPPLIER, ...(options.now === undefined ? {} : { now: options.now }) });
   const prepCommunity = new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) });
   practice.usePeople((orgId, ids) => prepCommunity.people(orgId, ids));
+  practice.useCompanies((site, learner) => prepCommunity.problemCompanies(site, learner));
   const prepService = new PrepService({
     practice: new PracticeStore(sql),
     store: new PrepStore(sql),

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { candidateQuestion, scoreDeterministic, type OrgId } from "@parikshaa/core";
 import {
   practiceLearner,
@@ -56,6 +57,10 @@ export const QUIZ_PASS_PERCENT = 70;
 export const QUIZ_QUESTIONS = 10;
 // Paid outside the daily cap: milestones, a published interview experience, a contest rank, and coins a cancelled order gives back.
 const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant", "contest_rank"];
+/** Questions a lesson's quiz asks at most. */
+export const LESSON_QUIZ_MAX = 10;
+/** Solutions one learner may share in a day. */
+export const SHARES_PER_DAY = 20;
 /** Cards shown for revision in a day, oldest first; the rest wait. */
 export const REVISE_PER_DAY = 15;
 const LIST_NAME = /^[\p{L}\p{N} _\-'&()]{1,60}$/u;
@@ -241,6 +246,7 @@ export class PrepService {
     if (lesson === null) throw new PracticeError("not_found", "No such lesson");
     const done = learner === null ? false : (await this.#store.lessonsDone(scope)).some((d) => d.lessonId === lesson.id);
     const locked = (await this.#locked(site, learner, await this.#store.tracks(scope))).has(lesson.id);
+    const quiz = locked ? [] : await this.#quiz(site, lesson.id);
     return {
       slug: lesson.slug,
       title: lesson.title,
@@ -250,7 +256,53 @@ export class PrepService {
       estMinutes: lesson.estMinutes,
       done,
       locked,
+      // Asked as candidates see questions: no answer in them.
+      quiz: quiz.map((p) => ({ slug: p.slug, title: p.title, question: candidateQuestion(p.question) })),
     };
+  }
+
+  /** A lesson's quiz: its problems that can still be checked at once. */
+  async #quiz(site: PracticeSite, lessonId: string): Promise<readonly PracticeProblem[]> {
+    const ids = await this.#store.lessonQuiz(practiceStaff(site.orgId), lessonId);
+    if (ids.length === 0) return [];
+    const byId = new Map((await this.#practice.problems(practiceStaff(site.orgId))).map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter((p): p is PracticeProblem => p !== undefined && (p.question.kind === "mcq" || p.question.kind === "numeric"));
+  }
+
+  /**
+   * Hand in a lesson's quiz: each answer checked, the right one shown for a
+   * wrong one, and each question got wrong due for revision today.
+   */
+  async takeLessonQuiz(site: PracticeSite, learner: Learner, slug: string, answers: Readonly<Record<string, string>>) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const lesson = await this.#store.lessonBySlug(scope, slug);
+    if (lesson === null) throw new PracticeError("not_found", "No such lesson");
+    if ((await this.#locked(site, learner, await this.#store.tracks(scope))).has(lesson.id)) throw new PracticeError("plus_required", "This lesson comes with Plus");
+    const quiz = await this.#quiz(site, lesson.id);
+    if (quiz.length === 0) throw new PracticeError("invalid", "This lesson has no quiz");
+    const today = this.#today();
+    const cards = new Map((await this.#store.cards(scope)).map((c) => [c.problemId, c]));
+    const results = [];
+    let revise = 0;
+    for (const p of quiz) {
+      const score = scoreDeterministic(p.question, answers[p.slug] ?? "");
+      const right = score !== null && score.score >= p.question.maxScore;
+      if (!right) {
+        const card = cards.get(p.id);
+        if (card === undefined) await this.#store.addCard(scope, p.id, today);
+        else if (card.dueOn > today) await this.#store.saveCard(scope, { ...card, dueOn: today });
+        revise++;
+      }
+      const q = p.question;
+      results.push({
+        slug: p.slug,
+        right,
+        // Shown once answered, so a wrong answer teaches something.
+        answer: q.kind === "mcq" ? (q.correctIndices ?? [q.correctIndex]).map((i) => q.options[i] ?? "").join(", ") : q.kind === "numeric" ? String(q.expected) : "",
+        explanation: p.editorial,
+      });
+    }
+    return { score: results.filter((r) => r.right).length, total: results.length, results, revise };
   }
 
   async completeLesson(site: PracticeSite, learner: Learner, slug: string): Promise<Reward> {
@@ -903,6 +955,8 @@ export class PrepService {
     const existing = await this.#store.notes(scope);
     if (!existing.some((n) => n.refKind === r.kind && n.refId === r.id) && existing.length >= 2000) throw new PracticeError("invalid", "Keep 2,000 notes at most");
     const saved = await this.#store.saveNote(scope, { refKind: r.kind, refId: r.id, title, body: input.body });
+    // A note on a problem is something to come back to: it gets a revision card, if it has none.
+    if (r.kind === "problem") await this.#store.addCard(scope, r.id, addDays(this.#today(), 1));
     return { kind: r.kind, ref, title: saved.title, body: saved.body, updatedAt: saved.updatedAt };
   }
 
@@ -1008,6 +1062,64 @@ export class PrepService {
       if ((error as Error).name === "PrepSlugTaken") throw new PracticeError("slug_taken", "Another track uses that address");
       throw error;
     }
+  }
+
+  // --- shared solutions ----------------------------------------------------------------------------
+
+  /**
+   * Share a solution read-only: the code, at a link. Never during a contest
+   * that includes the problem, and never a test: only what the learner wrote.
+   */
+  async shareCode(site: PracticeSite, learner: Learner, slug: string, input: { language: string; source: string }) {
+    const problem = await this.#problem(site, learner, slug);
+    if (problem.question.kind !== "code") throw new PracticeError("invalid", "Only code is shared");
+    const source = input.source;
+    if (source.trim() === "" || source.length > 65_536) throw new PracticeError("invalid", "Share 1 to 65,536 characters of code");
+    const now = this.#now();
+    const running = (await this.#practice.contests(practiceStaff(site.orgId))).some((c) => c.problemIds.includes(problem.id) && Date.parse(c.startsAt) <= now && now < Date.parse(c.endsAt));
+    if (running) throw new PracticeError("invalid", "Code for this problem cannot be shared while a contest that includes it runs");
+    if ((await this.#store.sharesSince(site.orgId, learner.id, new Date(now - 86_400_000))) >= SHARES_PER_DAY) throw new PracticeError("too_many_runs", `Share up to ${SHARES_PER_DAY} solutions a day`);
+    const id = randomBytes(9).toString("base64url");
+    await this.#store.addShare(site.orgId, { id, learnerId: learner.id, problemId: problem.id, language: input.language.slice(0, 40), source }, new Date(now));
+    return { id, path: `/shares/${id}` };
+  }
+
+  /** A shared solution, as anyone with its link reads it. */
+  async sharedCode(site: PracticeSite, id: string) {
+    const share = /^[A-Za-z0-9_-]{10,24}$/.test(id) ? await this.#store.share(site.orgId, id) : null;
+    if (share === null) throw new PracticeError("not_found", "No such shared solution");
+    const [problem, author] = await Promise.all([
+      (await this.#practice.problems(practiceStaff(site.orgId))).find((p) => p.id === share.problemId),
+      this.#practice.learnerById(site.orgId, share.learnerId),
+    ]);
+    return {
+      problem: problem === undefined || !problem.published ? null : { slug: problem.slug, title: problem.title },
+      author: author?.name ?? "A learner",
+      language: share.language,
+      source: share.source,
+      createdAt: share.createdAt,
+    };
+  }
+
+  // --- staff: lesson quizzes ------------------------------------------------------------------------
+
+  async staffLessonQuiz(orgId: OrgId, lessonId: string): Promise<readonly string[]> {
+    return this.#store.lessonQuiz(practiceStaff(orgId), lessonId);
+  }
+
+  /** Set a lesson's quiz: up to ten of the site's problems that can be checked at once (multiple choice, a number). */
+  async setLessonQuiz(orgId: OrgId, lessonId: string, problemIds: readonly string[]): Promise<readonly string[]> {
+    if (!(await this.#store.lessons(practiceStaff(orgId))).some((l) => l.id === lessonId)) throw new PracticeError("not_found", "No such lesson");
+    const ids = [...new Set(problemIds)];
+    if (ids.length > LESSON_QUIZ_MAX) throw new PracticeError("invalid", `A quiz asks ${LESSON_QUIZ_MAX} questions at most`);
+    const byId = new Map((await this.#practice.problems(practiceStaff(orgId))).map((p) => [p.id, p]));
+    for (const id of ids) {
+      const p = byId.get(id);
+      if (p === undefined) throw new PracticeError("not_found", "No such problem");
+      if (p.question.kind !== "mcq" && p.question.kind !== "numeric") throw new PracticeError("invalid", `${p.title} cannot be checked at once: a quiz asks multiple choice and number questions`);
+    }
+    await this.#store.setLessonQuiz(orgId, lessonId, ids);
+    return ids;
   }
 
   async staffLessons(orgId: OrgId): Promise<readonly Lesson[]> {

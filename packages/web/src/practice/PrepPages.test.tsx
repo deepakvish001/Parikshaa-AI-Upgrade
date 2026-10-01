@@ -384,7 +384,7 @@ describe("the end of a sprint, and a day off", () => {
 
 describe("notes", () => {
   it("drafts a note on a lesson with Sahayak, into the box, and saves it only when asked", async () => {
-    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "A heap.", videoUrl: null, estMinutes: 20, done: false, locked: false } });
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "A heap.", videoUrl: null, estMinutes: 20, done: false, locked: false, quiz: [] } });
     routes["GET /practice/nit-practice/notes/lesson/heaps"] = () => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: "Mine first.", updatedAt: "2026-10-01T00:00:00Z" } });
     routes["POST /practice/nit-practice/tutor/notes"] = () => ({ body: { id: "t1", mode: "notes", hintLevel: null, answer: "## Key ideas\nSmallest at the root.", credits: 15, createdAt: "2026-10-05T04:00:00Z" } });
     routes["PUT /practice/nit-practice/notes/lesson/heaps"] = (init) => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: (JSON.parse(String(init.body)) as { body: string }).body, updatedAt: "2026-10-05T04:00:00Z" } });
@@ -764,8 +764,63 @@ describe("Plus", () => {
     expect(screen.queryByRole("button", { name: /Start my/ })).toBeNull();
   });
 
+  it("asks a lesson's quiz, shows the right answers, and says what went to revision", async () => {
+    routes["GET /practice/nit-practice/lessons/sorting"] = () => ({
+      body: {
+        slug: "sorting",
+        title: "Sorting",
+        body: "Stable sorts.",
+        videoUrl: null,
+        estMinutes: 10,
+        done: false,
+        locked: false,
+        quiz: [
+          { slug: "stable", title: "Stable sort", question: { id: "q1", kind: "mcq", stem: "Which sort is **stable**?", maxScore: 1, options: ["quick", "merge"] } },
+          { slug: "bits", title: "Bits", question: { id: "q2", kind: "numeric", stem: "Bits in a byte?", maxScore: 1 } },
+        ],
+      },
+    });
+    routes["GET /practice/nit-practice/notes/lesson/sorting"] = () => ({ body: { kind: "lesson", ref: "sorting", title: "Sorting", body: "", updatedAt: null } });
+    routes["POST /practice/nit-practice/lessons/sorting/quiz"] = () => ({
+      body: {
+        score: 1,
+        total: 2,
+        results: [
+          { slug: "stable", right: false, answer: "merge", explanation: "Merge sort keeps equal keys in order." },
+          { slug: "bits", right: true, answer: "8", explanation: "" },
+        ],
+        revise: 1,
+      },
+    });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/lessons/sorting");
+    const quiz = await screen.findByRole("region", { name: "Check yourself" });
+    expect(within(quiz).getByText("2 quick questions. What you get wrong comes back for revision today.")).toBeTruthy();
+    await user.click(within(quiz).getByRole("radio", { name: /quick/ }));
+    await user.type(within(quiz).getByRole("textbox"), "8");
+    await user.click(within(quiz).getByRole("button", { name: "Check my answers" }));
+    expect(await within(quiz).findByText("1 of 2 right")).toBeTruthy();
+    expect(within(quiz).getByText("Not quite — the answer is merge")).toBeTruthy();
+    expect(within(quiz).getByText("Merge sort keeps equal keys in order.")).toBeTruthy();
+    expect(within(quiz).getByText("1 sent to revision")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/quiz"))!.body).toEqual({ answers: { stable: "0", bits: "8" } });
+    await user.click(within(quiz).getByRole("button", { name: "Try again" }));
+    expect(within(quiz).getByRole("button", { name: "Check my answers" })).toBeTruthy();
+  });
+
+  it("shows a shared solution read-only, with the way to the problem", async () => {
+    routes["GET /practice/nit-practice/shares/AbCdEfGhIjKl"] = () => ({
+      body: { problem: { slug: "sum-of-two", title: "Sum of two" }, author: "Ravi", language: "python", source: "print(1 + 2)", createdAt: "2026-10-05T04:00:00Z" },
+    });
+    open("/practice/nit-practice/shares/AbCdEfGhIjKl");
+    expect(await screen.findByRole("heading", { name: "Sum of two: a shared solution" })).toBeTruthy();
+    expect(screen.getByText("Shared by Ravi · python")).toBeTruthy();
+    expect(screen.getByText("print(1 + 2)")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Solve it yourself" }).getAttribute("href")).toBe("/practice/nit-practice/problems/sum-of-two");
+  });
+
   it("shows a locked lesson by name, with the way to Plus", async () => {
-    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true } });
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true, quiz: [] } });
     open("/practice/nit-practice/lessons/heaps");
     expect(await screen.findByText("This lesson comes with Plus.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /See Plus/ }).getAttribute("href")).toBe("/practice/nit-practice/plus");

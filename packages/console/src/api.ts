@@ -1240,6 +1240,14 @@ export class ConsoleClient {
     return (await this.#request<{ lessons: PrepLesson[] }>("/practice-admin/lessons")).lessons;
   }
 
+  async lessonQuiz(id: string): Promise<readonly string[]> {
+    return (await this.#request<{ problemIds: string[] }>(`/practice-admin/lessons/${encodeURIComponent(id)}/quiz`)).problemIds;
+  }
+
+  async setLessonQuiz(id: string, problemIds: readonly string[]): Promise<readonly string[]> {
+    return (await this.#request<{ problemIds: string[] }>(`/practice-admin/lessons/${encodeURIComponent(id)}/quiz`, { method: "PUT", body: JSON.stringify({ problemIds }) })).problemIds;
+  }
+
   saveLesson(id: string | null, draft: PrepLessonDraft): Promise<PrepLesson> {
     return id === null
       ? this.#request("/practice-admin/lessons", { method: "POST", body: JSON.stringify(draft) })

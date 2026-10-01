@@ -4,9 +4,10 @@ import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Cr
 import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
-import type { Grade, Level, Note, NoteKind, Plan, PlanInput, PlanTask, Reward } from "./client.ts";
+import { AnswerInput } from "../components/AnswerInput.tsx";
+import type { Grade, Lesson, Level, Note, NoteKind, Plan, PlanInput, PlanTask, Reward } from "./client.ts";
 import { LessonDoubt } from "./Tutor.tsx";
-import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context } from "./parts.tsx";
+import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context, type Nav } from "./parts.tsx";
 import { usePrepText, type PrepKey } from "./prep-text.ts";
 import "./prep.css";
 
@@ -458,10 +459,124 @@ export function LessonPage({ client, nav, learner, site, slug }: Context & { rea
         <SignInNeeded nav={nav} next={`/lessons/${slug}`} />
       ) : l.locked ? null : (
         <>
+          {l.quiz.length === 0 ? null : <LessonQuiz client={client} site={site} slug={slug} quiz={l.quiz} />}
           <NoteEditor client={client} site={site} kind="lesson" refId={slug} />
           <LessonDoubt client={client} lesson={slug} onCredits={() => nav.go("/plus")} />
         </>
       )}
+    </div>
+  );
+}
+
+/** A lesson's quiz: answered here, checked at once; what is got wrong goes to revision. */
+function LessonQuiz({ client, site, slug, quiz }: { readonly client: Context["client"]; readonly site: string; readonly slug: string; readonly quiz: Lesson["quiz"] }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const [answers, setAnswers] = useState<Readonly<Record<string, string>>>({});
+  const check = useMutation({
+    mutationFn: () => client.lessonQuiz(slug, answers),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key(site, "revise") }),
+  });
+  const result = check.data;
+  const outcome = new Map((result?.results ?? []).map((r) => [r.slug, r]));
+  return (
+    <section className="card lesson-quiz" aria-labelledby="lesson-quiz-title">
+      <h2 id="lesson-quiz-title">{p("lesson.quiz")}</h2>
+      <p className="notice">{p("lesson.quizHint", { n: quiz.length })}</p>
+      <ol>
+        {quiz.map((q) => {
+          const r = outcome.get(q.slug);
+          return (
+            <li key={q.slug}>
+              <Markdown source={q.question.stem} />
+              <AnswerInput question={q.question} value={answers[q.slug] ?? ""} disabled={result !== undefined} onChange={(value) => setAnswers((a) => ({ ...a, [q.slug]: value }))} />
+              {r === undefined ? null : (
+                <div className={`verdict ${r.right ? "ok" : "bad"}`}>
+                  <p>{r.right ? p("lesson.quizRight") : p("lesson.quizWrong", { answer: r.answer })}</p>
+                  {r.explanation === "" ? null : <Markdown source={r.explanation} />}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      {check.isError ? <p className="error">{messageOf(check.error, p("lesson.quizFailed"))}</p> : null}
+      {result === undefined ? (
+        <button type="button" disabled={check.isPending} onClick={() => check.mutate()}>
+          {p("lesson.quizSubmit")}
+        </button>
+      ) : (
+        <div className="row" role="status">
+          <strong>{p("lesson.quizScore", { score: result.score, total: result.total })}</strong>
+          {result.revise === 0 ? null : <span className="pill">{p("lesson.quizRevise", { n: result.revise })}</span>}
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              check.reset();
+              setAnswers({});
+            }}
+          >
+            {p("lesson.quizAgain")}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Share what is in the editor, read-only, at a link; the link is copied when the browser allows it. */
+export function ShareCode({ client, nav, slug, code }: { readonly client: Context["client"]; readonly nav: Nav; readonly slug: string; readonly code: { language: string; source: string } | null }) {
+  const p = usePrepText();
+  const [link, setLink] = useState<string | null>(null);
+  const share = useMutation({
+    mutationFn: () => client.shareCode(slug, code!.language, code!.source),
+    onSuccess: async ({ path }) => {
+      const url = new URL(nav.href(path), window.location.origin).toString();
+      setLink(url);
+      await navigator.clipboard?.writeText(url).catch(() => undefined);
+    },
+  });
+  return (
+    <div className="share-code">
+      <button type="button" className="secondary" disabled={code === null || code.source.trim() === "" || share.isPending} onClick={() => share.mutate()}>
+        {share.isPending ? p("share.busy") : p("share.button")}
+      </button>
+      {link === null ? null : (
+        <p className="notice" role="status">
+          {p("share.copied")}{" "}
+          <input readOnly aria-label={p("share.link")} value={link} onFocus={(e) => e.currentTarget.select()} />
+        </p>
+      )}
+      {share.isError ? <p className="error">{messageOf(share.error, p("share.failed"))}</p> : null}
+    </div>
+  );
+}
+
+/** A solution shared read-only at a link: the code, who shared it, and the way to the problem. */
+export function SharedCodePage({ client, nav, site, id }: Context & { readonly id: string }) {
+  const p = usePrepText();
+  const shared = useQuery({ queryKey: key(site, "share", id), queryFn: () => client.sharedCode(id) });
+  if (shared.isPending) return <Loading />;
+  if (shared.isError) return <Failed error={shared.error} />;
+  const s = shared.data;
+  return (
+    <div className="prep-page shared-code">
+      <header className="prep-head">
+        <div>
+          <h1>{p("share.title", { problem: s.problem?.title ?? "—" })}</h1>
+          <p className="notice">{p("share.by", { name: s.author, language: s.language })}</p>
+        </div>
+        {s.problem === null ? null : (
+          <Link nav={nav} to={`/problems/${s.problem.slug}`} className="button">
+            {p("share.open")}
+          </Link>
+        )}
+      </header>
+      {s.problem === null ? <p className="notice">{p("share.gone")}</p> : null}
+      <pre className="card shared-source">
+        <code>{s.source}</code>
+      </pre>
     </div>
   );
 }

@@ -39,6 +39,10 @@ export interface ProblemSummary {
   readonly title: string;
   readonly difficulty: Difficulty;
   readonly tags: readonly string[];
+  /** The ideas behind the tags: two pointers, sliding window… */
+  readonly patterns: readonly string[];
+  /** Companies that asked it lately, as far as this learner may see. */
+  readonly companies: readonly { readonly slug: string; readonly name: string }[];
   readonly kind: CandidateQuestion["kind"];
   readonly acceptance: number | null;
   readonly solvedBy: number;
@@ -349,6 +353,18 @@ export class PracticeClient {
 
   lessonDone(slug: string): Promise<Reward> {
     return this.#post(`/lessons/${encodeURIComponent(slug)}/done`);
+  }
+
+  lessonQuiz(slug: string, answers: Readonly<Record<string, string>>): Promise<QuizResult> {
+    return this.#post(`/lessons/${encodeURIComponent(slug)}/quiz`, { answers });
+  }
+
+  shareCode(slug: string, language: string, source: string): Promise<{ readonly id: string; readonly path: string }> {
+    return this.#post(`/problems/${encodeURIComponent(slug)}/share`, { language, source });
+  }
+
+  sharedCode(id: string): Promise<SharedCode> {
+    return this.#request(`/shares/${encodeURIComponent(id)}`);
   }
 
   async plan(): Promise<Plan | null> {
@@ -674,6 +690,24 @@ export interface Lesson {
   readonly estMinutes: number;
   readonly done: boolean;
   readonly locked: boolean;
+  /** Questions checked at once, asked without their answers. */
+  readonly quiz: readonly { readonly slug: string; readonly title: string; readonly question: CandidateQuestion }[];
+}
+
+export interface QuizResult {
+  readonly score: number;
+  readonly total: number;
+  readonly results: readonly { readonly slug: string; readonly right: boolean; readonly answer: string; readonly explanation: string }[];
+  /** Wrong answers now due for revision. */
+  readonly revise: number;
+}
+
+export interface SharedCode {
+  readonly problem: { readonly slug: string; readonly title: string } | null;
+  readonly author: string;
+  readonly language: string;
+  readonly source: string;
+  readonly createdAt: string;
 }
 
 export type Level = "beginner" | "intermediate" | "advanced";

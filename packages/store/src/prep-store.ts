@@ -560,6 +560,58 @@ export class PrepStore {
     );
   }
 
+  // --- a lesson's quiz -------------------------------------------------------------------------------
+
+  /** The problems a lesson's quiz asks, in order. */
+  async lessonQuiz(scope: PracticeScope, lessonId: string): Promise<readonly string[]> {
+    return scoped(this.#sql, scope, async (tx) =>
+      (await tx.query<{ problem_id: string }>(`SELECT problem_id FROM prep_lesson_quiz WHERE org_id = $1 AND lesson_id = $2 ORDER BY position`, [scope.orgId, lessonId])).map((r) => r.problem_id),
+    );
+  }
+
+  async setLessonQuiz(orgId: OrgId, lessonId: string, problemIds: readonly string[]): Promise<void> {
+    await scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      await tx.query(`DELETE FROM prep_lesson_quiz WHERE org_id = $1 AND lesson_id = $2`, [orgId, lessonId]);
+      for (const [position, problemId] of problemIds.entries()) {
+        await tx.query(`INSERT INTO prep_lesson_quiz (org_id, lesson_id, position, problem_id) VALUES ($1, $2, $3, $4)`, [orgId, lessonId, position, problemId]);
+      }
+    });
+  }
+
+  // --- shared code ----------------------------------------------------------------------------------
+
+  async addShare(orgId: OrgId, share: { id: string; learnerId: string; problemId: string; language: string; source: string }, at: Date): Promise<void> {
+    await scoped(this.#sql, practiceStaff(orgId), (tx) =>
+      tx.query(`INSERT INTO prep_code_shares (org_id, id, learner_id, problem_id, language, source, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [
+        orgId,
+        share.id,
+        share.learnerId,
+        share.problemId,
+        share.language,
+        share.source,
+        at,
+      ]),
+    );
+  }
+
+  async share(orgId: OrgId, id: string): Promise<{ readonly learnerId: string; readonly problemId: string; readonly language: string; readonly source: string; readonly createdAt: string } | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ learner_id: string; problem_id: string; language: string; source: string; created_at: string | Date }>(
+        `SELECT learner_id, problem_id, language, source, created_at FROM prep_code_shares WHERE org_id = $1 AND id = $2`,
+        [orgId, id],
+      );
+      const r = rows[0];
+      return r === undefined ? null : { learnerId: r.learner_id, problemId: r.problem_id, language: r.language, source: r.source, createdAt: iso(r.created_at) };
+    });
+  }
+
+  /** How many a learner shared since a moment: shares are capped per day. */
+  async sharesSince(orgId: OrgId, learnerId: string, since: Date): Promise<number> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      Number((await tx.query<{ n: string }>(`SELECT count(*) AS n FROM prep_code_shares WHERE org_id = $1 AND learner_id = $2 AND created_at >= $3`, [orgId, learnerId, since]))[0]!.n),
+    );
+  }
+
   // --- coins ---------------------------------------------------------------------------------------
 
   /** Pay a reward. False when that key was paid already. */

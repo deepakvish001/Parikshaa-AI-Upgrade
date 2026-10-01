@@ -61,6 +61,7 @@ const lessonView = z.object({
   estMinutes: z.number(),
   done: z.boolean(),
   locked: z.boolean().describe("Needs Plus, which this learner does not hold."),
+  quiz: z.array(z.object({ slug: z.string(), title: z.string(), question: S.candidateQuestion })).readonly().describe("The lesson's quiz, as a candidate sees questions: no answers. Empty while locked."),
 });
 
 const taskView = z.object({
@@ -346,6 +347,77 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
       if (who === null) return;
       return reply.send(await prep.completeLesson(who.site, who.learner, (request.params as { lesson: string }).lesson));
     },
+  );
+
+  routes.post(
+    "/practice/:site/lessons/:lesson/quiz",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Hand in a lesson's quiz",
+        description: "Each answer checked, the right answer and the explanation given back; each wrong one is due for revision today.",
+        security: LEARNER,
+        params: slugParam("lesson"),
+        body: z.object({ answers: z.record(z.string(), z.string().max(200)).describe("By problem address: an option's position, several comma-separated, or a number.") }),
+        response: {
+          200: z.object({
+            score: z.number(),
+            total: z.number(),
+            results: z.array(z.object({ slug: z.string(), right: z.boolean(), answer: z.string(), explanation: z.string() })).readonly(),
+            revise: z.number().describe("Wrong answers now due for revision."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.takeLessonQuiz(who.site, who.learner, (request.params as { lesson: string }).lesson, request.body.answers));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/problems/:problem/share",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Share my solution read-only, at a link",
+        description: "Only the code: never a test. Refused while a contest that includes the problem runs. Twenty a day.",
+        security: LEARNER,
+        params: slugParam("problem"),
+        body: z.object({ language: z.string().min(1).max(40), source: z.string().max(65_536) }),
+        response: { 201: z.object({ id: z.string(), path: z.string().describe("Under the site: /shares/<id>.") }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.code(201).send(await prep.shareCode(who.site, who.learner, (request.params as { problem: string }).problem, request.body));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/shares/:id",
+    {
+      schema: {
+        tags: PREP,
+        summary: "A shared solution",
+        security: OPEN,
+        params: siteParams.extend({ id: z.string().min(1).max(40) }),
+        response: {
+          200: z.object({
+            problem: z.object({ slug: z.string(), title: z.string() }).nullable().describe("Null when the problem is no longer published."),
+            author: z.string(),
+            language: z.string(),
+            source: z.string(),
+            createdAt: z.string(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => reply.send(await prep.sharedCode(await siteOf(request), request.params.id)),
   );
 
   // --- the plan -------------------------------------------------------------------------------
@@ -874,6 +946,38 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
       const lesson = await prep.saveLesson(actor.orgId, request.params.id, stripUndefined(request.body));
       await service.recordAudit(actor, "prep.lesson_changed", lesson.id);
       return reply.send(lesson);
+    },
+  );
+
+  routes.get(
+    "/practice-admin/lessons/:id/quiz",
+    { schema: { tags: ADMIN, summary: "A lesson's quiz: its problems, in order", security: STAFF, params: idParams, response: { 200: z.object({ problemIds: z.array(z.string()).readonly() }), ...refusals } } },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send({ problemIds: await prep.staffLessonQuiz(actor.orgId, request.params.id) });
+    },
+  );
+
+  routes.put(
+    "/practice-admin/lessons/:id/quiz",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Set a lesson's quiz",
+        description: "Up to ten of the site's multiple-choice or number problems; they may be unpublished, asked only here.",
+        security: STAFF,
+        params: idParams,
+        body: z.object({ problemIds: z.array(z.string().min(1)).max(20) }),
+        response: { 200: z.object({ problemIds: z.array(z.string()).readonly() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      const problemIds = await prep.setLessonQuiz(actor.orgId, request.params.id, request.body.problemIds);
+      await service.recordAudit(actor, "prep.lesson_quiz", request.params.id, { questions: problemIds.length });
+      return reply.send({ problemIds });
     },
   );
 

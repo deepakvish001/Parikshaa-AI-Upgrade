@@ -54,6 +54,8 @@ const problemListItem = z.object({
   title: z.string(),
   difficulty,
   tags: z.array(z.string()).readonly(),
+  patterns: z.array(z.string()).readonly().describe("The ideas behind the tags: two pointers, sliding window, DP…"),
+  companies: z.array(z.object({ slug: z.string(), name: z.string() })).readonly().describe("Companies that asked it in the last 180 days, as far as this learner may see: a company's top five without Plus."),
   kind: z.enum(["mcq", "short", "numeric", "code"]),
   acceptance: z.number().nullable().describe("Share of submissions accepted, 0 to 1."),
   solvedBy: z.number(),

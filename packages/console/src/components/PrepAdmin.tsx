@@ -249,8 +249,10 @@ function TrackForm({
 export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
   const lessons = useQuery({ queryKey: ["prep", "lessons"], queryFn: () => client.prepLessons() });
   const [editing, setEditing] = useState<PrepLesson | "new" | null>(null);
+  const [quizOf, setQuizOf] = useState<PrepLesson | null>(null);
   return (
     <>
+      {quizOf !== null ? <LessonQuizForm key={quizOf.id} client={client} lesson={quizOf} onDone={() => setQuizOf(null)} /> : null}
       {editing !== null ? (
         <LessonForm client={client} lesson={editing === "new" ? null : editing} onDone={() => setEditing(null)} />
       ) : canWrite ? (
@@ -294,9 +296,14 @@ export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite:
                   <td>{l.published ? <span className="pill ok">Shown</span> : <span className="pill">Hidden</span>}</td>
                   <td>
                     {canWrite ? (
-                      <button type="button" className="quiet" onClick={() => setEditing(l)}>
-                        Edit
-                      </button>
+                      <>
+                        <button type="button" className="quiet" onClick={() => setEditing(l)}>
+                          Edit
+                        </button>
+                        <button type="button" className="quiet" aria-label={`Quiz for ${l.title}`} onClick={() => setQuizOf(l)}>
+                          Quiz
+                        </button>
+                      </>
                     ) : null}
                   </td>
                 </tr>
@@ -364,6 +371,69 @@ function LessonForm({ client, lesson, onDone }: { client: ConsoleClient; lesson:
       <div className="row">
         <button type="submit" disabled={save.isPending}>
           Save lesson
+        </button>
+        <button type="button" className="quiet" onClick={onDone}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * A lesson's quiz: up to ten multiple-choice or number problems, asked at the
+ * end of the lesson and checked at once. What a learner gets wrong goes to
+ * their revision.
+ */
+function LessonQuizForm({ client, lesson, onDone }: { client: ConsoleClient; lesson: PrepLesson; onDone: () => void }) {
+  const problems = useQuery({ queryKey: ["practice", "problems"], queryFn: () => client.practiceProblems() });
+  const current = useQuery({ queryKey: ["prep", "lesson-quiz", lesson.id], queryFn: () => client.lessonQuiz(lesson.id) });
+  const [chosen, setChosen] = useState<readonly string[] | null>(null);
+  const picked = chosen ?? current.data ?? [];
+  const save = useMutation({
+    mutationFn: () => client.setLessonQuiz(lesson.id, picked),
+    onSuccess: onDone,
+  });
+  const askable = (problems.data ?? []).filter((p) => p.question.kind === "mcq" || p.question.kind === "numeric");
+  const toggle = (id: string) => setChosen(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
+  return (
+    <form
+      className="card prep-card"
+      aria-label={`Quiz for ${lesson.title}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+    >
+      <div className="bar">
+        <strong>Quiz for {lesson.title}</strong>
+        <span className="notice">{picked.length} of 10 at most</span>
+      </div>
+      <p className="notice">Multiple-choice and number problems only: they are checked the moment a learner hands the quiz in. A wrong answer goes to the learner's revision.</p>
+      {problems.isPending || current.isPending ? (
+        <SkeletonRows rows={3} columns={2} />
+      ) : askable.length === 0 ? (
+        <p className="notice">No multiple-choice or number problems yet. Add some on the Problems tab first.</p>
+      ) : (
+        <ul className="plain">
+          {askable.map((p) => (
+            <li key={p.id}>
+              <label className="check">
+                <input type="checkbox" checked={picked.includes(p.id)} disabled={!picked.includes(p.id) && picked.length >= 10} onChange={() => toggle(p.id)} /> {p.title}
+                {p.published ? null : <span className="pill">Hidden</span>}
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {save.isError ? (
+        <p className="error" role="alert">
+          {failure(save.error, "The quiz could not be saved.")}
+        </p>
+      ) : null}
+      <div className="row">
+        <button type="submit" disabled={save.isPending || current.isPending}>
+          Save quiz
         </button>
         <button type="button" className="quiet" onClick={onDone}>
           Cancel

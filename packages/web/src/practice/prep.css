@@ -794,3 +794,24 @@
   display: inline;
   margin: 0;
 }
+
+/* A lesson's quiz, and a shared solution. */
+.lesson-quiz ol {
+  display: grid;
+  gap: var(--space-4, 1rem);
+  padding-left: 1.25rem;
+}
+.lesson-quiz .verdict {
+  margin-top: 0.5rem;
+}
+.shared-source {
+  overflow-x: auto;
+  white-space: pre;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.9rem;
+}
+
+.share-code input {
+  width: min(100%, 28rem);
+  font-size: 0.85rem;
+}

@@ -28,8 +28,8 @@ Status ka matlab:
 | Hissa | ✅ | 🟡 | ⬜ | ❌ |
 |---|---|---|---|---|
 | Dashboard aur planner | 14 | 1 | 0 | 0 |
-| Learn aur practice | 6 | 3 | 2 | 0 |
-| Revision, lists, notes | 6 | 1 | 0 | 0 |
+| Learn aur practice | 9 | 1 | 1 | 0 |
+| Revision, lists, notes | 7 | 0 | 0 | 0 |
 | Sahayak AI | 17 | 1 | 0 | 0 |
 | Plus aur payment | 13 | 0 | 0 | 0 |
 | Coins, store, gamification | 15 | 0 | 0 | 0 |
@@ -37,7 +37,7 @@ Status ka matlab:
 | Contests | 4 | 1 | 0 | 0 |
 | Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 10 | 2 | 1 | 0 |
-| **Kul** | **105** | **12** | **5** | **1** |
+| **Kul** | **109** | **9** | **4** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -82,20 +82,20 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Lessons: Markdown + video link, "done" | ✅ | `LessonPage` | |
 | Har track ke pehle modules free, baaki Plus | ✅ | `PrepService.#locked` | |
 | Video hosting, player progress, signed URL, watermark | ⬜ | | Abhi sirf bahar ka link. Host ka faisla baaki |
-| Lesson ke andar quiz | 🟡 | | Track me lesson ke baad MCQ problems rakhe ja sakte hain (CS pack yahi karta hai) |
+| Lesson ke andar quiz | ✅ | `prep_lesson_quiz` (migration 0046), `PrepService.takeLessonQuiz`, `POST /practice/:site/lessons/:lesson/quiz`, web `LessonQuiz`, console "Quiz" (Lessons), `learn-v2.test.ts` | Staff 10 tak MCQ/number problems chunte hain; lesson page par jawab ke bina poochhe jaate hain, turant jaanche jaate hain, galat ka sahi jawab aur editorial dikhta hai. Code problem quiz me nahi (turant jaanch nahi hoti) |
 | Problem workspace, Run/Submit, drafts device par | ✅ | §15 practice site | |
 | Editorial Brute / Better / Optimal tabs | ✅ | `web/src/practice/editorial.ts` | `## Brute force`, `## Better`, `## Optimal` headings se |
 | SQL practice | 🟡 | runner `sql` language (SQLite) | Chalta hai. Result table aur schema viewer UI baaki: output text me dikhta hai |
 | Problem of the day + calendar, +5 coins | ✅ | `PotdPage`, console → Problem of the day | |
-| Online IDE ka share link | ⬜ | | |
-| Company, topic aur pattern se problem filter | 🟡 | | Topic (tags) aur difficulty hai. Company aur pattern filter baaki |
+| Online IDE ka share link | ✅ | `prep_code_shares` (migration 0046), `PrepService.shareCode/sharedCode`, `/practice/:site/problems/:problem/share`, `/practice/:site/shares/:id`, web `ShareCode` + `SharedCodePage` | Editor ka code read-only link par; sirf code, koi test nahi. Contest chalte hue us problem ka share band; din me 20. Link par koi bhi padh sakta hai (login nahi). Share hata dene ka button abhi nahi |
+| Company, topic aur pattern se problem filter | ✅ | `ProblemListItem.patterns/companies`, `PrepCommunity.problemCompanies`, problems page ke "Pattern" aur "Company" filter, `learn-v2.test.ts` | Company filter wahi dikhata hai jo company page dikhata: Plus ke bina har company ke top 5 (180 din), Plus/Company Pass ke saath sab. Pattern tags se nikalta hai (`patterns.ts`) |
 
 ### 4. Revision, lists, notes (S8, F8, F15)
 
 | Feature | Status | Kahan | Note |
 |---|---|---|---|
 | Spaced revision (SM-2 lite), roz max 15 cards | ✅ | `RevisePage`; `review()` in `prep-plan.ts` | Solve karte hi card banta hai |
-| Galat quiz sawaal ya note se bhi card | 🟡 | | Abhi sirf solved problems se |
+| Galat quiz sawaal ya note se bhi card | ✅ | `takeLessonQuiz`, `saveNote` (`prep.ts`), `learn-v2.test.ts` | Lesson quiz ka galat jawab: card aaj due (pehle se card ho to aaj par aa jaata hai). Problem par note: card kal due (ek hi baar). Lesson ke note se card nahi banta, kyunki card sirf problem ka hota hai |
 | Lists (bookmarks + apni lists) | ✅ | `SaveMenu`, `ListsPage` | |
 | Notes: problem, lesson ya topic par | ✅ | `NoteEditor`, `NotesPage` | |
 | Notes ka AI draft | ✅ | `NoteEditor` → "Draft with Sahayak"; `POST /tutor/notes` | Lesson par, ya **solve kiye hue** problem par (learner ke accepted code se). 15 credits. Draft box me aata hai, save learner karta hai |
@@ -350,7 +350,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ✅ ban gaya (2 Oct 2026); evals ka paid run alag se owner par |
 | 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ✅ ban gaya (2 Oct 2026) |
 | 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ✅ ban gaya (2 Oct 2026) |
-| 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ⬜ pending |
+| 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ✅ ban gaya (`learn-v2.test.ts`; lesson note se card nahi, share hatane ka button nahi) |
 | 41 | **PWA aur push** (§17): installable app, offline me aaj ka plan, push notification (reminder email ke saath) | §17, A1 | Mobile par roz ka loop | Tests: manifest, service worker cache, push ki subscription aur band karna | ⬜ pending |
 
 ## Master plan v2: taiyaari se naukri tak, ek bharosemand platform

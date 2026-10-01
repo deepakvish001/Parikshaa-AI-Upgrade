@@ -29,6 +29,7 @@ import {
   type Submission,
 } from "@parikshaa/store";
 import { JudgeQueue, type JudgeLane, type JudgeOptions } from "./judge-queue.js";
+import { patternsOf } from "./patterns.js";
 import { RateLimiter } from "./rate-limit.js";
 import { digest, hashPassword } from "./staff-auth.js";
 
@@ -111,6 +112,10 @@ export interface ProblemListItem {
   readonly title: string;
   readonly difficulty: Difficulty;
   readonly tags: readonly string[];
+  /** The ideas behind the tags (see patterns.ts). */
+  readonly patterns: readonly string[];
+  /** Companies that asked it lately, as far as the learner may see. */
+  readonly companies: readonly { readonly slug: string; readonly name: string }[];
   readonly kind: Question["kind"];
   /** Share of submissions accepted, 0–1; null before anyone submits. */
   readonly acceptance: number | null;
@@ -259,6 +264,8 @@ export interface Person {
   readonly username: string | null;
 }
 export type People = (orgId: OrgId, learnerIds: readonly string[]) => Promise<ReadonlyMap<string, Person>>;
+/** Each problem's companies, as a learner may see them (Prep's reports). */
+export type ProblemCompanies = (site: PracticeSite, learner: Learner | null) => Promise<ReadonlyMap<string, readonly { readonly slug: string; readonly name: string }[]>>;
 const NOBODY: Person = { title: null, username: null };
 
 export class PracticeService {
@@ -267,6 +274,7 @@ export class PracticeService {
   readonly #judge: JudgeQueue | null;
   readonly #boards = new Map<string, { readonly key: string; readonly at: number; readonly board: (ScoreboardRow & Person)[] }>();
   #people: People = async () => new Map();
+  #companies: ProblemCompanies = async () => new Map();
   readonly #now: () => number;
   readonly #runs = new RateLimiter({ perSecond: 0.5, burst: 20 });
   readonly #submits = new RateLimiter({ perSecond: 0.2, burst: 10 });
@@ -353,10 +361,11 @@ export class PracticeService {
 
   async problems(site: PracticeSite, learner: Learner | null): Promise<readonly ProblemListItem[]> {
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
-    const [problems, stats, progress] = await Promise.all([
+    const [problems, stats, progress, companies] = await Promise.all([
       this.#store.problems(scope),
       this.#store.problemStats(site.orgId),
       this.#store.progress(scope),
+      this.#companies(site, learner),
     ]);
     const statsOf = new Map(stats.map((s) => [s.problemId, s]));
     const solved = new Set(progress.solved.map((s) => s.problemId));
@@ -368,6 +377,8 @@ export class PracticeService {
         title: p.title,
         difficulty: p.difficulty,
         tags: p.tags,
+        patterns: patternsOf(p.tags),
+        companies: companies.get(p.id) ?? [],
         kind: p.question.kind,
         acceptance: s === undefined || s.submissions === 0 ? null : s.accepted / s.submissions,
         solvedBy: s?.solvedBy ?? 0,
@@ -438,6 +449,11 @@ export class PracticeService {
   /** Where titles and usernames come from (Prep's ratings and profiles), once that service exists. */
   usePeople(people: People): void {
     this.#people = people;
+  }
+
+  /** Where a problem's companies come from, for the list's filter. */
+  useCompanies(companies: ProblemCompanies): void {
+    this.#companies = companies;
   }
 
   /** The judge's queue as it stands: for staff on a contest day. */

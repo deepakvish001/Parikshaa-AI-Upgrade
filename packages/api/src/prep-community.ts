@@ -177,6 +177,31 @@ export class PrepCommunity {
   }
 
   /** Of a company's most asked problems, how many this learner has solved. */
+  /**
+   * For the problem list's company filter: each problem's companies, as this
+   * learner may see them — a company's top five in the last 180 days without
+   * Plus or a Company Pass, all of them with one. The filter shows nothing
+   * the company page would not.
+   */
+  async problemCompanies(site: PracticeSite, learner: Learner | null): Promise<ReadonlyMap<string, readonly { readonly slug: string; readonly name: string }[]>> {
+    const scope = practiceLearner(site.orgId, null);
+    const [companies, reports, problems, plus] = await Promise.all([this.#store.companies(scope), this.#store.reports(scope), this.#practice.problems(scope), this.#holdsPlus(site, learner)]);
+    const published = new Set(problems.filter((p) => p.published).map((p) => p.id));
+    const since = addDays(this.#today(), -180);
+    const out = new Map<string, { slug: string; name: string }[]>();
+    for (const company of companies) {
+      const asked = new Map<string, { times: number; last: string }>();
+      for (const r of reports) {
+        if (r.companyId !== company.id || !published.has(r.problemId) || r.reportedOn < since) continue;
+        const seen = asked.get(r.problemId) ?? { times: 0, last: r.reportedOn };
+        asked.set(r.problemId, { times: seen.times + 1, last: seen.last > r.reportedOn ? seen.last : r.reportedOn });
+      }
+      const ranked = [...asked.entries()].sort((a, b) => b[1].times - a[1].times || b[1].last.localeCompare(a[1].last)).map(([id]) => id);
+      for (const id of plus ? ranked : ranked.slice(0, FREE_COMPANY_PROBLEMS)) out.set(id, [...(out.get(id) ?? []), { slug: company.slug, name: company.name }]);
+    }
+    return out;
+  }
+
   async #readiness(site: PracticeSite, companyId: string, solved: ReadonlySet<string>) {
     const top = (await this.#ranked(site, companyId)).slice(0, READINESS_TOP);
     const done = top.filter((p) => solved.has(p.id)).length;

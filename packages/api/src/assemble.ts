@@ -188,6 +188,7 @@ export function assemble(o: AssembleOptions): {
   const prepCommunity = new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus, publicUrl: o.publicUrl });
   const people = (orgId: Parameters<PrepCommunity["people"]>[0], ids: readonly string[]) => prepCommunity.people(orgId, ids);
   practice.usePeople(people);
+  practice.useCompanies((site, learner) => prepCommunity.problemCompanies(site, learner));
   const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus, companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner), planLate: (site, learner, plan) => prepEngage.queueLate(site, learner, plan) });
   prepService.usePeople(people);
   const prepEngage = new PrepEngage({
