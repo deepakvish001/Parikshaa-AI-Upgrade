@@ -14,6 +14,8 @@ export interface FakeModelScript {
   job: { roleId: string; title: string; seniority: "fresher" | "junior" | "mid" | "senior"; skills: { name: string; keywords: string[] }[] };
   /** What reading a handwritten copy finds, by question number. */
   handwriting: { questions: { number: number; transcript: string; score: number; reason: string }[] };
+  /** What comparing a candidate's identity photos finds. */
+  identity: { idMatchesSelfie: "same" | "different" | "unclear"; snapshots: { photo: number; person: "same" | "different" | "no_face" | "unclear"; otherPeople: boolean }[]; summary: string };
   /** Milliseconds before a probe finishes streaming, and before a grade or reading returns. */
   latencyMs: number;
 }
@@ -33,6 +35,7 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
         { number: 2, transcript: "(not attempted)", score: 0, reason: "Not attempted." },
       ],
     },
+    identity: { idMatchesSelfie: "same", snapshots: [{ photo: 1, person: "same", otherPeople: false }], summary: "The same person throughout." },
     latencyMs: 0,
     ...overrides,
   };
@@ -59,7 +62,7 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
         await pause(script.latencyMs);
         const system = JSON.stringify(params.system);
         const grading = system.includes("grade exam answers");
-        const parsed = system.includes("check handwritten answer scripts") ? script.handwriting : system.includes("read job descriptions") ? script.job : grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
+        const parsed = system.includes("compare photos of an exam candidate") ? script.identity : system.includes("check handwritten answer scripts") ? script.handwriting : system.includes("read job descriptions") ? script.job : grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
         return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed, usage: USAGE };
       },
     },

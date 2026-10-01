@@ -570,6 +570,8 @@ export class LedgerStore {
       // Proctoring photos are unreadable once the key is gone; the rows go too.
       await tx.query(`DELETE FROM proctor_media WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM proctor_events WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      await tx.query(`DELETE FROM attempt_origins WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      await tx.query(`DELETE FROM identity_checks WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(
         `UPDATE attempts SET candidate_id = 'erased', erased_at = $3, erasure_reason = $4 WHERE org_id = $1 AND id = $2`,
         [scope.orgId, attemptId, at, reason],

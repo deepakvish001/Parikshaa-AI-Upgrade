@@ -308,6 +308,14 @@ interface PlacementFigures {
   readonly averageLpa: number | null;
 }
 
+export interface ProxyReport {
+  readonly lab: boolean;
+  readonly sharedOrigins: readonly { readonly candidates: readonly string[]; readonly attempts: number; readonly from: string; readonly to: string }[];
+  readonly reusedPhotos: readonly { readonly candidates: readonly string[] }[];
+  readonly checks: readonly { readonly attemptId: string; readonly ref: string; readonly flagged: boolean; readonly flags: readonly string[]; readonly summary: string; readonly checkedAt: string }[];
+  readonly unchecked: number;
+}
+
 export type ScriptMarks = Readonly<Record<string, { readonly score: number; readonly comment: string }>>;
 
 export interface AnswerScript {
@@ -1564,6 +1572,16 @@ export class ConsoleClient {
     const response = await fetch(`${this.#baseUrl}/placement/report.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  // --- signs of a proxy ------------------------------------------------------------
+
+  proxyReport(examId: string): Promise<ProxyReport> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/proxy-report`);
+  }
+
+  compareIdentities(examId: string, limit = 50): Promise<{ readonly checked: number; readonly flagged: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/identity/compare`, { method: "POST", body: JSON.stringify({ limit }) });
   }
 
   // --- handwritten copies -------------------------------------------------------

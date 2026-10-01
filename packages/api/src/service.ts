@@ -259,7 +259,7 @@ export class ExamService {
   async authoring<T>(
     actor: Actor,
     run: (client: Anthropic, model: string) => Promise<{ readonly result: T; readonly usage: ReportedUsage }>,
-    options: { readonly permission?: Permission; readonly route?: "author" | "grade" } = {},
+    options: { readonly permission?: Permission; readonly route?: "author" | "grade" | "assess" } = {},
   ): Promise<T> {
     const scope = this.#require(actor, options.permission ?? "exam:write");
     if (!(await this.#withinBudget(scope))) throw new SpendCapReached();

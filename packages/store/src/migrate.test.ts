@@ -113,6 +113,7 @@ describe("migrate", () => {
       "0037_answer_scripts.sql",
       "0038_drive_colleges.sql",
       "0039_offers.sql",
+      "0040_proxy_checks.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -146,6 +147,8 @@ describe("migrate", () => {
         "answer_scripts",
         "answer_script_pages",
         "drive_colleges",
+        "attempt_origins",
+        "identity_checks",
       ]),
     );
   });

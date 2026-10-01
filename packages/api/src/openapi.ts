@@ -1,6 +1,6 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
-import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -10,6 +10,7 @@ import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
 import { InterviewService } from "./interviews.js";
 import { HandwritingService } from "./handwriting.js";
+import { ProxyService } from "./proxy.js";
 import { AttemptTokens } from "./auth.js";
 import { InviteCodes } from "./invite-codes.js";
 import { InvigilationService } from "./invigilation.js";
@@ -85,6 +86,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     privacy: new PrivacyService({ store, privacy: new PrivacyStore(unusable), invitations: invitationStore, identity, exams: service }),
     billing: new BillingService({ store, billing: new BillingStore(unusable), identity, exams: service }),
     proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }),
+    proxy: new ProxyService({ store: new ProxyStore(unusable), proctor: new ProctorService({ store, proctor: new ProctorStore(unusable, null), exams: service }), results, exams: service, secret: "x".repeat(40) }),
     feedback: new FeedbackStore(unusable),
     lab: new LabService({ lab: new LabStore(unusable), invitations: invitationStore, store, exams: service }),
     marking: new MarkingService({ store, marking: new MarkingStore(unusable), exams: service }),

@@ -28,6 +28,8 @@ import {
   OutcomeStore,
   InterviewStore,
   ScriptStore,
+  ProxyStore,
+  staffScope,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -43,6 +45,7 @@ import { ShortlistService } from "../shortlists.js";
 import { OutcomeService } from "../outcomes.js";
 import { InterviewService } from "../interviews.js";
 import { HandwritingService } from "../handwriting.js";
+import { ProxyService } from "../proxy.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -195,11 +198,14 @@ export async function wire(
     exams: service,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
-  const lab = new LabService({ lab: new LabStore(sql), invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
+  const labStore = new LabStore(sql);
+  const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
+  let proxy: ProxyService | null = null;
   const seatStore = new SeatStore(sql);
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
     seat: async (orgId, examId, ref) => (await seatStore.seats(orgId, examId)).find((s) => s.ref === ref) ?? null,
+    origin: async (...args) => proxy?.recordOrigin(...args),
     lab,
     exams: service,
     store,
@@ -277,6 +283,21 @@ export async function wire(
     releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const proctorService = new ProctorService({
+    store,
+    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+    exams: service,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  proxy = new ProxyService({
+    store: new ProxyStore(sql),
+    proctor: proctorService,
+    results,
+    exams: service,
+    secret: TOKEN_SECRET,
+    labbed: async (orgId, examId) => (await labStore.get(staffScope(orgId), examId)).networks.length > 0,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const onboarding = new Onboarding({
     identity,
     auth,
@@ -307,12 +328,8 @@ export async function wire(
     }),
     privacy,
     billing,
-    proctor: new ProctorService({
-      store,
-      proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
-      exams: service,
-      ...(options.now === undefined ? {} : { now: options.now }),
-    }),
+    proctor: proctorService,
+    proxy,
     feedback: new FeedbackStore(sql),
     lab,
     rechecks,

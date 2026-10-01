@@ -57,6 +57,8 @@ import type { InterviewService } from "./interviews.js";
 import { registerInterviewRoutes } from "./interview-routes.js";
 import type { HandwritingService } from "./handwriting.js";
 import { registerScriptRoutes } from "./script-routes.js";
+import type { ProxyService } from "./proxy.js";
+import { registerProxyRoutes } from "./proxy-routes.js";
 import { registerJobTestRoutes } from "./job-test-routes.js";
 import type { GreenhouseService } from "./greenhouse.js";
 import { registerIntegrationRoutes } from "./integration-routes.js";
@@ -137,6 +139,8 @@ export interface ServerOptions {
   readonly interviews?: InterviewService;
   /** Handwritten copy checking and moderation. Absent: none of its routes. */
   readonly handwriting?: HandwritingService;
+  /** Signs of a proxy. Absent: none of its routes. */
+  readonly proxy?: ProxyService;
   /** Password reset, a second factor and single sign-on (ROADMAP §1). Absent: none of their routes. */
   readonly security?: StaffSecurity;
   readonly loginThrottle?: LoginThrottle;
@@ -1259,6 +1263,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.placement !== undefined) registerPlacementRoutes(routes, { placement: options.placement, staff, throttle });
     registerJobTestRoutes(routes, { jobs: new JobTestService({ bank: options.bank, exams: service }), staff });
     if (options.seats !== undefined) registerSeatRoutes(routes, { seats: options.seats, throttle, staff });
+    if (options.proxy !== undefined) registerProxyRoutes(routes, { proxy: options.proxy, staff });
     if (options.handwriting !== undefined) registerScriptRoutes(routes, { handwriting: options.handwriting, staff });
     if (options.interviews !== undefined) registerInterviewRoutes(routes, { interviews: options.interviews, throttle, staff });
     if (options.outcomes !== undefined) registerOutcomeRoutes(routes, { outcomes: options.outcomes, staff });

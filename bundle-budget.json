@@ -43,6 +43,7 @@
     "Copies-*.js": 4,
     "Copies-*.css": 1,
     "sparkles-*.js": 1,
+    "ProxyCheck-*.js": 2,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5

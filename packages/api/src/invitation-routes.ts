@@ -385,7 +385,7 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
         return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
       }
       try {
-        const opened = await invitations.redeem(request.body.code, request.body.consent, request.body.camera, request.ip);
+        const opened = await invitations.redeem(request.body.code, request.body.consent, request.body.camera, request.ip, request.headers["user-agent"] ?? "");
         return reply.send(opened);
       } catch (error) {
         if (error instanceof ConsentRequired) return reply.code(428).send({ error: "consent_required", notice: error.notice });

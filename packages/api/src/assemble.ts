@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -12,6 +12,7 @@ import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
 import { InterviewService } from "./interviews.js";
 import { HandwritingService } from "./handwriting.js";
+import { ProxyService } from "./proxy.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -118,11 +119,15 @@ export function assemble(o: AssembleOptions): {
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
   const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
-  const lab = new LabService({ lab: new LabStore(o.sql), invitations: invitationStore, store, exams: service });
+  const labStore = new LabStore(o.sql);
+  const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service });
+  // Made below, once the results it reads exist; the hook is called only when a candidate starts.
+  let proxy: ProxyService | null = null;
   const seatStore = new SeatStore(o.sql);
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
     seat: async (orgId, examId, ref) => (await seatStore.seats(orgId, examId)).find((s) => s.ref === ref) ?? null,
+    origin: async (...args) => proxy?.recordOrigin(...args),
     lab,
     exams: service,
     store,
@@ -175,6 +180,15 @@ export function assemble(o: AssembleOptions): {
   const recheckStore = new RecheckStore(o.sql);
   const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
   const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
+  const proctorService = new ProctorService({ store, proctor: proctorStore, exams: service });
+  proxy = new ProxyService({
+    store: new ProxyStore(o.sql),
+    proctor: proctorService,
+    results,
+    exams: service,
+    secret: o.secret,
+    labbed: async (orgId, examId) => (await labStore.get(staffScope(orgId), examId)).networks.length > 0,
+  });
   const app = buildServer({
     service,
     invitations,
@@ -192,7 +206,8 @@ export function assemble(o: AssembleOptions): {
     }),
     privacy,
     billing,
-    proctor: new ProctorService({ store, proctor: proctorStore, exams: service }),
+    proctor: proctorService,
+    proxy,
     feedback: new FeedbackStore(o.sql),
     lab,
     rechecks,
