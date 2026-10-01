@@ -384,6 +384,23 @@ export function eInvoicePayload(document: Record<string, unknown>, issuedAt: Dat
  *   PARIKSHAA_SUPPLIER_ADDRESS  the registered address
  *   PARIKSHAA_SUPPLIER_SAC      default 998399 (other professional, technical and business services)
  */
+/** Where a bank transfer against a quotation goes: printed on the quotation. */
+export interface BankDetails {
+  readonly accountName: string;
+  readonly accountNumber: string;
+  readonly ifsc: string;
+  readonly bank: string;
+}
+
+export function bankFromEnv(env: Readonly<Record<string, string | undefined>>): BankDetails | null {
+  const accountNumber = (env["PARIKSHAA_BANK_ACCOUNT"] ?? "").replace(/\s+/g, "");
+  if (accountNumber === "") return null;
+  const ifsc = (env["PARIKSHAA_BANK_IFSC"] ?? "").toUpperCase();
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) throw new Error("PARIKSHAA_BANK_IFSC is not an IFSC like HDFC0001234");
+  if (!/^\d{6,18}$/.test(accountNumber)) throw new Error("PARIKSHAA_BANK_ACCOUNT is not an account number");
+  return { accountName: env["PARIKSHAA_BANK_ACCOUNT_NAME"] ?? env["PARIKSHAA_SUPPLIER_NAME"] ?? "", accountNumber, ifsc, bank: env["PARIKSHAA_BANK_NAME"] ?? "" };
+}
+
 export function supplierFromEnv(env: Readonly<Record<string, string | undefined>>): Supplier | null {
   const legalName = env["PARIKSHAA_SUPPLIER_NAME"] ?? "";
   const gstin = (env["PARIKSHAA_SUPPLIER_GSTIN"] ?? "").toUpperCase();

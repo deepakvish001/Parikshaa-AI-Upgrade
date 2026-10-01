@@ -3,7 +3,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { orgId } from "@parikshaa/core";
 import { BillingStore, connect, IdentityStore, LedgerStore, staffScope } from "@parikshaa/store";
 import { BillingService } from "./billing.js";
-import { supplierFromEnv } from "./gst.js";
+import { bankFromEnv, supplierFromEnv } from "./gst.js";
 import { RazorpayGateway } from "./razorpay.js";
 import { ExamService } from "./service.js";
 
@@ -23,6 +23,7 @@ import { ExamService } from "./service.js";
  *   tds-certificate <org> <invoice no> <rupees> <certificate no> <FY Q>   a Form 16A received, e.g. "2026-27 Q2"
  *   e-invoice <org> <invoice no>               the invoice as e-invoice JSON (INV-01 1.1), for the IRP
  *   irn <org> <invoice no> <irn> <ack no> <ack date> <signed-qr-file>      record what the IRP returned
+ *   transfer <org> <quotation ref> <UTR>      a bank transfer received against a quotation: credits and the tax invoice
  *
  * Invoicing needs PARIKSHAA_SUPPLIER_NAME, _GSTIN and _ADDRESS; refunds need
  * RAZORPAY_KEY_ID, _KEY_SECRET and _WEBHOOK_SECRET too.
@@ -45,6 +46,7 @@ const service = new BillingService({
   identity,
   exams: new ExamService({ store, identity, client: {} as Anthropic }),
   supplier: supplierFromEnv(process.env),
+  bank: bankFromEnv(process.env),
   gateway:
     (process.env["RAZORPAY_KEY_ID"] ?? "") === ""
       ? null
@@ -124,6 +126,13 @@ try {
     case "e-invoice": {
       const [org, number] = args;
       out(JSON.stringify(await service.eInvoiceJson(orgId(org!), number!), null, 2));
+      break;
+    }
+    case "transfer": {
+      const [org, reference, utr] = args;
+      if (reference === undefined || utr === undefined) throw new Error("transfer <org> <quotation ref, neft_…> <UTR>");
+      const { invoice, credits, newlyPaid } = await service.recordTransfer(orgId(org!), reference, utr);
+      out(newlyPaid ? `${org}: ${credits} credits added; tax invoice ${invoice.number} for ${rupees(invoice.totalPaise)}` : `${org}: ${reference} was recorded before (invoice ${invoice.number}); nothing changed`);
       break;
     }
     case "irn": {

@@ -20,7 +20,7 @@ import { InvitationService } from "./invitation-service.js";
 import { PrivacyService } from "./privacy.js";
 import { BillingService } from "./billing.js";
 import { ProctorService } from "./proctoring.js";
-import type { Supplier } from "./gst.js";
+import type { BankDetails, Supplier } from "./gst.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { ResultsService } from "./results.js";
 import { PracticeService } from "./practice.js";
@@ -64,6 +64,8 @@ export interface AssembleOptions {
   readonly tutorModel?: string;
   /** Who Parikshaa's tax invoices are issued by. */
   readonly supplier?: Supplier | null;
+  /** Where bank transfers against a quotation go. */
+  readonly bank?: BankDetails | null;
   readonly mailer?: Mailer | null;
   readonly sms?: SmsSender | null;
   readonly whatsapp?: WhatsAppSender | null;
@@ -108,6 +110,7 @@ export function assemble(o: AssembleOptions): {
     exams: service,
     gateway: o.gateway ?? null,
     supplier: o.supplier ?? null,
+    bank: o.bank ?? null,
   });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);

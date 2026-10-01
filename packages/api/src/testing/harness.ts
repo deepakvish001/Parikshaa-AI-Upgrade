@@ -84,6 +84,8 @@ export const SUPPLIER: Supplier = {
   address: "12 Residency Road, Bengaluru 560025",
   sac: "998399",
 };
+/** Where the tests' bank transfers go. */
+export const BANK = { accountName: "Parikshaa Assessments Pvt Ltd", accountNumber: "50200012345678", ifsc: "HDFC0001234", bank: "HDFC Bank, Residency Road" };
 
 /**
  * A migrated, empty database.
@@ -173,6 +175,7 @@ export async function wire(
     exams: service,
     gateway: razorpay,
     supplier: SUPPLIER,
+    bank: BANK,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);

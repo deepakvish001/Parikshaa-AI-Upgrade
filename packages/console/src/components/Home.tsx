@@ -87,6 +87,7 @@ export const ACTIONS: Record<string, string> = {
   "exam.attendance_marked": "marked a candidate present",
   "shortlist.created": "sent a shortlist to a hiring manager",
   "shortlist.withdrawn": "withdrew a shortlist link",
+  "billing.quoted": "asked for a quotation",
   "bank.added": "added a question to the bank",
   "bank.edited": "edited a bank question",
   "bank.imported": "imported questions",

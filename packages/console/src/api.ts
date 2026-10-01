@@ -1646,6 +1646,17 @@ export class ConsoleClient {
     return this.#request("/billing/details", { method: "PUT", body: JSON.stringify(details) });
   }
 
+  /** A quotation to pay by bank transfer, with the buyer's purchase order. */
+  createQuotation(credits: number, poNumber: string | null): Promise<{ readonly id: string; readonly orderId: string; readonly credits: number; readonly amountPaise: number; readonly poNumber: string | null }> {
+    return this.#request("/billing/quotations", { method: "POST", body: JSON.stringify({ credits, poNumber }) });
+  }
+
+  async quotationPdf(id: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/billing/quotations/${encodeURIComponent(id)}/pdf`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
   createOrder(credits: number): Promise<BillingOrder> {
     return this.#request("/billing/orders", { method: "POST", body: JSON.stringify({ credits }) });
   }
@@ -1780,6 +1791,8 @@ export interface InvoiceDocument {
 
 export interface BillingSummary {
   readonly account: BillingAccount | null;
+  /** Payments: Razorpay orders, and quotations to pay by bank transfer (reference neft_…). */
+  readonly payments: readonly { readonly id: string; readonly orderId: string; readonly paymentId: string | null; readonly credits: number; readonly amountPaise: number; readonly status: "created" | "paid"; readonly createdAt: string; readonly poNumber?: string | null }[];
   readonly history: readonly {
     readonly id: string;
     readonly delta: number;
@@ -1791,6 +1804,8 @@ export interface BillingSummary {
   }[];
   readonly invoices: readonly InvoiceSummary[];
   readonly checkout: { readonly available: boolean; readonly keyId: string | null };
+  /** A quotation can be had, to pay by bank transfer; absent from an older server. */
+  readonly bankTransfer?: boolean;
   readonly supplier: { readonly legalName: string; readonly stateCode: string } | null;
 }
 

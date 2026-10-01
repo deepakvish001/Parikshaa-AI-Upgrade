@@ -14,7 +14,8 @@ import {
   type Refund,
   type TdsCertificate,
 } from "@parikshaa/store";
-import { STATES, creditNote, eInvoicePayload, stateOf, taxInvoice, taxesOn, validGstin, type Supplier } from "./gst.js";
+import { STATES, creditNote, eInvoicePayload, stateOf, taxInvoice, taxesOn, validGstin, type BankDetails, type Supplier } from "./gst.js";
+import { A4, fit, Page, pdf, type Rgb } from "./pdf.js";
 import type { PaymentGateway } from "./razorpay.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
@@ -56,6 +57,8 @@ export interface BillingSummary {
   readonly tdsCertificates: readonly TdsCertificate[];
   /** Whether credits can be bought here, and the Razorpay key Checkout needs. */
   readonly checkout: { readonly available: boolean; readonly keyId: string | null };
+  /** Whether a quotation can be had, to pay by bank transfer against a purchase order. */
+  readonly bankTransfer: boolean;
   readonly supplier: { readonly legalName: string; readonly stateCode: string } | null;
 }
 
@@ -91,6 +94,7 @@ export class BillingService {
     readonly exams: ExamService;
     readonly gateway: PaymentGateway | null;
     readonly supplier: Supplier | null;
+    readonly bank: BankDetails | null;
     readonly now: () => number;
     readonly newId: () => string;
   };
@@ -102,6 +106,7 @@ export class BillingService {
     exams: ExamService;
     gateway?: PaymentGateway | null;
     supplier?: Supplier | null;
+    bank?: BankDetails | null;
     now?: () => number;
     newId?: () => string;
   }) {
@@ -109,6 +114,7 @@ export class BillingService {
       ...options,
       gateway: options.gateway ?? null,
       supplier: options.supplier ?? null,
+      bank: options.bank ?? null,
       now: options.now ?? (() => Date.now()),
       newId: options.newId ?? (() => crypto.randomUUID()),
     };
@@ -155,6 +161,7 @@ export class BillingService {
       refunds,
       tdsCertificates,
       checkout: { available: gateway !== null && supplier !== null && account?.mode === "prepaid", keyId: gateway?.keyId ?? null },
+      bankTransfer: supplier !== null && this.#o.bank !== null && account?.mode === "prepaid",
       supplier: supplier === null ? null : { legalName: supplier.legalName, stateCode: stateOf(supplier.gstin) },
     };
   }
@@ -219,6 +226,114 @@ export class BillingService {
       amountPaise: taxes.totalPaise,
       supplierName: supplier.legalName,
     };
+  }
+
+  /**
+   * A quotation for paying by bank transfer (V2-12 CL57): the same price and
+   * GST as Checkout, with the buyer's purchase order number if they have one,
+   * and the account to pay into. Nothing is credited until the operator
+   * records the transfer against it.
+   */
+  async quote(actor: Actor, credits: number, poNumber: string | null): Promise<Payment> {
+    const scope = this.#owner(actor);
+    const { supplier, bank } = this.#o;
+    if (supplier === null) throw new BillingNotConfigured("no supplier details to invoice as (PARIKSHAA_SUPPLIER_*)");
+    if (bank === null) throw new BillingNotConfigured("no bank account for transfers (PARIKSHAA_BANK_*)");
+    if (!Number.isInteger(credits) || credits < 1 || credits > MAX_CREDITS_PER_ORDER) throw new AttemptError("invalid_billing", `Quote between 1 and ${MAX_CREDITS_PER_ORDER} credits at a time`);
+    const account = await this.#o.billing.account(scope);
+    if (account === null || account.mode !== "prepaid") throw new AttemptError("invalid_state", "Only a prepaid organisation buys credits");
+    if (account.legalName === "") throw new AttemptError("invalid_billing", "Add the organisation's legal name for its invoices first");
+    const po = poNumber?.trim() ?? "";
+    const taxablePaise = credits * account.pricePaise;
+    const taxes = taxesOn(taxablePaise, stateOf(supplier.gstin), account.stateCode);
+    const id = this.#o.newId();
+    const payment = await this.#o.billing.createPayment(scope, {
+      id,
+      orderId: `neft_${id.replace(/-/g, "").slice(0, 16)}`,
+      credits,
+      taxablePaise,
+      taxPaise: taxes.taxPaise,
+      amountPaise: taxes.totalPaise,
+      buyerState: account.stateCode,
+      poNumber: po === "" ? null : po.slice(0, 60),
+    });
+    await this.#o.exams.recordAudit(actor, "billing.quoted", id, { credits, amountPaise: taxes.totalPaise, poNumber: po || null });
+    return payment;
+  }
+
+  /** The quotation as a PDF to send to accounts, with the bank account and the reference to quote. */
+  async quotationPdf(actor: Actor, id: string): Promise<Uint8Array> {
+    const scope = this.#owner(actor);
+    const payment = (await this.#o.billing.payments(scope)).find((p) => p.id === id && p.orderId.startsWith("neft_"));
+    if (payment === undefined) throw new AttemptError("not_found", "No such quotation");
+    const [account, org] = await Promise.all([this.#o.billing.account(scope), this.#o.identity.getOrganisation(actor.orgId)]);
+    const { supplier, bank } = this.#o;
+    if (supplier === null || bank === null) throw new BillingNotConfigured("no supplier or bank details");
+    const page = new Page();
+    const margin = 56;
+    const right = A4.width - margin;
+    const ink: Rgb = [0.42, 0.45, 0.5];
+    const rupees = (paise: number) => `Rs ${(paise / 100).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    page.box(0, 0, A4.width, 80, [0.16, 0.2, 0.55]);
+    page.text(margin, 26, "Quotation", { size: 20, bold: true, color: [1, 1, 1] });
+    page.text(right, 30, fit(supplier.legalName, 260, 12, true), { size: 12, bold: true, color: [1, 1, 1], align: "right" });
+    let y = 104;
+    const line = (label: string, value: string, bold = false) => {
+      page.text(margin, y, label, { size: 9, color: ink });
+      page.text(margin + 130, y, fit(value, right - margin - 130, 11, bold), { size: 11, bold });
+      y += 20;
+    };
+    line("Reference", payment.orderId, true);
+    line("Date", new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium" }).format(new Date(payment.createdAt)));
+    if (payment.poNumber !== null) line("Your purchase order", payment.poNumber, true);
+    line("From", `${supplier.legalName}, GSTIN ${supplier.gstin}`);
+    line("To", `${account?.legalName || org?.name || ""}${account?.gstin ? `, GSTIN ${account.gstin}` : ""}`);
+    y += 14;
+    page.line(margin, y, right, y);
+    y += 14;
+    line("Attempt credits", `${payment.credits.toLocaleString("en-IN")} (SAC ${supplier.sac})`);
+    line("Taxable value", rupees(payment.taxablePaise));
+    line("GST", rupees(payment.taxPaise));
+    line("Total payable", rupees(payment.amountPaise), true);
+    y += 14;
+    page.box(margin, y, right - margin, 112, [0.95, 0.96, 0.99]);
+    y += 16;
+    page.text(margin + 16, y, "Pay by NEFT, RTGS or IMPS to", { size: 10, bold: true });
+    y += 22;
+    for (const [label, value] of [
+      ["Account name", bank.accountName],
+      ["Account number", bank.accountNumber],
+      ["IFSC", bank.ifsc],
+      ["Bank", bank.bank || "—"],
+    ] as const) {
+      page.text(margin + 16, y, label, { size: 9, color: ink });
+      page.text(margin + 140, y, value, { size: 11, bold: true });
+      y += 17;
+    }
+    y += 30;
+    for (const note of [
+      `Quote ${payment.orderId} in the transfer's remarks. Credits are added, and the GST tax invoice issued,`,
+      "as soon as the transfer is matched, usually within one working day. The price holds for 30 days.",
+    ]) {
+      page.text(margin, y, note, { size: 9, color: ink });
+      y += 13;
+    }
+    return pdf([page], `Quotation ${payment.orderId}`);
+  }
+
+  /**
+   * The operator matches a bank transfer to its quotation: credits and the
+   * tax invoice, once, exactly as a Razorpay payment. A second record of the
+   * same quotation changes nothing; a UTR used before is refused.
+   */
+  async recordTransfer(orgId: OrgId, reference: string, utr: string): Promise<{ readonly invoice: Invoice; readonly credits: number; readonly newlyPaid: boolean }> {
+    const scope = staffScope(orgId);
+    if (!reference.startsWith("neft_")) throw new AttemptError("not_found", "A quotation's reference begins neft_");
+    const clean = utr.trim().toUpperCase();
+    if (!/^[A-Z0-9]{8,22}$/.test(clean)) throw new AttemptError("invalid_billing", "A UTR is 8 to 22 letters and digits");
+    const paid = await this.#o.billing.markPaid(scope, reference, `utr_${clean}`, this.#creditsInvoice(), new Date(this.#o.now()));
+    if (paid === null) throw new AttemptError("not_found", "No such quotation for this organisation");
+    return { invoice: paid.invoice, credits: paid.payment.credits, newlyPaid: paid.newlyPaid };
   }
 
   /** Checkout's confirmation, from the owner's browser: credited only if Razorpay's signature checks out. */
