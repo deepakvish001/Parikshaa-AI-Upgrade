@@ -782,7 +782,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
-| 1 Oct 2026 | naya PR (#35 ke baad) | Content: DSA starter pack (40 apne problems, har ek ka hint + brute force + optimal, tests asli runner se), placement quiz (40 apne sawaal, 8 me level ka sujhav). Saath me #35 ke merge ki marammat: meri migrations 0033–0038, store exports, styles |
+| 1 Oct 2026 | [#37](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/37) `01eaa2e`, `fcbdbb8` | Content: DSA starter pack (40 apne problems, har ek ka hint + brute force + optimal, tests asli runner se), placement quiz (40 apne sawaal, 8 me level ka sujhav). Saath me #35 ke merge ki marammat: meri migrations 0033–0038, store exports, styles |
 | 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `13f8bd0` | Playwright e2e: F1 (signup → plan → dashboard), F3 (Run + Submit), F12 (Plus → invoice), F13 (coin store) |
 | 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `210889d` | Campus licence: cohort, emails ki CSV (dry run), verified ko turant Plus aur baaki ko verify par, console me college dashboard |
 | 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `9ade738` | NoteSpace: Sahayak se note ka draft (lesson ya solve kiya problem), track ke saare notes ek printable page par (PDF) |
