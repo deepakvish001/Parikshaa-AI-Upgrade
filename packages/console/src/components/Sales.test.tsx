@@ -103,8 +103,8 @@ describe("coupons and sales", () => {
     const client = stub();
     client.plusOrders.mockResolvedValueOnce([
       { id: "o1", learnerId: "l1", title: "Plus, 3 months", days: 90, credits: 1000, listPaise: 99_900, coupon: null, discountPaise: 0, amountPaise: 99_900, taxPaise: 15_239, status: "paid", createdAt: "2026-10-05T04:00:00Z", paidAt: "2026-10-05T04:01:00Z", invoice: "PKP/2627/000001" },
-      { id: "o3", learnerId: "l1", title: "DSA Pass", days: 60, credits: 0, listPaise: 49_900, coupon: null, discountPaise: 0, amountPaise: 49_900, taxPaise: 7_612, status: "refunded", createdAt: "2026-10-01T04:00:00Z", paidAt: "2026-10-01T04:01:00Z", refundedAt: "2026-10-02T04:00:00Z", invoice: "PKP/2627/000002", creditNote: "PKC/2627/000001" } as never,
-    ]);
+      { id: "o3", learnerId: "l1", title: "DSA Pass", days: 60, credits: 0, listPaise: 49_900, coupon: null, discountPaise: 0, amountPaise: 49_900, taxPaise: 7_612, status: "refunded", createdAt: "2026-10-01T04:00:00Z", paidAt: "2026-10-01T04:01:00Z", refundedAt: "2026-10-02T04:00:00Z", invoice: "PKP/2627/000002", creditNote: "PKC/2627/000001" },
+    ] as never);
     const user = userEvent.setup();
     show(client);
     const sold = await screen.findByRole("region", { name: "Plans bought" });
