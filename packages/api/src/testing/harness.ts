@@ -1,3 +1,4 @@
+import type { PushSender } from "../push.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -157,6 +158,7 @@ export async function wire(
     readonly greenhouseHosts?: readonly string[];
     /** Where staff mail (password resets) goes. */
     readonly mailer?: Mailer;
+    readonly push?: PushSender;
     /** Results may go by WhatsApp too, as when the server has it set up. */
     readonly whatsapp?: boolean;
     /**
@@ -277,6 +279,7 @@ export async function wire(
     practice,
     prep: prepService,
     mailer: options.mailer ?? null,
+    push: options.push ?? null,
     secret: TOKEN_SECRET,
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),

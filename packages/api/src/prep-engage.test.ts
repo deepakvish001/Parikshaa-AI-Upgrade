@@ -93,7 +93,7 @@ describe("the daily reminder", () => {
   it("is off until turned on, and goes at the learner's hour, once a day, only with something left to do", async () => {
     const asha = await signUp("asha@example.com", "Asha");
     await ok("POST", asha, `${S}/plan`, plan);
-    expect(await ok("GET", asha, `${S}/reminders`)).toEqual({ enabled: false, hour: 19, email: true });
+    expect(await ok("GET", asha, `${S}/reminders`)).toEqual({ enabled: false, hour: 19, email: true, push: false, devices: 0 });
     expect((await call("PUT", asha, `${S}/reminders`, { enabled: true, hour: 24 })).statusCode).toBe(422);
     expect(await ok("PUT", asha, `${S}/reminders`, { enabled: true, hour: 19 })).toEqual({ enabled: true, hour: 19 });
 

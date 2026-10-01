@@ -32,6 +32,13 @@ export interface ReminderPrefs {
 
 export const DEFAULT_REMINDER: ReminderPrefs = { enabled: false, hour: 19 };
 
+/** Where a browser takes a learner's push notifications (migration 0047). */
+export interface PushSubscriptionRecord {
+  readonly endpoint: string;
+  readonly p256dh: string;
+  readonly auth: string;
+}
+
 export interface PrepAnalytics {
   readonly from: string;
   readonly to: string;
@@ -74,6 +81,31 @@ export class PrepEngageStore {
       const rows = await tx.query<{ enabled: boolean; hour: number }>(`SELECT enabled, hour FROM prep_reminders WHERE org_id = $1 AND learner_id = $2`, [scope.orgId, learnerId]);
       return rows[0] === undefined ? DEFAULT_REMINDER : { enabled: rows[0].enabled, hour: Number(rows[0].hour) };
     });
+  }
+
+  // --- push subscriptions --------------------------------------------------------------
+
+  /** Keep a browser's subscription for a learner; the same browser subscribing again replaces it. */
+  async addPush(scope: PracticeScope, learnerId: string, sub: PushSubscriptionRecord): Promise<void> {
+    await scoped(this.#sql, scope, async (tx) => {
+      // An endpoint belongs to one browser: if another learner on it had it, theirs ends here.
+      await tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND endpoint = $2 AND learner_id <> $3`, [scope.orgId, sub.endpoint, learnerId]);
+      await tx.query(
+        `INSERT INTO prep_push_subscriptions (org_id, learner_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, endpoint) DO UPDATE SET p256dh = $4, auth = $5`,
+        [scope.orgId, learnerId, sub.endpoint, sub.p256dh, sub.auth],
+      );
+    });
+  }
+
+  async removePush(scope: PracticeScope, learnerId: string, endpoint: string): Promise<void> {
+    await scoped(this.#sql, scope, (tx) => tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2 AND endpoint = $3`, [scope.orgId, learnerId, endpoint]));
+  }
+
+  async pushes(scope: PracticeScope, learnerId: string): Promise<readonly PushSubscriptionRecord[]> {
+    return scoped(this.#sql, scope, (tx) =>
+      tx.query<PushSubscriptionRecord>(`SELECT endpoint, p256dh, auth FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2 ORDER BY created_at`, [scope.orgId, learnerId]),
+    );
   }
 
   async saveReminder(scope: PracticeScope, learnerId: string, prefs: ReminderPrefs): Promise<void> {

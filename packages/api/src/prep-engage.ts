@@ -1,7 +1,8 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { OrgId } from "@parikshaa/core";
-import { practiceLearner, practiceStaff, type Learner, type OutboxItem, type PracticeSite, type PracticeStore, type PrepEngageStore, type ReminderPrefs } from "@parikshaa/store";
+import { practiceLearner, practiceStaff, type Learner, type OutboxItem, type PracticeSite, type PracticeStore, type PrepEngageStore, type PushSubscriptionRecord, type ReminderPrefs } from "@parikshaa/store";
 import type { Mailer } from "./delivery.js";
+import { isPushEndpoint, type PushSender } from "./push.js";
 import { PracticeError, istDay, type PracticeService } from "./practice.js";
 import type { PrepService } from "./prep.js";
 
@@ -12,8 +13,12 @@ import type { PrepService } from "./prep.js";
  * A learner with a study plan may turn on a daily email, at an hour they
  * choose. It goes only on a day with something left to do — the day's tasks,
  * or cards due — and once a day at most; every email has a link that turns it
- * off without signing in.
+ * off without signing in. A learner who allows it gets the same reminder as a
+ * notification on each browser they allowed it in (`push.ts`).
  */
+
+/** Browsers a learner may take notifications in. */
+export const PUSH_DEVICES = 10;
 
 const escape = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 const istHour = (ms: number) => new Date(ms + 330 * 60_000).getUTCHours();
@@ -28,6 +33,7 @@ export class PrepEngage {
   readonly #practice: PracticeService;
   readonly #prep: PrepService;
   readonly #mailer: Mailer | null;
+  readonly #push: PushSender | null;
   readonly #secret: string;
   readonly #publicUrl: string;
   readonly #now: () => number;
@@ -38,6 +44,7 @@ export class PrepEngage {
     practice: PracticeService;
     prep: PrepService;
     mailer: Mailer | null;
+    push?: PushSender | null;
     secret: string;
     publicUrl: string;
     now?: () => number;
@@ -47,6 +54,7 @@ export class PrepEngage {
     this.#practice = options.practice;
     this.#prep = options.prep;
     this.#mailer = options.mailer;
+    this.#push = options.push ?? null;
     this.#secret = options.secret;
     this.#publicUrl = options.publicUrl.replace(/\/$/, "");
     this.#now = options.now ?? (() => Date.now());
@@ -54,8 +62,43 @@ export class PrepEngage {
 
   // --- a learner's reminder ------------------------------------------------------------------
 
-  async reminder(site: PracticeSite, learner: Learner): Promise<ReminderPrefs & { readonly email: boolean }> {
-    return { ...(await this.#store.reminder(practiceLearner(site.orgId, learner.id), learner.id)), email: this.#mailer !== null };
+  async reminder(site: PracticeSite, learner: Learner): Promise<ReminderPrefs & { readonly email: boolean; readonly push: boolean; readonly devices: number }> {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const [prefs, devices] = await Promise.all([this.#store.reminder(scope, learner.id), this.#push === null ? [] : this.#store.pushes(scope, learner.id)]);
+    return { ...prefs, email: this.#mailer !== null, push: this.#push !== null, devices: devices.length };
+  }
+
+  // --- push notifications ------------------------------------------------------------------
+
+  /** The key a browser subscribes with; null when this server sends no notifications. */
+  pushKey(): string | null {
+    return this.#push?.publicKey ?? null;
+  }
+
+  /** Take the reminder on this browser too. */
+  async subscribe(site: PracticeSite, learner: Learner, sub: PushSubscriptionRecord): Promise<void> {
+    if (this.#push === null) throw new PracticeError("unavailable", "This site does not send notifications");
+    if (!isPushEndpoint(sub.endpoint) || sub.endpoint.length > 1000) throw new PracticeError("invalid", "That is not a browser's push address");
+    if (!/^[A-Za-z0-9_-]{20,200}={0,2}$/.test(sub.p256dh) || !/^[A-Za-z0-9_-]{8,100}={0,2}$/.test(sub.auth)) throw new PracticeError("invalid", "Those are not a browser's push keys");
+    const mine = await this.#store.pushes(practiceLearner(site.orgId, learner.id), learner.id);
+    if (!mine.some((m) => m.endpoint === sub.endpoint) && mine.length >= PUSH_DEVICES) throw new PracticeError("invalid", `Notifications go to ${PUSH_DEVICES} browsers at most: turn one off first`);
+    // Staff scope: the same browser may have been another learner's, whose subscription ends here.
+    await this.#store.addPush(practiceStaff(site.orgId), learner.id, sub);
+  }
+
+  async unsubscribe(site: PracticeSite, learner: Learner, endpoint: string): Promise<void> {
+    await this.#store.removePush(practiceLearner(site.orgId, learner.id), learner.id, endpoint);
+  }
+
+  /** Send to each of a learner's browsers; one the push service has forgotten is forgotten here too. */
+  async #notify(learner: Learner, message: Parameters<PushSender["send"]>[1]): Promise<number> {
+    if (this.#push === null) return 0;
+    let sent = 0;
+    for (const sub of await this.#store.pushes(practiceStaff(learner.orgId), learner.id)) {
+      if ((await this.#push.send(sub, message)) === "gone") await this.#store.removePush(practiceStaff(learner.orgId), learner.id, sub.endpoint);
+      else sent++;
+    }
+    return sent;
   }
 
   async saveReminder(site: PracticeSite, learner: Learner, prefs: ReminderPrefs): Promise<ReminderPrefs> {
@@ -88,7 +131,7 @@ export class PrepEngage {
    * on several instances, sends nothing twice.
    */
   async queueDue(orgIds: readonly string[]): Promise<number> {
-    if (this.#mailer === null) return 0;
+    if (this.#mailer === null && this.#push === null) return 0;
     const now = this.#now();
     const day = istDay(now);
     let queued = 0;
@@ -98,7 +141,7 @@ export class PrepEngage {
 
   /** The outbox's handler for a reminder: the learner's day, in a few lines. */
   readonly reminderMail = async (item: OutboxItem): Promise<"sent" | { skip: string }> => {
-    if (this.#mailer === null) return { skip: "Email is not configured" };
+    if (this.#mailer === null && this.#push === null) return { skip: "Email is not configured" };
     const learner = await this.#practiceStore.learnerById(item.orgId as OrgId, String(item.subject["learnerId"] ?? ""));
     if (learner === null) return { skip: "The account is gone" };
     // A reminder held up past its day says nothing true any more.
@@ -118,9 +161,17 @@ export class PrepEngage {
       ...(day.dueCards > 0 ? [`• ${day.dueCards} problem${day.dueCards === 1 ? "" : "s"} to revise`] : []),
     ];
     const streak = day.streak > 0 ? `Your streak is ${day.streak} day${day.streak === 1 ? "" : "s"}: keep it going.` : "Start a streak today.";
+    const subject = day.tasks.length > 0 ? `${day.tasks.length} task${day.tasks.length === 1 ? "" : "s"} left today on ${site.title}` : `Time to revise on ${site.title}`;
+    const pushed = await this.#notify(learner, {
+      title: subject,
+      body: [...lines.slice(0, 3).map((l) => l.replace(/^• /, "")), streak].join("\n"),
+      url: `/practice/${site.slug}/home`,
+      tag: `reminder:${site.slug}`,
+    });
+    if (this.#mailer === null) return pushed > 0 ? "sent" : { skip: "No browser to notify" };
     await this.#mailer.send({
       to: learner.email,
-      subject: day.tasks.length > 0 ? `${day.tasks.length} task${day.tasks.length === 1 ? "" : "s"} left today on ${site.title}` : `Time to revise on ${site.title}`,
+      subject,
       text: [hello, "", "Left for today:", ...lines, "", streak, "", `Open your plan: ${home}`, "", `Stop these emails: ${off}`].join("\n"),
       html: [
         `<p>${escape(hello)}</p>`,

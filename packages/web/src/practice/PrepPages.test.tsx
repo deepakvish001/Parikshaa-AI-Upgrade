@@ -449,6 +449,65 @@ describe("the daily reminder", () => {
     expect(screen.queryByRole("heading", { name: "Daily reminder" })).toBeNull();
   });
 
+  it("comes as a notification on this phone when the learner allows it, and stops when they turn it off", async () => {
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: true, hour: 19, email: false, push: true, devices: 0 } });
+    routes["GET /practice/nit-practice/push/key"] = () => ({ body: { key: "BAAB" } });
+    routes["POST /practice/nit-practice/push"] = () => ({ status: 201, body: { devices: 1 } });
+    routes["DELETE /practice/nit-practice/push"] = () => ({ body: { devices: 0 } });
+    let subscription: { endpoint: string; toJSON: () => unknown; unsubscribe: () => Promise<boolean> } | null = null;
+    const subscribe = vi.fn(async () => {
+      subscription = {
+        endpoint: "https://fcm.googleapis.com/fcm/send/phone",
+        toJSON: () => ({ endpoint: "https://fcm.googleapis.com/fcm/send/phone", keys: { p256dh: "BKey", auth: "secret" } }),
+        unsubscribe: vi.fn(async () => {
+          subscription = null;
+          return true;
+        }),
+      };
+      return subscription;
+    });
+    const registration = { pushManager: { getSubscription: async () => subscription, subscribe } };
+    vi.stubGlobal("PushManager", function PushManager() {});
+    vi.stubGlobal("Notification", { requestPermission: vi.fn(async () => "granted") });
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { getRegistration: async () => registration, ready: Promise.resolve(registration) } });
+    try {
+      const user = userEvent.setup();
+      open("/practice/nit-practice/plan");
+      expect(await screen.findByText(/One notification a day at most/)).toBeTruthy();
+      const toggle = await screen.findByRole("checkbox", { name: "Also as a notification on this phone or computer" });
+      expect(toggle).not.toBeChecked();
+      await user.click(toggle);
+      await waitFor(() => expect(toggle).toBeChecked());
+      expect(subscribe).toHaveBeenCalledWith({ userVisibleOnly: true, applicationServerKey: Uint8Array.from([4, 0, 1]) });
+      expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/push"))!.body).toEqual({ endpoint: "https://fcm.googleapis.com/fcm/send/phone", keys: { p256dh: "BKey", auth: "secret" } });
+      await user.click(toggle);
+      await waitFor(() => expect(toggle).not.toBeChecked());
+      expect(calls.find((c) => c.method === "DELETE")!.body).toEqual({ endpoint: "https://fcm.googleapis.com/fcm/send/phone" });
+      expect(subscription).toBeNull();
+    } finally {
+      delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    }
+  });
+
+  it("says so when the browser blocks notifications", async () => {
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: true, hour: 19, email: true, push: true, devices: 0 } });
+    routes["GET /practice/nit-practice/push/key"] = () => ({ body: { key: "BAAB" } });
+    const registration = { pushManager: { getSubscription: async () => null, subscribe: vi.fn() } };
+    vi.stubGlobal("PushManager", function PushManager() {});
+    vi.stubGlobal("Notification", { requestPermission: vi.fn(async () => "denied") });
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { getRegistration: async () => registration, ready: Promise.resolve(registration) } });
+    try {
+      const user = userEvent.setup();
+      open("/practice/nit-practice/plan");
+      await user.click(await screen.findByRole("checkbox", { name: "Also as a notification on this phone or computer" }));
+      expect(await screen.findByText(/Notifications are blocked for this site/)).toBeTruthy();
+      expect(registration.pushManager.subscribe).not.toHaveBeenCalled();
+      expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/push"))).toBe(false);
+    } finally {
+      delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    }
+  });
+
   it("is turned off by the link in its email, without signing in", async () => {
     localStorage.clear();
     routes["POST /practice/nit-practice/reminders/off"] = () => ({ body: { off: true } });

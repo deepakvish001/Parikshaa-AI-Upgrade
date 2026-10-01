@@ -481,8 +481,21 @@ export class PracticeClient {
     return this.#request(`/plan/sprints/${sprint}/notes`);
   }
 
-  reminders(): Promise<{ readonly enabled: boolean; readonly hour: number; readonly email: boolean }> {
+  reminders(): Promise<{ readonly enabled: boolean; readonly hour: number; readonly email: boolean; readonly push: boolean; readonly devices: number }> {
     return this.#request("/reminders");
+  }
+
+  async pushKey(): Promise<string | null> {
+    return (await this.#request<{ key: string | null }>("/push/key")).key;
+  }
+
+  /** A browser's push subscription, as `PushSubscription.toJSON()` gives it. */
+  subscribePush(subscription: { readonly endpoint: string; readonly keys: { readonly p256dh: string; readonly auth: string } }): Promise<{ readonly devices: number }> {
+    return this.#post("/push", { endpoint: subscription.endpoint, keys: subscription.keys });
+  }
+
+  unsubscribePush(endpoint: string): Promise<{ readonly devices: number }> {
+    return this.#request("/push", { method: "DELETE", body: JSON.stringify({ endpoint }) });
   }
 
   saveReminders(prefs: { readonly enabled: boolean; readonly hour: number }): Promise<{ readonly enabled: boolean; readonly hour: number }> {

@@ -447,6 +447,8 @@ export class PracticeStore {
       await tx.query(`DELETE FROM prep_notes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_tutor WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_reminders WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_profiles WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_experience_votes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_targets WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`UPDATE prep_store_orders SET address = '' WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);

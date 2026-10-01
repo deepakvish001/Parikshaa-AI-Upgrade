@@ -6,6 +6,7 @@ import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
 import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { bankFromEnv, supplierFromEnv } from "./gst.js";
+import { webPushSender } from "./push.js";
 import { RazorpayGateway } from "./razorpay.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
@@ -127,6 +128,13 @@ async function main(): Promise<void> {
     supplier: supplierFromEnv(process.env),
     bank: bankFromEnv(process.env),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
+    // Notifications for the learners' daily reminder (Prep §17). A key pair
+    // made once with `npx web-push generate-vapid-keys`; keep the private half
+    // secret. VAPID_SUBJECT is how a push service reaches you (mailto: or https:).
+    push:
+      (process.env["VAPID_PUBLIC_KEY"] ?? "") === ""
+        ? null
+        : webPushSender({ publicKey: required("VAPID_PUBLIC_KEY"), privateKey: required("VAPID_PRIVATE_KEY"), subject: required("VAPID_SUBJECT") }),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
     whatsapp:
       whatsAppToken === undefined || whatsAppToken === ""

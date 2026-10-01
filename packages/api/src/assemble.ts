@@ -1,3 +1,4 @@
+import type { PushSender } from "./push.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
@@ -76,6 +77,8 @@ export interface AssembleOptions {
   /** Where bank transfers against a quotation go. */
   readonly bank?: BankDetails | null;
   readonly mailer?: Mailer | null;
+  /** Web Push for the learners' daily reminder; absent or null: none. */
+  readonly push?: PushSender | null;
   readonly sms?: SmsSender | null;
   readonly whatsapp?: WhatsAppSender | null;
   /** Lever's API root, such as its sandbox https://api.sandbox.lever.co; Lever's own when absent. */
@@ -197,6 +200,7 @@ export function assemble(o: AssembleOptions): {
     practice,
     prep: prepService,
     mailer: o.mailer ?? null,
+    push: o.push ?? null,
     secret: o.secret,
     publicUrl: o.publicUrl,
   });

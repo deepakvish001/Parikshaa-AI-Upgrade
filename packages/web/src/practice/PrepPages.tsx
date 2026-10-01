@@ -6,6 +6,7 @@ import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
 import { AnswerInput } from "../components/AnswerInput.tsx";
 import type { Grade, Lesson, Level, Note, NoteKind, Plan, PlanInput, PlanTask, Reward } from "./client.ts";
+import { currentPush, pushSupported, startPush } from "./push.ts";
 import { LessonDoubt } from "./Tutor.tsx";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context, type Nav } from "./parts.tsx";
 import { usePrepText, type PrepKey } from "./prep-text.ts";
@@ -1326,13 +1327,13 @@ function ReminderCard({ client, site, learner }: { readonly client: Context["cli
     mutationFn: (next: { enabled: boolean; hour: number }) => client.saveReminders(next),
     onSuccess: (saved) => queryClient.setQueryData(k, { ...prefs.data, ...saved }),
   });
-  if (prefs.data === undefined || !prefs.data.email) return null;
+  if (prefs.data === undefined || (!prefs.data.email && !prefs.data.push)) return null;
   const r = prefs.data;
   return (
     <section className="card reminder-card" aria-labelledby="reminder-title">
       <h2 id="reminder-title">{p("reminder.title")}</h2>
       <label className="check">
-        <input type="checkbox" checked={r.enabled} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: e.target.checked, hour: r.hour })} /> {p("reminder.on")}
+        <input type="checkbox" checked={r.enabled} disabled={save.isPending} onChange={(e) => save.mutate({ enabled: e.target.checked, hour: r.hour })} /> {p(r.email ? "reminder.on" : "reminder.onPush")}
       </label>
       <label>
         {p("reminder.at")}{" "}
@@ -1344,9 +1345,52 @@ function ReminderCard({ client, site, learner }: { readonly client: Context["cli
           ))}
         </select>
       </label>
-      <p className="notice">{p("reminder.hint")}</p>
+      <p className="notice">{p(r.email ? "reminder.hint" : "reminder.hintPush")}</p>
+      {r.push && r.enabled && pushSupported() ? <PushToggle client={client} onChange={() => queryClient.invalidateQueries({ queryKey: k })} /> : null}
       {save.isError ? <Failed error={save.error} /> : null}
     </section>
+  );
+}
+
+/** The reminder as a notification on this phone or computer too: asked for only when turned on here. */
+function PushToggle({ client, onChange }: { readonly client: Context["client"]; readonly onChange: () => void }) {
+  const p = usePrepText();
+  const [on, setOn] = useState<boolean | null>(null);
+  const [refused, setRefused] = useState(false);
+  useEffect(() => {
+    void currentPush().then((sub) => setOn(sub !== null));
+  }, []);
+  const toggle = useMutation({
+    mutationFn: async (want: boolean) => {
+      if (want) {
+        const key = await client.pushKey();
+        const sub = key === null ? null : await startPush(key);
+        if (sub === null) return false;
+        await client.subscribePush(sub);
+        return true;
+      }
+      const sub = await currentPush();
+      if (sub !== null) {
+        await client.unsubscribePush(sub.endpoint);
+        await sub.unsubscribe();
+      }
+      return false;
+    },
+    onSuccess: (now, want) => {
+      setOn(now);
+      setRefused(want && !now);
+      onChange();
+    },
+  });
+  if (on === null) return null;
+  return (
+    <>
+      <label className="check">
+        <input type="checkbox" checked={on} disabled={toggle.isPending} onChange={(e) => toggle.mutate(e.target.checked)} /> {p("reminder.push")}
+      </label>
+      {refused ? <p className="notice">{p("reminder.pushRefused")}</p> : null}
+      {toggle.isError ? <Failed error={toggle.error} /> : null}
+    </>
   );
 }
 
