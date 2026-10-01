@@ -1,0 +1,28 @@
+/* Handwritten copies: loaded with the section. */
+.copies tr.sampled td {
+  background: var(--info-soft);
+}
+.copy-pages {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: var(--space-2);
+  margin-block: var(--space-3);
+}
+.copy-pages img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.copy-marks fieldset {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  margin-block: var(--space-2);
+}
+.copy-marks .suggestion {
+  color: var(--text-secondary);
+}
+.copy-marks .transcript {
+  display: block;
+  font-style: italic;
+}

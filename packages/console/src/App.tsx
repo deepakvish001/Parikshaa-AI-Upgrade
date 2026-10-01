@@ -801,6 +801,7 @@ function Console({
                 examId={view.examId}
                 canGrade={can("attempt:grade")}
                 canRelease={can("attempt:review")}
+                canSettle={can("exam:write")}
                 onReport={(attemptId) => setView({ name: "report", examId: view.examId, attemptId })}
               />
             ) : null}

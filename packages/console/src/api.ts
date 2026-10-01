@@ -306,6 +306,29 @@ interface PlacementFigures {
   readonly averageLpa: number | null;
 }
 
+export type ScriptMarks = Readonly<Record<string, { readonly score: number; readonly comment: string }>>;
+
+export interface AnswerScript {
+  readonly id: string;
+  readonly candidateRef: string;
+  readonly candidateName: string;
+  readonly status: "uploaded" | "checked" | "moderated" | "disputed";
+  readonly pages: number;
+  readonly suggestion: { readonly at: string; readonly questions: readonly { readonly questionId: string; readonly score: number; readonly reason: string; readonly transcript: string }[] } | null;
+  readonly marks: ScriptMarks | null;
+  readonly checkedBy: string | null;
+  readonly moderation: { readonly marks: ScriptMarks; readonly by: string; readonly gap: number; readonly resolvedBy?: string } | null;
+  readonly finalTotal: number | null;
+}
+
+export interface ScriptBook {
+  readonly title: string;
+  readonly questions: readonly { readonly id: string; readonly number: number; readonly stem: string; readonly maxScore: number }[];
+  readonly total: number;
+  readonly tolerancePercent: number;
+  readonly scripts: readonly AnswerScript[];
+}
+
 export type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
 
 export interface InterviewScorecard {
@@ -1510,6 +1533,52 @@ export class ConsoleClient {
     const response = await fetch(`${this.#baseUrl}/placement/report.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  // --- handwritten copies -------------------------------------------------------
+
+  scripts(examId: string): Promise<ScriptBook> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/scripts`);
+  }
+
+  addScriptPage(examId: string, page: { readonly ref: string; readonly name: string; readonly image: string }): Promise<{ readonly script: AnswerScript; readonly page: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/scripts/pages`, { method: "POST", body: JSON.stringify(page) });
+  }
+
+  async scriptPage(id: string, page: number): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/scripts/${encodeURIComponent(id)}/pages/${page}`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  async scriptsFile(examId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/scripts.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  suggestScript(id: string): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/suggest`, { method: "POST" });
+  }
+
+  checkScript(id: string, marks: ScriptMarks): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/marks`, { method: "PUT", body: JSON.stringify({ marks }) });
+  }
+
+  moderateScript(id: string, marks: ScriptMarks): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/moderation`, { method: "POST", body: JSON.stringify({ marks }) });
+  }
+
+  resolveScript(id: string, marks: ScriptMarks): Promise<AnswerScript> {
+    return this.#request(`/scripts/${encodeURIComponent(id)}/resolution`, { method: "POST", body: JSON.stringify({ marks }) });
+  }
+
+  sampleScripts(examId: string, percent: number): Promise<readonly string[]> {
+    return this.#request<{ scripts: readonly string[] }>(`/exams/${encodeURIComponent(examId)}/scripts/sample`, { method: "POST", body: JSON.stringify({ percent }) }).then((b) => b.scripts);
+  }
+
+  async removeScript(id: string): Promise<void> {
+    await this.#request(`/scripts/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
   outcomes(examId: string): Promise<OutcomeMap & { readonly questions: readonly { readonly id: string; readonly number: number; readonly stem: string; readonly maxScore: number }[] }> {

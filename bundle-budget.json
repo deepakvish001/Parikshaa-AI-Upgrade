@@ -40,6 +40,9 @@
     "Outcomes-*.js": 3,
     "Interviews-*.js": 4,
     "Interviews-*.css": 1,
+    "Copies-*.js": 4,
+    "Copies-*.css": 1,
+    "sparkles-*.js": 1,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5

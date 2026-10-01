@@ -12,6 +12,8 @@ export interface FakeModelScript {
   verdict: { verdict: "consistent" | "shallow" | "inconsistent" | "inconclusive"; confidence: number; reasoning: string };
   /** What reading a job description finds. */
   job: { roleId: string; title: string; seniority: "fresher" | "junior" | "mid" | "senior"; skills: { name: string; keywords: string[] }[] };
+  /** What reading a handwritten copy finds, by question number. */
+  handwriting: { questions: { number: number; transcript: string; score: number; reason: string }[] };
   /** Milliseconds before a probe finishes streaming, and before a grade or reading returns. */
   latencyMs: number;
 }
@@ -25,6 +27,12 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
     rubricScore: 7,
     verdict: { verdict: "consistent", confidence: 0.8, reasoning: "The reply engages the specifics of the answer." },
     job: { roleId: "java-developer", title: "Java Developer — online test", seniority: "junior", skills: [{ name: "Apache Kafka", keywords: ["kafka", "event streaming"] }, { name: "Core Java", keywords: ["java"] }] },
+    handwriting: {
+      questions: [
+        { number: 1, transcript: "Photosynthesis makes glucose from light, water and CO2.", score: 3.7, reason: "Names the inputs and the product; misses chlorophyll." },
+        { number: 2, transcript: "(not attempted)", score: 0, reason: "Not attempted." },
+      ],
+    },
     latencyMs: 0,
     ...overrides,
   };
@@ -51,7 +59,7 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
         await pause(script.latencyMs);
         const system = JSON.stringify(params.system);
         const grading = system.includes("grade exam answers");
-        const parsed = system.includes("read job descriptions") ? script.job : grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
+        const parsed = system.includes("check handwritten answer scripts") ? script.handwriting : system.includes("read job descriptions") ? script.job : grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
         return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed, usage: USAGE };
       },
     },
