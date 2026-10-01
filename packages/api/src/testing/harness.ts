@@ -31,6 +31,7 @@ import {
   InterviewStore,
   ScriptStore,
   ProxyStore,
+  ReviewStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -49,6 +50,7 @@ import { InterviewService } from "../interviews.js";
 import { StudentMessages } from "../student-messages.js";
 import { HandwritingService } from "../handwriting.js";
 import { ProxyService } from "../proxy.js";
+import { ExamReviewService } from "../exam-review.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -175,15 +177,18 @@ export async function wire(
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
   const identity = new IdentityStore(sql);
   let billing: BillingService | undefined;
+  let examReviews: ExamReviewService | undefined;
   const service = new ExamService({
     store,
     identity,
+    locked: (org, exam) => examReviews?.locked(org, exam) ?? Promise.resolve(null),
     meter: { consume: (org, attempt) => billing!.consume(org, attempt), refund: (org, attempt) => billing!.refund(org, attempt) },
     client: options.client,
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.newId === undefined ? {} : { newId: options.newId }),
     ...(options.runner === undefined ? {} : { runner: options.runner }),
   });
+  examReviews = new ExamReviewService({ reviews: new ReviewStore(sql), ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
   const razorpay = new FakeRazorpay();
   billing = new BillingService({
     store,
@@ -375,6 +380,7 @@ export async function wire(
     billing,
     proctor: proctorService,
     proxy,
+    examReviews,
     feedback: new FeedbackStore(sql),
     lab,
     rechecks,

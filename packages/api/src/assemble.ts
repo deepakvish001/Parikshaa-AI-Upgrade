@@ -2,7 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, ReviewStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -14,6 +14,7 @@ import { InterviewService } from "./interviews.js";
 import { StudentMessages } from "./student-messages.js";
 import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
+import { ExamReviewService } from "./exam-review.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -104,10 +105,14 @@ export function assemble(o: AssembleOptions): {
   const identity = new IdentityStore(o.sql);
   // Metering needs the exam service for its audit, and the exam service meters: bound late.
   let billing: BillingService | undefined;
+  const reviewStore = new ReviewStore(o.sql);
+  // A paper with its reviewer, or approved, is locked (CL60): bound late, as the review service audits through the exam service.
+  let examReviews: ExamReviewService | undefined;
   const service = new ExamService({
     store,
     identity,
     client: o.client,
+    locked: (org, exam) => examReviews?.locked(org, exam) ?? Promise.resolve(null),
     ...(o.runner === undefined ? {} : { runner: o.runner }),
     meter: { consume: (org, attempt) => billing!.consume(org, attempt), refund: (org, attempt) => billing!.refund(org, attempt) },
   });
@@ -121,6 +126,7 @@ export function assemble(o: AssembleOptions): {
     supplier: o.supplier ?? null,
     bank: o.bank ?? null,
   });
+  examReviews = new ExamReviewService({ reviews: reviewStore, ledger: store, exams: service });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
   // Records kept sealed outside the ledger (T1), and swept with the retention period.
@@ -249,6 +255,7 @@ export function assemble(o: AssembleOptions): {
     billing,
     proctor: proctorService,
     proxy,
+    examReviews,
     feedback: new FeedbackStore(o.sql),
     lab,
     rechecks,

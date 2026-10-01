@@ -294,6 +294,18 @@ export interface DriveApplication extends Student {
   readonly statusLink?: string;
 }
 
+export interface ExamReview {
+  readonly examId: string;
+  readonly status: "in_review" | "approved" | "returned" | "reopened";
+  readonly submittedBy: string;
+  readonly submittedById: string;
+  readonly submittedAt: string;
+  readonly note: string;
+  readonly reviewer: string | null;
+  readonly decidedAt: string | null;
+  readonly comment: string;
+}
+
 export interface DriveFunnel {
   readonly applied: number;
   readonly test: number;
@@ -1721,6 +1733,22 @@ export class ConsoleClient {
 
   funnels(): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: "open" | "closed"; readonly funnel: DriveFunnel }[]> {
     return this.#request<{ drives: readonly { id: string; company: string; role: string; status: "open" | "closed"; funnel: DriveFunnel }[] }>("/placement/funnel").then((b) => b.drives);
+  }
+
+  examReview(examId: string): Promise<ExamReview | null> {
+    return this.#request<{ review: ExamReview | null }>(`/exams/${encodeURIComponent(examId)}/review`).then((b) => b.review);
+  }
+
+  sendForReview(examId: string, note: string): Promise<ExamReview> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/review`, { method: "POST", body: JSON.stringify({ note }) });
+  }
+
+  decideReview(examId: string, decision: "approve" | "return", comment: string): Promise<ExamReview> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/review/decision`, { method: "POST", body: JSON.stringify({ decision, comment }) });
+  }
+
+  reopenReview(examId: string, reason: string): Promise<ExamReview> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/review/reopen`, { method: "POST", body: JSON.stringify({ reason }) });
   }
 
   alertDrive(id: string): Promise<{ readonly queued: number; readonly already: number; readonly unreachable: number }> {

@@ -51,6 +51,7 @@
     "sparkles-*.js": 1,
     "ProxyCheck-*.js": 2,
     "hindi-*.js": 3,
+    "PaperReview-*.js": 2,
     "useQuery-*.js": 8,
     "jsx-runtime-*.js": 4,
     "createLucideIcon-*.js": 5

@@ -134,6 +134,8 @@ export interface ServiceOptions {
    * refuses the start by throwing. Without one, nothing is metered.
    */
   readonly meter?: Meter;
+  /** Whether a paper is with its reviewer or approved, and so locked against change (CL60). */
+  readonly locked?: (orgId: OrgId, examId: string) => Promise<string | null>;
 }
 
 /** What starting an attempt costs. `consume` is idempotent per attempt; `refund` undoes it for a start that failed. */
@@ -185,9 +187,11 @@ export class ExamService {
   readonly #submits = new Map<string, number>();
 
   readonly #meter: Meter | null;
+  readonly #locked: ((orgId: OrgId, examId: string) => Promise<string | null>) | null;
 
   constructor(options: ServiceOptions) {
     this.#meter = options.meter ?? null;
+    this.#locked = options.locked ?? null;
     this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
@@ -350,6 +354,8 @@ export class ExamService {
     if (!validation.ok) {
       throw new ExamInvalidError(validation.problems);
     }
+    const locked = this.#locked === null ? null : await this.#locked(actor.orgId, exam.id);
+    if (locked !== null) throw new AttemptError("invalid_state", locked);
     await this.#store.createExam(scope, exam);
     await this.#audit(actor, "exam.saved", exam.id, { title: exam.title, questions: exam.questions.length });
   }
