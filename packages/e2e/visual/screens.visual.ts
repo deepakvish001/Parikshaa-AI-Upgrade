@@ -95,7 +95,8 @@ async function settle(page: Page) {
 }
 
 /** Pages whose clock-bound parts cannot be worded the same, covered instead. */
-const masks = (page: Page) => [page.locator(".home-calendar"), page.locator(".activity")];
+// The proxy card prints when attempts were opened: the wall clock, not the seeded one.
+const masks = (page: Page) => [page.locator(".home-calendar"), page.locator(".activity"), page.locator(".proxy-time")];
 
 const PAGES: readonly (readonly [string, (page: Page) => Promise<void>])[] = [
   ["home", async () => {}],

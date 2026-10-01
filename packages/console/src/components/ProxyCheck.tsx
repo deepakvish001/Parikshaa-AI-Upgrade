@@ -53,7 +53,7 @@ export function ProxyCheck({ client, examId, onReview }: { client: ConsoleClient
         ))}
         {data.sharedOrigins.map((o) => (
           <li key={o.candidates.join()}>
-            <strong>One network and browser</strong> for {o.candidates.join(", ")}, {time(o.from)}–{time(o.to)}
+            <strong>One network and browser</strong> for {o.candidates.join(", ")}, <span className="proxy-time">{time(o.from)}–{time(o.to)}</span>
           </li>
         ))}
         {flagged.map((c) => (
