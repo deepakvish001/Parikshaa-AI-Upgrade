@@ -77,7 +77,7 @@ describe("companies", () => {
     await report([problems[6]!.id], 400);
     expect((await call("POST", owner, `/practice-admin/companies/${acme.id}/reports`, { problemIds: ["nope"], reportedOn: dayOf(clock) })).statusCode).toBe(422);
 
-    expect((await ok("GET", null, `${S}/companies`)).companies).toEqual([{ slug: "acme-corp", name: "Acme Corp", problems: 6, experiences: 0 }]);
+    expect((await ok("GET", null, `${S}/companies`)).companies).toEqual([{ slug: "acme-corp", name: "Acme Corp", problems: 6, experiences: 0, logo: null }]);
     const month = await ok("GET", null, `${S}/companies/acme-corp?window=30`);
     expect(month.counts).toEqual({ "30": 2, "60": 3, "180": 6, all: 7 });
     expect(month.problems.map((p: { slug: string; times: number }) => [p.slug, p.times])).toEqual([
@@ -464,6 +464,107 @@ describe("profiles and cards", () => {
     expect(svg).not.toContain("<script>");
     expect(svg).toContain("&lt;script&gt;");
     expect(svg).toContain("A &amp; B");
+  });
+});
+
+describe("community v2", () => {
+  async function published(token: string, company = "acme") {
+    await call("POST", owner, "/practice-admin/companies", { name: company[0]!.toUpperCase() + company.slice(1) });
+    const e = await ok("POST", token, `${S}/experiences`, { company, role: "SDE", interviewed: dayOf(clock).slice(0, 7), verdict: "offer", rounds: [{ kind: "DSA", asked: "Two sum." }] });
+    await ok("POST", owner, `/practice-admin/experiences/${e.id}/decision`, { status: "published" }, 200);
+    return e.id as string;
+  }
+
+  it("holds an experience three learners flag, once each, until staff keep it", async () => {
+    const author = await signUp("author@example.com", "Author");
+    const id = await published(author);
+    expect((await call("POST", author, `${S}/experiences/${id}/flag`, { reason: "fake" })).statusCode).toBe(404);
+    const [a, b, c, d] = await Promise.all(["a@x.com", "b@x.com", "c@x.com", "d@x.com"].map((m) => signUp(m, m[0]!.toUpperCase())));
+    expect(await ok("POST", a!, `${S}/experiences/${id}/flag`, { reason: "fake", note: "This company never came to campus." }, 200)).toEqual({ flagged: true, held: false });
+    const again = await call("POST", a!, `${S}/experiences/${id}/flag`, { reason: "offensive" });
+    expect(again.statusCode).toBe(409);
+    expect(again.json().message).toBe("You have flagged this already");
+    expect((await ok("GET", a!, `${S}/experiences`)).experiences[0]).toMatchObject({ id, flagged: true });
+    await ok("POST", b!, `${S}/experiences/${id}/flag`, { reason: "wrong_company" }, 200);
+    expect(await ok("POST", c!, `${S}/experiences/${id}/flag`, { reason: "other" }, 200)).toEqual({ flagged: true, held: true });
+    expect((await ok("GET", d!, `${S}/experiences`)).experiences).toEqual([]);
+    expect((await ok("GET", author, `${S}/experiences`)).experiences[0]).toMatchObject({ id, status: "held", mine: true });
+
+    expect((await call("GET", a!, "/practice-admin/experiences/flags")).statusCode).toBe(401);
+    const queue = (await ok("GET", viewer, "/practice-admin/experiences/flags")).flagged;
+    expect(queue).toHaveLength(1);
+    expect(queue[0].experience).toMatchObject({ id, status: "held", learnerId: expect.any(String) });
+    expect(queue[0].flags.map((f: { reason: string }) => f.reason).sort()).toEqual(["fake", "other", "wrong_company"]);
+    expect((await call("POST", viewer, `/practice-admin/experiences/${id}/flags`, { keep: true })).statusCode).toBe(403);
+    expect((await call("POST", owner, `/practice-admin/experiences/${id}/flags`, { keep: true })).statusCode).toBe(204);
+    expect((await ok("GET", d!, `${S}/experiences`)).experiences.map((e: { id: string }) => e.id)).toEqual([id]);
+    expect((await call("POST", owner, `/practice-admin/experiences/${id}/flags`, { keep: true })).statusCode).toBe(404);
+  });
+
+  it("publishes a success story staff approve, two waiting at most", async () => {
+    const asha = await signUp("asha@example.com", "Asha");
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    const text = "Six months of the plan, a hundred and twenty problems, two contests a month, and mock interviews with friends.";
+    expect((await call("POST", asha, `${S}/stories`, { company: "Acme", role: "SDE 1", story: "Short." })).statusCode).toBe(422);
+    const mine = await ok("POST", asha, `${S}/stories`, { company: "Acme", role: "SDE 1", story: text });
+    expect(mine).toMatchObject({ status: "pending", author: "Asha", mine: true });
+    await ok("POST", asha, `${S}/stories`, { company: "Beta", role: "Analyst", story: text, anonymous: true });
+    expect((await call("POST", asha, `${S}/stories`, { company: "Gamma", role: "SDE", story: text })).statusCode).toBe(429);
+    expect((await ok("GET", ravi, `${S}/stories`)).stories).toEqual([]);
+    expect((await ok("GET", asha, `${S}/stories`)).stories).toHaveLength(2);
+
+    const pending = (await ok("GET", viewer, "/practice-admin/stories?status=pending")).stories;
+    expect(pending).toHaveLength(2);
+    await ok("POST", owner, `/practice-admin/stories/${mine.id}/decision`, { status: "published" }, 200);
+    expect((await call("POST", owner, `/practice-admin/stories/${mine.id}/decision`, { status: "rejected" })).statusCode).toBe(404);
+    expect((await ok("GET", null, `${S}/stories`)).stories).toEqual([expect.objectContaining({ id: mine.id, company: "Acme", author: "Asha", mine: false })]);
+  });
+
+  it("keeps a company's logo, checked by its bytes and its size", async () => {
+    const acme = await ok("POST", owner, "/practice-admin/companies", { name: "Acme" });
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]);
+    const put = (logo: object | null, token = owner) => call("PUT", token, `/practice-admin/companies/${acme.id}/logo`, { logo });
+    expect((await put({ mime: "image/png", data: png.toString("base64") }, viewer)).statusCode).toBe(403);
+    // Says PNG, is not.
+    expect((await put({ mime: "image/png", data: Buffer.from("GIF89a....").toString("base64") })).statusCode).toBe(422);
+    expect((await put({ mime: "image/jpeg", data: png.toString("base64") })).statusCode).toBe(422);
+    expect((await put({ mime: "image/png", data: Buffer.concat([png, Buffer.alloc(101 * 1024)]).toString("base64") })).statusCode).toBe(422);
+    expect((await put({ mime: "image/svg+xml", data: png.toString("base64") })).statusCode).toBe(400);
+    expect((await put({ mime: "image/png", data: png.toString("base64") })).statusCode).toBe(204);
+
+    const card = (await ok("GET", null, `${S}/companies`)).companies[0];
+    expect(card.logo).toMatch(/^\/api\/practice\/nit-practice\/companies\/acme\/logo\?v=\d+$/);
+    expect((await ok("GET", null, `${S}/companies/acme`)).logo).toBe(card.logo);
+    const image = await call("GET", null, card.logo.replace(/^\/api/, ""));
+    expect(image.statusCode).toBe(200);
+    expect(image.headers["content-type"]).toBe("image/png");
+    expect(image.headers["cache-control"]).toContain("immutable");
+    expect(image.rawPayload.equals(png)).toBe(true);
+
+    expect((await put(null)).statusCode).toBe(204);
+    expect((await ok("GET", null, `${S}/companies`)).companies[0].logo).toBeNull();
+    expect((await call("GET", null, `${S}/companies/acme/logo`)).statusCode).toBe(404);
+  });
+
+  it("names the patterns a company asks, and how many of each the learner has solved", async () => {
+    const tagged = async (stem: string, tags: string[]) => {
+      const q = await ok("POST", owner, "/bank", { question: mcq(stem), difficulty: "medium", tags });
+      return ok("POST", owner, "/practice-admin/problems", { bankQuestionId: q.id });
+    };
+    const window = await tagged("Longest window under a budget asks what", ["Sliding Window", "two pointers"]);
+    const pairs = await tagged("Pairs with a target sum asks what", ["hashing", "Two-Pointers"]);
+    const ranges = await tagged("Range sums asks what", ["prefix sums", "arrays"]);
+    const acme = await ok("POST", owner, "/practice-admin/companies", { name: "Acme" });
+    await ok("POST", owner, `/practice-admin/companies/${acme.id}/reports`, { problemIds: [window.id, pairs.id, ranges.id], reportedOn: dayOf(clock - 3 * DAY) });
+    const asha = await signUp("asha@example.com", "Asha");
+    await ok("POST", asha, `${S}/problems/${pairs.slug}/submit`, { answer: "1" }, 200);
+    const page = await ok("GET", asha, `${S}/companies/acme?window=30`);
+    expect(page.patterns).toEqual([
+      { pattern: "Two pointers", problems: 2, solved: 1 },
+      { pattern: "Sliding window", problems: 1, solved: 0 },
+      { pattern: "Prefix sums", problems: 1, solved: 0 },
+      { pattern: "Hashing and counting", problems: 1, solved: 1 },
+    ]);
   });
 });
 

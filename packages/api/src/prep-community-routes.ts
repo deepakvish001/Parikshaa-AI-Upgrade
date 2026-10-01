@@ -63,14 +63,16 @@ const experience = z.object({
     .readonly(),
   tips: z.string(),
   author: z.string().describe('The learner\'s name, or "Anonymous".'),
-  status: z.enum(["pending", "published", "rejected"]),
+  status: z.enum(["pending", "published", "rejected", "held"]).describe("held: three learners flagged it; out of sight until staff decide."),
   votes: z.number(),
   voted: z.boolean(),
+  flagged: z.boolean().optional().describe("This learner has flagged it."),
   mine: z.boolean(),
   at: z.string(),
 });
 const readiness = z.object({ solved: z.number(), of: z.number(), percent: z.number() });
-const companyCard = z.object({ slug: z.string(), name: z.string(), problems: z.number().describe("Problems asked in the last 180 days."), experiences: z.number() });
+const logo = z.string().nullable().describe("The company's logo's address; null without one.");
+const companyCard = z.object({ slug: z.string(), name: z.string(), problems: z.number().describe("Problems asked in the last 180 days."), experiences: z.number(), logo });
 const companyPage = z.object({
   slug: z.string(),
   name: z.string(),
@@ -84,8 +86,13 @@ const companyPage = z.object({
   readiness: readiness.nullable().describe("Signed in: of the company's 50 most asked problems in the last 180 days, how many are solved."),
   target: z.boolean().describe("Signed in: the learner aims for this company."),
   topics: z.array(z.object({ tag: z.string(), problems: z.number() })).readonly(),
+  patterns: z
+    .array(z.object({ pattern: z.string(), problems: z.number(), solved: z.number() }))
+    .readonly()
+    .describe("The ideas behind the tags (two pointers, sliding window, DP…), with how many of this window's problems use each and how many the learner has solved."),
   difficulty: z.object({ easy: z.number(), medium: z.number(), hard: z.number() }),
   experiences: z.array(experience).readonly(),
+  logo,
 });
 const itemKind = z.enum(["plus", "coupon", "digital", "physical"]);
 const storeOrder = z.object({
@@ -363,6 +370,81 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
     );
   }
 
+  routes.post(
+    "/practice/:site/experiences/:id/flag",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Flag an experience as fake, rude or about the wrong company",
+        description: "Once per learner, not one's own. Three open flags hold it out of sight until staff keep or remove it.",
+        security: LEARNER,
+        params: siteParams.extend({ id: z.string().min(1).max(80) }),
+        body: z.object({ reason: z.enum(["fake", "offensive", "wrong_company", "other"]), note: z.string().max(500).default("") }),
+        response: { 200: z.object({ flagged: z.literal(true), held: z.boolean() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await community.flag(who.site, who.learner, request.params.id, request.body.reason, request.body.note));
+    },
+  );
+
+  const story = z.object({
+    id: z.string(),
+    company: z.string(),
+    role: z.string(),
+    story: z.string().describe("Markdown."),
+    author: z.string().describe('The learner\'s name, or "Anonymous".'),
+    status: z.enum(["pending", "published", "rejected"]),
+    mine: z.boolean(),
+    at: z.string(),
+  });
+
+  routes.get(
+    "/practice/:site/stories",
+    { schema: { tags: PREP, summary: "Success stories: how learners got placed", security: OPEN, params: siteParams, response: { 200: z.object({ stories: z.array(story).readonly() }), ...refusals } } },
+    async (request, reply) => {
+      const { site, learner } = await maybe(request);
+      return reply.send({ stories: await community.stories(site, learner) });
+    },
+  );
+
+  routes.post(
+    "/practice/:site/stories",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Tell how I got placed",
+        description: "Read by staff before it is shown. Two may wait at once.",
+        security: LEARNER,
+        params: siteParams,
+        body: z.object({ company: z.string().max(120), role: z.string().max(120), story: z.string().max(3000), anonymous: z.boolean().default(false) }),
+        response: { 201: story, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.code(201).send(await community.submitStory(who.site, who.learner, request.body));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/companies/:company/logo",
+    { schema: { tags: PREP, summary: "A company's logo: a PNG, JPEG or WebP image", security: OPEN, params: siteParams.extend({ company: z.string().min(1).max(80) }), querystring: z.object({ v: z.string().max(20).optional() }) } },
+    async (request, reply) => {
+      const found = await community.logo(await siteOf(request), request.params.company);
+      return reply
+        .header("content-type", found.mime)
+        .header("content-security-policy", "default-src 'none'")
+        .header("x-content-type-options", "nosniff")
+        // The address carries the version: a new logo has a new address.
+        .header("cache-control", request.query.v === undefined ? "public, max-age=300" : "public, max-age=31536000, immutable")
+        .send(Buffer.from(found.bytes));
+    },
+  );
+
   // --- the store ------------------------------------------------------------------------------
 
   routes.get(
@@ -564,7 +646,7 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
         tags: ADMIN,
         summary: "Interview experiences, to read before they are published",
         security: STAFF,
-        querystring: z.object({ status: z.enum(["pending", "published", "rejected"]).optional() }),
+        querystring: z.object({ status: z.enum(["pending", "published", "rejected", "held"]).optional() }),
         response: { 200: z.object({ experiences: z.array(experience.extend({ learnerId: z.string() })).readonly() }), ...refusals },
       },
     },
@@ -572,6 +654,125 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
       const actor = await staff(request, reply, "exam:read");
       if (actor === null) return;
       return reply.send({ experiences: await community.staffExperiences(actor.orgId, request.query.status) });
+    },
+  );
+
+  routes.get(
+    "/practice-admin/experiences/flags",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Experiences learners have flagged, with their reasons",
+        security: STAFF,
+        response: {
+          200: z.object({
+            flagged: z
+              .array(z.object({ experience: experience.extend({ learnerId: z.string() }), flags: z.array(z.object({ reason: z.string(), note: z.string(), at: z.string() })).readonly() }))
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send({ flagged: await community.flagQueue(actor.orgId) });
+    },
+  );
+
+  routes.post(
+    "/practice-admin/experiences/:id/flags",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Decide a flagged experience: keep it, or remove it",
+        description: "Keeping shows it again if it was held; removing takes it down. Its flags close either way.",
+        security: STAFF,
+        params: z.object({ id: z.string().min(1) }),
+        body: z.object({ keep: z.boolean() }),
+        response: { 204: z.null(), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      await community.resolveFlags(actor.orgId, request.params.id, request.body.keep, actor.id);
+      await service.recordAudit(actor, request.body.keep ? "prep.experience_kept" : "prep.experience_removed", request.params.id, {});
+      return reply.code(204).send(null);
+    },
+  );
+
+  const staffStory = z.object({
+    id: z.string(),
+    learnerId: z.string(),
+    company: z.string(),
+    role: z.string(),
+    story: z.string(),
+    authorName: z.string(),
+    status: z.enum(["pending", "published", "rejected"]),
+    createdAt: z.string(),
+    publishedAt: z.string().nullable(),
+  });
+
+  routes.get(
+    "/practice-admin/stories",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Success stories, to read before they are shown",
+        security: STAFF,
+        querystring: z.object({ status: z.enum(["pending", "published", "rejected"]).optional() }),
+        response: { 200: z.object({ stories: z.array(staffStory).readonly() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send({ stories: await community.staffStories(actor.orgId, request.query.status) });
+    },
+  );
+
+  routes.post(
+    "/practice-admin/stories/:id/decision",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Publish or reject a success story",
+        security: STAFF,
+        params: z.object({ id: z.string().min(1) }),
+        body: z.object({ status: z.enum(["published", "rejected"]) }),
+        response: { 200: staffStory, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      const decided = await community.decideStory(actor.orgId, request.params.id, request.body.status, actor.id);
+      await service.recordAudit(actor, `prep.story_${request.body.status}`, decided.id, {});
+      return reply.send(decided);
+    },
+  );
+
+  routes.put(
+    "/practice-admin/companies/:id/logo",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Give a company its logo, or take it away",
+        description: "A PNG, JPEG or WebP image, base64, at most 100 KB; checked by its bytes. Null takes the logo away.",
+        security: STAFF,
+        params: z.object({ id: z.string().min(1) }),
+        body: z.object({ logo: z.object({ mime: z.enum(["image/png", "image/jpeg", "image/webp"]), data: z.string().max(140_000) }).nullable() }),
+        response: { 204: z.null(), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      await community.setLogo(actor.orgId, request.params.id, request.body.logo);
+      await service.recordAudit(actor, "prep.company_logo", request.params.id, { removed: request.body.logo === null });
+      return reply.code(204).send(null);
     },
   );
 
@@ -585,7 +786,7 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
         security: STAFF,
         params: z.object({ id: z.string().min(1) }),
         body: z.object({ status: z.enum(["published", "rejected"]) }),
-        response: { 200: z.object({ id: z.string(), status: z.enum(["pending", "published", "rejected"]) }), ...refusals },
+        response: { 200: z.object({ id: z.string(), status: z.enum(["pending", "published", "rejected", "held"]) }), ...refusals },
       },
     },
     async (request, reply) => {

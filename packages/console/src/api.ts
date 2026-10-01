@@ -1349,6 +1349,27 @@ export class ConsoleClient {
     return (await this.#request<{ experiences: StaffExperience[] }>(`/practice-admin/experiences${status === undefined ? "" : `?status=${status}`}`)).experiences;
   }
 
+  async flaggedExperiences(): Promise<readonly FlaggedExperience[]> {
+    return (await this.#request<{ flagged: FlaggedExperience[] }>("/practice-admin/experiences/flags")).flagged;
+  }
+
+  async resolveFlags(id: string, keep: boolean): Promise<void> {
+    await this.#request(`/practice-admin/experiences/${encodeURIComponent(id)}/flags`, { method: "POST", body: JSON.stringify({ keep }) });
+  }
+
+  async stories(status?: SuccessStory["status"]): Promise<readonly SuccessStory[]> {
+    return (await this.#request<{ stories: SuccessStory[] }>(`/practice-admin/stories${status === undefined ? "" : `?status=${status}`}`)).stories;
+  }
+
+  async decideStory(id: string, status: "published" | "rejected"): Promise<void> {
+    await this.#request(`/practice-admin/stories/${encodeURIComponent(id)}/decision`, { method: "POST", body: JSON.stringify({ status }) });
+  }
+
+  /** A company's logo, as base64 of a PNG, JPEG or WebP; null takes it away. */
+  async setCompanyLogo(id: string, logo: { readonly mime: string; readonly data: string } | null): Promise<void> {
+    await this.#request(`/practice-admin/companies/${encodeURIComponent(id)}/logo`, { method: "PUT", body: JSON.stringify({ logo }) });
+  }
+
   async decideExperience(id: string, status: "published" | "rejected"): Promise<void> {
     await this.#request(`/practice-admin/experiences/${encodeURIComponent(id)}/decision`, { method: "POST", body: JSON.stringify({ status }) });
   }
@@ -2417,9 +2438,27 @@ export interface StaffExperience {
   readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[]; readonly problems?: readonly { readonly slug: string; readonly title: string }[] }[];
   readonly tips: string;
   readonly author: string;
-  readonly status: "pending" | "published" | "rejected";
+  /** held: three learners flagged it; out of their sight until staff decide. */
+  readonly status: "pending" | "published" | "rejected" | "held";
   readonly votes: number;
   readonly at: string;
+}
+
+export interface FlaggedExperience {
+  readonly experience: StaffExperience;
+  readonly flags: readonly { readonly reason: "fake" | "offensive" | "wrong_company" | "other"; readonly note: string; readonly at: string }[];
+}
+
+export interface SuccessStory {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly company: string;
+  readonly role: string;
+  readonly story: string;
+  readonly authorName: string;
+  readonly status: "pending" | "published" | "rejected";
+  readonly createdAt: string;
+  readonly publishedAt: string | null;
 }
 
 export interface StoreItem {

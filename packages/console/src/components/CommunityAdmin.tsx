@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, MessageSquareText, Package, Store, Trash2 } from "lucide-react";
-import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StarterPack, type StoreItem } from "../api.ts";
+import { Building2, Flag, MessageSquareText, Package, PartyPopper, Store, Trash2 } from "lucide-react";
+import { ConsoleError, type ConsoleClient, type StaffCompany, type StaffExperience, type StarterPack, type StoreItem, type SuccessStory } from "../api.ts";
 import { EmptyState, SkeletonRows } from "./kit.tsx";
 
 /** How an interview ended, in words. */
@@ -122,6 +122,7 @@ export function Companies({ client, canWrite }: { client: ConsoleClient; canWrit
               <tr>
                 <th scope="col">Company</th>
                 <th scope="col">Reports</th>
+                {canWrite ? <th scope="col">Logo</th> : null}
                 <th scope="col" />
               </tr>
             </thead>
@@ -132,6 +133,11 @@ export function Companies({ client, canWrite }: { client: ConsoleClient; canWrit
                     {c.name} <span className="notice">/{c.slug}</span>
                   </td>
                   <td>{c.reports.length}</td>
+                  {canWrite ? (
+                    <td>
+                      <LogoUpload client={client} company={c} />
+                    </td>
+                  ) : null}
                   <td>
                     <button type="button" className="quiet" onClick={() => setOpen(open === c.id ? null : c.id)} aria-expanded={open === c.id}>
                       {open === c.id ? "Close" : "Reports"}
@@ -154,6 +160,54 @@ export function Companies({ client, canWrite }: { client: ConsoleClient; canWrit
         />
       )}
     </>
+  );
+}
+
+const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+/** A company's logo: a PNG, JPEG or WebP of at most 100 KB, or none. */
+function LogoUpload({ client, company }: { client: ConsoleClient; company: StaffCompany }) {
+  const [done, setDone] = useState<string | null>(null);
+  const save = useMutation({
+    mutationFn: async (file: File | null) => {
+      if (file === null) return client.setCompanyLogo(company.id, null);
+      if (!LOGO_TYPES.includes(file.type)) throw new Error("A logo is a PNG, JPEG or WebP image");
+      if (file.size > 100 * 1024) throw new Error("A logo is at most 100 KB");
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      let binary = "";
+      for (const b of bytes) binary += String.fromCharCode(b);
+      return client.setCompanyLogo(company.id, { mime: file.type, data: btoa(binary) });
+    },
+    onSuccess: (_, file) => setDone(file === null ? "Logo taken away." : "Logo saved."),
+  });
+  return (
+    <div className="row">
+      <label className="link-button">
+        Upload
+        <input
+          type="file"
+          className="visually-hidden"
+          accept={LOGO_TYPES.join(",")}
+          aria-label={`Logo for ${company.name}`}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file !== undefined) save.mutate(file);
+          }}
+        />
+      </label>
+      <button type="button" className="quiet small" disabled={save.isPending} onClick={() => save.mutate(null)}>
+        Remove
+      </button>
+      {save.isError ? (
+        <span className="error" role="alert">
+          {save.error instanceof ConsoleError ? failure(save.error, "That logo could not be saved") : (save.error as Error).message}
+        </span>
+      ) : done === null ? null : (
+        <span className="notice" role="status">
+          {done}
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -249,58 +303,104 @@ function CompanyReports({
 
 // --- experiences ---------------------------------------------------------------------------------
 
-export function Experiences({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
+const FLAG_WORDS = { fake: "Looks made up", offensive: "Rude or hurtful", wrong_company: "About another company", other: "Something else" } as const;
+
+/** Write-ups learners reported: three reports hold one out of sight until staff keep or remove it. */
+function FlaggedExperiences({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
   const queryClient = useQueryClient();
-  const [status, setStatus] = useState<StaffExperience["status"]>("pending");
-  const list = useQuery({ queryKey: ["prep", "experiences", status], queryFn: () => client.experiences(status) });
-  const decide = useMutation({
-    mutationFn: ({ id, to }: { id: string; to: "published" | "rejected" }) => client.decideExperience(id, to),
+  const flagged = useQuery({ queryKey: ["prep", "experience-flags"], queryFn: () => client.flaggedExperiences() });
+  const resolve = useMutation({
+    mutationFn: ({ id, keep }: { id: string; keep: boolean }) => client.resolveFlags(id, keep),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prep"] }),
   });
+  if ((flagged.data ?? []).length === 0) return null;
   return (
-    <section className="card prep-card" aria-label="Interview experiences">
+    <section className="card prep-card" aria-label="Reported write-ups">
       <div className="bar">
-        <strong>Interview experiences</strong>
+        <strong>
+          <Flag aria-hidden="true" /> Reported write-ups
+        </strong>
+      </div>
+      <p className="notice">Learners reported these. Three reports hold a write-up out of sight until you decide. Keeping it shows it again; removing takes it down for good.</p>
+      {resolve.isError ? <p className="error">{failure(resolve.error, "That could not be saved")}</p> : null}
+      <ul className="stack experience-queue">
+        {(flagged.data ?? []).map(({ experience: e, flags }) => (
+          <li key={e.id}>
+            <article aria-label={`Reported: ${e.company.name}, ${e.role}, by ${e.author}`}>
+              <p>
+                <strong>{e.company.name}</strong> · {e.role} · by {e.author} {e.status === "held" ? <span className="pill warn">Held</span> : null}
+              </p>
+              <ul>
+                {flags.map((f, i) => (
+                  <li key={i}>
+                    {FLAG_WORDS[f.reason]}
+                    {f.note === "" ? null : <span className="notice"> — {f.note}</span>}
+                  </li>
+                ))}
+              </ul>
+              {canWrite ? (
+                <div className="row">
+                  <button type="button" disabled={resolve.isPending} onClick={() => resolve.mutate({ id: e.id, keep: true })}>
+                    Keep it
+                  </button>
+                  <button type="button" className="secondary" disabled={resolve.isPending} onClick={() => resolve.mutate({ id: e.id, keep: false })}>
+                    Remove it
+                  </button>
+                </div>
+              ) : null}
+            </article>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Success stories wait here to be read before learners see them. */
+export function Stories({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<SuccessStory["status"]>("pending");
+  const list = useQuery({ queryKey: ["prep", "stories", status], queryFn: () => client.stories(status) });
+  const decide = useMutation({
+    mutationFn: ({ id, to }: { id: string; to: "published" | "rejected" }) => client.decideStory(id, to),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prep", "stories"] }),
+  });
+  return (
+    <section className="card prep-card" aria-label="Success stories">
+      <div className="bar">
+        <strong>Success stories</strong>
         <label>
           Show{" "}
-          <select value={status} onChange={(e) => setStatus(e.target.value as StaffExperience["status"])}>
+          <select value={status} onChange={(e) => setStatus(e.target.value as SuccessStory["status"])}>
             <option value="pending">Waiting to be read</option>
             <option value="published">Published</option>
             <option value="rejected">Not published</option>
           </select>
         </label>
       </div>
-      <p className="notice">Publishing pays the author 100 coins and reports the problems its rounds name against the company. Anything with names, contact details or leaked papers should not be published.</p>
+      <p className="notice">How learners got placed, in their words. Anything with someone else&apos;s name, contact details or a salary they may not share should not be published.</p>
       {decide.isError ? <p className="error">{failure(decide.error, "That could not be saved")}</p> : null}
       {list.isPending ? (
-        <SkeletonRows rows={3} columns={4} />
+        <SkeletonRows rows={3} columns={3} />
       ) : (list.data ?? []).length === 0 ? (
-        <EmptyState icon={MessageSquareText} compact>
-          No interview write-ups here yet. Learners send them from the practice site; they wait here to be read.
+        <EmptyState icon={PartyPopper} compact>
+          No stories here yet.
         </EmptyState>
       ) : (
         <ul className="stack experience-queue">
-          {(list.data ?? []).map((e) => (
-            <li key={e.id}>
-              <article aria-label={`${e.company.name}, ${e.role}, by ${e.author}`}>
+          {(list.data ?? []).map((s) => (
+            <li key={s.id}>
+              <article aria-label={`${s.company}, ${s.role}, by ${s.authorName}`}>
                 <p>
-                  <strong>{e.company.name}</strong> · {e.role} · {e.interviewed} · {VERDICT_WORDS[e.verdict]} · by {e.author}
+                  <strong>{s.company}</strong> · {s.role} · by {s.authorName}
                 </p>
-                <ol>
-                  {e.rounds.map((r, i) => (
-                    <li key={i}>
-                      <strong>{r.kind}</strong>: {r.asked}
-                      {(r.problems ?? []).length === 0 ? null : <span className="notice"> ({r.problems!.map((q) => q.title).join(", ")})</span>}
-                    </li>
-                  ))}
-                </ol>
-                {e.tips === "" ? null : <p className="notice">Tips: {e.tips}</p>}
-                {canWrite && e.status === "pending" ? (
+                <p>{s.story}</p>
+                {canWrite && s.status === "pending" ? (
                   <div className="row">
-                    <button type="button" disabled={decide.isPending} onClick={() => decide.mutate({ id: e.id, to: "published" })}>
+                    <button type="button" disabled={decide.isPending} onClick={() => decide.mutate({ id: s.id, to: "published" })}>
                       Publish
                     </button>
-                    <button type="button" className="secondary" disabled={decide.isPending} onClick={() => decide.mutate({ id: e.id, to: "rejected" })}>
+                    <button type="button" className="secondary" disabled={decide.isPending} onClick={() => decide.mutate({ id: s.id, to: "rejected" })}>
                       Don&apos;t publish
                     </button>
                   </div>
@@ -311,6 +411,75 @@ export function Experiences({ client, canWrite }: { client: ConsoleClient; canWr
         </ul>
       )}
     </section>
+  );
+}
+
+export function Experiences({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<StaffExperience["status"]>("pending");
+  const list = useQuery({ queryKey: ["prep", "experiences", status], queryFn: () => client.experiences(status) });
+  const decide = useMutation({
+    mutationFn: ({ id, to }: { id: string; to: "published" | "rejected" }) => client.decideExperience(id, to),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["prep"] }),
+  });
+  return (
+    <>
+      <FlaggedExperiences client={client} canWrite={canWrite} />
+      <section className="card prep-card" aria-label="Interview experiences">
+        <div className="bar">
+          <strong>Interview experiences</strong>
+          <label>
+            Show{" "}
+            <select value={status} onChange={(e) => setStatus(e.target.value as StaffExperience["status"])}>
+              <option value="pending">Waiting to be read</option>
+              <option value="published">Published</option>
+              <option value="rejected">Not published</option>
+              <option value="held">Held after reports</option>
+            </select>
+          </label>
+        </div>
+        <p className="notice">Publishing pays the author 100 coins and reports the problems its rounds name against the company. Anything with names, contact details or leaked papers should not be published.</p>
+        {decide.isError ? <p className="error">{failure(decide.error, "That could not be saved")}</p> : null}
+        {list.isPending ? (
+          <SkeletonRows rows={3} columns={4} />
+        ) : (list.data ?? []).length === 0 ? (
+          <EmptyState icon={MessageSquareText} compact>
+            No interview write-ups here yet. Learners send them from the practice site; they wait here to be read.
+          </EmptyState>
+        ) : (
+          <ul className="stack experience-queue">
+            {(list.data ?? []).map((e) => (
+              <li key={e.id}>
+                <article aria-label={`${e.company.name}, ${e.role}, by ${e.author}`}>
+                  <p>
+                    <strong>{e.company.name}</strong> · {e.role} · {e.interviewed} · {VERDICT_WORDS[e.verdict]} · by {e.author}
+                  </p>
+                  <ol>
+                    {e.rounds.map((r, i) => (
+                      <li key={i}>
+                        <strong>{r.kind}</strong>: {r.asked}
+                        {(r.problems ?? []).length === 0 ? null : <span className="notice"> ({r.problems!.map((q) => q.title).join(", ")})</span>}
+                      </li>
+                    ))}
+                  </ol>
+                  {e.tips === "" ? null : <p className="notice">Tips: {e.tips}</p>}
+                  {canWrite && e.status === "pending" ? (
+                    <div className="row">
+                      <button type="button" disabled={decide.isPending} onClick={() => decide.mutate({ id: e.id, to: "published" })}>
+                        Publish
+                      </button>
+                      <button type="button" className="secondary" disabled={decide.isPending} onClick={() => decide.mutate({ id: e.id, to: "rejected" })}>
+                        Don&apos;t publish
+                      </button>
+                    </div>
+                  ) : null}
+                </article>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </>
   );
 }
 

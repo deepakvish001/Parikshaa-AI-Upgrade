@@ -572,6 +572,18 @@ export class PracticeClient {
     return this.#post("/experiences", draft);
   }
 
+  flagExperience(id: string, reason: FlagReason, note: string): Promise<{ readonly flagged: true; readonly held: boolean }> {
+    return this.#post(`/experiences/${encodeURIComponent(id)}/flag`, { reason, note });
+  }
+
+  async stories(): Promise<readonly SuccessStory[]> {
+    return (await this.#request<{ stories: SuccessStory[] }>("/stories")).stories;
+  }
+
+  shareStory(story: { readonly company: string; readonly role: string; readonly story: string; readonly anonymous: boolean }): Promise<SuccessStory> {
+    return this.#post("/stories", story);
+  }
+
   async vote(id: string, on: boolean): Promise<void> {
     await this.#request(`/experiences/${encodeURIComponent(id)}/vote`, { method: on ? "PUT" : "DELETE" });
   }
@@ -978,6 +990,8 @@ export interface CompanyCard {
   /** Problems asked in the last 180 days. */
   readonly problems: number;
   readonly experiences: number;
+  /** The company's logo's address; null without one. */
+  readonly logo?: string | null;
 }
 
 export interface Readiness {
@@ -1016,9 +1030,24 @@ export interface InterviewExperience {
   readonly rounds: readonly InterviewRound[];
   readonly tips: string;
   readonly author: string;
-  readonly status: "pending" | "published" | "rejected";
+  readonly status: "pending" | "published" | "rejected" | "held";
   readonly votes: number;
   readonly voted: boolean;
+  /** This learner has flagged it. */
+  readonly flagged?: boolean;
+  readonly mine: boolean;
+  readonly at: string;
+}
+
+export type FlagReason = "fake" | "offensive" | "wrong_company" | "other";
+
+export interface SuccessStory {
+  readonly id: string;
+  readonly company: string;
+  readonly role: string;
+  readonly story: string;
+  readonly author: string;
+  readonly status: "pending" | "published" | "rejected";
   readonly mine: boolean;
   readonly at: string;
 }
@@ -1054,6 +1083,9 @@ export interface CompanyPage {
   readonly readiness: Readiness | null;
   readonly target: boolean;
   readonly topics: readonly { readonly tag: string; readonly problems: number }[];
+  /** The ideas behind the tags, with how many of each the learner has solved. */
+  readonly patterns?: readonly { readonly pattern: string; readonly problems: number; readonly solved: number }[];
+  readonly logo?: string | null;
   readonly difficulty: { readonly easy: number; readonly medium: number; readonly hard: number };
   readonly experiences: readonly InterviewExperience[];
 }

@@ -63,6 +63,7 @@ const ExperiencesPage = lazy(() => community().then((m) => ({ default: m.Experie
 const StorePage = lazy(() => community().then((m) => ({ default: m.StorePage })));
 const RatingPage = lazy(() => community().then((m) => ({ default: m.RatingPage })));
 const ProfilePage = lazy(() => community().then((m) => ({ default: m.ProfilePage })));
+const StoriesPage = lazy(() => community().then((m) => ({ default: m.StoriesPage })));
 const TutorPanel = lazy(() => import("./Tutor.tsx").then((m) => ({ default: m.TutorPanel })));
 import "./practice.css";
 
@@ -104,6 +105,7 @@ export type Route =
   | { readonly page: "store" }
   | { readonly page: "rating" }
   | { readonly page: "profile"; readonly username: string }
+  | { readonly page: "stories" }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -165,6 +167,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "store" };
     case "rating":
       return { page: "rating" };
+    case "stories":
+      return { page: "stories" };
     case "u":
       return second === undefined ? { page: "rating" } : { page: "profile", username: second };
     case "signin":
@@ -432,6 +436,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
+        ) : route.page === "stories" ? (
+          <StoriesPage {...context} />
         ) : route.page === "profile" ? (
           <ProfilePage {...context} username={route.username} />
         ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "placement" || route.page === "coins" ? (

@@ -33,11 +33,11 @@ Status ka matlab:
 | Sahayak AI | 17 | 1 | 0 | 0 |
 | Plus aur payment | 13 | 0 | 0 | 0 |
 | Coins, store, gamification | 15 | 0 | 0 | 0 |
-| Company prep aur community | 11 | 1 | 3 | 0 |
+| Company prep aur community | 15 | 0 | 0 | 0 |
 | Contests | 4 | 1 | 0 | 0 |
 | Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 10 | 2 | 1 | 0 |
-| **Kul** | **101** | **13** | **8** | **1** |
+| **Kul** | **105** | **12** | **5** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -175,13 +175,13 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Experience ke problems company reports ban jaate hain | ✅ | | |
 | Helpful votes, ek learner ke max 5 pending | ✅ | | |
 | Account delete par write-up bina naam ke | ✅ | | |
-| Pattern analysis (sirf topic nahi) | 🟡 | | Tags se topics. Alag "pattern" field nahi |
+| Pattern analysis (sirf topic nahi) | ✅ | `api/src/patterns.ts` (`patternsOf`, `patternCounts`), company page "Patterns" | Author ke tags (kisi bhi tarah likhe: "Sliding Window", "two_pointers", "fenwick tree") 17 patterns me badalte hain (two pointers, sliding window, prefix sums, DP, graphs…). Company page par har pattern: kitne problems aur learner ne kitne solve kiye, yaani kahan kamzor. Alag "pattern" field nahi: tags se hi. Tests: `patterns.test.ts`, API, web |
 | "Is company ki list shuru karo" (folder) | ✅ | `POST /companies/:company/start`, `CompanyPage` | Company ke naam ki list me top problems (180 din, 50 tak): Plus/Company Pass ke saath sab, bina 5. Company target bhi ho jaati hai |
 | Readiness score (top 50 me kitne solved) | ✅ | `PrepCommunity.#readiness`; company page aur dashboard (`TargetsCard`) | 180 din ke sabse zyada poochhe gaye 50 me se kitne solve. Target companies `prep_targets` me (10 tak) |
 | Plan ke aakhri 30% din me target company problems | ✅ | `PrepService.#withCompanies`, `PrepCommunity.targetProblems` | Naya plan banate waqt targets ke 10 tak unsolved problems, har company se baari-baari; bina Plus/Pass sirf free 5 me se |
-| Company logos | ⬜ | | |
-| Experience report/flag karna (learner) | ⬜ | | |
-| Success stories | ⬜ | | |
+| Company logos | ✅ | `prep_company_logos` (migration 0045), `PUT /practice-admin/companies/:id/logo`, `GET /practice/:site/companies/:company/logo`, console Companies → Logo | Staff PNG/JPEG/WebP upload kare, 100 KB tak; file ke bytes se jaancha jaata hai (naam/mime se nahi). SVG nahi (script ka khatra). Address me version, isliye browser hamesha cache kar sakta hai. Logos khud nahi bhare: staff upload kare (kisi company ka logo bina ijazat nahi). Tests: store, API, console |
+| Experience report/flag karna (learner) | ✅ | `prep_experience_flags` (migration 0045), `POST /practice/:site/experiences/:id/flag`, console Experiences → "Reported write-ups" | Wajah ke saath (fake, rude, galat company, kuch aur); har learner ek baar, apna nahi. 3 flags par write-up "held" (learners ko nahi dikhta) jab tak staff "Keep" ya "Remove" na kare. Audit me faisla. Tests: store, API, web, console |
+| Success stories | ✅ | `prep_stories` (migration 0045), `GET/POST /practice/:site/stories`, web `/stories`, console "Success stories" | Learner likhe (company, role, 50–3,000 akshar, naam ya Anonymous); staff padh kar publish kare; ek learner ke 2 tak pending. Coins nahi milte (jhooth ko badhava na mile). Tests: store, API, web, console |
 
 ### 9. Contests (F11)
 
@@ -349,7 +349,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
 | 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ✅ ban gaya (2 Oct 2026); evals ka paid run alag se owner par |
 | 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ✅ ban gaya (2 Oct 2026) |
-| 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ⬜ pending |
+| 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ✅ ban gaya (2 Oct 2026) |
 | 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ⬜ pending |
 | 41 | **PWA aur push** (§17): installable app, offline me aaj ka plan, push notification (reminder email ke saath) | §17, A1 | Mobile par roz ka loop | Tests: manifest, service worker cache, push ki subscription aur band karna | ⬜ pending |
 

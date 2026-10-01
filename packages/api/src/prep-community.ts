@@ -13,9 +13,11 @@ import {
   type PracticeStore,
   type PrepCommunityStore,
   type PrepStore,
+  type FlagReason,
   type StoreItemDraft,
 } from "@parikshaa/store";
 import { achievementCard, type CardFormat, type CardLanguage } from "./achievement-card.js";
+import { patternCounts } from "./patterns.js";
 import { PracticeError, istDay, scoreboard, slugOf, streaks } from "./practice.js";
 import { addDays } from "./prep-plan.js";
 import type { PrepPlus } from "./prep-plus.js";
@@ -119,6 +121,15 @@ export interface Achievement {
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const USERNAME = /^[a-z0-9][a-z0-9_-]{2,29}$/;
+/** Stories one learner may have waiting for staff at once. */
+const MAX_PENDING_STORIES = 2;
+/** A logo is at most this many bytes: small enough to keep in the database. */
+export const LOGO_MAX_BYTES = 100 * 1024;
+const LOGO_TYPES = {
+  "image/png": (b: Uint8Array) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
+  "image/jpeg": (b: Uint8Array) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
+  "image/webp": (b: Uint8Array) => String.fromCharCode(...b.slice(0, 4)) === "RIFF" && String.fromCharCode(...b.slice(8, 12)) === "WEBP",
+} as const;
 /** Write-ups one learner may have waiting for staff at once. */
 const MAX_PENDING = 5;
 
@@ -235,11 +246,12 @@ export class PrepCommunity {
 
   async companies(site: PracticeSite) {
     const scope = practiceLearner(site.orgId, null);
-    const [companies, reports, experiences, problems] = await Promise.all([
+    const [companies, reports, experiences, problems, logos] = await Promise.all([
       this.#store.companies(scope),
       this.#store.reports(scope),
       this.#store.experiences(scope, { status: "published" }),
       this.#practice.problems(scope),
+      this.#store.logoVersions(scope),
     ]);
     const published = new Set(problems.filter((p) => p.published).map((p) => p.id));
     const since = addDays(this.#today(), -180);
@@ -248,7 +260,32 @@ export class PrepCommunity {
       name: c.name,
       problems: new Set(reports.filter((r) => r.companyId === c.id && r.reportedOn >= since && published.has(r.problemId)).map((r) => r.problemId)).size,
       experiences: experiences.filter((e) => e.companyId === c.id).length,
+      logo: this.#logoUrl(site, c.slug, logos.get(c.id)),
     }));
+  }
+
+  /** A company's logo's address, versioned so a new one is fetched; null without one. */
+  #logoUrl(site: PracticeSite, slug: string, version: string | undefined): string | null {
+    return version === undefined ? null : `/api/practice/${site.slug}/companies/${slug}/logo?v=${Date.parse(version)}`;
+  }
+
+  async logo(site: PracticeSite, slug: string) {
+    const company = await this.#company(site, slug);
+    const logo = await this.#store.logo(practiceLearner(site.orgId, null), company.id);
+    if (logo === null) throw new PracticeError("not_found", "This company has no logo");
+    return logo;
+  }
+
+  /** Staff give a company its logo (PNG, JPEG or WebP, checked by its bytes, at most 100 KB), or take it away. */
+  async setLogo(orgId: OrgId, companyId: string, logo: { mime: string; data: string } | null): Promise<void> {
+    if (!(await this.#store.companies(practiceStaff(orgId))).some((c) => c.id === companyId)) throw new PracticeError("not_found", "No such company");
+    if (logo === null) return this.#store.setLogo(orgId, companyId, null, new Date(this.#now()));
+    const check = LOGO_TYPES[logo.mime as keyof typeof LOGO_TYPES];
+    if (check === undefined) throw new PracticeError("invalid", "A logo is a PNG, JPEG or WebP image");
+    const bytes = Uint8Array.from(Buffer.from(logo.data, "base64"));
+    if (bytes.length === 0 || bytes.length > LOGO_MAX_BYTES) throw new PracticeError("invalid", "A logo is at most 100 KB");
+    if (!check(bytes)) throw new PracticeError("invalid", "That file is not the image it says it is");
+    await this.#store.setLogo(orgId, companyId, { mime: logo.mime as keyof typeof LOGO_TYPES, bytes }, new Date(this.#now()));
   }
 
   async #company(site: PracticeSite, slug: string): Promise<Company> {
@@ -261,12 +298,13 @@ export class PrepCommunity {
   async company(site: PracticeSite, slug: string, learner: Learner | null, window: Window) {
     const company = await this.#company(site, slug);
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
-    const [reports, problems, progress, plus, experiences] = await Promise.all([
+    const [reports, problems, progress, plus, experiences, logos] = await Promise.all([
       this.#store.reports(scope, company.id),
       this.#practice.problems(practiceLearner(site.orgId, null)),
       learner === null ? null : this.#practice.progress(scope),
       this.#holdsPlus(site, learner),
       this.experiences(site, learner, slug),
+      this.#store.logoVersions(practiceLearner(site.orgId, null)),
     ]);
     const byId = new Map(problems.filter((p) => p.published).map((p) => [p.id, p]));
     const today = this.#today();
@@ -311,8 +349,14 @@ export class PrepCommunity {
       })),
       locked: rows.length - shown.length,
       topics: [...topics.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([tag, problems]) => ({ tag, problems })),
+      // The ideas behind the tags, with how many of each the learner has solved: where they are weak.
+      patterns: patternCounts(
+        rows.map((r) => r.problem),
+        solved,
+      ),
       difficulty,
       experiences,
+      logo: this.#logoUrl(site, company.slug, logos.get(company.id)),
     };
   }
 
@@ -321,9 +365,10 @@ export class PrepCommunity {
   async experiences(site: PracticeSite, learner: Learner | null, companySlug?: string) {
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
     const company = companySlug === undefined ? undefined : await this.#company(site, companySlug);
-    const [list, voted, companies, titles] = await Promise.all([
+    const [list, voted, flagged, companies, titles] = await Promise.all([
       this.#store.experiences(scope, company === undefined ? {} : { companyId: company.id }),
       this.#store.myVotes(scope),
+      this.#store.myFlags(scope),
       this.#store.companies(scope),
       this.#titles(site.orgId),
     ]);
@@ -331,7 +376,7 @@ export class PrepCommunity {
     // Published ones, and the learner's own whatever their state.
     return list
       .filter((e) => e.status === "published" || (learner !== null && e.learnerId === learner.id))
-      .map((e) => this.#view(e, names.get(e.companyId), learner, voted.has(e.id), titles));
+      .map((e) => ({ ...this.#view(e, names.get(e.companyId), learner, voted.has(e.id), titles), flagged: flagged.has(e.id) }));
   }
 
   /** Each published problem's title by its address, so a round names its problems in words. */
@@ -380,6 +425,47 @@ export class PrepCommunity {
       authorName: input.anonymous ? "Anonymous" : learner.name,
     });
     return this.#view(saved, company, learner, false, published);
+  }
+
+  /** Flag a published write-up as fake, rude or about the wrong company: once each; three holds it for staff. */
+  async flag(site: PracticeSite, learner: Learner, id: string, reason: FlagReason, note: string) {
+    const text = note.trim();
+    if (text.length > 500) throw new PracticeError("invalid", "A note is at most 500 characters");
+    const result = await this.#store.flagExperience(site.orgId, id, learner.id, { reason, note: text }, new Date(this.#now()));
+    if (!result.added) {
+      if ((await this.#store.myFlags(practiceLearner(site.orgId, learner.id))).has(id)) throw new PracticeError("limit_reached", "You have flagged this already");
+      throw new PracticeError("not_found", "No such write-up to flag");
+    }
+    return { flagged: true as const, held: result.held };
+  }
+
+  // --- success stories -------------------------------------------------------------------------------
+
+  async stories(site: PracticeSite, learner: Learner | null) {
+    const list = await this.#store.stories(practiceLearner(site.orgId, learner?.id ?? null));
+    return list
+      .filter((s) => s.status === "published" || (learner !== null && s.learnerId === learner.id))
+      .map(({ id, company, role, story, authorName, status, createdAt, publishedAt, learnerId }) => ({
+        id,
+        company,
+        role,
+        story,
+        author: authorName,
+        status,
+        mine: learner !== null && learnerId === learner.id,
+        at: publishedAt ?? createdAt,
+      }));
+  }
+
+  async submitStory(site: PracticeSite, learner: Learner, input: { company: string; role: string; story: string; anonymous: boolean }) {
+    const company = input.company.trim();
+    const role = input.role.trim();
+    const story = input.story.trim();
+    if (company.length < 1 || company.length > 120 || role.length < 1 || role.length > 120) throw new PracticeError("invalid", "Name the company and the role, each in 1 to 120 characters");
+    if (story.length < 50 || story.length > 3000) throw new PracticeError("invalid", "Tell the story in 50 to 3,000 characters");
+    if ((await this.#store.pendingStories(site.orgId, learner.id)) >= MAX_PENDING_STORIES) throw new PracticeError("too_many_runs", `You have ${MAX_PENDING_STORIES} stories waiting to be read. Send more once those are.`);
+    const saved = await this.#store.addStory(site.orgId, learner.id, { company, role, story, authorName: input.anonymous ? "Anonymous" : learner.name });
+    return { id: saved.id, company, role, story, author: saved.authorName, status: saved.status, mine: true, at: saved.createdAt };
   }
 
   async vote(site: PracticeSite, learner: Learner, id: string, on: boolean): Promise<void> {
@@ -697,6 +783,31 @@ export class PrepCommunity {
         await this.#store.addReport(orgId, { companyId: decided.companyId, problemId, reportedOn: `${decided.interviewed}-01`, source: "experience", experienceId: decided.id });
       }
     }
+    return decided;
+  }
+
+  /** Write-ups learners have flagged, with the reasons, for staff to keep or remove. */
+  async flagQueue(orgId: OrgId) {
+    const [queue, list, companies, titles] = await Promise.all([this.#store.flagQueue(orgId), this.#store.experiences(practiceStaff(orgId)), this.#store.companies(practiceStaff(orgId)), this.#titles(orgId)]);
+    const byId = new Map(list.map((e) => [e.id, e]));
+    const names = new Map(companies.map((c) => [c.id, c]));
+    return queue.flatMap((q) => {
+      const e = byId.get(q.experienceId);
+      return e === undefined ? [] : [{ experience: { ...this.#view(e, names.get(e.companyId), null, false, titles), learnerId: e.learnerId }, flags: q.flags }];
+    });
+  }
+
+  async resolveFlags(orgId: OrgId, id: string, keep: boolean, by: string): Promise<void> {
+    if (!(await this.#store.resolveFlags(orgId, id, keep, by, new Date(this.#now())))) throw new PracticeError("not_found", "No open flags on that write-up");
+  }
+
+  async staffStories(orgId: OrgId, status?: "pending" | "published" | "rejected") {
+    return this.#store.stories(practiceStaff(orgId), status);
+  }
+
+  async decideStory(orgId: OrgId, id: string, status: "published" | "rejected", by: string) {
+    const decided = await this.#store.decideStory(orgId, id, status, by, new Date(this.#now()));
+    if (decided === null) throw new PracticeError("not_found", "No pending story by that id");
     return decided;
   }
 

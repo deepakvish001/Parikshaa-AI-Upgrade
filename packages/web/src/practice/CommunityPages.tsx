@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, Building2, CircleCheck, Coins, Crown, Download, Lock, MessageSquareText, Plus, Share2, ShoppingBag, ThumbsUp, Trophy, UserRound } from "lucide-react";
+import { Award, Building2, CircleCheck, Coins, Crown, Download, Flag, Lock, MessageSquareText, PartyPopper, Plus, Share2, ShoppingBag, ThumbsUp, Trophy, UserRound } from "lucide-react";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
-import type { CompanyWindow, InterviewExperience, InterviewRound, PracticeClient } from "./client.ts";
+import type { CompanyWindow, FlagReason, InterviewExperience, InterviewRound, PracticeClient } from "./client.ts";
 import { useCommunityText, type CommunityKey } from "./community-text.ts";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context } from "./parts.tsx";
 import "./prep.css";
@@ -45,9 +45,14 @@ export function CompaniesPage({ client, nav, site }: Context) {
           <h1>{c("companies.title")}</h1>
           <p className="notice">{c("companies.lead")}</p>
         </div>
-        <Link nav={nav} to="/experiences" className="button secondary">
-          <MessageSquareText aria-hidden="true" /> {c("exp.title")}
-        </Link>
+        <div className="row">
+          <Link nav={nav} to="/stories" className="button secondary">
+            <PartyPopper aria-hidden="true" /> {c("stories.title")}
+          </Link>
+          <Link nav={nav} to="/experiences" className="button secondary">
+            <MessageSquareText aria-hidden="true" /> {c("exp.title")}
+          </Link>
+        </div>
       </header>
       {companies.isPending ? (
         <Loading />
@@ -60,7 +65,7 @@ export function CompaniesPage({ client, nav, site }: Context) {
           {companies.data.map((company) => (
             <Link key={company.slug} nav={nav} to={`/companies/${company.slug}`} className="card track-card">
               <strong className="company-name">
-                <Building2 aria-hidden="true" /> {company.name}
+                {(company.logo ?? null) === null ? <Building2 aria-hidden="true" /> : <img className="company-logo" src={company.logo!} alt="" width={28} height={28} loading="lazy" />} {company.name}
               </strong>
               <span className="notice">{c("companies.card", { problems: company.problems, experiences: company.experiences })}</span>
             </Link>
@@ -88,7 +93,9 @@ export function CompanyPage({ client, nav, learner, site, slug }: Context & { re
     <div className="prep-page">
       <header className="prep-head">
         <div>
-          <h1>{data.name}</h1>
+          <h1>
+            {(data.logo ?? null) === null ? null : <img className="company-logo large" src={data.logo!} alt="" width={40} height={40} />} {data.name}
+          </h1>
           {data.about === "" ? null : <Markdown source={data.about} />}
         </div>
         <Link nav={nav} to={`/experiences?company=${encodeURIComponent(data.slug)}`} className="button secondary">
@@ -174,6 +181,23 @@ export function CompanyPage({ client, nav, learner, site, slug }: Context & { re
               ))}
             </div>
           </section>
+          {(data.patterns ?? []).length === 0 ? null : (
+            <section className="card" aria-labelledby="patterns-title">
+              <h2 id="patterns-title">{c("company.patterns")}</h2>
+              <p className="notice">{c("company.patternsLead")}</p>
+              <ul className="topic-bars">
+                {data.patterns!.map((p) => (
+                  <li key={p.pattern}>
+                    <span>{p.pattern}</span>
+                    <span className="bar" aria-hidden="true">
+                      <span style={{ width: `${(p.solved / p.problems) * 100}%` }} />
+                    </span>
+                    <span className="count">{c("company.patternSolved", { solved: p.solved, n: p.problems })}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <section className="card">
             <h2>{c("company.topics")}</h2>
             <ul className="topic-bars">
@@ -221,7 +245,13 @@ function ExperienceList({ client, nav, learner, site, experiences }: Context & {
                 </Link>
               </strong>
               <span className={`exp-verdict ${e.verdict}`}>{c(`exp.verdict.${e.verdict}` as CommunityKey)}</span>
-              {e.status === "pending" ? <span className="stat-chip">{c("exp.pending")}</span> : e.status === "rejected" ? <span className="stat-chip">{c("exp.rejected")}</span> : null}
+              {e.status === "pending" ? (
+                <span className="stat-chip">{c("exp.pending")}</span>
+              ) : e.status === "rejected" ? (
+                <span className="stat-chip">{c("exp.rejected")}</span>
+              ) : e.status === "held" ? (
+                <span className="stat-chip">{c("exp.held")}</span>
+              ) : null}
               <span className="notice">{c("exp.by", { author: e.author, role: e.role, month: month(e.interviewed) })}</span>
             </header>
             <ol className="rounds">
@@ -258,10 +288,66 @@ function ExperienceList({ client, nav, learner, site, experiences }: Context & {
                 <ThumbsUp aria-hidden="true" /> {c("exp.helpful", { n: e.votes })}
               </button>
             )}
+            {e.status !== "published" || learner === null || e.mine ? null : <FlagButton client={client} site={site} experience={e} />}
           </article>
         </li>
       ))}
     </ul>
+  );
+}
+
+const FLAG_REASONS: readonly FlagReason[] = ["fake", "offensive", "wrong_company", "other"];
+
+/** Tell staff a write-up looks fake, rude or about the wrong company: once. */
+function FlagButton({ client, site, experience }: { readonly client: PracticeClient; readonly site: string; readonly experience: InterviewExperience }) {
+  const c = useCommunityText();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<FlagReason>("fake");
+  const [note, setNote] = useState("");
+  const flag = useMutation({
+    mutationFn: () => client.flagExperience(experience.id, reason, note.trim()),
+    onSuccess: () => {
+      setOpen(false);
+      void queryClient.invalidateQueries({ queryKey: key(site) });
+    },
+  });
+  if (experience.flagged === true || flag.isSuccess) return <span className="notice small">{c("exp.flagged")}</span>;
+  if (!open) {
+    return (
+      <button type="button" className="quiet small" onClick={() => setOpen(true)}>
+        <Flag aria-hidden="true" /> {c("exp.flag")}
+      </button>
+    );
+  }
+  return (
+    <form
+      className="inline-form"
+      aria-label={c("exp.flag")}
+      onSubmit={(e: FormEvent) => {
+        e.preventDefault();
+        flag.mutate();
+      }}
+    >
+      <label>
+        {c("exp.flagWhy")}
+        <select value={reason} onChange={(e) => setReason(e.target.value as FlagReason)}>
+          {FLAG_REASONS.map((r) => (
+            <option key={r} value={r}>
+              {c(`exp.flag.${r}` as CommunityKey)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        {c("exp.flagNote")}
+        <input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} />
+      </label>
+      <button type="submit" className="small" disabled={flag.isPending}>
+        {c("exp.flagSend")}
+      </button>
+      {flag.isError ? <Failed error={flag.error} /> : null}
+    </form>
   );
 }
 
@@ -721,6 +807,90 @@ function ProfileSettings({ client, nav, site, learnerId }: { readonly client: Pr
         </p>
       ) : null}
     </section>
+  );
+}
+
+/** Success stories: how learners got placed, and a learner telling theirs. */
+export function StoriesPage({ client, learner, site }: Context) {
+  const c = useCommunityText();
+  const when = useWhen();
+  const queryClient = useQueryClient();
+  const stories = useQuery({ queryKey: key(site, "stories", learner?.id ?? null), queryFn: () => client.stories() });
+  const [draft, setDraft] = useState({ company: "", role: "", story: "", anonymous: false });
+  const share = useMutation({
+    mutationFn: () => client.shareStory({ ...draft, company: draft.company.trim(), role: draft.role.trim(), story: draft.story.trim() }),
+    onSuccess: () => {
+      setDraft({ company: "", role: "", story: "", anonymous: false });
+      void queryClient.invalidateQueries({ queryKey: key(site, "stories") });
+    },
+  });
+  return (
+    <div className="prep-page">
+      <header className="prep-head">
+        <div>
+          <h1>
+            <PartyPopper aria-hidden="true" /> {c("stories.title")}
+          </h1>
+          <p className="notice">{c("stories.lead")}</p>
+        </div>
+      </header>
+      {stories.isPending ? (
+        <Loading />
+      ) : stories.isError ? (
+        <Failed error={stories.error} />
+      ) : stories.data.length === 0 ? (
+        <p className="notice">{c("stories.none")}</p>
+      ) : (
+        <ul className="experience-list">
+          {stories.data.map((s) => (
+            <li key={s.id}>
+              <article className="experience" aria-label={`${s.company}, ${s.role}`}>
+                <header>
+                  <strong>{s.company}</strong>
+                  {s.status === "pending" ? <span className="stat-chip">{c("exp.pending")}</span> : s.status === "rejected" ? <span className="stat-chip">{c("exp.rejected")}</span> : null}
+                  <span className="notice">{c("stories.by", { author: s.author, role: s.role, day: when(s.at, false) })}</span>
+                </header>
+                <Markdown source={s.story} />
+              </article>
+            </li>
+          ))}
+        </ul>
+      )}
+      {learner === null ? null : (
+        <form
+          className="card stack"
+          aria-label={c("stories.share")}
+          onSubmit={(e: FormEvent) => {
+            e.preventDefault();
+            share.mutate();
+          }}
+        >
+          <h2>{c("stories.share")}</h2>
+          <div className="row">
+            <label>
+              {c("stories.company")}
+              <input value={draft.company} required maxLength={120} onChange={(e) => setDraft({ ...draft, company: e.target.value })} />
+            </label>
+            <label>
+              {c("stories.role")}
+              <input value={draft.role} required maxLength={120} onChange={(e) => setDraft({ ...draft, role: e.target.value })} />
+            </label>
+          </div>
+          <label>
+            {c("stories.story")}
+            <textarea value={draft.story} required minLength={50} maxLength={3000} rows={6} onChange={(e) => setDraft({ ...draft, story: e.target.value })} />
+          </label>
+          <label className="check-row">
+            <input type="checkbox" checked={draft.anonymous} onChange={(e) => setDraft({ ...draft, anonymous: e.target.checked })} /> {c("exp.form.anonymous")}
+          </label>
+          <button type="submit" disabled={share.isPending}>
+            {c("stories.send")}
+          </button>
+          {share.isSuccess ? <p role="status">{c("stories.sent")}</p> : null}
+          {share.isError ? <Failed error={share.error} /> : null}
+        </form>
+      )}
+    </div>
   );
 }
 

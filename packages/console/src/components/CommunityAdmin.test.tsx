@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { ConsoleClient, StaffExperience, StoreItem, StoreOrder } from "../api.ts";
-import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
+import { CoinStore, Companies, Experiences, StarterPacks, Stories } from "./CommunityAdmin.tsx";
 
 /** Companies, experiences and the coin store in the console (ROADMAP §16), against a stub of its client. */
 
@@ -167,5 +167,70 @@ describe("the coin store", () => {
     expect(within(orders).getByText("12 MG Road, Pune")).toBeTruthy();
     await user.click(within(orders).getByRole("button", { name: "Mark sent" }));
     await waitFor(() => expect(client.closeStoreOrder).toHaveBeenCalledWith("o1", "fulfilled", ""));
+  });
+});
+
+describe("community v2", () => {
+  const experience: StaffExperience = {
+    id: "e1",
+    learnerId: "l1",
+    company: { slug: "acme", name: "Acme" },
+    role: "SDE 1",
+    interviewed: "2026-08",
+    verdict: "offer",
+    rounds: [{ kind: "DSA", asked: "Two sum.", problemSlugs: [] }],
+    tips: "",
+    author: "Asha",
+    status: "held",
+    votes: 0,
+    at: "2026-09-01T00:00:00Z",
+  };
+
+  it("shows reported write-ups with their reasons, and keeps one", async () => {
+    const client = {
+      experiences: vi.fn(async () => []),
+      flaggedExperiences: vi.fn(async () => [{ experience, flags: [{ reason: "fake", note: "Never came to campus", at: "2026-09-05T00:00:00Z" }, { reason: "wrong_company", note: "", at: "2026-09-05T00:00:00Z" }] }]),
+      resolveFlags: vi.fn(async () => undefined),
+    };
+    const user = userEvent.setup();
+    show(<Experiences client={client as unknown as ConsoleClient} canWrite />);
+    const reported = await screen.findByRole("article", { name: "Reported: Acme, SDE 1, by Asha" });
+    expect(reported.textContent).toContain("Looks made up — Never came to campus");
+    expect(reported.textContent).toContain("About another company");
+    expect(reported.textContent).toContain("Held");
+    await user.click(within(reported).getByRole("button", { name: "Keep it" }));
+    await waitFor(() => expect(client.resolveFlags).toHaveBeenCalledWith("e1", true));
+  });
+
+  it("publishes a success story", async () => {
+    const client = {
+      stories: vi.fn(async () => [
+        { id: "s1", learnerId: "l1", company: "Acme", role: "SDE 1", story: "A hundred problems and the plan.", authorName: "Asha", status: "pending", createdAt: "2026-09-01T00:00:00Z", publishedAt: null },
+      ]),
+      decideStory: vi.fn(async () => undefined),
+    };
+    const user = userEvent.setup();
+    show(<Stories client={client as unknown as ConsoleClient} canWrite />);
+    const story = await screen.findByRole("article", { name: "Acme, SDE 1, by Asha" });
+    await user.click(within(story).getByRole("button", { name: "Publish" }));
+    await waitFor(() => expect(client.decideStory).toHaveBeenCalledWith("s1", "published"));
+    expect(client.stories).toHaveBeenCalledWith("pending");
+  });
+
+  it("uploads a company's logo as base64, and refuses one too big before sending it", async () => {
+    const client = {
+      companies: vi.fn(async () => [{ id: "c1", slug: "acme", name: "Acme", about: "", reports: [] }]),
+      practiceProblems: vi.fn(async () => []),
+      setCompanyLogo: vi.fn(async () => undefined),
+    };
+    const user = userEvent.setup();
+    show(<Companies client={client as unknown as ConsoleClient} canWrite />);
+    const input = await screen.findByLabelText("Logo for Acme");
+    await user.upload(input, new File([new Uint8Array(101 * 1024)], "big.png", { type: "image/png" }));
+    expect(await screen.findByText("A logo is at most 100 KB")).toBeTruthy();
+    expect(client.setCompanyLogo).not.toHaveBeenCalled();
+    await user.upload(input, new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "logo.png", { type: "image/png" }));
+    await waitFor(() => expect(client.setCompanyLogo).toHaveBeenCalledWith("c1", { mime: "image/png", data: "iVBORw==" }));
+    expect(await screen.findByText("Logo saved.")).toBeTruthy();
   });
 });

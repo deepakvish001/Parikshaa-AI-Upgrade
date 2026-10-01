@@ -45,6 +45,31 @@ export interface Profile {
   readonly bio: string;
 }
 
+/** Flags at which a published experience is held for staff to look at. */
+export const FLAGS_TO_HOLD = 3;
+
+export type FlagReason = "fake" | "offensive" | "wrong_company" | "other";
+
+/** A published experience with flags staff have not looked at. */
+export interface FlaggedExperience {
+  readonly experienceId: string;
+  readonly status: Experience["status"];
+  readonly flags: readonly { readonly reason: FlagReason; readonly note: string; readonly at: string }[];
+}
+
+/** A learner's placement story. */
+export interface Story {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly company: string;
+  readonly role: string;
+  readonly story: string;
+  readonly authorName: string;
+  readonly status: "pending" | "published" | "rejected";
+  readonly createdAt: string;
+  readonly publishedAt: string | null;
+}
+
 export interface Company {
   readonly id: string;
   readonly slug: string;
@@ -77,7 +102,8 @@ export interface Experience {
   readonly rounds: readonly ExperienceRound[];
   readonly tips: string;
   readonly authorName: string;
-  readonly status: "pending" | "published" | "rejected";
+  /** held: out of sight after three flags, until staff keep or remove it. */
+  readonly status: "pending" | "published" | "rejected" | "held";
   readonly createdAt: string;
   readonly publishedAt: string | null;
   readonly votes: number;
@@ -212,6 +238,30 @@ const toOrder = (r: OrderRow): StoreOrder => ({
   note: r.note,
   createdAt: iso(r.created_at),
   closedAt: r.closed_at === null ? null : iso(r.closed_at),
+});
+
+interface StoryRow {
+  id: string;
+  learner_id: string;
+  company: string;
+  role: string;
+  story: string;
+  author_name: string;
+  status: Story["status"];
+  created_at: string | Date;
+  published_at: string | Date | null;
+}
+const STORY_COLUMNS = "id, learner_id, company, role, story, author_name, status, created_at, published_at";
+const toStory = (r: StoryRow): Story => ({
+  id: r.id,
+  learnerId: r.learner_id,
+  company: r.company,
+  role: r.role,
+  story: r.story,
+  authorName: r.author_name,
+  status: r.status,
+  createdAt: iso(r.created_at),
+  publishedAt: r.published_at === null ? null : iso(r.published_at),
 });
 
 export class PrepCommunityStore {
@@ -384,6 +434,141 @@ export class PrepCommunityStore {
       const rows = await tx.query<ExperienceRow>(`SELECT ${EXPERIENCE_COLUMNS} FROM prep_experiences e WHERE e.org_id = $1 AND e.id = $2`, [scope.orgId, id]);
       return toExperience(rows[0]!);
     });
+  }
+
+  // --- flags ---------------------------------------------------------------------------
+
+  /**
+   * A learner flags a published experience, once. At `FLAGS_TO_HOLD` open
+   * flags it is held. False when they flagged it already, or it is not published.
+   */
+  async flagExperience(orgId: OrgId, experienceId: string, learnerId: string, flag: { reason: FlagReason; note: string }, at: Date): Promise<{ readonly added: boolean; readonly held: boolean }> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const found = await tx.query<{ status: string; learner_id: string }>(`SELECT status, learner_id FROM prep_experiences WHERE org_id = $1 AND id = $2 FOR UPDATE`, [orgId, experienceId]);
+      if (found[0] === undefined || found[0].status !== "published" || found[0].learner_id === learnerId) return { added: false, held: false };
+      const added = await tx.query(
+        `INSERT INTO prep_experience_flags (org_id, experience_id, learner_id, reason, note, created_at) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT DO NOTHING RETURNING learner_id`,
+        [orgId, experienceId, learnerId, flag.reason, flag.note, at],
+      );
+      if (added.length === 0) return { added: false, held: false };
+      const open = await tx.query<{ n: string }>(`SELECT count(*) AS n FROM prep_experience_flags WHERE org_id = $1 AND experience_id = $2 AND resolved_at IS NULL`, [orgId, experienceId]);
+      if (Number(open[0]!.n) < FLAGS_TO_HOLD) return { added: true, held: false };
+      await tx.query(`UPDATE prep_experiences SET status = 'held' WHERE org_id = $1 AND id = $2 AND status = 'published'`, [orgId, experienceId]);
+      return { added: true, held: true };
+    });
+  }
+
+  /** The experiences this learner has flagged. */
+  async myFlags(scope: PracticeScope): Promise<ReadonlySet<string>> {
+    if (scope.actor !== "learner" || scope.learnerId === null) return new Set();
+    return scoped(this.#sql, scope, async (tx) =>
+      new Set((await tx.query<{ experience_id: string }>(`SELECT experience_id FROM prep_experience_flags WHERE org_id = $1 AND learner_id = $2`, [scope.orgId, scope.learnerId])).map((r) => r.experience_id)),
+    );
+  }
+
+  /** Experiences with flags staff have not decided, most flagged first. */
+  async flagQueue(orgId: OrgId): Promise<readonly FlaggedExperience[]> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ experience_id: string; status: Experience["status"]; reason: FlagReason; note: string; created_at: string | Date }>(
+        `SELECT f.experience_id, e.status, f.reason, f.note, f.created_at FROM prep_experience_flags f
+           JOIN prep_experiences e ON e.org_id = f.org_id AND e.id = f.experience_id
+          WHERE f.org_id = $1 AND f.resolved_at IS NULL ORDER BY f.created_at`,
+        [orgId],
+      );
+      const by = new Map<string, { status: Experience["status"]; flags: { reason: FlagReason; note: string; at: string }[] }>();
+      for (const r of rows) {
+        const entry = by.get(r.experience_id) ?? { status: r.status, flags: [] };
+        entry.flags.push({ reason: r.reason, note: r.note, at: iso(r.created_at) });
+        by.set(r.experience_id, entry);
+      }
+      return [...by.entries()].map(([experienceId, e]) => ({ experienceId, ...e })).sort((a, b) => b.flags.length - a.flags.length);
+    });
+  }
+
+  /** Staff decide a flagged experience: keep it (published again) or remove it. False when it has no open flags. */
+  async resolveFlags(orgId: OrgId, experienceId: string, keep: boolean, by: string, at: Date): Promise<boolean> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const closed = await tx.query(`UPDATE prep_experience_flags SET resolved_at = $3 WHERE org_id = $1 AND experience_id = $2 AND resolved_at IS NULL RETURNING learner_id`, [orgId, experienceId, at]);
+      if (closed.length === 0) return false;
+      await tx.query(
+        keep
+          ? `UPDATE prep_experiences SET status = 'published', reviewed_by = $3 WHERE org_id = $1 AND id = $2 AND status = 'held'`
+          : `UPDATE prep_experiences SET status = 'rejected', reviewed_by = $3 WHERE org_id = $1 AND id = $2 AND status IN ('published', 'held')`,
+        [orgId, experienceId, by],
+      );
+      return true;
+    });
+  }
+
+  // --- success stories -----------------------------------------------------------------
+
+  async addStory(orgId: OrgId, learnerId: string, draft: Pick<Story, "company" | "role" | "story" | "authorName">): Promise<Story> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<StoryRow>(
+        `INSERT INTO prep_stories (org_id, id, learner_id, company, role, story, author_name) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING ${STORY_COLUMNS}`,
+        [orgId, this.#newId(), learnerId, draft.company, draft.role, draft.story, draft.authorName],
+      );
+      return toStory(rows[0]!);
+    });
+  }
+
+  /** Stories: a learner sees the published ones and their own; staff, all, or those in one state. */
+  async stories(scope: PracticeScope, status?: Story["status"]): Promise<readonly Story[]> {
+    return scoped(this.#sql, scope, async (tx) =>
+      (
+        await tx.query<StoryRow>(
+          `SELECT ${STORY_COLUMNS} FROM prep_stories WHERE org_id = $1 AND ($2::text IS NULL OR status = $2) ORDER BY COALESCE(published_at, created_at) DESC LIMIT 500`,
+          [scope.orgId, status ?? null],
+        )
+      ).map(toStory),
+    );
+  }
+
+  /** Publish or reject a pending story; null when there is none. */
+  async decideStory(orgId: OrgId, id: string, status: "published" | "rejected", by: string, at: Date): Promise<Story | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<StoryRow>(
+        `UPDATE prep_stories SET status = $3, reviewed_by = $4, published_at = CASE WHEN $3 = 'published' THEN $5::timestamptz END
+          WHERE org_id = $1 AND id = $2 AND status = 'pending' RETURNING ${STORY_COLUMNS}`,
+        [orgId, id, status, by, at],
+      );
+      return rows[0] === undefined ? null : toStory(rows[0]);
+    });
+  }
+
+  /** How many stories a learner has waiting. */
+  async pendingStories(orgId: OrgId, learnerId: string): Promise<number> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      Number((await tx.query<{ n: string }>(`SELECT count(*) AS n FROM prep_stories WHERE org_id = $1 AND learner_id = $2 AND status = 'pending'`, [orgId, learnerId]))[0]!.n),
+    );
+  }
+
+  // --- company logos ---------------------------------------------------------------------
+
+  async setLogo(orgId: OrgId, companyId: string, logo: { mime: "image/png" | "image/jpeg" | "image/webp"; bytes: Uint8Array } | null, at: Date): Promise<void> {
+    await scoped(this.#sql, practiceStaff(orgId), (tx) =>
+      logo === null
+        ? tx.query(`DELETE FROM prep_company_logos WHERE org_id = $1 AND company_id = $2`, [orgId, companyId])
+        : tx.query(
+            `INSERT INTO prep_company_logos (org_id, company_id, mime, bytes, updated_at) VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (org_id, company_id) DO UPDATE SET mime = $3, bytes = $4, updated_at = $5`,
+            [orgId, companyId, logo.mime, Buffer.from(logo.bytes), at],
+          ),
+    );
+  }
+
+  async logo(scope: PracticeScope, companyId: string): Promise<{ readonly mime: string; readonly bytes: Uint8Array; readonly updatedAt: string } | null> {
+    return scoped(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ mime: string; bytes: Uint8Array; updated_at: string | Date }>(`SELECT mime, bytes, updated_at FROM prep_company_logos WHERE org_id = $1 AND company_id = $2`, [scope.orgId, companyId]);
+      return rows[0] === undefined ? null : { mime: rows[0].mime, bytes: rows[0].bytes, updatedAt: iso(rows[0].updated_at) };
+    });
+  }
+
+  /** When each company's logo was last changed: its version, for the address. */
+  async logoVersions(scope: PracticeScope): Promise<ReadonlyMap<string, string>> {
+    return scoped(this.#sql, scope, async (tx) =>
+      new Map((await tx.query<{ company_id: string; updated_at: string | Date }>(`SELECT company_id, updated_at FROM prep_company_logos WHERE org_id = $1`, [scope.orgId])).map((r) => [r.company_id, iso(r.updated_at)])),
+    );
   }
 
   /** Publish or reject a pending experience. Null when there is no such one, or it was decided already. */
