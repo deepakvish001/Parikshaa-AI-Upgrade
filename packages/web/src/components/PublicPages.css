@@ -1,0 +1,33 @@
+/* Pages opened from a link with no account: loaded only with them. */
+.public-page {
+  text-align: left;
+}
+.public-page h1 {
+  margin: var(--space-2) 0;
+}
+.public-by {
+  max-width: 28rem;
+  margin: var(--space-3) 0;
+}
+.shortlist-table td {
+  vertical-align: middle;
+}
+.shortlist-table .good {
+  color: var(--success);
+  font-weight: 700;
+}
+.shortlist-table .bad {
+  color: var(--danger);
+}
+.decision {
+  display: flex;
+  gap: var(--space-1);
+}
+.decision .chip[aria-pressed="true"].shortlist {
+  background: var(--success-soft);
+  border-color: var(--success);
+}
+.decision .chip[aria-pressed="true"].reject {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}

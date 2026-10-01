@@ -93,6 +93,8 @@ export interface InvitationServiceOptions {
   readonly notice?: (orgId: OrgId) => Promise<Notice | null>;
   /** Lab mode: where an exam may be taken from, and whether it waits for its invigilator. */
   readonly lab?: LabService;
+  /** Where a candidate sits on exam day, when the exam is held in rooms. */
+  readonly seat?: (orgId: OrgId, examId: string, ref: string) => Promise<{ readonly centre: string; readonly room: string; readonly seat: string } | null>;
 }
 
 export interface ImportPreview {
@@ -104,7 +106,8 @@ export interface ImportPreview {
 }
 
 export class InvitationService {
-  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab">>;
+  readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab" | "seat">>;
+  readonly #seat: NonNullable<InvitationServiceOptions["seat"]>;
   readonly #notice: (orgId: OrgId) => Promise<Notice | null>;
   readonly #lab: LabService | null;
   readonly #lead: number;
@@ -118,6 +121,7 @@ export class InvitationService {
     this.#newId = options.newId ?? (() => crypto.randomUUID());
     this.#notice = options.notice ?? (async () => null);
     this.#lab = options.lab ?? null;
+    this.#seat = options.seat ?? (async () => null);
   }
 
   #require(actor: Actor, permission: Permission) {
@@ -266,6 +270,32 @@ export class InvitationService {
     return invitation!;
   }
 
+  /**
+   * Invite several people at once, on the exam's window (or a week from now
+   * without one), as a placement drive does. Anyone already invited to the
+   * exam keeps their invitation and is counted as skipped.
+   */
+  async inviteMany(
+    actor: Actor,
+    examId: string,
+    people: readonly { readonly ref: string; readonly name: string; readonly email: string | null; readonly phone: string | null }[],
+    channels: readonly Channel[],
+    detail: Record<string, unknown> = {},
+  ): Promise<{ readonly invited: number; readonly skipped: number }> {
+    const scope = this.#require(actor, "attempt:start");
+    await this.#examExists(actor.orgId, examId);
+    const [window, existing] = await Promise.all([this.#o.invitations.getWindow(scope, examId), this.#o.invitations.existingRefs(scope, examId)]);
+    const opensAt = window?.opensAt ?? new Date(this.#now()).toISOString();
+    const closesAt = window?.closesAt ?? new Date(this.#now() + 7 * DAY_MS).toISOString();
+    if (window !== null && Date.parse(window.closesAt) <= this.#now()) throw new AttemptError("invalid_state", "The exam's window has closed: set a new one first");
+    const drafts: InvitationDraft[] = people
+      .filter((p) => !existing.has(p.ref))
+      .map((p) => ({ candidateRef: p.ref, name: p.name, email: p.email, phone: p.phone, opensAt, closesAt, hardClose: window?.hardClose ?? true }));
+    const invited = drafts.length === 0 ? [] : await this.#o.invitations.invite(scope, examId, drafts, (id, draft) => this.#messages(draft, channels)(id));
+    if (invited.length > 0) await this.#audit(actor, "invitations.imported", examId, { candidates: invited.length, channels, ...detail });
+    return { invited: invited.length, skipped: people.length - invited.length };
+  }
+
   list(actor: Actor, examId: string): Promise<readonly InvitationStatus[]> {
     return this.#o.invitations.list(this.#require(actor, "attempt:read"), examId, new Date(this.#now()));
   }
@@ -404,7 +434,8 @@ export class InvitationService {
     const started = invitation.attemptId !== null && (await this.#o.store.hasStarted(scope, invitation.attemptId as AttemptId));
     // What opening will ask for, so the page can ask it first: the same notice and camera redeem would refuse without.
     const notice = started ? null : await this.#notice(toOrgId(named.orgId));
-    return { ...briefingOf(exam, invitation, started), notice };
+    const seat = await this.#seat(toOrgId(named.orgId), invitation.examId, invitation.candidateRef);
+    return { ...briefingOf(exam, invitation, started), notice, seat };
   }
 }
 
@@ -435,13 +466,15 @@ export interface Briefing {
    * show it first, in its place among the steps, instead of on refusal.
    */
   readonly notice: Notice | null;
+  /** Where to sit, when the exam is held in rooms; the admit card says the same. */
+  readonly seat: { readonly centre: string; readonly room: string; readonly seat: string } | null;
 }
 
 export function briefingOf(
   exam: Exam,
   invitation: Pick<Invitation, "name" | "candidateRef" | "opensAt" | "closesAt">,
   started: boolean,
-): Omit<Briefing, "notice"> {
+): Omit<Briefing, "notice" | "seat"> {
   const sections = exam.sections ?? [];
   const every = [...exam.questions, ...sections.flatMap((s) => s.pool)];
   const kinds = new Set<Briefing["kinds"][number]>();

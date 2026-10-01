@@ -49,7 +49,7 @@ import type {
 } from "@parikshaa/store";
 import { AppendRefused, LedgerStore, candidateScope, staffScope } from "@parikshaa/store";
 import { RunnerUnavailable, type CodeRunner, type RunResult, type TestResult } from "@parikshaa/runner";
-import { assessReply, generateProbe, gradeWithRubric, type EngineOptions } from "@parikshaa/viva";
+import { assessReply, DEFAULT_MODEL, generateProbe, gradeWithRubric, measure, type EngineOptions, type ReportedUsage } from "@parikshaa/viva";
 import { can, type Actor, type Permission } from "./staff-auth.js";
 
 /**
@@ -248,6 +248,20 @@ export class ExamService {
     const cap = org?.monthlySpendCapMicroUsd ?? null;
     if (cap === null) return true;
     return (await this.#store.spendSince(scope, monthStart(this.#now()))) < cap;
+  }
+
+  /**
+   * A model call staff asked for outside any attempt — drafting a test from a
+   * job description. Refused once the month's spend cap is reached; its cost
+   * is counted with the rest of the organisation's, under the "author" route.
+   */
+  async authoring<T>(actor: Actor, run: (client: Anthropic, model: string) => Promise<{ readonly result: T; readonly usage: ReportedUsage }>): Promise<T> {
+    const scope = this.#require(actor, "exam:write");
+    if (!(await this.#withinBudget(scope))) throw new SpendCapReached();
+    const model = this.#engine.model ?? DEFAULT_MODEL;
+    const { result, usage } = await run(this.#engine.client, model);
+    await this.#store.recordUsage(scope, { ...measure("author", model, usage), attemptId: null });
+    return result;
   }
 
   // --- candidate: reading ---------------------------------------------------

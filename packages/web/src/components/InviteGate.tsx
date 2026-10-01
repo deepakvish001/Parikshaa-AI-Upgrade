@@ -166,7 +166,7 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
     width = "reading";
     body = <CameraCheck policy={stage.policy} onReady={() => void open(stage.consent, true)} />;
   } else if (stage.kind === "early") {
-    body = <NotOpenYet opensAt={stage.opensAt} proctored={stage.brief?.proctored ?? false} title={stage.brief?.title} />;
+    body = <NotOpenYet opensAt={stage.opensAt} proctored={stage.brief?.proctored ?? false} title={stage.brief?.title} seat={stage.brief?.seat ?? null} code={code} />;
   } else if (stage.kind === "closed") {
     body = (
       <StatusCard icon={CalendarX2} label={t("invite.closedRegion")} title={t("invite.closedOn", { when: ist(stage.closesAt, uiLocaleOf(language)) })}>
@@ -248,7 +248,19 @@ function untilClock(ms: number): string {
  * Early: when the test opens, counting down, and what to get ready meanwhile.
  * The page lets the candidate in by itself at that moment ({@link InviteGate}).
  */
-function NotOpenYet({ opensAt, proctored, title }: { opensAt: string; proctored: boolean; title: string | undefined }) {
+function NotOpenYet({
+  opensAt,
+  proctored,
+  title,
+  seat,
+  code,
+}: {
+  opensAt: string;
+  proctored: boolean;
+  title: string | undefined;
+  seat: { readonly centre: string; readonly room: string; readonly seat: string } | null;
+  code: string;
+}) {
   const { t, language } = usePreferences();
   const ui = uiLocaleOf(language);
   const [now, setNow] = useState(() => Date.now());
@@ -280,6 +292,14 @@ function NotOpenYet({ opensAt, proctored, title }: { opensAt: string; proctored:
         </span>
       </p>
       <p className="notice">{t("invite.earlyNote")}</p>
+      {seat === null ? null : (
+        <p className="seat-line">
+          <strong>{t("invite.seat", { place: [seat.centre, seat.room, seat.seat].filter((p) => p !== "").join(" · ") })}</strong>{" "}
+          <a href={`/api/invitations/admit-card.pdf?code=${encodeURIComponent(code)}`} target="_blank" rel="noopener">
+            {t("invite.admitCard")}
+          </a>
+        </p>
+      )}
       <div className="prep">
         <h2>{t("invite.prepare")}</h2>
         <ul>

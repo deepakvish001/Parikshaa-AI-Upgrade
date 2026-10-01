@@ -285,6 +285,8 @@ export const pa: Messages = {
   "invite.opensIn": "{time} ਵਿੱਚ ਖੁੱਲ੍ਹੇਗੀ",
   "invite.opensInLabel": "ਖੁੱਲ੍ਹਣ ਵਿੱਚ",
   "invite.earlyNote": "ਇਹ ਪੰਨਾ ਖੁੱਲ੍ਹਾ ਰੱਖੋ, ਉਸ ਸਮੇਂ ਇਹ ਤੁਹਾਨੂੰ ਅੰਦਰ ਆਉਣ ਦੇਵੇਗਾ; ਜਾਂ ਉਦੋਂ ਇਸੇ ਲਿੰਕ 'ਤੇ ਵਾਪਸ ਆਓ। ਹਾਲੇ ਕੁਝ ਸ਼ੁਰੂ ਨਹੀਂ ਹੋਇਆ।",
+  "invite.seat": "ਤੁਹਾਡੀ ਸੀਟ: {place}",
+  "invite.admitCard": "ਆਪਣਾ ਦਾਖ਼ਲਾ ਕਾਰਡ ਡਾਊਨਲੋਡ ਕਰੋ",
   "invite.prepare": "ਉਡੀਕ ਦੌਰਾਨ",
   "invite.prepId": "ਆਪਣਾ ਫ਼ੋਟੋ ਪਛਾਣ-ਪੱਤਰ ਨਾਲ ਰੱਖੋ।",
   "invite.prepRoom": "ਅਜਿਹਾ ਸ਼ਾਂਤ ਕਮਰਾ ਚੁਣੋ ਜਿੱਥੇ ਕੋਈ ਤੁਹਾਨੂੰ ਪਰੇਸ਼ਾਨ ਨਾ ਕਰੇ।",

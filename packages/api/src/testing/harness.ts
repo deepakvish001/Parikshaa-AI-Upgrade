@@ -24,6 +24,9 @@ import {
   LabStore,
   RecheckStore,
   MarkingStore,
+  PlacementStore,
+  SeatStore,
+  ShortlistStore,
   migrate,
   pgliteExecutor,
   type SqlExecutor,
@@ -33,6 +36,9 @@ import type { CodeRunner } from "@parikshaa/runner";
 import { LabService } from "../lab.js";
 import { RecheckService } from "../rechecks.js";
 import { MarkingService } from "../marking.js";
+import { PlacementService } from "../placement.js";
+import { SeatService } from "../seats.js";
+import { ShortlistService } from "../shortlists.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -186,8 +192,10 @@ export async function wire(
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const lab = new LabService({ lab: new LabStore(sql), invitations: invitationStore, store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
+  const seatStore = new SeatStore(sql);
   const invitations = new InvitationService({
     notice: (orgId) => privacy.noticeFor(orgId),
+    seat: async (orgId, examId, ref) => (await seatStore.seats(orgId, examId)).find((s) => s.ref === ref) ?? null,
     lab,
     exams: service,
     store,
@@ -324,6 +332,9 @@ export async function wire(
     lab,
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
+    seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
+    shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
+    placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,
     auth,
     security,

@@ -4240,28 +4240,47 @@ button.month-day.picked::after {
   padding-left: var(--space-5);
 }
 
-/* Practice analytics (PrepAnalytics.tsx) */
-.stat-row {
+/* Placement and a test from a job */
+.pill.tone-ok {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: var(--success-border);
+}
+.pill.tone-live {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: var(--info-border);
+}
+.pill.tone-bad {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+.role-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--space-3);
+  gap: var(--space-2);
+}
+.role-option {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.role-option.chosen {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.role-summary {
+  display: block;
+  color: var(--text-secondary);
+}
+.draft-sections tr.empty td {
+  color: var(--text-secondary);
+}
+.draft-notes {
   margin: 0;
-}
-.stat-row dt {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-.stat-row dd {
-  margin: 0;
-  font-size: var(--text-2xl);
-  font-weight: var(--weight-bold);
-  font-variant-numeric: tabular-nums;
-}
-.day-bar {
-  display: inline-block;
-  height: 0.6rem;
-  min-width: 2px;
-  border-radius: 2px;
-  background: var(--primary);
-  vertical-align: middle;
+  padding-left: 1.1rem;
 }

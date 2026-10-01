@@ -151,6 +151,8 @@ export interface Briefing {
   readonly proctoring: ProctoringPolicy | null;
   /** The privacy notice opening will ask agreement to; null when there is none or the attempt has begun. */
   readonly notice: Notice | null;
+  /** Where to sit, when the exam is held in rooms; absent from an older server. */
+  readonly seat?: { readonly centre: string; readonly room: string; readonly seat: string } | null;
 }
 
 /** The paper itself, as the instructions describe it: a briefing without who, when, or what opening asks. */

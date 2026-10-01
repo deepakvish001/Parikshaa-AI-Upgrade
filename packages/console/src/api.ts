@@ -106,7 +106,7 @@ export interface ApiKey {
 }
 
 export interface RouteUsage {
-  readonly route: "probe" | "assess" | "grade" | "tutor";
+  readonly route: "probe" | "assess" | "grade" | "tutor" | "author";
   readonly calls: number;
   readonly inputTokens: number;
   readonly outputTokens: number;
@@ -225,6 +225,137 @@ export interface MarkingItem {
   readonly score: number;
   readonly max: number;
   readonly reviewed: boolean;
+}
+
+/** A student on the placement cell's file. */
+export interface Student {
+  readonly ref: string;
+  readonly name: string;
+  readonly email: string | null;
+  readonly phone: string | null;
+  readonly branch: string;
+  readonly batch: number | null;
+  readonly cgpa: number | null;
+  readonly backlogs: number;
+}
+
+export interface StudentRow extends Student {
+  readonly offers: number;
+  readonly bestOfferLpa: number | null;
+}
+
+export interface StudentImport {
+  readonly dryRun: boolean;
+  readonly students: number;
+  readonly added: number;
+  readonly updated: number;
+  readonly problems: readonly { readonly row: number; readonly message: string }[];
+  readonly preview: readonly Student[];
+}
+
+export const DRIVE_STAGES = ["applied", "test", "interview", "offered", "joined", "rejected", "withdrawn"] as const;
+export type DriveStage = (typeof DRIVE_STAGES)[number];
+
+export interface Eligibility {
+  readonly minCgpa?: number;
+  readonly maxBacklogs?: number;
+  readonly branches?: readonly string[];
+  readonly batches?: readonly number[];
+}
+
+export interface DriveDraft {
+  readonly company: string;
+  readonly role: string;
+  readonly ctcLpa: number | null;
+  readonly location: string;
+  readonly description: string;
+  readonly eligibility: Eligibility;
+  readonly applyBy: string | null;
+  readonly examId: string | null;
+  readonly status: "open" | "closed";
+}
+
+export interface Drive extends DriveDraft {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly stages: Readonly<Record<DriveStage, number>>;
+}
+
+export interface DriveApplication extends Student {
+  readonly stage: DriveStage;
+  readonly offerLpa: number | null;
+  readonly updatedAt: string;
+  readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
+}
+
+export interface DriveDetail {
+  readonly drive: Drive;
+  readonly applications: readonly DriveApplication[];
+  readonly eligibleNotAdded: number;
+}
+
+export type QuestionKindName = "mcq" | "numeric" | "short" | "code";
+export type Seniority = "fresher" | "junior" | "mid" | "senior";
+
+export interface JobRole {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly minutes: number;
+  readonly cutoffPercent: number;
+  readonly sections: readonly { readonly id: string; readonly title: string; readonly keywords: readonly string[]; readonly kinds: readonly QuestionKindName[]; readonly count: number }[];
+}
+
+export interface JobDraft {
+  readonly title: string;
+  readonly roleId: string;
+  readonly seniority: Seniority;
+  readonly source: "model" | "role";
+  readonly skills: readonly string[];
+  readonly sections: readonly {
+    readonly id: string;
+    readonly title: string;
+    readonly keywords: readonly string[];
+    readonly kinds: readonly QuestionKindName[];
+    readonly wanted: number;
+    readonly pick: number;
+    readonly pool: readonly { readonly id: string; readonly stem: string; readonly kind: string; readonly topic: string; readonly difficulty: string; readonly maxScore: number }[];
+  }[];
+  readonly durationMinutes: number;
+  readonly cutoffPercent: number;
+  readonly notes: readonly string[];
+}
+
+/** A candidate's seat for an exam held in rooms, and whether they are in the room. */
+export interface SeatRow {
+  readonly ref: string;
+  readonly name: string;
+  readonly centre: string;
+  readonly room: string;
+  readonly seat: string;
+  readonly present: boolean;
+  readonly attemptState: string;
+}
+
+export interface Marked {
+  readonly ref: string;
+  readonly name: string;
+  readonly room: string;
+  readonly seat: string;
+  readonly already: { readonly by: string; readonly at: string } | null;
+}
+
+export interface ShortlistRow {
+  readonly id: string;
+  readonly title: string;
+  readonly candidates: number;
+  readonly createdBy: string;
+  readonly createdAt: string;
+  readonly expiresAt: string;
+  readonly revoked: boolean;
+  readonly decided: { readonly shortlist: number; readonly hold: number; readonly reject: number };
+  readonly link: string;
+  readonly decisions?: readonly { readonly ref: string; readonly decision: "shortlist" | "hold" | "reject"; readonly comment: string; readonly by: string; readonly at: string }[];
 }
 
 /** A candidate's request to recheck one question, with what it is about. */
@@ -1250,6 +1381,112 @@ export class ConsoleClient {
   /** Keep or change one answer's mark, and record it as read. */
   markAnswer(examId: string, attemptId: string, questionId: string, score: number): Promise<{ readonly score: number; readonly changed: boolean }> {
     return this.#request(`/exams/${encodeURIComponent(examId)}/marking`, { method: "POST", body: JSON.stringify({ attemptId, questionId, score }) });
+  }
+
+  // --- shortlists for hiring managers ---------------------------------------------
+
+  async shortlists(examId: string): Promise<readonly ShortlistRow[]> {
+    return (await this.#request<{ shortlists: readonly ShortlistRow[] }>(`/exams/${encodeURIComponent(examId)}/shortlists`)).shortlists;
+  }
+
+  /** A link for a hiring manager: the roll numbers given, or (null) everyone who qualified. */
+  createShortlist(examId: string, request: { readonly title: string; readonly refs: readonly string[] | null; readonly days: number }): Promise<ShortlistRow> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/shortlists`, { method: "POST", body: JSON.stringify(request) });
+  }
+
+  async withdrawShortlist(id: string): Promise<void> {
+    await this.#request(`/shortlists/${encodeURIComponent(id)}/withdraw`, { method: "POST" });
+  }
+
+  // --- seats, admit cards, attendance ---------------------------------------------
+
+  async seats(examId: string): Promise<readonly SeatRow[]> {
+    return (await this.#request<{ seats: readonly SeatRow[] }>(`/exams/${encodeURIComponent(examId)}/seats`)).seats;
+  }
+
+  allocateSeats(examId: string, rooms: readonly { readonly centre: string; readonly room: string; readonly seats: number }[]): Promise<{ readonly seated: number; readonly spare: number }> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/seats`, { method: "POST", body: JSON.stringify({ rooms }) });
+  }
+
+  async admitCards(examId: string, ref?: string): Promise<Blob> {
+    const query = ref === undefined ? "" : `?ref=${encodeURIComponent(ref)}`;
+    const response = await fetch(`${this.#baseUrl}/exams/${encodeURIComponent(examId)}/admit-cards.pdf${query}`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  /** Mark a candidate present: the admit card's code as scanned, or a roll number. */
+  markPresent(examId: string, code: string): Promise<Marked> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/attendance`, { method: "POST", body: JSON.stringify({ code }) });
+  }
+
+  // --- the placement cell -------------------------------------------------------
+
+  async students(): Promise<readonly StudentRow[]> {
+    return (await this.#request<{ students: readonly StudentRow[] }>("/students")).students;
+  }
+
+  /** Check a sheet of students (`dryRun`), or bring them in. */
+  importStudents(csv: string, dryRun: boolean): Promise<StudentImport> {
+    return this.#request("/students/import", { method: "POST", body: JSON.stringify({ csv, dryRun }) });
+  }
+
+  async removeStudent(ref: string): Promise<void> {
+    await this.#request(`/students/${encodeURIComponent(ref)}`, { method: "DELETE" });
+  }
+
+  async drives(): Promise<readonly Drive[]> {
+    return (await this.#request<{ drives: readonly Drive[] }>("/drives")).drives;
+  }
+
+  drive(id: string): Promise<DriveDetail> {
+    return this.#request(`/drives/${encodeURIComponent(id)}`);
+  }
+
+  saveDrive(id: string | null, draft: DriveDraft): Promise<Drive> {
+    return id === null
+      ? this.#request("/drives", { method: "POST", body: JSON.stringify(draft) })
+      : this.#request(`/drives/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  /** Add every eligible student not in the drive yet, or the roll numbers given. */
+  addDriveStudents(id: string, refs: readonly string[] | "eligible"): Promise<{ readonly added: number }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/students`, { method: "POST", body: JSON.stringify(refs === "eligible" ? { eligible: true } : { refs }) });
+  }
+
+  setDriveStage(id: string, refs: readonly string[], stage: DriveStage, offerLpa: number | null = null): Promise<{ readonly moved: number }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/stage`, { method: "POST", body: JSON.stringify({ refs, stage, offerLpa }) });
+  }
+
+  sendDriveTest(id: string, channels: readonly ("email" | "sms" | "whatsapp")[], refs?: readonly string[]): Promise<{ readonly invited: number; readonly skipped: number }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/send-test`, { method: "POST", body: JSON.stringify({ channels, ...(refs === undefined ? {} : { refs }) }) });
+  }
+
+  /** The drive's students as CSV, for the company. */
+  async driveFile(id: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/drives/${encodeURIComponent(id)}/students.csv`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  // --- a test from a job ----------------------------------------------------------
+
+  async jobRoles(): Promise<readonly JobRole[]> {
+    return (await this.#request<{ roles: readonly JobRole[] }>("/job-tests/roles")).roles;
+  }
+
+  /** A draft from a role, or from a job description read by the model. Nothing is saved. */
+  jobDraft(request: { readonly roleId?: string; readonly description?: string; readonly seniority?: Seniority }): Promise<JobDraft> {
+    return this.#request("/job-tests/draft", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  createJobTest(request: {
+    readonly title: string;
+    readonly durationMinutes: number;
+    readonly cutoffPercent: number | null;
+    readonly sections: readonly { readonly title: string; readonly questionIds: readonly string[]; readonly pick: number }[];
+  }): Promise<{ readonly examId: string; readonly questions: number }> {
+    return this.#request("/job-tests", { method: "POST", body: JSON.stringify(request) });
   }
 
   /** An exam's recheck requests, open first. */
