@@ -130,7 +130,9 @@ const submission = z.object({
   inContest: z.boolean(),
 });
 
-const comment = z.object({ id: z.string(), authorName: z.string(), fromStaff: z.boolean(), body: z.string(), createdAt: z.string() });
+/** Beside a learner's name: their title (null until a rated contest) and their public profile's username (null when it is not public). */
+const person = { title: z.string().nullable(), username: z.string().nullable() };
+const comment = z.object({ id: z.string(), authorName: z.string(), ...person, fromStaff: z.boolean(), body: z.string(), createdAt: z.string() });
 
 const counts = z.object({ easy: z.number(), medium: z.number(), hard: z.number(), total: z.number() });
 const progress = z.object({
@@ -159,6 +161,7 @@ const contestView = z.object({
       z.object({
         rank: z.number(),
         name: z.string(),
+        ...person,
         solved: z.number(),
         penalty: z.number().describe("Minutes to each accepted answer, plus 20 for every wrong one before it."),
         problems: z.array(z.object({ minutes: z.number().nullable(), wrong: z.number() })).readonly(),
@@ -479,7 +482,7 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
         summary: "Learners by problems solved",
         security: OPEN,
         params: siteParams,
-        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), solved: z.number(), you: z.boolean() })).readonly() }), ...refusals },
+        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), ...person, solved: z.number(), you: z.boolean() })).readonly() }), ...refusals },
       },
     },
     async (request, reply) => {

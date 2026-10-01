@@ -6,7 +6,7 @@ import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
 import type { Grade, Level, Note, NoteKind, Plan, PlanInput, PlanTask, Reward } from "./client.ts";
 import { LessonDoubt } from "./Tutor.tsx";
-import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context } from "./parts.tsx";
+import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context } from "./parts.tsx";
 import { usePrepText, type PrepKey } from "./prep-text.ts";
 import "./prep.css";
 
@@ -1710,7 +1710,7 @@ export function CoinsPage({ client, nav, learner, site }: Signed) {
               <li key={l.rank} className={l.you ? "you" : ""}>
                 <span className="rank">{l.rank}</span>
                 <span>
-                  {l.name}
+                  <Who nav={nav} name={l.name} title={l.title} username={l.username} />
                   {l.you ? ` (${p("common.you")})` : ""}
                 </span>
                 <strong>{l.coins.toLocaleString("en-IN")}</strong>

@@ -75,6 +75,7 @@ describe("addresses", () => {
     expect(parseRoute("/practice/nit-practice/experiences", "?company=acme")).toEqual({ page: "experiences", company: "acme" });
     expect(parseRoute("/practice/nit-practice/store", "")).toEqual({ page: "store" });
     expect(parseRoute("/practice/nit-practice/rating", "")).toEqual({ page: "rating" });
+    expect(parseRoute("/practice/nit-practice/u/asha_r", "")).toEqual({ page: "profile", username: "asha_r" });
   });
 });
 
@@ -255,6 +256,87 @@ describe("rating", () => {
     expect(screen.getByText("1564 (+44)")).toBeTruthy();
     expect(screen.getByText("12/50")).toBeTruthy();
     expect(screen.getByText("First contest").closest("li")!.className).toBe("earned");
+  });
+
+  it("makes a card for an earned achievement, and sets the public profile", async () => {
+    routes["GET /practice/nit-practice/rating"] = () => ({
+      body: { board: [], me: { rating: null, title: "Unrated", contests: 0, history: [], achievements: [{ id: "first_solve", have: 1, need: 1, earned: true }, { id: "solved_10", have: 1, need: 10, earned: false }] } },
+    });
+    let saved = { username: null as string | null, public: false, bio: "" };
+    routes["GET /practice/nit-practice/profile"] = () => ({ body: saved });
+    routes["PUT /practice/nit-practice/profile"] = (init) => {
+      const body = JSON.parse(String(init.body)) as { username: string; public: boolean; bio: string };
+      saved = { ...body, username: body.username.toLowerCase() };
+      return { body: saved };
+    };
+    routes["GET /practice/nit-practice/achievements/first_solve/card"] = () => ({ body: "<svg/>" });
+    const made = vi.fn(() => "blob:card");
+    URL.createObjectURL = made;
+    const user = userEvent.setup();
+    open("/practice/nit-practice/rating");
+    const earned = (await screen.findByText("First solve")).closest("li")!;
+    expect(within(screen.getByText("10 solved").closest("li")!).queryByRole("button", { name: /Share card/ })).toBeNull();
+    await user.click(within(earned).getByRole("button", { name: /Share card/ }));
+    const download = await within(earned).findByRole("link", { name: /Download card/ });
+    expect(download.getAttribute("href")).toBe("blob:card");
+    expect(download.getAttribute("download")).toBe("first_solve.svg");
+    expect(calls.find((c) => c.path.endsWith("/card"))!.search).toBe("?format=story&lang=en");
+
+    const form = await screen.findByRole("region", { name: "Your public profile" });
+    expect(within(form).getByText(/never your email/)).toBeTruthy();
+    await user.type(within(form).getByLabelText("Username"), "Asha_R");
+    await user.click(within(form).getByLabelText("Show my profile to others"));
+    await user.click(within(form).getByRole("button", { name: "Save profile" }));
+    expect(await within(form).findByRole("link", { name: "See my public profile" })).toBeTruthy();
+    expect(calls.find((c) => c.method === "PUT")!.body).toEqual({ username: "Asha_R", public: true, bio: "" });
+  });
+
+  it("shows a public profile, and says so when there is none", async () => {
+    routes["GET /practice/nit-practice/u/asha_r"] = () => ({
+      body: {
+        username: "asha_r",
+        name: "Asha Rao",
+        bio: "Final year, NIT Trichy",
+        joinedAt: "2026-09-01T00:00:00Z",
+        title: "Coder",
+        rating: 1564,
+        contests: [{ contest: "Weekly 2", slug: "weekly-2", rank: 1, field: 6, before: 1520, after: 1564, at: "2026-09-08T00:00:00Z" }],
+        solved: { easy: 10, medium: 4, hard: 1 },
+        streak: { current: 3, longest: 9 },
+        achievements: ["first_solve", "podium"],
+        url: "https://exam.test/practice/nit-practice/u/asha_r",
+      },
+    });
+    const view = open("/practice/nit-practice/u/asha_r");
+    expect(await screen.findByRole("heading", { name: /Asha Rao/ })).toBeTruthy();
+    expect(screen.getByText("Coder").className).toBe("title-chip");
+    expect(screen.getByText("Final year, NIT Trichy")).toBeTruthy();
+    expect(screen.getByText("Top three")).toBeTruthy();
+    expect(screen.getByText("Streak: 3 days now, 9 at best")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Weekly 2" })).toBeTruthy();
+    view.unmount();
+    open("/practice/nit-practice/u/nobody");
+    expect(await screen.findByText("There is no public profile here.")).toBeTruthy();
+  });
+});
+
+describe("a name, wherever it appears", () => {
+  it("carries the learner's title, and links to their public profile", async () => {
+    routes["GET /practice/nit-practice/leaderboard"] = () => ({
+      body: {
+        leaders: [
+          { rank: 1, name: "Ravi", title: "Expert", username: "ravi", solved: 20, you: false },
+          { rank: 2, name: "Asha Rao", title: null, username: null, solved: 12, you: true },
+        ],
+      },
+    });
+    open("/practice/nit-practice/leaderboard");
+    const ravi = await screen.findByRole("link", { name: "Ravi" });
+    expect(ravi.getAttribute("href")).toBe("/practice/nit-practice/u/ravi");
+    expect(ravi.closest("td")!.textContent).toContain("Expert");
+    const mine = screen.getAllByRole("row").find((r) => r.className === "you")!;
+    expect(mine.textContent).toContain("Asha Rao");
+    expect(mine.querySelector(".title-chip")).toBeNull();
   });
 });
 

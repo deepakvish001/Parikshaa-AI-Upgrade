@@ -16,7 +16,7 @@ import {
   type TaskDraft,
   type Track,
 } from "@parikshaa/store";
-import { PracticeError, istDay, slugOf, streaks } from "./practice.js";
+import { PracticeError, istDay, slugOf, streaks, type People } from "./practice.js";
 import { addDays, countStudyDays, daysBetween, generatePlan, reschedule, review, studyDays, type PlanItem } from "./prep-plan.js";
 import type { PrepPlus } from "./prep-plus.js";
 
@@ -102,6 +102,7 @@ export class PrepService {
   readonly #practice: PracticeStore;
   readonly #store: PrepStore;
   readonly #now: () => number;
+  #people: People = async () => new Map();
   readonly #plus: PrepPlus | null;
   readonly #companyProblems: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
   readonly #planLate: (site: PracticeSite, learner: Learner, plan: { finishOn: string; deadline: string }) => Promise<void>;
@@ -934,8 +935,15 @@ export class PrepService {
     return { balance, dailyCap: DAILY_COIN_CAP, history: history.map(({ rule, amount, createdAt }) => ({ rule, amount, at: createdAt })) };
   }
 
+  /** Where titles and usernames come from (Prep's ratings and profiles), once that service exists. */
+  usePeople(people: People): void {
+    this.#people = people;
+  }
+
   async coinLeaders(site: PracticeSite, learner: Learner | null) {
-    return (await this.#store.coinLeaders(site.orgId, 100)).map((r, i) => ({ rank: i + 1, name: r.name, coins: r.coins, you: learner !== null && r.learnerId === learner.id }));
+    const rows = await this.#store.coinLeaders(site.orgId, 100);
+    const people = await this.#people(site.orgId, rows.map((r) => r.learnerId));
+    return rows.map((r, i) => ({ rank: i + 1, name: r.name, title: people.get(r.learnerId)?.title ?? null, username: people.get(r.learnerId)?.username ?? null, coins: r.coins, you: learner !== null && r.learnerId === learner.id }));
   }
 
   // --- staff: content ---------------------------------------------------------------------------------------

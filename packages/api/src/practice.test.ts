@@ -331,8 +331,9 @@ describe("solving", () => {
 
     const board = (await call("GET", token, "/practice/nit-practice/leaderboard")).json().leaders;
     expect(board).toEqual([
-      { rank: 1, name: "Ravi", solved: 2, you: false },
-      { rank: 2, name: "Asha", solved: 1, you: true },
+      // No title until a rated contest; no username until a public profile.
+      { rank: 1, name: "Ravi", title: null, username: null, solved: 2, you: false },
+      { rank: 2, name: "Asha", title: null, username: null, solved: 1, you: true },
     ]);
     expect(JSON.stringify(board)).not.toContain("@example.com");
   });

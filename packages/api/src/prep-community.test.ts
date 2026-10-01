@@ -3,6 +3,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pgliteExecutor } from "@parikshaa/store";
+import { achievementCard } from "./achievement-card.js";
 import { prizeOrder, rateContest, titleOf } from "./prep-community.js";
 import type { FakeRazorpay } from "./razorpay.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
@@ -376,6 +377,18 @@ describe("ratings", () => {
     expect(await rankCoins(meena)).toEqual([]);
     await ok("GET", ravi, `${S}/rating`);
     expect(await rankCoins(asha)).toEqual([100]);
+
+    // The title goes with the name: on the scoreboard, the leaderboard, the coin board and in discussion.
+    const titleOfAsha = rated.board[0].title as string;
+    expect(titleOfAsha).not.toBe("Unrated");
+    const board = (await ok("GET", null, `${S}/contests/${contest.slug}`)).scoreboard as { name: string; title: string | null; username: string | null }[];
+    expect(board.find((r) => r.name === "Asha")).toMatchObject({ title: titleOfAsha, username: null });
+    expect(((await ok("GET", null, `${S}/leaderboard`)).leaders as { name: string; title: string | null }[]).find((r) => r.name === "Asha")!.title).toBe(titleOfAsha);
+    expect(((await ok("GET", null, `${S}/coins/leaders`)).leaders as { name: string; title: string | null }[]).find((r) => r.name === "Asha")!.title).toBe(titleOfAsha);
+    await ok("PUT", asha, `${S}/profile`, { username: "asha", public: true }, 200);
+    const posted = await ok("POST", asha, `${S}/problems/${problems[0]!.slug}/comments`, { body: "Merge sort keeps ties in order." });
+    expect(posted).toMatchObject({ title: titleOfAsha, username: "asha" });
+    expect((await ok("GET", null, `${S}/problems/${problems[0]!.slug}/comments`)).comments[0]).toMatchObject({ authorName: "Asha", title: titleOfAsha, username: "asha" });
   });
 
   it("moves ratings by rank against expectation, summing to about nothing", () => {
@@ -391,6 +404,66 @@ describe("ratings", () => {
     expect(upset[0]!.after - 1200).toBeGreaterThan(60);
     expect(rateContest([{ learnerId: "solo", rank: 1, before: 1500 }])[0]!.after).toBe(1500);
     expect([titleOf(null), titleOf(1100), titleOf(1650), titleOf(2300)]).toEqual(["Unrated", "Newbie", "Expert", "Grandmaster"]);
+  });
+});
+
+describe("profiles and cards", () => {
+  it("keeps a profile private until the learner makes it public, and never shows the email", async () => {
+    const asha = await signUp("asha@example.com", "Asha");
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect(await ok("GET", asha, `${S}/profile`)).toEqual({ username: null, public: false, bio: "" });
+    expect((await call("PUT", asha, `${S}/profile`, { username: "A", public: true })).statusCode).toBe(422);
+    expect(await ok("PUT", asha, `${S}/profile`, { username: "Asha_R", public: false, bio: "Final year, NIT Trichy" }, 200)).toEqual({ username: "asha_r", public: false, bio: "Final year, NIT Trichy" });
+    expect((await call("GET", null, `${S}/u/asha_r`)).statusCode).toBe(404);
+    expect((await call("PUT", ravi, `${S}/profile`, { username: "asha_r", public: true })).statusCode).toBe(409);
+
+    await ok("POST", asha, `${S}/problems/${problems[0]!.slug}/submit`, { answer: "1" }, 200);
+    await ok("PUT", asha, `${S}/profile`, { username: "asha_r", public: true, bio: "Final year, NIT Trichy" }, 200);
+    const shown = await call("GET", null, `${S}/u/ASHA_R`);
+    expect(shown.statusCode).toBe(200);
+    expect(shown.json()).toMatchObject({
+      username: "asha_r",
+      name: "Asha",
+      bio: "Final year, NIT Trichy",
+      title: "Unrated",
+      rating: null,
+      contests: [],
+      streak: { current: 1 },
+      achievements: ["first_solve"],
+      url: "https://exam.test/practice/nit-practice/u/asha_r",
+    });
+    expect(shown.payload).not.toContain("asha@example.com");
+    // Private again: gone.
+    await ok("PUT", asha, `${S}/profile`, { username: "asha_r", public: false }, 200);
+    expect((await call("GET", null, `${S}/u/asha_r`)).statusCode).toBe(404);
+  });
+
+  it("draws a card only for an achievement earned, in English or Hindi, as a story or a square", async () => {
+    const asha = await signUp("asha@example.com", "Asha");
+    expect((await call("GET", asha, `${S}/achievements/first_solve/card`)).statusCode).toBe(404);
+    await ok("POST", asha, `${S}/problems/${problems[0]!.slug}/submit`, { answer: "1" }, 200);
+    const card = await call("GET", asha, `${S}/achievements/first_solve/card`);
+    expect(card.statusCode).toBe(200);
+    expect(card.headers["content-type"]).toBe("image/svg+xml; charset=utf-8");
+    expect(card.payload).toMatch(/^<svg [^>]*width="1080" height="1920"/);
+    expect(card.payload).toContain(">First solve<");
+    expect(card.payload).toContain(">Asha<");
+    expect(card.payload).toContain("NIT Practice");
+    expect(card.payload).not.toContain("/u/");
+    await ok("PUT", asha, `${S}/profile`, { username: "asha", public: true }, 200);
+    const hindi = await call("GET", asha, `${S}/achievements/first_solve/card?format=square&lang=hi`);
+    expect(hindi.payload).toMatch(/^<svg [^>]*height="1080"/);
+    expect(hindi.payload).toContain(">पहला हल<");
+    expect(hindi.payload).toContain("exam.test/practice/nit-practice/u/asha");
+    expect((await call("GET", asha, `${S}/achievements/no_such/card`)).statusCode).toBe(404);
+    expect((await call("GET", null, `${S}/achievements/first_solve/card`)).statusCode).toBe(401);
+  });
+
+  it("escapes what a learner wrote", () => {
+    const svg = achievementCard({ format: "square", lang: "en", achievement: "first_solve", name: "<script>alert(1)</script>", site: "A & B", title: "Unrated", rating: null, profileUrl: null });
+    expect(svg).not.toContain("<script>");
+    expect(svg).toContain("&lt;script&gt;");
+    expect(svg).toContain("A &amp; B");
   });
 });
 

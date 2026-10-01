@@ -32,12 +32,12 @@ Status ka matlab:
 | Revision, lists, notes | 6 | 1 | 0 | 0 |
 | Sahayak AI | 17 | 1 | 0 | 0 |
 | Plus aur payment | 13 | 0 | 0 | 0 |
-| Coins, store, gamification | 13 | 1 | 1 | 0 |
+| Coins, store, gamification | 15 | 0 | 0 | 0 |
 | Company prep aur community | 11 | 1 | 3 | 0 |
-| Contests | 3 | 1 | 1 | 0 |
+| Contests | 4 | 1 | 0 | 0 |
 | Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 10 | 2 | 1 | 0 |
-| **Kul** | **98** | **14** | **10** | **1** |
+| **Kul** | **101** | **13** | **8** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -158,9 +158,9 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Plus ke din coins se | ✅ | | |
 | Titles (Newbie → Grandmaster) aur 13 achievements | ✅ | `RatingPage` | Computed, store nahi hote |
 | "Mahine me 1" jaisi limit | ✅ | `prep_store_items.per_month` (migration 0042), `PrepCommunityStore.redeem` | Kul limit (`per_learner`) ke saath ab India ke calendar mahine ki limit bhi. Tests: store, API, console |
-| Title naam ke saath har jagah | 🟡 | | Rating page par dikhta hai |
+| Title naam ke saath har jagah | ✅ | `PrepCommunity.people`, `PracticeService.usePeople`, web `Who` (`parts.tsx`) | Rated learner ka title (Newbie → Grandmaster) naam ke saath: contest scoreboard, leaderboard, coin leaderboard, discussion comments aur rating page. Public profile ho to naam us par link hota hai. Experiences me naam nahi (wahan "Anonymous" ka vikalp hai). Tests: API, web |
 | Quiz pass par +20, contest rank par coins | ✅ | coin rules `quiz`, `contest_rank`; `CONTEST_RANK_COINS`, `prizeOrder` (`api/src/prep-community.ts`) | Sprint quiz pass par +20 (ek baar). Contest khatam hone par pehle 10 ko 100, 75, 50, 30, 30, 20×5 coins, ek hi baar (rating se pehle diye jaate hain, crash me bhi chhootte nahi). Sirf jisne kuch hal kiya. Tie (same solved, same penalty) me jisne aakhri sawaal pehle hal kiya woh aage, isliye inaam hamesha 10 ko hi. Daily coin cap se bahar. Tests: `prep-community.test.ts` |
-| Shareable achievement cards | ⬜ | | |
+| Shareable achievement cards | ✅ | `api/src/achievement-card.ts`, `GET /practice/:site/achievements/:id/card`, rating page par "Share card" | Server par SVG: 9:16 (status/story) aur 1:1, English ya Hindi; sirf kamaayi gayi achievement ka, warna 404. Public profile ho to uska address card par. Phone file share kar sake to wahin se share, warna download. QR code aur Pramaan link nahi (Pramaan bana nahi). Tests: API (escape bhi), web |
 | Store me coupons | ✅ | item kind `coupon` (migration 0042), `PrepCommunityStore.redeem`, `prep_coupons.learner_id` | Coins se Plus par N% ka coupon: code `COIN-…`, sirf khareedne wale ke liye, ek baar, 90 din tak; order ke note me code aata hai. Dusra learner use kare to "not valid". Tests: store, API, console |
 
 ### 8. Company prep aur community (S5, F9, F14)
@@ -191,7 +191,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Rating: Elo, contest khatam hone ke baad ek baar | ✅ | `api/src/prep-community.ts` | |
 | Contest me Sahayak aur editorial band | ✅ | | |
 | Judge ki priority lane, queue, autoscale | 🟡 | `api/src/judge-queue.ts`, `PracticeService`, `GET /practice-admin/judge`, env `JUDGE_CONCURRENCY`, `JUDGE_QUEUE_MAX`, `JUDGE_WAIT_MS` | Queue ban gayi: ek saath utne hi program jitne runner sambhale, chalte contest ke pehle, par har 4 contest ke baad 1 practice (practice kabhi poora nahi rukta). Queue bhari ho ya intezaar lamba ho to 503 `judge_busy` + `Retry-After`, spinner nahi. Contest ka submission us pal ka gina jaata hai jab aaya, judge baad me kare to bhi. **Autoscale nahi**: queue har API process me alag hai, runner machines kitni hon ye deploy ka faisla (Ruka hua kaam). Tests: `judge-queue.test.ts`, `practice.test.ts` |
-| Public profile `/u/:username` | ⬜ | | |
+| Public profile `/u/:username` | ✅ | `prep_profiles` (migration 0044), `GET/PUT /practice/:site/profile`, `GET /practice/:site/u/:username`, web `ProfilePage` | Default **private**: learner username chune aur khud "public" kare. Dikhta hai: naam, bio, title, rating, aakhri 10 contests, easy/medium/hard solve, streak, achievements. Email kabhi nahi. Username har site me alag (unique). SEO wala static page nahi (SPA hai). Tests: API, web |
 
 ### 10. Content (section 15)
 
@@ -348,7 +348,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ✅ ban gaya (2 Oct 2026) |
 | 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
 | 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ✅ ban gaya (2 Oct 2026); evals ka paid run alag se owner par |
-| 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ⬜ pending |
+| 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ✅ ban gaya (2 Oct 2026) |
 | 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ⬜ pending |
 | 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ⬜ pending |
 | 41 | **PWA aur push** (§17): installable app, offline me aaj ka plan, push notification (reminder email ke saath) | §17, A1 | Mobile par roz ka loop | Tests: manifest, service worker cache, push ki subscription aur band karna | ⬜ pending |

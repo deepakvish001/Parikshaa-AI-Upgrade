@@ -800,7 +800,7 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
         summary: "Learners by coins",
         security: OPEN,
         params: siteParams,
-        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), coins: z.number(), you: z.boolean() })).readonly() }), ...refusals },
+        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), title: z.string().nullable(), username: z.string().nullable(), coins: z.number(), you: z.boolean() })).readonly() }), ...refusals },
       },
     },
     async (request, reply) => {

@@ -86,7 +86,13 @@ export interface Submission {
   readonly inContest: boolean;
 }
 
-export interface Comment {
+/** Beside a learner's name: their contest title, and their public profile's username. */
+export interface Person {
+  readonly title?: string | null;
+  readonly username?: string | null;
+}
+
+export interface Comment extends Person {
   readonly id: string;
   readonly authorName: string;
   readonly fromStaff: boolean;
@@ -112,7 +118,7 @@ export interface Progress {
   readonly rank: number | null;
 }
 
-export interface Leader {
+export interface Leader extends Person {
   readonly rank: number;
   readonly name: string;
   readonly solved: number;
@@ -138,14 +144,14 @@ export interface Contest {
   readonly endsAt: string;
   readonly state: ContestState;
   readonly problems: readonly { readonly label: string; readonly slug: string; readonly title: string; readonly difficulty: Difficulty; readonly status: Standing }[];
-  readonly scoreboard: readonly {
+  readonly scoreboard: readonly (Person & {
     readonly rank: number;
     readonly name: string;
     readonly solved: number;
     readonly penalty: number;
     readonly problems: readonly { readonly minutes: number | null; readonly wrong: number }[];
     readonly you: boolean;
-  }[];
+  })[];
 }
 
 /** A learner's session on one site, kept on this device: practice is done on one's own machine, over weeks. */
@@ -532,8 +538,8 @@ export class PracticeClient {
     return (await this.#request<{ deleted: number }>(`/tutor${slug === undefined ? "" : `?problem=${encodeURIComponent(slug)}`}`, { method: "DELETE" })).deleted;
   }
 
-  async coinLeaders(): Promise<readonly { readonly rank: number; readonly name: string; readonly coins: number; readonly you: boolean }[]> {
-    return (await this.#request<{ leaders: { rank: number; name: string; coins: number; you: boolean }[] }>("/coins/leaders")).leaders;
+  async coinLeaders(): Promise<readonly (Person & { readonly rank: number; readonly name: string; readonly coins: number; readonly you: boolean })[]> {
+    return (await this.#request<{ leaders: (Person & { rank: number; name: string; coins: number; you: boolean })[] }>("/coins/leaders")).leaders;
   }
 
   // --- companies, experiences, the store, ratings ------------------------------------------------
@@ -580,6 +586,27 @@ export class PracticeClient {
 
   rating(): Promise<RatingView> {
     return this.#request("/rating");
+  }
+
+  profile(): Promise<MyProfile> {
+    return this.#request("/profile");
+  }
+
+  saveProfile(profile: { readonly username: string; readonly public: boolean; readonly bio: string }): Promise<MyProfile> {
+    return this.#request("/profile", { method: "PUT", body: JSON.stringify(profile) });
+  }
+
+  publicProfile(username: string): Promise<PublicProfile> {
+    return this.#request(`/u/${encodeURIComponent(username)}`);
+  }
+
+  /** An achievement's card, as an SVG image. */
+  async card(achievement: string, format: "story" | "square", lang: "en" | "hi"): Promise<Blob> {
+    const response = await fetch(`${this.#base}/achievements/${encodeURIComponent(achievement)}/card?format=${format}&lang=${lang}`, {
+      headers: this.#token === null ? {} : { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ApiError(response.status, "request_failed", {});
+    return response.blob();
   }
 }
 
@@ -1066,6 +1093,26 @@ export interface Achievement {
   readonly have: number;
   readonly need: number;
   readonly earned: boolean;
+}
+
+export interface MyProfile {
+  readonly username: string | null;
+  readonly public: boolean;
+  readonly bio: string;
+}
+
+export interface PublicProfile {
+  readonly username: string;
+  readonly name: string;
+  readonly bio: string;
+  readonly joinedAt: string;
+  readonly title: string;
+  readonly rating: number | null;
+  readonly contests: readonly { readonly contest: string; readonly slug: string; readonly rank: number; readonly field: number; readonly before: number; readonly after: number; readonly at: string }[];
+  readonly solved: { readonly easy: number; readonly medium: number; readonly hard: number };
+  readonly streak: { readonly current: number; readonly longest: number };
+  readonly achievements: readonly string[];
+  readonly url: string;
 }
 
 export interface RatingView {

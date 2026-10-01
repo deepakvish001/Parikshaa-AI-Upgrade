@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, Building2, CircleCheck, Coins, Crown, Lock, MessageSquareText, Plus, ShoppingBag, ThumbsUp, Trophy } from "lucide-react";
+import { Award, Building2, CircleCheck, Coins, Crown, Download, Lock, MessageSquareText, Plus, Share2, ShoppingBag, ThumbsUp, Trophy, UserRound } from "lucide-react";
 import { Markdown } from "@parikshaa/brand/markdown";
-import type { CompanyWindow, InterviewExperience, InterviewRound } from "./client.ts";
+import { usePreferences } from "../i18n.tsx";
+import type { CompanyWindow, InterviewExperience, InterviewRound, PracticeClient } from "./client.ts";
 import { useCommunityText, type CommunityKey } from "./community-text.ts";
-import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context } from "./parts.tsx";
+import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context } from "./parts.tsx";
 import "./prep.css";
 import "./community.css";
 
@@ -597,7 +598,9 @@ export function RatingPage({ client, nav, learner, site }: Context) {
                     <li key={a.id} className={a.earned ? "earned" : undefined}>
                       <Award aria-hidden="true" />
                       <span>{c(`badge.${a.id}` as CommunityKey)}</span>
-                      {a.earned ? null : (
+                      {a.earned ? (
+                        <CardButton client={client} achievement={a.id} />
+                      ) : (
                         <span className="notice">
                           {a.have}/{a.need}
                         </span>
@@ -606,6 +609,7 @@ export function RatingPage({ client, nav, learner, site }: Context) {
                   ))}
                 </ul>
               </section>
+              <ProfileSettings client={client} nav={nav} site={site} learnerId={learner!.id} />
             </>
           )}
         </div>
@@ -629,6 +633,164 @@ export function RatingPage({ client, nav, learner, site }: Context) {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+/**
+ * An earned achievement's card (Prep blueprint C1): fetched as an image,
+ * shared where the device can share a file, and downloadable everywhere.
+ */
+function CardButton({ client, achievement }: { readonly client: PracticeClient; readonly achievement: string }) {
+  const c = useCommunityText();
+  const { language } = usePreferences();
+  const [card, setCard] = useState<{ url: string; file: File } | null>(null);
+  const make = useMutation({
+    mutationFn: async () => {
+      const blob = await client.card(achievement, "story", language === "hi" ? "hi" : "en");
+      const file = new File([blob], `${achievement}.svg`, { type: "image/svg+xml" });
+      const shareable = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+      if (shareable) await navigator.share({ files: [file], title: c(`badge.${achievement}` as CommunityKey) }).catch(() => undefined);
+      return { url: URL.createObjectURL(blob), file };
+    },
+    onSuccess: setCard,
+  });
+  if (card !== null) {
+    return (
+      <a className="link-button small" href={card.url} download={card.file.name}>
+        <Download aria-hidden="true" /> {c("card.download")}
+      </a>
+    );
+  }
+  return (
+    <button type="button" className="link-button small" disabled={make.isPending} onClick={() => make.mutate()}>
+      <Share2 aria-hidden="true" /> {c("card.share")}
+    </button>
+  );
+}
+
+/** A learner's profile settings: a username, and whether others may see the profile. */
+function ProfileSettings({ client, nav, site, learnerId }: { readonly client: PracticeClient; readonly nav: Context["nav"]; readonly site: string; readonly learnerId: string }) {
+  const c = useCommunityText();
+  const queryClient = useQueryClient();
+  const profile = useQuery({ queryKey: key(site, "profile", learnerId), queryFn: () => client.profile() });
+  const [draft, setDraft] = useState<{ username: string; public: boolean; bio: string } | null>(null);
+  const save = useMutation({
+    mutationFn: (d: { username: string; public: boolean; bio: string }) => client.saveProfile(d),
+    onSuccess: (saved) => {
+      setDraft(null);
+      queryClient.setQueryData(key(site, "profile", learnerId), saved);
+    },
+  });
+  if (profile.data === undefined) return null;
+  const d = draft ?? { username: profile.data.username ?? "", public: profile.data.public, bio: profile.data.bio };
+  return (
+    <section className="card" aria-labelledby="profile-title">
+      <h2 id="profile-title">
+        <UserRound aria-hidden="true" /> {c("profile.title")}
+      </h2>
+      <p className="notice">{c("profile.lead")}</p>
+      <form
+        className="stack"
+        onSubmit={(e: FormEvent) => {
+          e.preventDefault();
+          save.mutate(d);
+        }}
+      >
+        <label>
+          {c("profile.username")}
+          <input value={d.username} required minLength={3} maxLength={30} pattern="[A-Za-z0-9][A-Za-z0-9_\-]{2,29}" onChange={(e) => setDraft({ ...d, username: e.target.value })} />
+        </label>
+        <label>
+          {c("profile.bio")}
+          <input value={d.bio} maxLength={200} onChange={(e) => setDraft({ ...d, bio: e.target.value })} />
+        </label>
+        <label className="check-row">
+          <input type="checkbox" checked={d.public} onChange={(e) => setDraft({ ...d, public: e.target.checked })} /> {c("profile.public")}
+        </label>
+        <button type="submit" disabled={save.isPending}>
+          {c("profile.save")}
+        </button>
+      </form>
+      {save.isError ? <Failed error={save.error} /> : null}
+      {profile.data.public && profile.data.username !== null ? (
+        <p>
+          <Link nav={nav} to={`/u/${profile.data.username}`}>
+            {c("profile.see")}
+          </Link>
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+/** A learner's public profile, as anyone sees it. */
+export function ProfilePage({ client, nav, site, username }: Context & { readonly username: string }) {
+  const c = useCommunityText();
+  const when = useWhen();
+  const profile = useQuery({ queryKey: key(site, "public-profile", username), queryFn: () => client.publicProfile(username), retry: false });
+  if (profile.isPending) return <Loading />;
+  if (profile.isError) return <p className="notice">{c("profile.none")}</p>;
+  const p = profile.data;
+  return (
+    <div className="prep-page">
+      <header className="prep-head">
+        <div>
+          <h1>
+            {p.name} <span className="title-chip">{p.title}</span>
+          </h1>
+          <p className="notice">
+            @{p.username} · {c("profile.joined", { day: when(p.joinedAt, false) })}
+          </p>
+          {p.bio === "" ? null : <p>{p.bio}</p>}
+        </div>
+        <span className="rating-badge">
+          <Trophy aria-hidden="true" /> {p.rating ?? "—"}
+        </span>
+      </header>
+      <div className="plan-layout">
+        <section className="card" aria-labelledby="solved-title">
+          <h2 id="solved-title">{c("profile.solved")}</h2>
+          <ul className="stat-row">
+            {(["easy", "medium", "hard"] as const).map((d) => (
+              <li key={d}>
+                <DifficultyPill difficulty={d} /> <strong>{p.solved[d]}</strong>
+              </li>
+            ))}
+          </ul>
+          <p className="notice">{c("profile.streak", { current: p.streak.current, longest: p.streak.longest })}</p>
+        </section>
+        <section className="card" aria-labelledby="badges-title">
+          <h2 id="badges-title">{c("rating.achievements")}</h2>
+          {p.achievements.length === 0 ? (
+            <p className="notice">{c("profile.noBadges")}</p>
+          ) : (
+            <ul className="badges">
+              {p.achievements.map((a) => (
+                <li key={a} className="earned">
+                  <Award aria-hidden="true" /> <span>{c(`badge.${a}` as CommunityKey)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+      {p.contests.length === 0 ? null : (
+        <section className="card" aria-labelledby="contests-title">
+          <h2 id="contests-title">{c("rating.history")}</h2>
+          <ul className="coin-history">
+            {p.contests.map((h) => (
+              <li key={h.slug}>
+                <Link nav={nav} to={`/contests/${h.slug}`}>
+                  {h.contest}
+                </Link>
+                <span className="notice">{c("rating.rank", { rank: h.rank, field: h.field })}</span>
+                <strong>{h.after}</strong>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

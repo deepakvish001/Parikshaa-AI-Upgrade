@@ -1,6 +1,7 @@
 import type { OrgId } from "@parikshaa/core";
 import {
   CommunitySlugTaken,
+  UsernameTaken,
   practiceLearner,
   practiceStaff,
   type Company,
@@ -14,6 +15,7 @@ import {
   type PrepStore,
   type StoreItemDraft,
 } from "@parikshaa/store";
+import { achievementCard, type CardFormat, type CardLanguage } from "./achievement-card.js";
 import { PracticeError, istDay, scoreboard, slugOf, streaks } from "./practice.js";
 import { addDays } from "./prep-plan.js";
 import type { PrepPlus } from "./prep-plus.js";
@@ -116,6 +118,7 @@ export interface Achievement {
 }
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+const USERNAME = /^[a-z0-9][a-z0-9_-]{2,29}$/;
 /** Write-ups one learner may have waiting for staff at once. */
 const MAX_PENDING = 5;
 
@@ -125,13 +128,15 @@ export class PrepCommunity {
   readonly #store: PrepCommunityStore;
   readonly #plus: PrepPlus | null;
   readonly #now: () => number;
+  readonly #publicUrl: string;
 
-  constructor(options: { practice: PracticeStore; prep: PrepStore; store: PrepCommunityStore; plus?: PrepPlus | null; now?: () => number }) {
+  constructor(options: { practice: PracticeStore; prep: PrepStore; store: PrepCommunityStore; plus?: PrepPlus | null; now?: () => number; publicUrl?: string }) {
     this.#practice = options.practice;
     this.#prep = options.prep;
     this.#store = options.store;
     this.#plus = options.plus ?? null;
     this.#now = options.now ?? (() => Date.now());
+    this.#publicUrl = (options.publicUrl ?? "").replace(/\/$/, "");
   }
 
   #today(): string {
@@ -477,9 +482,14 @@ export class PrepCommunity {
       .slice(0, 100)
       .map(([id, r], i) => ({ rank: i + 1, name: names.get(id)!, rating: r.rating, title: titleOf(r.rating), contests: r.contests, you: learner !== null && id === learner.id }));
     if (learner === null) return { board, me: null };
+    const me = this.#standing(learner.id, ratings, contests);
+    return { board, me: { ...me, achievements: await this.#achievements(site, learner.id, me.history) } };
+  }
 
+  /** A learner's rating, title and contest history, from every contest's ratings. */
+  #standing(learnerId: string, ratings: readonly { contestId: string; learnerId: string; rank: number; before: number; after: number; ratedAt: string }[], contests: readonly { id: string; title: string; slug: string }[]) {
     const byContest = new Map(contests.map((c) => [c.id, c]));
-    const mine = ratings.filter((r) => r.learnerId === learner.id);
+    const mine = ratings.filter((r) => r.learnerId === learnerId);
     const rating = mine.at(-1)?.after ?? null;
     const history = mine.map((r) => ({
       contest: byContest.get(r.contestId)?.title ?? "",
@@ -490,12 +500,110 @@ export class PrepCommunity {
       after: r.after,
       at: r.ratedAt,
     }));
-    return { board, me: { rating, title: titleOf(rating), contests: mine.length, history, achievements: await this.#achievements(site, learner, history) } };
+    return { rating, title: titleOf(rating), contests: mine.length, history };
   }
 
-  /** What a learner has done, as badges: counted each time, never stored. */
-  async #achievements(site: PracticeSite, learner: Learner, history: readonly { rank: number; field: number; after: number }[]): Promise<Achievement[]> {
-    const scope = practiceLearner(site.orgId, learner.id);
+  /** Each learner's title (by their latest rating) and public username: shown beside their name wherever it appears. */
+  async people(orgId: OrgId, learnerIds: readonly string[]): Promise<ReadonlyMap<string, { readonly title: string | null; readonly username: string | null }>> {
+    const ids = [...new Set(learnerIds)];
+    if (ids.length === 0) return new Map();
+    const [ratings, usernames] = await Promise.all([this.#store.ratings(practiceStaff(orgId)), this.#store.publicUsernames(orgId, ids)]);
+    const wanted = new Set(ids);
+    const latest = new Map<string, number>();
+    for (const r of ratings) if (wanted.has(r.learnerId)) latest.set(r.learnerId, r.after);
+    return new Map(ids.map((id) => [id, { title: latest.has(id) ? titleOf(latest.get(id)!) : null, username: usernames.get(id) ?? null }]));
+  }
+
+  // --- profiles and cards -----------------------------------------------------------------
+
+  /** A learner's own profile settings: private, with no username, until they choose. */
+  async myProfile(site: PracticeSite, learner: Learner) {
+    const profile = await this.#store.profile(site.orgId, { learnerId: learner.id });
+    return { username: profile?.username ?? null, public: profile?.public ?? false, bio: profile?.bio ?? "" };
+  }
+
+  async saveProfile(site: PracticeSite, learner: Learner, input: { username: string; public: boolean; bio?: string | undefined }) {
+    const username = input.username.trim().toLowerCase();
+    if (!USERNAME.test(username)) throw new PracticeError("invalid", "A username is 3 to 30 small letters, digits, - and _, starting with a letter or digit");
+    const bio = (input.bio ?? "").trim();
+    if (bio.length > 200) throw new PracticeError("invalid", "A bio is at most 200 characters");
+    try {
+      await this.#store.saveProfile(site.orgId, { learnerId: learner.id, username, public: input.public, bio });
+    } catch (error) {
+      if (error instanceof UsernameTaken) throw new PracticeError("slug_taken", "That username is taken");
+      throw error;
+    }
+    return { username, public: input.public, bio };
+  }
+
+  /** Where a public profile is, for a card or a link. */
+  #profileUrl(site: PracticeSite, username: string): string {
+    return `${this.#publicUrl}/practice/${site.slug}/u/${username}`;
+  }
+
+  /** A public profile, as anyone may see it: name, title, rating, what was solved, achievements. Never the email. */
+  async publicProfile(site: PracticeSite, username: string) {
+    const profile = await this.#store.profile(site.orgId, { username: username.toLowerCase() });
+    if (profile === null || !profile.public) throw new PracticeError("not_found", "No such profile");
+    const learner = await this.#practice.learnerById(site.orgId, profile.learnerId);
+    if (learner === null) throw new PracticeError("not_found", "No such profile");
+    await this.#rateEnded(site.orgId);
+    const scope = practiceStaff(site.orgId);
+    const [ratings, contests, progress, problems] = await Promise.all([
+      this.#store.ratings(scope),
+      this.#practice.contests(scope),
+      this.#practice.progress(practiceLearner(site.orgId, learner.id)),
+      this.#practice.problems(practiceLearner(site.orgId, null)),
+    ]);
+    const standing = this.#standing(learner.id, ratings, contests);
+    const difficulty = new Map(problems.map((p) => [p.id, p.difficulty]));
+    const solved = { easy: 0, medium: 0, hard: 0 };
+    for (const s of progress.solved) {
+      const d = difficulty.get(s.problemId);
+      if (d !== undefined) solved[d] += 1;
+    }
+    const streak = streaks(progress.days, this.#today());
+    return {
+      username: profile.username,
+      name: learner.name,
+      bio: profile.bio,
+      joinedAt: learner.createdAt,
+      title: standing.title,
+      rating: standing.rating,
+      contests: standing.history.slice(-10).reverse(),
+      solved,
+      streak: { current: streak.current, longest: streak.longest },
+      achievements: (await this.#achievements(site, learner.id, standing.history)).filter((a) => a.earned).map((a) => a.id),
+      url: this.#profileUrl(site, profile.username),
+    };
+  }
+
+  /**
+   * An achievement card for the learner: an SVG image, only for an
+   * achievement they have earned. Their public profile's address is on it
+   * when the profile is public.
+   */
+  async card(site: PracticeSite, learner: Learner, achievement: string, format: CardFormat, lang: CardLanguage): Promise<string> {
+    await this.#rateEnded(site.orgId);
+    const scope = practiceStaff(site.orgId);
+    const [ratings, contests, profile] = await Promise.all([this.#store.ratings(scope), this.#practice.contests(scope), this.#store.profile(site.orgId, { learnerId: learner.id })]);
+    const standing = this.#standing(learner.id, ratings, contests);
+    const earned = (await this.#achievements(site, learner.id, standing.history)).find((a) => a.id === achievement);
+    if (earned === undefined || !earned.earned) throw new PracticeError("not_found", "That achievement is not earned yet");
+    return achievementCard({
+      format,
+      lang,
+      achievement,
+      name: learner.name,
+      site: site.title,
+      title: standing.title,
+      rating: standing.rating,
+      profileUrl: profile !== null && profile.public ? this.#profileUrl(site, profile.username) : null,
+    });
+  }
+
+  async #achievements(site: PracticeSite, learnerId: string, history: readonly { rank: number; field: number; after: number }[]): Promise<Achievement[]> {
+    const scope = practiceLearner(site.orgId, learnerId);
     const [progress, problems, experiences] = await Promise.all([
       this.#practice.progress(scope),
       this.#practice.problems(practiceLearner(site.orgId, null)),
@@ -506,7 +614,7 @@ export class PrepCommunity {
     const longest = streaks(progress.days, this.#today()).longest;
     const best = Math.max(0, ...history.map((h) => h.after));
     const podium = history.some((h) => h.rank <= 3 && h.field >= 3) ? 1 : 0;
-    const wrote = experiences.filter((e) => e.learnerId === learner.id).length;
+    const wrote = experiences.filter((e) => e.learnerId === learnerId).length;
     const badge = (id: string, have: number, need: number): Achievement => ({ id, have: Math.min(have, need), need, earned: have >= need });
     return [
       badge("first_solve", solved, 1),

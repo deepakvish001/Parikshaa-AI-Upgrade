@@ -30,7 +30,7 @@ import {
   type Verdict,
 } from "./client.ts";
 import { approachesOf } from "./editorial.ts";
-import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context, type Nav } from "./parts.tsx";
+import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context, type Nav } from "./parts.tsx";
 import { navWord } from "./prep-nav.ts";
 
 // The prep pages come in a chunk of their own, when one is first opened.
@@ -62,6 +62,7 @@ const CompanyPage = lazy(() => community().then((m) => ({ default: m.CompanyPage
 const ExperiencesPage = lazy(() => community().then((m) => ({ default: m.ExperiencesPage })));
 const StorePage = lazy(() => community().then((m) => ({ default: m.StorePage })));
 const RatingPage = lazy(() => community().then((m) => ({ default: m.RatingPage })));
+const ProfilePage = lazy(() => community().then((m) => ({ default: m.ProfilePage })));
 const TutorPanel = lazy(() => import("./Tutor.tsx").then((m) => ({ default: m.TutorPanel })));
 import "./practice.css";
 
@@ -102,6 +103,7 @@ export type Route =
   | { readonly page: "experiences"; readonly company: string | undefined }
   | { readonly page: "store" }
   | { readonly page: "rating" }
+  | { readonly page: "profile"; readonly username: string }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -163,6 +165,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "store" };
     case "rating":
       return { page: "rating" };
+    case "u":
+      return second === undefined ? { page: "rating" } : { page: "profile", username: second };
     case "signin":
       return { page: "signin", next };
     case "signup":
@@ -428,6 +432,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
+        ) : route.page === "profile" ? (
+          <ProfilePage {...context} username={route.username} />
         ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "placement" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
@@ -1008,7 +1014,9 @@ function Discussion({ client, nav, learner, site, slug, here }: Context & { read
                 <span className="avatar-dot small" aria-hidden="true">
                   {c.authorName.slice(0, 1).toUpperCase()}
                 </span>
-                <strong>{c.authorName}</strong>
+                <strong>
+                  <Who nav={nav} name={c.authorName} title={c.title} username={c.username} />
+                </strong>
                 {c.fromStaff ? (
                   <span className="pill brand">
                     <ShieldCheck aria-hidden="true" /> {t("practice.staff")}
@@ -1270,7 +1278,7 @@ function ProgressPage({
 
 // --- the leaderboard -------------------------------------------------------------------------------
 
-function LeaderboardPage({ client, learner, site }: Context) {
+function LeaderboardPage({ client, nav, learner, site }: Context) {
   const { t } = usePreferences();
   const leaders = useQuery({ queryKey: ["practice", site, "leaderboard", learner?.id ?? null], queryFn: () => client.leaderboard() });
   return (
@@ -1298,7 +1306,7 @@ function LeaderboardPage({ client, learner, site }: Context) {
                 <tr key={`${l.rank}-${l.name}`} className={l.you ? "you" : undefined}>
                   <td className="num">{l.rank <= 3 ? <span className="rank-chip">{l.rank}</span> : l.rank}</td>
                   <td>
-                    {l.name}
+                    <Who nav={nav} name={l.name} title={l.title} username={l.username} />
                     {l.you ? <span className="pill brand">{t("practice.you")}</span> : null}
                   </td>
                   <td className="num">{l.solved}</td>
@@ -1499,7 +1507,7 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
                     <tr key={`${row.rank}-${row.name}`} className={row.you ? "you" : undefined}>
                       <td className="num sticky-rank">{row.rank}</td>
                       <td className="sticky-name">
-                        {row.name}
+                        <Who nav={nav} name={row.name} title={row.title} username={row.username} />
                         {row.you ? <span className="pill brand">{t("practice.you")}</span> : null}
                       </td>
                       <td className="num">{row.solved}</td>

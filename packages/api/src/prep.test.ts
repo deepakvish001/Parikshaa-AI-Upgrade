@@ -245,7 +245,7 @@ describe("a learner's day", () => {
     expect(coins.balance).toBe(115);
     expect(coins.history.map((h: { rule: string }) => h.rule)).toEqual(expect.arrayContaining(["lesson", "solve", "module"]));
     const leaders = await ok("GET", null, `${S}/coins/leaders`);
-    expect(leaders.leaders).toEqual([{ rank: 1, name: "Asha", coins: 115, you: false }]);
+    expect(leaders.leaders).toEqual([{ rank: 1, name: "Asha", title: null, username: null, coins: 115, you: false }]);
   });
 });
 

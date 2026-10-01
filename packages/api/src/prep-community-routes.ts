@@ -416,6 +416,89 @@ export function registerPrepCommunityRoutes(routes: Routes, deps: PrepCommunityR
 
   // --- staff ------------------------------------------------------------------------------------
 
+  // --- profiles and cards -----------------------------------------------------------------
+
+  const profileBody = z.object({
+    username: z.string().max(40).describe("3 to 30 small letters, digits, - and _."),
+    public: z.boolean().describe("Shown at /practice/<site>/u/<username>, and linked from the learner's name, only when true."),
+    bio: z.string().max(200).optional(),
+  });
+  const myProfile = z.object({ username: z.string().nullable(), public: z.boolean(), bio: z.string() });
+
+  routes.get(
+    "/practice/:site/profile",
+    { schema: { tags: PREP, summary: "My profile settings", description: "Private, with no username, until the learner chooses.", security: LEARNER, params: siteParams, response: { 200: myProfile, ...refusals } } },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await community.myProfile(who.site, who.learner));
+    },
+  );
+
+  routes.put(
+    "/practice/:site/profile",
+    { schema: { tags: PREP, summary: "Choose my username, and make my profile public or private", security: LEARNER, params: siteParams, body: profileBody, response: { 200: myProfile, ...refusals } } },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await community.saveProfile(who.site, who.learner, request.body));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/u/:username",
+    {
+      schema: {
+        tags: PREP,
+        summary: "A learner's public profile",
+        description: "Name, title, rating, contests, problems solved by difficulty, streak and achievements. Never the email. Not found unless the learner made it public.",
+        security: OPEN,
+        params: siteParams.extend({ username: z.string().min(1).max(40) }),
+        response: {
+          200: z.object({
+            username: z.string(),
+            name: z.string(),
+            bio: z.string(),
+            joinedAt: z.string(),
+            title: z.string(),
+            rating: z.number().nullable(),
+            contests: z.array(z.object({ contest: z.string(), slug: z.string(), rank: z.number(), field: z.number(), before: z.number(), after: z.number(), at: z.string() })).readonly().describe("The last ten, newest first."),
+            solved: z.object({ easy: z.number(), medium: z.number(), hard: z.number() }),
+            streak: z.object({ current: z.number(), longest: z.number() }),
+            achievements: z.array(z.string()).readonly().describe("Earned ones only."),
+            url: z.string(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => reply.send(await community.publicProfile(await siteOf(request), request.params.username)),
+  );
+
+  routes.get(
+    "/practice/:site/achievements/:id/card",
+    {
+      schema: {
+        tags: PREP,
+        summary: "A card for an achievement I have earned, to share: an SVG image",
+        description: "story is 1080×1920 (a WhatsApp status or a story), square is 1080×1080. The public profile's address is on it when the profile is public.",
+        security: LEARNER,
+        params: siteParams.extend({ id: z.string().min(1).max(40) }),
+        querystring: z.object({ format: z.enum(["story", "square"]).default("story"), lang: z.enum(["en", "hi"]).default("en") }),
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      const svg = await community.card(who.site, who.learner, request.params.id, request.query.format, request.query.lang);
+      return reply
+        .header("content-type", "image/svg+xml; charset=utf-8")
+        .header("content-security-policy", "default-src 'none'; style-src 'unsafe-inline'")
+        .header("cache-control", "private, max-age=300")
+        .send(svg);
+    },
+  );
+
   routes.get("/practice-admin/companies", { schema: { tags: ADMIN, summary: "Companies and their reports", security: STAFF, response: { 200: z.object({ companies: z.array(staffCompany).readonly() }), ...refusals } } }, async (request, reply) => {
     const actor = await staff(request, reply, "exam:read");
     if (actor === null) return;

@@ -127,6 +127,8 @@ export interface Comment {
   readonly id: string;
   readonly problemId: string;
   readonly authorName: string;
+  /** The learner who wrote it; null for staff. */
+  readonly learnerId: string | null;
   /** Written by the institution's staff, not a learner. */
   readonly fromStaff: boolean;
   readonly body: string;
@@ -712,8 +714,8 @@ export class PracticeStore {
   async comments(scope: PracticeScope, problemId: string | null): Promise<readonly Comment[]> {
     return scoped(this.#sql, scope, async (tx) =>
       (
-        await tx.query<{ id: string; problem_id: string; author_name: string; staff_user_id: string | null; body: string; created_at: string | Date; hidden_at: string | Date | null }>(
-          `SELECT id, problem_id, author_name, staff_user_id, body, created_at, hidden_at FROM practice_comments
+        await tx.query<{ id: string; problem_id: string; learner_id: string | null; author_name: string; staff_user_id: string | null; body: string; created_at: string | Date; hidden_at: string | Date | null }>(
+          `SELECT id, problem_id, learner_id, author_name, staff_user_id, body, created_at, hidden_at FROM practice_comments
             WHERE org_id = $1 AND ($2::text IS NULL OR problem_id = $2)
             ORDER BY created_at ${problemId === null ? "DESC" : "ASC"} LIMIT 500`,
           [scope.orgId, problemId],
@@ -722,6 +724,7 @@ export class PracticeStore {
         id: r.id,
         problemId: r.problem_id,
         authorName: r.author_name,
+        learnerId: r.learner_id,
         fromStaff: r.staff_user_id !== null,
         body: r.body,
         createdAt: iso(r.created_at),
@@ -745,6 +748,7 @@ export class PracticeStore {
         id: rows[0]!.id,
         problemId: comment.problemId,
         authorName: comment.authorName,
+        learnerId,
         fromStaff: scope.actor === "staff",
         body: comment.body,
         createdAt: iso(rows[0]!.created_at),

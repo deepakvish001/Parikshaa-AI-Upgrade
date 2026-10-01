@@ -30,6 +30,21 @@ export class CommunitySlugTaken extends Error {
   }
 }
 
+export class UsernameTaken extends Error {
+  constructor() {
+    super("That username is taken");
+    this.name = "UsernameTaken";
+  }
+}
+
+/** A learner's public profile: off until they turn it on. */
+export interface Profile {
+  readonly learnerId: string;
+  readonly username: string;
+  readonly public: boolean;
+  readonly bio: string;
+}
+
 export interface Company {
   readonly id: string;
   readonly slug: string;
@@ -206,6 +221,49 @@ export class PrepCommunityStore {
   constructor(sql: SqlExecutor, options: { readonly newId?: () => string } = {}) {
     this.#sql = sql;
     this.#newId = options.newId ?? (() => crypto.randomUUID());
+  }
+
+  // --- profiles ----------------------------------------------------------------------
+
+  /** A learner's profile, by learner or by username; null when they have none. */
+  async profile(orgId: OrgId, by: { readonly learnerId: string } | { readonly username: string }): Promise<Profile | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ learner_id: string; username: string; public: boolean; bio: string }>(
+        `SELECT learner_id, username, public, bio FROM prep_profiles WHERE org_id = $1 AND ${"learnerId" in by ? "learner_id" : "username"} = $2`,
+        [orgId, "learnerId" in by ? by.learnerId : by.username],
+      );
+      const r = rows[0];
+      return r === undefined ? null : { learnerId: r.learner_id, username: r.username, public: r.public, bio: r.bio };
+    });
+  }
+
+  /** Make or change a learner's profile. */
+  async saveProfile(orgId: OrgId, profile: Profile): Promise<Profile> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      try {
+        await tx.query(
+          `INSERT INTO prep_profiles (org_id, learner_id, username, public, bio) VALUES ($1, $2, $3, $4, $5)
+           ON CONFLICT (org_id, learner_id) DO UPDATE SET username = $3, public = $4, bio = $5, updated_at = now()`,
+          [orgId, profile.learnerId, profile.username, profile.public, profile.bio],
+        );
+      } catch (error) {
+        if (isUnique(error)) throw new UsernameTaken();
+        throw error;
+      }
+      return profile;
+    });
+  }
+
+  /** The usernames of these learners, those with a public profile: to link a name to its profile. */
+  async publicUsernames(orgId: OrgId, learnerIds: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    if (learnerIds.length === 0) return new Map();
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ learner_id: string; username: string }>(
+        `SELECT learner_id, username FROM prep_profiles WHERE org_id = $1 AND public AND learner_id = ANY($2::text[])`,
+        [orgId, [...learnerIds]],
+      );
+      return new Map(rows.map((r) => [r.learner_id, r.username]));
+    });
   }
 
   // --- companies ---------------------------------------------------------------------

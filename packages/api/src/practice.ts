@@ -253,11 +253,20 @@ export function scoreboard(contest: Contest, submissions: readonly (Submission &
   });
 }
 
+/** Shown beside a learner's name wherever it appears: their title, and their public profile's username. */
+export interface Person {
+  readonly title: string | null;
+  readonly username: string | null;
+}
+export type People = (orgId: OrgId, learnerIds: readonly string[]) => Promise<ReadonlyMap<string, Person>>;
+const NOBODY: Person = { title: null, username: null };
+
 export class PracticeService {
   readonly #store: PracticeStore;
   readonly #bank: QuestionBank;
   readonly #judge: JudgeQueue | null;
-  readonly #boards = new Map<string, { readonly key: string; readonly at: number; readonly board: ScoreboardRow[] }>();
+  readonly #boards = new Map<string, { readonly key: string; readonly at: number; readonly board: (ScoreboardRow & Person)[] }>();
+  #people: People = async () => new Map();
   readonly #now: () => number;
   readonly #runs = new RateLimiter({ perSecond: 0.5, burst: 20 });
   readonly #submits = new RateLimiter({ perSecond: 0.2, burst: 10 });
@@ -424,6 +433,11 @@ export class PracticeService {
 
   #limit(limiter: RateLimiter, key: string): void {
     if (!limiter.take(key).ok) throw new PracticeError("too_many_runs", "Slow down a little and try again in a moment");
+  }
+
+  /** Where titles and usernames come from (Prep's ratings and profiles), once that service exists. */
+  usePeople(people: People): void {
+    this.#people = people;
   }
 
   /** The judge's queue as it stands: for staff on a contest day. */
@@ -597,7 +611,8 @@ export class PracticeService {
 
   async leaderboard(site: PracticeSite, learner: Learner | null) {
     const rows = await this.#store.leaderboard(site.orgId, 100);
-    return rows.map((r, i) => ({ rank: i + 1, name: r.name, solved: r.solved, you: learner !== null && r.learnerId === learner.id }));
+    const people = await this.#people(site.orgId, rows.map((r) => r.learnerId));
+    return rows.map((r, i) => ({ rank: i + 1, name: r.name, ...(people.get(r.learnerId) ?? NOBODY), solved: r.solved, you: learner !== null && r.learnerId === learner.id }));
   }
 
   // --- contests ------------------------------------------------------------------------------------
@@ -619,11 +634,13 @@ export class PracticeService {
    * it runs, and each look would otherwise read every submission. A
    * submission to the contest through this server drops it at once.
    */
-  async #board(site: PracticeSite, contest: Contest): Promise<ScoreboardRow[]> {
+  async #board(site: PracticeSite, contest: Contest): Promise<(ScoreboardRow & Person)[]> {
     const key = `${contest.startsAt}|${contest.endsAt}|${contest.problemIds.join(",")}`;
     const kept = this.#boards.get(contest.id);
     if (kept !== undefined && kept.key === key && this.#now() - kept.at < BOARD_KEEP_MS) return kept.board;
-    const board = scoreboard(contest, await this.#store.contestSubmissions(site.orgId, contest.id));
+    const rows = scoreboard(contest, await this.#store.contestSubmissions(site.orgId, contest.id));
+    const people = await this.#people(site.orgId, rows.map((r) => r.learnerId));
+    const board = rows.map((r) => ({ ...r, ...(people.get(r.learnerId) ?? NOBODY) }));
     if (this.#boards.size > 100) this.#boards.clear();
     this.#boards.set(contest.id, { key, at: this.#now(), board });
     return board;
@@ -669,9 +686,12 @@ export class PracticeService {
     const { problem } = await this.#find(site, slug, undefined).catch(() => {
       throw new PracticeError("not_found", "No such problem");
     });
-    return (await this.#store.comments(practiceLearner(site.orgId, null), problem.id)).map(({ id, authorName, fromStaff, body, createdAt }) => ({
+    const comments = await this.#store.comments(practiceLearner(site.orgId, null), problem.id);
+    const people = await this.#people(site.orgId, comments.flatMap((c) => (c.learnerId === null ? [] : [c.learnerId])));
+    return comments.map(({ id, authorName, learnerId, fromStaff, body, createdAt }) => ({
       id,
       authorName,
+      ...((learnerId === null ? undefined : people.get(learnerId)) ?? NOBODY),
       fromStaff,
       body,
       createdAt,
@@ -684,7 +704,8 @@ export class PracticeService {
     const { problem } = await this.#find(site, slug, undefined);
     this.#limit(this.#comments, learner.id);
     const c = await this.#store.addComment(practiceLearner(site.orgId, learner.id), { problemId: problem.id, authorName: learner.name, body: text });
-    return { id: c.id, authorName: c.authorName, fromStaff: false, body: c.body, createdAt: c.createdAt };
+    const person = (await this.#people(site.orgId, [learner.id])).get(learner.id) ?? NOBODY;
+    return { id: c.id, authorName: c.authorName, ...person, fromStaff: false, body: c.body, createdAt: c.createdAt };
   }
 
   // --- staff -----------------------------------------------------------------------------------------
