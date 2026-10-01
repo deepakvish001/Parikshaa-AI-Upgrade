@@ -154,7 +154,7 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
                   <p className="notice gst-breakup">{p("plus.breakup", { base: rupees(price - tax), gst: rupees(tax) })}</p>
                   {q !== null && q.discountPaise > 0 ? <p className="saving">{p("plus.coupon.saving", { amount: rupees(q.discountPaise) })}</p> : null}
                   <ul>
-                    {product.days > 0 ? <li>{p("plus.days", { n: product.days })}</li> : null}
+                    {product.days > 0 ? <li>{p(product.kind === "company" ? "plus.companyDays" : "plus.days", { n: product.days })}</li> : null}
                     {product.credits > 0 ? <li>{p("plus.credits", { n: product.credits.toLocaleString("en-IN") })}</li> : null}
                   </ul>
                   {learner === null ? (

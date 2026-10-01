@@ -27,17 +27,17 @@ Status ka matlab:
 
 | Hissa | ✅ | 🟡 | ⬜ | ❌ |
 |---|---|---|---|---|
-| Dashboard aur planner | 9 | 2 | 4 | 0 |
+| Dashboard aur planner | 9 | 3 | 3 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 4 | 1 | 2 | 0 |
 | Sahayak AI | 12 | 3 | 3 | 0 |
-| Plus aur payment | 9 | 0 | 4 | 0 |
+| Plus aur payment | 9 | 1 | 3 | 0 |
 | Coins, store, gamification | 10 | 3 | 2 | 0 |
-| Company prep aur community | 8 | 1 | 6 | 0 |
+| Company prep aur community | 11 | 1 | 3 | 0 |
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 3 | 1 | 5 | 1 |
 | Platform, quality, B2B | 8 | 2 | 3 | 0 |
-| **Kul** | **72** | **16** | **33** | **1** |
+| **Kul** | **75** | **18** | **28** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -54,7 +54,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Dashboard: aaj ka plan sabse upar, streak, coins, POTD, due revision, "continue" | ✅ | `web/src/practice/PrepPages.tsx` → `HomePage`; API `GET /practice/:site/home` | Pehli visit par +1 coin check-in |
 | Onboarding: track, level, deadline, roz ke minutes, off days, plan preview | ✅ | `PlanSetup`; `POST /practice/:site/plan/preview` | |
 | Onboarding: 8 sawaal ka placement quiz | ⬜ | | Level abhi khud chunna padta hai |
-| Onboarding: target role aur companies | ⬜ | | Company page alag se hai, plan se juda nahi |
+| Onboarding: target role aur companies | 🟡 | `PlanSetup` → `TargetPicker`; `PUT /companies/:company/target` | Plan banate waqt target companies chun sakte hain (company page se bhi). Unke problems plan ke aakhri 30% dino me. Target **role** abhi nahi |
 | Weekday aur weekend ke alag minutes | ⬜ | | Abhi ek hi "roz ke minutes" |
 
 ### 2. Planner, "Planly" jaisa (S6, F2, F6, F7)
@@ -136,7 +136,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Billing page: orders | ✅ | `GET /orders`, `PlusPages.tsx` | Har order ke saath coupon ki chhoot aur invoice ka link |
 | Learner ke liye GST invoice (PDF, number series) | ✅ | `prep_invoices` (migration 0029), `gst.ts` `inclusiveInvoice`, `GET /invoices/:number`, `InvoicePage` | Paid hote hi usi transaction me, series `PKP/2627/000001`; state se CGST+SGST ya IGST. PDF browser ke "Print → Save as PDF" se; server PDF file nahi banata. Invoice tabhi banta hai jab server par `PARIKSHAA_SUPPLIER_*` set ho |
 | Coupons aur affiliate `?ref=` | ✅ | `prep_coupons`, `POST /plus/quote`, console "Coupons and sales" (`Sales.tsx`) | % ya flat, ek plan ya sab, kitni baar, kab tak, affiliate ka naam; har learner ek baar. `?ref=CODE` link se code apne aap bhar jaata hai. Affiliate ko commission dene ka hisaab nahi, sirf bikri ki report |
-| Alag passes (DSA Pass, Company Pass) | ⬜ | | Abhi ek hi "Plus" |
+| Alag passes (DSA Pass, Company Pass) | 🟡 | product kind `company` (migration 0032), `PrepPlus.companyAccess` | **Company Pass** ban gaya: sirf companies ki poori list kholta hai, Plus nahi deta; invoice par "Company Pass" likha aata hai. Alag "DSA Pass" nahi: Plus hi lessons aur plan kholta hai |
 | Purane users ko 30 din ka trial | ⬜ | | Staff grant se haath se ho sakta hai |
 | Refund flow | ⬜ | | |
 | Campus licence: CSV se bulk Plus, college dashboard | ⬜ | | Abhi ek-ek learner ko grant |
@@ -174,9 +174,9 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Helpful votes, ek learner ke max 5 pending | ✅ | | |
 | Account delete par write-up bina naam ke | ✅ | | |
 | Pattern analysis (sirf topic nahi) | 🟡 | | Tags se topics. Alag "pattern" field nahi |
-| "Is company ki list shuru karo" (folder) | ⬜ | | |
-| Readiness score (top 50 me kitne solved) | ⬜ | | |
-| Plan ke aakhri 30% din me target company problems | ⬜ | | |
+| "Is company ki list shuru karo" (folder) | ✅ | `POST /companies/:company/start`, `CompanyPage` | Company ke naam ki list me top problems (180 din, 50 tak): Plus/Company Pass ke saath sab, bina 5. Company target bhi ho jaati hai |
+| Readiness score (top 50 me kitne solved) | ✅ | `PrepCommunity.#readiness`; company page aur dashboard (`TargetsCard`) | 180 din ke sabse zyada poochhe gaye 50 me se kitne solve. Target companies `prep_targets` me (10 tak) |
+| Plan ke aakhri 30% din me target company problems | ✅ | `PrepService.#withCompanies`, `PrepCommunity.targetProblems` | Naya plan banate waqt targets ke 10 tak unsolved problems, har company se baari-baari; bina Plus/Pass sirf free 5 me se |
 | Company logos | ⬜ | | |
 | Experience report/flag karna (learner) | ⬜ | | |
 | Success stories | ⬜ | | |
@@ -231,10 +231,10 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Phase | Blueprint me | Status | Kya baaki |
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
-| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Passes, trial, refund |
+| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
 | P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Placement quiz, plan settings |
 | P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, notes draft, 180 din delete |
-| P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Company Pass, readiness, contest coins |
+| P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting, PDF export, AI draft |
 | P6 · Aage | Content, follow-ups, PWA, campus, subscriptions | ⬜ | |
 
@@ -242,7 +242,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 
 | Flow | Status | Note |
 |---|---|---|
-| F1 Sign up → onboarding → pehla plan | 🟡 | Placement quiz aur target companies baaki |
+| F1 Sign up → onboarding → pehla plan | 🟡 | Target companies ho gayi. Placement quiz baaki |
 | F2 Roz ka loop | ✅ | Reminder email ke saath |
 | F3 Run aur Submit | ✅ | |
 | F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
@@ -250,7 +250,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F6 Chhoota task reschedule | ✅ | App kholne par. Cron aur email baaki |
 | F7 Sprint notes + quiz | ✅ | MCQ/numeric sawaalon ke saath |
 | F8 Spaced revision | ✅ | |
-| F9 Company prep | 🟡 | Folder, readiness baaki |
+| F9 Company prep | ✅ | Target, readiness, list shuru karo, Company Pass, plan me company problems |
 | F10 POTD, streak, coins | ✅ | |
 | F11 Contest + rating | ✅ | Contest coins aur priority lane baaki |
 | F12 Plus kharidna | ✅ | Coupon aur GST invoice ke saath |
@@ -296,8 +296,8 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 3 | **Roz ke reminders + analytics** (shuru: 1 Oct 2026). Learner plan page par roz ka email reminder chaalu kare aur samay chune (IST); har din ek hi email: aaj ke baaki tasks, revise ke cards, streak; email me ek click se band karne ka link. Analytics: signup, plan, solve, lesson, task, hint, purchase aur roz ka khulna — maujooda tables se gine jaate hain; console me activation (7 din me pehla solve), D1/D7 retention, funnel, roz ke active learners | F2, §17 | Retention aur metrics naapna | Tests: sahi ghante par sirf baaki kaam wale learners ko ek hi email, band karne ka link, analytics ke numbers; console aur learner pages | ✅ ban gaya (1 Oct 2026) |
 | 4 | **Sprint quiz + revision notes, streak freeze** (shuru: 1 Oct 2026). Sprint ke saare tasks ho jaayein ya uske din nikal jaayein to quiz khule: us sprint ke MCQ/numeric sawaal (10 tak), 70% se kam par galat wale sawaal agle study day par revise tasks ban jaayein aur revision card aaj due ho; pass par coins. Sprint ke revision notes: us sprint ke lessons/problems par learner ke apne notes ek page par. Streak freeze ("aaj chhutti"): mahine me 2, streak nahi tootta, aaj ke tasks aage khisak jaate hain, us din reminder nahi | F7, 13.2 | Planner poora | Tests: quiz kab khulta hai, grading, 70% ka niyam aur revise tasks, coins ek baar; notes page; freeze ki limit, streak par asar, tasks ka khisakna; learner pages | ✅ ban gaya (1 Oct 2026) |
 | 5 | Playwright e2e: F1, F3, F12, F13 ke click-through flows | §20 | Regression se bachav | CI me chalein | ⬜ |
-| 6 | Company v2: readiness, "list shuru karo", Company Pass | F9 | Company prep poora | Readiness dashboard par | ⬜ |
-| 7 | NoteSpace: AI draft, PDF export | F15 | Phase 5 | Topic ke notes ek PDF me | ⬜ |
+| 6 | **Company v2: readiness, "list shuru karo", Company Pass** (shuru: 1 Oct 2026). Learner companies ko target kare (company page ya plan banate waqt); har target ka readiness score (pichhle 180 din ke sabse zyada poochhe gaye 50 problems me se kitne solve) company page aur dashboard par; "Is company ki list shuru karo" se company ke top problems ek apni list me; Company Pass: alag product jo sirf companies ki poori list kholta hai (Plus ke bina); plan banate waqt target companies ke unsolved problems plan ke aakhri 30% dino me | F9 | Company prep poora | Tests: readiness ginti, list banna aur Plus/Pass ke bina 5 ki seema, Company Pass kharidna aur uska asar, plan me company problems; learner aur console pages | ✅ ban gaya (1 Oct 2026) |
+| 7 | **NoteSpace: AI draft, PDF export** (shuru: 1 Oct 2026). Sahayak ka "notes" mode: lesson ya **solve kiye hue** problem par revision note ka draft (key idea, steps, complexity, galtiyan), learner ke apne accepted code ke saath; credits katte hain, note apne aap save nahi hota: learner editor me badal kar save karta hai. Bina solve kiye problem par draft nahi (solution leak na ho). PDF: ek track ke saare notes, module ke hisaab se (topic notes alag), ek printable page par; browser ke "Print → Save as PDF" se | F15, §14 | Phase 5 | Tests: draft ke credits aur refund, unsolved problem par mana, contest me band, history me "notes"; track ke notes module ke kram me; learner pages | 🟡 chal raha |
 | 8 | Campus licence: CSV se bulk Plus, college dashboard | F16 | B2B sales | 500 students ek CSV se | ⬜ |
 | 9 | Content: 150 editorials, 300 hints, 25 companies, videos | §15 | Log content ke liye aate hain | Har phase ka content target | ⬜ |
 

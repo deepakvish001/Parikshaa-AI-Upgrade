@@ -513,6 +513,18 @@ export class PracticeClient {
     return this.#request(`/companies/${encodeURIComponent(slug)}?window=${window}`);
   }
 
+  async targets(): Promise<readonly CompanyTarget[]> {
+    return (await this.#request<{ targets: CompanyTarget[] }>("/companies/targets")).targets;
+  }
+
+  async setTarget(slug: string, on: boolean): Promise<void> {
+    await this.#request(`/companies/${encodeURIComponent(slug)}/target`, { method: "PUT", body: JSON.stringify({ on }) });
+  }
+
+  startCompanyList(slug: string): Promise<{ readonly list: string; readonly added: number; readonly locked: number }> {
+    return this.#post(`/companies/${encodeURIComponent(slug)}/start`);
+  }
+
   async experiences(company?: string): Promise<readonly InterviewExperience[]> {
     return (await this.#request<{ experiences: InterviewExperience[] }>(`/experiences${company === undefined ? "" : `?company=${encodeURIComponent(company)}`}`)).experiences;
   }
@@ -752,7 +764,7 @@ export interface Coins {
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "credits";
+  readonly kind: "plus" | "company" | "credits";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -870,6 +882,18 @@ export interface CompanyCard {
   readonly experiences: number;
 }
 
+export interface Readiness {
+  readonly solved: number;
+  readonly of: number;
+  readonly percent: number;
+}
+
+export interface CompanyTarget {
+  readonly slug: string;
+  readonly name: string;
+  readonly readiness: Readiness;
+}
+
 export interface InterviewRound {
   readonly kind: string;
   readonly asked: string;
@@ -919,8 +943,11 @@ export interface CompanyPage {
     readonly lastAsked: string;
     readonly solved: boolean;
   }[];
-  /** More problems in the window, which come with Plus. */
+  /** More problems in the window, which come with Plus or a Company Pass. */
   readonly locked: number;
+  /** Signed in: of the 50 most asked in the last 180 days, how many are solved. */
+  readonly readiness: Readiness | null;
+  readonly target: boolean;
   readonly topics: readonly { readonly tag: string; readonly problems: number }[];
   readonly difficulty: { readonly easy: number; readonly medium: number; readonly hard: number };
   readonly experiences: readonly InterviewExperience[];

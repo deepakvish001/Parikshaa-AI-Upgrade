@@ -149,6 +149,14 @@ describe("the dashboard", () => {
     expect(screen.getByText("3 problems due for revision")).toBeTruthy();
   });
 
+  it("says how ready the learner is for each company they aim for", async () => {
+    routes["GET /practice/nit-practice/companies/targets"] = () => ({ body: { targets: [{ slug: "acme", name: "Acme", readiness: { solved: 12, of: 50, percent: 24 } }] } });
+    open("/practice/nit-practice/home");
+    const card = await screen.findByRole("region", { name: "Your target companies" });
+    expect(within(card).getByRole("link", { name: "Acme" }).getAttribute("href")).toBe("/practice/nit-practice/companies/acme");
+    expect(within(card).getByText("24% ready (12/50)")).toBeTruthy();
+  });
+
   it("asks a learner without a plan to make one", async () => {
     routes["GET /practice/nit-practice/home"] = () => ({ body: { ...home, plan: null, checkin: 0 } });
     open("/practice/nit-practice/home");
@@ -199,6 +207,24 @@ describe("the plan", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")).toBe(true));
     const started = calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body as { track: string; dailyMinutes: number; offDays: number[] };
     expect(started).toMatchObject({ track: "dsa-basics", dailyMinutes: 150, offDays: [0] });
+  });
+
+  it("lets the learner pick target companies while planning", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    routes["GET /practice/nit-practice/companies"] = () => ({ body: { companies: [{ slug: "acme", name: "Acme", problems: 9, experiences: 0 }, { slug: "zeta", name: "Zeta", problems: 4, experiences: 1 }] } });
+    let aimed: { slug: string; name: string; readiness: object }[] = [{ slug: "zeta", name: "Zeta", readiness: { solved: 0, of: 4, percent: 0 } }];
+    routes["GET /practice/nit-practice/companies/targets"] = () => ({ body: { targets: aimed } });
+    routes["PUT /practice/nit-practice/companies/acme/target"] = () => {
+      aimed = [...aimed, { slug: "acme", name: "Acme", readiness: { solved: 0, of: 9, percent: 0 } }];
+      return { body: { ok: true } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan");
+    const zeta = await screen.findByRole("checkbox", { name: "Zeta" });
+    expect((zeta as HTMLInputElement).checked).toBe(true);
+    await user.click(screen.getByRole("checkbox", { name: "Acme" }));
+    await waitFor(() => expect((screen.getByRole("checkbox", { name: "Acme" }) as HTMLInputElement).checked).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")).toMatchObject({ path: "/practice/nit-practice/companies/acme/target", body: { on: true } });
   });
 
   it("ticks a task of the learner's own; a problem's task is done by solving it", async () => {

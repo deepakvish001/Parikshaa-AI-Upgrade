@@ -229,7 +229,14 @@ export async function wire(
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, supplier: SUPPLIER, ...(options.now === undefined ? {} : { now: options.now }) });
-  const prepService = new PrepService({ practice: new PracticeStore(sql), store: new PrepStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) });
+  const prepCommunity = new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) });
+  const prepService = new PrepService({
+    practice: new PracticeStore(sql),
+    store: new PrepStore(sql),
+    plus: prepPlus,
+    companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner),
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(sql),
     practiceStore: new PracticeStore(sql),
@@ -324,7 +331,7 @@ export async function wire(
     practiceIdentity,
     prep: prepService,
     starterPacks: new StarterPacks({ practice: new PracticeStore(sql), prep: new PrepStore(sql), service: prepService }),
-    prepCommunity: new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) }),
+    prepCommunity,
     prepEngage,
     prepPlus: {
       plus: prepPlus,

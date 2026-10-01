@@ -450,13 +450,13 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
   const learners = useQuery({ queryKey: ["practice", "learners"], queryFn: () => client.practiceLearners(), enabled: canManage });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep", "plus"] });
   const settings = useMutation({ mutationFn: (patch: Parameters<ConsoleClient["savePlusSettings"]>[0]) => client.savePlusSettings(patch), onSuccess: refresh });
-  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "credits", days: 90, credits: 1000, rupees: 999 });
+  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "company" | "credits", days: 90, credits: 1000, rupees: 999 });
   const addProduct = useMutation({
     mutationFn: () =>
       client.savePlusProduct(null, {
         title: product.title.trim(),
         kind: product.kind,
-        days: product.kind === "plus" ? product.days : 0,
+        days: product.kind === "credits" ? 0 : product.days,
         credits: product.credits,
         pricePaise: Math.round(product.rupees * 100),
         active: true,
@@ -467,7 +467,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
     },
   });
   const toggle = useMutation({
-    mutationFn: (p: { id: string; title: string; kind: "plus" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
+    mutationFn: (p: { id: string; title: string; kind: "plus" | "company" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
       client.savePlusProduct(p.id, { title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise, active: !p.active }),
     onSuccess: refresh,
   });
@@ -537,7 +537,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
                 <tr key={p.id}>
                   <td>{p.title}</td>
                   <td>
-                    {p.days > 0 ? `${p.days} days of Plus` : ""}
+                    {p.days > 0 ? `${p.days} days of ${p.kind === "company" ? "Company Pass" : "Plus"}` : ""}
                     {p.days > 0 && p.credits > 0 ? " + " : ""}
                     {p.credits > 0 ? `${p.credits.toLocaleString("en-IN")} credits` : ""}
                   </td>
@@ -570,12 +570,13 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
             </label>
             <label>
               Kind
-              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "credits" })}>
+              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "company" | "credits" })}>
                 <option value="plus">Plus</option>
+                <option value="company">Company Pass (every company list, nothing else)</option>
                 <option value="credits">Credits pack</option>
               </select>
             </label>
-            {product.kind === "plus" ? (
+            {product.kind !== "credits" ? (
               <label>
                 Days
                 <input type="number" min={1} max={1100} value={product.days} onChange={(e) => setProduct({ ...product, days: Number(e.target.value) })} />

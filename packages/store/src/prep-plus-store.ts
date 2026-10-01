@@ -42,7 +42,8 @@ export const DEFAULT_PREP_SETTINGS: PrepSettings = { plusEnabled: false, freeMod
 export interface PrepProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "credits";
+  /** Plus, a Company Pass (the company lists alone), or tutor credits. */
+  readonly kind: "plus" | "credits" | "company";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
@@ -69,6 +70,8 @@ export interface PrepOrder {
   readonly buyerName: string;
   readonly buyerState: string | null;
   readonly buyerGstin: string | null;
+  /** Which pass its days are for. */
+  readonly pass: "plus" | "company";
   readonly gatewayOrderId: string;
   readonly paymentId: string | null;
   readonly status: "created" | "paid";
@@ -163,6 +166,8 @@ export interface PlusSpan {
   readonly startsAt: string;
   readonly endsAt: string;
   readonly source: "payment" | "grant" | "coins";
+  /** Plus, or a Company Pass. */
+  readonly pass: "plus" | "company";
 }
 
 export type CreditReason = "monthly" | "purchase" | "grant" | "spend" | "refund";
@@ -195,6 +200,7 @@ interface OrderRow {
   buyer_name: string;
   buyer_state: string | null;
   buyer_gstin: string | null;
+  pass: "plus" | "company";
   gateway_order_id: string;
   payment_id: string | null;
   status: "created" | "paid";
@@ -202,7 +208,7 @@ interface OrderRow {
   paid_at: string | Date | null;
 }
 const ORDER_COLUMNS =
-  "id, learner_id, product_id, title, days, credits, list_paise, coupon_code, discount_paise, amount_paise, tax_paise, buyer_name, buyer_state, buyer_gstin, gateway_order_id, payment_id, status, created_at, paid_at";
+  "id, learner_id, product_id, title, days, credits, list_paise, coupon_code, discount_paise, amount_paise, tax_paise, buyer_name, buyer_state, buyer_gstin, pass, gateway_order_id, payment_id, status, created_at, paid_at";
 const toOrder = (r: OrderRow): PrepOrder => ({
   id: r.id,
   learnerId: r.learner_id,
@@ -218,6 +224,7 @@ const toOrder = (r: OrderRow): PrepOrder => ({
   buyerName: r.buyer_name,
   buyerState: r.buyer_state,
   buyerGstin: r.buyer_gstin,
+  pass: r.pass,
   gatewayOrderId: r.gateway_order_id,
   paymentId: r.payment_id,
   status: r.status,
@@ -228,7 +235,7 @@ const toOrder = (r: OrderRow): PrepOrder => ({
 interface ProductRow {
   id: string;
   title: string;
-  kind: "plus" | "credits";
+  kind: "plus" | "credits" | "company";
   days: number;
   credits: number;
   price_paise: number;
@@ -323,8 +330,8 @@ export class PrepPlusStore {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const rows = await tx.query<OrderRow>(
         `INSERT INTO prep_orders (org_id, id, learner_id, product_id, title, days, credits, amount_paise, tax_paise, gateway_order_id,
-                                  list_paise, coupon_code, discount_paise, buyer_name, buyer_state, buyer_gstin)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING ${ORDER_COLUMNS}`,
+                                  list_paise, coupon_code, discount_paise, buyer_name, buyer_state, buyer_gstin, pass)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING ${ORDER_COLUMNS}`,
         [
           orgId,
           this.#newId(),
@@ -342,6 +349,7 @@ export class PrepPlusStore {
           order.buyerName,
           order.buyerState,
           order.buyerGstin,
+          order.pass,
         ],
       );
       return toOrder(rows[0]!);
@@ -383,14 +391,15 @@ export class PrepPlusStore {
       const order = toOrder(rows[0]!);
       if (order.days > 0) {
         // Plus bought while Plus is held runs on from the end of what is held.
+        // A pass bought while the same pass is held runs on from the end of what is held.
         const held = await tx.query<{ ends_at: string | Date | null }>(
-          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3`,
-          [orgId, order.learnerId, at],
+          `SELECT max(ends_at) AS ends_at FROM prep_plus WHERE org_id = $1 AND learner_id = $2 AND ends_at > $3 AND pass = $4`,
+          [orgId, order.learnerId, at, order.pass],
         );
         const from = held[0]?.ends_at === null || held[0]?.ends_at === undefined ? at : new Date(held[0].ends_at);
         await tx.query(
-          `INSERT INTO prep_plus (org_id, id, learner_id, starts_at, ends_at, source, ref) VALUES ($1, $2, $3, $4, $5, 'payment', $6) ON CONFLICT DO NOTHING`,
-          [orgId, this.#newId(), order.learnerId, from, new Date(from.getTime() + order.days * 86_400_000), order.id],
+          `INSERT INTO prep_plus (org_id, id, learner_id, starts_at, ends_at, source, ref, pass) VALUES ($1, $2, $3, $4, $5, 'payment', $6, $7) ON CONFLICT DO NOTHING`,
+          [orgId, this.#newId(), order.learnerId, from, new Date(from.getTime() + order.days * 86_400_000), order.id, order.pass],
         );
       }
       if (order.credits > 0) {
@@ -505,11 +514,11 @@ export class PrepPlusStore {
     if (who === null) return [];
     return scoped(this.#sql, scope, async (tx) =>
       (
-        await tx.query<{ starts_at: string | Date; ends_at: string | Date; source: PlusSpan["source"] }>(
-          `SELECT starts_at, ends_at, source FROM prep_plus WHERE org_id = $1 AND learner_id = $2 ORDER BY ends_at`,
+        await tx.query<{ starts_at: string | Date; ends_at: string | Date; source: PlusSpan["source"]; pass: PlusSpan["pass"] }>(
+          `SELECT starts_at, ends_at, source, pass FROM prep_plus WHERE org_id = $1 AND learner_id = $2 ORDER BY ends_at`,
           [scope.orgId, who],
         )
-      ).map((r) => ({ startsAt: iso(r.starts_at), endsAt: iso(r.ends_at), source: r.source })),
+      ).map((r) => ({ startsAt: iso(r.starts_at), endsAt: iso(r.ends_at), source: r.source, pass: r.pass })),
     );
   }
 

@@ -13,6 +13,7 @@ import {
   type PracticeStore,
   type PrepStore,
   type Task,
+  type TaskDraft,
   type Track,
 } from "@parikshaa/store";
 import { PracticeError, istDay, slugOf, streaks } from "./practice.js";
@@ -99,11 +100,20 @@ export class PrepService {
   readonly #store: PrepStore;
   readonly #now: () => number;
   readonly #plus: PrepPlus | null;
+  readonly #companyProblems: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
 
-  constructor(options: { practice: PracticeStore; store: PrepStore; plus?: PrepPlus | null; now?: () => number }) {
+  constructor(options: {
+    practice: PracticeStore;
+    store: PrepStore;
+    plus?: PrepPlus | null;
+    /** The learner's target companies' unsolved problems, most asked first: a plan puts them in its last days. */
+    companyProblems?: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
+    now?: () => number;
+  }) {
     this.#practice = options.practice;
     this.#store = options.store;
     this.#plus = options.plus ?? null;
+    this.#companyProblems = options.companyProblems ?? (async () => []);
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -538,12 +548,43 @@ export class PrepService {
     await this.#planAllowed(site, learner);
     const { track, level, offDays, outcome } = await this.#planFor(site, learner, input);
     const goal = (input.goal ?? "").trim().slice(0, 200);
+    const tasks = await this.#withCompanies(site, learner, outcome.tasks);
     await this.#store.startPlan(
       practiceLearner(site.orgId, learner.id),
       { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, offDays, goal },
-      outcome.tasks,
+      tasks,
     );
     return (await this.plan(site, learner))!;
+  }
+
+  /**
+   * The target companies' problems, in the plan's last 30% of study days: one
+   * a day, in turn, after the day's own work. Problems the track already has
+   * are left where they are.
+   */
+  async #withCompanies(site: PracticeSite, learner: Learner, tasks: readonly TaskDraft[]): Promise<readonly TaskDraft[]> {
+    const ids = (await this.#companyProblems(site, learner)).filter((id) => !tasks.some((t) => t.itemId === id));
+    if (ids.length === 0 || tasks.length === 0) return tasks;
+    const problems = new Map((await this.#practice.problems(practiceStaff(site.orgId))).map((p) => [p.id, p]));
+    const days = [...new Set(tasks.map((t) => t.day))].sort();
+    const tail = days.slice(Math.floor(days.length * 0.7));
+    const out = [...tasks];
+    ids.forEach((id, i) => {
+      const p = problems.get(id);
+      if (p === undefined) return;
+      const day = tail[i % tail.length]!;
+      const onDay = out.filter((t) => t.day === day);
+      out.push({
+        day,
+        sprint: onDay[0]?.sprint ?? Math.max(...tasks.map((t) => t.sprint)),
+        position: Math.max(-1, ...onDay.map((t) => t.position)) + 1,
+        kind: "practice",
+        itemId: p.id,
+        title: p.title,
+        estMinutes: { easy: 20, medium: 40, hard: 60 }[p.difficulty],
+      });
+    });
+    return out;
   }
 
   async archivePlan(site: PracticeSite, learner: Learner): Promise<void> {

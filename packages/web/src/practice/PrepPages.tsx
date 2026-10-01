@@ -179,6 +179,7 @@ export function HomePage({ client, nav, learner, site }: Signed) {
               </Link>
             ) : null}
           </section>
+          <TargetsCard client={client} nav={nav} site={site} learner={learner} />
           <section className="card prep-figures" aria-label={p("home.focus")}>
             <div>
               <span className="prep-figure">{h.focusMinutesToday}</span>
@@ -785,6 +786,55 @@ export function PlanPage({ client, nav, learner, site, track: wanted }: Signed &
   );
 }
 
+/** The companies the learner aims for, and how ready they are for each. */
+function TargetsCard({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const targets = useQuery({ queryKey: key(site, "targets", learner.id), queryFn: () => client.targets() });
+  if (targets.data === undefined || targets.data.length === 0) return null;
+  return (
+    <section className="card" aria-labelledby="targets-title">
+      <h2 id="targets-title">{p("home.targets")}</h2>
+      <ul className="item-list">
+        {targets.data.map((t) => (
+          <li key={t.slug}>
+            <Link nav={nav} to={`/companies/${t.slug}`}>
+              {t.name}
+            </Link>{" "}
+            <span className="notice">{p("home.ready", { ...t.readiness })}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** Pick the companies to aim for while planning: optional, saved as each box is ticked. */
+function TargetPicker({ client, site, learner }: Pick<Signed, "client" | "site" | "learner">) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const companies = useQuery({ queryKey: key(site, "company-names"), queryFn: () => client.companies() });
+  const targets = useQuery({ queryKey: key(site, "targets", learner.id), queryFn: () => client.targets() });
+  const aim = useMutation({
+    mutationFn: ({ slug, on }: { slug: string; on: boolean }) => client.setTarget(slug, on),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: key(site, "targets") }),
+  });
+  if (companies.data === undefined || companies.data.length === 0 || targets.data === undefined) return null;
+  const aimed = new Set(targets.data.map((t) => t.slug));
+  return (
+    <fieldset>
+      <legend>{p("plan.targets")}</legend>
+      <div className="weekday-row">
+        {companies.data.map((c) => (
+          <label key={c.slug} className="check-row">
+            <input type="checkbox" checked={aimed.has(c.slug)} disabled={aim.isPending} onChange={(e) => aim.mutate({ slug: c.slug, on: e.target.checked })} /> {c.name}
+          </label>
+        ))}
+      </div>
+      {aim.isError ? <Failed error={aim.error} /> : null}
+    </fieldset>
+  );
+}
+
 function PlanSetup({ client, nav, learner, site, track: wanted }: Signed & { readonly track: string | undefined }) {
   const p = usePrepText();
   const day = useDay();
@@ -857,6 +907,7 @@ function PlanSetup({ client, nav, learner, site, track: wanted }: Signed & { rea
               ))}
             </div>
           </fieldset>
+          <TargetPicker client={client} site={site} learner={learner} />
           <label htmlFor="plan-goal">{p("plan.goal")}</label>
           <input id="plan-goal" value={goal} maxLength={200} placeholder={p("plan.goalPlaceholder")} onChange={(e) => setGoal(e.target.value)} />
           <button type="submit" disabled={preview.isPending || input.track === ""}>

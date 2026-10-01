@@ -95,11 +95,22 @@ export class PrepPlus {
 
   /** Whether a learner holds Plus now; with Plus off, everyone is treated as holding it. */
   async status(site: PracticeSite, learner: Learner | null): Promise<PlusStatus> {
+    return this.#holds(site, learner, "plus");
+  }
+
+  /** Whether a learner may see every company's full list: Plus, or a Company Pass. */
+  async companyAccess(site: PracticeSite, learner: Learner | null): Promise<PlusStatus> {
+    const plus = await this.#holds(site, learner, "plus");
+    if (plus.active) return plus;
+    return this.#holds(site, learner, "company");
+  }
+
+  async #holds(site: PracticeSite, learner: Learner | null, pass: "plus" | "company"): Promise<PlusStatus> {
     const settings = await this.#store.settings(practiceLearner(site.orgId, null));
     if (!settings.plusEnabled) return { enabled: false, active: true, until: null };
     if (learner === null) return { enabled: true, active: false, until: null };
     const now = this.#now();
-    const spans = await this.#store.plus(practiceLearner(site.orgId, learner.id));
+    const spans = (await this.#store.plus(practiceLearner(site.orgId, learner.id))).filter((s) => s.pass === pass);
     const current = spans.filter((s) => Date.parse(s.startsAt) <= now && Date.parse(s.endsAt) > now);
     // Spans that run on from the current one make one stretch.
     let until = current.length === 0 ? null : Math.max(...current.map((s) => Date.parse(s.endsAt)));
@@ -165,7 +176,7 @@ export class PrepPlus {
   async quote(site: PracticeSite, learner: Learner | null, productId: string, code: string | undefined): Promise<Quote> {
     const settings = await this.#store.settings(practiceLearner(site.orgId, null));
     const product = (await this.#store.products(practiceLearner(site.orgId, null))).find((p) => p.id === productId);
-    if (product === undefined || (product.kind === "plus" && !settings.plusEnabled)) throw new PracticeError("not_found", "No such plan");
+    if (product === undefined || (product.kind !== "credits" && !settings.plusEnabled)) throw new PracticeError("not_found", "No such plan");
     const listPaise = product.pricePaise;
     const plain = { productId: product.id, title: product.title, listPaise, discountPaise: 0, pricePaise: listPaise, taxPaise: taxIn(listPaise), coupon: null };
     if (code === undefined || code.trim() === "") return plain;
@@ -210,7 +221,10 @@ export class PrepPlus {
         issuedAt: at,
         supplier,
         buyer: { legalName: order.buyerName, gstin: order.buyerGstin, stateCode: order.buyerState, address: "" },
-        description: order.days > 0 ? `${order.title}: Plus for ${order.days} days${order.credits > 0 ? ` and ${order.credits} AI credits` : ""}` : `${order.title}: ${order.credits} AI credits`,
+        description:
+          order.days > 0
+            ? `${order.title}: ${order.pass === "company" ? "Company Pass" : "Plus"} for ${order.days} days${order.credits > 0 ? ` and ${order.credits} AI credits` : ""}`
+            : `${order.title}: ${order.credits} AI credits`,
         totalPaise: order.amountPaise,
         taxPaise: order.taxPaise,
         ...(order.couponCode === null ? {} : { note: `Coupon ${order.couponCode}: ₹${(order.discountPaise / 100).toFixed(2)} off the list price of ₹${(order.listPaise / 100).toFixed(2)}.` }),
@@ -255,6 +269,7 @@ export class PrepPlus {
       amountPaise: quote.pricePaise,
       taxPaise: quote.taxPaise,
       ...buyer,
+      pass: product.kind === "company" ? "company" : "plus",
       gatewayOrderId: order.id,
     });
     return { keyId: gateway.keyId, orderId: order.id, amountPaise: quote.pricePaise, title: product.title, learner: { name: learner.name, email: learner.email } };
@@ -336,14 +351,14 @@ export class PrepPlus {
     const title = input.title.trim();
     if (title.length < 1 || title.length > 120) throw new PracticeError("invalid", "A plan's name is 1 to 120 characters");
     if (!Number.isInteger(input.pricePaise) || input.pricePaise < 100 || input.pricePaise > 100_000_000) throw new PracticeError("invalid", "A price is ₹1 to ₹10,00,000");
-    if (input.kind === "plus" && (!Number.isInteger(input.days) || input.days < 1 || input.days > 1100)) throw new PracticeError("invalid", "Plus lasts 1 to 1,100 days");
+    if (input.kind !== "credits" && (!Number.isInteger(input.days) || input.days < 1 || input.days > 1100)) throw new PracticeError("invalid", "A pass lasts 1 to 1,100 days");
     if (input.kind === "credits" && (!Number.isInteger(input.credits) || input.credits < 1 || input.days !== 0)) throw new PracticeError("invalid", "A credits pack has credits and no days");
     if (!Number.isInteger(input.credits) || input.credits < 0 || input.credits > 1_000_000) throw new PracticeError("invalid", "Credits are 0 to 1,000,000");
     const existing = await this.#store.products(practiceStaff(orgId));
     const saved = await this.#store.saveProduct(orgId, id, {
       title,
       kind: input.kind,
-      days: input.kind === "plus" ? input.days : 0,
+      days: input.kind === "credits" ? 0 : input.days,
       credits: input.credits,
       pricePaise: input.pricePaise,
       active: input.active,

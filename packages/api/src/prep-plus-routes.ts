@@ -45,7 +45,7 @@ const siteParams = z.object({ site: z.string().min(1).max(40) });
 const problemParams = siteParams.extend({ problem: z.string().min(1).max(80) });
 const replyIn = z.enum(["en", "hi"]).default("en").describe("The language the tutor answers in.");
 
-const product = z.object({ id: z.string(), title: z.string(), kind: z.enum(["plus", "credits"]), days: z.number(), credits: z.number(), pricePaise: z.number().describe("GST included.") });
+const product = z.object({ id: z.string(), title: z.string(), kind: z.enum(["plus", "credits", "company"]).describe("Plus; credits for the tutor; or a Company Pass, which opens every company's full list."), days: z.number(), credits: z.number(), pricePaise: z.number().describe("GST included.") });
 const learnerProduct = product.extend({ taxPaise: z.number().describe("The GST within the price, at 18%.") });
 const overview = z.object({
   enabled: z.boolean().describe("The site sells Plus. When false, nothing is locked."),
@@ -108,7 +108,7 @@ const settings = z.object({ plusEnabled: z.boolean(), freeModules: z.number().in
 const staffProduct = product.extend({ active: z.boolean(), position: z.number() });
 const productBody = z.object({
   title: z.string().min(1).max(120),
-  kind: z.enum(["plus", "credits"]),
+  kind: z.enum(["plus", "credits", "company"]),
   days: z.number().int().default(0),
   credits: z.number().int().default(0),
   pricePaise: z.number().int(),

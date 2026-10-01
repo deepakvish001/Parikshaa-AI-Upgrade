@@ -163,7 +163,8 @@ export function assemble(o: AssembleOptions): {
   });
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null, supplier: o.supplier ?? null });
-  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus });
+  const prepCommunity = new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus });
+  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus, companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner) });
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(o.sql),
     practiceStore,
@@ -210,7 +211,7 @@ export function assemble(o: AssembleOptions): {
     practiceIdentity,
     prep: prepService,
     starterPacks: new StarterPacks({ practice: practiceStore, prep: prepStore, service: prepService }),
-    prepCommunity: new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus }),
+    prepCommunity,
     prepEngage,
     prepPlus: { plus: prepPlus, tutor: new Sahayak({ client: o.client, ...(o.tutorModel === undefined ? {} : { model: o.tutorModel }), practice: practiceStore, prep: prepStore, plus: prepPlus }) },
     ...o.server,

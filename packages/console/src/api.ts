@@ -1764,7 +1764,7 @@ export interface PlusSettings {
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "credits";
+  readonly kind: "plus" | "company" | "credits";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
