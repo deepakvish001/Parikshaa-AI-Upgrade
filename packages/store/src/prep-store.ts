@@ -135,11 +135,15 @@ export interface Plan {
   readonly level: PlanLevel;
   readonly deadline: string;
   readonly dailyMinutes: number;
+  /** Minutes on Saturday and Sunday; null when they are like any other day. */
+  readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
   readonly createdAt: string;
 }
 export type PlanDraft = Omit<Plan, "id" | "createdAt">;
+/** What a learner may change in a plan already running. */
+export type PlanSettings = Pick<Plan, "deadline" | "dailyMinutes" | "weekendMinutes" | "offDays">;
 
 export type TaskKind = "learn" | "practice" | "revise" | "custom";
 export interface Task {
@@ -626,11 +630,12 @@ export class PrepStore {
         level: PlanLevel;
         deadline: string;
         daily_minutes: number;
+        weekend_minutes: number | null;
         off_days: number[];
         goal: string;
         created_at: string | Date;
       }>(
-        `SELECT id, track_id, level, to_char(deadline, 'YYYY-MM-DD') AS deadline, daily_minutes, off_days, goal, created_at
+        `SELECT id, track_id, level, to_char(deadline, 'YYYY-MM-DD') AS deadline, daily_minutes, weekend_minutes, off_days, goal, created_at
            FROM prep_plans WHERE org_id = $1 AND learner_id = $2 AND status = 'active'`,
         [scope.orgId, own(scope)],
       );
@@ -643,6 +648,7 @@ export class PrepStore {
             level: r.level,
             deadline: r.deadline,
             dailyMinutes: Number(r.daily_minutes),
+            weekendMinutes: r.weekend_minutes === null ? null : Number(r.weekend_minutes),
             offDays: r.off_days.map(Number),
             goal: r.goal,
             createdAt: iso(r.created_at),
@@ -657,13 +663,51 @@ export class PrepStore {
       await tx.query(`UPDATE prep_plans SET status = 'archived' WHERE org_id = $1 AND learner_id = $2 AND status = 'active'`, [scope.orgId, who]);
       const planId = this.#newId();
       await tx.query(
-        `INSERT INTO prep_plans (org_id, id, learner_id, track_id, level, deadline, daily_minutes, off_days, goal)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [scope.orgId, planId, who, plan.trackId, plan.level, plan.deadline, plan.dailyMinutes, [...plan.offDays], plan.goal],
+        `INSERT INTO prep_plans (org_id, id, learner_id, track_id, level, deadline, daily_minutes, weekend_minutes, off_days, goal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [scope.orgId, planId, who, plan.trackId, plan.level, plan.deadline, plan.dailyMinutes, plan.weekendMinutes, [...plan.offDays], plan.goal],
       );
       for (const task of tasks) await this.#insertTask(tx, scope.orgId, planId, who, task);
       return planId;
     });
+  }
+
+  /**
+   * Change a running plan: its settings, and its open tasks laid out again.
+   * Done tasks stay as they were, and so do the learner's own tasks and the
+   * revision a sprint quiz set; every other open task gives way to `tasks`.
+   */
+  async replan(scope: PracticeScope, planId: string, settings: PlanSettings, tasks: readonly TaskDraft[]): Promise<void> {
+    await scoped(this.#sql, scope, async (tx) => {
+      const who = own(scope);
+      const changed = await tx.query(
+        `UPDATE prep_plans SET deadline = $4, daily_minutes = $5, weekend_minutes = $6, off_days = $7, late_notified_on = NULL
+          WHERE org_id = $1 AND learner_id = $2 AND id = $3 AND status = 'active' RETURNING id`,
+        [scope.orgId, who, planId, settings.deadline, settings.dailyMinutes, settings.weekendMinutes, [...settings.offDays]],
+      );
+      if (changed.length === 0) throw new Error("No such active plan");
+      await tx.query(
+        `DELETE FROM prep_tasks WHERE org_id = $1 AND learner_id = $2 AND plan_id = $3 AND done_at IS NULL
+            AND kind <> 'custom' AND NOT (kind = 'revise' AND item_id IS NOT NULL)`,
+        [scope.orgId, who, planId],
+      );
+      for (const task of tasks) await this.#insertTask(tx, scope.orgId, planId, who, task);
+    });
+  }
+
+  /** Record that the learner is told their plan runs late; false when they were told within the week before `today`. */
+  async noteLate(scope: PracticeScope, planId: string, today: string): Promise<boolean> {
+    return scoped(this.#sql, scope, async (tx) =>
+      (
+        await tx.query(
+          `UPDATE prep_plans SET late_notified_on = $4::date
+            WHERE org_id = $1 AND learner_id = $2 AND id = $3 AND status = 'active'
+              AND (late_notified_on IS NULL OR late_notified_on <= $4::date - 7)
+           RETURNING id`,
+          [scope.orgId, own(scope), planId, today],
+        )
+      ).length > 0,
+    );
   }
 
   async archivePlan(scope: PracticeScope): Promise<void> {

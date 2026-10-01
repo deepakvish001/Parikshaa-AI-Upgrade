@@ -92,6 +92,9 @@ interface State {
   readonly frozen: ReadonlySet<string>;
 }
 
+/** What a plan is made from: and, to plan only part of the track, how many of its remaining items. */
+type PlanRequest = { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[]; upTo?: number | undefined };
+
 const levels: readonly PlanLevel[] = ["beginner", "intermediate", "advanced"];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -101,6 +104,7 @@ export class PrepService {
   readonly #now: () => number;
   readonly #plus: PrepPlus | null;
   readonly #companyProblems: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
+  readonly #planLate: (site: PracticeSite, learner: Learner, plan: { finishOn: string; deadline: string }) => Promise<void>;
 
   constructor(options: {
     practice: PracticeStore;
@@ -108,12 +112,15 @@ export class PrepService {
     plus?: PrepPlus | null;
     /** The learner's target companies' unsolved problems, most asked first: a plan puts them in its last days. */
     companyProblems?: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
+    /** Told when a plan's finish date has just slipped past its deadline (once a week at most): an email goes out. */
+    planLate?: (site: PracticeSite, learner: Learner, plan: { finishOn: string; deadline: string }) => Promise<void>;
     now?: () => number;
   }) {
     this.#practice = options.practice;
     this.#store = options.store;
     this.#plus = options.plus ?? null;
     this.#companyProblems = options.companyProblems ?? (async () => []);
+    this.#planLate = options.planLate ?? (async () => undefined);
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -393,7 +400,7 @@ export class PrepService {
     const plan = await this.#store.activePlan(scope);
     if (plan !== null) {
       // As if today were already over.
-      const { moves } = reschedule(await this.#store.tasks(scope, plan.id), addDays(today, 1), plan.dailyMinutes, plan.offDays);
+      const { moves } = reschedule(await this.#store.tasks(scope, plan.id), addDays(today, 1), plan.dailyMinutes, plan.offDays, plan.weekendMinutes);
       await this.#store.moveTasks(scope, moves);
       moved = moves.length;
     }
@@ -501,35 +508,50 @@ export class PrepService {
 
   // --- the plan ------------------------------------------------------------------------------------
 
-  #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
+  #settings(input: { deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[] }) {
     const today = this.#today();
-    if (!levels.includes(input.level as PlanLevel)) throw new PracticeError("invalid", "A level is beginner, intermediate or advanced");
     if (!DAY.test(input.deadline) || input.deadline < addDays(today, 6)) throw new PracticeError("invalid", "A deadline is a date at least a week away");
     if (input.deadline > addDays(today, 3 * 365)) throw new PracticeError("invalid", "A deadline is within three years");
-    if (!Number.isInteger(input.dailyMinutes) || input.dailyMinutes < 15 || input.dailyMinutes > 720) throw new PracticeError("invalid", "Study 15 minutes to 12 hours a day");
+    const minutes = (m: number) => Number.isInteger(m) && m >= 15 && m <= 720;
+    if (!minutes(input.dailyMinutes)) throw new PracticeError("invalid", "Study 15 minutes to 12 hours a day");
+    const weekendMinutes = input.weekendMinutes ?? null;
+    if (weekendMinutes !== null && !minutes(weekendMinutes)) throw new PracticeError("invalid", "Study 15 minutes to 12 hours on a weekend day");
     const offDays = [...new Set(input.offDays)].sort();
     if (offDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) throw new PracticeError("invalid", "Days off are 0 (Sunday) to 6 (Saturday)");
     if (offDays.length >= 7) throw new PracticeError("invalid", "Leave at least one day a week to study");
-    return { today, level: input.level as PlanLevel, offDays };
+    return { today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays };
   }
 
-  async #planFor(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
-    const { today, level, offDays } = this.#planInput(input);
-    const state = await this.#state(site, learner);
-    const track = state.tracks.find((t) => t.slug === input.track);
-    if (track === undefined) throw new PracticeError("not_found", "No such track");
-    const items: PlanItem[] = this.#items(track, state)
+  #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[] }) {
+    if (!levels.includes(input.level as PlanLevel)) throw new PracticeError("invalid", "A level is beginner, intermediate or advanced");
+    return { ...this.#settings(input), level: input.level as PlanLevel };
+  }
+
+  /** The track's items not yet done, in order. */
+  #remaining(track: Track, state: State): PlanItem[] {
+    return this.#items(track, state)
       .flatMap((m) => m.items)
       .filter((i) => i.status !== "done")
       .map((i) => ({ itemId: i.id, kind: i.kind === "lesson" ? "learn" : "practice", title: i.title, minutes: i.kind === "lesson" ? i.estMinutes : null, difficulty: i.difficulty }));
-    const outcome = generatePlan({ items, level, start: today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, offDays });
-    return { track, level, offDays, outcome };
+  }
+
+  async #planFor(site: PracticeSite, learner: Learner, input: PlanRequest) {
+    const { today, level, offDays, weekendMinutes } = this.#planInput(input);
+    const state = await this.#state(site, learner);
+    const track = state.tracks.find((t) => t.slug === input.track);
+    if (track === undefined) throw new PracticeError("not_found", "No such track");
+    const all = this.#remaining(track, state);
+    if (input.upTo !== undefined && (!Number.isInteger(input.upTo) || input.upTo < 1)) throw new PracticeError("invalid", "Plan at least one item");
+    const items = input.upTo === undefined ? all : all.slice(0, input.upTo);
+    const outcome = generatePlan({ items, level, start: today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays });
+    return { track, level, offDays, weekendMinutes, outcome, of: all.length };
   }
 
   /** What a plan would be, before it is started. */
-  async previewPlan(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
+  async previewPlan(site: PracticeSite, learner: Learner, input: PlanRequest) {
     await this.#planAllowed(site, learner);
-    const { track, outcome } = await this.#planFor(site, learner, input);
+    const { track, outcome, of } = await this.#planFor(site, learner, input);
+    const work = outcome.tasks.filter((t) => t.kind !== "revise");
     const neededMinutes = outcome.studyDaysToDeadline === 0 ? null : Math.ceil(outcome.totalMinutes / outcome.studyDaysToDeadline / 0.8 / 5) * 5;
     return {
       track: { slug: track.slug, title: track.title },
@@ -541,17 +563,19 @@ export class PrepService {
       sprints: sprintSummary(outcome.tasks),
       // When it does not fit: how much a day it would take to finish in time.
       dailyMinutesToFit: outcome.fits || neededMinutes === null ? null : Math.min(720, Math.max(input.dailyMinutes + 5, neededMinutes)),
+      // The third way when it does not fit: plan only the items that fit by the deadline, in the track's order.
+      itemsThatFit: outcome.fits ? null : { items: work.filter((t) => t.day <= input.deadline).length, of },
     };
   }
 
-  async startPlan(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[]; goal?: string | undefined }) {
+  async startPlan(site: PracticeSite, learner: Learner, input: PlanRequest & { goal?: string | undefined }) {
     await this.#planAllowed(site, learner);
-    const { track, level, offDays, outcome } = await this.#planFor(site, learner, input);
+    const { track, level, offDays, weekendMinutes, outcome } = await this.#planFor(site, learner, input);
     const goal = (input.goal ?? "").trim().slice(0, 200);
     const tasks = await this.#withCompanies(site, learner, outcome.tasks);
     await this.#store.startPlan(
       practiceLearner(site.orgId, learner.id),
-      { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, offDays, goal },
+      { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays, goal },
       tasks,
     );
     return (await this.plan(site, learner))!;
@@ -587,6 +611,41 @@ export class PrepService {
     return out;
   }
 
+  /**
+   * Change a running plan's deadline, minutes or days off. What is done stays
+   * done; the track's remaining items are laid out again from today, in new
+   * sprints after the ones begun, so a sprint's quiz keeps its questions.
+   */
+  async changePlan(site: PracticeSite, learner: Learner, change: { deadline?: string; dailyMinutes?: number; weekendMinutes?: number | null; offDays?: readonly number[] }) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const plan = await this.#store.activePlan(scope);
+    if (plan === null) throw new PracticeError("not_found", "There is no plan to change");
+    const settings = this.#settings({
+      deadline: change.deadline ?? plan.deadline,
+      dailyMinutes: change.dailyMinutes ?? plan.dailyMinutes,
+      weekendMinutes: change.weekendMinutes === undefined ? plan.weekendMinutes : change.weekendMinutes,
+      offDays: change.offDays ?? plan.offDays,
+    });
+    const state = await this.#state(site, learner);
+    const track = state.tracks.find((t) => t.id === plan.trackId);
+    if (track === undefined) throw new PracticeError("not_found", "The plan's track is gone");
+    const tasks = await this.#store.tasks(scope, plan.id);
+    const kept = tasks.filter((t) => t.doneAt !== null || t.kind === "custom" || (t.kind === "revise" && t.itemId !== null));
+    const begun = Math.max(0, ...tasks.filter((t) => t.doneAt !== null || t.day < settings.today).map((t) => t.sprint));
+    const outcome = generatePlan({ ...settings, items: this.#remaining(track, state), level: plan.level, start: settings.today });
+    const laid = (await this.#withCompanies(site, learner, outcome.tasks)).map((t) => ({ ...t, sprint: t.sprint + begun, title: t.kind === "revise" && t.itemId === null ? `Sprint ${t.sprint + begun} revision` : t.title }));
+    // A task kept for today goes first; new ones follow it on the same day.
+    const after = new Map<string, number>();
+    for (const t of kept.filter((k) => k.doneAt === null)) after.set(t.day, Math.max(after.get(t.day) ?? -1, t.position));
+    await this.#store.replan(
+      scope,
+      plan.id,
+      { deadline: settings.deadline, dailyMinutes: settings.dailyMinutes, weekendMinutes: settings.weekendMinutes, offDays: settings.offDays },
+      laid.map((t) => ({ ...t, position: t.position + (after.get(t.day) ?? -1) + 1 })),
+    );
+    return (await this.plan(site, learner))!;
+  }
+
   async archivePlan(site: PracticeSite, learner: Learner): Promise<void> {
     await this.#store.archivePlan(practiceLearner(site.orgId, learner.id));
   }
@@ -598,10 +657,15 @@ export class PrepService {
     if (plan === null) return null;
     const today = this.#today();
     let tasks = await this.#store.tasks(scope, plan.id);
-    const { moves } = reschedule(tasks, today, plan.dailyMinutes, plan.offDays);
+    const { moves } = reschedule(tasks, today, plan.dailyMinutes, plan.offDays, plan.weekendMinutes);
     if (moves.length > 0) {
       await this.#store.moveTasks(scope, moves);
       tasks = await this.#store.tasks(scope, plan.id);
+    }
+    const lastDay = tasks.length === 0 ? today : [...tasks].sort((a, b) => b.day.localeCompare(a.day))[0]!.day;
+    // Running past the deadline: the learner hears it, once a week at most.
+    if (moves.length > 0 && lastDay > plan.deadline && (await this.#store.noteLate(scope, plan.id, today))) {
+      await this.#planLate(site, learner, { finishOn: lastDay, deadline: plan.deadline });
     }
     const tracks = await this.#store.tracks(scope);
     const track = tracks.find((t) => t.id === plan.trackId);
@@ -614,6 +678,7 @@ export class PrepService {
       level: plan.level,
       deadline: plan.deadline,
       dailyMinutes: plan.dailyMinutes,
+      weekendMinutes: plan.weekendMinutes,
       offDays: plan.offDays,
       goal: plan.goal,
       startedAt: plan.createdAt,

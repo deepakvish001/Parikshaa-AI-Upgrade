@@ -118,6 +118,11 @@ export class PrepEngageStore {
     });
   }
 
+  /** Queue the email that tells a learner their plan now ends after its deadline; one a day at most. */
+  async queueLate(orgId: OrgId, learnerId: string, finishOn: string, deadline: string, day: string, newId: () => string = () => crypto.randomUUID()): Promise<void> {
+    await enqueue(this.#sql, orgId, [{ kind: "learner_email", subject: { learnerId, finishOn, deadline }, purpose: "plan_late", id: `plan_late:${orgId}:${learnerId}:${day}` }], newId);
+  }
+
   /** The window's numbers: `from` and `to` are IST days, inclusive; `asOf` is now, by the caller's clock. */
   async analytics(orgId: OrgId, from: string, to: string, asOf: Date): Promise<PrepAnalytics> {
     const today = new Date(asOf.getTime() + 330 * 60_000).toISOString().slice(0, 10);

@@ -183,7 +183,7 @@ export function assemble(o: AssembleOptions): {
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null, supplier: o.supplier ?? null });
   const prepCommunity = new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus });
-  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus, companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner) });
+  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus, companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner), planLate: (site, learner, plan) => prepEngage.queueLate(site, learner, plan) });
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(o.sql),
     practiceStore,
@@ -277,7 +277,7 @@ export function assemble(o: AssembleOptions): {
           : item.purpose === "pilot_report"
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
-      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
+      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)) },
   });
 
   return { app, worker, privacy, billing, identity, dailyReport, prepEngage };

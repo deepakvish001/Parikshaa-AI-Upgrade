@@ -27,7 +27,7 @@ Status ka matlab:
 
 | Hissa | ✅ | 🟡 | ⬜ | ❌ |
 |---|---|---|---|---|
-| Dashboard aur planner | 10 | 3 | 2 | 0 |
+| Dashboard aur planner | 14 | 1 | 0 | 0 |
 | Learn aur practice | 6 | 3 | 2 | 0 |
 | Revision, lists, notes | 6 | 1 | 0 | 0 |
 | Sahayak AI | 13 | 3 | 2 | 0 |
@@ -37,7 +37,7 @@ Status ka matlab:
 | Contests | 3 | 0 | 2 | 0 |
 | Content | 5 | 3 | 2 | 1 |
 | Platform, quality, B2B | 9 | 1 | 3 | 0 |
-| **Kul** | **83** | **19** | **20** | **1** |
+| **Kul** | **87** | **17** | **18** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -57,7 +57,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Onboarding: track, level, deadline, roz ke minutes, off days, plan preview | ✅ | `PlanSetup`; `POST /practice/:site/plan/preview` | |
 | Onboarding: 8 sawaal ka placement quiz | ✅ | `content/placement-quiz.ts`, `GET/POST /placement`, `PlacementPage` | 40 apne likhe sawaal; har baar 3 aasaan, 3 medium, 2 kathin; server jaanchta hai, jawab browser ko nahi jaate, kuch save nahi hota; nateeja level sujhata hai aur plan setup me bhar jaata hai |
 | Onboarding: target role aur companies | 🟡 | `PlanSetup` → `TargetPicker`; `PUT /companies/:company/target` | Plan banate waqt target companies chun sakte hain (company page se bhi). Unke problems plan ke aakhri 30% dino me. Target **role** abhi nahi |
-| Weekday aur weekend ke alag minutes | ⬜ | | Abhi ek hi "roz ke minutes" |
+| Weekday aur weekend ke alag minutes | ✅ | `weekendMinutes` (migration 0041), `minutesOn` in `prep-plan.ts`; plan setup aur "Change this plan" | Shanivaar-Ravivaar ke apne minutes; plan banana aur khiskana dono har din ki apni capacity se |
 
 ### 2. Planner, "Planly" jaisa (S6, F2, F6, F7)
 
@@ -65,14 +65,14 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 |---|---|---|---|
 | Deterministic plan generator, 7 din ke sprints, har sprint ke ant me revision, 20% din khaali | ✅ | `api/src/prep-plan.ts` | Golden tests: `prep-plan.test.ts` |
 | Chhoota task apne aap aage, nayi finish date, "on track" | ✅ | `reschedule()`; plan padhte waqt chalta hai | Cron nahi: app kholne par hota hai |
-| Time kam pade to 3 raaste (deadline aage, time zyada, chhoti sheet) | 🟡 | `fits` flag | Suggestion wala UI baaki |
+| Time kam pade to 3 raaste (deadline aage, time zyada, chhoti sheet) | ✅ | preview me `dailyMinutesToFit`, `finishOn`, `itemsThatFit`; plan me `upTo` | Teen button: roz itne minute, itni tareekh tak, ya pehle N items ka hi plan |
 | Today, Sprints, Completed tabs | ✅ | `PlanView` | |
 | Apne custom tasks | ✅ | `POST /plan/tasks` | |
 | Study mode / focus timer, hafte ka total | ✅ | `FocusTimer`; `prep_focus` | |
-| Plan settings (deadline ya time badalna) | 🟡 | `DELETE /plan` | Abhi plan band karke naya banana padta hai |
+| Plan settings (deadline ya time badalna) | ✅ | `PATCH /plan`, `PrepService.changePlan`, plan page par "Change this plan" | Jo ho gaya wo rehta hai, apne tasks aur quiz ke revise tasks bhi; baaki aaj se naye sprint me dobara bichhta hai |
 | Streak freeze ("aaj chhutti") | ✅ | `prep_freezes` (migration 0035), `POST /streak/freeze`, dashboard par "Take today off" | Mahine me 2. Streak na badhta na tootta; aaj ke tasks aage; us din reminder nahi. Coins se aur freeze kharidna nahi |
 | Sprint ke revision notes + sprint quiz | ✅ | `prep.ts` `sprintQuiz`/`takeSprintQuiz`/`sprintNotes`, `/sprints/:n/quiz`, `/sprints/:n/notes` | Quiz me sirf MCQ/numeric sawaal (10 tak); code problems quiz me nahi aate. 70% se kam par galat sawaal revise task + aaj due card. Notes page browser se print/PDF |
-| Finish date badalne par email | ⬜ | | Reminders ke saath aayega |
+| Finish date badalne par email | ✅ | `PrepEngage.lateMail`, `prep_plans.late_notified_on` | Jab finish date deadline ke paar khisakti hai: hafte me ek baar, sirf unhe jinhone email reminder chaalu kiya. Khiskaav app kholne par ginta hai (cron nahi) |
 
 ### 3. Learn aur practice (S3, S4, F3, F10)
 
@@ -235,7 +235,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
 | P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
-| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Plan settings (weekday/weekend minutes) |
+| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | ✅ | |
 | P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, 180 din delete |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting aur videos |
@@ -250,7 +250,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F3 Run aur Submit | ✅ | |
 | F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
 | F5 Submit ke baad review | 🟡 | Fixed JSON format baaki |
-| F6 Chhoota task reschedule | ✅ | App kholne par. Cron aur email baaki |
+| F6 Chhoota task reschedule | ✅ | App kholne par; deadline ke paar jaane par email. Cron nahi |
 | F7 Sprint notes + quiz | ✅ | MCQ/numeric sawaalon ke saath |
 | F8 Spaced revision | ✅ | |
 | F9 Company prep | ✅ | Target, readiness, list shuru karo, Company Pass, plan me company problems |
@@ -344,7 +344,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 33 | **Enterprise ke liye DPA aur SLA** (CO35): code se likhe templates, Annex me data, suraksha aur sub-processors; SECURITY.md me naya data | V2-12 | Badi company ka procurement | Lawyer review | 🟡 (1 Oct 2026): `docs/legal/DPA.md`, `docs/legal/SLA.md`. Lawyer aur owner ki terms baaki (Ruka hua kaam); status page aur questionnaire nahi |
 | 34 | **Contests v2** (F11, §20): contest me rank par coins (top 10 ko, ek baar), judge ki priority lane (contest ke submissions pehle), runner queue jo bheed me bhi kram se chale, 2,000 learners ek saath ka load test | F11, §20 | Contest bina atke chale, aur jeetne ka inaam | Tests: rank coins ek hi baar, queue ka kram aur timeout; load test ki report (p95, errors) | ⬜ pending |
 | 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ⬜ pending |
-| 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ⬜ pending |
+| 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
 | 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ⬜ pending (evals ka paid run alag se owner par) |
 | 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ⬜ pending |
 | 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ⬜ pending |

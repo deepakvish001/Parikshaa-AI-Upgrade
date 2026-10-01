@@ -32923,6 +32923,12 @@
                             "dailyMinutes": {
                               "type": "number"
                             },
+                            "weekendMinutes": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
                             "offDays": {
                               "readOnly": true,
                               "type": "array",
@@ -33324,6 +33330,7 @@
                             "level",
                             "deadline",
                             "dailyMinutes",
+                            "weekendMinutes",
                             "offDays",
                             "goal",
                             "startedAt",
@@ -33555,6 +33562,19 @@
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
                   },
+                  "weekendMinutes": {
+                    "description": "Minutes on Saturday and Sunday, when they differ from `dailyMinutes`.",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "offDays": {
                     "default": [],
                     "maxItems": 7,
@@ -33568,6 +33588,12 @@
                   "goal": {
                     "type": "string",
                     "maxLength": 200
+                  },
+                  "upTo": {
+                    "description": "Plan only the first this many of the track's remaining items: the one that fit by the deadline, say.",
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -33639,6 +33665,12 @@
                         },
                         "dailyMinutes": {
                           "type": "number"
+                        },
+                        "weekendMinutes": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
                         },
                         "offDays": {
                           "readOnly": true,
@@ -34041,6 +34073,714 @@
                         "level",
                         "deadline",
                         "dailyMinutes",
+                        "weekendMinutes",
+                        "offDays",
+                        "goal",
+                        "startedAt",
+                        "finishOn",
+                        "onTrack",
+                        "daysLeft",
+                        "studyDaysLeft",
+                        "done",
+                        "total",
+                        "sprint",
+                        "sprints",
+                        "moved",
+                        "today",
+                        "upcoming",
+                        "completed"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "plan"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Change my running plan: its deadline, minutes or days off",
+        "tags": [
+          "Prep"
+        ],
+        "description": "Done tasks stay done, and so do the learner's own tasks; the track's remaining items are laid out again from today, in new sprints.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "deadline": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "A date, YYYY-MM-DD, in India Standard Time."
+                  },
+                  "dailyMinutes": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "weekendMinutes": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "offDays": {
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "path",
+            "name": "site",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "learnerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "plan": {
+                      "type": "object",
+                      "properties": {
+                        "track": {
+                          "type": "object",
+                          "properties": {
+                            "slug": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "slug",
+                            "title"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "beginner",
+                            "intermediate",
+                            "advanced"
+                          ]
+                        },
+                        "deadline": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "A date, YYYY-MM-DD, in India Standard Time."
+                        },
+                        "dailyMinutes": {
+                          "type": "number"
+                        },
+                        "weekendMinutes": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "offDays": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "number"
+                          }
+                        },
+                        "goal": {
+                          "type": "string"
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "finishOn": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "A date, YYYY-MM-DD, in India Standard Time."
+                        },
+                        "onTrack": {
+                          "type": "boolean",
+                          "description": "The last task falls on or before the deadline."
+                        },
+                        "daysLeft": {
+                          "type": "number"
+                        },
+                        "studyDaysLeft": {
+                          "type": "number"
+                        },
+                        "done": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "sprint": {
+                          "type": "number"
+                        },
+                        "sprints": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sprint": {
+                                "type": "number"
+                              },
+                              "from": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "A date, YYYY-MM-DD, in India Standard Time."
+                              },
+                              "to": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "A date, YYYY-MM-DD, in India Standard Time."
+                              },
+                              "tasks": {
+                                "type": "number"
+                              },
+                              "done": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "sprint",
+                              "from",
+                              "to",
+                              "tasks",
+                              "done"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "moved": {
+                          "type": "number",
+                          "description": "Tasks just moved on from days gone by."
+                        },
+                        "today": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "day": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "A date, YYYY-MM-DD, in India Standard Time."
+                              },
+                              "sprint": {
+                                "type": "number"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "learn",
+                                  "practice",
+                                  "revise",
+                                  "custom"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "estMinutes": {
+                                "type": "number"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "movedFrom": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "A date, YYYY-MM-DD, in India Standard Time."
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The day it was first planned for, when it has been moved on because it was not done."
+                              },
+                              "link": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "problem",
+                                          "lesson"
+                                        ]
+                                      },
+                                      "slug": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "slug"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "difficulty": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "easy",
+                                      "medium",
+                                      "hard"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "day",
+                              "sprint",
+                              "kind",
+                              "title",
+                              "estMinutes",
+                              "done",
+                              "movedFrom",
+                              "link",
+                              "difficulty"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "upcoming": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "day": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "A date, YYYY-MM-DD, in India Standard Time."
+                              },
+                              "sprint": {
+                                "type": "number"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "learn",
+                                  "practice",
+                                  "revise",
+                                  "custom"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "estMinutes": {
+                                "type": "number"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "movedFrom": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "A date, YYYY-MM-DD, in India Standard Time."
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The day it was first planned for, when it has been moved on because it was not done."
+                              },
+                              "link": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "problem",
+                                          "lesson"
+                                        ]
+                                      },
+                                      "slug": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "slug"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "difficulty": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "easy",
+                                      "medium",
+                                      "hard"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "day",
+                              "sprint",
+                              "kind",
+                              "title",
+                              "estMinutes",
+                              "done",
+                              "movedFrom",
+                              "link",
+                              "difficulty"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "completed": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "day": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                "description": "A date, YYYY-MM-DD, in India Standard Time."
+                              },
+                              "sprint": {
+                                "type": "number"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "learn",
+                                  "practice",
+                                  "revise",
+                                  "custom"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "estMinutes": {
+                                "type": "number"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "movedFrom": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                                    "description": "A date, YYYY-MM-DD, in India Standard Time."
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "The day it was first planned for, when it has been moved on because it was not done."
+                              },
+                              "link": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "problem",
+                                          "lesson"
+                                        ]
+                                      },
+                                      "slug": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "slug"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "difficulty": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "easy",
+                                      "medium",
+                                      "hard"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "day",
+                              "sprint",
+                              "kind",
+                              "title",
+                              "estMinutes",
+                              "done",
+                              "movedFrom",
+                              "link",
+                              "difficulty"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "track",
+                        "level",
+                        "deadline",
+                        "dailyMinutes",
+                        "weekendMinutes",
                         "offDays",
                         "goal",
                         "startedAt",
@@ -34473,6 +35213,19 @@
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
                   },
+                  "weekendMinutes": {
+                    "description": "Minutes on Saturday and Sunday, when they differ from `dailyMinutes`.",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
                   "offDays": {
                     "default": [],
                     "maxItems": 7,
@@ -34486,6 +35239,12 @@
                   "goal": {
                     "type": "string",
                     "maxLength": 200
+                  },
+                  "upTo": {
+                    "description": "Plan only the first this many of the track's remaining items: the one that fit by the deadline, say.",
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -34600,6 +35359,30 @@
                         "number",
                         "null"
                       ]
+                    },
+                    "itemsThatFit": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "items": {
+                              "type": "number"
+                            },
+                            "of": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "items",
+                            "of"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "When it does not fit: how many of the remaining items the deadline holds, to plan just those (`upTo`)."
                     }
                   },
                   "required": [
@@ -34610,7 +35393,8 @@
                     "deadline",
                     "fits",
                     "sprints",
-                    "dailyMinutesToFit"
+                    "dailyMinutesToFit",
+                    "itemsThatFit"
                   ],
                   "additionalProperties": false
                 }

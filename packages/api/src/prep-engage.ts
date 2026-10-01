@@ -133,6 +133,44 @@ export class PrepEngage {
     return "sent";
   };
 
+  /** Queue the email that says a plan now ends after its deadline. Only for a learner who asked for email. */
+  async queueLate(site: PracticeSite, learner: Learner, plan: { finishOn: string; deadline: string }): Promise<void> {
+    if (this.#mailer === null) return;
+    const prefs = await this.#store.reminder(practiceStaff(site.orgId), learner.id);
+    if (!prefs.enabled) return;
+    await this.#store.queueLate(site.orgId, learner.id, plan.finishOn, plan.deadline, istDay(this.#now()));
+  }
+
+  /** The outbox's handler for that email: when the plan now ends, and how to change it. */
+  readonly lateMail = async (item: OutboxItem): Promise<"sent" | { skip: string }> => {
+    if (this.#mailer === null) return { skip: "Email is not configured" };
+    const learner = await this.#practiceStore.learnerById(item.orgId as OrgId, String(item.subject["learnerId"] ?? ""));
+    if (learner === null) return { skip: "The account is gone" };
+    if (!(await this.#store.reminder(practiceStaff(learner.orgId), learner.id)).enabled) return { skip: "Turned off" };
+    const site = await this.#practice.siteFor(learner.orgId);
+    if (site === null) return { skip: "The site is gone" };
+    const finishOn = String(item.subject["finishOn"] ?? "");
+    const deadline = String(item.subject["deadline"] ?? "");
+    const plan = `${this.#publicUrl}/practice/${site.slug}/plan`;
+    const off = `${this.#publicUrl}/practice/${site.slug}/reminders?off=${encodeURIComponent(this.offToken(learner.orgId, learner.id))}`;
+    const hello = learner.name.trim() === "" ? "Hello," : `Hello ${learner.name},`;
+    const said = `Your study plan now finishes on ${finishOn}, after your deadline of ${deadline}: days with work left undone moved it.`;
+    const choices = "You can study a little more each day, move the deadline, or plan only what fits. All three are on your plan page.";
+    await this.#mailer.send({
+      to: learner.email,
+      subject: `Your plan on ${site.title} now ends after your deadline`,
+      text: [hello, "", said, "", choices, "", `Change your plan: ${plan}`, "", `Stop these emails: ${off}`].join("\n"),
+      html: [
+        `<p>${escape(hello)}</p>`,
+        `<p>${escape(said)}</p>`,
+        `<p>${escape(choices)}</p>`,
+        `<p><a href="${escape(plan)}">Change your plan</a></p>`,
+        `<p style="font-size:small"><a href="${escape(off)}">Stop these emails</a></p>`,
+      ].join(""),
+    });
+    return "sent";
+  };
+
   // --- the numbers -----------------------------------------------------------------------------
 
   async analytics(orgId: OrgId) {

@@ -260,6 +260,7 @@ export async function wire(
     store: new PrepStore(sql),
     plus: prepPlus,
     companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner),
+    planLate: (site, learner, plan) => prepEngage.queueLate(site, learner, plan),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const prepEngage = new PrepEngage({
@@ -405,7 +406,7 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)) },
   };
 }
 

@@ -249,6 +249,60 @@ describe("the plan", () => {
     expect(parseRoute("/practice/nit-practice/plan", "?level=wizard")).toEqual({ page: "plan", track: undefined });
   });
 
+  it("offers three ways when a plan does not fit, and plans only what fits when that is the one chosen", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    const sent: Record<string, unknown>[] = [];
+    routes["POST /practice/nit-practice/plan/preview"] = (init) => {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      sent.push(body);
+      const fits = body["upTo"] === 12;
+      return {
+        body: {
+          track: { slug: "dsa-basics", title: "DSA Basics" },
+          tasks: fits ? 12 : 29,
+          totalMinutes: 1200,
+          finishOn: fits ? "2026-12-20" : "2027-02-01",
+          deadline: "2026-12-31",
+          fits,
+          sprints: [],
+          dailyMinutesToFit: fits ? null : 150,
+          itemsThatFit: fits ? null : { items: 12, of: 29 },
+        },
+      };
+    };
+    routes["POST /practice/nit-practice/plan"] = () => ({ status: 201, body: { plan } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan?track=dsa-basics");
+    await screen.findByRole("heading", { name: "Plan a track" });
+    await user.type(screen.getByLabelText("Minutes on Saturday and Sunday"), "240");
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    expect(await screen.findByText("Three ways to fit it:")).toBeTruthy();
+    expect(sent[0]).toMatchObject({ weekendMinutes: 240 });
+    expect(screen.getByRole("button", { name: /Study 150 minutes a day/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Finish by .* instead/ })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Plan the first 12 of 29 items" }));
+    expect(screen.getByRole("status").textContent).toContain("Only the first 12 items will be planned");
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    expect(await screen.findByText(/It fits/)).toBeTruthy();
+    expect(sent[1]).toMatchObject({ upTo: 12 });
+    await user.click(screen.getByRole("button", { name: "Start this plan" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body).toMatchObject({ upTo: 12, weekendMinutes: 240 }));
+  });
+
+  it("changes a running plan's deadline and minutes", async () => {
+    routes["PATCH /practice/nit-practice/plan"] = () => ({ body: { plan: { ...plan, dailyMinutes: 90, weekendMinutes: 180 } } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan");
+    await user.click(await screen.findByText("Change this plan"));
+    const daily = screen.getByLabelText("Minutes a day");
+    await user.clear(daily);
+    await user.type(daily, "90");
+    await user.type(screen.getByLabelText("Minutes on Saturday and Sunday"), "180");
+    await user.click(screen.getByRole("button", { name: "Save the change" }));
+    expect(await screen.findByText("Changed. Your plan is laid out again.")).toBeTruthy();
+    expect(calls.find((c) => c.method === "PATCH")!.body).toMatchObject({ dailyMinutes: 90, weekendMinutes: 180 });
+  });
+
   it("lets the learner pick target companies while planning", async () => {
     routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
     routes["GET /practice/nit-practice/companies"] = () => ({ body: { companies: [{ slug: "acme", name: "Acme", problems: 9, experiences: 0 }, { slug: "zeta", name: "Zeta", problems: 4, experiences: 1 }] } });

@@ -4,7 +4,7 @@ import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Cr
 import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
-import type { Grade, Level, Note, NoteKind, PlanInput, PlanTask, Reward } from "./client.ts";
+import type { Grade, Level, Note, NoteKind, Plan, PlanInput, PlanTask, Reward } from "./client.ts";
 import { LessonDoubt } from "./Tutor.tsx";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context } from "./parts.tsx";
 import { usePrepText, type PrepKey } from "./prep-text.ts";
@@ -869,7 +869,8 @@ function PlanSetup({ client, nav, learner, site, track: wanted, level: suggested
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["practice", site] }),
   });
   const set = (patch: Partial<PlanInput>) => {
-    setInput((i) => ({ ...i, ...patch }));
+    // Planning part of the track holds only for the settings it was worked out for.
+    setInput(({ upTo: _, ...i }) => ({ ...i, ...patch }));
     preview.reset();
   };
   const submit = (e: FormEvent) => {
@@ -916,6 +917,17 @@ function PlanSetup({ client, nav, learner, site, track: wanted, level: suggested
           <input id="plan-deadline" type="date" value={input.deadline} min={plusDays(6)} onChange={(e) => set({ deadline: e.target.value })} required />
           <label htmlFor="plan-daily">{p("plan.daily")}</label>
           <input id="plan-daily" type="number" min={15} max={720} step={15} value={input.dailyMinutes} onChange={(e) => set({ dailyMinutes: Number(e.target.value) })} required />
+          <label htmlFor="plan-weekend">{p("plan.weekend")}</label>
+          <input
+            id="plan-weekend"
+            type="number"
+            min={15}
+            max={720}
+            step={15}
+            placeholder={p("plan.weekendSame")}
+            value={input.weekendMinutes ?? ""}
+            onChange={(e) => set({ weekendMinutes: e.target.value === "" ? null : Number(e.target.value) })}
+          />
           <fieldset>
             <legend>{p("plan.offDays")}</legend>
             <div className="weekday-row">
@@ -960,11 +972,23 @@ function PlanSetup({ client, nav, learner, site, track: wanted, level: suggested
             ) : (
               <div className="alert warn">
                 <p>{p("plan.noFit", { n: input.dailyMinutes, date: day(shown.finishOn) })}</p>
-                {shown.dailyMinutesToFit === null ? null : (
-                  <button type="button" className="secondary" onClick={() => set({ dailyMinutes: shown.dailyMinutesToFit! })}>
-                    {p("plan.toFit", { n: shown.dailyMinutesToFit })}
+                <p>{p("plan.ways")}</p>
+                <div className="row">
+                  {shown.dailyMinutesToFit === null ? null : (
+                    <button type="button" className="secondary" onClick={() => set({ dailyMinutes: shown.dailyMinutesToFit! })}>
+                      {p("plan.toFit", { n: shown.dailyMinutesToFit })}
+                    </button>
+                  )}
+                  <button type="button" className="secondary" onClick={() => set({ deadline: shown.finishOn })}>
+                    {p("plan.later", { date: day(shown.finishOn) })}
                   </button>
-                )}
+                  {!shown.itemsThatFit || shown.itemsThatFit.items === 0 ? null : (
+                    <button type="button" className="secondary" onClick={() => setInput((i) => ({ ...i, upTo: shown.itemsThatFit!.items }))}>
+                      {p("plan.fewer", { n: shown.itemsThatFit.items, of: shown.itemsThatFit.of })}
+                    </button>
+                  )}
+                </div>
+                {input.upTo === undefined ? null : <p role="status">{p("plan.fewerChosen", { n: input.upTo })}</p>}
               </div>
             )}
             <ol className="sprint-bars">
@@ -1094,6 +1118,7 @@ function PlanView({ client, nav, learner, site }: Signed) {
         <FocusTimer client={client} site={site} learner={learner} tasks={pl.today.filter((t) => !t.done)} />
       </div>
       <ReminderCard client={client} site={site} learner={learner} />
+      <ChangePlan client={client} site={site} plan={pl} />
 
       <div className="danger-zone">
         {confirmStop ? (
@@ -1113,6 +1138,66 @@ function PlanView({ client, nav, learner, site }: Signed) {
         )}
       </div>
     </div>
+  );
+}
+
+/** Change a running plan's deadline, minutes or days off: what is done stays done. */
+function ChangePlan({ client, site, plan }: { readonly client: Context["client"]; readonly site: string; readonly plan: Plan }) {
+  const p = usePrepText();
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ deadline: plan.deadline, dailyMinutes: plan.dailyMinutes, weekendMinutes: plan.weekendMinutes, offDays: plan.offDays });
+  const change = useMutation({
+    mutationFn: () => client.changePlan(form),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["practice", site] }),
+  });
+  return (
+    <details className="card change-plan">
+      <summary>{p("plan.change")}</summary>
+      <p className="notice">{p("plan.changeHint")}</p>
+      <form
+        className="plan-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          change.mutate();
+        }}
+      >
+        <label htmlFor="change-deadline">{p("plan.deadline")}</label>
+        <input id="change-deadline" type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} required />
+        <label htmlFor="change-daily">{p("plan.daily")}</label>
+        <input id="change-daily" type="number" min={15} max={720} step={15} value={form.dailyMinutes} onChange={(e) => setForm({ ...form, dailyMinutes: Number(e.target.value) })} required />
+        <label htmlFor="change-weekend">{p("plan.weekend")}</label>
+        <input
+          id="change-weekend"
+          type="number"
+          min={15}
+          max={720}
+          step={15}
+          placeholder={p("plan.weekendSame")}
+          value={form.weekendMinutes ?? ""}
+          onChange={(e) => setForm({ ...form, weekendMinutes: e.target.value === "" ? null : Number(e.target.value) })}
+        />
+        <fieldset>
+          <legend>{p("plan.offDays")}</legend>
+          <div className="weekday-row">
+            {WEEKDAYS.map((name, i) => (
+              <label key={name} className="check-row">
+                <input
+                  type="checkbox"
+                  checked={form.offDays.includes(i)}
+                  onChange={(e) => setForm({ ...form, offDays: e.target.checked ? [...form.offDays, i] : form.offDays.filter((d) => d !== i) })}
+                />{" "}
+                {name}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <button type="submit" disabled={change.isPending}>
+          {p("plan.changeSave")}
+        </button>
+        {change.isSuccess ? <p role="status">{p("plan.changed")}</p> : null}
+        {change.isError ? <Failed error={change.error} /> : null}
+      </form>
+    </details>
   );
 }
 

@@ -81,6 +81,7 @@ const planView = z.object({
   level: z.enum(["beginner", "intermediate", "advanced"]),
   deadline: day,
   dailyMinutes: z.number(),
+  weekendMinutes: z.number().nullable(),
   offDays: z.array(z.number()).readonly(),
   goal: z.string(),
   startedAt: z.string(),
@@ -102,8 +103,10 @@ const planInput = z.object({
   level: z.enum(["beginner", "intermediate", "advanced"]),
   deadline: day,
   dailyMinutes: z.number().int(),
+  weekendMinutes: z.number().int().nullable().optional().describe("Minutes on Saturday and Sunday, when they differ from `dailyMinutes`."),
   offDays: z.array(z.number().int()).max(7).default([]),
   goal: z.string().max(200).optional(),
+  upTo: z.number().int().optional().describe("Plan only the first this many of the track's remaining items: the one that fit by the deadline, say."),
 });
 const planPreview = z.object({
   track: z.object({ slug: z.string(), title: z.string() }),
@@ -114,6 +117,7 @@ const planPreview = z.object({
   fits: z.boolean(),
   sprints: z.array(sprint).readonly(),
   dailyMinutesToFit: z.number().nullable().describe("When it does not fit: minutes a day that would finish by the deadline."),
+  itemsThatFit: z.object({ items: z.number(), of: z.number() }).nullable().describe("When it does not fit: how many of the remaining items the deadline holds, to plan just those (`upTo`)."),
 });
 
 const potdDay = z.object({ day, slug: z.string(), title: z.string(), difficulty, solved: z.boolean(), solvedThatDay: z.boolean() });
@@ -392,6 +396,39 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
       const who = await signedIn(request, reply);
       if (who === null) return;
       return reply.code(201).send({ plan: await prep.startPlan(who.site, who.learner, request.body) });
+    },
+  );
+
+  routes.patch(
+    "/practice/:site/plan",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Change my running plan: its deadline, minutes or days off",
+        description: "Done tasks stay done, and so do the learner's own tasks; the track's remaining items are laid out again from today, in new sprints.",
+        security: LEARNER,
+        params: siteParams,
+        body: z.object({
+          deadline: day.optional(),
+          dailyMinutes: z.number().int().optional(),
+          weekendMinutes: z.number().int().nullable().optional(),
+          offDays: z.array(z.number().int()).max(7).optional(),
+        }),
+        response: { 200: z.object({ plan: planView }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      const { deadline, dailyMinutes, weekendMinutes, offDays } = request.body;
+      return reply.send({
+        plan: await prep.changePlan(who.site, who.learner, {
+          ...(deadline === undefined ? {} : { deadline }),
+          ...(dailyMinutes === undefined ? {} : { dailyMinutes }),
+          ...(weekendMinutes === undefined ? {} : { weekendMinutes }),
+          ...(offDays === undefined ? {} : { offDays }),
+        }),
+      });
     },
   );
 

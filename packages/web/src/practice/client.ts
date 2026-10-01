@@ -357,6 +357,10 @@ export class PracticeClient {
     return (await this.#post<{ plan: Plan }>("/plan", input)).plan;
   }
 
+  async changePlan(change: PlanChange): Promise<Plan> {
+    return (await this.#request<{ plan: Plan }>("/plan", { method: "PATCH", body: JSON.stringify(change) })).plan;
+  }
+
   async stopPlan(): Promise<void> {
     await this.#request("/plan", { method: "DELETE" });
   }
@@ -643,8 +647,20 @@ export interface PlanInput {
   readonly level: Level;
   readonly deadline: string;
   readonly dailyMinutes: number;
+  /** Minutes on Saturday and Sunday, when they differ; null or absent when they do not. */
+  readonly weekendMinutes?: number | null;
   readonly offDays: readonly number[];
   readonly goal?: string;
+  /** Plan only the first this many of the track's remaining items. */
+  readonly upTo?: number;
+}
+
+/** What may change in a running plan. */
+export interface PlanChange {
+  readonly deadline?: string;
+  readonly dailyMinutes?: number;
+  readonly weekendMinutes?: number | null;
+  readonly offDays?: readonly number[];
 }
 
 export interface Sprint {
@@ -664,6 +680,8 @@ export interface PlanPreview {
   readonly fits: boolean;
   readonly sprints: readonly Sprint[];
   readonly dailyMinutesToFit: number | null;
+  /** When it does not fit: how many of the remaining items the deadline holds. */
+  readonly itemsThatFit: { readonly items: number; readonly of: number } | null;
 }
 
 export interface PlanTask {
@@ -684,6 +702,7 @@ export interface Plan {
   readonly level: Level;
   readonly deadline: string;
   readonly dailyMinutes: number;
+  readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
   readonly startedAt: string;
