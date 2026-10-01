@@ -1,5 +1,5 @@
 import { orgId } from "@parikshaa/core";
-import { BillingStore, connect, IdentityStore, migrate, staffScope } from "@parikshaa/store";
+import { BillingStore, connect, IdentityStore, migrate, PrepStore, staffScope } from "@parikshaa/store";
 
 /**
  * The harnesses' database: a real Postgres, migrated as the schema owner and
@@ -100,6 +100,32 @@ export async function seedBilledOrganisation(
       billingEmail: "accounts@billed.e2e.test",
     });
     return { email, password: OWNER_PASSWORD };
+  } finally {
+    await sql.end();
+  }
+}
+
+/**
+ * An organisation of its own for one Prep flow (Prep blueprint F1, F3, F12,
+ * F13), and its owner: each test opens its own practice site in it, so one
+ * turning Plus on locks nothing in another running beside it.
+ */
+export async function seedPrepOrganisation(hashPassword: (password: string) => Promise<string>): Promise<{ id: string; email: string; password: string }> {
+  const id = `e2e-prep-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return { id, ...(await seedOrganisation(hashPassword, id, "E2E Prep College")) };
+}
+
+/**
+ * Make a learner's account old enough for the coin store (fourteen days)
+ * and give them coins, as the operator's tools would: the store's rules are
+ * the server's, and a test cannot wait two weeks.
+ */
+export async function ripenLearner(org: string, email: string, coins: number): Promise<void> {
+  const sql = connect(ownerUrl, { max: 1 });
+  try {
+    const [learner] = await sql.query<{ id: string }>(`UPDATE learners SET created_at = now() - interval '15 days' WHERE org_id = $1 AND email = $2 RETURNING id`, [org, email]);
+    if (learner === undefined) throw new Error(`No learner ${email} in ${org}`);
+    await new PrepStore(sql).award(orgId(org), learner.id, { rule: "grant", amount: coins, key: `e2e:${learner.id}` });
   } finally {
     await sql.end();
   }

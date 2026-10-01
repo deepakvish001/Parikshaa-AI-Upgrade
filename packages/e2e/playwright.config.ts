@@ -34,7 +34,9 @@ export default defineConfig({
   webServer: {
     command: "node dist/server.js",
     url: `http://localhost:${port}/api/health`,
-    env: { PORT: String(port) },
+    // Code runs in-process (see E2E_RUNNER in src/server.ts), as for the screenshots: the
+    // Prep flows run and submit code, and only this suite's own code ever runs.
+    env: { PORT: String(port), E2E_RUNNER: "local" },
     reuseExistingServer: process.env["CI"] === undefined,
     timeout: 60_000,
     stdout: "pipe",
