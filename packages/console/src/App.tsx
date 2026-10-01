@@ -46,6 +46,7 @@ import { Home } from "./components/Home.tsx";
 import { Gallery } from "./components/Gallery.tsx";
 import { Dialog, ToastProvider, useToast } from "@parikshaa/brand/ui";
 import { ThemeSwitch, useTheme, type Theme } from "./components/ThemeSwitch.tsx";
+import { useConsoleLanguage } from "./language.ts";
 import { OrgSignInPanel, TwoFactorPanel } from "./components/Security.tsx";
 import { remembered, SignIn } from "./components/SignIn.tsx";
 
@@ -212,6 +213,7 @@ function Console({
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const [language, setLanguage, t] = useConsoleLanguage();
   useEffect(() => {
     if (emailVerified === null || emailVerified === "pending") return;
     if (emailVerified === "done") {
@@ -453,7 +455,7 @@ function Console({
       onClick={() => go(target)}
     >
       <Icon aria-hidden="true" />
-      {label}
+      {t(label)}
     </button>
   );
   const visible = tabs.filter((tab) => can(tab.permission));
@@ -504,10 +506,10 @@ function Console({
           )}
           <nav className="side-nav account" aria-label="Account">
             {navItem({ name: "home" }, "Home", LayoutDashboard)}
-            <p className="nav-group">Assess</p>
+            <p className="nav-group">{t("Assess")}</p>
             {navItem({ name: "exams" }, "Exams", ClipboardList)}
             {visible.filter((tab) => tab.group === "assess").map((tab) => navItem(tab.view, tab.label, tab.icon))}
-            {visible.some((tab) => tab.group === "org") ? <p className="nav-group">Organisation</p> : null}
+            {visible.some((tab) => tab.group === "org") ? <p className="nav-group">{t("Organisation")}</p> : null}
             {visible.filter((tab) => tab.group === "org").map((tab) => navItem(tab.view, tab.label, tab.icon))}
             <div className="sidebar-foot">
               {me.data === undefined ? null : (
@@ -523,7 +525,7 @@ function Console({
                 {me.data?.kind === "user" ? navItem({ name: "account" }, "Account", KeyRound) : null}
                 <button type="button" className="nav-item" onClick={() => signOut.mutate()}>
                   <LogOut aria-hidden="true" />
-                  Sign out
+                  {t("Sign out")}
                 </button>
               </div>
             </div>
@@ -567,8 +569,17 @@ function Console({
           <span className="spacer" />
           <button type="button" className="search-trigger" data-tour="search" onClick={() => setSearching(true)} aria-keyshortcuts="Control+K">
             <Search aria-hidden="true" />
-            <span>Search</span>
+            <span>{t("Search")}</span>
             <kbd>Ctrl K</kbd>
+          </button>
+          <button
+            type="button"
+            className="quiet language-switch"
+            lang={language === "hi" ? "en" : "hi"}
+            aria-label={language === "hi" ? "Show the console in English" : "कंसोल हिन्दी में दिखाएँ"}
+            onClick={() => setLanguage(language === "hi" ? "en" : "hi")}
+          >
+            {language === "hi" ? "English" : "हिन्दी"}
           </button>
           <ThemeSwitch theme={theme} onChange={onTheme} />
         </header>
@@ -622,7 +633,7 @@ function Console({
 
         <main className="content">
           {me.data?.emailVerified === false && me.data.email !== null && emailVerified !== "done" ? <ConfirmEmail client={client} email={me.data.email} /> : null}
-          <PageFrame title={pageTitle(view, examTitle)} note={PAGE_NOTE[view.name]}>
+          <PageFrame title={t(pageTitle(view, examTitle))} note={t(PAGE_NOTE[view.name])}>
             {view.name === "home" ? (
               <Home
                 dashboard={dashboard.data}

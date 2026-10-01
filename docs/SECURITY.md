@@ -20,6 +20,11 @@ To report a vulnerability, see [`.github/SECURITY.md`](../.github/SECURITY.md).
 | Sessions, API keys | Staff | `staff_sessions`, `api_keys` | Stored only as SHA-256 of the bearer value |
 | Practice learners | Learners | `learners`, `practice_*` | Passwords argon2id; account deletion removes name and email |
 | Payments, invoices | Organisation | `payments`, `invoices`, `credit_ledger` | No card data ever reaches Parikshaa: Razorpay Checkout collects it |
+| Where an attempt was opened from (proctored or not) | Candidate | `attempt_origins` | Only a keyed hash of the network address and a hash of the browser description; deleted on erasure |
+| The model's comparison of identity photos | Candidate | `identity_checks` | Row-level security; deleted on erasure |
+| Scanned handwritten answer pages | Candidate | `answer_scripts`, `answer_script_pages` | Row-level security only: **not** sealed under a per-record key, and not yet in the retention sweep |
+| Student list (roll number, contact, CGPA, placement, offers) | Student | `students`, `drive_applications` | Row-level security only; removed when the college removes the student |
+| Interview code, notes and scorecard | Candidate | `interviews` | Row-level security only; not yet in the retention sweep |
 
 Secrets that are **derived, not stored** — invitation codes, webhook signing
 secrets, the Greenhouse key, password-reset links: each is an HMAC under a
@@ -93,6 +98,10 @@ runner's own files (STACK.md §0b).
 
 Model calls carry the question, rubric and the candidate's answer — never
 their name, roll number or contact details (`packages/viva/src/redact.ts`).
+Two calls staff start themselves are exceptions by their nature: reading a
+scanned handwritten copy sends the page images, which may show whatever the
+candidate wrote on them, and comparing identity photos sends the candidate's
+face and photo ID (`handwriting.ts`, `proxy.ts`).
 The model never grades on its own authority in a way a person cannot see:
 verdicts are evidence beside the grade, and nothing sets an attempt aside
 without a person's written reason. Every call's tokens and cost are recorded;
@@ -128,9 +137,12 @@ before a residency promise covers them. Pseudonymisation (§7) holds either
 way.
 
 **Sub-processors**, each optional except the model: Anthropic (follow-up
-questions and rubric grading), your SMTP provider (email), MSG91 (SMS),
-Razorpay (payments), and any ATS or webhook endpoint the institution itself
-configures.
+questions and rubric grading; reading job descriptions and handwritten copies,
+and comparing identity photos, when staff ask), your SMTP provider (email),
+MSG91 (SMS), Razorpay (payments), Jitsi Meet (an interview's video when no
+call link of the institution's own is given), and any ATS or webhook endpoint
+the institution itself configures. The full list is Annex C of the DPA
+template.
 
 ## 11. Development and supply chain
 
@@ -159,6 +171,6 @@ point-in-time recovery; a restore drill that runs in CI. See OPERATIONS.md.
 |---|---|
 | Independent penetration test | Not yet commissioned |
 | ISO 27001 / SOC 2 | Not started; this pack is the starting evidence |
-| Signed DPA with each institution | Needs legal review of a template |
+| Signed DPA with each institution | A template is in [`docs/legal/DPA.md`](legal/DPA.md), with an SLA template in [`docs/legal/SLA.md`](legal/SLA.md); both need a lawyer and the owner's terms before anyone signs |
 | India inference region for model calls | To be confirmed with Anthropic |
 | Greenhouse, Lever, Zoho Recruit and Darwinbox connectors; MSG91; WhatsApp Cloud API | Built against published documentation (Darwinbox: a configurable callback); not yet exercised against live accounts. Lever, Zoho and Darwinbox now have **Test connection** (a read-only call to the account), so the first college's credentials can be proved before a candidate depends on them |
