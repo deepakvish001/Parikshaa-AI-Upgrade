@@ -307,6 +307,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `48106ad` | Sprint quiz (70% se kam par revise), sprint ke notes ek page par, streak freeze ("aaj chhutti", mahine me 2) |
 | 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `677e114` | Roz ka reminder email (learner ka ghanta, ek click se band), console me Analytics: activation, D1/D7, funnel, roz ke active learners |
 | 1 Oct 2026 | [#35](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/35) `7850198` | Coupons (affiliate `?ref=` ke saath), har paid order par GST tax invoice (`PKP/…`), pricing page par GST breakup aur FAQ, console me "Coupons and sales" |
 | 30 Sep 2026 | [#33](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/33) `850cb5d` | Pehla hint admin ka likha (free, bina AI); worked solution ke baad solve par coins aadhe; tracker me "Ruka hua kaam" |
