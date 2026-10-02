@@ -420,6 +420,8 @@ export interface AiInterview {
   readonly candidateRef: string;
   readonly candidateName: string;
   readonly candidateEmail: string | null;
+  /** The resume the recruiter pasted; the model reads it with who wrote it taken out. */
+  readonly resume: string | null;
   readonly status: "invited" | "in_progress" | "done" | "cancelled";
   readonly startedAt: string | null;
   readonly endedAt: string | null;
@@ -1730,6 +1732,7 @@ export class ConsoleClient {
     readonly candidateName: string;
     readonly candidateRef: string;
     readonly candidateEmail: string | null;
+    readonly resume: string | null;
   }): Promise<AiInterviewDetail> {
     return this.#request("/ai-interviews", { method: "POST", body: JSON.stringify(request) });
   }

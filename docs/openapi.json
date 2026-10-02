@@ -99754,12 +99754,26 @@
                   },
                   "candidateEmail": {
                     "default": null,
+                    "description": "When given, and the server sends email, the candidate is emailed the link.",
                     "anyOf": [
                       {
                         "type": "string",
                         "maxLength": 320,
                         "format": "email",
                         "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "resume": {
+                    "default": null,
+                    "description": "The candidate's resume as text, for questions from their own work. Sealed; the model never sees the name, email, phone or links in it.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
                       },
                       {
                         "type": "null"
@@ -99825,6 +99839,13 @@
                       "type": "string"
                     },
                     "candidateEmail": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
                       "type": [
                         "string",
                         "null"
@@ -100056,6 +100077,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -100303,6 +100325,13 @@
                               "null"
                             ]
                           },
+                          "resume": {
+                            "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -100465,6 +100494,7 @@
                           "candidateRef",
                           "candidateName",
                           "candidateEmail",
+                          "resume",
                           "status",
                           "startedAt",
                           "endedAt",
@@ -100724,6 +100754,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -100950,6 +100987,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -101259,6 +101297,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -101485,6 +101530,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -101739,6 +101785,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -101965,6 +102018,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -102219,6 +102273,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -102445,6 +102506,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",

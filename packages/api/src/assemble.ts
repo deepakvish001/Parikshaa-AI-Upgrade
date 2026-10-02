@@ -152,6 +152,15 @@ export function assemble(o: AssembleOptions): {
     mailer: o.mailer ?? null,
     enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
   });
+  const aiInterviewStore = new AiInterviewStore(o.sql, keys.records("ai-interviews"));
+  const aiInterviews = new AiInterviewService({
+    store: aiInterviewStore,
+    exams: service,
+    secret: o.secret,
+    publicUrl: o.publicUrl,
+    mailer: o.mailer ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
+  });
   const studentMessages = new StudentMessages({
     placement: placementStore,
     identity,
@@ -171,6 +180,7 @@ export function assemble(o: AssembleOptions): {
     tutor: new PrepPlusStore(o.sql),
     records: [
       { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
+      { kind: "ai_interviews", sweep: (orgId, before) => aiInterviewStore.sweep(orgId, before) },
     ],
   });
   const labStore = new LabStore(o.sql);
@@ -289,7 +299,7 @@ export function assemble(o: AssembleOptions): {
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
     interviews,
-    aiInterviews: new AiInterviewService({ store: new AiInterviewStore(o.sql, keys.records("ai-interviews")), exams: service, secret: o.secret, publicUrl: o.publicUrl }),
+    aiInterviews,
     accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
@@ -337,7 +347,7 @@ export function assemble(o: AssembleOptions): {
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
       learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)),
-      student: (item) => studentMessages.deliver(item), interview: (item) => interviews.deliver(item) },
+      student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
   });
 
   return { app, worker, privacy, billing, identity, dailyReport, prepEngage };

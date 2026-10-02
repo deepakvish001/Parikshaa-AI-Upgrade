@@ -105,7 +105,7 @@ function SetUp({ client, onClose, onMade }: { client: ConsoleClient; onClose: ()
   const queryClient = useQueryClient();
   const toast = useToast();
   const roles = useQuery({ queryKey: ["job-roles"], queryFn: () => client.jobRoles() });
-  const [form, setForm] = useState({ title: "", roleId: "", job: "", seniority: "junior" as Seniority, questions: "4", minutes: "30", candidateName: "", candidateRef: "", candidateEmail: "" });
+  const [form, setForm] = useState({ title: "", roleId: "", job: "", seniority: "junior" as Seniority, questions: "4", minutes: "30", candidateName: "", candidateRef: "", candidateEmail: "", resume: "" });
   const families = useMemo(() => {
     const by = new Map<string, { id: string; title: string }[]>();
     for (const r of roles.data ?? []) by.set(r.family, [...(by.get(r.family) ?? []), { id: r.id, title: r.title }]);
@@ -123,11 +123,12 @@ function SetUp({ client, onClose, onMade }: { client: ConsoleClient; onClose: ()
         candidateName: form.candidateName,
         candidateRef: form.candidateRef,
         candidateEmail: form.candidateEmail.trim() === "" ? null : form.candidateEmail.trim(),
+        resume: form.resume.trim() === "" ? null : form.resume,
       }),
     onSuccess: async (made) => {
       void queryClient.invalidateQueries({ queryKey: ["ai-interviews"] });
       await navigator.clipboard?.writeText(made.link).catch(() => undefined);
-      toast("Set up. The candidate's link is copied", "success");
+      toast(made.candidateEmail === null ? "Set up. The candidate's link is copied" : "Set up. The link is emailed to the candidate, and copied", "success");
       onClose();
       onMade(made.id);
     },
@@ -182,8 +183,12 @@ function SetUp({ client, onClose, onMade }: { client: ConsoleClient; onClose: ()
         {field("minutes", "Minutes at most", "number", true, { min: 10, max: 90 })}
         {field("candidateName", "Candidate's name", "text", true)}
         {field("candidateRef", "Roll number or reference")}
-        {field("candidateEmail", "Candidate's email", "email")}
-        <p className="notice">The AI is told the role, the level and the job description, never the candidate's name, email or reference.</p>
+        {field("candidateEmail", "Candidate's email (the link is emailed to it)", "email")}
+        <label className="field">
+          Resume (optional: paste its text, for questions from their own work)
+          <textarea rows={5} maxLength={20000} value={form.resume} onChange={(e) => setForm({ ...form, resume: e.target.value })} />
+        </label>
+        <p className="notice">The AI is told the role, the level, the job description and the resume with the name, email, phone and links taken out; never the candidate's name, email or reference.</p>
         {make.error === null ? null : (
           <p className="error" role="alert">
             {failure(make.error)}
@@ -263,6 +268,12 @@ function Transcript({ client, id, canWrite, onBack }: { client: ConsoleClient; i
       </div>
       <div className="ai-grid">
         <section aria-label="Transcript">
+          {i.resume === null ? null : (
+            <details className="resume">
+              <summary>The resume the questions drew on</summary>
+              <p className="pre-line">{i.resume}</p>
+            </details>
+          )}
           <h3>Transcript</h3>
           {i.turns.length === 0 ? <p className="notice">The candidate has not started yet.</p> : null}
           <ol className="ai-turns">

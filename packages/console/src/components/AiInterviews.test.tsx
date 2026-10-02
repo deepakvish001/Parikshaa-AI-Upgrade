@@ -17,6 +17,7 @@ const done: AiInterviewDetail = {
   candidateRef: "J-17",
   candidateName: "Ananya",
   candidateEmail: null,
+  resume: null,
   status: "done",
   startedAt: "2026-10-05T05:00:00.000Z",
   endedAt: "2026-10-05T05:20:00.000Z",
@@ -64,9 +65,11 @@ describe("the AI interviews page", () => {
     await screen.findByRole("option", { name: "Java Developer" });
     await user.selectOptions(within(form).getByRole("combobox", { name: "Role" }), "java-developer");
     await user.type(within(form).getByRole("textbox", { name: "Candidate's name" }), "Ananya");
+    await user.type(within(form).getByRole("textbox", { name: /Resume/ }), "Built a Kafka consumer");
     expect(form).toHaveTextContent("never the candidate's name");
+    expect(form).toHaveTextContent("name, email, phone and links taken out");
     await user.click(within(form).getByRole("button", { name: "Set up and copy the link" }));
-    await waitFor(() => expect(createAiInterview).toHaveBeenCalledWith(expect.objectContaining({ title: "Backend screen", roleId: "java-developer", seniority: "junior", questions: 4, minutes: 30, candidateName: "Ananya" })));
+    await waitFor(() => expect(createAiInterview).toHaveBeenCalledWith(expect.objectContaining({ title: "Backend screen", roleId: "java-developer", seniority: "junior", questions: 4, minutes: 30, candidateName: "Ananya", resume: "Built a Kafka consumer" })));
     expect(await screen.findByText("The candidate has not started yet.")).toBeInTheDocument();
   });
 
