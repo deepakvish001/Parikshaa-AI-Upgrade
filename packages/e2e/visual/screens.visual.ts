@@ -114,6 +114,8 @@ const PAGES: readonly (readonly [string, (page: Page) => Promise<void>])[] = [
       await page.getByRole("button", { name: DRIVE, exact: true }).click();
       await expect(page.getByRole("complementary", { name: "Candidates at a glance" }).getByText("Qualified", { exact: true })).toBeVisible();
       await expect(page.getByRole("region", { name: "Attempts" })).toBeVisible();
+      // Loaded on its own, after the page: wait for it, so the picture never races it.
+      await expect(page.getByRole("region", { name: "Paper review" })).toBeVisible();
     },
   ],
   [
@@ -123,6 +125,14 @@ const PAGES: readonly (readonly [string, (page: Page) => Promise<void>])[] = [
       await page.getByRole("button", { name: DRIVE, exact: true }).click();
       await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Results" }).click();
       await expect(page.getByRole("region", { name: "How the marks fell" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Internal marks" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Course outcomes" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Shortlists for hiring managers" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Handwritten copies" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Signs of a proxy" })).not.toHaveAttribute("aria-busy", "true");
+      await page.waitForLoadState("networkidle");
+      // The masked times change width with the clock (3:39 pm, 10:39 am): one width, so the mask is the same size each run.
+      await page.addStyleTag({ content: ".proxy-time { display: inline-block; width: 16em; }" });
     },
   ],
   [
@@ -155,6 +165,8 @@ const PAGES: readonly (readonly [string, (page: Page) => Promise<void>])[] = [
     async (page) => {
       await nav(page, "Staff");
       await expect(page.getByRole("region", { name: "Staff" }).getByText("Ravi Kumar")).toBeVisible();
+      await expect(page.getByRole("region", { name: "Departments" }).getByRole("combobox", { name: "Department for Ravi Kumar" })).toBeVisible();
+      await expect(page.getByRole("region", { name: "Add staff from a sheet" })).toBeVisible();
     },
   ],
 ];

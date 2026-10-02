@@ -138,8 +138,7 @@ export function InternalMarks({ client, examId }: { client: ConsoleClient; examI
             </button>
           </div>
           <div className="scroll">
-            <table>
-              <caption className="sr-only">Internal marks</caption>
+            <table aria-label="Internal marks">
               <thead>
                 <tr>
                   <th scope="col">Roll number</th>
