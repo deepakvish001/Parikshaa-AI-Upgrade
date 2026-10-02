@@ -135,6 +135,8 @@ describe("migrate", () => {
       "0053_accommodations.sql",
       "0054_prep_next.sql",
       "0055_remove_extras.sql",
+      "0056_supabase_lockdown.sql",
+      "0057_function_search_path.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -174,7 +176,39 @@ describe("migrate", () => {
         "accommodations",
       ]),
     );
+    // No function in public lets its caller choose where names resolve (0057).
+    const loose = await sql.query<{ proname: string }>(
+      `SELECT p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE n.nspname = 'public' AND NOT EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig, '{}')) c WHERE c LIKE 'search_path=%')`,
+    );
+    expect(loose).toEqual([]);
     // Removed with the tech-only focus (0055).
     for (const gone of ["answer_scripts", "answer_script_pages", "exam_outcomes"]) expect(tables.map((t) => t.tablename)).not.toContain(gone);
+  });
+
+  it("leaves Supabase's public API roles no privilege on any table, then or later", async () => {
+    // What a Supabase project does before our first migration: two API roles
+    // that receive every privilege on whatever is created in public.
+    await sql.exec(`
+      CREATE ROLE anon NOLOGIN;
+      CREATE ROLE authenticated NOLOGIN;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+    `);
+    await migrate(sql);
+    await sql.exec(`CREATE TABLE later_table (id int)`);
+
+    const granted = await sql.query<{ grantee: string; table_name: string }>(
+      `SELECT grantee, table_name FROM information_schema.role_table_grants
+        WHERE table_schema = 'public' AND grantee IN ('anon', 'authenticated')`,
+    );
+    expect(granted).toEqual([]);
+    const usable = await sql.query<{ n: number }>(
+      `SELECT count(*)::int AS n FROM pg_tables t
+        WHERE t.schemaname = 'public'
+          AND (has_table_privilege('anon', format('%I.%I', t.schemaname, t.tablename), 'SELECT')
+            OR has_table_privilege('authenticated', format('%I.%I', t.schemaname, t.tablename), 'INSERT'))`,
+    );
+    expect(usable[0]!.n).toBe(0);
   });
 });

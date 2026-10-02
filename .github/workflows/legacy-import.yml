@@ -1,0 +1,63 @@
+name: Legacy import
+
+# Brings the old app's problems (the Singapore Supabase project) onto a
+# practice site in the Parikshaa database (docs/SUPABASE.md). Run by hand only.
+# It reads the old database and writes only to the new one; a dry run, the
+# default, writes nothing and prints what it would do.
+#
+# Needs two repository secrets, each a Postgres connection string from the
+# project's Connect panel (session pooler):
+#   LEGACY_DATABASE_URL     the old project, read only
+#   PARIKSHAA_DATABASE_URL  the Mumbai project
+
+on:
+  workflow_dispatch:
+    inputs:
+      site:
+        description: Practice site address
+        default: learn
+        required: true
+      org:
+        description: Organisation that owns the site, made if missing
+        default: parikshaa
+        required: true
+      dry_run:
+        description: Read and check only; write nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Import
+        env:
+          SOURCE_DATABASE_URL: ${{ secrets.LEGACY_DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.PARIKSHAA_DATABASE_URL }}
+          SITE: ${{ inputs.site }}
+          ORG: ${{ inputs.org }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          args=(--site "$SITE" --org "$ORG")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry-run); fi
+          node packages/api/dist/legacy-import-cli.js "${args[@]}"

@@ -42,6 +42,11 @@ nothing. A mutation test (dropping a query's filter) showed the isolation
 tests fail without RLS and pass with it. See STACK.md §0a and
 `packages/api/src/tenancy.test.ts`.
 
+On Supabase, whose public key reaches the database through its Data API, the
+two roles that key acts as (`anon`, `authenticated`) hold no privilege on any
+table, sequence or function (migration 0056, tested in `migrate.test.ts`;
+docs/SUPABASE.md). Parikshaa never uses that API.
+
 ## 3. Authentication and authorisation
 
 - **Staff:** password (argon2id, 12+ characters), with a per-address,

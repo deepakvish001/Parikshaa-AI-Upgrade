@@ -34,7 +34,8 @@
     "admin": "node dist/admin-cli.js",
     "billing": "node dist/billing-cli.js",
     "pilot-report": "node dist/pilot-report-cli.js",
-    "verify-all": "node dist/verify-all-cli.js"
+    "verify-all": "node dist/verify-all-cli.js",
+    "import-legacy": "node dist/legacy-import-cli.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.128.0",
