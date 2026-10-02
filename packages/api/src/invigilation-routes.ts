@@ -56,7 +56,7 @@ const liveRow = z.object({
       identity: z.enum(["not_taken", "pending", "verified", "rejected"]),
       snapshots: z.number(),
       lastSnapshotAt: z.number().nullable(),
-      events: z.record(z.string(), z.number()).describe("What the browser reported, by kind: tab_hidden, fullscreen_exit, copy, paste, camera_off."),
+      events: z.record(z.string(), z.number()).describe("What the browser reported, by kind: tab_hidden, fullscreen_exit, copy, paste, camera_off, camera_on, screen_share_off, screen_share_on, second_screen, voice."),
     })
     .nullable()
     .describe("For a proctored exam: the identity check and what the camera and browser sent. Observations, not findings."),

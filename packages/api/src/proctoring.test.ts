@@ -24,6 +24,8 @@ let owner: string;
 let invigilator: string;
 
 const POLICY = { identity: true, snapshotEverySeconds: 60, browserEvents: true };
+/** Secure mode alone: no camera at all, the screen shared and the room listened to. */
+const SECURE = { identity: false, snapshotEverySeconds: null, browserEvents: true, screenShare: true, audio: true };
 
 beforeEach(async () => {
   clock = OPENS;
@@ -35,7 +37,7 @@ beforeEach(async () => {
   await db.exec(`SET ROLE parikshaa_app`);
   owner = await signIn(app, "owner@acme.test");
   invigilator = await signIn(app, "inv@acme.test");
-  for (const [id, proctoring] of [["watched", POLICY], ["open-book", undefined]] as const) {
+  for (const [id, proctoring] of [["watched", POLICY], ["open-book", undefined], ["secure", SECURE]] as const) {
     const saved = await call("POST", owner, "/exams", {
       id,
       title: id,
@@ -134,6 +136,43 @@ describe("the identity check", () => {
     expect(types).toEqual(["attempt_started", "identity_captured", "identity_reviewed", "attempt_submitted"]);
     await call("POST", owner, `/attempts/${attemptId}/grade`);
     expect((await call("POST", invigilator, `/attempts/${attemptId}/identity/review`, { outcome: "rejected", reason: "Second look: not them." })).statusCode).toBe(409);
+  });
+});
+
+describe("secure mode: the screen shared, the room listened to", () => {
+  it("asks for the devices before the clock starts, though no camera photo is taken", async () => {
+    const refused = await redeem("secure");
+    expect(refused.statusCode).toBe(428);
+    expect(refused.json()).toEqual({ error: "camera_required", proctoring: SECURE });
+    expect((await redeem("secure", true)).statusCode).toBe(200);
+  });
+
+  it("records sharing stopping and starting, a second screen and voices heard, as events only", async () => {
+    const { token, attemptId } = (await redeem("secure", true)).json();
+    const sent = await call("POST", token, "/attempts/me/proctor-events", { events: ["second_screen", "screen_share_off", "screen_share_on", "voice"] });
+    expect(sent.statusCode, sent.payload).toBe(202);
+    const view = (await call("GET", invigilator, `/attempts/${attemptId}/proctoring`)).json();
+    expect(view.policy).toEqual(SECURE);
+    expect(view.events.map((e: { kind: string }) => e.kind).sort()).toEqual(["screen_share_off", "screen_share_on", "second_screen", "voice"]);
+    expect(view.snapshots).toEqual([]);
+    // No camera in this exam: no photos are taken from it.
+    expect((await call("POST", token, "/attempts/me/snapshots", { image: b64(jpeg(3)) })).statusCode).toBe(409);
+  });
+
+  it("refuses those events from an exam that does not ask for them, and stores nothing of a refused batch", async () => {
+    const { token, attemptId } = await start();
+    for (const kind of ["screen_share_off", "second_screen", "voice"]) {
+      const refused = await call("POST", token, "/attempts/me/proctor-events", { events: ["tab_hidden", kind] });
+      expect(refused.statusCode, kind).toBe(409);
+    }
+    expect((await call("GET", invigilator, `/attempts/${attemptId}/proctoring`)).json().events).toEqual([]);
+  });
+
+  it("counts them on the live view", async () => {
+    const { token } = (await redeem("secure", true)).json();
+    await call("POST", token, "/attempts/me/proctor-events", { events: ["screen_share_off", "voice", "voice"] });
+    const live = (await call("GET", invigilator, "/exams/secure/live")).json();
+    expect(live.rows[0].proctoring.events).toMatchObject({ screen_share_off: 1, voice: 2 });
   });
 });
 

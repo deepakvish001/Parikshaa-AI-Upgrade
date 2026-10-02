@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, CameraOff, ChevronLeft, ChevronRight, ClipboardPaste, Copy, EyeOff, Minimize2, type LucideIcon } from "lucide-react";
+import { Camera, CameraOff, ChevronLeft, ChevronRight, ClipboardPaste, Copy, EyeOff, Mic, Minimize2, Monitor, MonitorOff, MonitorSmartphone, type LucideIcon } from "lucide-react";
 import { Dialog } from "@parikshaa/brand/ui";
 import { ConsoleError, type ConsoleClient, type IdentityState, type ProctoringMedia } from "../api.ts";
 import { Banner, SkeletonRows } from "./kit.tsx";
@@ -18,6 +18,10 @@ const EVENT_NAMES: Readonly<Record<string, string>> = {
   paste: "Pasted",
   camera_off: "Camera stopped",
   camera_on: "Camera back",
+  screen_share_off: "Stopped sharing the screen",
+  screen_share_on: "Shared the screen again",
+  second_screen: "Second screen connected",
+  voice: "Talking or noise heard",
 };
 const EVENT_ICONS: Readonly<Record<string, LucideIcon>> = {
   tab_hidden: EyeOff,
@@ -26,6 +30,10 @@ const EVENT_ICONS: Readonly<Record<string, LucideIcon>> = {
   paste: ClipboardPaste,
   camera_off: CameraOff,
   camera_on: Camera,
+  screen_share_off: MonitorOff,
+  screen_share_on: Monitor,
+  second_screen: MonitorSmartphone,
+  voice: Mic,
 };
 
 export const IDENTITY_LABEL: Readonly<Record<IdentityState, string>> = {

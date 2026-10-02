@@ -267,6 +267,19 @@ export interface ProctoringPolicy {
   readonly snapshotEverySeconds: number | null;
   /** Record leaving the tab, leaving full screen, and copying or pasting. */
   readonly browserEvents: boolean;
+  /**
+   * Secure mode (docs/LAUNCH-PLAN.md, F1 Hire): the candidate shares their
+   * whole screen for the whole sitting, and a second screen connected is
+   * recorded. Nothing of the screen is captured or kept: only that sharing
+   * stopped or started, and when.
+   */
+  readonly screenShare?: boolean;
+  /**
+   * Listen for sustained speech or noise near the candidate. The microphone's
+   * loudness is measured in the browser; no sound is recorded or sent, only
+   * that it was heard, and when.
+   */
+  readonly audio?: boolean;
 }
 
 /**

@@ -44,6 +44,11 @@ export const proctoringPolicy = z.object({
   identity: z.boolean().describe("A photo of the candidate and of their photo ID before they begin, checked by an invigilator."),
   snapshotEverySeconds: z.number().int().nullable().describe("A webcam photo this often while the attempt is open; null for none."),
   browserEvents: z.boolean().describe("Record leaving the tab or full screen, and copying or pasting."),
+  screenShare: z
+    .boolean()
+    .optional()
+    .describe("Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started."),
+  audio: z.boolean().optional().describe("Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent."),
 });
 
 /** A question in other languages, by locale (ROADMAP §9): what a candidate reads, and nothing else. */
@@ -706,7 +711,7 @@ export const createApiKeyResponse = z.object({
 export const apiKeyParams = z.object({ keyId: z.string().min(1) });
 
 const routeUsage = z.object({
-  route: z.enum(["probe", "assess", "grade", "tutor", "author"]),
+  route: z.enum(["probe", "assess", "grade", "tutor", "author", "interview"]),
   calls: z.number(),
   inputTokens: z.number(),
   outputTokens: z.number(),

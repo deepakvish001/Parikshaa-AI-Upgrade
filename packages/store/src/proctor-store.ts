@@ -13,7 +13,17 @@ import type { SqlExecutor } from "./sql.js";
  */
 
 export type MediaKind = "selfie" | "id" | "snapshot";
-export type ProctorEventKind = "tab_hidden" | "fullscreen_exit" | "copy" | "paste" | "camera_off" | "camera_on";
+export type ProctorEventKind =
+  | "tab_hidden"
+  | "fullscreen_exit"
+  | "copy"
+  | "paste"
+  | "camera_off"
+  | "camera_on"
+  | "screen_share_off"
+  | "screen_share_on"
+  | "second_screen"
+  | "voice";
 
 export interface MediaRecord {
   readonly id: string;

@@ -138,6 +138,8 @@ describe("migrate", () => {
       "0056_supabase_lockdown.sql",
       "0057_function_search_path.sql",
       "0058_supabase_service_role.sql",
+      "0059_proctoring_v2.sql",
+      "0060_ai_interviews.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,

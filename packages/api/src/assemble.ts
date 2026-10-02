@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore,
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
   AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
@@ -14,6 +14,7 @@ import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
+import { AiInterviewService } from "./ai-interview.js";
 import { StudentMessages } from "./student-messages.js";
 import { ProxyService } from "./proxy.js";
 import { ExamReviewService } from "./exam-review.js";
@@ -288,6 +289,7 @@ export function assemble(o: AssembleOptions): {
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
     interviews,
+    aiInterviews: new AiInterviewService({ store: new AiInterviewStore(o.sql, keys.records("ai-interviews")), exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
