@@ -12602,7 +12602,8 @@
         "tags": [
           "Institution"
         ],
-        "description": "404 when no app is configured.",
+        "description": "Public, for Android to read. 404 when no app is configured.",
+        "security": [],
         "responses": {
           "200": {
             "description": "Default Response"

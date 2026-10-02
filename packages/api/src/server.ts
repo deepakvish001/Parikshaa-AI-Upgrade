@@ -1255,7 +1255,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
     routes.get(
       "/.well-known/assetlinks.json",
-      { schema: { tags: INSTITUTION, summary: "Digital Asset Links for the Android app (TWA)", description: "404 when no app is configured." } },
+      { schema: { tags: INSTITUTION, summary: "Digital Asset Links for the Android app (TWA)", description: "Public, for Android to read. 404 when no app is configured.", security: [] } },
       async (_request, reply) => {
         const app = options.androidApp ?? null;
         if (app === null) return reply.code(404).send({ error: "not_found", message: "No Android app is configured" });
