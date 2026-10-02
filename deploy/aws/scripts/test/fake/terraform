@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# The deploy scripts' tests pass the stack's outputs in the environment; a
+# call to terraform means a test forgot to.
+echo "fake terraform: not expected in a test ($*)" >&2
+exit 2

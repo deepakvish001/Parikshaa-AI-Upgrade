@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# A stand-in for node in the release test: the server check is only logged.
+printf 'node %s\n' "$*" >>"$FAKE_AWS/calls"

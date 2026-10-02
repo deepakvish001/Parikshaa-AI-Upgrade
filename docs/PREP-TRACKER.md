@@ -4,7 +4,7 @@
 
 **Poora product plan (students, college, company, UI/UX, platform): [MASTER-PLAN.md](MASTER-PLAN.md)** (v3, 2 Oct 2026). Wahan ~90 epics (`M-S1`, `M-C1`…) phases aur "done kab" ke saath hain. Yahan sirf status rehta hai; koi epic shuru ho to uski row neeche Plan table me banti hai.
 
-Aakhri update: **1 Oct 2026** (Master plan v2 joda) · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
+Aakhri update: **2 Oct 2026** (M-F1: AWS par go-live ka code, [DEPLOY-AWS.md](DEPLOY-AWS.md)) · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
 
 ## Is file ko kaise update karna hai
 
@@ -38,8 +38,8 @@ Status ka matlab:
 | Company prep aur community | 15 | 0 | 0 | 0 |
 | Contests | 4 | 1 | 0 | 0 |
 | Content | 5 | 3 | 2 | 1 |
-| Platform, quality, B2B | 11 | 2 | 0 | 0 |
-| **Kul** | **110** | **9** | **3** | **1** |
+| Platform, quality, B2B | 11 | 3 | 0 | 0 |
+| **Kul** | **110** | **10** | **3** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
@@ -226,7 +226,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Analytics events (signup, task_done, hint_used, purchase…) | ✅ | `prep-engage-store.ts` `analytics`, `GET /practice-admin/analytics`, console Practice → Analytics | Activation (7 din me pehla solve), D1/D7, funnel (signup → plan → solve → tutor → kharid), roz ke active learners, 30 din. Alag events table nahi: maujooda tables se gina jaata hai (Faisle dekho). Page views aur click jaisi cheezein nahi gini jaatin |
 | Roz ke reminders (email/push) | ✅ | `prep_reminders` (migration 0034), `prep-engage.ts`, plan page par "Daily reminder", `REMINDER_WORKER` | Email: learner ka chuna ghanta (IST), din me ek, sirf jab kaam baaki ho; ek click se band. Push notification bhi (PWA push wali row), jab learner us browser me chalu kare |
 | Contest load test (2,000 ek saath) | ✅ | `e2e/src/contest-load.ts` (`npm run contest-load -w @parikshaa/e2e`), reports `e2e/contest-2000-judge32.txt`, `contest-2000-judge64.txt` | 2,000 contestants + 200 practice, 3 minute, asli Postgres, ek 4-core machine par (server, database aur sab learners ek hi jagah). **0 errors**, har jawab database me, inaam theek 10 ko. Judge 32 (×400 ms): judge hi rukaawat, contest submit p95 22 s, practice 1.3 s, scoreboard 0.6 s. Judge 64: ek API process khud bhar gaya (problem page p95 11 s). Matlab: blueprint ka "contest me verdict < 5 s" ek machine par **nahi** milta; zyada runner workers aur 2+ API processes chahiye. Is test ne 3 kamiyan pakdi aur theek hui: practice bhookha rehta tha (198 × 503), queue me ruka submission contest ke baad gina jaata tha, scoreboard aur rating page bahut mehenge the |
-| Runner queue + autoscale | 🟡 | `api/src/judge-queue.ts` | Queue ✅ (upar wali row). Autoscale ⬜: runner machines ka hisaab deploy par |
+| Runner queue + autoscale | 🟡 | `api/src/judge-queue.ts` | Queue ✅ (upar wali row). Autoscale: AWS par runner machines CPU se khud badhti-ghatti hain (`deploy/aws/modules/stack/compute.tf`, min/max har environment ka apna); asli account par apply baaki |
+| Production par chalana (AWS Mumbai, MASTER-PLAN M-F1) | 🟡 | `deploy/aws/`, [DEPLOY-AWS.md](DEPLOY-AWS.md) | Do kadam: pilot machine (setup-server.sh + S3 backup + snapshot + Session Manager) aur managed (RDS, ALB, Auto Scaling, gVisor runners, Secrets Manager, SES, alarms). Terraform `validate` + `test` (13), scripts ke 43 tests, RDS jaisa import CI me. Asli account par apply abhi nahi hua (owner ka account chahiye) |
 | PWA push | ✅ | `push.ts`, `prep_push_subscriptions` (migration 0047), `/practice/:site/push`, `/manifest.webmanifest`, `web/public/sw.js`, plan page par "Also as a notification", `pwa.test.ts`, `sw.test.ts` | Site install hoti hai (manifest, icons); offline me page aur aaj ka plan/dashboard khulta hai (session ke hash par, dusre learner ko nahi dikhta). Reminder push se bhi, sirf browsers ke push services ko (FCM, Mozilla, Apple, Microsoft); 10 browser tak; gone subscription mit jaati hai. **Server par VAPID keys chahiye** (Ruka hua kaam). Abhi nahi: offline me submit queue, lessons/problems ka offline cache, Play Store TWA |
 
 ---
@@ -289,6 +290,12 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Contest inaam me tie | Blueprint: "top 10 ko coins". ICPC board par tie aam hai (chhote contest me sainkdon). Faisla: tie me jisne aakhri sawaal pehle hal kiya (millisecond tak) woh aage; inaam hamesha 10 ko | 2 Oct 2026 |
 | Judge ki queue | Har API process me apni queue; chalte contest ke pehle, par har 4 contest ke baad 1 practice. Exam ke code tests is queue me nahi (woh alag raste se runner jaate hain) | 2 Oct 2026 |
 | Sahayak evals ka size | Blueprint me 200 problems the; owner ne **40 problems × 3 galat programs** chune (har flow me 120 cases, kul 360). Problems apne likhe hain, kisi site se copy nahi | 30 Sep 2026 |
+| Cloud aur go-live ka tarika | **AWS Mumbai (ap-south-1)**, do kadam: pehle ek pilot machine (setup-server.sh), saath-saath Terraform se managed setup; pilot ka data RDS me **usi data key** ke saath (owner ne chuna) | 2 Oct 2026 |
+| Machines: EC2 Auto Scaling + Docker, ECS/EKS nahi | Code runner ko gVisor (`runsc`) chahiye, jo Fargate par nahi chalta; wahi do images jo docker-compose chalata hai; chhoti team ke liye Kubernetes bhaari. Machine kharab ho to load balancer ka health check use badal deta hai | 2 Oct 2026 |
+| SSH kahin nahi | Pilot aur managed dono me port 22 band; machine par jaana Session Manager se (IAM se, har session ka record). Koi key khone ka dar nahi | 2 Oct 2026 |
+| Ek image, sab environments | Image repositories bootstrap me (staging/production dono ki saajhi), tags immutable (git commit). Production me `release.sh --tag` wahi image chalata hai jo staging par test hui; dobara build nahi | 2 Oct 2026 |
+| WAF nahi | AWS ke managed rules SQL/script jaisi body rok dete hain, aur candidates ke coding answers bilkul wahi dikhte hain; IP par rate limit poore college lab (ek IP ke peeche 500 log) ko rok deta. API ki apni limits org aur attempt par hain | 2 Oct 2026 |
+| M-F1 se alag: PgBouncer, S3 uploads, CDN abhi nahi | MASTER-PLAN M-F1 me teeno the. **PgBouncer:** connections ki seema `api_max × DATABASE_POOL_MAX` (prod 120) RDS ki seema se kaafi kam; paar jaane par alarm, tab jodenge. **Uploads S3:** scans/photos abhi Postgres me, storage khud badhta hai (1 TB tak); S3 ke liye code badlega, M-F1 ka agla tukda. **CDN:** Bharat ke candidates Mumbai se seedha; bundle budget CI me | 2 Oct 2026 |
 
 ---
 
@@ -298,6 +305,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 
 | Kaam | Kis cheez ka intezaar | Uske baad kya hoga | Kab se |
 |---|---|---|---|
+| **AWS par go-live (M-F1)** ([DEPLOY-AWS.md](DEPLOY-AWS.md)) | (1) AWS account (Mumbai), root par MFA, ek admin user; laptop par AWS CLI + session-manager-plugin, Terraform 1.10+, Docker, jq, Node 22. (2) Domain ke DNS ka access. (3) Alarm aur bill ke liye ek email. (4) `ANTHROPIC_API_KEY`. (5) SES: "production access" ki request aur SMTP credentials (console me). Claude ke paas AWS ka access nahi, isliye commands owner chalayega (runbook me har kadam) ya kisi ko de | Pilot machine isi hafte live (Kadam 1), phir staging → production (Kadam 2), phir pilot ka data RDS me. Pehle staging apply me jo galti mile wo code me theek hogi | 2 Oct 2026 |
 | **Companies ka asli data** (plan 9) | Har company ke asli reports (kaunsa problem kab poocha gaya). Hum ye bana nahi sakte: galat data learners ko gumraah karega. Owner/content team console → Companies me reports jode, ya interview experiences se aata rahe | Company pages, readiness aur plan me company problems apne aap bhar jaayenge | 1 Oct 2026 |
 | **Video lessons** (plan 9) | Kaun banayega, kis bhasha me, hosting kahan (Faisle me "baaki"). Lesson me `videoUrl` field taiyaar hai | Lessons me video dikhne lagega | 1 Oct 2026 |
 | **Baaki editorials aur hints** (plan 9) | 110 editorials aur 260 hints ke liye pehle utne naye problems chahiye (apne likhe, asli tests ke saath). Content team ya owner ki haan ki main aur problems likhoon | DSA pack jaisa hi naya pack | 1 Oct 2026 |
@@ -395,6 +403,7 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 72 | **Batch H: paisa aur contract**. CL58 TPO OS free, proctored aur handwritten paid; CO33 pay-per-shortlist, saal ka contract | V2-7 | Kamai | Owner ke prices | ⬜ owner ka faisla |
 | 73 | **Batch I: bahar ki manzoori wale**. CL10 APAAR/DigiLocker se verify; CO31 DigiLocker documents; CO4 Naukri/LinkedIn se candidate | V2-12 | Sarkari aur bahar ke partner | Onboarding/API ki manzoori | ⬜ bahar ki manzoori |
 | 74 | **Batch J: compliance**. CO35 security questionnaire ka jawab + status page; CO36 pentest, ISO 27001; CO9 frontend/full-stack task browser IDE me | V2-12 | Badi company ka procurement | Auditor; lawyer | ⬜ paisa aur auditor |
+| 75 | **M-F1 Production go-live, AWS Mumbai** (shuru: 2 Oct 2026; owner ne chuna: AWS Mumbai, do kadam). **Kadam 1:** ek EC2 VM (ap-south-1) par pilot, pehle se bani `setup-server.sh` se: Terraform VM, Elastic IP, SSH ki jagah SSM, encrypted disk, S3 me raat ka backup. **Kadam 2:** managed setup Terraform se: VPC (2 AZ), RDS Postgres 16 (TLS zaroori, PITR, prod me Multi-AZ, Hyderabad me backup copy), ALB + ACM (HTTPS), API ke servers Auto Scaling me (kam se kam 2 prod me), code runner alag servers par gVisor ke saath (koi bahar ka connection nahi, CPU se autoscale), ECR, Secrets Manager (data key DB backup se alag), SES (email), CloudWatch logs 180 din + alarms; staging aur production. Release script: image ECR me, migration, rolling refresh. Runbook `docs/DEPLOY-AWS.md` | MASTER-PLAN M-F1 | Ek bhi asli user ke bina baaki sab theory hai | `terraform validate` har root module par; runbook ke har kadam ka command; staging par `npm run smoke` (AWS account owner ka); Phase 0 gate: 1 asli exam (500) + 1,000 learners | 🟡 Code taiyaar, apply owner ke AWS account par ([DEPLOY-AWS.md](DEPLOY-AWS.md)). **Kahan:** `deploy/aws/` (bootstrap, pilot, modules/stack, envs/staging, envs/production, scripts), CI ka `deploy` job aur e2e ka "Import as RDS would". **Tests:** pilot 4 + stack 9 (`terraform test`, mocked AWS), scripts 43 (fake AWS), pilot ka DB RDS jaise khaali server me import + har chain verify (CI, har PR). **Baaki:** asli account par pehla apply (staging), uploads S3 me (code badlega), CDN, CI se deploy (M-F2), machine ki memory/disk metrics, SES bounces |
 
 ## Master plan v2: taiyaari se naukri tak, ek bharosemand platform
 
@@ -902,6 +911,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#42](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/42) | **M-F1 go-live ka code, AWS Mumbai** ([DEPLOY-AWS.md](DEPLOY-AWS.md)): `deploy/aws/` me bootstrap (state bucket, saajhi image repos), pilot machine (setup-server.sh, S3 backup, snapshot, Session Manager), managed stack (VPC, RDS 16 Multi-AZ + Hyderabad backup, ALB, Auto Scaling, gVisor runners alag, Secrets Manager, SES, alarms), staging/production; `put-secrets.sh`, `release.sh`, pilot→RDS import. Tests: terraform 13 (mocked), scripts 43, CI me RDS jaisa import + chain verify. Asli account par apply baaki (Ruka hua kaam) |
 | 2 Oct 2026 | [#41](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/41) | [Master plan v3](MASTER-PLAN.md): ek Parikshaa ID, teen darwaze (Learn, Campus, Hire), ~90 epics phases 0–5 ke saath, UI/UX plan, Phase 0–1 ka task-level breakdown. Sirf plan, code nahi |
 | 2 Oct 2026 | [#39](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/39) | Bane hue college/company features ke 24 screenshots (`college-01`…`college-24`, [V2-13](#v2-13-jo-ban-gaya-wo-dikhta-kaisa-hai-screenshots)); baaki 39 features ka kram Plan rows 65–74 (Batch A–J) me |
 | 2 Oct 2026 | [#39](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/39) | Agle 12: naya data seal + retention (0048), handwritten marks Results/CO me, offer aur nayi drive email/WhatsApp se (0049), funnel, demo test, paper review + lock (0050), staff CSV + department (0051), interview panel + calendar invite (0052), internal marks (CIA), divyang suvidha (0053), candidate status page. Main ka toota build (#35 ke merge se gaye store exports) bhi theek |

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# A stand-in for the AWS CLI in the deploy scripts' tests: just the calls they
+# make, against files under $FAKE_AWS. Every call is logged to $FAKE_AWS/calls.
+set -euo pipefail
+args=()
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == --region ]]; then shift 2; continue; fi
+  args+=("$1")
+  shift
+done
+printf 'aws %s\n' "${args[*]}" >>"$FAKE_AWS/calls"
+set -- "${args[@]}"
+arg() {
+  local name="$1"
+  shift
+  while [[ $# -gt 0 ]]; do
+    if [[ "$1" == "$name" ]]; then printf '%s' "$2"; return; fi
+    shift
+  done
+}
+key() { printf '%s' "$1" | tr '/:!' '___'; }
+mkdir -p "$FAKE_AWS/secrets" "$FAKE_AWS/images" "$FAKE_AWS/params"
+
+case "$1 $2" in
+  "secretsmanager get-secret-value")
+    file="$FAKE_AWS/secrets/$(key "$(arg --secret-id "$@")")"
+    if [[ -f "$file" ]]; then cat "$file"; else
+      echo "An error occurred (ResourceNotFoundException) when calling the GetSecretValue operation: Secrets Manager can't find the specified secret value for staging label: AWSCURRENT" >&2
+      exit 254
+    fi ;;
+  "secretsmanager put-secret-value")
+    source="$(arg --secret-string "$@")"
+    cp "${source#file://}" "$FAKE_AWS/secrets/$(key "$(arg --secret-id "$@")")" ;;
+  "ecr describe-images")
+    [[ -f "$FAKE_AWS/images/$(key "$(arg --repository-name "$@")"):$(arg --image-ids "$@" | sed 's/^imageTag=//')" ]] ;;
+  "ecr get-login-password") echo token ;;
+  "autoscaling describe-auto-scaling-groups") echo i-0123456789 ;;
+  "ssm send-command")
+    arg --parameters "$@" >"$FAKE_AWS/ssm-parameters"
+    echo cmd-1 ;;
+  "ssm get-command-invocation")
+    if [[ "$(arg --query "$@")" == Status ]]; then echo "${FAKE_MIGRATE_STATUS:-Success}"; else echo "applied 0054_next.sql"; fi ;;
+  "ssm get-parameter") cat "$FAKE_AWS/params/tag" 2>/dev/null || echo none ;;
+  "ssm put-parameter") arg --value "$@" >"$FAKE_AWS/params/tag" ;;
+  "autoscaling start-instance-refresh") echo "refresh-$(arg --auto-scaling-group-name "$@")" ;;
+  "autoscaling describe-instance-refreshes")
+    if [[ "${FAKE_REFRESH_FAIL:-}" == "$(arg --auto-scaling-group-name "$@")" ]]; then printf 'Failed\t40\n'; else printf 'Successful\t100\n'; fi ;;
+  *) echo "fake aws: no answer for: $*" >&2; exit 2 ;;
+esac

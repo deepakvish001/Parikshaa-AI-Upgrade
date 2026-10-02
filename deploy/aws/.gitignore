@@ -1,0 +1,12 @@
+# Terraform's working files and state: state lives in S3 (bootstrap's own is
+# local, and has no secrets), never in git.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+# Each account's own values.
+backend.hcl
+*.tfvars
+!*.tfvars.example
+modules/**/.terraform.lock.hcl

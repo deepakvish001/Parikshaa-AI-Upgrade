@@ -1,0 +1,59 @@
+#!/bin/bash
+# First boot of the pilot machine (deploy/aws/pilot). It only prepares: the
+# setup itself asks for the API key and the email settings, so a person runs
+# it once over Session Manager:  sudo parikshaa-setup
+set -euxo pipefail
+export DEBIAN_FRONTEND=noninteractive
+
+# The address changes once while this runs (the Elastic IP arrives), so
+# anything over the network is tried again.
+retry() {
+  local n
+  for n in 1 2 3 4 5 6; do
+    "$@" && return 0
+    sleep $((n * 10))
+  done
+  return 1
+}
+
+retry apt-get update -q
+retry apt-get install -y -q git jq
+# The AWS CLI, for copying each nightly dump to S3. Cron's PATH has no
+# /snap/bin, so the upload command below names it in full.
+snap list aws-cli >/dev/null 2>&1 || retry snap install aws-cli --classic
+
+if [[ ! -d /opt/parikshaa/.git ]]; then
+  rm -rf /opt/parikshaa
+  retry git clone --branch '${repo_ref}' '${repo_url}' /opt/parikshaa
+fi
+
+# What setup-server.sh should know about AWS. BACKUP_UPLOAD goes into the
+# settings file, and scripts/backup.sh runs it every night with {} as the dump.
+cat >/etc/parikshaa-aws.env <<'EOF'
+AWS_DEFAULT_REGION='${region}'
+BACKUP_UPLOAD='/snap/bin/aws s3 cp --only-show-errors --region ${region} {} ${backup_target}'
+EOF
+
+cat >/usr/local/bin/parikshaa-setup <<'EOF'
+#!/bin/bash
+# setup-server.sh, with this machine's AWS settings (deploy/aws/pilot).
+set -euo pipefail
+set -a
+. /etc/parikshaa-aws.env
+set +a
+cd /opt/parikshaa
+exec ./scripts/setup-server.sh "$@"
+EOF
+
+cat >/usr/local/bin/parikshaa-save-settings <<'EOF'
+#!/bin/bash
+# Copies /etc/parikshaa.env (with PARIKSHAA_DATA_KEY) to Secrets Manager, off
+# this machine. Run it after the first setup and after every change to it.
+set -euo pipefail
+[[ -r /etc/parikshaa.env ]] || { echo "No /etc/parikshaa.env yet: run sudo parikshaa-setup first." >&2; exit 1; }
+/snap/bin/aws secretsmanager put-secret-value --region '${region}' \
+  --secret-id '${settings_secret}' --secret-string file:///etc/parikshaa.env >/dev/null
+echo "Saved /etc/parikshaa.env to Secrets Manager (${settings_secret})."
+EOF
+
+chmod 755 /usr/local/bin/parikshaa-setup /usr/local/bin/parikshaa-save-settings
