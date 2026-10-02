@@ -234,7 +234,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Phase | Blueprint me | Status | Kya baaki |
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
-| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
+| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | ✅ | Trial, refund + credit note bhi ban gaye (plan 35) |
 | P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | ✅ | |
 | P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run (180 din delete, fixed JSON review, follow-ups ban gaye) |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
@@ -249,7 +249,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F2 Roz ka loop | ✅ | Reminder email ke saath |
 | F3 Run aur Submit | ✅ | |
 | F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
-| F5 Submit ke baad review | 🟡 | Fixed JSON format baaki |
+| F5 Submit ke baad review | ✅ | Fixed JSON format ban gaya (plan 37) |
 | F6 Chhoota task reschedule | ✅ | App kholne par; deadline ke paar jaane par email. Cron nahi |
 | F7 Sprint notes + quiz | ✅ | MCQ/numeric sawaalon ke saath |
 | F8 Spaced revision | ✅ | |
@@ -301,6 +301,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Asli model par pehla trial** | `ANTHROPIC_API_KEY` (upar wali hi) aur kuch asli samples: 3 JD, 5 handwritten copies (scan), 5 candidates ki photos (sahmati ke saath) | JD se test, handwritten marking aur proxy photo-check ki asli quality pata chalegi; abhi sab fake model se tested hain | 1 Oct 2026 |
 | **Contest day ke liye runner aur API ka size** (plan 34) | Kitne runner workers aur kitne API processes chalayein: load test (`e2e/contest-2000-*.txt`) batata hai ki ek 4-core machine par 2,000 ka contest bina error chalta hai, par verdict p95 ~22 s hai. 5 s ke liye zyada runner aur 2+ API processes chahiye: ye kharche ka faisla owner ka | `JUDGE_CONCURRENCY` set karke, aur machines badha kar, load test dobara | 2 Oct 2026 |
 | **Push notifications ki keys** (plan 41) | Server env me `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (ek baar `npx web-push generate-vapid-keys`; private key chat me mat bhejiye, seedha server env me) | Plan page par "notification bhi" ka option dikhega, aur roz ka reminder phone par aayega | 2 Oct 2026 |
+| **Agle features: Plan rows 42–52** (2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa pehle. 43, 50, 51, 52 me owner se cheezein bhi chahiye (Play Console, cloud, video host, content) | Har row apne tests ke saath banegi, phir ✅ | 2 Oct 2026 |
 | **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
 
 ## Plan: aage kya banega
@@ -353,6 +354,17 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ✅ ban gaya (2 Oct 2026) |
 | 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ✅ ban gaya (`learn-v2.test.ts`; lesson note se card nahi, share hatane ka button nahi) |
 | 41 | **PWA aur push** (§17): installable app, offline me aaj ka plan, push notification (reminder email ke saath) | §17, A1 | Mobile par roz ka loop | Tests: manifest, service worker cache, push ki subscription aur band karna | ✅ ban gaya (`pwa.test.ts`, `sw.test.ts`; VAPID keys owner se; offline submit queue aur TWA baaki) |
+| 42 | **Offline v2** (A1 baaki): net na ho to submission queue me rahe aur net aate hi jaaye; lessons aur problems offline padhne ke liye cache | §17, A1 | 2G aur bina net wale din bhi kaam | Tests: offline submit queue (dobara na jaaye), lesson/problem cache, sw tests | ⬜ pending (owner bole tab) |
+| 43 | **Play Store app (TWA)**: PWA ko Play Store par app ki tarah | A1 | Bharat me log app store se hi install karte hain | Play Store par listing, `assetlinks.json` | ⬜ pending: Play Console account aur app ka naam owner se |
+| 44 | **Shared code ke links sambhalna**: learner apne share kiye links dekhe aur hata sake | F8 | Galti se share kiya code wapas lena | Tests: list, delete, delete ke baad 404 | ⬜ pending (owner bole tab) |
+| 45 | **SQL practice v2**: result table ki shakal me output, tables ka schema viewer | S4 | Abhi output sirf text hai | Tests: table render, schema dikhna | ⬜ pending (owner bole tab) |
+| 46 | **Onboarding me target role** (SDE, data, frontend…), plan me us role ke topic pehle | S1 | Plan zyada apna lage | Tests: role chunna, plan ka kram | ⬜ pending (owner bole tab) |
+| 47 | **Account delete par baaki prep data**: plan, cards, coins ke rows bhi hatana | §11 | DPDP: account gaya to data bhi | Tests: erase ke baad koi prep row nahi | ⬜ pending (owner bole tab) |
+| 48 | **Staff ke editorials ka code CI me jaanchna**: editorial me diya code save par asli runner par tests ke saath chale | Content quality | Galat editorial na chhape | Tests: toota code save na ho | ⬜ pending (owner bole tab) |
+| 49 | **Editorial me "Better" approach ka tab** (Brute/Better/Optimal teeno) | F4 | Blueprint ka format | Tests: teen tab | ⬜ pending (owner bole tab) |
+| 50 | **Judge autoscale**: queue lambi ho to runner machines badhein, khaali ho to ghatein | G | Bade contest me verdict jaldi | Load test me p95 < 5 s | ⬜ pending: deploy kahan hoga (cloud) aur kharcha owner se |
+| 51 | **Video hosting**: player, kitna dekha (progress), signed URL, watermark | S3 | Video lessons ke liye | Tests: progress save, URL ki expiry | ⬜ pending: host ka faisla aur videos owner se |
+| 52 | **Content**: 110 aur editorials, 260 aur hints, 25 companies ka asli data, 60 video lessons | Content | Platform ki asli keemat | Har pack ke tests | ⬜ pending: content/data owner se ("Ruka hua kaam") |
 
 ## Master plan v2: taiyaari se naukri tak, ek bharosemand platform
 
