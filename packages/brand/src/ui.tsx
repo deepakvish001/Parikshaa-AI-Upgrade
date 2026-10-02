@@ -265,7 +265,10 @@ export function Menu({ label, items, className }: { label: string; items: readon
   useLayoutEffect(() => {
     if (place === null || toFocus.current === false) return;
     const all = entries();
-    (toFocus.current === "last" ? all.at(-1) : all[0])?.focus();
+    // Without scrolling: the list is already placed beside its button, and a
+    // scroll from the focus would read as the page moving, and close the menu
+    // (WebKit scrolls on focus where Chromium does not).
+    (toFocus.current === "last" ? all.at(-1) : all[0])?.focus({ preventScroll: true });
     toFocus.current = false;
   }, [place]);
 
@@ -298,7 +301,7 @@ export function Menu({ label, items, className }: { label: string; items: readon
       : null;
     if (to !== null) {
       event.preventDefault();
-      all[to]?.focus();
+      all[to]?.focus({ preventScroll: true });
     } else if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
