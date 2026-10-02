@@ -19,7 +19,7 @@ const QUESTIONS = [
   { ...base, id: "d2", kind: "mcq", stem: "Which number comes next: 2, 6, 12, 20, 30, …?", maxScore: 1, options: ["40", "42", "44", "36"], multiple: false, negativeMarks: 0.25 },
   { ...base, id: "d3", kind: "numeric", stem: "What is 15% of 240?", maxScore: 1, negativeMarks: 0 },
   { ...base, id: "d4", kind: "mcq", stem: "Choose every word that means the same as 'rapid'.", maxScore: 2, options: ["quick", "slow", "swift", "steady"], multiple: true, negativeMarks: 0 },
-  { ...base, id: "d5", kind: "short", stem: "In two or three lines, say why you want this job. (Practice only: nobody reads it.)", maxScore: 3, spoken: true },
+  { ...base, id: "d5", kind: "short", stem: "In two or three lines, say why you want this job. (Practice only: nobody reads it.)", maxScore: 3 },
 ] as const;
 
 type Answer = { questionId: string; answer: string; submittedAt: number };

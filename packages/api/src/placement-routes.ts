@@ -191,7 +191,7 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
     {
       schema: {
         tags: TAGS,
-        summary: "The placement report, for NIRF and NAAC",
+        summary: "The placement report, year by year",
         description: "Per year of passing, then per branch: students, placed (an offer or joined, in any drive), placed %, and the median, highest and average of their best packages. Higher studies are not tracked here.",
         security: SECURED,
         response: {

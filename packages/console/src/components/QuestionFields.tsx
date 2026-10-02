@@ -263,20 +263,6 @@ export function QuestionFields({
 
       <Translations question={question} onChange={onChange} />
 
-      {question.kind === "short" ? (
-        <label className="inline">
-          <input
-            type="checkbox"
-            checked={question.spoken === true}
-            onChange={(e) => {
-              const { spoken: _spoken, ...rest } = question;
-              onChange(e.target.checked ? { ...rest, spoken: true } : rest);
-            }}
-          />{" "}
-          Candidates may answer by speaking: their browser writes down what they say, in their language; only the words are kept
-        </label>
-      ) : null}
-
       {question.kind === "short" || question.kind === "code" ? (
         <div className="field">
           <label>Rubric — what a grader must justify against</label>

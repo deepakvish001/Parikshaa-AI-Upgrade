@@ -134,6 +134,7 @@ describe("migrate", () => {
       "0052_interview_panel.sql",
       "0053_accommodations.sql",
       "0054_prep_next.sql",
+      "0055_remove_extras.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -162,10 +163,7 @@ describe("migrate", () => {
         "exam_attendance",
         "shortlists",
         "shortlist_decisions",
-        "exam_outcomes",
         "interviews",
-        "answer_scripts",
-        "answer_script_pages",
         "drive_colleges",
         "attempt_origins",
         "identity_checks",
@@ -176,5 +174,7 @@ describe("migrate", () => {
         "accommodations",
       ]),
     );
+    // Removed with the tech-only focus (0055).
+    for (const gone of ["answer_scripts", "answer_script_pages", "exam_outcomes"]) expect(tables.map((t) => t.tablename)).not.toContain(gone);
   });
 });

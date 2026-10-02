@@ -28,10 +28,8 @@ import {
   PlacementStore,
   SeatStore,
   ShortlistStore,
-  OutcomeStore,
   InterviewStore,
   AccommodationStore,
-  ScriptStore,
   ProxyStore,
   ReviewStore,
   DepartmentStore,
@@ -49,12 +47,9 @@ import { MarkingService } from "../marking.js";
 import { PlacementService } from "../placement.js";
 import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
-import { OutcomeService } from "../outcomes.js";
-import { InternalMarksService } from "../internal-marks.js";
 import { AccommodationService } from "../accommodations.js";
 import { InterviewService } from "../interviews.js";
 import { StudentMessages } from "../student-messages.js";
-import { HandwritingService } from "../handwriting.js";
 import { ProxyService } from "../proxy.js";
 import { ExamReviewService } from "../exam-review.js";
 import { DepartmentService } from "../departments.js";
@@ -215,7 +210,6 @@ export async function wire(
   const tokens = new AttemptTokens(TOKEN_SECRET);
   const invitationStore = new InvitationStore(sql);
   const records = new DataKeys(DATA_KEY);
-  const scriptStore = new ScriptStore(sql, records.records("scripts"));
   const interviewStore = new InterviewStore(sql, records.records("interviews"));
   const placementStore = new PlacementStore(sql, records.records("students"));
   const accommodations = new AccommodationService({ store: new AccommodationStore(sql, records.records("accommodations")), exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
@@ -240,7 +234,6 @@ export async function wire(
   });
   const privacy = new PrivacyService({
     records: [
-      { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
       { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
     ],
     store,
@@ -361,7 +354,7 @@ export async function wire(
     identity,
     mailer: options.mailer ?? null,
     whatsapp: options.whatsapp ?? false,
-    paperCopies: (orgId, examId) => scriptStore.forExam(orgId as OrgId, examId), releases: recheckStore,
+    releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const proctorService = new ProctorService({
@@ -418,10 +411,7 @@ export async function wire(
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
-    handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     interviews,
-    outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
-    internalMarks: new InternalMarksService({ results, exams: service }),
     accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),

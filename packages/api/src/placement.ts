@@ -534,8 +534,7 @@ export class PlacementService {
   // --- the placement report (V2-12 CL54) ---------------------------------------------
 
   /**
-   * What NIRF's graduation outcomes and NAAC's criterion 5.2 ask for, per year
-   * of passing: students, students placed (an offer, or joined, in any drive),
+   * Year by year of passing (what a TPO reports each year): students, students placed (an offer, or joined, in any drive),
    * and the median, highest and average package of their best offers; then
    * the same by branch. Higher studies are not tracked here and are left for
    * the college to add.

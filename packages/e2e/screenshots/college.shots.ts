@@ -16,7 +16,6 @@ const PEOPLE = ["Aarav Sharma", "Diya Patel", "Ishaan Reddy", "Ananya Iyer", "Ka
 const REFS = PEOPLE.map((_, i) => `CS${String(i + 1).padStart(3, "0")}`);
 const MARKS = [["1", "The interval halves until it is empty.", "72"], ["1", "It halves.", "72"], ["1", "Halving until nothing is left.", "70"], ["0", "Stops.", "72"], ["0", "No idea.", "60"], ["1", "The range shrinks.", "72"]] as const;
 /** A small grey page, as a phone photo of an answer sheet would arrive. */
-const PAGE = "iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAIAAABLbSncAAAAEklEQVR4nGP4z8DwHwMYR2ESGgBlnQ/xnI6V+gAAAABJRU5ErkJggg==";
 
 async function signIn(page: Page) {
   await page.goto("/console/");
@@ -69,28 +68,17 @@ test("exam day: seats, admit cards and arrangements for a disability", async ({ 
   await shoot(page, "college-02-candidate-arrangements");
 });
 
-test("results: handwritten copies, course outcomes, internal marks and a shortlist", async ({ page, request }) => {
+test("results and a shortlist", async ({ page, request }) => {
   test.setTimeout(300_000);
   const sitting = await seedSitting(request, { questions: [MCQ, SHORT, NUMERIC], title: "Mid-term 1 — Data structures", refs: REFS, names: PEOPLE, cutoff: { percent: 50 } });
   for (const [i, ref] of REFS.entries()) await sitAndGrade(request, sitting, ref, MARKS[i]!);
-  const second = await seedSitting(request, { questions: [MCQ, SHORT, NUMERIC], title: "Mid-term 2 — Data structures", refs: REFS, names: PEOPLE });
-  for (const [i, ref] of REFS.entries()) await sitAndGrade(request, second, ref, MARKS[(i + 2) % MARKS.length]!);
   const headers = { authorization: `Bearer ${sitting.token}` };
-  expect((await request.put(`/api/exams/${sitting.examId}/outcomes`, { headers, data: { mapping: { q1: ["CO1"], q2: ["CO2"], q3: ["CO1"] }, matrix: { CO1: { PO1: 3, PO2: 2 }, CO2: { PO2: 3, PSO1: 2 } }, threshold: 50 } })).status()).toBe(200);
   expect((await request.post(`/api/exams/${sitting.examId}/shortlists`, { headers, data: { title: "Data structures — for the HoD", refs: REFS.slice(0, 3), days: 7 } })).status()).toBe(201);
-  // A copy sat on paper, by someone not online.
-  expect((await request.post(`/api/exams/${sitting.examId}/scripts/pages`, { headers, data: { ref: "CS007", name: "Rohan Gupta", image: PAGE } })).status()).toBe(201);
 
   await signIn(page);
   await openExam(page, "Mid-term 1 — Data structures", "Results");
-  const internal = page.getByRole("region", { name: "Internal marks" });
-  await internal.getByRole("combobox", { name: /Add an exam/ }).selectOption({ label: "Mid-term 2 — Data structures" });
-  await internal.getByRole("button", { name: "Work out the marks" }).click();
-  await expect(internal.getByRole("table", { name: "Internal marks" })).toContainText("CS001");
+  await expect(page.getByRole("region", { name: "Shortlists for hiring managers" })).toBeVisible();
   await shoot(page, "college-03-results-page", { fullPage: true });
-  await shootPart(page.getByRole("region", { name: "Course outcomes" }), "college-04-course-outcomes");
-  await shootPart(internal, "college-05-internal-marks");
-  await shootPart(page.getByRole("region", { name: "Handwritten copies" }), "college-06-handwritten-copies");
   await shootPart(page.getByRole("region", { name: "Shortlists for hiring managers" }), "college-07-shortlists");
 
   // The hiring manager's page, from the link.
@@ -131,8 +119,8 @@ test("the placement cell: readiness, funnel, colleges, offers, and the student's
   await page.getByRole("tab", { name: "Funnel" }).click();
   await expect(page.getByRole("region", { name: "Funnel by drive" })).toContainText("Wipro");
   await shoot(page, "college-10-funnel", { fullPage: true });
-  await page.getByRole("tab", { name: "NIRF / NAAC report" }).click();
-  await shoot(page, "college-11-nirf-report", { fullPage: true });
+  await page.getByRole("tab", { name: "Year-wise report" }).click();
+  await shoot(page, "college-11-placement-report", { fullPage: true });
   await page.getByRole("tab", { name: "Drives" }).click();
   await page.getByRole("region", { name: "Drives" }).getByRole("button", { name: "Wipro" }).click();
   await expect(page.getByRole("region", { name: "Offers" })).toBeVisible();

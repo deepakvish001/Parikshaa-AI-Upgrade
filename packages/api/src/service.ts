@@ -260,7 +260,7 @@ export class ExamService {
 
   /**
    * A model call staff asked for outside any attempt — drafting a test from a
-   * job description, or reading a handwritten copy. Refused once the month's
+   * job description. Refused once the month's
    * spend cap is reached; its cost is counted with the rest of the
    * organisation's, under the route given ("author" unless said).
    */

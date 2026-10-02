@@ -4,20 +4,17 @@ import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore,
-  AccommodationStore, ScriptStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore,
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
 import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
-import { OutcomeService } from "./outcomes.js";
-import { InternalMarksService } from "./internal-marks.js";
 import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
 import { StudentMessages } from "./student-messages.js";
-import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
 import { ExamReviewService } from "./exam-review.js";
 import { DepartmentService } from "./departments.js";
@@ -142,7 +139,6 @@ export function assemble(o: AssembleOptions): {
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
   // Records kept sealed outside the ledger (T1), and swept with the retention period.
-  const scriptStore = new ScriptStore(o.sql, keys.records("scripts"));
   const interviewStore = new InterviewStore(o.sql, keys.records("interviews"));
   const placementStore = new PlacementStore(o.sql, keys.records("students"));
   const accommodations = new AccommodationService({ store: new AccommodationStore(o.sql, keys.records("accommodations")), exams: service });
@@ -173,7 +169,6 @@ export function assemble(o: AssembleOptions): {
     proctor: proctorStore,
     tutor: new PrepPlusStore(o.sql),
     records: [
-      { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
       { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
     ],
   });
@@ -256,7 +251,7 @@ export function assemble(o: AssembleOptions): {
   });
   const recheckStore = new RecheckStore(o.sql);
   const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
-  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, paperCopies: (orgId, examId) => scriptStore.forExam(orgId as OrgId, examId), releases: recheckStore });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
   const proctorService = new ProctorService({ store, proctor: proctorStore, exams: service });
   proxy = new ProxyService({
     store: new ProxyStore(o.sql),
@@ -292,10 +287,7 @@ export function assemble(o: AssembleOptions): {
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
-    handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service }),
     interviews,
-    outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
-    internalMarks: new InternalMarksService({ results, exams: service }),
     accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),

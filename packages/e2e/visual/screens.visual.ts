@@ -125,10 +125,7 @@ const PAGES: readonly (readonly [string, (page: Page) => Promise<void>])[] = [
       await page.getByRole("button", { name: DRIVE, exact: true }).click();
       await page.getByRole("navigation", { name: "Exam" }).getByRole("button", { name: "Results" }).click();
       await expect(page.getByRole("region", { name: "How the marks fell" })).toBeVisible();
-      await expect(page.getByRole("region", { name: "Internal marks" })).toBeVisible();
-      await expect(page.getByRole("region", { name: "Course outcomes" })).toBeVisible();
       await expect(page.getByRole("region", { name: "Shortlists for hiring managers" })).toBeVisible();
-      await expect(page.getByRole("region", { name: "Handwritten copies" })).toBeVisible();
       await expect(page.getByRole("region", { name: "Signs of a proxy" })).not.toHaveAttribute("aria-busy", "true");
       await page.waitForLoadState("networkidle");
       // The masked times change width with the clock (3:39 pm, 10:39 am): one width, so the mask is the same size each run.

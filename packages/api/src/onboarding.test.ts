@@ -148,7 +148,7 @@ describe("confirming a new owner's address", () => {
     expect(notice.text).toContain("Asha Rao <asha@nalanda.test>");
 
     const link = /\?verify=([^\s]+)/.exec(verify.text)![1]!;
-    expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link).replace(/.$/, "x") } })).statusCode).toBe(422);
+    expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link).replace(/.$/, (c) => (c === "x" ? "y" : "x")) } })).statusCode).toBe(422);
     expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link) } })).statusCode).toBe(200);
     // Opening it twice is harmless.
     expect((await app.inject({ method: "POST", url: "/auth/verify-email", payload: { token: decodeURIComponent(link) } })).statusCode).toBe(200);

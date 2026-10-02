@@ -66,7 +66,7 @@ export function PlacementPanel({ client, canInvite }: { client: ConsoleClient; c
           { id: "students", label: "Students" },
           { id: "funnel", label: "Funnel" },
           { id: "readiness", label: "Readiness" },
-          { id: "report", label: "NIRF / NAAC report" },
+          { id: "report", label: "Year-wise report" },
         ]}
         value={tab}
         onChange={setTab}
@@ -981,7 +981,7 @@ function ApplyLink({ client, id, link, openToNew, onChange }: { client: ConsoleC
   );
 }
 
-// --- the NIRF / NAAC placement report -------------------------------------------------
+// --- the year-wise placement report -------------------------------------------------
 
 function ReportView({ client }: { client: ConsoleClient }) {
   const report = useQuery({ queryKey: ["placement-report"], queryFn: () => client.placementReport() });
@@ -1055,7 +1055,7 @@ function ReportView({ client }: { client: ConsoleClient }) {
           </section>
         ))
       )}
-      <p className="notice">Placed means an offer, or joined, in any drive here; the package is each student's best offer. NIRF also asks for higher studies, which is not tracked here: add it from your own records.</p>
+      <p className="notice">Placed means an offer, or joined, in any drive here; the package is each student's best offer. Higher studies are not tracked here.</p>
     </>
   );
 }

@@ -254,7 +254,7 @@ describe("a drive's link to apply", () => {
   });
 });
 
-describe("the NIRF / NAAC report", () => {
+describe("the year-wise report", () => {
   it("shows placed, median and highest per year of passing and branch", async () => {
     const client = stub({
       placementReport: vi.fn(async () => ({
@@ -263,7 +263,7 @@ describe("the NIRF / NAAC report", () => {
     });
     const user = userEvent.setup();
     show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
-    await user.click(screen.getByRole("tab", { name: "NIRF / NAAC report" }));
+    await user.click(screen.getByRole("tab", { name: "Year-wise report" }));
     const year = await screen.findByRole("region", { name: "Passing in 2027" });
     expect(year).toHaveTextContent("96 of 120 placed (80%) · median ₹4.5 LPA · highest ₹32 LPA");
     expect(within(year).getByRole("rowheader", { name: "CSE" }).closest("tr")).toHaveTextContent("CSE605591.76328");

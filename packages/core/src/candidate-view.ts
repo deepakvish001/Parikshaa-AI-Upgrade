@@ -47,8 +47,6 @@ export interface CandidateMcqQuestion extends CandidateQuestionBase {
 
 export interface CandidateShortQuestion extends CandidateQuestionBase {
   readonly kind: "short";
-  /** Offer a microphone to answer by speaking; the answer is still the words. */
-  readonly spoken?: boolean;
 }
 
 export interface CandidateNumericQuestion extends CandidateQuestionBase {
@@ -124,7 +122,7 @@ export function candidateQuestion(question: Question): CandidateQuestion {
     case "mcq":
       return { ...base, kind: "mcq", options: question.options, multiple: choosesSeveral(question), negativeMarks: question.negativeMarks ?? 0 };
     case "short":
-      return { ...base, kind: "short", ...(question.spoken === true ? { spoken: true } : {}) };
+      return { ...base, kind: "short" };
     case "numeric":
       return { ...base, kind: "numeric", negativeMarks: question.negativeMarks ?? 0 };
     case "code": {

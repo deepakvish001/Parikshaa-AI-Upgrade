@@ -141,7 +141,7 @@ export class PrivacyService {
     identity: IdentityStore;
     exams: ExamService;
     proctor?: ProctorStore | null;
-    /** Records outside attempts that the retention period also covers: handwritten copies, finished interviews (T1). */
+    /** Records outside attempts that the retention period also covers: finished interviews (T1). */
     records?: readonly RetainedRecords[];
     /** Where what Sahayak said is kept: deleted after `TUTOR_KEEP_DAYS`. */
     tutor?: PrepPlusStore | null;

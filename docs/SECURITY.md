@@ -22,7 +22,6 @@ To report a vulnerability, see [`.github/SECURITY.md`](../.github/SECURITY.md).
 | Payments, invoices | Organisation | `payments`, `invoices`, `credit_ledger` | No card data ever reaches Parikshaa: Razorpay Checkout collects it |
 | Where an attempt was opened from (proctored or not) | Candidate | `attempt_origins` | Only a keyed hash of the network address and a hash of the browser description; deleted on erasure |
 | The model's comparison of identity photos | Candidate | `identity_checks` | Row-level security; deleted on erasure |
-| Scanned handwritten answer pages, and what the model read from them | Candidate | `answer_scripts`, `answer_script_pages` | Sealed (AES-256-GCM) under a key derived from `PARIKSHAA_DATA_KEY`, bound to the copy and page; removed by the retention sweep |
 | Student list (roll number, contact, CGPA, placement, offers) | Student | `students`, `drive_applications` | Email and phone sealed under a derived key, bound to the student; the rest under row-level security; removed when the college removes the student (not by the retention sweep: it is the college's register) |
 | Interview code, notes and scorecard | Candidate | `interviews` | Candidate's email, code and the interviewer's notes sealed under a derived key; finished interviews removed by the retention sweep |
 | Arrangements for a disability | Candidate | `accommodations` | The note (which may name a condition) sealed under a derived key; never shown to the candidate or written to the audit log; the extra time itself is in the attempt's ledger with who granted it |
@@ -99,10 +98,8 @@ runner's own files (STACK.md §0b).
 
 Model calls carry the question, rubric and the candidate's answer — never
 their name, roll number or contact details (`packages/viva/src/redact.ts`).
-Two calls staff start themselves are exceptions by their nature: reading a
-scanned handwritten copy sends the page images, which may show whatever the
-candidate wrote on them, and comparing identity photos sends the candidate's
-face and photo ID (`handwriting.ts`, `proxy.ts`).
+One call staff start themselves is an exception by its nature: comparing
+identity photos sends the candidate's face and photo ID (`proxy.ts`).
 The model never grades on its own authority in a way a person cannot see:
 verdicts are evidence beside the grade, and nothing sets an attempt aside
 without a person's written reason. Every call's tokens and cost are recorded;
@@ -138,7 +135,7 @@ before a residency promise covers them. Pseudonymisation (§7) holds either
 way.
 
 **Sub-processors**, each optional except the model: Anthropic (follow-up
-questions and rubric grading; reading job descriptions and handwritten copies,
+questions and rubric grading; reading job descriptions,
 and comparing identity photos, when staff ask), your SMTP provider (email),
 MSG91 (SMS), Razorpay (payments), Jitsi Meet (an interview's video when no
 call link of the institution's own is given), and any ATS or webhook endpoint
