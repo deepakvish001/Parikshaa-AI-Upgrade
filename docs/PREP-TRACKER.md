@@ -944,7 +944,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
-| 2 Oct 2026 | (agla PR) | **F1c-2 AI interviewer v2**: candidate ko link email se (aur cancel par), resume se sawaal (naam/email/phone/links hata kar model ko), retention sweep me AI interviews; migration 0061 (plan 93) |
+| 2 Oct 2026 | [#45](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/45) | **F1c-2 AI interviewer v2**: candidate ko link email se (aur cancel par), resume se sawaal (naam/email/phone/links hata kar model ko), retention sweep me AI interviews; migration 0061 (plan 93) |
 | 2 Oct 2026 | [#44](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/44) | **F1c AI interviewer, chat + code**: role/JD se sawaal, har jawab par follow-up, samay seema, hash chain wala sealed transcript, AI ka saboot ke saath aakalan, faisla insaan ka; candidate ka chat page aur console page; migration 0060 (plan 86) |
 | 2 Oct 2026 | [#44](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/44) | **F1b Proctoring v2, pehla hissa**: secure mode (poori screen share, doosri screen), awaaz ka signal (bina recording); migration 0059 (plan 85) |
 | 2 Oct 2026 | [#43](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/43) | **F1a + Supabase Mumbai**: 60 tech role templates, 7 families, console me search (plan 84); Supabase `parikshaa-mumbai` me poora schema, migration 0056 (publishable key ke roles ka lockdown), 0057 (function search_path) aur 0058 (secret key ka `service_role` bhi band), advisor saaf; purane app ki problems ka importer + workflow (plan 91); [SUPABASE.md](SUPABASE.md) |
