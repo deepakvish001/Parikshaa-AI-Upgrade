@@ -208,6 +208,40 @@ describe("a problem", () => {
     expect(await screen.findByText("Accepted")).toBeInTheDocument();
   });
 
+  it("keeps an answer given offline on this device, and submits it when the network is back", async () => {
+    localStorage.setItem("parikshaa.practice.nit-practice.session", "pl_good");
+    let online = false;
+    let submitted = 0;
+    routes["POST /practice/nit-practice/problems/stable-sort/submit"] = () => {
+      if (!online) throw new TypeError("Failed to fetch");
+      submitted++;
+      return { body: { status: "passed", passed: 1, total: 1, compileOutput: null, timeMs: null, memoryKb: null, cases: [], submissionId: "s9", firstSolve: true } };
+    };
+    open("/practice/nit-practice/problems/stable-sort");
+    await userEvent.click(await screen.findByRole("radio", { name: /mergesort/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText(/You are offline\. Your answer is kept on this device/)).toBeInTheDocument();
+    const kept = JSON.parse(localStorage.getItem("parikshaa.practice.nit-practice.queue")!) as { slug: string; answer: string }[];
+    expect(kept.map((k) => [k.slug, k.answer])).toEqual([["stable-sort", "1"]]);
+
+    online = true;
+    window.dispatchEvent(new Event("online"));
+    await waitFor(() => expect(submitted).toBe(1));
+    await waitFor(() => expect(localStorage.getItem("parikshaa.practice.nit-practice.queue")).toBeNull());
+    expect(calls.filter((c) => c.method === "POST").at(-1)).toMatchObject({ body: { answer: "1" }, auth: "Bearer pl_good" });
+  });
+
+  it("never sends one session's kept answer as another's", async () => {
+    localStorage.setItem("parikshaa.practice.nit-practice.session", "pl_good");
+    localStorage.setItem("parikshaa.practice.nit-practice.queue", JSON.stringify([{ slug: "stable-sort", answer: "1", owner: "someone-else", at: Date.now() }]));
+    routes["POST /practice/nit-practice/problems/stable-sort/submit"] = () => ({ body: {} });
+    open("/practice/nit-practice/problems/stable-sort");
+    await screen.findByRole("radio", { name: /mergesort/ });
+    window.dispatchEvent(new Event("online"));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
   it("shows a code problem in the workspace, beside its tabs, and keeps the code on this device", async () => {
     localStorage.setItem("parikshaa.practice.nit-practice.session", "pl_good");
     routes["GET /practice/nit-practice/problems/sum-of-two"] = () => ({

@@ -139,9 +139,11 @@ export interface Plan {
   readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
+  /** The job aimed at (migration 0054): its topics come first. Null for none. */
+  readonly role: string | null;
   readonly createdAt: string;
 }
-export type PlanDraft = Omit<Plan, "id" | "createdAt">;
+export type PlanDraft = Omit<Plan, "id" | "createdAt" | "role"> & { readonly role?: string | null };
 /** What a learner may change in a plan already running. */
 export type PlanSettings = Pick<Plan, "deadline" | "dailyMinutes" | "weekendMinutes" | "offDays">;
 
@@ -605,6 +607,25 @@ export class PrepStore {
     });
   }
 
+  /** A learner's shared solutions, newest first. */
+  async sharesOf(orgId: OrgId, learnerId: string): Promise<readonly { readonly id: string; readonly problemId: string; readonly language: string; readonly createdAt: string }[]> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (
+        await tx.query<{ id: string; problem_id: string; language: string; created_at: string | Date }>(
+          `SELECT id, problem_id, language, created_at FROM prep_code_shares WHERE org_id = $1 AND learner_id = $2 ORDER BY created_at DESC, id LIMIT 500`,
+          [orgId, learnerId],
+        )
+      ).map((r) => ({ id: r.id, problemId: r.problem_id, language: r.language, createdAt: iso(r.created_at) })),
+    );
+  }
+
+  /** Take a shared solution down: only its own learner's. False when there was none. */
+  async deleteShare(orgId: OrgId, learnerId: string, id: string): Promise<boolean> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (await tx.query<{ id: string }>(`DELETE FROM prep_code_shares WHERE org_id = $1 AND learner_id = $2 AND id = $3 RETURNING id`, [orgId, learnerId, id])).length > 0,
+    );
+  }
+
   /** How many a learner shared since a moment: shares are capped per day. */
   async sharesSince(orgId: OrgId, learnerId: string, since: Date): Promise<number> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
@@ -685,9 +706,10 @@ export class PrepStore {
         weekend_minutes: number | null;
         off_days: number[];
         goal: string;
+        role: string | null;
         created_at: string | Date;
       }>(
-        `SELECT id, track_id, level, to_char(deadline, 'YYYY-MM-DD') AS deadline, daily_minutes, weekend_minutes, off_days, goal, created_at
+        `SELECT id, track_id, level, to_char(deadline, 'YYYY-MM-DD') AS deadline, daily_minutes, weekend_minutes, off_days, goal, role, created_at
            FROM prep_plans WHERE org_id = $1 AND learner_id = $2 AND status = 'active'`,
         [scope.orgId, own(scope)],
       );
@@ -703,6 +725,7 @@ export class PrepStore {
             weekendMinutes: r.weekend_minutes === null ? null : Number(r.weekend_minutes),
             offDays: r.off_days.map(Number),
             goal: r.goal,
+            role: r.role,
             createdAt: iso(r.created_at),
           };
     });
@@ -715,9 +738,9 @@ export class PrepStore {
       await tx.query(`UPDATE prep_plans SET status = 'archived' WHERE org_id = $1 AND learner_id = $2 AND status = 'active'`, [scope.orgId, who]);
       const planId = this.#newId();
       await tx.query(
-        `INSERT INTO prep_plans (org_id, id, learner_id, track_id, level, deadline, daily_minutes, weekend_minutes, off_days, goal)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-        [scope.orgId, planId, who, plan.trackId, plan.level, plan.deadline, plan.dailyMinutes, plan.weekendMinutes, [...plan.offDays], plan.goal],
+        `INSERT INTO prep_plans (org_id, id, learner_id, track_id, level, deadline, daily_minutes, weekend_minutes, off_days, goal, role)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+        [scope.orgId, planId, who, plan.trackId, plan.level, plan.deadline, plan.dailyMinutes, plan.weekendMinutes, [...plan.offDays], plan.goal, plan.role ?? null],
       );
       for (const task of tasks) await this.#insertTask(tx, scope.orgId, planId, who, task);
       return planId;

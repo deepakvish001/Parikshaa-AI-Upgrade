@@ -29,6 +29,7 @@ import {
   type Submission,
 } from "@parikshaa/store";
 import { JudgeQueue, type JudgeLane, type JudgeOptions } from "./judge-queue.js";
+import { editorialPrograms } from "./editorial-code.js";
 import { patternsOf } from "./patterns.js";
 import { RateLimiter } from "./rate-limit.js";
 import { digest, hashPassword } from "./staff-auth.js";
@@ -801,6 +802,25 @@ export class PracticeService {
     return null;
   }
 
+  /**
+   * An editorial's programs, each run on every test of its problem (plan row
+   * 48): one that does not compile, or fails a test, keeps the editorial from
+   * being saved. A block marked `no-check` is a fragment and is not run; with
+   * no runner configured, nothing can be checked and nothing is refused.
+   */
+  async #checkEditorial(question: Question, editorial: string): Promise<void> {
+    if (question.kind !== "code" || this.#judge === null) return;
+    const tests = (question.tests ?? []).map((t) => ({ id: t.id, input: t.input, expected: t.expected }));
+    if (tests.length === 0) return;
+    for (const program of editorialPrograms(editorial, question.languages ?? [question.language])) {
+      const result = await this.#run(question, { language: program.language, source: program.source }, tests, "practice");
+      const where = `The editorial's code block ${program.block} (${program.language})`;
+      if (!result.compiled) throw new PracticeError("invalid", `${where} does not compile. Fix it, or mark the block no-check if it is only a fragment.`);
+      const failed = result.tests.findIndex((r) => r.status !== "passed");
+      if (failed >= 0) throw new PracticeError("invalid", `${where} fails test "${tests[failed]!.id}" (${result.tests[failed]!.status.replace(/_/g, " ")}). Fix it, or mark the block no-check if it is only a fragment.`);
+    }
+  }
+
   async publish(
     orgId: OrgId,
     input: { bankQuestionId: string; title?: string; slug?: string; difficulty?: Difficulty; tags?: readonly string[]; editorial?: string; hint?: string; published?: boolean },
@@ -809,6 +829,7 @@ export class PracticeService {
     if (entry === undefined) throw new PracticeError("not_found", "No such question in the bank");
     const unfit = PracticeService.practicable(entry.question);
     if (unfit !== null) throw new PracticeError("not_practicable", unfit);
+    if (input.editorial !== undefined) await this.#checkEditorial(entry.question, input.editorial);
     const title = (input.title ?? entry.question.stem.split("\n")[0]!.replace(/[`*_#]/g, "").slice(0, 80)).trim() || "Problem";
     const existing = await this.#store.problems(practiceStaff(orgId));
     let slug = input.slug ?? slugOf(title);
@@ -854,6 +875,7 @@ export class PracticeService {
       published: patch.published ?? current.published,
     };
     if (!SLUG.test(next.slug)) throw new PracticeError("invalid", "An address is lowercase letters, digits and dashes");
+    if (patch.editorial !== undefined && patch.editorial !== current.editorial) await this.#checkEditorial(current.question, patch.editorial);
     try {
       const saved = await this.#store.updateProblem(orgId, id, next);
       if (saved === null) throw new PracticeError("not_found", "No such problem");

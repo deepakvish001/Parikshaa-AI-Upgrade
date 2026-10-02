@@ -11,6 +11,9 @@ import { OWNER, ownerToken } from "./support.js";
 const SITE = "e2e-practice";
 
 async function violations(page: Page): Promise<string[]> {
+  // Colours are scored at rest, as in accessibility.spec.ts: a button leaving
+  // disabled as its data arrives fades, and WebKit measured one mid-way.
+  await page.addStyleTag({ content: "*, *::before, *::after { animation: none !important; transition: none !important; }" });
   const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
   return result.violations.map((v) => `${v.id} (${v.impact}): ${v.help} — ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`);
 }

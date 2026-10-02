@@ -352,6 +352,10 @@ notifications. The server sends only to the push services browsers use
 address is refused. One the push service says is gone is deleted, and an
 erased account's subscriptions go with it.
 
+To be on the Play Store too, the site is wrapped in a Trusted Web Activity:
+`TWA_PACKAGE` and `TWA_SHA256` publish `/.well-known/assetlinks.json`, and
+`docs/PLAY-STORE.md` has the steps and what the owner provides.
+
 ## The hardening suites
 
 `packages/e2e` holds three runs against a real Postgres, each also in CI

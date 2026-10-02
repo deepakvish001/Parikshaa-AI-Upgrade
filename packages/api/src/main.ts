@@ -7,6 +7,7 @@ import { assemble } from "./assemble.js";
 import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { bankFromEnv, supplierFromEnv } from "./gst.js";
 import { webPushSender } from "./push.js";
+import { androidAppFromEnv } from "./android-app.js";
 import { RazorpayGateway } from "./razorpay.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
@@ -150,6 +151,7 @@ async function main(): Promise<void> {
       // JSON lines on stdout, one per request; LOG_LEVEL=silent turns them off.
       log: { level: process.env["LOG_LEVEL"] ?? "info" },
       ...(clients === undefined ? {} : { clients }),
+      androidApp: androidAppFromEnv(process.env),
     },
   });
 

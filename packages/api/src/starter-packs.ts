@@ -2,7 +2,7 @@ import { questionId, type OrgId, type Question } from "@parikshaa/core";
 import { practiceStaff, type PracticeStore, type PrepStore } from "@parikshaa/store";
 import { CS_FUNDAMENTALS } from "./content/cs-fundamentals.js";
 import { DSA_STARTER } from "./content/dsa-starter.js";
-import { DSA_TEXT } from "./content/dsa-starter-text.js";
+import { DSA_BETTER, DSA_TEXT } from "./content/dsa-starter-text.js";
 import type { CsPack, DsaPack, SqlPack } from "./content/packs.js";
 import { SQL_STARTER } from "./content/sql-starter.js";
 import { PracticeError, slugOf } from "./practice.js";
@@ -109,14 +109,18 @@ export function dsaQuestion(problem: DsaProblem): Question {
   };
 }
 
-/** Brute force, then optimal, each a tab; the optimal with a right program in Python. */
-export function dsaEditorial(problem: DsaProblem, brute: string): string {
+/**
+ * Brute force, a better approach where the problem has one, then optimal, each
+ * a tab; the optimal with a right program in Python.
+ */
+export function dsaEditorial(problem: DsaProblem, brute: string, better?: { readonly text: string; readonly time: string }): string {
   return [
     "## Brute force",
     brute,
     "",
     `Time: ${problem.bruteTime}. Too slow at the largest inputs.`,
     "",
+    ...(better === undefined ? [] : ["## Better", better.text, "", `Time: ${better.time}.`, ""]),
     "## Optimal",
     problem.optimal,
     "",
@@ -215,7 +219,7 @@ export class StarterPacks {
       const ids = new Map<string, string>();
       for (const p of DSA_STARTER.problems) {
         const text = DSA_TEXT[p.slug]!;
-        ids.set(p.slug, await addProblem({ slug: p.slug, title: p.title, question: dsaQuestion(p), difficulty: p.difficulty, tags: p.tags, editorial: dsaEditorial(p, text.brute), hint: text.hint }));
+        ids.set(p.slug, await addProblem({ slug: p.slug, title: p.title, question: dsaQuestion(p), difficulty: p.difficulty, tags: p.tags, editorial: dsaEditorial(p, text.brute, DSA_BETTER[p.slug]), hint: text.hint }));
       }
       const modules = DSA_MODULES.map(([title, slugs]) => ({ title, items: slugs.flatMap((s) => (ids.has(s) ? [{ problemId: ids.get(s)! }] : [])) }));
       await this.#service.saveTrack(orgId, null, { ...TRACK[name], published: true, modules });

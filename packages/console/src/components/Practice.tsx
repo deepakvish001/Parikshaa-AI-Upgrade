@@ -540,6 +540,7 @@ function Publish({ client, published }: { client: ConsoleClient; published: read
         <div className="field">
           <label htmlFor="publish-editorial">Editorial (Markdown)</label>
           <textarea id="publish-editorial" rows={4} value={editorial} placeholder="How to solve it, and why that works." onChange={(e) => setEditorial(e.target.value)} />
+          <p className="notice">For a code problem, each code block in one of its languages is run on all its tests before saving. Mark a fragment <code>```python no-check</code> to leave it out.</p>
         </div>
         {publish.isError ? <p className="error">{failure(publish.error, "Not published.")}</p> : null}
         <div className="row">
@@ -617,6 +618,7 @@ function ProblemEditor({ client, problem, onDone }: { client: ConsoleClient; pro
       <div className="field">
         <label htmlFor={id("editorial")}>Editorial (Markdown)</label>
         <textarea id={id("editorial")} rows={5} value={editorial} onChange={(e) => setEditorial(e.target.value)} />
+        <p className="notice">For a code problem, each code block in one of its languages is run on all its tests before saving. Mark a fragment <code>```python no-check</code> to leave it out.</p>
       </div>
       <div className="field">
         <label htmlFor={id("hint")}>First hint</label>

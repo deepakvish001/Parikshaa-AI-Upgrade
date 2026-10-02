@@ -4,7 +4,8 @@
  *
  * - The app shell (the page and its hashed scripts) is kept, so the site opens
  *   without a network.
- * - A learner's day — who they are, the dashboard, the plan — is fetched from
+ * - A learner's day — who they are, the dashboard, the plan — and what they
+ *   read — tracks, lessons, the problems they opened — is fetched from
  *   the network when there is one, and kept; offline, the kept copy answers.
  *   Kept copies are filed under a hash of the learner's session, so one
  *   learner's day is never shown to another on a shared phone.
@@ -15,8 +16,13 @@
 const VERSION = "v1";
 const SHELL = `parikshaa-shell-${VERSION}`;
 const DAY = `parikshaa-day-${VERSION}`;
-/** The learner's day, as the site reads it: the site, me, home, the plan. */
-const KEPT = /^\/api\/practice\/[a-z0-9][a-z0-9-]*(?:\/(?:me|home|plan|focus|revise))?$/;
+/**
+ * The learner's day, as the site reads it — the site, me, home, the plan —
+ * and what they read offline: the tracks, the lessons, the problem list and
+ * each problem opened (plan row 42).
+ */
+const KEPT =
+  /^\/api\/practice\/[a-z0-9][a-z0-9-]*(?:\/(?:me|home|plan|focus|revise|tracks(?:\/[a-z0-9-]+)?|lessons\/[a-z0-9-]+|problems(?:\/[a-z0-9-]+)?))?$/;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

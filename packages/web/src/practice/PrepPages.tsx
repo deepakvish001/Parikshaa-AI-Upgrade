@@ -5,7 +5,7 @@ import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
 import { AnswerInput } from "../components/AnswerInput.tsx";
-import type { Grade, Lesson, Level, Note, NoteKind, Plan, PlanInput, PlanTask, Reward } from "./client.ts";
+import { PREP_ROLES, type Grade, type Lesson, type Level, type Note, type NoteKind, type Plan, type PlanInput, type PlanTask, type PrepRole, type Reward } from "./client.ts";
 import { currentPush, pushSupported, startPush } from "./push.ts";
 import { LessonDoubt } from "./Tutor.tsx";
 import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context, type Nav } from "./parts.tsx";
@@ -546,10 +546,58 @@ export function ShareCode({ client, nav, slug, code }: { readonly client: Contex
       {link === null ? null : (
         <p className="notice" role="status">
           {p("share.copied")}{" "}
-          <input readOnly aria-label={p("share.link")} value={link} onFocus={(e) => e.currentTarget.select()} />
+          <input readOnly aria-label={p("share.link")} value={link} onFocus={(e) => e.currentTarget.select()} />{" "}
+          <Link nav={nav} to="/shares">
+            {p("share.manage")}
+          </Link>
         </p>
       )}
       {share.isError ? <p className="error">{messageOf(share.error, p("share.failed"))}</p> : null}
+    </div>
+  );
+}
+
+/** The solutions a learner shared, each one's link, and the way to take one down. */
+export function MySharesPage({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const when = useWhen();
+  const queryClient = useQueryClient();
+  const k = key(site, "shares", learner.id);
+  const shares = useQuery({ queryKey: k, queryFn: () => client.myShares() });
+  const remove = useMutation({
+    mutationFn: (id: string) => client.deleteShare(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: k }),
+  });
+  if (shares.isPending) return <Loading />;
+  if (shares.isError) return <Failed error={shares.error} />;
+  return (
+    <div className="prep-page my-shares">
+      <header className="prep-head">
+        <h1>{p("share.mine")}</h1>
+      </header>
+      <p className="notice">{p("share.mineHint")}</p>
+      {shares.data.length === 0 ? (
+        <p className="notice empty">{p("share.none")}</p>
+      ) : (
+        <ul className="card plain-list">
+          {shares.data.map((s) => (
+            <li key={s.id} className="row">
+              <span className="grow">
+                <Link nav={nav} to={s.path}>
+                  {s.problem?.title ?? p("share.gone")}
+                </Link>{" "}
+                <span className="notice">
+                  {s.language} · {when(s.createdAt)}
+                </span>
+              </span>
+              <button type="button" className="secondary" disabled={remove.isPending} aria-label={p("share.removeOne", { problem: s.problem?.title ?? s.id })} onClick={() => remove.mutate(s.id)}>
+                {p("share.remove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {remove.isError ? <Failed error={remove.error} /> : null}
     </div>
   );
 }
@@ -1060,6 +1108,16 @@ function PlanSetup({ client, nav, learner, site, track: wanted, level: suggested
             </div>
           </fieldset>
           <TargetPicker client={client} site={site} learner={learner} />
+          <label htmlFor="plan-role">{p("plan.role")}</label>
+          <select id="plan-role" value={input.role ?? ""} onChange={(e) => set({ role: e.target.value === "" ? null : (e.target.value as PrepRole) })}>
+            <option value="">{p("plan.roleNone")}</option>
+            {PREP_ROLES.map((r) => (
+              <option key={r} value={r}>
+                {p(`role.${r}` as PrepKey)}
+              </option>
+            ))}
+          </select>
+          <p className="notice">{p("plan.roleHint")}</p>
           <label htmlFor="plan-goal">{p("plan.goal")}</label>
           <input id="plan-goal" value={goal} maxLength={200} placeholder={p("plan.goalPlaceholder")} onChange={(e) => setGoal(e.target.value)} />
           <button type="submit" disabled={preview.isPending || input.track === ""}>
@@ -1165,6 +1223,7 @@ function PlanView({ client, nav, learner, site }: Signed) {
           </h1>
           <p className="notice">
             {p("plan.sprint", { n: pl.sprint })} · {p("plan.finish", { date: day(pl.finishOn) })} · {p("plan.deadlineOn", { date: day(pl.deadline) })} · {p("plan.days", { n: pl.daysLeft })}
+            {pl.role === null ? null : ` · ${p(`role.${pl.role}` as PrepKey)}`}
           </p>
         </div>
         <span className={`pill ${pl.onTrack ? "ok" : "warn"}`}>{pl.onTrack ? p("plan.onTrack") : p("plan.behind")}</span>

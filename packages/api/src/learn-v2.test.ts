@@ -24,11 +24,11 @@ let owner: string;
 let viewer: string;
 const problems: Record<string, { id: string; slug: string }> = {};
 
-function call(method: "GET" | "POST" | "PUT", token: string | null, url: string, payload?: object) {
+function call(method: "GET" | "POST" | "PUT" | "PATCH", token: string | null, url: string, payload?: object) {
   const headers = token === null ? {} : bearer(token);
   return payload === undefined ? app.inject({ method, url, headers }) : app.inject({ method, url, headers, payload });
 }
-async function ok(method: "GET" | "POST" | "PUT", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
+async function ok(method: "GET" | "POST" | "PUT" | "PATCH", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
   const res = await call(method, token, url, payload);
   expect(res.statusCode, res.payload).toBe(status);
   return res.json();
@@ -162,6 +162,28 @@ describe("a shared solution", () => {
     expect((await call("GET", null, `${S}/shares/AAAAAAAAAAAA`)).statusCode).toBe(404);
   });
 
+  it("is listed for its learner, and taken down by them alone", async () => {
+    const asha = await signUp();
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    const first = await ok("POST", asha, `${S}/problems/${problems.sum!.slug}/share`, { language: "python", source: "print(1)" });
+    clock += 60_000;
+    const second = await ok("POST", asha, `${S}/problems/${problems.sum!.slug}/share`, { language: "cpp", source: "int main(){}" });
+    const mine = await ok("GET", asha, `${S}/shares`);
+    expect(mine.shares.map((s: { id: string }) => s.id)).toEqual([second.id, first.id]);
+    expect(mine.shares[0]).toMatchObject({ path: `/shares/${second.id}`, problem: { slug: problems.sum!.slug, title: "Sum of two" }, language: "cpp" });
+    expect(JSON.stringify(mine)).not.toContain("int main");
+    expect((await ok("GET", ravi, `${S}/shares`)).shares).toEqual([]);
+    expect((await call("GET", null, `${S}/shares`)).statusCode).toBe(401);
+
+    // Not Ravi's to take down.
+    expect((await app.inject({ method: "DELETE", url: `${S}/shares/${first.id}`, headers: bearer(ravi) })).statusCode).toBe(404);
+    await ok("GET", null, `${S}/shares/${first.id}`);
+    expect((await app.inject({ method: "DELETE", url: `${S}/shares/${first.id}`, headers: bearer(asha) })).statusCode).toBe(204);
+    expect((await call("GET", null, `${S}/shares/${first.id}`)).statusCode).toBe(404);
+    expect((await ok("GET", asha, `${S}/shares`)).shares.map((s: { id: string }) => s.id)).toEqual([second.id]);
+    expect((await app.inject({ method: "DELETE", url: `${S}/shares/${first.id}`, headers: bearer(asha) })).statusCode).toBe(404);
+  });
+
   it("is refused while a contest that includes the problem runs", async () => {
     const asha = await signUp();
     await ok("POST", owner, "/practice-admin/contests", {
@@ -223,5 +245,41 @@ describe("the problem list's filters", () => {
     await ok("POST", owner, `/practice-admin/learners/${learners[0]!.id}/plus`, { days: 30 }, 200);
     seen = await list(asha);
     expect([...seen.values()].filter((p) => p.companies.length > 0)).toHaveLength(8);
+  });
+});
+
+describe("a plan aimed at a role (plan row 46)", () => {
+  it("puts the role's problems first in each module, and adds the site's others on its topics", async () => {
+    const lesson = await ok("POST", owner, "/practice-admin/lessons", { title: "Basics", body: "Read.", estMinutes: 10, published: true });
+    await ok("POST", owner, "/practice-admin/tracks", {
+      title: "Mixed",
+      description: "",
+      published: true,
+      modules: [{ title: "One", items: [{ lessonId: lesson.id }, { problemId: problems.bits!.id }, { problemId: problems.window!.id }, { problemId: problems.stable!.id }] }],
+    });
+    const asha = await signUp();
+    const input = { track: "mixed", level: "beginner", deadline: "2026-11-30", dailyMinutes: 30, offDays: [] };
+    expect((await call("POST", asha, `${S}/plan`, { ...input, role: "astronaut" })).statusCode).toBe(400);
+
+    // No role: the track as it is.
+    const plain = (await ok("POST", asha, `${S}/plan`, input)).plan;
+    expect(plain.role).toBeNull();
+    const titles = (p: { today: { title: string; kind: string }[]; upcoming: { title: string; kind: string }[] }) =>
+      [...p.today, ...p.upcoming].filter((t) => t.kind !== "revise").map((t) => t.title);
+    expect(titles(plain)).toEqual(["Basics", "How many bits in a byte", "A window slides over what", "Which sort is stable"]);
+
+    // Data: sorting and maths are its topics. The sorting problem comes first in its module,
+    // and the site's maths problem, not in the track, joins the plan.
+    const data = (await ok("POST", asha, `${S}/plan`, { ...input, role: "data" })).plan;
+    expect(data.role).toBe("data");
+    const order = titles(data);
+    expect(order.filter((t: string) => t !== "Sum of two")).toEqual(["Basics", "Which sort is stable", "How many bits in a byte", "A window slides over what"]);
+    expect(order).toContain("Sum of two");
+    expect(order.filter((t: string) => t === "Sum of two")).toHaveLength(1);
+
+    // Kept when the plan is changed.
+    const changed = (await ok("PATCH", asha, `${S}/plan`, { dailyMinutes: 45 }, 200)).plan;
+    expect(changed.role).toBe("data");
+    expect(titles(changed).filter((t: string) => t === "Sum of two")).toHaveLength(1);
   });
 });

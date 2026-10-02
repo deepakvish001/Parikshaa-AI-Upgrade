@@ -197,6 +197,13 @@ export interface ServerOptions {
    */
   readonly clients?: { readonly web: string; readonly console: string };
   /**
+   * The Android app that wraps the practice site (a Trusted Web Activity, Prep
+   * plan row 43): its package name and the SHA-256 fingerprints of the keys it
+   * is signed with. Published at /.well-known/assetlinks.json, so Android
+   * opens the site in the app with no browser bar. Absent: none.
+   */
+  readonly androidApp?: { readonly packageName: string; readonly fingerprints: readonly string[] } | null;
+  /**
    * Structured request logs. Off unless given. Each line names the route
    * pattern, status, duration and organisation — never a body, a query string,
    * a header or an error message, since any of those can carry an answer, a
@@ -1259,6 +1266,21 @@ export function buildServer(options: ServerOptions): FastifyInstance {
                   hash: e.hash,
                 })),
         });
+      },
+    );
+
+    routes.get(
+      "/.well-known/assetlinks.json",
+      { schema: { tags: INSTITUTION, summary: "Digital Asset Links for the Android app (TWA)", description: "Public, for Android to read. 404 when no app is configured.", security: [] } },
+      async (_request, reply) => {
+        const app = options.androidApp ?? null;
+        if (app === null) return reply.code(404).send({ error: "not_found", message: "No Android app is configured" });
+        return reply.send([
+          {
+            relation: ["delegate_permission/common.handle_all_urls"],
+            target: { namespace: "android_app", package_name: app.packageName, sha256_cert_fingerprints: app.fingerprints },
+          },
+        ]);
       },
     );
 

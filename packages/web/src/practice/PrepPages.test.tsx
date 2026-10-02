@@ -35,6 +35,7 @@ const plan = {
   dailyMinutes: 90,
   offDays: [0],
   goal: "",
+  role: null,
   startedAt: "2026-10-05T04:00:00Z",
   finishOn: "2026-11-20",
   onTrack: true,
@@ -207,6 +208,27 @@ describe("the plan", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")).toBe(true));
     const started = calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body as { track: string; dailyMinutes: number; offDays: number[] };
     expect(started).toMatchObject({ track: "dsa-basics", dailyMinutes: 150, offDays: [0] });
+  });
+
+  it("plans for the job the learner chooses, and names it on the plan", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    routes["POST /practice/nit-practice/plan/preview"] = () => ({
+      body: { track: { slug: "dsa-basics", title: "DSA Basics" }, tasks: 29, totalMinutes: 1200, finishOn: "2026-12-20", deadline: "2026-12-31", fits: true, sprints: [], dailyMinutesToFit: null },
+    });
+    routes["POST /practice/nit-practice/plan"] = () => {
+      routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: { ...plan, role: "data" } } });
+      return { status: 201, body: { plan: { ...plan, role: "data" } } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan?track=dsa-basics");
+    await screen.findByRole("heading", { name: "Plan a track" });
+    await user.selectOptions(screen.getByLabelText("The job you are preparing for"), "data");
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    await user.click(await screen.findByRole("button", { name: "Start this plan" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")).toBe(true));
+    expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan/preview")!.body).toMatchObject({ role: "data" });
+    expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body).toMatchObject({ role: "data" });
+    expect(await screen.findByText(/Data analyst or data engineer/)).toBeTruthy();
   });
 
   it("suggests a level from the placement quiz, and plans with it", async () => {
@@ -876,6 +898,26 @@ describe("Plus", () => {
     expect(screen.getByText("Shared by Ravi · python")).toBeTruthy();
     expect(screen.getByText("print(1 + 2)")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Solve it yourself" }).getAttribute("href")).toBe("/practice/nit-practice/problems/sum-of-two");
+  });
+
+  it("lists the learner's shared solutions and takes one down", async () => {
+    let shares = [
+      { id: "AbCdEfGhIjKl", path: "/shares/AbCdEfGhIjKl", problem: { slug: "sum-of-two", title: "Sum of two" }, language: "python", createdAt: "2026-10-05T04:00:00Z" },
+      { id: "MnOpQrStUvWx", path: "/shares/MnOpQrStUvWx", problem: null, language: "cpp", createdAt: "2026-10-04T04:00:00Z" },
+    ];
+    routes["GET /practice/nit-practice/shares"] = () => ({ body: { shares } });
+    routes["DELETE /practice/nit-practice/shares/AbCdEfGhIjKl"] = () => {
+      shares = shares.filter((s) => s.id !== "AbCdEfGhIjKl");
+      return { status: 204, body: undefined };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/shares");
+    expect(await screen.findByRole("heading", { name: "My shared solutions" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sum of two" }).getAttribute("href")).toBe("/practice/nit-practice/shares/AbCdEfGhIjKl");
+    expect(screen.getByText("The problem is no longer on the site.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Take down the link for Sum of two" }));
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Sum of two" })).toBeNull());
+    expect(calls.some((c) => c.method === "DELETE" && c.path.endsWith("/shares/AbCdEfGhIjKl"))).toBe(true);
   });
 
   it("shows a locked lesson by name, with the way to Plus", async () => {

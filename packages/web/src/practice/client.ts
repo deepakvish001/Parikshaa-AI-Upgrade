@@ -1,5 +1,6 @@
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, type RunOutcome, type SubmitOutcome } from "../api.ts";
+import { keepQueued, ownerOf, queuedAnswers, queuedOffline } from "./offline-queue.ts";
 
 /**
  * A practice site's API (ROADMAP §15), as a learner uses it: `/practice/<site>`
@@ -297,12 +298,39 @@ export class PracticeClient {
     });
   }
 
-  submit(slug: string, answer: string, language?: string, contest?: string): Promise<Verdict> {
-    return this.#post(`/problems/${encodeURIComponent(slug)}/submit`, {
-      answer,
-      ...(language === undefined ? {} : { language }),
-      ...(contest === undefined ? {} : { contest }),
-    });
+  async submit(slug: string, answer: string, language?: string, contest?: string): Promise<Verdict> {
+    try {
+      return await this.#post(`/problems/${encodeURIComponent(slug)}/submit`, {
+        answer,
+        ...(language === undefined ? {} : { language }),
+        ...(contest === undefined ? {} : { contest }),
+      });
+    } catch (error) {
+      // No network at all (fetch itself failed): outside a contest, keep it for later.
+      if (!(error instanceof TypeError) || contest !== undefined || this.#token === null) throw error;
+      keepQueued(this.slug, [...queuedAnswers(this.slug), { slug, answer, ...(language === undefined ? {} : { language }), owner: ownerOf(this.#token), at: Date.now() }]);
+      throw queuedOffline();
+    }
+  }
+
+  /** Submit what was kept while offline, this session's only; how many went. */
+  async submitQueued(): Promise<number> {
+    if (this.#token === null) return 0;
+    const owner = ownerOf(this.#token);
+    let left = queuedAnswers(this.slug);
+    let sent = 0;
+    for (const q of left.filter((x) => x.owner === owner)) {
+      try {
+        await this.#post(`/problems/${encodeURIComponent(q.slug)}/submit`, { answer: q.answer, ...(q.language === undefined ? {} : { language: q.language }) });
+        sent++;
+      } catch (error) {
+        // Still offline: try again later. Any answer from the server settles it.
+        if (error instanceof TypeError) break;
+      }
+      left = left.filter((x) => x !== q);
+      keepQueued(this.slug, left);
+    }
+    return sent;
   }
 
   async submissions(slug: string, contest?: string): Promise<readonly Submission[]> {
@@ -361,6 +389,14 @@ export class PracticeClient {
 
   shareCode(slug: string, language: string, source: string): Promise<{ readonly id: string; readonly path: string }> {
     return this.#post(`/problems/${encodeURIComponent(slug)}/share`, { language, source });
+  }
+
+  async myShares(): Promise<readonly MyShare[]> {
+    return (await this.#request<{ shares: MyShare[] }>("/shares")).shares;
+  }
+
+  async deleteShare(id: string): Promise<void> {
+    await this.#request(`/shares/${encodeURIComponent(id)}`, { method: "DELETE" });
   }
 
   sharedCode(id: string): Promise<SharedCode> {
@@ -715,6 +751,14 @@ export interface QuizResult {
   readonly revise: number;
 }
 
+export interface MyShare {
+  readonly id: string;
+  readonly path: string;
+  readonly problem: { readonly slug: string; readonly title: string } | null;
+  readonly language: string;
+  readonly createdAt: string;
+}
+
 export interface SharedCode {
   readonly problem: { readonly slug: string; readonly title: string } | null;
   readonly author: string;
@@ -740,6 +784,9 @@ export interface PlacementResult {
   readonly results: readonly { readonly id: string; readonly choice: number; readonly correct: number; readonly right: boolean; readonly why: string }[];
 }
 
+export type PrepRole = "sde" | "backend" | "frontend" | "data";
+export const PREP_ROLES: readonly PrepRole[] = ["sde", "backend", "frontend", "data"];
+
 export interface PlanInput {
   readonly track: string;
   readonly level: Level;
@@ -749,6 +796,8 @@ export interface PlanInput {
   readonly weekendMinutes?: number | null;
   readonly offDays: readonly number[];
   readonly goal?: string;
+  /** The job aimed at: its topics come first. */
+  readonly role?: PrepRole | null;
   /** Plan only the first this many of the track's remaining items. */
   readonly upTo?: number;
 }
@@ -803,6 +852,7 @@ export interface Plan {
   readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
+  readonly role: PrepRole | null;
   readonly startedAt: string;
   readonly finishOn: string;
   readonly onTrack: boolean;

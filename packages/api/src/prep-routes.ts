@@ -85,6 +85,7 @@ const planView = z.object({
   weekendMinutes: z.number().nullable(),
   offDays: z.array(z.number()).readonly(),
   goal: z.string(),
+  role: z.enum(["sde", "backend", "frontend", "data"]).nullable().describe("The job the plan aims at; its topics come first."),
   startedAt: z.string(),
   finishOn: day,
   onTrack: z.boolean().describe("The last task falls on or before the deadline."),
@@ -107,6 +108,11 @@ const planInput = z.object({
   weekendMinutes: z.number().int().nullable().optional().describe("Minutes on Saturday and Sunday, when they differ from `dailyMinutes`."),
   offDays: z.array(z.number().int()).max(7).default([]),
   goal: z.string().max(200).optional(),
+  role: z
+    .enum(["sde", "backend", "frontend", "data"])
+    .nullable()
+    .optional()
+    .describe("The job aimed at: within each module its problems come first, and up to eight of the site's other problems on its topics join the plan."),
   upTo: z.number().int().optional().describe("Plan only the first this many of the track's remaining items: the one that fit by the deadline, say."),
 });
 const planPreview = z.object({
@@ -394,6 +400,59 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
       const who = await signedIn(request, reply);
       if (who === null) return;
       return reply.code(201).send(await prep.shareCode(who.site, who.learner, (request.params as { problem: string }).problem, request.body));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/shares",
+    {
+      schema: {
+        tags: PREP,
+        summary: "The solutions I shared",
+        security: LEARNER,
+        params: siteParams,
+        response: {
+          200: z.object({
+            shares: z
+              .array(
+                z.object({
+                  id: z.string(),
+                  path: z.string(),
+                  problem: z.object({ slug: z.string(), title: z.string() }).nullable(),
+                  language: z.string(),
+                  createdAt: z.string(),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send({ shares: await prep.myShares(who.site, who.learner) });
+    },
+  );
+
+  routes.delete(
+    "/practice/:site/shares/:id",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Take down a solution I shared",
+        description: "The link stops working at once. Only the learner who shared it can.",
+        security: LEARNER,
+        params: siteParams.extend({ id: z.string().min(1).max(40) }),
+        response: { 204: z.null(), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      await prep.deleteShare(who.site, who.learner, request.params.id);
+      return reply.code(204).send(null);
     },
   );
 

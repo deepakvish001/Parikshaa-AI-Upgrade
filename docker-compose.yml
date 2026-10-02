@@ -53,6 +53,9 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-}
+      # Optional: the Android app (TWA) around a practice site; docs/PLAY-STORE.md.
+      TWA_PACKAGE: ${TWA_PACKAGE:-}
+      TWA_SHA256: ${TWA_SHA256:-}
       # Optional: WhatsApp through the Cloud API, with Parikshaa's templates
       # approved in your WhatsApp Business account (docs/PILOT.md).
       WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}

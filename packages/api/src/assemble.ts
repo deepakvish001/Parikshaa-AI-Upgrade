@@ -95,7 +95,7 @@ export interface AssembleOptions {
   readonly signup?: SignupPolicy | null;
   /** The operator's address for the pilot report each morning. Absent: no report is sent. */
   readonly pilotReportTo?: string | null;
-  readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy">;
+  readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy" | "androidApp">;
 }
 
 export function assemble(o: AssembleOptions): {

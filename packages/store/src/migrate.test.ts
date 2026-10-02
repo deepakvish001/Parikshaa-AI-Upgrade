@@ -133,6 +133,7 @@ describe("migrate", () => {
       "0051_departments.sql",
       "0052_interview_panel.sql",
       "0053_accommodations.sql",
+      "0054_prep_next.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
