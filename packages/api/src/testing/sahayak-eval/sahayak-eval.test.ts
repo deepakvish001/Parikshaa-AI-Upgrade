@@ -93,7 +93,7 @@ const model = {
 };
 const client = {
   messages: {
-    async create(params: { model: string; max_tokens: number; system: { text: string }[]; messages: { content: string }[] }) {
+    async create(params: { model: string; max_tokens: number; system: { text: string }[]; messages: { content: string }[]; output_config?: { format?: unknown } }) {
       // Answers slowly, so cases run side by side overlap.
       await new Promise((r) => setTimeout(r, 20));
       model.requests.push({ system: params.system.map((b) => b.text).join("\n"), user: params.messages[0]!.content, model: params.model, maxTokens: params.max_tokens });
@@ -103,7 +103,16 @@ const client = {
         type: "message",
         role: "assistant",
         model: params.model,
-        content: [{ type: "text", text: `Answer to: ${params.messages[0]!.content.slice(0, 40)}` }],
+        content: [
+          {
+            type: "text",
+            // A review is asked for in a fixed shape.
+            text:
+              params.output_config?.format === undefined
+                ? `Answer to: ${params.messages[0]!.content.slice(0, 40)}`
+                : JSON.stringify({ verdict: "wrong", summary: "The sum overflows.", logic: { right: ["Counts pairs once."], wrong: ["int overflows on large sums."] }, complexity: { time: "O(n)", space: "O(n)", better: "" }, quality: [], edgeCases: ["Large values"] }),
+          },
+        ],
         stop_reason: "end_turn",
         stop_sequence: null,
         usage: { input_tokens: 1000, output_tokens: 100, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
@@ -144,7 +153,10 @@ describe("a case, run through the real server", () => {
     expect(h.answer).toBe(`Answer to: ${h.exchange.user.slice(0, 40)}`);
 
     expect(r.verdict).toEqual({ status: "passed", passed: expect.any(Number), total: expect.any(Number) });
-    expect(r.exchange.user).toContain("Review this submission. Answer in Hindi");
+    expect(r.exchange.user).toContain("Review this submission, as JSON in the shape given. Write every text field in Hindi");
+    // What the judge grades is the review as the learner reads it: Markdown from the fixed shape.
+    expect(r.answer).toContain("**अभी सही नहीं.** The sum overflows.");
+    expect(r.answer).toContain("- ✗ int overflows on large sums.");
     expect(r.exchange.user).toContain('<learner_code language="java">');
 
     expect(d.exchange.user).toContain(`<learner_question>\n${doubt.doubt.text}`);

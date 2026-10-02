@@ -63,6 +63,11 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
     if (couponError !== null && loadRef(site) === coupon) saveRef(site, null);
   }, [couponError, coupon, site]);
 
+  const trial = useMutation({
+    mutationFn: () => client.startTrial(),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["practice", site] }),
+  });
+
   const buy = useMutation({
     mutationFn: async (productId: string) => {
       const usable = quoteOf(productId)?.coupon ?? undefined;
@@ -95,6 +100,7 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
   if (plus.isPending) return <p className="notice">{p("common.loading")}</p>;
   if (plus.isError) return <p className="error" role="alert">{messageOf(plus.error, p("common.failed"))}</p>;
   const o = plus.data;
+  const dsaUntil = o.dsaUntil ?? null;
   const field = (name: keyof typeof billing) => ({ value: billing[name], onChange: (e: { target: { value: string } }) => setBilling({ ...billing, [name]: e.target.value }) });
   return (
     <div className="prep-page">
@@ -106,9 +112,26 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
           <p className="notice">{o.enabled ? p("plus.hint") : p("plus.off")}</p>
         </div>
         {o.enabled && learner !== null ? (
-          <span className={`pill ${o.active ? "ok" : ""}`}>{o.active && o.until !== null ? p("plus.active", { date: day(o.until.slice(0, 10)) }) : p("plus.none")}</span>
+          <span className={`pill ${o.active || dsaUntil !== null ? "ok" : ""}`}>
+            {o.active && o.until !== null
+              ? p("plus.active", { date: day(o.until.slice(0, 10)) })
+              : dsaUntil !== null
+                ? p("plus.dsaActive", { date: day(dsaUntil.slice(0, 10)) })
+                : p("plus.none")}
+          </span>
         ) : null}
       </header>
+      {o.enabled && learner !== null && o.trialDays > 0 ? (
+        <section className="card trial-card" aria-labelledby="trial-title">
+          <h2 id="trial-title">{p("plus.trial.title", { n: o.trialDays })}</h2>
+          <p className="notice">{p("plus.trial.hint")}</p>
+          <button type="button" disabled={trial.isPending} onClick={() => trial.mutate()}>
+            {p("plus.trial.start", { n: o.trialDays })}
+          </button>
+          {trial.isError ? <p className="error" role="alert">{messageOf(trial.error, p("common.failed"))}</p> : null}
+        </section>
+      ) : null}
+      {trial.isSuccess ? <p className="alert ok" role="status">{p("plus.trial.started")}</p> : null}
       {outcome === "paid" ? <p className="alert ok" role="status">{p("plus.paid")}</p> : outcome === "failed" ? <p className="alert warn" role="alert">{p("plus.failed")}</p> : null}
       {o.products.length === 0 ? null : (
         <>
@@ -154,7 +177,7 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
                   <p className="notice gst-breakup">{p("plus.breakup", { base: rupees(price - tax), gst: rupees(tax) })}</p>
                   {q !== null && q.discountPaise > 0 ? <p className="saving">{p("plus.coupon.saving", { amount: rupees(q.discountPaise) })}</p> : null}
                   <ul>
-                    {product.days > 0 ? <li>{p(product.kind === "company" ? "plus.companyDays" : "plus.days", { n: product.days })}</li> : null}
+                    {product.days > 0 ? <li>{p(product.kind === "company" ? "plus.companyDays" : product.kind === "dsa" ? "plus.dsaDays" : "plus.days", { n: product.days })}</li> : null}
                     {product.credits > 0 ? <li>{p("plus.credits", { n: product.credits.toLocaleString("en-IN") })}</li> : null}
                   </ul>
                   {learner === null ? (
@@ -220,10 +243,10 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
           </section>
           <section className="card" aria-labelledby="orders-title">
             <h2 id="orders-title">{p("plus.orders")}</h2>
-            {(orders.data ?? []).every((x) => x.status !== "paid") ? <p className="notice">{p("plus.noOrders")}</p> : null}
+            {(orders.data ?? []).every((x) => x.status === "created") ? <p className="notice">{p("plus.noOrders")}</p> : null}
             <ul className="coin-history">
               {(orders.data ?? [])
-                .filter((x) => x.status === "paid")
+                .filter((x) => x.status !== "created")
                 .map((x) => (
                   <li key={x.id}>
                     <span>
@@ -235,6 +258,12 @@ export function PlusPage({ client, nav, learner, site, checkout = loadCheckout }
                     {x.invoice === null ? null : (
                       <Link nav={nav} to={`/invoices/${encodeURIComponent(x.invoice)}`}>
                         <ReceiptText aria-hidden="true" /> {p("plus.invoice", { number: x.invoice })}
+                      </Link>
+                    )}
+                    {x.status === "refunded" ? <span className="pill">{p("plus.refunded", { date: x.refundedAt === null ? "" : when(x.refundedAt) })}</span> : null}
+                    {(x.creditNote ?? null) === null ? null : (
+                      <Link nav={nav} to={`/invoices/${encodeURIComponent(x.creditNote!)}`}>
+                        <ReceiptText aria-hidden="true" /> {p("plus.creditNote", { number: x.creditNote! })}
                       </Link>
                     )}
                   </li>

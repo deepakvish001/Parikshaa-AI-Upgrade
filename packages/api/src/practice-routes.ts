@@ -54,6 +54,8 @@ const problemListItem = z.object({
   title: z.string(),
   difficulty,
   tags: z.array(z.string()).readonly(),
+  patterns: z.array(z.string()).readonly().describe("The ideas behind the tags: two pointers, sliding window, DP…"),
+  companies: z.array(z.object({ slug: z.string(), name: z.string() })).readonly().describe("Companies that asked it in the last 180 days, as far as this learner may see: a company's top five without Plus."),
   kind: z.enum(["mcq", "short", "numeric", "code"]),
   acceptance: z.number().nullable().describe("Share of submissions accepted, 0 to 1."),
   solvedBy: z.number(),
@@ -130,7 +132,9 @@ const submission = z.object({
   inContest: z.boolean(),
 });
 
-const comment = z.object({ id: z.string(), authorName: z.string(), fromStaff: z.boolean(), body: z.string(), createdAt: z.string() });
+/** Beside a learner's name: their title (null until a rated contest) and their public profile's username (null when it is not public). */
+const person = { title: z.string().nullable(), username: z.string().nullable() };
+const comment = z.object({ id: z.string(), authorName: z.string(), ...person, fromStaff: z.boolean(), body: z.string(), createdAt: z.string() });
 
 const counts = z.object({ easy: z.number(), medium: z.number(), hard: z.number(), total: z.number() });
 const progress = z.object({
@@ -159,6 +163,7 @@ const contestView = z.object({
       z.object({
         rank: z.number(),
         name: z.string(),
+        ...person,
         solved: z.number(),
         penalty: z.number().describe("Minutes to each accepted answer, plus 20 for every wrong one before it."),
         problems: z.array(z.object({ minutes: z.number().nullable(), wrong: z.number() })).readonly(),
@@ -479,7 +484,7 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
         summary: "Learners by problems solved",
         security: OPEN,
         params: siteParams,
-        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), solved: z.number(), you: z.boolean() })).readonly() }), ...refusals },
+        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), ...person, solved: z.number(), you: z.boolean() })).readonly() }), ...refusals },
       },
     },
     async (request, reply) => {
@@ -581,6 +586,38 @@ export function registerPracticeRoutes(routes: Routes, deps: PracticeRouteDeps):
       const problem = await practice.updateProblem(actor.orgId, request.params.id, patch);
       await service.recordAudit(actor, "practice.problem_edited", problem.id);
       return reply.send(problem);
+    },
+  );
+
+  routes.get(
+    "/practice-admin/judge",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "The judge's queue, on this server",
+        description: "Programs running and waiting, by lane (a running contest's go first), and how many were served and turned away since the server started.",
+        security: STAFF,
+        response: {
+          200: z.object({
+            judge: z
+              .object({
+                concurrency: z.number(),
+                running: z.number(),
+                waiting: z.object({ contest: z.number(), practice: z.number() }),
+                served: z.object({ contest: z.number(), practice: z.number() }),
+                refused: z.number(),
+              })
+              .nullable()
+              .describe("Null when no code runner is set up."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send({ judge: practice.judgeStats() });
     },
   );
 

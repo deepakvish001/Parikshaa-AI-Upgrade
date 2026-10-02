@@ -14,7 +14,7 @@
 }
 .room-tile h3 {
   margin: 0 0 var(--space-2);
-  font-size: 1rem;
+  font-size: var(--text-md);
 }
 .room-tile dl {
   display: grid;
@@ -23,12 +23,12 @@
 }
 .room-tile dd {
   margin: 0;
-  font-weight: 700;
-  font-size: 1.15rem;
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
 }
 .room-tile dt {
   color: var(--text-secondary);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
 }
 .door-camera video {
   width: 100%;

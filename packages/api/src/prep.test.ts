@@ -30,7 +30,7 @@ function call(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", token: string
   return payload === undefined ? app.inject({ method, url, headers }) : app.inject({ method, url, headers, payload });
 }
 
-async function ok(method: "GET" | "POST" | "PUT" | "DELETE", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
+async function ok(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", token: string | null, url: string, payload?: object, status = method === "POST" ? 201 : 200) {
   const res = await call(method, token, url, payload);
   expect(res.statusCode, res.payload).toBe(status);
   return res.json();
@@ -189,6 +189,48 @@ describe("a learner's day", () => {
     expect((await ok("GET", asha, `${S}/plan`)).plan).toBeNull();
   });
 
+  it("gives the weekend its own minutes, plans only what fits when asked, and changes a running plan without losing what is done", async () => {
+    const asha = await signUp();
+    // 30 a weekday (24 once revision is set aside), every item on a day of its own; a deadline of Sunday the 11th.
+    const input = { track: "dsa-basics", level: "intermediate", deadline: "2026-10-11", dailyMinutes: 30, offDays: [] };
+    const tight = await ok("POST", asha, `${S}/plan/preview`, input, 200);
+    expect(tight).toMatchObject({ fits: true, finishOn: "2026-10-08" });
+    const tighter = await ok("POST", asha, `${S}/plan/preview`, { ...input, offDays: [1, 2, 3, 4, 5] }, 200);
+    // Weekends only: the 10th and the 11th before the deadline hold two of the four items.
+    expect(tighter).toMatchObject({ fits: false, itemsThatFit: { items: 2, of: 4 } });
+    // More minutes on a weekend day fit more of it.
+    const weekend = await ok("POST", asha, `${S}/plan/preview`, { ...input, offDays: [1, 2, 3, 4, 5], weekendMinutes: 120 }, 200);
+    expect(weekend).toMatchObject({ fits: true, finishOn: "2026-10-11" });
+    expect((await call("POST", asha, `${S}/plan/preview`, { ...input, weekendMinutes: 5 })).statusCode).toBe(422);
+    // Plan only the two that fit.
+    const part = (await ok("POST", asha, `${S}/plan`, { ...input, offDays: [1, 2, 3, 4, 5], upTo: 2 })).plan;
+    expect(part).toMatchObject({ onTrack: true, weekendMinutes: null });
+    expect([...part.today, ...part.upcoming].filter((t: { kind: string }) => t.kind !== "revise").map((t: { title: string }) => t.title)).toEqual(["What an array is", "Arrays are stored how"]);
+
+    // A full plan instead; a day's work done, a task of the learner's own; then a change.
+    let plan = (await ok("POST", asha, `${S}/plan`, input)).plan;
+    expect(plan.today.map((t: { title: string }) => t.title)).toEqual(["What an array is"]);
+    await ok("POST", asha, `${S}/lessons/what-an-array-is/done`, undefined, 200);
+    await ok("POST", asha, `${S}/plan/tasks`, { title: "Mock interview", estMinutes: 30, day: "2026-10-07" });
+    clock += DAY; // Tuesday the 6th
+    expect((await call("PATCH", asha, `${S}/plan`, { dailyMinutes: 5 })).statusCode).toBe(422);
+    plan = (await ok("PATCH", asha, `${S}/plan`, { deadline: "2026-10-31", dailyMinutes: 150, weekendMinutes: 60 }, 200)).plan;
+    expect(plan).toMatchObject({ deadline: "2026-10-31", dailyMinutes: 150, weekendMinutes: 60, done: 1 });
+    const work = [...plan.today, ...plan.upcoming] as { title: string; day: string; sprint: number; kind: string }[];
+    // What was done stays done; the rest starts today, in a new sprint, beside the learner's own task.
+    expect(plan.completed.map((t: { title: string }) => t.title)).toEqual(["What an array is"]);
+    expect(work.filter((t) => t.kind === "practice").map((t) => [t.title, t.day, t.sprint])).toEqual([
+      ["Arrays are stored how", "2026-10-06", 2],
+      ["Binary search needs what", "2026-10-06", 2],
+      ["BFS uses which structure", "2026-10-06", 2],
+    ]);
+    expect(work.find((t) => t.kind === "custom")).toMatchObject({ title: "Mock interview", day: "2026-10-07" });
+    expect(work.filter((t) => t.title === "What an array is")).toEqual([]);
+
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect((await call("PATCH", ravi, `${S}/plan`, { dailyMinutes: 60 })).statusCode).toBe(404);
+  });
+
   it("times focus, and pays a module's milestone when it is finished", async () => {
     const asha = await signUp();
     const session = await ok("POST", asha, `${S}/focus`, {});
@@ -203,7 +245,7 @@ describe("a learner's day", () => {
     expect(coins.balance).toBe(115);
     expect(coins.history.map((h: { rule: string }) => h.rule)).toEqual(expect.arrayContaining(["lesson", "solve", "module"]));
     const leaders = await ok("GET", null, `${S}/coins/leaders`);
-    expect(leaders.leaders).toEqual([{ rank: 1, name: "Asha", coins: 115, you: false }]);
+    expect(leaders.leaders).toEqual([{ rank: 1, name: "Asha", title: null, username: null, coins: 115, you: false }]);
   });
 });
 

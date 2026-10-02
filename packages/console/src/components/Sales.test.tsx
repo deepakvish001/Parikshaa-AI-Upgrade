@@ -44,6 +44,7 @@ function stub() {
     })),
     practiceLearners: vi.fn(async () => [{ id: "l1", name: "Asha Rao", email: "asha@example.com", joinedAt: "", solved: 0, submissions: 0, lastActiveAt: null }]),
     practiceSite: vi.fn(async () => ({ slug: "nit-practice", title: "NIT Practice", welcome: "", open: true })),
+    refundPlusOrder: vi.fn(async () => ({ status: "refunded" as const, creditNote: "PKC/2627/000001", creditsTaken: 1000 })),
   };
 }
 
@@ -96,5 +97,27 @@ describe("coupons and sales", () => {
     expect(summary.textContent).toContain("IGST @ 18%");
     expect(summary.textContent).toContain("Maharashtra");
     expect(client.plusInvoice).toHaveBeenCalledWith("PKP/2627/000001");
+  });
+
+  it("refunds a paid order with a reason, and shows a refunded one with its credit note", async () => {
+    const client = stub();
+    client.plusOrders.mockResolvedValueOnce([
+      { id: "o1", learnerId: "l1", title: "Plus, 3 months", days: 90, credits: 1000, listPaise: 99_900, coupon: null, discountPaise: 0, amountPaise: 99_900, taxPaise: 15_239, status: "paid", createdAt: "2026-10-05T04:00:00Z", paidAt: "2026-10-05T04:01:00Z", invoice: "PKP/2627/000001" },
+      { id: "o3", learnerId: "l1", title: "DSA Pass", days: 60, credits: 0, listPaise: 49_900, coupon: null, discountPaise: 0, amountPaise: 49_900, taxPaise: 7_612, status: "refunded", createdAt: "2026-10-01T04:00:00Z", paidAt: "2026-10-01T04:01:00Z", refundedAt: "2026-10-02T04:00:00Z", invoice: "PKP/2627/000002", creditNote: "PKC/2627/000001" },
+    ] as never);
+    const user = userEvent.setup();
+    show(client);
+    const sold = await screen.findByRole("region", { name: "Plans bought" });
+    const refunded = (await within(sold).findByText("DSA Pass")).closest("tr")!;
+    expect(refunded.textContent).toContain("Refunded");
+    await user.click(within(refunded).getByRole("button", { name: "PKC/2627/000001" }));
+    expect(await screen.findByLabelText("Credit note PKC/2627/000001")).toBeTruthy();
+
+    const paid = within(sold).getByText("Plus, 3 months").closest("tr")!;
+    await user.click(within(paid).getByRole("button", { name: "Refund…" }));
+    const form = within(paid).getByRole("form", { name: "Refund Plus, 3 months" });
+    await user.type(within(form).getByLabelText("Why"), "Asked within a week");
+    await user.click(within(form).getByRole("button", { name: "Refund ₹999" }));
+    await waitFor(() => expect(client.refundPlusOrder).toHaveBeenCalledWith("o1", "Asked within a week"));
   });
 });

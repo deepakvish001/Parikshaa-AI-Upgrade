@@ -130,6 +130,8 @@ export RUNNER_TOKEN=...           # 32+ characters; the API's key to the code ru
 export PUBLIC_URL=https://exam.example.ac.in   # where candidates open their links
 # Optional delivery: SMTP_URL=smtps://user:pass@email-smtp.ap-south-1.amazonaws.com
 #   EMAIL_FROM="Acme Hiring <hiring@acme.in>"  MSG91_AUTH_KEY=...  MSG91_TEMPLATE_ID=...
+# Optional practice notifications: VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:...
+#   (npx web-push generate-vapid-keys; docs/OPERATIONS.md)
 docker compose up --build         # needs gVisor on the host for the runner: https://gvisor.dev
 
 # Once, per organisation: its first owner. Everyone after is added from the console.

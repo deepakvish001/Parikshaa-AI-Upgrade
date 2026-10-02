@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, BookOpen, Plus, Route, Trash2 } from "lucide-react";
-import { ConsoleError, type ConsoleClient, type PrepLesson, type PrepTrack } from "../api.ts";
+import { ConsoleError, type ConsoleClient, type PlusProduct, type PrepLesson, type PrepTrack } from "../api.ts";
 import { EmptyState, SkeletonRows } from "./kit.tsx";
 
 /**
@@ -249,8 +249,10 @@ function TrackForm({
 export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite: boolean }) {
   const lessons = useQuery({ queryKey: ["prep", "lessons"], queryFn: () => client.prepLessons() });
   const [editing, setEditing] = useState<PrepLesson | "new" | null>(null);
+  const [quizOf, setQuizOf] = useState<PrepLesson | null>(null);
   return (
     <>
+      {quizOf !== null ? <LessonQuizForm key={quizOf.id} client={client} lesson={quizOf} onDone={() => setQuizOf(null)} /> : null}
       {editing !== null ? (
         <LessonForm client={client} lesson={editing === "new" ? null : editing} onDone={() => setEditing(null)} />
       ) : canWrite ? (
@@ -294,9 +296,14 @@ export function Lessons({ client, canWrite }: { client: ConsoleClient; canWrite:
                   <td>{l.published ? <span className="pill ok">Shown</span> : <span className="pill">Hidden</span>}</td>
                   <td>
                     {canWrite ? (
-                      <button type="button" className="quiet" onClick={() => setEditing(l)}>
-                        Edit
-                      </button>
+                      <>
+                        <button type="button" className="quiet" onClick={() => setEditing(l)}>
+                          Edit
+                        </button>
+                        <button type="button" className="quiet" aria-label={`Quiz for ${l.title}`} onClick={() => setQuizOf(l)}>
+                          Quiz
+                        </button>
+                      </>
                     ) : null}
                   </td>
                 </tr>
@@ -364,6 +371,69 @@ function LessonForm({ client, lesson, onDone }: { client: ConsoleClient; lesson:
       <div className="row">
         <button type="submit" disabled={save.isPending}>
           Save lesson
+        </button>
+        <button type="button" className="quiet" onClick={onDone}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * A lesson's quiz: up to ten multiple-choice or number problems, asked at the
+ * end of the lesson and checked at once. What a learner gets wrong goes to
+ * their revision.
+ */
+function LessonQuizForm({ client, lesson, onDone }: { client: ConsoleClient; lesson: PrepLesson; onDone: () => void }) {
+  const problems = useQuery({ queryKey: ["practice", "problems"], queryFn: () => client.practiceProblems() });
+  const current = useQuery({ queryKey: ["prep", "lesson-quiz", lesson.id], queryFn: () => client.lessonQuiz(lesson.id) });
+  const [chosen, setChosen] = useState<readonly string[] | null>(null);
+  const picked = chosen ?? current.data ?? [];
+  const save = useMutation({
+    mutationFn: () => client.setLessonQuiz(lesson.id, picked),
+    onSuccess: onDone,
+  });
+  const askable = (problems.data ?? []).filter((p) => p.question.kind === "mcq" || p.question.kind === "numeric");
+  const toggle = (id: string) => setChosen(picked.includes(id) ? picked.filter((x) => x !== id) : [...picked, id]);
+  return (
+    <form
+      className="card prep-card"
+      aria-label={`Quiz for ${lesson.title}`}
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+    >
+      <div className="bar">
+        <strong>Quiz for {lesson.title}</strong>
+        <span className="notice">{picked.length} of 10 at most</span>
+      </div>
+      <p className="notice">Multiple-choice and number problems only: they are checked the moment a learner hands the quiz in. A wrong answer goes to the learner's revision.</p>
+      {problems.isPending || current.isPending ? (
+        <SkeletonRows rows={3} columns={2} />
+      ) : askable.length === 0 ? (
+        <p className="notice">No multiple-choice or number problems yet. Add some on the Problems tab first.</p>
+      ) : (
+        <ul className="plain">
+          {askable.map((p) => (
+            <li key={p.id}>
+              <label className="check">
+                <input type="checkbox" checked={picked.includes(p.id)} disabled={!picked.includes(p.id) && picked.length >= 10} onChange={() => toggle(p.id)} /> {p.title}
+                {p.published ? null : <span className="pill">Hidden</span>}
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {save.isError ? (
+        <p className="error" role="alert">
+          {failure(save.error, "The quiz could not be saved.")}
+        </p>
+      ) : null}
+      <div className="row">
+        <button type="submit" disabled={save.isPending || current.isPending}>
+          Save quiz
         </button>
         <button type="button" className="quiet" onClick={onDone}>
           Cancel
@@ -444,13 +514,56 @@ export function ProblemOfTheDay({ client, canWrite }: { client: ConsoleClient; c
 
 const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
+const FLOW_NAMES = { hint: "Hints", review: "Reviews", doubt: "Doubts" } as const;
+
+/** Sahayak's eval scores beside their targets (Prep blueprint §14): how far the tutor can be trusted. */
+export function TutorEvals({ client }: { client: ConsoleClient }) {
+  const evals = useQuery({ queryKey: ["prep", "tutor-evals"], queryFn: () => client.tutorEvals() });
+  if (evals.data === undefined) return null;
+  const e = evals.data;
+  return (
+    <section className="card prep-card" aria-label="Sahayak evals">
+      <div className="bar">
+        <strong>Sahayak evals</strong>
+      </div>
+      <p className="notice">
+        {e.recordedAt === null
+          ? "No eval run yet: 360 cases (40 problems) wait on the first paid run. Until then the tutor is tested only against a stand-in model."
+          : `Last run ${new Date(e.recordedAt).toLocaleDateString("en-IN")}, model ${e.model ?? "unknown"}.`}
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Flow</th>
+            <th scope="col">Check</th>
+            <th scope="col">Target</th>
+            <th scope="col">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {e.flows.flatMap((f) =>
+            f.metrics.map((m, i) => (
+              <tr key={`${f.flow}-${m.id}`}>
+                <td>{i === 0 ? `${FLOW_NAMES[f.flow]}${f.cases > 0 ? ` (${f.cases} cases)` : ""}` : ""}</td>
+                <td>{m.label}</td>
+                <td>{m.target === null ? "—" : `≥ ${m.target}%`}</td>
+                <td>{m.percent === null ? <span className="notice">Not run</span> : <span className={`pill ${m.met === false ? "warn" : "ok"}`}>{m.percent}%</span>}</td>
+              </tr>
+            )),
+          )}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canManage: boolean }) {
   const queryClient = useQueryClient();
   const admin = useQuery({ queryKey: ["prep", "plus"], queryFn: () => client.plusAdmin() });
   const learners = useQuery({ queryKey: ["practice", "learners"], queryFn: () => client.practiceLearners(), enabled: canManage });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["prep", "plus"] });
   const settings = useMutation({ mutationFn: (patch: Parameters<ConsoleClient["savePlusSettings"]>[0]) => client.savePlusSettings(patch), onSuccess: refresh });
-  const [product, setProduct] = useState({ title: "", kind: "plus" as "plus" | "company" | "credits", days: 90, credits: 1000, rupees: 999 });
+  const [product, setProduct] = useState({ title: "", kind: "plus" as PlusProduct["kind"], days: 90, credits: 1000, rupees: 999 });
   const addProduct = useMutation({
     mutationFn: () =>
       client.savePlusProduct(null, {
@@ -467,7 +580,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
     },
   });
   const toggle = useMutation({
-    mutationFn: (p: { id: string; title: string; kind: "plus" | "company" | "credits"; days: number; credits: number; pricePaise: number; active: boolean }) =>
+    mutationFn: (p: { id: string; title: string; kind: PlusProduct["kind"]; days: number; credits: number; pricePaise: number; active: boolean }) =>
       client.savePlusProduct(p.id, { title: p.title, kind: p.kind, days: p.days, credits: p.credits, pricePaise: p.pricePaise, active: !p.active }),
     onSuccess: refresh,
   });
@@ -505,6 +618,10 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
             Free tutor credits a month
             <input type="number" min={0} max={100000} defaultValue={s.monthlyCredits} disabled={!canManage} onBlur={(e) => settings.mutate({ monthlyCredits: Number(e.target.value) })} />
           </label>
+          <label>
+            Free trial, days (0: none)
+            <input type="number" min={0} max={60} defaultValue={s.trialDays ?? 0} disabled={!canManage} onBlur={(e) => settings.mutate({ trialDays: Number(e.target.value) })} />
+          </label>
         </div>
         {settings.isError ? (
           <p className="error" role="alert">
@@ -537,7 +654,7 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
                 <tr key={p.id}>
                   <td>{p.title}</td>
                   <td>
-                    {p.days > 0 ? `${p.days} days of ${p.kind === "company" ? "Company Pass" : "Plus"}` : ""}
+                    {p.days > 0 ? `${p.days} days of ${p.kind === "company" ? "Company Pass" : p.kind === "dsa" ? "DSA Pass" : "Plus"}` : ""}
                     {p.days > 0 && p.credits > 0 ? " + " : ""}
                     {p.credits > 0 ? `${p.credits.toLocaleString("en-IN")} credits` : ""}
                   </td>
@@ -570,9 +687,10 @@ export function PlusAdmin({ client, canManage }: { client: ConsoleClient; canMan
             </label>
             <label>
               Kind
-              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as "plus" | "company" | "credits" })}>
+              <select value={product.kind} onChange={(e) => setProduct({ ...product, kind: e.target.value as PlusProduct["kind"] })}>
                 <option value="plus">Plus</option>
                 <option value="company">Company Pass (every company list, nothing else)</option>
+                <option value="dsa">DSA Pass (every lesson and the study plan, nothing else)</option>
                 <option value="credits">Credits pack</option>
               </select>
             </label>

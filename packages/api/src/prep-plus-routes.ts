@@ -2,6 +2,7 @@ import type { FastifyBaseLogger, FastifyInstance, FastifyReply, FastifyRequest, 
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { Learner, PracticeSite } from "@parikshaa/store";
+import { SAHAYAK_EVAL_METRICS, SAHAYAK_EVAL_SCORES, type EvalScores } from "./content/sahayak-eval-scores.js";
 import { PracticeError, type PracticeService } from "./practice.js";
 import type { PrepPlus } from "./prep-plus.js";
 import type { Sahayak } from "./sahayak.js";
@@ -45,12 +46,14 @@ const siteParams = z.object({ site: z.string().min(1).max(40) });
 const problemParams = siteParams.extend({ problem: z.string().min(1).max(80) });
 const replyIn = z.enum(["en", "hi"]).default("en").describe("The language the tutor answers in.");
 
-const product = z.object({ id: z.string(), title: z.string(), kind: z.enum(["plus", "credits", "company"]).describe("Plus; credits for the tutor; or a Company Pass, which opens every company's full list."), days: z.number(), credits: z.number(), pricePaise: z.number().describe("GST included.") });
+const product = z.object({ id: z.string(), title: z.string(), kind: z.enum(["plus", "credits", "company", "dsa"]).describe("Plus; credits for the tutor; a Company Pass, which opens every company's full list; or a DSA Pass, which opens every lesson and the study plan."), days: z.number(), credits: z.number(), pricePaise: z.number().describe("GST included.") });
 const learnerProduct = product.extend({ taxPaise: z.number().describe("The GST within the price, at 18%.") });
 const overview = z.object({
   enabled: z.boolean().describe("The site sells Plus. When false, nothing is locked."),
   active: z.boolean(),
   until: z.string().nullable(),
+  dsaUntil: z.string().nullable().describe("Without Plus: when the learner's DSA Pass ends, if they hold one."),
+  trialDays: z.number().describe("Days of free Plus this learner may start now; 0 when there is no trial for them."),
   freeModules: z.number(),
   monthlyCredits: z.number(),
   tutor: z.boolean(),
@@ -58,12 +61,25 @@ const overview = z.object({
   invoices: z.boolean().describe("Paid orders get a GST tax invoice: the server knows its supplier."),
   products: z.array(learnerProduct).readonly(),
 });
-const tutorAnswer = z.object({ id: z.string(), mode: z.enum(["hint", "review", "doubt", "notes"]), hintLevel: z.number().nullable(), answer: z.string().describe("Markdown."), credits: z.number(), createdAt: z.string() });
+const tutorAnswer = z.object({
+  id: z.string(),
+  mode: z.enum(["hint", "review", "doubt", "notes", "followup", "followup_reply"]),
+  hintLevel: z.number().nullable(),
+  answer: z.string().describe("Markdown."),
+  credits: z.number(),
+  createdAt: z.string(),
+  data: z
+    .record(z.string(), z.unknown())
+    .nullable()
+    .describe(
+      "The answer in a fixed shape. A review: { verdict: correct|partly|wrong, summary, logic: { right[], wrong[] }, complexity: { time, space, better }, quality[], edgeCases[] }. Follow-ups: { questions: [two] }. A reply to one: { verdict: strong|partial|missing, feedback, stronger }. Null for hints, doubts and notes.",
+    ),
+});
 const tutorHistory = z.object({
   entries: z.array(tutorAnswer.omit({}).extend({ question: z.string() })).readonly(),
   nextHint: z.object({ level: z.number(), credits: z.number(), available: z.boolean().describe("The last rung opens after three wrong submissions.") }).nullable(),
   failures: z.number(),
-  costs: z.object({ hint1: z.number(), hint: z.number(), review: z.number(), doubt: z.number() }),
+  costs: z.object({ hint1: z.number(), hint: z.number(), review: z.number(), doubt: z.number(), followup: z.number(), followupReply: z.number() }),
 });
 const order = z.object({
   id: z.string(),
@@ -75,10 +91,12 @@ const order = z.object({
   discountPaise: z.number(),
   amountPaise: z.number().describe("What was charged, GST included."),
   taxPaise: z.number().describe("The GST within the amount."),
-  status: z.enum(["created", "paid"]),
+  status: z.enum(["created", "paid", "refunded"]),
   createdAt: z.string(),
   paidAt: z.string().nullable(),
+  refundedAt: z.string().nullable(),
   invoice: z.string().nullable().describe("The tax invoice's number, once paid."),
+  creditNote: z.string().nullable().describe("The credit note's number, once refunded."),
 });
 const quote = z.object({ productId: z.string(), title: z.string(), listPaise: z.number(), discountPaise: z.number(), pricePaise: z.number(), taxPaise: z.number(), coupon: z.string().nullable() });
 const couponCode = z.string().max(40).optional().describe("A coupon code, any case.");
@@ -104,17 +122,43 @@ const couponBody = z.object({
   affiliate: z.string().max(120).optional(),
   active: z.boolean().optional(),
 });
-const settings = z.object({ plusEnabled: z.boolean(), freeModules: z.number().int(), monthlyCredits: z.number().int(), tutorEnabled: z.boolean() });
+const settings = z.object({
+  plusEnabled: z.boolean(),
+  freeModules: z.number().int(),
+  monthlyCredits: z.number().int(),
+  tutorEnabled: z.boolean(),
+  trialDays: z.number().int().describe("Days of free Plus each learner may start once; 0 for no trial."),
+});
 const staffProduct = product.extend({ active: z.boolean(), position: z.number() });
 const productBody = z.object({
   title: z.string().min(1).max(120),
-  kind: z.enum(["plus", "credits", "company"]),
+  kind: z.enum(["plus", "credits", "company", "dsa"]),
   days: z.number().int().default(0),
   credits: z.number().int().default(0),
   pricePaise: z.number().int(),
   active: z.boolean().default(true),
   position: z.number().int().optional(),
 });
+
+/** The eval scores as staff read them: each metric's share passed, beside its target. */
+export function sahayakEvalReport(scores: EvalScores = SAHAYAK_EVAL_SCORES) {
+  return {
+    recordedAt: scores.recordedAt,
+    model: scores.model,
+    flows: (["hint", "review", "doubt"] as const).map((flow) => {
+      const run = scores.flows[flow];
+      return {
+        flow,
+        version: run?.version ?? null,
+        cases: run?.cases ?? 0,
+        metrics: SAHAYAK_EVAL_METRICS[flow].map(({ id, label, target }) => {
+          const percent = run === undefined || run.cases === 0 ? null : Math.round(((run.passed[id] ?? 0) / run.cases) * 1000) / 10;
+          return { id, label, target, percent, met: percent === null || target === null ? null : percent >= target };
+        }),
+      };
+    }),
+  };
+}
 
 /**
  * Plus and the tutor (ROADMAP §16): what a learner buys and asks, under
@@ -184,6 +228,26 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
   );
 
   routes.post(
+    "/practice/:site/plus/trial",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Start my free trial of Plus",
+        description: "Once per learner, for as many days as the site gives; refused to one who holds Plus.",
+        security: LEARNER,
+        params: siteParams,
+        response: { 201: z.object({ active: z.boolean(), until: z.string().nullable() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      const { active, until } = await plus.startTrial(who.site, who.learner);
+      return reply.code(201).send({ active, until });
+    },
+  );
+
+  routes.post(
     "/practice/:site/plus/quote",
     {
       schema: {
@@ -207,7 +271,7 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
     {
       schema: {
         tags: PREP,
-        summary: "One of my tax invoices",
+        summary: "One of my tax invoices or credit notes",
         security: LEARNER,
         params: siteParams.extend({ number: z.string().min(1).max(20) }),
         response: { 200: invoiceView, ...refusals },
@@ -262,7 +326,7 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
         security: LEARNER,
         params: siteParams,
         response: {
-          200: z.object({ balance: z.number(), history: z.array(z.object({ delta: z.number(), reason: z.enum(["monthly", "purchase", "grant", "spend", "refund"]), at: z.string() })).readonly() }),
+          200: z.object({ balance: z.number(), history: z.array(z.object({ delta: z.number(), reason: z.enum(["monthly", "purchase", "grant", "spend", "refund", "order_refund"]), at: z.string() })).readonly() }),
           ...refusals,
         },
       },
@@ -305,6 +369,48 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
       if (who === null) return;
       limit(who.learner);
       return reply.send(await tutor.hint(who.site, who.learner, request.params.problem, request.body));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/problems/:problem/tutor/followups",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Two interview follow-up questions on a problem I have solved",
+        description: "What an interviewer asks once the code works: a changed constraint, a harder variant, a trade-off. Refused until the problem is solved.",
+        security: LEARNER,
+        params: problemParams,
+        body: z.object({ replyIn }),
+        response: { 200: tutorAnswer, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      limit(who.learner);
+      return reply.send(await tutor.followups(who.site, who.learner, request.params.problem, request.body.replyIn));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/problems/:problem/tutor/followups/:id/reply",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Answer one of the follow-up questions, and hear how an interviewer would take it",
+        security: LEARNER,
+        params: problemParams.extend({ id: z.string().min(1).max(80) }),
+        body: z.object({ question: z.number().int().min(0).max(1).describe("Which of the two: 0 or 1."), answer: z.string().max(4000), replyIn }),
+        response: { 200: tutorAnswer, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      limit(who.learner);
+      const { question, answer, replyIn: language } = request.body;
+      return reply.send(await tutor.replyToFollowup(who.site, who.learner, request.params.problem, request.params.id, question, answer, language));
     },
   );
 
@@ -393,6 +499,50 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
 
   // --- staff ------------------------------------------------------------------------------------
 
+  routes.get(
+    "/practice-admin/tutor/evals",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Sahayak's eval scores against their targets",
+        description: "From the last recorded run of the tutor's evals (hints, reviews, doubts); every score null before the first run.",
+        security: STAFF,
+        response: {
+          200: z.object({
+            recordedAt: z.string().nullable(),
+            model: z.string().nullable(),
+            flows: z
+              .array(
+                z.object({
+                  flow: z.enum(["hint", "review", "doubt"]),
+                  version: z.string().nullable(),
+                  cases: z.number(),
+                  metrics: z
+                    .array(
+                      z.object({
+                        id: z.string(),
+                        label: z.string(),
+                        target: z.number().nullable().describe("Percent that must pass; null when watched without one."),
+                        percent: z.number().nullable().describe("Percent that passed, one decimal; null before a run."),
+                        met: z.boolean().nullable(),
+                      }),
+                    )
+                    .readonly(),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send(sahayakEvalReport());
+    },
+  );
+
   routes.get("/practice-admin/plus", { schema: { tags: ADMIN, summary: "Plus and the tutor: settings and plans", security: STAFF, response: { 200: z.object({ settings, products: z.array(staffProduct).readonly() }), ...refusals } } }, async (request, reply) => {
     const actor = await staff(request, reply, "exam:read");
     if (actor === null) return;
@@ -463,7 +613,7 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
     if (actor === null) return;
     const orders = await plus.staffOrders(actor.orgId);
     return reply.send({
-      orders: orders.map(({ id, learnerId, title, days, credits, listPaise, couponCode, discountPaise, amountPaise, taxPaise, status, createdAt, paidAt, invoice }) => ({
+      orders: orders.map(({ id, learnerId, title, days, credits, listPaise, couponCode, discountPaise, amountPaise, taxPaise, status, createdAt, paidAt, refundedAt, invoice, creditNote }) => ({
         id,
         learnerId,
         title,
@@ -477,10 +627,35 @@ export function registerPrepPlusRoutes(routes: Routes, deps: PrepPlusRouteDeps):
         status,
         createdAt,
         paidAt,
+        refundedAt,
         invoice,
+        creditNote,
       })),
     });
   });
+
+  routes.post(
+    "/practice-admin/plus/orders/:id/refund",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Refund a paid order in full",
+        description:
+          "Gives the money back through Razorpay, takes away the pass the order gave, takes back its credits as far as they are unspent, and issues a GST credit note against its invoice. Refunding a refunded order changes nothing.",
+        security: STAFF,
+        params: z.object({ id: z.string().min(1) }),
+        body: z.object({ reason: z.string().max(300) }),
+        response: { 200: z.object({ status: z.literal("refunded"), creditNote: z.string().nullable(), creditsTaken: z.number() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "org:manage");
+      if (actor === null) return;
+      const done = await plus.refundOrder(actor.orgId, request.params.id, request.body.reason);
+      await service.recordAudit(actor, "prep.order_refunded", request.params.id, { amountPaise: done.order.amountPaise, creditNote: done.creditNote, creditsTaken: done.creditsTaken });
+      return reply.send({ status: "refunded" as const, creditNote: done.creditNote, creditsTaken: done.creditsTaken });
+    },
+  );
 
   routes.get(
     "/practice-admin/plus/invoices/:number",

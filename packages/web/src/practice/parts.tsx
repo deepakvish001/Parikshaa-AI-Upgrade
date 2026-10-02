@@ -5,6 +5,23 @@ import type { Difficulty, Learner, PracticeClient } from "./client.ts";
 
 /** Pieces the practice pages and the prep pages share. */
 
+/**
+ * A learner's name as it appears to others: a link to their public profile
+ * when they have one, and their contest title beside it once they are rated.
+ */
+export function Who({ nav, name, title, username }: { readonly nav: Nav; readonly name: string; readonly title?: string | null | undefined; readonly username?: string | null | undefined }) {
+  return (
+    <>
+      {username === undefined || username === null ? name : (
+        <Link nav={nav} to={`/u/${encodeURIComponent(username)}`}>
+          {name}
+        </Link>
+      )}
+      {title === undefined || title === null ? null : <span className="title-chip">{title}</span>}
+    </>
+  );
+}
+
 export interface Nav {
   readonly site: string;
   readonly href: (path: string) => string;

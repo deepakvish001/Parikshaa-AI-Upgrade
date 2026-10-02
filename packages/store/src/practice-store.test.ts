@@ -127,6 +127,15 @@ describe("problems", () => {
 });
 
 describe("submissions", () => {
+  it("are stamped with when they came in, when that is given", async () => {
+    const asha = await learner();
+    const p1 = await store.addProblem(A, draft("stable-sort"));
+    const at = new Date("2026-10-05T10:29:59.500Z");
+    expect((await store.addSubmission(practiceLearner(A, asha.id), sub(p1.id, "passed"), at)).createdAt).toBe(at.toISOString());
+    const now = Date.parse((await store.addSubmission(practiceLearner(A, asha.id), sub(p1.id, "passed"))).createdAt);
+    expect(Math.abs(now - Date.now())).toBeLessThan(60_000);
+  });
+
   it("are a learner's own: their list, their progress, and nobody else's, even by raw SQL", async () => {
     const [asha, ravi] = [await learner(), await learner(A, "ravi@example.com", "Ravi")];
     const p1 = await store.addProblem(A, draft("stable-sort"));

@@ -30,7 +30,7 @@ import {
   type Verdict,
 } from "./client.ts";
 import { approachesOf } from "./editorial.ts";
-import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, type Context, type Nav } from "./parts.tsx";
+import { DifficultyPill, Link, messageOf, SignInNeeded, useWhen, Who, type Context, type Nav } from "./parts.tsx";
 import { navWord } from "./prep-nav.ts";
 
 // The prep pages come in a chunk of their own, when one is first opened.
@@ -45,8 +45,10 @@ const ListsPage = lazy(() => prep().then((m) => ({ default: m.ListsPage })));
 const NotesPage = lazy(() => prep().then((m) => ({ default: m.NotesPage })));
 const PotdPage = lazy(() => prep().then((m) => ({ default: m.PotdPage })));
 const CoinsPage = lazy(() => prep().then((m) => ({ default: m.CoinsPage })));
+const SharedCodePage = lazy(() => prep().then((m) => ({ default: m.SharedCodePage })));
 const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
 const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
+const ShareCode = lazy(() => prep().then((m) => ({ default: m.ShareCode })));
 const RewardNote = lazy(() => prep().then((m) => ({ default: m.RewardNote })));
 const plusPages = () => import("./PlusPages.tsx");
 const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
@@ -62,6 +64,8 @@ const CompanyPage = lazy(() => community().then((m) => ({ default: m.CompanyPage
 const ExperiencesPage = lazy(() => community().then((m) => ({ default: m.ExperiencesPage })));
 const StorePage = lazy(() => community().then((m) => ({ default: m.StorePage })));
 const RatingPage = lazy(() => community().then((m) => ({ default: m.RatingPage })));
+const ProfilePage = lazy(() => community().then((m) => ({ default: m.ProfilePage })));
+const StoriesPage = lazy(() => community().then((m) => ({ default: m.StoriesPage })));
 const TutorPanel = lazy(() => import("./Tutor.tsx").then((m) => ({ default: m.TutorPanel })));
 import "./practice.css";
 
@@ -102,6 +106,9 @@ export type Route =
   | { readonly page: "experiences"; readonly company: string | undefined }
   | { readonly page: "store" }
   | { readonly page: "rating" }
+  | { readonly page: "profile"; readonly username: string }
+  | { readonly page: "stories" }
+  | { readonly page: "share"; readonly id: string }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -163,6 +170,12 @@ export function parseRoute(pathname: string, search: string): Route {
       return { page: "store" };
     case "rating":
       return { page: "rating" };
+    case "stories":
+      return { page: "stories" };
+    case "shares":
+      return second === undefined ? { page: "problems" } : { page: "share", id: second };
+    case "u":
+      return second === undefined ? { page: "rating" } : { page: "profile", username: second };
     case "signin":
       return { page: "signin", next };
     case "signup":
@@ -428,6 +441,12 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
+        ) : route.page === "stories" ? (
+          <StoriesPage {...context} />
+        ) : route.page === "share" ? (
+          <SharedCodePage {...context} id={route.id} />
+        ) : route.page === "profile" ? (
+          <ProfilePage {...context} username={route.username} />
         ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "placement" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
@@ -515,15 +534,19 @@ function span(ms: number): string {
 type StatusFilter = "all" | "todo" | "attempted" | "solved";
 
 function ProblemsPage({ client, nav, learner, site, welcome }: Context & { readonly welcome: string }) {
-  const { t } = usePreferences();
+  const { t, language } = usePreferences();
   const problems = useQuery({ queryKey: ["practice", site, "problems", learner?.id ?? null], queryFn: () => client.problems() });
   const progress = useQuery({ queryKey: ["practice", site, "progress", learner?.id], queryFn: () => client.progress(), enabled: learner !== null });
   const [text, setText] = useState("");
   const [difficulty, setDifficulty] = useState<"all" | Difficulty>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [tag, setTag] = useState<string | null>(null);
+  const [pattern, setPattern] = useState("");
+  const [company, setCompany] = useState("");
 
   const all = problems.data ?? [];
+  const patterns = [...new Set(all.flatMap((p) => p.patterns))].sort();
+  const companies = [...new Map(all.flatMap((p) => p.companies).map((c) => [c.slug, c.name])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
   const tags = [...new Set(all.flatMap((p) => p.tags))].sort();
   const tagged = (name: string) => all.filter((p) => p.tags.includes(name)).length;
   const shown = all.filter(
@@ -531,7 +554,9 @@ function ProblemsPage({ client, nav, learner, site, welcome }: Context & { reado
       (text.trim() === "" || p.title.toLowerCase().includes(text.trim().toLowerCase())) &&
       (difficulty === "all" || p.difficulty === difficulty) &&
       (status === "all" || (status === "todo" ? p.status === null : p.status === status)) &&
-      (tag === null || p.tags.includes(tag)),
+      (tag === null || p.tags.includes(tag)) &&
+      (pattern === "" || p.patterns.includes(pattern)) &&
+      (company === "" || p.companies.some((c) => c.slug === company)),
   );
 
   return (
@@ -579,6 +604,32 @@ function ProblemsPage({ client, nav, learner, site, welcome }: Context & { reado
                 <option value="todo">{t("practice.todo")}</option>
                 <option value="attempted">{t("practice.attempted")}</option>
                 <option value="solved">{t("practice.solved")}</option>
+              </select>
+            </label>
+          )}
+          {patterns.length === 0 ? null : (
+            <label>
+              <span className="visually-hidden">{navWord(language, "pattern")}</span>
+              <select aria-label={navWord(language, "pattern")} value={pattern} onChange={(e) => setPattern(e.target.value)}>
+                <option value="">{navWord(language, "allPatterns")}</option>
+                {patterns.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {companies.length === 0 ? null : (
+            <label>
+              <span className="visually-hidden">{navWord(language, "company")}</span>
+              <select aria-label={navWord(language, "company")} value={company} onChange={(e) => setCompany(e.target.value)}>
+                <option value="">{navWord(language, "allCompanies")}</option>
+                {companies.map(([slug, name]) => (
+                  <option key={slug} value={slug}>
+                    {name}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -775,6 +826,11 @@ function ProblemPage({ client, nav, learner, site, slug, contest }: Context & { 
             {learner === null || p.contest !== null ? null : (
               <Suspense fallback={null}>
                 <SaveMenu client={client} site={site} slug={slug} />
+              </Suspense>
+            )}
+            {learner === null || p.contest !== null || p.question.kind !== "code" ? null : (
+              <Suspense fallback={null}>
+                <ShareCode client={client} nav={nav} slug={slug} code={codeOf(value)} />
               </Suspense>
             )}
             {p.tags.length === 0 ? null : (
@@ -1008,7 +1064,9 @@ function Discussion({ client, nav, learner, site, slug, here }: Context & { read
                 <span className="avatar-dot small" aria-hidden="true">
                   {c.authorName.slice(0, 1).toUpperCase()}
                 </span>
-                <strong>{c.authorName}</strong>
+                <strong>
+                  <Who nav={nav} name={c.authorName} title={c.title} username={c.username} />
+                </strong>
                 {c.fromStaff ? (
                   <span className="pill brand">
                     <ShieldCheck aria-hidden="true" /> {t("practice.staff")}
@@ -1270,7 +1328,7 @@ function ProgressPage({
 
 // --- the leaderboard -------------------------------------------------------------------------------
 
-function LeaderboardPage({ client, learner, site }: Context) {
+function LeaderboardPage({ client, nav, learner, site }: Context) {
   const { t } = usePreferences();
   const leaders = useQuery({ queryKey: ["practice", site, "leaderboard", learner?.id ?? null], queryFn: () => client.leaderboard() });
   return (
@@ -1298,7 +1356,7 @@ function LeaderboardPage({ client, learner, site }: Context) {
                 <tr key={`${l.rank}-${l.name}`} className={l.you ? "you" : undefined}>
                   <td className="num">{l.rank <= 3 ? <span className="rank-chip">{l.rank}</span> : l.rank}</td>
                   <td>
-                    {l.name}
+                    <Who nav={nav} name={l.name} title={l.title} username={l.username} />
                     {l.you ? <span className="pill brand">{t("practice.you")}</span> : null}
                   </td>
                   <td className="num">{l.solved}</td>
@@ -1499,7 +1557,7 @@ function ContestPage({ client, nav, learner, site, slug }: Context & { readonly 
                     <tr key={`${row.rank}-${row.name}`} className={row.you ? "you" : undefined}>
                       <td className="num sticky-rank">{row.rank}</td>
                       <td className="sticky-name">
-                        {row.name}
+                        <Who nav={nav} name={row.name} title={row.title} username={row.username} />
                         {row.you ? <span className="pill brand">{t("practice.you")}</span> : null}
                       </td>
                       <td className="num">{row.solved}</td>

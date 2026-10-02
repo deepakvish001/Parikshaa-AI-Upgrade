@@ -1,0 +1,18 @@
+2026-10-01T22:03:25.826Z
+
+The contest: 28672 requests in 202s (142 req/s on average)
+route                                           count  errors     p50     p95     p99     max
+POST submit (contest)                            7649       0   15412   28401   29626   31478
+GET contest problem                              5998       0    4398   11182   12582   14003
+POST run (contest)                               5963       0    5555   10771   12300   13317
+GET contest (scoreboard)                         5460       0    6029   10643   12177   12818
+GET contest                                      2000       0    1373    2155    2458    2494
+POST submit (practice)                           1602       0    9385   14839   16080   16970
+
+After it ended
+route                                           count  errors     p50     p95     p99     max
+GET rating                                        199       0    3717    3853    3854    3854
+GET rating (rates the contest)                      1       0     529     529     529     529
+
+judge: 64 at once; at the busiest 64 running and 741 waiting; at the end {"concurrency":64,"running":0,"waiting":{"contest":0,"practice":0},"served":{"contest":13537,"practice":1677},"refused":0}
+database: 9251 submissions recorded (9251 answered 200), 7602 on the contest (47 sent in its last half second reached the server after the end, and count as practice); 2000 ratings; 10 paid for rank

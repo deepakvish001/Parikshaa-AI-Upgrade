@@ -47,6 +47,12 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
       MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
       MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
+      # Optional: notifications for practice learners' daily reminder (Web Push).
+      # Make the pair once: npx web-push generate-vapid-keys. VAPID_SUBJECT is
+      # mailto:you@example.in or an https: address push services can reach you at.
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
       # Optional: WhatsApp through the Cloud API, with Parikshaa's templates
       # approved in your WhatsApp Business account (docs/PILOT.md).
       WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}

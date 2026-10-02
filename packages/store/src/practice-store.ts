@@ -127,6 +127,8 @@ export interface Comment {
   readonly id: string;
   readonly problemId: string;
   readonly authorName: string;
+  /** The learner who wrote it; null for staff. */
+  readonly learnerId: string | null;
   /** Written by the institution's staff, not a learner. */
   readonly fromStaff: boolean;
   readonly body: string;
@@ -445,6 +447,8 @@ export class PracticeStore {
       await tx.query(`DELETE FROM prep_notes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_tutor WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_reminders WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
+      await tx.query(`DELETE FROM prep_profiles WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_experience_votes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_targets WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`UPDATE prep_store_orders SET address = '' WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
@@ -453,6 +457,15 @@ export class PracticeStore {
   }
 
   /** Every learner, with how much they have done. Staff only. */
+  /** The names of these learners, those not erased: cheaper than `learners` when a name is all that is wanted. */
+  async learnerNames(orgId: OrgId, ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    if (ids.length === 0) return new Map();
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ id: string; name: string }>(`SELECT id, name FROM learners WHERE org_id = $1 AND id = ANY($2::text[]) AND erased_at IS NULL`, [orgId, [...ids]]);
+      return new Map(rows.map((r) => [r.id, r.name]));
+    });
+  }
+
   async learners(orgId: OrgId): Promise<readonly LearnerSummary[]> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const rows = await tx.query<LearnerRow & { solved: string; submissions: string; last_active_at: string | Date | null }>(
@@ -578,12 +591,13 @@ export class PracticeStore {
 
   // --- submissions --------------------------------------------------------------------
 
-  async addSubmission(scope: PracticeScope & { actor: "learner" }, draft: SubmissionDraft): Promise<Submission> {
+  /** Record a submission; `at` is when it came in (a contest's, judged after waiting in the queue), the database's now when absent. */
+  async addSubmission(scope: PracticeScope & { actor: "learner" }, draft: SubmissionDraft, at?: Date): Promise<Submission> {
     if (scope.learnerId === null) throw new Error("Only a signed-in learner submits");
     return scoped(this.#sql, scope, async (tx) => {
       const rows = await tx.query<SubmissionRow>(
-        `INSERT INTO practice_submissions (org_id, id, learner_id, problem_id, contest_id, language, answer, status, passed, total, time_ms, memory_kb)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `INSERT INTO practice_submissions (org_id, id, learner_id, problem_id, contest_id, language, answer, status, passed, total, time_ms, memory_kb, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, COALESCE($13::timestamptz, now()))
          RETURNING id, learner_id, problem_id, contest_id, language, answer, status, passed, total, time_ms, memory_kb, created_at`,
         [
           scope.orgId,
@@ -598,6 +612,7 @@ export class PracticeStore {
           draft.total,
           draft.timeMs,
           draft.memoryKb,
+          at ?? null,
         ],
       );
       return toSubmission(rows[0]!);
@@ -701,8 +716,8 @@ export class PracticeStore {
   async comments(scope: PracticeScope, problemId: string | null): Promise<readonly Comment[]> {
     return scoped(this.#sql, scope, async (tx) =>
       (
-        await tx.query<{ id: string; problem_id: string; author_name: string; staff_user_id: string | null; body: string; created_at: string | Date; hidden_at: string | Date | null }>(
-          `SELECT id, problem_id, author_name, staff_user_id, body, created_at, hidden_at FROM practice_comments
+        await tx.query<{ id: string; problem_id: string; learner_id: string | null; author_name: string; staff_user_id: string | null; body: string; created_at: string | Date; hidden_at: string | Date | null }>(
+          `SELECT id, problem_id, learner_id, author_name, staff_user_id, body, created_at, hidden_at FROM practice_comments
             WHERE org_id = $1 AND ($2::text IS NULL OR problem_id = $2)
             ORDER BY created_at ${problemId === null ? "DESC" : "ASC"} LIMIT 500`,
           [scope.orgId, problemId],
@@ -711,6 +726,7 @@ export class PracticeStore {
         id: r.id,
         problemId: r.problem_id,
         authorName: r.author_name,
+        learnerId: r.learner_id,
         fromStaff: r.staff_user_id !== null,
         body: r.body,
         createdAt: iso(r.created_at),
@@ -734,6 +750,7 @@ export class PracticeStore {
         id: rows[0]!.id,
         problemId: comment.problemId,
         authorName: comment.authorName,
+        learnerId,
         fromStaff: scope.actor === "staff",
         body: comment.body,
         createdAt: iso(rows[0]!.created_at),

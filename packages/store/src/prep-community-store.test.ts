@@ -49,6 +49,8 @@ const item = (patch: Partial<StoreItemDraft> = {}): StoreItemDraft => ({
   priceCoins: 100,
   stock: 2,
   perLearner: 1,
+  couponPercent: 0,
+  perMonth: null,
   active: true,
   ...patch,
 });
@@ -135,6 +137,70 @@ describe("experiences", () => {
   });
 });
 
+describe("community v2", () => {
+  it("holds a published experience at three flags, one a learner, until staff keep or remove it", async () => {
+    const acme = await company();
+    const author = await learner(A, "author@example.com");
+    const e = await store.addExperience(practiceLearner(A, author.id), { companyId: acme.id, role: "SDE", interviewed: "2026-08", verdict: "offer", rounds: [], tips: "", authorName: "A" });
+    const flaggers = await Promise.all(["a@x.com", "b@x.com", "c@x.com"].map((m) => learner(A, m)));
+    const at = new Date("2026-09-05T00:00:00Z");
+    // Not published yet: nothing to flag.
+    expect(await store.flagExperience(A, e.id, flaggers[0]!.id, { reason: "fake", note: "" }, at)).toEqual({ added: false, held: false });
+    await store.decideExperience(A, e.id, "published", "s", at);
+    // Not one's own.
+    expect((await store.flagExperience(A, e.id, author.id, { reason: "fake", note: "" }, at)).added).toBe(false);
+    expect(await store.flagExperience(A, e.id, flaggers[0]!.id, { reason: "fake", note: "Never happened" }, at)).toEqual({ added: true, held: false });
+    expect((await store.flagExperience(A, e.id, flaggers[0]!.id, { reason: "offensive", note: "" }, at)).added).toBe(false);
+    await store.flagExperience(A, e.id, flaggers[1]!.id, { reason: "wrong_company", note: "" }, at);
+    expect(await store.flagExperience(A, e.id, flaggers[2]!.id, { reason: "other", note: "" }, at)).toEqual({ added: true, held: true });
+    expect((await store.experiences(practiceStaff(A)))[0]!.status).toBe("held");
+    // Out of a learner's sight; their own flag is theirs to see.
+    expect((await store.experiences(practiceLearner(A, flaggers[0]!.id))).map((x) => x.id)).toEqual([]);
+    expect([...(await store.myFlags(practiceLearner(A, flaggers[0]!.id)))]).toEqual([e.id]);
+    const queue = await store.flagQueue(A);
+    expect(queue).toHaveLength(1);
+    expect(queue[0]).toMatchObject({ experienceId: e.id, status: "held" });
+    expect(queue[0]!.flags.map((f) => f.reason).sort()).toEqual(["fake", "other", "wrong_company"]);
+
+    expect(await store.resolveFlags(A, e.id, true, "staff-1", at)).toBe(true);
+    expect((await store.experiences(practiceStaff(A)))[0]!.status).toBe("published");
+    expect(await store.flagQueue(A)).toEqual([]);
+    expect(await store.resolveFlags(A, e.id, true, "staff-1", at)).toBe(false);
+    // A learner who flagged it before cannot flag it again; another can, and staff remove it.
+    expect((await store.flagExperience(A, e.id, flaggers[0]!.id, { reason: "fake", note: "" }, at)).added).toBe(false);
+    const late = await learner(A, "d@x.com");
+    await store.flagExperience(A, e.id, late.id, { reason: "offensive", note: "Rude" }, at);
+    expect(await store.resolveFlags(A, e.id, false, "staff-1", at)).toBe(true);
+    expect((await store.experiences(practiceStaff(A)))[0]!.status).toBe("rejected");
+  });
+
+  it("publishes a story staff approve, and keeps a pending one to its author", async () => {
+    const [asha, ravi] = [await learner(A), await learner(A, "ravi@example.com")];
+    const story = await store.addStory(A, asha.id, { company: "Acme", role: "SDE 1", story: "Two hundred problems, one at a time, and the plan on the weekends.", authorName: "Asha" });
+    expect(story.status).toBe("pending");
+    expect(await store.pendingStories(A, asha.id)).toBe(1);
+    expect((await store.stories(practiceLearner(A, ravi.id))).map((s) => s.id)).toEqual([]);
+    expect((await store.stories(practiceLearner(A, asha.id))).map((s) => s.id)).toEqual([story.id]);
+    expect((await store.decideStory(A, story.id, "published", "staff-1", new Date("2026-09-05T00:00:00Z")))!.publishedAt).toBe("2026-09-05T00:00:00.000Z");
+    expect(await store.decideStory(A, story.id, "rejected", "staff-1", new Date())).toBeNull();
+    expect((await store.stories(practiceLearner(A, ravi.id))).map((s) => s.id)).toEqual([story.id]);
+    expect(await store.stories(practiceLearner(B, null))).toEqual([]);
+  });
+
+  it("keeps a company's logo, and its version", async () => {
+    const acme = await company();
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+    await store.setLogo(A, acme.id, { mime: "image/png", bytes: png }, new Date("2026-09-05T00:00:00Z"));
+    const logo = await store.logo(practiceLearner(A, null), acme.id);
+    expect(logo?.mime).toBe("image/png");
+    expect([...logo!.bytes]).toEqual([...png]);
+    expect([...(await store.logoVersions(practiceLearner(A, null))).entries()]).toEqual([[acme.id, "2026-09-05T00:00:00.000Z"]]);
+    await expect(store.setLogo(A, acme.id, { mime: "image/png", bytes: new Uint8Array(102_401) }, new Date())).rejects.toThrow();
+    await store.setLogo(A, acme.id, null, new Date());
+    expect(await store.logo(practiceLearner(A, null), acme.id)).toBeNull();
+  });
+});
+
 describe("the coin store", () => {
   it("takes the coins, the stock and the order together, and refuses what cannot be paid for", async () => {
     const asha = await learner();
@@ -148,6 +214,27 @@ describe("the coin store", () => {
     await give(asha.id, 100, "g2");
     expect(await store.redeem(A, asha.id, stickers.id, "Pune", new Date())).toBe("limit");
     expect(await store.redeem(A, asha.id, "missing", "", new Date())).toBe("no_item");
+  });
+
+  it("sells a coupon for its buyer alone, and holds an item to its monthly limit", async () => {
+    const asha = await learner();
+    await give(asha.id, 1000, "start");
+    const coupon = (await store.saveItem(A, null, item({ title: "20% off Plus", kind: "coupon", couponPercent: 20, stock: null, perLearner: 5, perMonth: 1 })))!;
+    const order = await store.redeem(A, asha.id, coupon.id, "", new Date("2026-10-05T10:00:00Z"));
+    if (typeof order === "string") throw new Error(order);
+    expect(order.status).toBe("fulfilled");
+    const code = /COIN-[A-Z0-9]{8}/.exec(order.note)![0];
+    const made = await sql.transaction((tx) => tx.query<{ value: number; max_uses: number; learner_id: string }>(`SELECT value, max_uses, learner_id FROM prep_coupons WHERE code = $1`, [code]), {
+      "parikshaa.org_id": A,
+      "parikshaa.actor": "staff",
+      "parikshaa.attempt_id": "",
+      "parikshaa.learner_id": "",
+    });
+    expect(made).toEqual([{ value: 20, max_uses: 1, learner_id: asha.id }]);
+    // One a month: refused again in October, sold again in November (India's calendar).
+    expect(await store.redeem(A, asha.id, coupon.id, "", new Date("2026-10-31T18:00:00Z"))).toBe("month_limit");
+    const november = await store.redeem(A, asha.id, coupon.id, "", new Date("2026-10-31T19:00:00Z"));
+    expect(typeof november).not.toBe("string");
   });
 
   it("sells the last one once when two learners ask at the same time", async () => {

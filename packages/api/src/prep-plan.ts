@@ -38,6 +38,8 @@ export interface PlanInput {
   readonly start: string;
   readonly deadline: string;
   readonly dailyMinutes: number;
+  /** Minutes on Saturday and Sunday, when they differ from other days. */
+  readonly weekendMinutes?: number | null;
   readonly offDays: readonly number[];
 }
 
@@ -57,6 +59,12 @@ export const itemMinutes = (item: PlanItem, level: PlanLevel): number =>
   Math.max(5, Math.round((item.minutes ?? PROBLEM_MINUTES[item.difficulty ?? "medium"]) * (item.minutes === null ? LEVEL_FACTOR[level] : 1)));
 
 export const dayCapacity = (dailyMinutes: number): number => Math.max(10, Math.floor(dailyMinutes * (1 - RESERVED_SHARE)));
+
+/** A day's minutes: the weekend's on Saturday and Sunday when set, the daily minutes otherwise. */
+export const minutesOn = (day: string, dailyMinutes: number, weekendMinutes: number | null | undefined): number => {
+  const w = weekday(day);
+  return weekendMinutes != null && (w === 0 || w === 6) ? weekendMinutes : dailyMinutes;
+};
 
 /** Study days from `start`, skipping days off; every day when all seven are off, which the caller refuses. */
 export function* studyDays(start: string, offDays: readonly number[]): Generator<string> {
@@ -81,6 +89,7 @@ export function countStudyDays(start: string, end: string, offDays: readonly num
  */
 export function generatePlan(input: PlanInput): PlanOutcome {
   const capacity = dayCapacity(input.dailyMinutes);
+  const capacityOn = (d: string) => dayCapacity(minutesOn(d, input.dailyMinutes, input.weekendMinutes));
   const tasks: TaskDraft[] = [];
   const days = studyDays(input.start, input.offDays);
   let day = days.next().value as string;
@@ -100,7 +109,7 @@ export function generatePlan(input: PlanInput): PlanOutcome {
   for (const item of input.items) {
     const minutes = itemMinutes(item, input.level);
     total += minutes;
-    if (used > 0 && used + minutes > capacity) nextDay();
+    if (used > 0 && used + minutes > capacityOn(day)) nextDay();
     tasks.push({ day, sprint: sprintOf(index), position: position++, kind: item.kind, itemId: item.itemId, title: item.title, estMinutes: minutes });
     used += minutes;
   }
@@ -130,8 +139,9 @@ export function reschedule(
   today: string,
   dailyMinutes: number,
   offDays: readonly number[],
+  weekendMinutes: number | null = null,
 ): { readonly moves: readonly { id: string; day: string; position: number; sprint: number }[]; readonly finishOn: string | null } {
-  const capacity = dayCapacity(dailyMinutes);
+  const capacityOn = (d: string) => dayCapacity(minutesOn(d, dailyMinutes, weekendMinutes));
   const overdue = tasks.filter((t) => t.doneAt === null && t.day < today).sort((a, b) => a.day.localeCompare(b.day) || a.position - b.position);
   const load = new Map<string, number>();
   const count = new Map<string, number>();
@@ -148,7 +158,7 @@ export function reschedule(
     let placed: string | null = null;
     for (const day of studyDays(today, offDays)) {
       const used = load.get(day) ?? 0;
-      if (used === 0 || used + task.estMinutes <= capacity) {
+      if (used === 0 || used + task.estMinutes <= capacityOn(day)) {
         placed = day;
         break;
       }

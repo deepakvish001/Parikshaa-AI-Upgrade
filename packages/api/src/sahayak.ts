@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { Question } from "@parikshaa/core";
 import { practiceLearner, practiceStaff, type Learner, type PracticeProblem, type PracticeSite, type PracticeStore, type PrepStore, type TutorEntry } from "@parikshaa/store";
 import { measure } from "@parikshaa/viva";
+import { z } from "zod";
 import { PracticeError } from "./practice.js";
 import type { PrepPlus } from "./prep-plus.js";
 
@@ -22,7 +23,7 @@ import type { PrepPlus } from "./prep-plus.js";
 export const DEFAULT_TUTOR_MODEL = "claude-opus-5-5";
 
 /** Credits each kind of answer costs. The first hint is cheap: it is the one most asked. */
-export const TUTOR_CREDITS = { hint1: 10, hint: 20, review: 40, doubt: 15, notes: 15 } as const;
+export const TUTOR_CREDITS = { hint1: 10, hint: 20, review: 40, doubt: 15, notes: 15, followup: 15, followupReply: 10 } as const;
 /** Wrong submissions before the last rung (a worked solution) is offered. */
 export const SOLUTION_AFTER_FAILURES = 3;
 
@@ -42,8 +43,116 @@ Rules you always keep:
 - Give only what the request's rung allows. Rung 1: one observation, or the name of the pattern, in two or three sentences; no algorithm, no code. Rung 2: the approach in a short paragraph and why it works; no code. Rung 3: a step-by-step outline in plain pseudo-code, not in any programming language. Rung 4: the full explanation, its time and space complexity, and a clean reference solution in the learner's language.
 - A review names what is right, what is wrong and why, the complexity of the learner's approach against a better one if there is one, code-quality points, and the edge cases to check. Never write the corrected program in a review; point to the line or the idea instead.
 - A revision note is for the learner to keep and read again before an interview: the key idea, the steps, the complexity, and the mistakes to avoid, from what they already did. It is written only for a lesson or a problem they have solved.
+- Interview follow-up questions come only after the learner has solved the problem: the two questions an interviewer would ask next (a changed constraint, a harder variant, a trade-off), each answerable in a few sentences. When the learner answers one, judge the answer as an interviewer would, kindly and specifically.
 - If the learner's approach is already right, say so plainly.
-- Be brief and concrete. Use Markdown. Answer in the language the request names.`;
+- Be brief and concrete. Use Markdown, unless the request asks for JSON in a fixed shape. Answer in the language the request names.`;
+
+/** A review, in the fixed shape every review is answered in. */
+export const ReviewData = z.object({
+  verdict: z.enum(["correct", "partly", "wrong"]),
+  summary: z.string().min(1),
+  logic: z.object({ right: z.array(z.string()), wrong: z.array(z.string()) }),
+  complexity: z.object({ time: z.string().min(1), space: z.string().min(1), better: z.string() }),
+  quality: z.array(z.string()),
+  edgeCases: z.array(z.string()),
+});
+export type ReviewData = z.infer<typeof ReviewData>;
+
+const strings = { type: "array", items: { type: "string" } } as const;
+const REVIEW_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdict", "summary", "logic", "complexity", "quality", "edgeCases"],
+  properties: {
+    verdict: { type: "string", enum: ["correct", "partly", "wrong"], description: "correct: right and fast enough; partly: right idea with a fault or too slow; wrong: the approach does not work." },
+    summary: { type: "string", description: "One or two sentences: the overall finding." },
+    logic: {
+      type: "object",
+      additionalProperties: false,
+      required: ["right", "wrong"],
+      properties: { right: { ...strings, description: "What the program gets right." }, wrong: { ...strings, description: "Each fault, why it is wrong, and the line or idea it is in; never the corrected program." } },
+    },
+    complexity: {
+      type: "object",
+      additionalProperties: false,
+      required: ["time", "space", "better"],
+      properties: {
+        time: { type: "string", description: "The time complexity of the learner's program, e.g. O(n^2)." },
+        space: { type: "string", description: "Its extra space." },
+        better: { type: "string", description: "A better complexity and the idea that reaches it, in a sentence; empty when the program is already the best." },
+      },
+    },
+    quality: { ...strings, description: "Code-quality points: names, structure, repetition." },
+    edgeCases: { ...strings, description: "Inputs to check the program against." },
+  },
+} as const;
+
+/** Two interview follow-up questions. */
+const FollowupData = z.object({ questions: z.array(z.string().min(1)).min(2) });
+const FOLLOWUP_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["questions"],
+  properties: { questions: { type: "array", items: { type: "string" }, description: "Exactly two questions an interviewer would ask next." } },
+} as const;
+
+/** How a learner's answer to a follow-up went. */
+const ReplyData = z.object({ verdict: z.enum(["strong", "partial", "missing"]), feedback: z.string().min(1), stronger: z.string() });
+const REPLY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["verdict", "feedback", "stronger"],
+  properties: {
+    verdict: { type: "string", enum: ["strong", "partial", "missing"], description: "strong: an interviewer would be satisfied; partial: on the way, something important missing; missing: does not answer it." },
+    feedback: { type: "string", description: "What was good and what was missing, in two to four sentences." },
+    stronger: { type: "string", description: "A short stronger answer, in a few sentences; no full program." },
+  },
+} as const;
+
+/** A shape the model is asked to answer in, and how its JSON becomes what the learner reads. */
+interface Shape<T> {
+  readonly schema: Record<string, unknown>;
+  readonly parse: z.ZodType<T>;
+  readonly render: (data: T) => string;
+}
+
+const HEAD = {
+  en: { verdict: { correct: "Correct", partly: "Partly right", wrong: "Not right yet" }, logic: "Logic", complexity: "Complexity", time: "Time", space: "Space", better: "Better", quality: "Code quality", edge: "Edge cases to check", none: "Nothing to add." },
+  hi: { verdict: { correct: "सही", partly: "आंशिक रूप से सही", wrong: "अभी सही नहीं" }, logic: "तर्क (Logic)", complexity: "जटिलता (Complexity)", time: "Time", space: "Space", better: "बेहतर", quality: "कोड की गुणवत्ता", edge: "इन edge cases पर जाँचें", none: "कुछ जोड़ने को नहीं।" },
+} as const;
+
+const list = (items: readonly string[], none: string, mark = "-") => (items.length === 0 ? none : items.map((i) => `${mark} ${i}`).join("\n"));
+
+/** A review's Markdown, from its findings: what the learner reads, and what the evals grade. */
+export function reviewMarkdown(r: ReviewData, replyIn: "en" | "hi"): string {
+  const h = HEAD[replyIn];
+  return [
+    `**${h.verdict[r.verdict]}.** ${r.summary}`,
+    `### ${h.logic}`,
+    [...r.logic.right.map((x) => `- ✓ ${x}`), ...r.logic.wrong.map((x) => `- ✗ ${x}`)].join("\n") || h.none,
+    `### ${h.complexity}`,
+    `- ${h.time}: ${r.complexity.time}\n- ${h.space}: ${r.complexity.space}${r.complexity.better.trim() === "" ? "" : `\n- ${h.better}: ${r.complexity.better}`}`,
+    `### ${h.quality}`,
+    list(r.quality, h.none),
+    `### ${h.edge}`,
+    list(r.edgeCases, h.none),
+  ].join("\n\n");
+}
+
+const REVIEW_SHAPE = (replyIn: "en" | "hi"): Shape<ReviewData> => ({ schema: REVIEW_SCHEMA, parse: ReviewData, render: (r) => reviewMarkdown(r, replyIn) });
+const FOLLOWUP_SHAPE: Shape<z.infer<typeof FollowupData>> = {
+  schema: FOLLOWUP_SCHEMA,
+  parse: FollowupData.transform((d) => ({ questions: d.questions.slice(0, 2) })),
+  render: (d) => d.questions.map((q, i) => `${i + 1}. ${q}`).join("\n"),
+};
+const REPLY_SHAPE = (replyIn: "en" | "hi"): Shape<z.infer<typeof ReplyData>> => ({
+  schema: REPLY_SCHEMA,
+  parse: ReplyData,
+  render: (d) =>
+    [`**${replyIn === "hi" ? { strong: "मज़बूत", partial: "आधा", missing: "छूट गया" }[d.verdict] : { strong: "Strong", partial: "Partly there", missing: "Missed" }[d.verdict]}.** ${d.feedback}`, d.stronger.trim() === "" ? "" : `**${replyIn === "hi" ? "बेहतर जवाब" : "A stronger answer"}:** ${d.stronger}`]
+      .filter((x) => x !== "")
+      .join("\n\n"),
+});
 
 export interface TutorAnswer {
   readonly id: string;
@@ -52,6 +161,8 @@ export interface TutorAnswer {
   readonly answer: string;
   readonly credits: number;
   readonly createdAt: string;
+  /** A review's findings, follow-up questions, or a reply's verdict; null for the rest. */
+  readonly data: Record<string, unknown> | null;
 }
 
 const statementOf = (question: Question): string => {
@@ -136,7 +247,7 @@ export class Sahayak {
     const next = rung >= 4 ? null : rung + 1;
     const credits = next === 1 ? (authored(problem) ? 0 : TUTOR_CREDITS.hint1) : TUTOR_CREDITS.hint;
     return {
-      entries: entries.map(({ id, mode, hintLevel, question, answer, credits, createdAt }) => ({ id, mode, hintLevel, question, answer, credits, createdAt })),
+      entries: entries.map(({ id, mode, hintLevel, question, answer, credits, createdAt, data }) => ({ id, mode, hintLevel, question, answer, credits, createdAt, data: data ?? null })),
       nextHint: next === null ? null : { level: next, credits, available: next < 4 || failures >= SOLUTION_AFTER_FAILURES },
       failures,
       costs: TUTOR_CREDITS,
@@ -151,16 +262,18 @@ export class Sahayak {
     effort: "low" | "medium",
     context: string,
     request: string,
+    shape?: Shape<unknown>,
   ): Promise<TutorAnswer> {
     const client = await this.#open(site);
     const key = `tutor:${entry.mode}:${crypto.randomUUID()}`;
     await this.#plus.spend(site, learner, cost, key);
     let answer: string;
+    let data: Record<string, unknown> | null = null;
     try {
       const response = await client.messages.create({
         model: this.#model,
         max_tokens: entry.mode === "hint" && (entry.hintLevel ?? 0) < 4 ? 1200 : 4000,
-        output_config: { effort },
+        output_config: shape === undefined ? { effort } : { effort, format: { type: "json_schema", schema: shape.schema } },
         system: [
           { type: "text", text: SYSTEM, cache_control: { type: "ephemeral" } },
           { type: "text", text: context, cache_control: { type: "ephemeral" } },
@@ -174,13 +287,23 @@ export class Sahayak {
         .join("")
         .trim();
       if (answer === "") throw new PracticeError("unavailable", "The tutor had nothing to say. Your credits are back.");
+      if (shape !== undefined) {
+        let parsed: unknown;
+        try {
+          parsed = shape.parse.parse(JSON.parse(answer));
+        } catch {
+          throw new PracticeError("unavailable", "The tutor's answer came back in the wrong shape. Your credits are back; try again.");
+        }
+        data = parsed as Record<string, unknown>;
+        answer = shape.render(parsed);
+      }
     } catch (error) {
       await this.#plus.refund(site, learner, cost, key);
       if (error instanceof PracticeError) throw error;
       throw new PracticeError("unavailable", "The tutor could not be reached. Your credits are back; try again in a minute.");
     }
-    const saved = await this.#plus.store.addTutor(site.orgId, learner.id, { ...entry, answer, credits: cost, model: this.#model }, new Date(this.#now()));
-    return { id: saved.id, mode: saved.mode, hintLevel: saved.hintLevel, answer: saved.answer, credits: saved.credits, createdAt: saved.createdAt };
+    const saved = await this.#plus.store.addTutor(site.orgId, learner.id, { ...entry, answer, credits: cost, model: this.#model, data }, new Date(this.#now()));
+    return { id: saved.id, mode: saved.mode, hintLevel: saved.hintLevel, answer: saved.answer, credits: saved.credits, createdAt: saved.createdAt, data };
   }
 
   #problemContext(problem: PracticeProblem): string {
@@ -203,7 +326,7 @@ export class Sahayak {
       if (!(await this.#plus.settings(site.orgId)).tutorEnabled) throw new PracticeError("unavailable", "The tutor is not available on this site");
       const entry = { mode: "hint" as const, problemId: problem.id, lessonId: null, hintLevel: 1, question: "", answer: problem.hint.trim(), credits: 0, model: AUTHORED };
       const saved = await this.#plus.store.addTutor(site.orgId, learner.id, entry, new Date(this.#now()));
-      return { id: saved.id, mode: saved.mode, hintLevel: saved.hintLevel, answer: saved.answer, credits: saved.credits, createdAt: saved.createdAt };
+      return { id: saved.id, mode: saved.mode, hintLevel: saved.hintLevel, answer: saved.answer, credits: saved.credits, createdAt: saved.createdAt, data: null };
     }
     const code = (input.code ?? "").slice(0, 20_000);
     const request = [
@@ -227,7 +350,7 @@ export class Sahayak {
     const [latest] = await this.#practice.submissions(practiceLearner(site.orgId, learner.id), { problemId: problem.id, limit: 1 });
     if (latest === undefined || latest.language === null) throw new PracticeError("invalid", "Submit your code first, then ask for a review");
     const request = [
-      `Review this submission. Answer in ${replyIn === "hi" ? "Hindi (Devanagari), keeping technical terms in English" : "English"}.`,
+      `Review this submission, as JSON in the shape given. Write every text field in ${replyIn === "hi" ? "Hindi (Devanagari), keeping technical terms in English" : "English"}.`,
       // The verdict alone: which hidden test failed is never said.
       `Verdict: ${latest.status}, ${latest.passed} of ${latest.total} tests passed${latest.timeMs === null ? "" : `, ${latest.timeMs} ms`}.`,
       `<learner_code language="${latest.language}">\n${latest.answer.slice(0, 20_000)}\n</learner_code>`,
@@ -240,7 +363,67 @@ export class Sahayak {
       "medium",
       this.#problemContext(problem),
       request,
+      REVIEW_SHAPE(replyIn) as Shape<unknown>,
     );
+  }
+
+  /** The learner's accepted submission of a problem: what follow-ups and notes are built from. Refused before it is solved. */
+  async #accepted(site: PracticeSite, learner: Learner, problemId: string, refusal: string) {
+    const submissions = await this.#practice.submissions(practiceLearner(site.orgId, learner.id), { problemId, limit: 500 });
+    const accepted = submissions.find((s) => s.status === "passed");
+    if (accepted === undefined) throw new PracticeError("invalid", refusal);
+    return accepted;
+  }
+
+  /**
+   * Two interview follow-up questions on a problem the learner has solved:
+   * what an interviewer asks once the code works.
+   */
+  async followups(site: PracticeSite, learner: Learner, slug: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    const problem = await this.#problem(site, learner, slug);
+    const accepted = await this.#accepted(site, learner, problem.id, "Solve the problem first; then Sahayak asks you the interviewer's follow-up questions");
+    const request = [
+      `Ask the two interview follow-up questions an interviewer would ask after this accepted solution, as JSON in the shape given. Do not answer them. Write them in ${replyIn === "hi" ? "Hindi (Devanagari), keeping technical terms in English" : "English"}.`,
+      accepted.language === null ? "The learner's answer was not code." : `<learner_code language="${accepted.language}">\n${accepted.answer.slice(0, 20_000)}\n</learner_code>`,
+    ].join("\n\n");
+    return this.#ask(
+      site,
+      learner,
+      { mode: "followup", problemId: problem.id, lessonId: null, hintLevel: null, question: "" },
+      TUTOR_CREDITS.followup,
+      "low",
+      this.#problemContext(problem),
+      request,
+      FOLLOWUP_SHAPE as Shape<unknown>,
+    );
+  }
+
+  /** The learner's answer to one of those questions, and how an interviewer would take it. */
+  async replyToFollowup(site: PracticeSite, learner: Learner, slug: string, followupId: string, index: number, reply: string, replyIn: "en" | "hi"): Promise<TutorAnswer> {
+    const text = reply.trim();
+    if (text.length < 3 || text.length > 4000) throw new PracticeError("invalid", "Answer in 3 to 4,000 characters");
+    const problem = await this.#problem(site, learner, slug);
+    const asked = (await this.#plus.store.tutorHistory(practiceLearner(site.orgId, learner.id), { problemId: problem.id })).find((e) => e.id === followupId && e.mode === "followup");
+    const questions = (asked?.data?.["questions"] ?? null) as string[] | null;
+    if (questions === null) throw new PracticeError("not_found", "No such follow-up questions");
+    const question = questions[index];
+    if (question === undefined) throw new PracticeError("invalid", "There are two questions: 0 or 1");
+    const request = [
+      `Judge the learner's answer to this interview follow-up question as an interviewer would, as JSON in the shape given. Write in ${replyIn === "hi" ? "Hindi (Devanagari), keeping technical terms in English" : "English"}.`,
+      `<follow_up_question>\n${question}\n</follow_up_question>`,
+      `<learner_question>\n${text}\n</learner_question>`,
+    ].join("\n\n");
+    const answered = await this.#ask(
+      site,
+      learner,
+      { mode: "followup_reply", problemId: problem.id, lessonId: null, hintLevel: null, question: text },
+      TUTOR_CREDITS.followupReply,
+      "low",
+      this.#problemContext(problem),
+      request,
+      REPLY_SHAPE(replyIn) as Shape<unknown>,
+    );
+    return answered;
   }
 
   /** A question about a problem, or about a lesson. */

@@ -249,6 +249,60 @@ describe("the plan", () => {
     expect(parseRoute("/practice/nit-practice/plan", "?level=wizard")).toEqual({ page: "plan", track: undefined });
   });
 
+  it("offers three ways when a plan does not fit, and plans only what fits when that is the one chosen", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    const sent: Record<string, unknown>[] = [];
+    routes["POST /practice/nit-practice/plan/preview"] = (init) => {
+      const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+      sent.push(body);
+      const fits = body["upTo"] === 12;
+      return {
+        body: {
+          track: { slug: "dsa-basics", title: "DSA Basics" },
+          tasks: fits ? 12 : 29,
+          totalMinutes: 1200,
+          finishOn: fits ? "2026-12-20" : "2027-02-01",
+          deadline: "2026-12-31",
+          fits,
+          sprints: [],
+          dailyMinutesToFit: fits ? null : 150,
+          itemsThatFit: fits ? null : { items: 12, of: 29 },
+        },
+      };
+    };
+    routes["POST /practice/nit-practice/plan"] = () => ({ status: 201, body: { plan } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan?track=dsa-basics");
+    await screen.findByRole("heading", { name: "Plan a track" });
+    await user.type(screen.getByLabelText("Minutes on Saturday and Sunday"), "240");
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    expect(await screen.findByText("Three ways to fit it:")).toBeTruthy();
+    expect(sent[0]).toMatchObject({ weekendMinutes: 240 });
+    expect(screen.getByRole("button", { name: /Study 150 minutes a day/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Finish by .* instead/ })).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Plan the first 12 of 29 items" }));
+    expect(screen.getByRole("status").textContent).toContain("Only the first 12 items will be planned");
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    expect(await screen.findByText(/It fits/)).toBeTruthy();
+    expect(sent[1]).toMatchObject({ upTo: 12 });
+    await user.click(screen.getByRole("button", { name: "Start this plan" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body).toMatchObject({ upTo: 12, weekendMinutes: 240 }));
+  });
+
+  it("changes a running plan's deadline and minutes", async () => {
+    routes["PATCH /practice/nit-practice/plan"] = () => ({ body: { plan: { ...plan, dailyMinutes: 90, weekendMinutes: 180 } } });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan");
+    await user.click(await screen.findByText("Change this plan"));
+    const daily = screen.getByLabelText("Minutes a day");
+    await user.clear(daily);
+    await user.type(daily, "90");
+    await user.type(screen.getByLabelText("Minutes on Saturday and Sunday"), "180");
+    await user.click(screen.getByRole("button", { name: "Save the change" }));
+    expect(await screen.findByText("Changed. Your plan is laid out again.")).toBeTruthy();
+    expect(calls.find((c) => c.method === "PATCH")!.body).toMatchObject({ dailyMinutes: 90, weekendMinutes: 180 });
+  });
+
   it("lets the learner pick target companies while planning", async () => {
     routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
     routes["GET /practice/nit-practice/companies"] = () => ({ body: { companies: [{ slug: "acme", name: "Acme", problems: 9, experiences: 0 }, { slug: "zeta", name: "Zeta", problems: 4, experiences: 1 }] } });
@@ -330,7 +384,7 @@ describe("the end of a sprint, and a day off", () => {
 
 describe("notes", () => {
   it("drafts a note on a lesson with Sahayak, into the box, and saves it only when asked", async () => {
-    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "A heap.", videoUrl: null, estMinutes: 20, done: false, locked: false } });
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "A heap.", videoUrl: null, estMinutes: 20, done: false, locked: false, quiz: [] } });
     routes["GET /practice/nit-practice/notes/lesson/heaps"] = () => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: "Mine first.", updatedAt: "2026-10-01T00:00:00Z" } });
     routes["POST /practice/nit-practice/tutor/notes"] = () => ({ body: { id: "t1", mode: "notes", hintLevel: null, answer: "## Key ideas\nSmallest at the root.", credits: 15, createdAt: "2026-10-05T04:00:00Z" } });
     routes["PUT /practice/nit-practice/notes/lesson/heaps"] = (init) => ({ body: { kind: "lesson", ref: "heaps", title: "Heaps", body: (JSON.parse(String(init.body)) as { body: string }).body, updatedAt: "2026-10-05T04:00:00Z" } });
@@ -393,6 +447,65 @@ describe("the daily reminder", () => {
     open("/practice/nit-practice/plan");
     await screen.findByRole("heading", { name: "Study plan: DSA Basics" });
     expect(screen.queryByRole("heading", { name: "Daily reminder" })).toBeNull();
+  });
+
+  it("comes as a notification on this phone when the learner allows it, and stops when they turn it off", async () => {
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: true, hour: 19, email: false, push: true, devices: 0 } });
+    routes["GET /practice/nit-practice/push/key"] = () => ({ body: { key: "BAAB" } });
+    routes["POST /practice/nit-practice/push"] = () => ({ status: 201, body: { devices: 1 } });
+    routes["DELETE /practice/nit-practice/push"] = () => ({ body: { devices: 0 } });
+    let subscription: { endpoint: string; toJSON: () => unknown; unsubscribe: () => Promise<boolean> } | null = null;
+    const subscribe = vi.fn(async () => {
+      subscription = {
+        endpoint: "https://fcm.googleapis.com/fcm/send/phone",
+        toJSON: () => ({ endpoint: "https://fcm.googleapis.com/fcm/send/phone", keys: { p256dh: "BKey", auth: "secret" } }),
+        unsubscribe: vi.fn(async () => {
+          subscription = null;
+          return true;
+        }),
+      };
+      return subscription;
+    });
+    const registration = { pushManager: { getSubscription: async () => subscription, subscribe } };
+    vi.stubGlobal("PushManager", function PushManager() {});
+    vi.stubGlobal("Notification", { requestPermission: vi.fn(async () => "granted") });
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { getRegistration: async () => registration, ready: Promise.resolve(registration) } });
+    try {
+      const user = userEvent.setup();
+      open("/practice/nit-practice/plan");
+      expect(await screen.findByText(/One notification a day at most/)).toBeTruthy();
+      const toggle = await screen.findByRole("checkbox", { name: "Also as a notification on this phone or computer" });
+      expect(toggle).not.toBeChecked();
+      await user.click(toggle);
+      await waitFor(() => expect(toggle).toBeChecked());
+      expect(subscribe).toHaveBeenCalledWith({ userVisibleOnly: true, applicationServerKey: Uint8Array.from([4, 0, 1]) });
+      expect(calls.find((c) => c.method === "POST" && c.path.endsWith("/push"))!.body).toEqual({ endpoint: "https://fcm.googleapis.com/fcm/send/phone", keys: { p256dh: "BKey", auth: "secret" } });
+      await user.click(toggle);
+      await waitFor(() => expect(toggle).not.toBeChecked());
+      expect(calls.find((c) => c.method === "DELETE")!.body).toEqual({ endpoint: "https://fcm.googleapis.com/fcm/send/phone" });
+      expect(subscription).toBeNull();
+    } finally {
+      delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    }
+  });
+
+  it("says so when the browser blocks notifications", async () => {
+    routes["GET /practice/nit-practice/reminders"] = () => ({ body: { enabled: true, hour: 19, email: true, push: true, devices: 0 } });
+    routes["GET /practice/nit-practice/push/key"] = () => ({ body: { key: "BAAB" } });
+    const registration = { pushManager: { getSubscription: async () => null, subscribe: vi.fn() } };
+    vi.stubGlobal("PushManager", function PushManager() {});
+    vi.stubGlobal("Notification", { requestPermission: vi.fn(async () => "denied") });
+    Object.defineProperty(navigator, "serviceWorker", { configurable: true, value: { getRegistration: async () => registration, ready: Promise.resolve(registration) } });
+    try {
+      const user = userEvent.setup();
+      open("/practice/nit-practice/plan");
+      await user.click(await screen.findByRole("checkbox", { name: "Also as a notification on this phone or computer" }));
+      expect(await screen.findByText(/Notifications are blocked for this site/)).toBeTruthy();
+      expect(registration.pushManager.subscribe).not.toHaveBeenCalled();
+      expect(calls.some((c) => c.method === "POST" && c.path.endsWith("/push"))).toBe(false);
+    } finally {
+      delete (navigator as { serviceWorker?: unknown }).serviceWorker;
+    }
   });
 
   it("is turned off by the link in its email, without signing in", async () => {
@@ -490,6 +603,37 @@ describe("Sahayak on a problem", () => {
     await user.click(await screen.findByRole("button", { name: "Hint 2 · 20 credits" }));
     expect(await screen.findByText(/Not enough credits/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Get credits" })).toBeTruthy();
+  });
+
+  it("asks the interview follow-ups and sends an answer to one", async () => {
+    routes["GET /practice/nit-practice/problems/stable-sort"] = () => ({ body: mcq });
+    routes["GET /practice/nit-practice/problems/stable-sort/comments"] = () => ({ body: { comments: [] } });
+    routes["GET /practice/nit-practice/lists"] = () => ({ body: { lists: [{ name: "Bookmarks", solved: 0, problems: [] }] } });
+    let entries: object[] = [];
+    routes["GET /practice/nit-practice/problems/stable-sort/tutor"] = () => ({
+      body: { entries, nextHint: null, failures: 0, costs: { hint1: 10, hint: 20, review: 40, doubt: 15, followup: 15, followupReply: 10 } },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 100, history: [] } });
+    const asked = { id: "f1", mode: "followup", hintLevel: null, answer: "1. Why is merge sort stable?\n2. Can heapsort be made stable?", credits: 15, createdAt: "2026-10-05T04:00:00Z", question: "", data: { questions: ["Why is merge sort stable?", "Can heapsort be made stable?"] } };
+    routes["POST /practice/nit-practice/problems/stable-sort/tutor/followups"] = () => {
+      entries = [asked];
+      return { body: asked };
+    };
+    routes["POST /practice/nit-practice/problems/stable-sort/tutor/followups/f1/reply"] = () => {
+      const replied = { id: "r1", mode: "followup_reply", hintLevel: null, answer: "**Strong.** You named the tie rule.", credits: 10, createdAt: "2026-10-05T04:01:00Z", question: "It takes from the left on a tie", data: { verdict: "strong" } };
+      entries = [asked, replied];
+      return { body: replied };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/problems/stable-sort");
+    await user.click(await screen.findByRole("tab", { name: "Sahayak" }));
+    await user.click(await screen.findByRole("button", { name: "Interview follow-ups · 15 credits" }));
+    expect(await screen.findByText("Why is merge sort stable?")).toBeTruthy();
+    await user.type(screen.getByLabelText("Your answer to question 1"), "It takes from the left on a tie");
+    await user.click(screen.getByRole("button", { name: "Answer question 1" }));
+    expect(await screen.findByText("You named the tie rule.")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/followups/f1/reply"))!.body).toEqual({ question: 0, answer: "It takes from the left on a tie", replyIn: "en" });
+    expect(screen.getByText("What Sahayak says is deleted after 180 days.")).toBeTruthy();
   });
 
   it("says so when the first hint is free: the problem's author wrote it", async () => {
@@ -647,8 +791,95 @@ describe("Plus", () => {
     expect(screen.getByRole("button", { name: /Print or save as PDF/ })).toBeTruthy();
   });
 
+  it("starts a free trial once, and shows a refunded order with its credit note", async () => {
+    let trialDays = 14;
+    routes["GET /practice/nit-practice/plus"] = () => ({
+      body: { enabled: true, active: trialDays === 0, until: trialDays === 0 ? "2026-10-19T04:00:00Z" : null, dsaUntil: null, trialDays, freeModules: 1, monthlyCredits: 0, tutor: true, checkout: true, invoices: true, products: [] },
+    });
+    routes["GET /practice/nit-practice/credits"] = () => ({ body: { balance: 0, history: [{ delta: -1000, reason: "order_refund", at: "2026-10-06T04:00:00Z" }] } });
+    routes["GET /practice/nit-practice/orders"] = () => ({
+      body: {
+        orders: [
+          { id: "o1", title: "Plus, 3 months", days: 90, credits: 1000, listPaise: 99_900, coupon: null, discountPaise: 0, amountPaise: 99_900, taxPaise: 15_239, status: "refunded", createdAt: "2026-10-05T04:00:00Z", paidAt: "2026-10-05T04:01:00Z", refundedAt: "2026-10-06T04:00:00Z", invoice: "PKP/2627/000001", creditNote: "PKC/2627/000001" },
+        ],
+      },
+    });
+    let started = 0;
+    routes["POST /practice/nit-practice/plus/trial"] = () => {
+      started += 1;
+      trialDays = 0;
+      return { status: 201, body: { active: true, until: "2026-10-19T04:00:00Z" } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plus");
+    expect(await screen.findByRole("heading", { name: "Try Plus free for 14 days" })).toBeTruthy();
+    expect(await screen.findByText("Taken back with a refund")).toBeTruthy();
+    expect(screen.getByText(/^Refunded /)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Credit note PKC\/2627\/000001/ }).getAttribute("href")).toBe("/practice/nit-practice/invoices/PKC%2F2627%2F000001");
+    await user.click(screen.getByRole("button", { name: "Start my 14-day trial" }));
+    expect(await screen.findByText("Your free trial has started.")).toBeTruthy();
+    expect(started).toBe(1);
+    expect(await screen.findByText(/You have Plus until/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Start my/ })).toBeNull();
+  });
+
+  it("asks a lesson's quiz, shows the right answers, and says what went to revision", async () => {
+    routes["GET /practice/nit-practice/lessons/sorting"] = () => ({
+      body: {
+        slug: "sorting",
+        title: "Sorting",
+        body: "Stable sorts.",
+        videoUrl: null,
+        estMinutes: 10,
+        done: false,
+        locked: false,
+        quiz: [
+          { slug: "stable", title: "Stable sort", question: { id: "q1", kind: "mcq", stem: "Which sort is **stable**?", maxScore: 1, options: ["quick", "merge"] } },
+          { slug: "bits", title: "Bits", question: { id: "q2", kind: "numeric", stem: "Bits in a byte?", maxScore: 1 } },
+        ],
+      },
+    });
+    routes["GET /practice/nit-practice/notes/lesson/sorting"] = () => ({ body: { kind: "lesson", ref: "sorting", title: "Sorting", body: "", updatedAt: null } });
+    routes["POST /practice/nit-practice/lessons/sorting/quiz"] = () => ({
+      body: {
+        score: 1,
+        total: 2,
+        results: [
+          { slug: "stable", right: false, answer: "merge", explanation: "Merge sort keeps equal keys in order." },
+          { slug: "bits", right: true, answer: "8", explanation: "" },
+        ],
+        revise: 1,
+      },
+    });
+    const user = userEvent.setup();
+    open("/practice/nit-practice/lessons/sorting");
+    const quiz = await screen.findByRole("region", { name: "Check yourself" });
+    expect(within(quiz).getByText("2 quick questions. What you get wrong comes back for revision today.")).toBeTruthy();
+    await user.click(within(quiz).getByRole("radio", { name: /quick/ }));
+    await user.type(within(quiz).getByRole("textbox"), "8");
+    await user.click(within(quiz).getByRole("button", { name: "Check my answers" }));
+    expect(await within(quiz).findByText("1 of 2 right")).toBeTruthy();
+    expect(within(quiz).getByText("Not quite — the answer is merge")).toBeTruthy();
+    expect(within(quiz).getByText("Merge sort keeps equal keys in order.")).toBeTruthy();
+    expect(within(quiz).getByText("1 sent to revision")).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/quiz"))!.body).toEqual({ answers: { stable: "0", bits: "8" } });
+    await user.click(within(quiz).getByRole("button", { name: "Try again" }));
+    expect(within(quiz).getByRole("button", { name: "Check my answers" })).toBeTruthy();
+  });
+
+  it("shows a shared solution read-only, with the way to the problem", async () => {
+    routes["GET /practice/nit-practice/shares/AbCdEfGhIjKl"] = () => ({
+      body: { problem: { slug: "sum-of-two", title: "Sum of two" }, author: "Ravi", language: "python", source: "print(1 + 2)", createdAt: "2026-10-05T04:00:00Z" },
+    });
+    open("/practice/nit-practice/shares/AbCdEfGhIjKl");
+    expect(await screen.findByRole("heading", { name: "Sum of two: a shared solution" })).toBeTruthy();
+    expect(screen.getByText("Shared by Ravi · python")).toBeTruthy();
+    expect(screen.getByText("print(1 + 2)")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Solve it yourself" }).getAttribute("href")).toBe("/practice/nit-practice/problems/sum-of-two");
+  });
+
   it("shows a locked lesson by name, with the way to Plus", async () => {
-    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true } });
+    routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true, quiz: [] } });
     open("/practice/nit-practice/lessons/heaps");
     expect(await screen.findByText("This lesson comes with Plus.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /See Plus/ }).getAttribute("href")).toBe("/practice/nit-practice/plus");

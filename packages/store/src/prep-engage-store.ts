@@ -32,6 +32,13 @@ export interface ReminderPrefs {
 
 export const DEFAULT_REMINDER: ReminderPrefs = { enabled: false, hour: 19 };
 
+/** Where a browser takes a learner's push notifications (migration 0047). */
+export interface PushSubscriptionRecord {
+  readonly endpoint: string;
+  readonly p256dh: string;
+  readonly auth: string;
+}
+
 export interface PrepAnalytics {
   readonly from: string;
   readonly to: string;
@@ -76,6 +83,31 @@ export class PrepEngageStore {
     });
   }
 
+  // --- push subscriptions --------------------------------------------------------------
+
+  /** Keep a browser's subscription for a learner; the same browser subscribing again replaces it. */
+  async addPush(scope: PracticeScope, learnerId: string, sub: PushSubscriptionRecord): Promise<void> {
+    await scoped(this.#sql, scope, async (tx) => {
+      // An endpoint belongs to one browser: if another learner on it had it, theirs ends here.
+      await tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND endpoint = $2 AND learner_id <> $3`, [scope.orgId, sub.endpoint, learnerId]);
+      await tx.query(
+        `INSERT INTO prep_push_subscriptions (org_id, learner_id, endpoint, p256dh, auth) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (org_id, endpoint) DO UPDATE SET p256dh = $4, auth = $5`,
+        [scope.orgId, learnerId, sub.endpoint, sub.p256dh, sub.auth],
+      );
+    });
+  }
+
+  async removePush(scope: PracticeScope, learnerId: string, endpoint: string): Promise<void> {
+    await scoped(this.#sql, scope, (tx) => tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2 AND endpoint = $3`, [scope.orgId, learnerId, endpoint]));
+  }
+
+  async pushes(scope: PracticeScope, learnerId: string): Promise<readonly PushSubscriptionRecord[]> {
+    return scoped(this.#sql, scope, (tx) =>
+      tx.query<PushSubscriptionRecord>(`SELECT endpoint, p256dh, auth FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2 ORDER BY created_at`, [scope.orgId, learnerId]),
+    );
+  }
+
   async saveReminder(scope: PracticeScope, learnerId: string, prefs: ReminderPrefs): Promise<void> {
     await scoped(this.#sql, scope, (tx) =>
       tx.query(
@@ -116,6 +148,11 @@ export class PrepEngageStore {
       );
       return rows.map((r) => r.learner_id);
     });
+  }
+
+  /** Queue the email that tells a learner their plan now ends after its deadline; one a day at most. */
+  async queueLate(orgId: OrgId, learnerId: string, finishOn: string, deadline: string, day: string, newId: () => string = () => crypto.randomUUID()): Promise<void> {
+    await enqueue(this.#sql, orgId, [{ kind: "learner_email", subject: { learnerId, finishOn, deadline }, purpose: "plan_late", id: `plan_late:${orgId}:${learnerId}:${day}` }], newId);
   }
 
   /** The window's numbers: `from` and `to` are IST days, inclusive; `asOf` is now, by the caller's clock. */

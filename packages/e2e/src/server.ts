@@ -19,6 +19,9 @@ import { appUrl, DATA_KEY, resetDatabase, SECRET } from "./database.js";
  *   DATABASE_POOL_MAX      default 20
  *   E2E_RUNNER=local       run code questions in-process with no isolation —
  *                          for this machine's own tests and screenshots only
+ *   E2E_RUNNER=simulated   run nothing, take E2E_RUNNER_MS (default 400) a program:
+ *                          for the contest load run
+ *   JUDGE_CONCURRENCY, JUDGE_QUEUE_MAX, JUDGE_WAIT_MS   the judge's queue, as in production
  */
 const port = Number.parseInt(process.env["PORT"] ?? "4173", 10);
 if (process.env["E2E_RESET"] !== "0") await resetDatabase(hashPassword);
@@ -32,7 +35,28 @@ const runner: CodeRunner | undefined =
         mkdirSync(workRoot, { recursive: true });
         return { run: (request) => execute(request, { workRoot, slot: null }) };
       })()
-    : undefined;
+    : process.env["E2E_RUNNER"] === "simulated"
+      ? simulatedRunner(Number.parseInt(process.env["E2E_RUNNER_MS"] ?? "400", 10))
+      : undefined;
+
+/**
+ * For the contest load run: a runner that takes about `ms` per program and
+ * runs nothing — a program that says WRONG fails every test, any other passes
+ * them. What a real runner can do at once is the judge's concurrency.
+ */
+function simulatedRunner(ms: number): CodeRunner {
+  return {
+    run: async (request) => {
+      await new Promise((r) => setTimeout(r, ms * (0.5 + Math.random())));
+      const wrong = request.source.includes("WRONG");
+      return {
+        compiled: true,
+        tests: request.tests.map((t) => ({ id: t.id, status: wrong ? "wrong_answer" : "passed", timeMs: 12, memoryKb: 9000, stdout: wrong ? "0\n" : t.expected, stderr: "" })),
+      };
+    },
+  };
+}
+const judgeNumber = (name: string) => (process.env[name] === undefined ? undefined : Number.parseInt(process.env[name]!, 10));
 
 const sql = connect(appUrl, { max: Number.parseInt(process.env["DATABASE_POOL_MAX"] ?? "20", 10) });
 const { app } = assemble({
@@ -43,6 +67,11 @@ const { app } = assemble({
   // Razorpay without Razorpay: the browser suite's Checkout signs with the fake's key secret.
   gateway: new FakeRazorpay(),
   ...(runner === undefined ? {} : { runner }),
+  judge: {
+    ...(judgeNumber("JUDGE_CONCURRENCY") === undefined ? {} : { concurrency: judgeNumber("JUDGE_CONCURRENCY")! }),
+    ...(judgeNumber("JUDGE_QUEUE_MAX") === undefined ? {} : { maxWaiting: judgeNumber("JUDGE_QUEUE_MAX")! }),
+    ...(judgeNumber("JUDGE_WAIT_MS") === undefined ? {} : { waitMs: judgeNumber("JUDGE_WAIT_MS")! }),
+  },
   supplier: { legalName: "Parikshaa Assessments Pvt Ltd", gstin: "29AAGCP4401A1ZW", address: "12 Residency Road, Bengaluru", sac: "998399" },
   publicUrl: process.env["PUBLIC_URL"] ?? `http://localhost:${port}`,
   // Email and WhatsApp set up, as a pilot's are; nothing leaves the machine

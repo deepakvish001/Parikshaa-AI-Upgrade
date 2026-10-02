@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** A paper's review: sent, approved (and so locked), returned, reopened (migration 0043). */
+/** A paper's review: sent, approved (and so locked), returned, reopened (migration 0050). */
 
 export type ReviewStatus = "in_review" | "approved" | "returned" | "reopened";
 

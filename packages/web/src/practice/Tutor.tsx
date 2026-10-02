@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Lightbulb, MessageCircleQuestion, ScanSearch, Sparkles, Trash2 } from "lucide-react";
+import { Lightbulb, MessageCircleQuestion, MessagesSquare, ScanSearch, Sparkles, Trash2 } from "lucide-react";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { ApiError } from "../api.ts";
 import { usePreferences } from "../i18n.tsx";
@@ -31,16 +31,48 @@ function Failure({ error, onCredits }: { readonly error: unknown; readonly onCre
   );
 }
 
-function Answer({ entry }: { readonly entry: TutorAnswer & { readonly question?: string } }) {
+const LABELS = { review: "tutor.reviewLabel", notes: "tutor.notesLabel", doubt: "tutor.doubtLabel", followup: "tutor.followupLabel", followup_reply: "tutor.replyLabel" } as const;
+
+/** The interviewer's two follow-up questions, each with a box to answer it in. */
+function FollowupQuestions({ questions, onReply, busy }: { readonly questions: readonly string[]; readonly onReply: (index: number, answer: string) => void; readonly busy: boolean }) {
   const p = usePrepText();
-  const label = entry.mode === "hint" ? p("tutor.hintLabel", { n: entry.hintLevel ?? 0 }) : entry.mode === "review" ? p("tutor.reviewLabel") : entry.mode === "notes" ? p("tutor.notesLabel") : p("tutor.doubtLabel");
+  const [drafts, setDrafts] = useState<readonly string[]>(questions.map(() => ""));
+  return (
+    <ol className="followups">
+      {questions.map((q, i) => (
+        <li key={i}>
+          <p>{q}</p>
+          <form
+            onSubmit={(e: FormEvent) => {
+              e.preventDefault();
+              if ((drafts[i] ?? "").trim().length >= 3) onReply(i, drafts[i]!.trim());
+            }}
+          >
+            <label className="visually-hidden" htmlFor={`followup-${i}`}>
+              {p("tutor.followupAnswer", { n: i + 1 })}
+            </label>
+            <textarea id={`followup-${i}`} rows={3} maxLength={4000} value={drafts[i] ?? ""} placeholder={p("tutor.followupPlaceholder")} onChange={(e) => setDrafts(drafts.map((d, j) => (j === i ? e.target.value : d)))} />
+            <button type="submit" className="secondary" disabled={busy || (drafts[i] ?? "").trim().length < 3}>
+              {p("tutor.followupSend", { n: i + 1 })}
+            </button>
+          </form>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Answer({ entry, onReply, busy = false }: { readonly entry: TutorAnswer & { readonly question?: string }; readonly onReply?: (index: number, answer: string) => void; readonly busy?: boolean }) {
+  const p = usePrepText();
+  const label = entry.mode === "hint" ? p("tutor.hintLabel", { n: entry.hintLevel ?? 0 }) : p(LABELS[entry.mode]);
+  const questions = entry.mode === "followup" && Array.isArray(entry.data?.["questions"]) ? (entry.data["questions"] as string[]) : null;
   return (
     <article className="tutor-answer">
       <h3>
         {entry.mode === "hint" ? <Lightbulb aria-hidden="true" /> : entry.mode === "review" ? <ScanSearch aria-hidden="true" /> : <MessageCircleQuestion aria-hidden="true" />} {label}
       </h3>
       {entry.question === undefined || entry.question === "" ? null : <blockquote>{entry.question}</blockquote>}
-      <Markdown source={entry.answer} />
+      {questions !== null && onReply !== undefined ? <FollowupQuestions questions={questions} onReply={onReply} busy={busy} /> : <Markdown source={entry.answer} />}
     </article>
   );
 }
@@ -80,9 +112,14 @@ export function TutorPanel({
       done();
     },
   });
+  const followups = useMutation({ mutationFn: () => client.followups(slug, reply(language)), onSuccess: done });
+  const answerFollowup = useMutation({
+    mutationFn: (r: { id: string; index: number; answer: string }) => client.replyToFollowup(slug, r.id, r.index, r.answer, reply(language)),
+    onSuccess: done,
+  });
   const forget = useMutation({ mutationFn: () => client.forgetTutor(slug), onSuccess: done });
-  const busy = hint.isPending || review.isPending || doubt.isPending;
-  const error = hint.error ?? review.error ?? doubt.error;
+  const busy = hint.isPending || review.isPending || doubt.isPending || followups.isPending || answerFollowup.isPending;
+  const error = hint.error ?? review.error ?? doubt.error ?? followups.error ?? answerFollowup.error;
 
   if (history.isError && history.error instanceof ApiError && history.error.status === 503) return <p className="notice">{p("tutor.off")}</p>;
   const h = history.data;
@@ -101,7 +138,7 @@ export function TutorPanel({
         )}
       </div>
       {(h?.entries ?? []).map((entry) => (
-        <Answer key={entry.id} entry={entry} />
+        <Answer key={entry.id} entry={entry} busy={busy} onReply={(index, answer) => answerFollowup.mutate({ id: entry.id, index, answer })} />
       ))}
       {busy ? (
         <p className="notice" role="status">
@@ -124,6 +161,11 @@ export function TutorPanel({
             <ScanSearch aria-hidden="true" /> {p("tutor.review", { credits: h.costs.review })}
           </button>
         )}
+        {h === undefined || h.costs.followup === undefined ? null : (
+          <button type="button" className="secondary" disabled={busy} onClick={() => followups.mutate()}>
+            <MessagesSquare aria-hidden="true" /> {p("tutor.followups", { credits: h.costs.followup })}
+          </button>
+        )}
       </div>
       <form
         className="tutor-ask"
@@ -139,9 +181,12 @@ export function TutorPanel({
         </button>
       </form>
       {(h?.entries.length ?? 0) === 0 ? null : (
-        <button type="button" className="quiet small" onClick={() => forget.mutate()} disabled={forget.isPending}>
-          <Trash2 aria-hidden="true" /> {p("tutor.forget")}
-        </button>
+        <>
+          <button type="button" className="quiet small" onClick={() => forget.mutate()} disabled={forget.isPending}>
+            <Trash2 aria-hidden="true" /> {p("tutor.forget")}
+          </button>
+          <p className="notice small">{p("tutor.kept")}</p>
+        </>
       )}
     </div>
   );

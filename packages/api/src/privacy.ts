@@ -3,6 +3,8 @@ import { canonicalize, orgId as toOrgId, type AttemptId, type ExamEvent, type Or
 import {
   AppendRefused,
   staffScope,
+  TUTOR_KEEP_DAYS,
+  type PrepPlusStore,
   type IdentityStore,
   type InvitationStore,
   type LedgerStore,
@@ -128,6 +130,7 @@ export class PrivacyService {
     readonly exams: ExamService;
     readonly proctor: ProctorStore | null;
     readonly records: readonly RetainedRecords[];
+    readonly tutor: PrepPlusStore | null;
     readonly now: () => number;
   };
 
@@ -140,9 +143,11 @@ export class PrivacyService {
     proctor?: ProctorStore | null;
     /** Records outside attempts that the retention period also covers: handwritten copies, finished interviews (T1). */
     records?: readonly RetainedRecords[];
+    /** Where what Sahayak said is kept: deleted after `TUTOR_KEEP_DAYS`. */
+    tutor?: PrepPlusStore | null;
     now?: () => number;
   }) {
-    this.#o = { ...options, proctor: options.proctor ?? null, records: options.records ?? [], now: options.now ?? (() => Date.now()) };
+    this.#o = { ...options, proctor: options.proctor ?? null, records: options.records ?? [], tutor: options.tutor ?? null, now: options.now ?? (() => Date.now()) };
   }
 
   // --- settings ---------------------------------------------------------------
@@ -297,6 +302,18 @@ export class PrivacyService {
         }
       }
     }
+    return count;
+  }
+
+  /**
+   * Delete what Sahayak said more than `TUTOR_KEEP_DAYS` ago, in every
+   * organisation (DPDP: kept no longer than it is useful). Idempotent.
+   */
+  async sweepTutor(): Promise<number> {
+    if (this.#o.tutor === null) return 0;
+    const before = new Date(this.#o.now() - TUTOR_KEEP_DAYS * 86_400_000);
+    let count = 0;
+    for (const org of await this.#o.identity.organisationIds()) count += await this.#o.tutor.purgeTutor(toOrgId(org), before);
     return count;
   }
 }

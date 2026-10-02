@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Departments on staff and on exams (migration 0044). */
+/** Departments on staff and on exams (migration 0051). */
 export class DepartmentStore {
   readonly #sql: SqlExecutor;
 
