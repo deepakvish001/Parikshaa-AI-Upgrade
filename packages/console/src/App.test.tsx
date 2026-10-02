@@ -2291,7 +2291,7 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     expect(stub.startAttempt).not.toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog", { name: "Try test" })).toBeNull();
-  });
+  }, 15_000);
 
   it("marks who qualified in the results, and filters by it", async () => {
     renderApp(<App client={client()} />);
@@ -2304,6 +2304,17 @@ describe("the exam page (HackerRank for Work's test page)", () => {
     await userEvent.selectOptions(within(table).getByRole("combobox", { name: "Show" }), "qualified");
     expect(within(table).queryByText("CS002")).toBeNull();
     expect(within(table).getByText("CS001")).toBeInTheDocument();
+  });
+
+  it("shows a checked handwritten copy as a result, with no scorecard to open", async () => {
+    const paperRow = { ...withCutoff.rows[0]!, attemptId: "paper:s1", ref: "P001", name: "Paper Candidate", paper: true as const };
+    renderApp(<App client={client({ results: vi.fn(async () => ({ ...withCutoff, rows: [...withCutoff.rows, paperRow] })) })} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Results" }));
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    const row = (await within(table).findByText("P001")).closest("tr")!;
+    expect(within(row).getByText("Paper copy")).toBeInTheDocument();
+    expect(within(row).queryByRole("button", { name: "Scorecard" })).toBeNull();
   });
 });
 

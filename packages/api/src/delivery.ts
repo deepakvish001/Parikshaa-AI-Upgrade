@@ -38,7 +38,7 @@ export interface SmsMessage {
 }
 
 /** The WhatsApp templates Parikshaa sends, each approved in the WhatsApp Business account (docs/PILOT.md). */
-export type WhatsAppTemplate = "invite" | "reminder" | "rescheduled" | "result";
+export type WhatsAppTemplate = "invite" | "reminder" | "rescheduled" | "result" | "offer" | "drive";
 
 export interface WhatsAppMessage {
   /** 91XXXXXXXXXX */

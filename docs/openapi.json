@@ -2443,6 +2443,13 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "department": {
+                            "description": "The department it belongs to, if any.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           }
                         },
                         "required": [
@@ -72329,6 +72336,34 @@
                         }
                       ],
                       "description": "Where to sit, when the exam is held in rooms; the admit card (GET /invitations/admit-card.pdf) says the same."
+                    },
+                    "arrangements": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "extraMinutes": {
+                              "type": "number"
+                            },
+                            "scribe": {
+                              "type": "boolean"
+                            },
+                            "largeText": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "extraMinutes",
+                            "scribe",
+                            "largeText"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "This candidate's arrangements for a disability: extra minutes (added as the attempt starts), a scribe, larger text."
                     }
                   },
                   "required": [
@@ -72348,7 +72383,8 @@
                     "proctored",
                     "proctoring",
                     "notice",
-                    "seat"
+                    "seat",
+                    "arrangements"
                   ],
                   "additionalProperties": false
                 }
@@ -73043,6 +73079,13 @@
                               }
                             ],
                             "description": "Against the exam's cut-off, once graded; null without one."
+                          },
+                          "paper": {
+                            "description": "Marks from a handwritten copy checked here; its attemptId is `paper:<copy>` and it has no scorecard.",
+                            "type": "boolean",
+                            "enum": [
+                              true
+                            ]
                           },
                           "ref": {
                             "type": "string"
@@ -74276,6 +74319,13 @@
                             }
                           ],
                           "description": "Against the exam's cut-off, once graded; null without one."
+                        },
+                        "paper": {
+                          "description": "Marks from a handwritten copy checked here; its attemptId is `paper:<copy>` and it has no scorecard.",
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
                         }
                       },
                       "required": [
@@ -88952,6 +89002,10 @@
                               "note"
                             ],
                             "additionalProperties": false
+                          },
+                          "statusLink": {
+                            "type": "string",
+                            "description": "The student's own page to follow this application."
                           }
                         },
                         "required": [
@@ -88966,7 +89020,8 @@
                           "stage",
                           "offerLpa",
                           "updatedAt",
-                          "test"
+                          "test",
+                          "statusLink"
                         ],
                         "additionalProperties": false
                       }
@@ -89055,6 +89110,79 @@
                         "notJoined"
                       ],
                       "additionalProperties": false
+                    },
+                    "funnel": {
+                      "type": "object",
+                      "properties": {
+                        "applied": {
+                          "type": "number"
+                        },
+                        "test": {
+                          "type": "number"
+                        },
+                        "interview": {
+                          "type": "number"
+                        },
+                        "offered": {
+                          "type": "number"
+                        },
+                        "joined": {
+                          "type": "number"
+                        },
+                        "dropped": {
+                          "type": "number"
+                        },
+                        "colleges": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "applied": {
+                                "type": "number"
+                              },
+                              "test": {
+                                "type": "number"
+                              },
+                              "interview": {
+                                "type": "number"
+                              },
+                              "offered": {
+                                "type": "number"
+                              },
+                              "joined": {
+                                "type": "number"
+                              },
+                              "dropped": {
+                                "type": "number"
+                              },
+                              "college": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "applied",
+                              "test",
+                              "interview",
+                              "offered",
+                              "joined",
+                              "dropped",
+                              "college"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "applied",
+                        "test",
+                        "interview",
+                        "offered",
+                        "joined",
+                        "dropped",
+                        "colleges"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -89063,7 +89191,8 @@
                     "eligibleNotAdded",
                     "applyLink",
                     "colleges",
-                    "offers"
+                    "offers",
+                    "funnel"
                   ],
                   "additionalProperties": false
                 }
@@ -90613,10 +90742,711 @@
                   "properties": {
                     "link": {
                       "type": "string"
+                    },
+                    "sent": {
+                      "readOnly": true,
+                      "description": "How the link went to the student: by the email and phone on the student list, where this server can send.",
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "email",
+                          "whatsapp"
+                        ]
+                      }
                     }
                   },
                   "required": [
-                    "link"
+                    "link",
+                    "sent"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/drives/{driveId}/alert": {
+      "post": {
+        "summary": "Tell eligible students about the drive",
+        "tags": [
+          "Placement"
+        ],
+        "description": "Every student on the list who meets the drive's criteria and is not in it yet hears of it by email and WhatsApp, with the link to apply. Each student hears of a drive once. Needs the drive's link to apply open. Audited.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "driveId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "queued": {
+                      "type": "number"
+                    },
+                    "already": {
+                      "type": "number"
+                    },
+                    "unreachable": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "queued",
+                    "already",
+                    "unreachable"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/placement/funnel": {
+      "get": {
+        "summary": "Every drive's funnel",
+        "tags": [
+          "Placement"
+        ],
+        "description": "How many reached each round, drive by drive: applied, sat the test, interview, offered, joined, and how many fell away.",
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "drives": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "company": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "closed"
+                            ]
+                          },
+                          "funnel": {
+                            "type": "object",
+                            "properties": {
+                              "applied": {
+                                "type": "number"
+                              },
+                              "test": {
+                                "type": "number"
+                              },
+                              "interview": {
+                                "type": "number"
+                              },
+                              "offered": {
+                                "type": "number"
+                              },
+                              "joined": {
+                                "type": "number"
+                              },
+                              "dropped": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "applied",
+                              "test",
+                              "interview",
+                              "offered",
+                              "joined",
+                              "dropped"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "company",
+                          "role",
+                          "status",
+                          "funnel"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "drives"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/status/{code}": {
+      "get": {
+        "summary": "Where one application stands, for the student",
+        "tags": [
+          "Apply"
+        ],
+        "description": "No account: the signed code in the link is the proof, and it opens this one application only. The round, and the offer's link while it waits for an answer.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 400
+            },
+            "in": "path",
+            "name": "code",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "institution": {
+                      "type": "string"
+                    },
+                    "company": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "stage": {
+                      "type": "string",
+                      "enum": [
+                        "applied",
+                        "test",
+                        "interview",
+                        "offered",
+                        "joined",
+                        "rejected",
+                        "withdrawn"
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "offer": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "ctcLpa": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "joiningDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "response": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "accepted",
+                                    "declined"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "link": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "ctcLpa",
+                            "joiningDate",
+                            "response",
+                            "link"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "institution",
+                    "company",
+                    "role",
+                    "name",
+                    "stage",
+                    "updatedAt",
+                    "offer"
                   ],
                   "additionalProperties": false
                 }
@@ -91584,10 +92414,15 @@
                         "applied",
                         "already"
                       ]
+                    },
+                    "statusLink": {
+                      "type": "string",
+                      "description": "The student's own page to follow the application."
                     }
                   },
                   "required": [
-                    "status"
+                    "status",
+                    "statusLink"
                   ],
                   "additionalProperties": false
                 }
@@ -93323,6 +94158,1708 @@
         "responses": {
           "200": {
             "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/departments": {
+      "get": {
+        "summary": "Departments, and who and what is in each",
+        "tags": [
+          "Account"
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "departments": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "staff": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "department": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "department"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "exams": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "examId": {
+                            "type": "string"
+                          },
+                          "department": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "examId",
+                          "department"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "departments",
+                    "staff",
+                    "exams"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/{userId}/department": {
+      "put": {
+        "summary": "Put a member of staff in a department, or none",
+        "tags": [
+          "Account"
+        ],
+        "description": "Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "department": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "department"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/department": {
+      "put": {
+        "summary": "Put an exam in a department, or none",
+        "tags": [
+          "Account"
+        ],
+        "description": "Staff with a department of their own, other than owners, may put an exam only in theirs. Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "department": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "department"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/staff/import": {
+      "post": {
+        "summary": "Add staff from a sheet",
+        "tags": [
+          "Account"
+        ],
+        "description": "Columns email, name, role (author, invigilator, reviewer, viewer; owners are made by hand) and department. With `dryRun`, or while any row is wrong, nothing is saved. Each new member is sent a link to set their password; someone already on staff is skipped. Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "csv": {
+                    "type": "string",
+                    "maxLength": 2000000
+                  },
+                  "dryRun": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "csv"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "dryRun": {
+                      "type": "boolean"
+                    },
+                    "added": {
+                      "type": "number"
+                    },
+                    "skipped": {
+                      "type": "number"
+                    },
+                    "problems": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "row": {
+                            "type": "number"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "row",
+                          "message"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "preview": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "row": {
+                            "type": "number"
+                          },
+                          "email": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "department": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "row",
+                          "email",
+                          "name",
+                          "role",
+                          "department"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "dryRun",
+                    "added",
+                    "skipped",
+                    "problems",
+                    "preview"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/reviews": {
+      "get": {
+        "summary": "Every paper's review",
+        "tags": [
+          "Exams"
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "reviews": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "examId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "in_review",
+                              "approved",
+                              "returned",
+                              "reopened"
+                            ]
+                          },
+                          "submittedBy": {
+                            "type": "string"
+                          },
+                          "submittedById": {
+                            "type": "string"
+                          },
+                          "submittedAt": {
+                            "type": "string"
+                          },
+                          "note": {
+                            "type": "string"
+                          },
+                          "reviewer": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "comment": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "examId",
+                          "status",
+                          "submittedBy",
+                          "submittedById",
+                          "submittedAt",
+                          "note",
+                          "reviewer",
+                          "decidedAt",
+                          "comment"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "reviews"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/review": {
+      "get": {
+        "summary": "Where a paper's review stands",
+        "tags": [
+          "Exams"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "review": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "examId": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "in_review",
+                                "approved",
+                                "returned",
+                                "reopened"
+                              ]
+                            },
+                            "submittedBy": {
+                              "type": "string"
+                            },
+                            "submittedById": {
+                              "type": "string"
+                            },
+                            "submittedAt": {
+                              "type": "string"
+                            },
+                            "note": {
+                              "type": "string"
+                            },
+                            "reviewer": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "decidedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "comment": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "examId",
+                            "status",
+                            "submittedBy",
+                            "submittedById",
+                            "submittedAt",
+                            "note",
+                            "reviewer",
+                            "decidedAt",
+                            "comment"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "review"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Send a paper for review",
+        "tags": [
+          "Exams"
+        ],
+        "description": "Until its reviewer approves or returns it, the paper cannot be changed. Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "examId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_review",
+                        "approved",
+                        "returned",
+                        "reopened"
+                      ]
+                    },
+                    "submittedBy": {
+                      "type": "string"
+                    },
+                    "submittedById": {
+                      "type": "string"
+                    },
+                    "submittedAt": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "reviewer": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "comment": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "examId",
+                    "status",
+                    "submittedBy",
+                    "submittedById",
+                    "submittedAt",
+                    "note",
+                    "reviewer",
+                    "decidedAt",
+                    "comment"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/review/decision": {
+      "post": {
+        "summary": "Approve a paper, or return it with a comment",
+        "tags": [
+          "Exams"
+        ],
+        "description": "By someone other than its setter. An approved paper is locked against change until an owner reopens it. Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approve",
+                      "return"
+                    ]
+                  },
+                  "comment": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "decision"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "examId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_review",
+                        "approved",
+                        "returned",
+                        "reopened"
+                      ]
+                    },
+                    "submittedBy": {
+                      "type": "string"
+                    },
+                    "submittedById": {
+                      "type": "string"
+                    },
+                    "submittedAt": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "reviewer": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "comment": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "examId",
+                    "status",
+                    "submittedBy",
+                    "submittedById",
+                    "submittedAt",
+                    "note",
+                    "reviewer",
+                    "decidedAt",
+                    "comment"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/review/reopen": {
+      "post": {
+        "summary": "Reopen a locked paper for change",
+        "tags": [
+          "Exams"
+        ],
+        "description": "Owners only, with a reason. Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "examId": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "in_review",
+                        "approved",
+                        "returned",
+                        "reopened"
+                      ]
+                    },
+                    "submittedBy": {
+                      "type": "string"
+                    },
+                    "submittedById": {
+                      "type": "string"
+                    },
+                    "submittedAt": {
+                      "type": "string"
+                    },
+                    "note": {
+                      "type": "string"
+                    },
+                    "reviewer": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "comment": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "examId",
+                    "status",
+                    "submittedBy",
+                    "submittedById",
+                    "submittedAt",
+                    "note",
+                    "reviewer",
+                    "decidedAt",
+                    "comment"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
           }
         }
       }
@@ -97359,6 +99896,15 @@
                       "string",
                       "null"
                     ]
+                  },
+                  "panel": {
+                    "default": [],
+                    "description": "Other staff on the panel, by id: each scores for themselves, and each gets the calendar invite.",
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "required": [
@@ -97438,21 +99984,15 @@
                           "properties": {
                             "criteria": {
                               "readOnly": true,
-                              "minItems": 1,
-                              "maxItems": 12,
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
                                   "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 100
+                                    "type": "string"
                                   },
                                   "score": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
+                                    "type": "number"
                                   }
                                 },
                                 "required": [
@@ -97472,9 +100012,7 @@
                               ]
                             },
                             "summary": {
-                              "default": "",
-                              "type": "string",
-                              "maxLength": 5000
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -97487,7 +100025,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "On a panel, the average of its members' scorecards."
                     },
                     "status": {
                       "type": "string",
@@ -97509,6 +100048,100 @@
                     "link": {
                       "type": "string",
                       "description": "The candidate's link to the room."
+                    },
+                    "panel": {
+                      "readOnly": true,
+                      "description": "The staff on its panel, the one who set it up first.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scored": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scored"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "scores": {
+                      "readOnly": true,
+                      "description": "Each panel member's own scorecard.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scorecard": {
+                            "type": "object",
+                            "properties": {
+                              "criteria": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "score": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "score"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "enum": [
+                                  "strong_yes",
+                                  "yes",
+                                  "no",
+                                  "strong_no"
+                                ]
+                              },
+                              "summary": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "criteria",
+                              "recommendation",
+                              "summary"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "scoredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scorecard",
+                          "scoredAt"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -97530,7 +100163,9 @@
                     "status",
                     "driveId",
                     "createdAt",
-                    "link"
+                    "link",
+                    "panel",
+                    "scores"
                   ],
                   "additionalProperties": false
                 }
@@ -97733,21 +100368,15 @@
                                 "properties": {
                                   "criteria": {
                                     "readOnly": true,
-                                    "minItems": 1,
-                                    "maxItems": 12,
                                     "type": "array",
                                     "items": {
                                       "type": "object",
                                       "properties": {
                                         "name": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 100
+                                          "type": "string"
                                         },
                                         "score": {
-                                          "type": "integer",
-                                          "minimum": -9007199254740991,
-                                          "maximum": 9007199254740991
+                                          "type": "number"
                                         }
                                       },
                                       "required": [
@@ -97767,9 +100396,7 @@
                                     ]
                                   },
                                   "summary": {
-                                    "default": "",
-                                    "type": "string",
-                                    "maxLength": 5000
+                                    "type": "string"
                                   }
                                 },
                                 "required": [
@@ -97782,7 +100409,8 @@
                               {
                                 "type": "null"
                               }
-                            ]
+                            ],
+                            "description": "On a panel, the average of its members' scorecards."
                           },
                           "status": {
                             "type": "string",
@@ -97804,6 +100432,100 @@
                           "link": {
                             "type": "string",
                             "description": "The candidate's link to the room."
+                          },
+                          "panel": {
+                            "readOnly": true,
+                            "description": "The staff on its panel, the one who set it up first.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "userId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "scored": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "userId",
+                                "name",
+                                "scored"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "scores": {
+                            "readOnly": true,
+                            "description": "Each panel member's own scorecard.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "userId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "scorecard": {
+                                  "type": "object",
+                                  "properties": {
+                                    "criteria": {
+                                      "readOnly": true,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "name": {
+                                            "type": "string"
+                                          },
+                                          "score": {
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "name",
+                                          "score"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "recommendation": {
+                                      "type": "string",
+                                      "enum": [
+                                        "strong_yes",
+                                        "yes",
+                                        "no",
+                                        "strong_no"
+                                      ]
+                                    },
+                                    "summary": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "criteria",
+                                    "recommendation",
+                                    "summary"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "scoredAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "userId",
+                                "name",
+                                "scorecard",
+                                "scoredAt"
+                              ],
+                              "additionalProperties": false
+                            }
                           }
                         },
                         "required": [
@@ -97825,7 +100547,9 @@
                           "status",
                           "driveId",
                           "createdAt",
-                          "link"
+                          "link",
+                          "panel",
+                          "scores"
                         ],
                         "additionalProperties": false
                       }
@@ -98041,21 +100765,15 @@
                           "properties": {
                             "criteria": {
                               "readOnly": true,
-                              "minItems": 1,
-                              "maxItems": 12,
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
                                   "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 100
+                                    "type": "string"
                                   },
                                   "score": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
+                                    "type": "number"
                                   }
                                 },
                                 "required": [
@@ -98075,9 +100793,7 @@
                               ]
                             },
                             "summary": {
-                              "default": "",
-                              "type": "string",
-                              "maxLength": 5000
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -98090,7 +100806,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "On a panel, the average of its members' scorecards."
                     },
                     "status": {
                       "type": "string",
@@ -98112,6 +100829,100 @@
                     "link": {
                       "type": "string",
                       "description": "The candidate's link to the room."
+                    },
+                    "panel": {
+                      "readOnly": true,
+                      "description": "The staff on its panel, the one who set it up first.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scored": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scored"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "scores": {
+                      "readOnly": true,
+                      "description": "Each panel member's own scorecard.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scorecard": {
+                            "type": "object",
+                            "properties": {
+                              "criteria": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "score": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "score"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "enum": [
+                                  "strong_yes",
+                                  "yes",
+                                  "no",
+                                  "strong_no"
+                                ]
+                              },
+                              "summary": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "criteria",
+                              "recommendation",
+                              "summary"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "scoredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scorecard",
+                          "scoredAt"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -98133,7 +100944,9 @@
                     "status",
                     "driveId",
                     "createdAt",
-                    "link"
+                    "link",
+                    "panel",
+                    "scores"
                   ],
                   "additionalProperties": false
                 }
@@ -98363,21 +101176,15 @@
                           "properties": {
                             "criteria": {
                               "readOnly": true,
-                              "minItems": 1,
-                              "maxItems": 12,
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
                                   "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 100
+                                    "type": "string"
                                   },
                                   "score": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
+                                    "type": "number"
                                   }
                                 },
                                 "required": [
@@ -98397,9 +101204,7 @@
                               ]
                             },
                             "summary": {
-                              "default": "",
-                              "type": "string",
-                              "maxLength": 5000
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -98412,7 +101217,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "On a panel, the average of its members' scorecards."
                     },
                     "status": {
                       "type": "string",
@@ -98434,6 +101240,100 @@
                     "link": {
                       "type": "string",
                       "description": "The candidate's link to the room."
+                    },
+                    "panel": {
+                      "readOnly": true,
+                      "description": "The staff on its panel, the one who set it up first.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scored": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scored"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "scores": {
+                      "readOnly": true,
+                      "description": "Each panel member's own scorecard.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scorecard": {
+                            "type": "object",
+                            "properties": {
+                              "criteria": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "score": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "score"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "enum": [
+                                  "strong_yes",
+                                  "yes",
+                                  "no",
+                                  "strong_no"
+                                ]
+                              },
+                              "summary": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "criteria",
+                              "recommendation",
+                              "summary"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "scoredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scorecard",
+                          "scoredAt"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -98455,7 +101355,9 @@
                     "status",
                     "driveId",
                     "createdAt",
-                    "link"
+                    "link",
+                    "panel",
+                    "scores"
                   ],
                   "additionalProperties": false
                 }
@@ -98580,13 +101482,164 @@
         }
       }
     },
-    "/interviews/{id}/scorecard": {
-      "post": {
-        "summary": "Score the interview, and close it",
+    "/interviews/{id}/calendar": {
+      "get": {
+        "summary": "The interview as a calendar file (.ics)",
         "tags": [
           "Interviews"
         ],
-        "description": "Criteria on 1–5 and a recommendation. Audited.",
+        "description": "The same invite the panel is emailed, to add to any calendar.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/interviews/{id}/scorecard": {
+      "post": {
+        "summary": "Score the interview",
+        "tags": [
+          "Interviews"
+        ],
+        "description": "Criteria on 1–5 and a recommendation. On a panel, each member scores for themselves and the interview closes once all have; otherwise the scorecard closes it. Audited.",
         "requestBody": {
           "required": true,
           "content": {
@@ -98720,21 +101773,15 @@
                           "properties": {
                             "criteria": {
                               "readOnly": true,
-                              "minItems": 1,
-                              "maxItems": 12,
                               "type": "array",
                               "items": {
                                 "type": "object",
                                 "properties": {
                                   "name": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "maxLength": 100
+                                    "type": "string"
                                   },
                                   "score": {
-                                    "type": "integer",
-                                    "minimum": -9007199254740991,
-                                    "maximum": 9007199254740991
+                                    "type": "number"
                                   }
                                 },
                                 "required": [
@@ -98754,9 +101801,7 @@
                               ]
                             },
                             "summary": {
-                              "default": "",
-                              "type": "string",
-                              "maxLength": 5000
+                              "type": "string"
                             }
                           },
                           "required": [
@@ -98769,7 +101814,8 @@
                         {
                           "type": "null"
                         }
-                      ]
+                      ],
+                      "description": "On a panel, the average of its members' scorecards."
                     },
                     "status": {
                       "type": "string",
@@ -98791,6 +101837,100 @@
                     "link": {
                       "type": "string",
                       "description": "The candidate's link to the room."
+                    },
+                    "panel": {
+                      "readOnly": true,
+                      "description": "The staff on its panel, the one who set it up first.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scored": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scored"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "scores": {
+                      "readOnly": true,
+                      "description": "Each panel member's own scorecard.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "userId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "scorecard": {
+                            "type": "object",
+                            "properties": {
+                              "criteria": {
+                                "readOnly": true,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "score": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "score"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "enum": [
+                                  "strong_yes",
+                                  "yes",
+                                  "no",
+                                  "strong_no"
+                                ]
+                              },
+                              "summary": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "criteria",
+                              "recommendation",
+                              "summary"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "scoredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "userId",
+                          "name",
+                          "scorecard",
+                          "scoredAt"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -98812,7 +101952,9 @@
                     "status",
                     "driveId",
                     "createdAt",
-                    "link"
+                    "link",
+                    "panel",
+                    "scores"
                   ],
                   "additionalProperties": false
                 }
@@ -99867,6 +103009,906 @@
                     "candidates",
                     "courseOutcomes",
                     "programmeOutcomes"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/internal-marks": {
+      "post": {
+        "summary": "Internal marks (CIA) across exams",
+        "tags": [
+          "Results"
+        ],
+        "description": "Each exam's result scaled to the marks its component is worth, optionally the best N of them, rounded as the university asks. Returns the sheet and the same as CSV (roll number, name, each component, total; AB where a student did not sit one). Audited.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "components": {
+                    "minItems": 1,
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "examId": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "label": {
+                          "type": "string",
+                          "maxLength": 60
+                        },
+                        "marks": {
+                          "type": "number",
+                          "exclusiveMinimum": 0,
+                          "maximum": 1000
+                        }
+                      },
+                      "required": [
+                        "examId",
+                        "marks"
+                      ]
+                    }
+                  },
+                  "best": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "rounding": {
+                    "default": "up",
+                    "type": "string",
+                    "enum": [
+                      "up",
+                      "nearest",
+                      "none"
+                    ]
+                  }
+                },
+                "required": [
+                  "components"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "columns": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "examId": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "marks": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "examId",
+                          "label",
+                          "marks"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "outOf": {
+                      "type": "number"
+                    },
+                    "best": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    },
+                    "rows": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ref": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "marks": {
+                            "readOnly": true,
+                            "type": "array",
+                            "items": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "total": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "ref",
+                          "name",
+                          "marks",
+                          "total"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "csv": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "columns",
+                    "outOf",
+                    "best",
+                    "rows",
+                    "csv"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/accommodations": {
+      "get": {
+        "summary": "Candidates' arrangements for a disability",
+        "tags": [
+          "Candidates"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "accommodations": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "candidateRef": {
+                            "type": "string"
+                          },
+                          "extraPercent": {
+                            "type": "number"
+                          },
+                          "scribe": {
+                            "type": "boolean"
+                          },
+                          "largeText": {
+                            "type": "boolean"
+                          },
+                          "note": {
+                            "type": "string",
+                            "description": "Staff only; never shown to the candidate."
+                          },
+                          "setBy": {
+                            "type": "object",
+                            "properties": {
+                              "userId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "userId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "setAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "candidateRef",
+                          "extraPercent",
+                          "scribe",
+                          "largeText",
+                          "note",
+                          "setBy",
+                          "setAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "accommodations"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exams/{examId}/accommodations/{ref}": {
+      "put": {
+        "summary": "Set a candidate's arrangements",
+        "tags": [
+          "Candidates"
+        ],
+        "description": "Extra time as a share of the paper's (20 minutes an hour is 33), added to the attempt's ledger as it starts; a scribe; larger text. Set before the candidate starts; for an attempt already open, extend its time instead. Audited, without the note.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "extraPercent": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "scribe": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "largeText": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "note": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "extraPercent"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "ref",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "candidateRef": {
+                      "type": "string"
+                    },
+                    "extraPercent": {
+                      "type": "number"
+                    },
+                    "scribe": {
+                      "type": "boolean"
+                    },
+                    "largeText": {
+                      "type": "boolean"
+                    },
+                    "note": {
+                      "type": "string",
+                      "description": "Staff only; never shown to the candidate."
+                    },
+                    "setBy": {
+                      "type": "object",
+                      "properties": {
+                        "userId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "userId",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "setAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "candidateRef",
+                    "extraPercent",
+                    "scribe",
+                    "largeText",
+                    "note",
+                    "setBy",
+                    "setAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a candidate's arrangements",
+        "tags": [
+          "Candidates"
+        ],
+        "description": "Audited.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "in": "path",
+            "name": "examId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "ref",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "ok"
                   ],
                   "additionalProperties": false
                 }

@@ -95,6 +95,12 @@ export class ConsentRequired extends Error {
   }
 }
 
+/** A kind of record the retention sweep removes once older than the organisation's period. */
+export interface RetainedRecords {
+  readonly kind: string;
+  sweep(orgId: OrgId, before: Date): Promise<number>;
+}
+
 /** A candidate's own data, as they may download it (DPDP s.11). */
 export interface CandidateData {
   readonly generatedAt: string;
@@ -123,6 +129,7 @@ export class PrivacyService {
     readonly identity: IdentityStore;
     readonly exams: ExamService;
     readonly proctor: ProctorStore | null;
+    readonly records: readonly RetainedRecords[];
     readonly tutor: PrepPlusStore | null;
     readonly now: () => number;
   };
@@ -134,11 +141,13 @@ export class PrivacyService {
     identity: IdentityStore;
     exams: ExamService;
     proctor?: ProctorStore | null;
+    /** Records outside attempts that the retention period also covers: handwritten copies, finished interviews (T1). */
+    records?: readonly RetainedRecords[];
     /** Where what Sahayak said is kept: deleted after `TUTOR_KEEP_DAYS`. */
     tutor?: PrepPlusStore | null;
     now?: () => number;
   }) {
-    this.#o = { ...options, proctor: options.proctor ?? null, tutor: options.tutor ?? null, now: options.now ?? (() => Date.now()) };
+    this.#o = { ...options, proctor: options.proctor ?? null, records: options.records ?? [], tutor: options.tutor ?? null, now: options.now ?? (() => Date.now()) };
   }
 
   // --- settings ---------------------------------------------------------------
@@ -267,6 +276,17 @@ export class PrivacyService {
     let count = 0;
     for (const org of await this.#o.identity.organisationIds()) {
       const scope = staffScope(toOrgId(org));
+      const settings = this.#o.records.length === 0 ? null : await this.#o.privacy.get(scope);
+      if (settings !== null) {
+        const before = new Date(this.#o.now() - settings.retentionDays * 86_400_000);
+        for (const records of this.#o.records) {
+          const removed = await records.sweep(scope.orgId, before);
+          if (removed > 0) {
+            count += removed;
+            await this.#o.store.appendAudit(scope, { actorKind: "system", actorId: null, action: "records.erased", target: records.kind, detail: { reason: "retention", removed } });
+          }
+        }
+      }
       for (const { attemptId, open } of await this.#o.store.dueForErasure(scope, this.#o.now(), limit)) {
         // Abandoned without being submitted: closed as the next write would
         // have closed it, then erased like any other.

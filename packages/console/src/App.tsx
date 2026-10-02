@@ -54,6 +54,8 @@ import { remembered, SignIn } from "./components/SignIn.tsx";
 /** The tour, taken once or twice by each account, likewise. */
 const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
+const PaperReview = lazy(() => import("./components/PaperReview.tsx").then((m) => ({ default: m.PaperReview })));
+const Arrangements = lazy(() => import("./components/Arrangements.tsx").then((m) => ({ default: m.Arrangements })));
 const InterviewsPanel = lazy(() => import("./components/Interviews.tsx").then((m) => ({ default: m.InterviewsPanel })));
 const PlacementPanel = lazy(() => import("./components/Placement.tsx").then((m) => ({ default: m.PlacementPanel })));
 const JobTestDrawer = lazy(() => import("./components/JobTest.tsx").then((m) => ({ default: m.JobTestDrawer })));
@@ -805,6 +807,11 @@ function Console({
             ) : null}
 
             {view.name === "candidates" ? <Candidates client={client} examId={view.examId} canInvite={can("attempt:start")} /> : null}
+            {view.name === "candidates" && can("attempt:extend") ? (
+              <Suspense fallback={null}>
+                <Arrangements client={client} examId={view.examId} />
+              </Suspense>
+            ) : null}
 
             {view.name === "results" ? (
               <ResultsPanel
@@ -837,6 +844,9 @@ function Console({
                     : {})}
                   {...(can("attempt:review") ? { onGrade: () => go({ name: "results", examId: view.examId }) } : {})}
                 />
+                <Suspense fallback={null}>
+                  <PaperReview client={client} examId={view.examId} selfId={me.data?.id ?? null} canWrite={can("exam:write")} canReopen={can("org:manage")} />
+                </Suspense>
                 {attempts.data === undefined ? (
                   attempts.error === null ? (
                     <section className="card">

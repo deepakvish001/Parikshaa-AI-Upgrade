@@ -153,6 +153,8 @@ export interface Briefing {
   readonly notice: Notice | null;
   /** Where to sit, when the exam is held in rooms; absent from an older server. */
   readonly seat?: { readonly centre: string; readonly room: string; readonly seat: string } | null;
+  /** Arrangements for a disability (extra minutes, a scribe, larger text); absent from an older server. */
+  readonly arrangements?: { readonly extraMinutes: number; readonly scribe: boolean; readonly largeText: boolean } | null;
 }
 
 /** The paper itself, as the instructions describe it: a briefing without who, when, or what opening asks. */

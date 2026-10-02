@@ -89,6 +89,14 @@ export function InviteGate({ code, onOpened, onForget }: Props) {
   const enter = useCallback(async () => {
     try {
       const brief = await briefInvitation(code);
+      // Larger text, arranged for this candidate (CL62): the test opens at the largest size, and A− still works.
+      if (brief.arrangements?.largeText === true && !brief.started) {
+        try {
+          localStorage.setItem("parikshaa.textSize", "125");
+        } catch {
+          // Storage refused: the candidate can still press A+.
+        }
+      }
       const now = Date.now();
       if (!brief.started && now < Date.parse(brief.opensAt)) return setStage({ kind: "early", opensAt: brief.opensAt, brief });
       if (!brief.started && now >= Date.parse(brief.opensAt) && now < Date.parse(brief.closesAt)) return setStage({ kind: "steps", brief, at: 0 });
@@ -292,6 +300,11 @@ function NotOpenYet({
         </span>
       </p>
       <p className="notice">{t("invite.earlyNote")}</p>
+      <p>
+        <a href="/?demo" target="_blank" rel="noopener">
+          {t("invite.practice")}
+        </a>
+      </p>
       {seat === null ? null : (
         <p className="seat-line">
           <strong>{t("invite.seat", { place: [seat.centre, seat.room, seat.seat].filter((p) => p !== "").join(" · ") })}</strong>{" "}

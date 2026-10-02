@@ -288,6 +288,16 @@ export function BriefingScreen({ brief, onBegin, cameraChecked = false }: { read
       <div className="briefing-body">
         <Instructions brief={brief} />
         <aside className="briefing-side">
+          {brief.arrangements == null ? null : (
+            <section className="arranged" aria-label={t("brief.arranged")}>
+              <h2>{t("brief.arranged")}</h2>
+              <ul>
+                {brief.arrangements.extraMinutes > 0 ? <li>{t("brief.extraTime", { minutes: String(brief.arrangements.extraMinutes) })}</li> : null}
+                {brief.arrangements.scribe ? <li>{t("brief.scribe")}</li> : null}
+                {brief.arrangements.largeText ? <li>{t("brief.largeText")}</li> : null}
+              </ul>
+            </section>
+          )}
           <SystemCheck camera={!brief.proctored ? "none" : cameraChecked ? "checked" : "next"} />
           <div className="declare">
             <label className="inline">

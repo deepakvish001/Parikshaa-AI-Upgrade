@@ -109,6 +109,9 @@ const DATED = [".prep-head .notice", ".company-problems .notice", ".experience h
  * "1 Oct", which moved everything beside them when the month turned.
  */
 async function steady(page: Page) {
+  // Parts of a page load after it (the plan's reminder and settings): every request done, so the picture never races them.
+  await page.waitForLoadState("networkidle");
+  if (new URL(page.url()).pathname.endsWith("/plan")) await expect(page.getByText("Change this plan")).toBeVisible();
   await page.evaluate((selectors) => {
     for (const el of document.querySelectorAll(selectors.join(","))) el.textContent = "1 Oct 2026";
   }, DATED);

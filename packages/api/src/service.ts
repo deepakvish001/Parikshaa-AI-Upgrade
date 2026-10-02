@@ -134,6 +134,10 @@ export interface ServiceOptions {
    * refuses the start by throwing. Without one, nothing is metered.
    */
   readonly meter?: Meter;
+  /** Which exams this member of staff sees, and each exam's department (CL6). */
+  readonly departments?: (actor: Actor) => Promise<{ readonly visible: (examId: string) => boolean; readonly of: (examId: string) => string | null }>;
+  /** Whether a paper is with its reviewer or approved, and so locked against change (CL60). */
+  readonly locked?: (orgId: OrgId, examId: string) => Promise<string | null>;
 }
 
 /** What starting an attempt costs. `consume` is idempotent per attempt; `refund` undoes it for a start that failed. */
@@ -185,9 +189,13 @@ export class ExamService {
   readonly #submits = new Map<string, number>();
 
   readonly #meter: Meter | null;
+  readonly #locked: ((orgId: OrgId, examId: string) => Promise<string | null>) | null;
+  readonly #departments: ServiceOptions["departments"] | null;
 
   constructor(options: ServiceOptions) {
     this.#meter = options.meter ?? null;
+    this.#locked = options.locked ?? null;
+    this.#departments = options.departments ?? null;
     this.#runner = options.runner ?? null;
     this.#store = options.store;
     this.#identity = options.identity;
@@ -350,6 +358,8 @@ export class ExamService {
     if (!validation.ok) {
       throw new ExamInvalidError(validation.problems);
     }
+    const locked = this.#locked === null ? null : await this.#locked(actor.orgId, exam.id);
+    if (locked !== null) throw new AttemptError("invalid_state", locked);
     await this.#store.createExam(scope, exam);
     await this.#audit(actor, "exam.saved", exam.id, { title: exam.title, questions: exam.questions.length });
   }
@@ -381,8 +391,11 @@ export class ExamService {
     await this.#audit(actor, archived ? "exam.archived" : "exam.restored", id, {});
   }
 
-  listExams(actor: Actor): Promise<readonly ExamSummary[]> {
-    return this.#store.listExams(this.#require(actor, "exam:read"));
+  async listExams(actor: Actor): Promise<readonly (ExamSummary & { readonly department?: string | null })[]> {
+    const exams = await this.#store.listExams(this.#require(actor, "exam:read"));
+    if (this.#departments === null || this.#departments === undefined) return exams;
+    const { visible, of } = await this.#departments(actor);
+    return exams.filter((e) => visible(e.id)).map((e) => ({ ...e, department: of(e.id) }));
   }
 
   /** The exam in full, answer key included. */
@@ -717,6 +730,8 @@ export class ExamService {
     loaded?: Exam,
     /** The privacy notice the candidate agreed to before starting, if they were asked. */
     consent?: { readonly noticeVersion: number; readonly noticeHash: string },
+    /** Compensatory time set for this candidate beforehand (CL62): in the ledger from the start, with who set it. */
+    extra?: { readonly extraMs: number; readonly reason: string; readonly decidedBy: { readonly userId: string; readonly name: string } } | null,
   ): Promise<void> {
     const scope = staffScope(orgId);
     const exam = loaded ?? (await this.#store.loadExam(scope, examId));
@@ -759,6 +774,7 @@ export class ExamService {
         });
     }
     if (!started) return;
+    if (extra != null) await this.#store.append(scope, attemptId, { type: "time_extended", attemptId, extraMs: extra.extraMs, reason: extra.reason, decidedBy: extra.decidedBy });
     // The audit log is append-only and outlives an erasure, so it names the
     // invitation and the attempt, never the candidate.
     await this.#store.appendAudit(scope, {

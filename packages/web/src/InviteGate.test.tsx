@@ -120,6 +120,19 @@ describe("an invitation link", () => {
     expect(fetch).toHaveBeenCalledWith("/api/invitations/redeem", expect.anything());
   });
 
+  it("says what is arranged for a candidate with a disability, and opens with larger text", async () => {
+    window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
+    localStorage.removeItem("parikshaa.textSize");
+    const arranged = { ...brief, arrangements: { extraMinutes: 20, scribe: true, largeText: true } };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (url.endsWith("/invitations/briefing") ? json(arranged) : json({ ok: true }))));
+    renderApp(<App />);
+    const box = await screen.findByRole("region", { name: "Arranged for you" });
+    expect(box).toHaveTextContent("20 extra minutes, added when you begin");
+    expect(box).toHaveTextContent("A scribe: tell the invigilator before you begin");
+    expect(localStorage.getItem("parikshaa.textSize")).toBe("125");
+    localStorage.removeItem("parikshaa.textSize");
+  });
+
   it("goes straight back into a test already begun", async () => {
     window.history.replaceState(null, "", "/?invite=org-a.inv-1.MAC");
     const fetch = vi.fn(async (url: string) => {

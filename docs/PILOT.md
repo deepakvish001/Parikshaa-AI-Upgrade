@@ -108,7 +108,7 @@ invitation:
 
 1. In Meta's WhatsApp Manager, add a phone number and create a permanent
    access token (a system user's) with `whatsapp_business_messaging`.
-2. Create these four templates, category **Utility**, language **English**
+2. Create these six templates, category **Utility**, language **English**
    (`en`; set `WHATSAPP_LANGUAGE` if you register them under another code,
    such as `en_US`). The names must match; the wording can be yours as long
    as the numbered variables mean the same.
@@ -119,6 +119,8 @@ invitation:
 | `parikshaa_reminder` | Hello {{1}}, a reminder: your {{2}} test with {{3}} {{4}}. Your personal link: {{5}} |
 | `parikshaa_rescheduled` | Hello {{1}}, the time of your {{2}} test with {{3}} has changed. It now opens {{4}} and closes {{5}}. Your link stays the same: {{6}} |
 | `parikshaa_result` | Hello {{1}}, {{2}} has released the results of the {{3}} test. Your marks: {{4}} out of {{5}} ({{6}}%). {{7}} Your record of the test: {{8}} |
+| `parikshaa_offer` | Hello {{1}}, {{2}} has made you an offer for the role of {{3}} ({{4}}). See it, and accept or decline it, here: {{5}} |
+| `parikshaa_drive` | Hello {{1}}, {{2}} is hiring for {{3}} through {{4}}, and you meet its criteria. Apply by {{5}}: {{6}} |
 
 3. Set `WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` (and, for a partner
    that speaks the same API, such as 360dialog, `WHATSAPP_API_URL`), then

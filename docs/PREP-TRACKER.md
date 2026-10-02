@@ -41,7 +41,7 @@ Status ka matlab:
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
-**College aur company ([V2-12](#v2-12-college-aur-company-end-to-end-feature-list), 94 features):** ✅ 60 · 🟡 9 · ⬜ 24 · ❌ 1. Top 12 aur baad ke 6 (moderation, console Hindi, kai college ki drive, offer tracking, proxy, DPA/SLA) sab code me hain; kaunsa aadha hai, wo row ke note me likha hai.
+**College aur company ([V2-12](#v2-12-college-aur-company-end-to-end-feature-list), 113 features):** ✅ 73 · 🟡 10 · ⬜ 29 · ❌ 1. Baaki 39 ka kram neeche [Plan](#plan-aage-kya-banega) me rows 65–74 (Batch A–J) me hai. Top 12, baad ke 6, aur agle 12 (seal, handwritten marks results me, offer/drive alert, funnel, demo test, paper review, staff CSV + department, calendar + panel, CIA, divyang suvidha, status page) sab code me hain; kaunsa aadha hai, wo row ke note me likha hai.
 
 Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sahayak → coins aur streak → company readiness) **chal raha hai**, aur plan 1b–9 ban gaye (PR #35, #37). Aage ka kaam Plan table ki rows 34–41 me hai (contests, payments v2, planner settings, Sahayak v2, profile aur cards, community, learn, PWA). Jo owner par ruka hai wo "Ruka hua kaam" me hai.
 
@@ -279,6 +279,10 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Proxy ke sanket | Network address kabhi save nahi hota, sirf keyed hash; lab mode wale exam me "ek network" nahi gina jaata. AI photo-check sirf sanket, faisla insaan | 1 Oct 2026 |
 | Interview ka video | Apna video server nahi: recruiter ka apna link (Meet/Zoom/Teams) ya naya Jitsi room. Code editor aur scorecard hamare | 1 Oct 2026 |
 | Console Hindi | Pehle navigation, titles aur page ki line; pages ke andar ka text baad me, jab TPO feedback de | 1 Oct 2026 |
+| Panel ka scorecard | Har member apna scorecard; interview ka scorecard har criterion ka average, recommendation ka jhukaav (barabar bante to "no", yaani saavdhani); sab score karein tab interview band | 2 Oct 2026 |
+| Divyang ka extra time | Paper ke time ka % (niyam 20 min/ghanta = 33%), attempt shuru hote hi ledger me (kisne diya ke naam ke saath); note seal aur audit se bahar, kyunki usme bimari ka naam ho sakta hai | 2 Oct 2026 |
+| Internal marks ki rounding | Default "upar" (university aksar adha mark poora ginti hai); scheme save nahi, har baar chuni jaati hai | 2 Oct 2026 |
+| Department ka niyam | Owner sab dekhta hai; baaki member ko apne department ke exams aur bina department wale; member sirf apna hi department laga sakta hai | 2 Oct 2026 |
 | Migration ke number takraayein to | Do branches ek hi number le lein (jaise #36 aur #37 ne 0033–0038) to **file ka naam nahi badalte**: runner poore naam se, alphabetical kram me chalata hai (0024 pehle se do baar hai), aur naam badalne se deploy hua database wahi migration dobara chalaane lagega. Sirf migration test ki list theek karte hain | 2 Oct 2026 |
 | Contest inaam me tie | Blueprint: "top 10 ko coins". ICPC board par tie aam hai (chhote contest me sainkdon). Faisla: tie me jisne aakhri sawaal pehle hal kiya (millisecond tak) woh aage; inaam hamesha 10 ko | 2 Oct 2026 |
 | Judge ki queue | Har API process me apni queue; chalte contest ke pehle, par har 4 contest ke baad 1 practice. Exam ke code tests is queue me nahi (woh alag raste se runner jaate hain) | 2 Oct 2026 |
@@ -299,8 +303,10 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Bank transfer (NEFT) ke details** | Server env me `PARIKSHAA_BANK_ACCOUNT`, `PARIKSHAA_BANK_IFSC`, `PARIKSHAA_BANK_ACCOUNT_NAME`, `PARIKSHAA_BANK_NAME` | Quotation PDF par bank details chhapenge; tab tak console "bank details set nahi" batata hai | 1 Oct 2026 |
 | **DPA aur SLA par lawyer** | `docs/legal/DPA.md`, `SLA.md` ke [ ] wale hisse: company ka naam, liability, uptime target, support ghante, sub-processors ke region | Pehli badi company ko bhej sakte hain | 1 Oct 2026 |
 | **Asli model par pehla trial** | `ANTHROPIC_API_KEY` (upar wali hi) aur kuch asli samples: 3 JD, 5 handwritten copies (scan), 5 candidates ki photos (sahmati ke saath) | JD se test, handwritten marking aur proxy photo-check ki asli quality pata chalegi; abhi sab fake model se tested hain | 1 Oct 2026 |
+| **WhatsApp ke do naye template** (offer, drive) | Meta Business me `offer` (naam, company, role, package, link) aur `drive` (naam, company, role, college, last date, link) template ki manzoori; [PILOT.md](PILOT.md) me text | Offer aur nayi drive WhatsApp par bhi jaayenge; tab tak sirf email | 2 Oct 2026 |
 | **Contest day ke liye runner aur API ka size** (plan 34) | Kitne runner workers aur kitne API processes chalayein: load test (`e2e/contest-2000-*.txt`) batata hai ki ek 4-core machine par 2,000 ka contest bina error chalta hai, par verdict p95 ~22 s hai. 5 s ke liye zyada runner aur 2+ API processes chahiye: ye kharche ka faisla owner ka | `JUDGE_CONCURRENCY` set karke, aur machines badha kar, load test dobara | 2 Oct 2026 |
 | **Push notifications ki keys** (plan 41) | Server env me `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (ek baar `npx web-push generate-vapid-keys`; private key chat me mat bhejiye, seedha server env me) | Plan page par "notification bhi" ka option dikhega, aur roz ka reminder phone par aayega | 2 Oct 2026 |
+| **College/company ke agle features: Plan rows 65–74** (Batch A–J, 2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa batch pehle. F, G, H, I, J me owner se cheezein chahiye (API key, data, prices, manzoori, auditor) | Har batch apne tests aur screenshots ke saath | 2 Oct 2026 |
 | **Agle features: Plan rows 42–52** (2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa pehle. 43, 50, 51, 52 me owner se cheezein bhi chahiye (Play Console, cloud, video host, content) | Har row apne tests ke saath banegi, phir ✅ | 2 Oct 2026 |
 | **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
 
@@ -365,6 +371,28 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 50 | **Judge autoscale**: queue lambi ho to runner machines badhein, khaali ho to ghatein | G | Bade contest me verdict jaldi | Load test me p95 < 5 s | ⬜ pending: deploy kahan hoga (cloud) aur kharcha owner se |
 | 51 | **Video hosting**: player, kitna dekha (progress), signed URL, watermark | S3 | Video lessons ke liye | Tests: progress save, URL ki expiry | ⬜ pending: host ka faisla aur videos owner se |
 | 52 | **Content**: 110 aur editorials, 260 aur hints, 25 companies ka asli data, 60 video lessons | Content | Platform ki asli keemat | Har pack ke tests | ⬜ pending: content/data owner se ("Ruka hua kaam") |
+| 53 | **T1 Naya data seal + retention** (shuru: 2 Oct 2026): scan ki hui copies, student list ke contact, interview code/notes ek server key se AES-256-GCM me band; retention sweep in par bhi (organisation ke din ke hisaab se) | V2-12 bharosa | SECURITY.md ki khud maani kami | Tests: DB me plain text nahi, padhne par wapas, purana data sweep se mitta | ✅ ban gaya (2 Oct 2026): `store/src/sealing.ts`, migration 0048, `privacy.ts` RetainedRecords; test `records-sealing.test.ts`. Purana plain data dobara likhne par seal |
+| 54 | **CL63 Handwritten marks Results aur CO–PO me**: checked copy ke marks exam ke results, scorecard aur CO attainment me jaayein | V2-12 | Paper exam ka result bhi ek jagah | Tests: results row, CO attainment me copy ke marks | ✅ ban gaya (2 Oct 2026): `results.ts` paperCopies; console Results me "Paper copy" |
+| 55 | **CO42 Offer email/WhatsApp se**: offer banate hi candidate ko link outbox se jaaye; dobara bhejna | V2-12 | Recruiter link copy na kare | Tests: outbox item, WhatsApp/email text | ✅ ban gaya (2 Oct 2026): `api/src/student-messages.ts`, migration 0049; WhatsApp template "offer" Meta ki manzoori baaki (Ruka hua kaam) |
+| 56 | **CL67 Nayi drive ki alert**: drive kholte hi eligible students ko email/WhatsApp, apply link ke saath; ek student ko ek drive ki ek baar | V2-12 | TPO ka roz ka kaam | Tests: sirf eligible, ek baar, link | ✅ ban gaya (2 Oct 2026): `/drives/:id/alert`, console Placement "Tell eligible students"; WhatsApp template "drive" manzoori baaki |
+| 57 | **CO38 Funnel dashboard**: har drive aur college ka applied → test → interview → offered → joined, kahan log chhoote | V2-12 | Company aur TPO dono ka pehla sawaal | Tests: ginti, college-wise; console | ✅ ban gaya (2 Oct 2026): `api/src/funnel.ts`, `/placement/funnel`; console Placement → Funnel, drive me college-wise |
+| 58 | **CL26 Demo test**: har organisation ka ek "practice exam" link, asli CBT jaisa, bina marks aur bina record | V2-12 | Pehli baar CBT dene walon ka dar | Tests: demo attempt kahin nahi dikhta, credit nahi katta | ✅ ban gaya (2 Oct 2026): `web/src/demo.ts` (`/?demo`). Sample sawaal sabke liye ek jaise, organisation ke apne nahi |
+| 59 | **CL60 Paper setter → HoD review → lock**: exam "review ke liye" bheja jaaye, reviewer manzoor ya lautaye (comment), manzoor ke baad paper badal na sake | V2-12 | Paper ki jimmedari aur leak se bachav | Tests: lock ke baad edit mana, audit, comment | ✅ ban gaya (2 Oct 2026): `api/src/exam-review.ts`, migration 0050; console `PaperReview.tsx` |
+| 60 | **CL4 Staff CSV + CL6 Department**: staff CSV se (role, department); exam aur staff ka department; HoD ko sirf apna department | V2-12 | Badi university | Tests: import dry run, department filter | ✅ ban gaya (2 Oct 2026): `api/src/departments.ts`, migration 0051; console `StaffSheet.tsx`, exam list par department. Campus (kai college) nahi |
+| 61 | **CO27 Calendar invite + CO41 Panel**: interview ka .ics (email ke saath), kai interviewers, sabke scorecard | V2-12 | Interview ka roz ka kaam | Tests: .ics, panel ke scorecards, average | ✅ ban gaya (2 Oct 2026): `interviews.ts` (panel, combine, calendar), migration 0052; console `Interviews.tsx`. Calendar API sync nahi, `.ics` email/download |
+| 62 | **CL65 Internal marks (CIA)**: kai exams ke marks weightage se jod kar ek sheet, university format CSV | V2-12 | Har semester ka kaam | Tests: weightage, gair-hazir, CSV | ✅ ban gaya (2 Oct 2026): `api/src/internal-marks.ts`, `/reports/internal-marks`; console Results → Internal marks |
+| 63 | **CL62 Divyang suvidha**: candidate par extra time %, scribe note, bada font; exam me apne aap | V2-12 | Niyam aur insaaf | Tests: extra time timer me, note | ✅ ban gaya (2 Oct 2026): `api/src/accommodations.ts`, migration 0053; console `Arrangements.tsx`; web instructions. Section-wise time par extra time sirf poore exam me |
+| 64 | **CO39 Candidate status page**: candidate apne link se dekhe: drive me kis round me, test, interview, offer | V2-12 | Recruiter ke phone kam | Tests: sirf apni jaankari, galat link | ✅ ban gaya (2 Oct 2026): `placement.ts` status, `/status/:code`; web StatusPage |
+| 65 | **Batch A: jo aadhe hain unhe poora karna** (sabse sasta, pilot me seedha kaam aayega). CL5 console ke pages ke andar ka text Hindi me; CL9 student khud register kare, TPO manzoor kare; CL18 exam ke liye aptitude/reasoning/verbal packs; CL19 sawaal par Bloom level; CO8 SQL sawaal exam ke author flow me; CL6 ek university me kai college/campus | V2-12 | Pilot colleges ki seedhi maang | Har ek ke tests; console aur screenshots | ⬜ baaki |
+| 66 | **Batch B: exam ka bharosa**. CL64 online written answers par doosra examiner; CL61 debarred list (kam attendance par exam se bahar); CL20 har candidate ke alag numbers wale sawaal (parameterised); CL34 candidate-code watermark jo photo me bhi dikhe | V2-12, B4 | Leak aur galat marking se bachav | Tests; ek candidate ka paper doosre se alag | ⬜ baaki |
+| 67 | **Batch C: company ke roz ke kaam**. CO24 candidates ki side-by-side tulna; CO37 sales role template; CO40 fairness report (branch, college, bhasha); CO43 background verification ko data bhejna; CO11 take-home project (GitHub repo, rubric) | V2-12 | Recruiter ka faisla tez aur saaf | Tests; console; screenshots | ⬜ baaki |
+| 68 | **Batch D: college aur company ke beech**. CL53 company ke liye college ka portal (drive request, shortlist dekhna); CL59 student ka verified profile jo company dekhe (student ki manzoori se); CL66 company CRM (contacts, visits, MoU); CL48 maa-baap ko report (student ki manzoori se) | V2-12 | Dono taraf ek hi jagah | Tests, manzoori ka record | ⬜ baaki |
+| 69 | **Batch E: interview aur proctoring aage**. CO26 whiteboard interview room me; CO10 video jawab + English speaking score; CO19 awaaz ka viva proxy ke liye; CO20 phone se doosra camera | V2-12 | Remote hiring ka bharosa | Tests; asli phone par jaanch | ⬜ baaki |
+| 70 | **Batch F: AI wale** (API key aur evals ke baad). CL17 syllabus se AI draft sawaal; CO12 AI-allowed test (prompts ledger me); CO29 AI pehla round (awaaz, Hinglish); T2 asli model par evals (JD, handwriting, photo); T3 "AI ne sujhaya, X ne manzoor kiya" har jagah ek jaisa | V2-12 | AI se kaam, faisla insaan ka | Evals ke numbers; owner ki manzoori | ⬜ API key ka intezaar |
+| 71 | **Batch G: bada data aur score**. CO16 verified talent pool + Parikshaa Score se search; CO25 role benchmark ("top 20%"); CL55 Campus Premier League | V2-12, B3 | Kaafi data ke baad hi sahi | Kaafi students ka data | ⬜ data ka intezaar |
+| 72 | **Batch H: paisa aur contract**. CL58 TPO OS free, proctored aur handwritten paid; CO33 pay-per-shortlist, saal ka contract | V2-7 | Kamai | Owner ke prices | ⬜ owner ka faisla |
+| 73 | **Batch I: bahar ki manzoori wale**. CL10 APAAR/DigiLocker se verify; CO31 DigiLocker documents; CO4 Naukri/LinkedIn se candidate | V2-12 | Sarkari aur bahar ke partner | Onboarding/API ki manzoori | ⬜ bahar ki manzoori |
+| 74 | **Batch J: compliance**. CO35 security questionnaire ka jawab + status page; CO36 pentest, ISO 27001; CO9 frontend/full-stack task browser IDE me | V2-12 | Badi company ka procurement | Auditor; lawyer | ⬜ paisa aur auditor |
 
 ## Master plan v2: taiyaari se naukri tak, ek bharosemand platform
 
@@ -621,9 +649,9 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | CL1 | Khud sign-up, email verify, sample exam, guided tour | ✅ | Self-serve (PR G1–G3) |
 | CL2 | 5 roles (owner, author, invigilator, reviewer, read-only), 2FA, Google/Microsoft SSO | ✅ | ROADMAP §1 |
 | CL3 | Hindi me college guide | ✅ | `docs/pilot` |
-| CL4 | Staff ko CSV se ek saath jodna (department-wise) | ⬜ | Aaj staff ek-ek karke jodte hain |
+| CL4 | Staff ko CSV se ek saath jodna (department-wise) | ✅ | CSV (email, naam, role, department), pehle check phir save; har naye member ko apna password set karne ka link (`api/src/departments.ts`, console `StaffSheet.tsx`). Pehle se maujood staff chhoda jaata hai, badla nahi |
 | CL5 | Console Hindi me | 🟡 | Top bar ka "हिन्दी" switch: navigation, titles aur page ki ek line Hindi me (`console/src/language.ts`). Pages ke andar abhi English |
-| CL6 | Department aur campus (ek university, kai college) | ⬜ | Aaj ek organisation = ek unit |
+| CL6 | Department aur campus (ek university, kai college) | 🟡 | Department ✅: staff aur exam ka department, owner ke siwa member ko sirf apne department ke (aur bina department ke) exams (`departments.ts`, migration 0051). Ek university me kai college/campus abhi nahi |
 
 **2. Students ka data**
 
@@ -658,7 +686,7 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | CL23 | Try test (staff preview), system check candidate ke liye | ✅ | |
 | CL24 | **Admit card / hall ticket PDF**: photo, seat, lab, QR | ✅ | Admit card PDF: naam, roll, centre/room/seat, samay, QR (`seats.ts`). Candidate apne invite link se bhi le. Photo nahi |
 | CL25 | Lab aur seat allocation (kaunsa student kaunse lab, kaunsi seat) | ✅ | Rooms aur seats, roll no. ke kram me; kam seats par mana (`seats.ts`, console `Rooms.tsx`) |
-| CL26 | Candidate ke liye demo test (asli jaisa, bina marks) | ⬜ | Pehli baar CBT dene walon ka dar kam |
+| CL26 | Candidate ke liye demo test (asli jaisa, bina marks) | ✅ | `/?demo`: asli CBT screen par 5 sample sawaal, server ko kuch nahi jaata, credit nahi katta (`web/src/demo.ts`); invite page se link. Organisation ke apne sawaal wala demo nahi |
 
 **5. Exam ka din**
 
@@ -681,7 +709,7 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | CL36 | Micro-viva: AI follow-up se "khud likha ya nahi" ka saboot | ✅ | |
 | CL37 | Written answers ka blind marking queue (J/K, Enter) | ✅ | PR #32 |
 | CL38 | Code similarity (MOSS jaisa) | ✅ | |
-| CL39 | **Handwritten copy scan karke AI se sujhaya hua marking** | ✅ | Scan upload (phone photo chhoti hokar), AI ka sujhav har sawaal par wajah aur padha hua text ke saath, faculty ke marks hi marks, CSV (`handwriting.ts`). Asli model par abhi nahi chalaya; marks Results me nahi jaate |
+| CL39 | **Handwritten copy scan karke AI se sujhaya hua marking** | ✅ | Scan upload (phone photo chhoti hokar), AI ka sujhav har sawaal par wajah aur padha hua text ke saath, faculty ke marks hi marks, CSV (`handwriting.ts`). Asli model par abhi nahi chalaya. Marks ab Results aur CO–PO me (CL63) |
 | CL40 | Doosra examiner (moderation), farq zyada ho to teesra | ✅ | Doosra examiner (pehla nahi), 10% tolerance, disputed → head examiner settle, 10% sample (`handwriting.ts`). Sirf handwritten copies par |
 
 **7. Result**
@@ -716,6 +744,15 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | CL56 | Prepaid credits (Razorpay) ya monthly invoice; GST invoice, credit note, TDS | ✅ | ROADMAP §12 |
 | CL57 | **Saal ka licence, PO aur NEFT** se payment ka record, quotation PDF | ✅ | Quotation PDF (PO no., bank details), operator UTR se payment record kare to credits aur GST invoice (`billing.ts`, `billing-cli transfer`) |
 | CL58 | TPO OS free; proctored exam aur handwritten checking paid | ⬜ | V2-7 |
+| CL59 | Student ka verified profile (CGPA, scores, offers) jo company dekhe | ⬜ | |
+| CL60 | Paper setter → HoD review → lock | ✅ | Setter review ke liye bheje, koi doosra manzoor kare ya comment ke saath lautaye; review me aur manzoor ke baad paper lock; owner wajah ke saath khole; sab audit (`api/src/exam-review.ts`, migration 0050, console `PaperReview.tsx`) |
+| CL61 | Debarred list (kam attendance) | ⬜ | |
+| CL62 | Divyang (PwD) suvidha: extra time, scribe, bada font | ✅ | Candidate par extra time % (20 min/ghanta = 33%), scribe, bada font; extra time attempt shuru hote hi ledger me `time_extended` (kisne diya, naam ke saath); instructions me dikhta hai, test bade font me khulta hai; staff ka note seal, audit me nahi (`api/src/accommodations.ts`, migration 0053, console `Arrangements.tsx`). Section-wise time wale exam me sirf poore exam ka time badhta hai; scribe sirf note hai, invigilator karta hai |
+| CL63 | Handwritten marks Results aur CO–PO me | ✅ | Checked/moderated copy ke marks exam ke Results me "Paper copy" row, CO attainment aur internal marks me bhi; disputed copy nahi (`results.ts` paperCopies). Copy ka alag scorecard PDF nahi |
+| CL64 | Online written answers par doosra examiner | ⬜ | |
+| CL65 | Internal marks (CIA) ka jod, university format | ✅ | Kai exams, har ek kitne marks ka, "best N", rounding (upar, nazdeek, 2 decimal); roll no., naam, har component, total; AB gair-haazir (`api/src/internal-marks.ts`, console `InternalMarks.tsx`). Scheme save nahi hoti, har baar chunni padti hai |
+| CL66 | Company CRM (contacts, visits, MoU) | ⬜ | |
+| CL67 | Nayi drive ki alert eligible students ko | ✅ | "Tell eligible students": sirf eligible aur drive me na jude students ko email/WhatsApp, apply link ke saath, ek student ko ek drive ki ek baar (`api/src/student-messages.ts`). Apply link khula hona chahiye; button TPO dabata hai, apne aap nahi. WhatsApp template Meta se manzoor hona baaki |
 
 #### Company ka safar
 
@@ -774,7 +811,7 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | ID | Feature | Status | Note |
 |---|---|---|---|
 | CO26 | **Interview room**: video + saanjha code editor + whiteboard | 🟡 | Interview room: candidate link, live code (2 second), problem badalna, video bahar ka link (Jitsi ya apna) (`interviews.ts`). Whiteboard aur andar ka video nahi |
-| CO27 | Interview scheduling (Google/Outlook calendar) | ⬜ | |
+| CO27 | Interview scheduling (Google/Outlook calendar) | ✅ | Interview banate hi panel aur candidate ko email me `.ics` calendar invite, cancel par cancel wala invite; room se "Add to calendar" download (`interviews.ts` calendar). Google/Outlook API se seedha sync nahi; reschedule nahi, naya banana padta hai |
 | CO28 | Structured scorecard har round ka, panel ke notes | ✅ | Criteria 1–5, recommendation, summary; interviewer ke private notes (`interviews.ts`) |
 | CO29 | AI pehla round (awaaz, Hinglish), report insaan dekhe | ⬜ | A8 ka engine |
 
@@ -794,6 +831,16 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | CO34 | Audit log, privacy notice, retention, data Bharat me, SECURITY.md | ✅ | |
 | CO35 | DPA template, security questionnaire ka taiyaar jawab, status page, SLA | 🟡 | DPA aur SLA templates `docs/legal/` me, code se likhe; lawyer aur owner ki terms baaki. Questionnaire aur status page nahi |
 | CO36 | Pentest, ISO 27001 | ⬜ | Paisa aur auditor chahiye (ROADMAP "not in here") |
+| CO37 | Sales role template | ⬜ | |
+| CO38 | Funnel dashboard (drive aur college-wise) | ✅ | Har drive aur college ka applied → test → interview → offered → joined, aur chhode (`api/src/funnel.ts`, `/placement/funnel`, console Placement → Funnel) |
+| CO39 | Candidate status page | ✅ | Apply karte hi candidate ko signed link; usme sirf apna round, test, interview, offer (`placement.ts` status, web StatusPage); recruiter har application ka link copy kar sake |
+| CO40 | Fairness report (branch, college, bhasha) | ⬜ | |
+| CO41 | Interview panel: kai interviewer, sabke scorecard | ✅ | 8 tak staff panel me; har ek apna scorecard, interview ka scorecard sabka average (recommendation ka jhukaav), sab score karein tab band (`interviews.ts` combine, migration 0052). Panel chunne ke liye staff list dekhne ki permission chahiye |
+| CO42 | Offer email/WhatsApp se apne aap | ✅ | Offer banate hi outbox se email/WhatsApp (jo bhi student list me ho), bhejte waqt check: offer badla ya jawab aa gaya to nahi jaata (`student-messages.ts`). WhatsApp template Meta se manzoor hona baaki |
+| CO43 | Background verification handoff | ⬜ | |
+| T1 | Scan copies, student contact, interview notes seal + retention | ✅ | AES-256-GCM, server key se nikli alag key har tarah ke data ke liye: copies ke pages aur AI sujhav, student list ka email/phone, interview ka email/code/notes, divyang note; retention sweep copies aur khatam interviews par (`store/src/sealing.ts`, migration 0048, `privacy.ts`). Pehle se pada plain data dobara likhne par hi seal hota hai |
+| T2 | Asli model par evals: JD, handwriting, photo | ⬜ | API key ka intezaar |
+| T3 | "AI ne sujhaya, X ne manzoor kiya" har jagah ek jaisa | ⬜ | |
 
 #### Pehle kya banega (college + company, top 12)
 
@@ -814,6 +861,37 @@ Ye kram isliye hai kyunki inme kam mehnat me sabse zyada "aasaan" aur "bharosa" 
 
 Inka kaam V2-P2 (college) aur V2-P3 (company) me aata hai. Build shuru karte waqt har ID upar ki Plan table me alag row banega.
 
+### V2-13. Jo ban gaya, wo dikhta kaisa hai (screenshots)
+
+College aur company ke bane hue features ki tasveerein, `packages/e2e/screenshots/college.shots.ts` se asli server aur browser par li gayi (`npm run screenshots -w @parikshaa/e2e`). Pehle ki tasveerein (`pilot-01`…`pilot-22`: WhatsApp invite, lab mode, recheck, scorecard, students, drive, JD se test) [PILOT.md](PILOT.md) me hain.
+
+| File | Kya dikhta hai | Tasveer |
+|---|---|---|
+| `college-01-seats-and-arrangements` | Exam din: seats aur admit card, divyang suvidha (CL24, CL25, CL62) | ![Exam din: seats aur admit card, divyang suvidha (CL24, CL25, CL62)](screenshots/college-01-seats-and-arrangements.png) |
+| `college-02-candidate-arrangements` | Candidate ke instructions me uski suvidha (CL62) | ![Candidate ke instructions me uski suvidha (CL62)](screenshots/college-02-candidate-arrangements.png) |
+| `college-03-results-page` | Results ka poora page: copies, CO–PO, CIA, shortlist (CL63) | ![Results ka poora page: copies, CO–PO, CIA, shortlist (CL63)](screenshots/college-03-results-page.png) |
+| `college-04-course-outcomes` | CO–PO attainment (CL47) | ![CO–PO attainment (CL47)](screenshots/college-04-course-outcomes.png) |
+| `college-05-internal-marks` | Internal marks (CIA), university sheet (CL65) | ![Internal marks (CIA), university sheet (CL65)](screenshots/college-05-internal-marks.png) |
+| `college-06-handwritten-copies` | Handwritten copies, AI sujhav aur doosra examiner (CL39, CL40) | ![Handwritten copies, AI sujhav aur doosra examiner (CL39, CL40)](screenshots/college-06-handwritten-copies.png) |
+| `college-07-shortlists` | Hiring manager ke liye shortlist link (CO23) | ![Hiring manager ke liye shortlist link (CO23)](screenshots/college-07-shortlists.png) |
+| `college-08-shortlist-for-the-manager` | Manager ka shortlist page, bina login (CO23) | ![Manager ka shortlist page, bina login (CO23)](screenshots/college-08-shortlist-for-the-manager.png) |
+| `college-09-readiness` | Readiness heatmap, branch × topic (CL51) | ![Readiness heatmap, branch × topic (CL51)](screenshots/college-09-readiness.png) |
+| `college-10-funnel` | Funnel, har drive aur college (CO38) | ![Funnel, har drive aur college (CO38)](screenshots/college-10-funnel.png) |
+| `college-11-nirf-report` | NIRF/NAAC placement report (CL54) | ![NIRF/NAAC placement report (CL54)](screenshots/college-11-nirf-report.png) |
+| `college-12-drive-colleges-offers-funnel` | Drive: apply link, alert, funnel, colleges, offers, status link (CO14, CO15, CO30, CL67) | ![Drive: apply link, alert, funnel, colleges, offers, status link (CO14, CO15, CO30, CL67)](screenshots/college-12-drive-colleges-offers-funnel.png) |
+| `college-13-apply-page` | Student ka apply page (CO14) | ![Student ka apply page (CO14)](screenshots/college-13-apply-page.png) |
+| `college-14-application-status` | Candidate status page (CO39) | ![Candidate status page (CO39)](screenshots/college-14-application-status.png) |
+| `college-15-offer-page` | Offer page: accept/decline (CO30, CO42) | ![Offer page: accept/decline (CO30, CO42)](screenshots/college-15-offer-page.png) |
+| `college-16-interview-room-scored` | Interview room: live code, scorecard, calendar (CO26, CO27) | ![Interview room: live code, scorecard, calendar (CO26, CO27)](screenshots/college-16-interview-room-scored.png) |
+| `college-17-schedule-with-panel` | Interview schedule karna, panel ke saath (CO41) | ![Interview schedule karna, panel ke saath (CO41)](screenshots/college-17-schedule-with-panel.png) |
+| `college-18-candidate-interview-room` | Candidate ka interview room (CO26) | ![Candidate ka interview room (CO26)](screenshots/college-18-candidate-interview-room.png) |
+| `college-19-paper-review` | Paper review aur lock (CL60) | ![Paper review aur lock (CL60)](screenshots/college-19-paper-review.png) |
+| `college-20-staff-sheet-and-departments` | Staff CSV se, departments (CL4, CL6) | ![Staff CSV se, departments (CL4, CL6)](screenshots/college-20-staff-sheet-and-departments.png) |
+| `college-21-exams-with-department` | Exam list par department (CL6) | ![Exam list par department (CL6)](screenshots/college-21-exams-with-department.png) |
+| `college-22-console-in-hindi` | Console Hindi me (CL5) | ![Console Hindi me (CL5)](screenshots/college-22-console-in-hindi.png) |
+| `college-23-billing-quotation-neft` | Quotation aur NEFT se payment (CL57) | ![Quotation aur NEFT se payment (CL57)](screenshots/college-23-billing-quotation-neft.png) |
+| `college-24-demo-test` | Demo test (CL26) | ![Demo test (CL26)](screenshots/college-24-demo-test.png) |
+
 ---
 
 ## Build log
@@ -822,6 +900,8 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#39](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/39) | Bane hue college/company features ke 24 screenshots (`college-01`…`college-24`, [V2-13](#v2-13-jo-ban-gaya-wo-dikhta-kaisa-hai-screenshots)); baaki 39 features ka kram Plan rows 65–74 (Batch A–J) me |
+| 2 Oct 2026 | [#39](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/39) | Agle 12: naya data seal + retention (0048), handwritten marks Results/CO me, offer aur nayi drive email/WhatsApp se (0049), funnel, demo test, paper review + lock (0050), staff CSV + department (0051), interview panel + calendar invite (0052), internal marks (CIA), divyang suvidha (0053), candidate status page. Main ka toota build (#35 ke merge se gaye store exports) bhi theek |
 | 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `ea7e802` | Plan 41: PWA (manifest, icons, `sw.js`: page aur aaj ka plan offline, session ke hash par), push (`prep_push_subscriptions` 0047, `web-push`, sirf browsers ke push services, reminder email ke saath); account mitane par push aur public profile bhi mitte hain. `aefd54e`: CI stylelint ke 13 errors theek |
 | 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `c5aefc4` | Plan 40: lesson quiz (0046), galat jawab aur problem note se revision card, code ka read-only share link, problem list me company aur pattern filter |
 | 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `2a870a7` | Plan 39: interview experience report/flag (3 par hold), success stories, company logos, pattern analysis (0045) |

@@ -241,6 +241,17 @@ describe("a drive's link to apply", () => {
     await user.click(within(card).getByRole("button", { name: "Open the link" }));
     await waitFor(() => expect((client as unknown as { setApplyLink: ReturnType<typeof vi.fn> }).setApplyLink).toHaveBeenCalledWith("d1", true, true));
   });
+
+  it("tells the eligible students about an open drive", async () => {
+    const alertDrive = vi.fn(async () => ({ queued: 12, already: 0, unreachable: 2 }));
+    const client = stub({ drive: vi.fn(async () => ({ ...detail, applyLink: "https://exam.test/?apply=org-a.abc" })), alertDrive });
+    const user = userEvent.setup();
+    show(<PlacementPanel client={client as unknown as ConsoleClient} canInvite />);
+    await user.click(within(await screen.findByRole("region", { name: "Drives" })).getByRole("button", { name: "Infosys" }));
+    const card = await screen.findByRole("region", { name: "Link to apply" });
+    await user.click(within(card).getByRole("button", { name: "Tell eligible students" }));
+    await waitFor(() => expect(alertDrive).toHaveBeenCalledWith("d1"));
+  });
 });
 
 describe("the NIRF / NAAC report", () => {

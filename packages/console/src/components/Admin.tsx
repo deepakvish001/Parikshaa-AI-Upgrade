@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { KeyRound, ScrollText, UserX, Users } from "lucide-react";
 import { useToast } from "@parikshaa/brand/ui";
@@ -35,6 +35,9 @@ const IST = "Asia/Kolkata";
 const stamp = (iso: string) => new Intl.DateTimeFormat("en-IN", { timeZone: IST, dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
 
 // --- staff --------------------------------------------------------------------
+
+const StaffSheet = lazy(() => import("./StaffSheet.tsx").then((m) => ({ default: m.StaffSheet })));
+const StaffDepartments = lazy(() => import("./StaffSheet.tsx").then((m) => ({ default: m.StaffDepartments })));
 
 export function StaffPanel({ client, selfId }: { client: ConsoleClient; selfId: string }) {
   const queryClient = useQueryClient();
@@ -131,6 +134,15 @@ export function StaffPanel({ client, selfId }: { client: ConsoleClient; selfId: 
           </div>
         )}
       </SettingsGroup>
+
+      {staff.data === undefined || staff.data.length === 0 ? null : (
+        <Suspense fallback={null}>
+          <StaffDepartments client={client} users={staff.data.filter((u) => !u.disabled)} />
+        </Suspense>
+      )}
+      <Suspense fallback={null}>
+        <StaffSheet client={client} />
+      </Suspense>
 
       <SettingsGroup id="staff-add" title="Add a member of staff" description="They sign in with this email and the password you give them, and should change it on first sign-in.">
         <form

@@ -189,6 +189,7 @@ export function ExamList({ exams, onOpen, onEdit, onNew, onFromJob, canWrite = t
                                 Proctored
                               </span>
                             ) : null}
+                            {exam.department === undefined || exam.department === null ? null : <span className="tag">{exam.department}</span>}
                           </span>
                           {/* On a phone the row is a card: its standing in words, under the title. */}
                           <span className="exam-standing">{standing.length === 0 ? `${exam.questionCount} questions` : standing.join(" · ")}</span>

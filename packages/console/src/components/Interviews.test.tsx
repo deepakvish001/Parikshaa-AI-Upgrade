@@ -51,6 +51,46 @@ describe("the interviews page", () => {
     expect(await screen.findByRole("heading", { name: /Scorecard — Yes/ })).toBeInTheDocument();
   });
 
+  it("puts others on the panel, and shows each member's scorecard beside the average", async () => {
+    const scheduleInterview = vi.fn(async () => ({ ...base, id: "i2" }));
+    const card = (score: number, recommendation: "yes" | "strong_yes") => ({ criteria: [{ name: "Code", score }], recommendation, summary: "" });
+    const scored: Interview = {
+      ...base,
+      id: "i2",
+      status: "done",
+      scorecard: { criteria: [{ name: "Code", score: 4.5 }], recommendation: "strong_yes", summary: "" },
+      panel: [
+        { userId: "u1", name: "Priya", scored: true },
+        { userId: "u2", name: "Arjun", scored: true },
+      ],
+      scores: [
+        { userId: "u1", name: "Priya", scorecard: card(4, "yes"), scoredAt: "" },
+        { userId: "u2", name: "Arjun", scorecard: card(5, "strong_yes"), scoredAt: "" },
+      ],
+    };
+    mount({
+      interviews: async () => [],
+      interview: async () => scored,
+      scheduleInterview,
+      me: async () => ({ id: "u1" }) as never,
+      listStaff: async () => [
+        { id: "u1", name: "Priya", email: "p@x.in", role: "owner", disabled: false },
+        { id: "u2", name: "Arjun", email: "a@x.in", role: "reviewer", disabled: false },
+      ] as never,
+    });
+    await userEvent.click((await screen.findAllByRole("button", { name: /Schedule an interview/ }))[0]!);
+    await userEvent.type(screen.getByLabelText("Interview"), "Round 2");
+    await userEvent.type(screen.getByLabelText("Candidate's name"), "Ananya");
+    await userEvent.type(screen.getByLabelText("Date and time (India time)"), "2026-10-06T10:00");
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Arjun" }));
+    expect(screen.queryByRole("checkbox", { name: "Priya" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Schedule and copy the link" }));
+    await waitFor(() => expect(scheduleInterview).toHaveBeenCalledWith(expect.objectContaining({ panel: ["u2"] })));
+    expect(await screen.findByRole("heading", { name: /Panel average \(2\) — Strong yes/ })).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Each member's scorecard" })).toHaveTextContent("ArjunCode 5Strong yes");
+    expect(screen.getByLabelText("Panel")).toHaveTextContent("Priya ✓ · Arjun ✓");
+  });
+
   it("says what to do when there are none", async () => {
     mount({ interviews: async () => [] });
     expect(await screen.findByText(/No interviews yet/)).toBeInTheDocument();

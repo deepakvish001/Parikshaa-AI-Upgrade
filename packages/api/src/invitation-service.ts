@@ -1,3 +1,4 @@
+import type { AccommodationService, CandidateArrangements } from "./accommodations.js";
 import { candidateId, examId as toExamId, orgId as toOrgId, type AttemptId, type ExamId, type OrgId } from "@parikshaa/core";
 import {
   staffScope,
@@ -110,6 +111,8 @@ export interface ImportPreview {
 export class InvitationService {
   readonly #o: Required<Omit<InvitationServiceOptions, "reminderLeadMs" | "now" | "newId" | "notice" | "lab" | "seat" | "origin">>;
   readonly #seat: NonNullable<InvitationServiceOptions["seat"]>;
+  /** Arrangements for a candidate with a disability (CL62); late-bound. */
+  arrangements: AccommodationService | null = null;
   readonly #notice: (orgId: OrgId) => Promise<Notice | null>;
   readonly #lab: LabService | null;
   readonly #origin: NonNullable<InvitationServiceOptions["origin"]> | null;
@@ -407,6 +410,7 @@ export class InvitationService {
         invitation.hardClose ? closes : null,
         exam,
         notice === null ? undefined : { noticeVersion: notice.version, noticeHash: notice.hash },
+        (await this.arrangements?.atStart(orgId, exam.id, invitation.candidateRef, exam.policy.durationMs)) ?? null,
       );
     }
 
@@ -444,7 +448,8 @@ export class InvitationService {
     // What opening will ask for, so the page can ask it first: the same notice and camera redeem would refuse without.
     const notice = started ? null : await this.#notice(toOrgId(named.orgId));
     const seat = await this.#seat(toOrgId(named.orgId), invitation.examId, invitation.candidateRef);
-    return { ...briefingOf(exam, invitation, started), notice, seat };
+    const arrangements = (await this.arrangements?.forCandidate(toOrgId(named.orgId), invitation.examId, invitation.candidateRef, exam.policy.durationMs)) ?? null;
+    return { ...briefingOf(exam, invitation, started), notice, seat, arrangements };
   }
 }
 
@@ -477,13 +482,15 @@ export interface Briefing {
   readonly notice: Notice | null;
   /** Where to sit, when the exam is held in rooms; the admit card says the same. */
   readonly seat: { readonly centre: string; readonly room: string; readonly seat: string } | null;
+  /** This candidate's arrangements (CL62): extra minutes, a scribe, larger text. */
+  readonly arrangements: CandidateArrangements | null;
 }
 
 export function briefingOf(
   exam: Exam,
   invitation: Pick<Invitation, "name" | "candidateRef" | "opensAt" | "closesAt">,
   started: boolean,
-): Omit<Briefing, "notice" | "seat"> {
+): Omit<Briefing, "notice" | "seat" | "arrangements"> {
   const sections = exam.sections ?? [];
   const every = [...exam.questions, ...sections.flatMap((s) => s.pool)];
   const kinds = new Set<Briefing["kinds"][number]>();

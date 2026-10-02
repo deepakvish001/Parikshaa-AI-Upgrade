@@ -30,8 +30,11 @@ import {
   ShortlistStore,
   OutcomeStore,
   InterviewStore,
+  AccommodationStore,
   ScriptStore,
   ProxyStore,
+  ReviewStore,
+  DepartmentStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -47,9 +50,14 @@ import { PlacementService } from "../placement.js";
 import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
 import { OutcomeService } from "../outcomes.js";
+import { InternalMarksService } from "../internal-marks.js";
+import { AccommodationService } from "../accommodations.js";
 import { InterviewService } from "../interviews.js";
+import { StudentMessages } from "../student-messages.js";
 import { HandwritingService } from "../handwriting.js";
 import { ProxyService } from "../proxy.js";
+import { ExamReviewService } from "../exam-review.js";
+import { DepartmentService } from "../departments.js";
 import { AttemptTokens } from "../auth.js";
 import { InviteCodes } from "../invite-codes.js";
 import { InvigilationService } from "../invigilation.js";
@@ -76,7 +84,7 @@ import { ExamService } from "../service.js";
 import { StaffAuth, hashPassword } from "../staff-auth.js";
 import { StaffSecrets } from "../staff-secrets.js";
 import { StaffSecurity } from "../staff-security.js";
-import type { ItemHandler, Mailer } from "../delivery.js";
+import type { ItemHandler, Mailer, WhatsAppSender } from "../delivery.js";
 import type { AtsBaseUrls } from "../ats.js";
 
 /**
@@ -127,7 +135,7 @@ let hashed: Promise<string> | null = null;
 const passwordHash = () => (hashed ??= hashPassword(PASSWORD));
 
 export interface Wiring {
-  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler };
+  readonly handlers: ReturnType<typeof buildIntegrations>["handlers"] & { readonly staff_email: ItemHandler; readonly learner_email: ItemHandler; readonly student: ItemHandler; readonly interview: ItemHandler };
   /** For a delivery worker's candidate results (DeliveryWorkerOptions.result). */
   readonly results: ResultsService;
   /** For a delivery worker's recheck messages (DeliveryWorkerOptions.recheck). */
@@ -161,6 +169,8 @@ export async function wire(
     readonly push?: PushSender;
     /** Results may go by WhatsApp too, as when the server has it set up. */
     readonly whatsapp?: boolean;
+    /** What WhatsApp messages to students (offers, drive alerts) are sent with. */
+    readonly whatsappSender?: WhatsAppSender;
     /**
      * The clock staff sign-in runs on. Off by default, so sessions do not
      * expire when a test moves `now` on by days; a second-factor test needs it.
@@ -177,15 +187,20 @@ export async function wire(
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
   const identity = new IdentityStore(sql);
   let billing: BillingService | undefined;
+  let examReviews: ExamReviewService | undefined;
+  let departments: DepartmentService | undefined;
   const service = new ExamService({
+    departments: (actor) => departments!.scope(actor),
     store,
     identity,
+    locked: (org, exam) => examReviews?.locked(org, exam) ?? Promise.resolve(null),
     meter: { consume: (org, attempt) => billing!.consume(org, attempt), refund: (org, attempt) => billing!.refund(org, attempt) },
     client: options.client,
     ...(options.now === undefined ? {} : { now: options.now }),
     ...(options.newId === undefined ? {} : { newId: options.newId }),
     ...(options.runner === undefined ? {} : { runner: options.runner }),
   });
+  examReviews = new ExamReviewService({ reviews: new ReviewStore(sql), ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
   const razorpay = new FakeRazorpay();
   billing = new BillingService({
     store,
@@ -199,7 +214,35 @@ export async function wire(
   });
   const tokens = new AttemptTokens(TOKEN_SECRET);
   const invitationStore = new InvitationStore(sql);
+  const records = new DataKeys(DATA_KEY);
+  const scriptStore = new ScriptStore(sql, records.records("scripts"));
+  const interviewStore = new InterviewStore(sql, records.records("interviews"));
+  const placementStore = new PlacementStore(sql, records.records("students"));
+  const accommodations = new AccommodationService({ store: new AccommodationStore(sql, records.records("accommodations")), exams: service, ...(options.now === undefined ? {} : { now: options.now }) });
+  const interviews = new InterviewService({
+    store: interviewStore,
+    exams: service,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    staff: (org) => identity.listUsers(org),
+    mailer: options.mailer ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts), ...(options.now === undefined ? {} : { now: options.now }),
+  });
+  const studentMessages = new StudentMessages({
+    placement: placementStore,
+    identity,
+    mailer: options.mailer ?? null,
+    whatsapp: options.whatsappSender ?? null,
+    enqueue: (orgId, drafts) => invitationStore.enqueue(staffScope(orgId), drafts),
+    offerLink: (orgId, code) => `${PUBLIC_URL}/?offer=${encodeURIComponent(`${orgId}.${code}`)}`,
+    applyLink: (orgId, code) => `${PUBLIC_URL}/?apply=${encodeURIComponent(`${orgId}.${code}`)}`,
+    ...(options.now === undefined ? {} : { now: options.now }),
+  });
   const privacy = new PrivacyService({
+    records: [
+      { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
+      { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
+    ],
     store,
     proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
     privacy: new PrivacyStore(sql),
@@ -226,6 +269,7 @@ export async function wire(
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  invitations.arrangements = accommodations;
   const integrations = buildIntegrations({
     sql,
     store,
@@ -253,6 +297,7 @@ export async function wire(
     ...(options.http === undefined ? {} : { http: options.http }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  departments = new DepartmentService({ departments: new DepartmentStore(sql), identity, exams: service, invite: (email) => security.requestReset(email) });
   const practice = new PracticeService({
     store: new PracticeStore(sql),
     bank: new QuestionBank(sql),
@@ -316,7 +361,7 @@ export async function wire(
     identity,
     mailer: options.mailer ?? null,
     whatsapp: options.whatsapp ?? false,
-    releases: recheckStore,
+    paperCopies: (orgId, examId) => scriptStore.forExam(orgId as OrgId, examId), releases: recheckStore,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const proctorService = new ProctorService({
@@ -366,16 +411,20 @@ export async function wire(
     billing,
     proctor: proctorService,
     proxy,
+    examReviews,
+    departments,
     feedback: new FeedbackStore(sql),
     lab,
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
-    handwriting: new HandwritingService({ scripts: new ScriptStore(sql), ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
-    interviews: new InterviewService({ store: new InterviewStore(sql), exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
+    handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
+    interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(sql), store, results, exams: service }),
+    internalMarks: new InternalMarksService({ results, exams: service }),
+    accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
-    placement: new PlacementService({ placement: new PlacementStore(sql), store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
+    placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,
     auth,
     security,
@@ -417,7 +466,7 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)) },
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => interviews.deliver(item) },
   };
 }
 
