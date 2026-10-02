@@ -56,16 +56,10 @@ import type { SeatService } from "./seats.js";
 import { registerSeatRoutes } from "./seats-routes.js";
 import type { ShortlistService } from "./shortlists.js";
 import { registerShortlistRoutes } from "./shortlist-routes.js";
-import type { OutcomeService } from "./outcomes.js";
-import { registerOutcomeRoutes } from "./outcome-routes.js";
-import type { InternalMarksService } from "./internal-marks.js";
-import { registerInternalMarksRoutes } from "./internal-marks-routes.js";
 import type { AccommodationService } from "./accommodations.js";
 import { registerAccommodationRoutes } from "./accommodation-routes.js";
 import type { InterviewService } from "./interviews.js";
 import { registerInterviewRoutes } from "./interview-routes.js";
-import type { HandwritingService } from "./handwriting.js";
-import { registerScriptRoutes } from "./script-routes.js";
 import type { ProxyService } from "./proxy.js";
 import { registerProxyRoutes } from "./proxy-routes.js";
 import type { ExamReviewService } from "./exam-review.js";
@@ -149,16 +143,10 @@ export interface ServerOptions {
   readonly seats?: SeatService;
   /** Shortlist links for hiring managers. Absent: none of their routes. */
   readonly shortlists?: ShortlistService;
-  /** Course outcomes and their attainment. Absent: none of their routes. */
-  readonly outcomes?: OutcomeService;
-  /** Internal marks (CIA) across exams. Absent: no such route. */
-  readonly internalMarks?: InternalMarksService;
   /** Arrangements for candidates with a disability. Absent: none of their routes. */
   readonly accommodations?: AccommodationService;
   /** The interview room. Absent: none of its routes. */
   readonly interviews?: InterviewService;
-  /** Handwritten copy checking and moderation. Absent: none of its routes. */
-  readonly handwriting?: HandwritingService;
   /** Signs of a proxy. Absent: none of its routes. */
   readonly proxy?: ProxyService;
   /** A paper's review and lock. Absent: none of its routes. */
@@ -1321,10 +1309,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.departments !== undefined) registerDepartmentRoutes(routes, { departments: options.departments, staff });
     if (options.examReviews !== undefined) registerExamReviewRoutes(routes, { reviews: options.examReviews, staff });
     if (options.proxy !== undefined) registerProxyRoutes(routes, { proxy: options.proxy, staff });
-    if (options.handwriting !== undefined) registerScriptRoutes(routes, { handwriting: options.handwriting, staff });
     if (options.interviews !== undefined) registerInterviewRoutes(routes, { interviews: options.interviews, throttle, staff });
-    if (options.outcomes !== undefined) registerOutcomeRoutes(routes, { outcomes: options.outcomes, staff });
-    if (options.internalMarks !== undefined) registerInternalMarksRoutes(routes, { internalMarks: options.internalMarks, staff });
     if (options.accommodations !== undefined) registerAccommodationRoutes(routes, { accommodations: options.accommodations, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });

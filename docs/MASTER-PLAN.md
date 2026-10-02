@@ -1,5 +1,7 @@
 # Parikshaa: Master plan v3 — ek chhata (umbrella), teen darwaze
 
+> **2 Oct 2026: focus badla.** Owner ne product sirf tech aur teen darwazon (Learn, Hire, Campus) tak seemit kiya. Launch ka plan, hataye gaye features aur infra (Supabase + Vercel + VM) [LAUNCH-PLAN.md](LAUNCH-PLAN.md) me hain. Is file ke jo epic wahan nahi, wo ruke hue hain.
+
 **Likha gaya:** 2 Oct 2026 · **Kiske liye:** owner aur jo bhi is repo me build karega · **Status:** prastaav (owner ki haan ke baad har epic [PREP-TRACKER](PREP-TRACKER.md) ki Plan table me row banega, tabhi build shuru hoga)
 
 Ye file batati hai ki **Parikshaa ko bazaar ka sabse achha product banane ke liye kya-kya, kitna aur kis kram me banana hai**: students ke liye free taiyaari (LeetCode / takeUforward jaisa), colleges ke liye exam aur placement ka poora system, aur companies ke liye AI-powered, proctored assessment aur hiring. Saath me **duniya ke best UI/UX** ka plan.

@@ -46,14 +46,7 @@ const exam: Exam = {
 };
 
 describe("candidateView", () => {
-  it("offers a microphone only on a question answered by speaking, and never the expected points", () => {
-    const spoken: Exam["questions"][number] = { id: questionId("s1"), kind: "short", stem: "Introduce yourself", maxScore: 5, rubric: [], expectedPoints: ["name"], spoken: true };
-    const plain: Exam["questions"][number] = { id: questionId("s2"), kind: "short", stem: "Why?", maxScore: 5, rubric: [], expectedPoints: [] };
-    const view = candidateView({ id: examId("e"), title: "T", questions: [spoken, plain], policy: { durationMs: 60_000, allowRevision: true, vivaTriggerRatio: 0.5 } });
-    expect(view.questions[0]).toMatchObject({ kind: "short", spoken: true });
-    expect(view.questions[1]).not.toHaveProperty("spoken");
-    expect(JSON.stringify(view)).not.toContain("expectedPoints");
-  });
+
 
   it("keeps what the candidate needs to answer", () => {
     const view = candidateView(exam);
