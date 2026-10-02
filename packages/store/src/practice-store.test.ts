@@ -98,6 +98,13 @@ describe("learners", () => {
     // The leaderboard leaves them out.
     expect(await store.leaderboard(A)).toEqual([]);
   });
+
+  it("lets the app wipe the study only of an account already erased", async () => {
+    const asha = await learner();
+    await expect(sql.query(`SELECT prep_erase_study($1, $2)`, [A, asha.id])).rejects.toThrow(/not an erased learner/);
+    await store.eraseLearner(A, asha.id);
+    await sql.query(`SELECT prep_erase_study($1, $2)`, [A, asha.id]);
+  });
 });
 
 const sub = (problemId: string, status: string, contestId: string | null = null) => ({

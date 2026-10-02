@@ -428,3 +428,38 @@ describe("the end of a sprint, and a day off", () => {
     expect(third.json().error).toBe("limit_reached");
   });
 });
+
+describe("a deleted account (plan row 47)", () => {
+  beforeEach(() => buildTrack());
+
+  it("takes the learner's study with it: plan, tasks, cards, lists, focus, coins", async () => {
+    const asha = await signUp();
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    for (const t of [asha, ravi]) {
+      await ok("GET", t, `${S}/home`);
+      await ok("POST", t, `${S}/plan`, { track: "dsa-basics", level: "beginner", deadline: "2026-10-30", dailyMinutes: 60, offDays: [] });
+      await ok("PUT", t, `${S}/notes/problem/${problems.search!.slug}`, { body: "Sorted first." }, 200);
+      await ok("PUT", t, `${S}/lists/Bookmarks/${problems.search!.slug}`, undefined, 200);
+      await ok("POST", t, `${S}/lessons/what-an-array-is/done`, undefined, 200);
+      const session = await ok("POST", t, `${S}/focus`, {});
+      clock += 60_000;
+      await ok("POST", t, `${S}/focus/${session.id}/stop`, undefined, 200);
+      await ok("POST", t, `${S}/streak/freeze`, undefined, 200);
+    }
+    const me = await ok("GET", asha, `${S}/me`);
+    expect((await call("DELETE", asha, `${S}/me`, { password: PASSWORD })).statusCode).toBe(200);
+
+    await db.exec(`RESET ROLE`);
+    const tables = ["prep_plans", "prep_tasks", "prep_cards", "prep_saved", "prep_focus", "prep_freezes", "prep_lessons_done", "prep_coins", "prep_notes"];
+    for (const table of tables) {
+      const count = async (id: string) => Number((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${table} WHERE learner_id = $1`, [id])).rows[0]!.n);
+      expect(await count(me.id), table).toBe(0);
+    }
+    // Ravi's are his still.
+    const ravis = (await ok("GET", owner, "/practice-admin/learners")).learners.find((l: { email: string }) => l.email === "ravi@example.com").id as string;
+    for (const table of tables) {
+      expect(Number((await db.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${table} WHERE learner_id = $1`, [ravis])).rows[0]!.n), table).toBeGreaterThan(0);
+    }
+    await db.exec(`SET ROLE parikshaa_app`);
+  });
+});
