@@ -902,6 +902,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#41](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/41) | [Master plan v3](MASTER-PLAN.md): ek Parikshaa ID, teen darwaze (Learn, Campus, Hire), ~90 epics phases 0–5 ke saath, UI/UX plan, Phase 0–1 ka task-level breakdown. Sirf plan, code nahi |
 | 2 Oct 2026 | [#39](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/39) | Bane hue college/company features ke 24 screenshots (`college-01`…`college-24`, [V2-13](#v2-13-jo-ban-gaya-wo-dikhta-kaisa-hai-screenshots)); baaki 39 features ka kram Plan rows 65–74 (Batch A–J) me |
 | 2 Oct 2026 | [#39](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/39) | Agle 12: naya data seal + retention (0048), handwritten marks Results/CO me, offer aur nayi drive email/WhatsApp se (0049), funnel, demo test, paper review + lock (0050), staff CSV + department (0051), interview panel + calendar invite (0052), internal marks (CIA), divyang suvidha (0053), candidate status page. Main ka toota build (#35 ke merge se gaye store exports) bhi theek |
 | 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `ea7e802` | Plan 41: PWA (manifest, icons, `sw.js`: page aur aaj ka plan offline, session ke hash par), push (`prep_push_subscriptions` 0047, `web-push`, sirf browsers ke push services, reminder email ke saath); account mitane par push aur public profile bhi mitte hain. `aefd54e`: CI stylelint ke 13 errors theek |
