@@ -435,6 +435,14 @@ export class PracticeClient {
     return this.#post("/streak/freeze", {});
   }
 
+  async placement(): Promise<readonly PlacementQuestion[]> {
+    return (await this.#request<{ questions: PlacementQuestion[] }>("/placement")).questions;
+  }
+
+  markPlacement(answers: readonly { readonly id: string; readonly choice: number }[]): Promise<PlacementResult> {
+    return this.#post("/placement", { answers });
+  }
+
   sprintQuiz(sprint: number): Promise<SprintQuiz> {
     return this.#request(`/plan/sprints/${sprint}/quiz`);
   }
@@ -614,6 +622,21 @@ export interface Lesson {
 }
 
 export type Level = "beginner" | "intermediate" | "advanced";
+
+export interface PlacementQuestion {
+  readonly id: string;
+  readonly level: "easy" | "medium" | "hard";
+  readonly topic: string;
+  readonly text: string;
+  readonly options: readonly string[];
+}
+
+export interface PlacementResult {
+  readonly score: number;
+  readonly of: number;
+  readonly level: Level;
+  readonly results: readonly { readonly id: string; readonly choice: number; readonly correct: number; readonly right: boolean; readonly why: string }[];
+}
 
 export interface PlanInput {
   readonly track: string;

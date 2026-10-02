@@ -5,7 +5,7 @@ import { enqueue } from "./outbox-store.js";
 
 /**
  * Bringing learners back, and knowing whether they come (Prep blueprint F2,
- * §17; migration 0030): the daily reminder each learner sets, and the
+ * §17; migration 0034): the daily reminder each learner sets, and the
  * numbers the console reads.
  *
  * The numbers are counted from the tables that already record what learners

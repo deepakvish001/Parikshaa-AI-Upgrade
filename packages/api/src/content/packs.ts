@@ -46,3 +46,29 @@ export interface SqlPack {
     readonly editorial: string;
   }[];
 }
+
+/** Data-structures-and-algorithms problems that read standard input, made from the Sahayak eval's own (written for Parikshaa). */
+export interface DsaPack {
+  readonly problems: readonly {
+    readonly slug: string;
+    readonly title: string;
+    readonly difficulty: PackDifficulty;
+    readonly tags: readonly string[];
+    /** Markdown. */
+    readonly statement: string;
+    readonly inputFormat: string;
+    readonly outputFormat: string;
+    readonly constraints: string;
+    /** Examples shown; small random and edge cases hidden. Each expected output is the reference program's. */
+    readonly tests: readonly { readonly id: string; readonly input: string; readonly expected: string; readonly hidden: boolean; readonly weight: number }[];
+    /** The best approach, in prose. */
+    readonly optimal: string;
+    /** Its time complexity, e.g. "O(n log n)". */
+    readonly optimalTime: string;
+    /** The brute force's time complexity. */
+    readonly bruteTime: string;
+    /** A right program, in Python, shown in the editorial. */
+    readonly reference: string;
+    readonly timeMs?: number;
+  }[];
+}

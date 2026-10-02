@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { Learner, PracticeSite } from "@parikshaa/store";
 import type { PracticeService } from "./practice.js";
 import type { PrepService } from "./prep.js";
+import { drawPlacement, markPlacement } from "./level-quiz.js";
 import * as S from "./schemas.js";
 import type { ExamService } from "./service.js";
 import type { Actor, Permission } from "./staff-auth.js";
@@ -229,6 +230,59 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
     const learner = await learnerOf(site, request, reply);
     return learner === null ? null : { site, learner };
   };
+
+  // --- the placement quiz ----------------------------------------------------------------
+
+  routes.get(
+    "/practice/:site/placement",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Eight placement questions: three easy, three medium, two hard, without their answers",
+        security: OPEN,
+        params: siteParams,
+        response: {
+          200: z.object({
+            questions: z
+              .array(z.object({ id: z.string(), level: z.enum(["easy", "medium", "hard"]), topic: z.string(), text: z.string().describe("Markdown."), options: z.array(z.string()).readonly() }))
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      await siteOf(request);
+      return reply.send({ questions: drawPlacement() });
+    },
+  );
+
+  routes.post(
+    "/practice/:site/placement",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Mark the placement quiz, and the level it suggests",
+        description: "Nothing is kept: the level is a suggestion for planning. 7 or 8 right suggests advanced, 4 to 6 intermediate, fewer beginner.",
+        security: OPEN,
+        params: siteParams,
+        body: z.object({ answers: z.array(z.object({ id: z.string().max(10), choice: z.number().int() })).max(20) }),
+        response: {
+          200: z.object({
+            score: z.number(),
+            of: z.number(),
+            level: z.enum(["beginner", "intermediate", "advanced"]),
+            results: z.array(z.object({ id: z.string(), choice: z.number(), correct: z.number(), right: z.boolean(), why: z.string() })).readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      await siteOf(request);
+      return reply.send(markPlacement(request.body.answers));
+    },
+  );
 
   // --- the dashboard -------------------------------------------------------------------
 

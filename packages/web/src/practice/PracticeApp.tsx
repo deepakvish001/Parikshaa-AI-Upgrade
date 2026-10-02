@@ -21,6 +21,7 @@ import {
   type ContestSummary,
   type Difficulty,
   type Learner,
+  type Level,
   type Problem,
   type ProblemSummary,
   type Progress,
@@ -51,6 +52,7 @@ const plusPages = () => import("./PlusPages.tsx");
 const PlusPage = lazy(() => plusPages().then((m) => ({ default: m.PlusPage })));
 const SprintQuizPage = lazy(() => prep().then((m) => ({ default: m.SprintQuizPage })));
 const SprintNotesPage = lazy(() => prep().then((m) => ({ default: m.SprintNotesPage })));
+const PlacementPage = lazy(() => prep().then((m) => ({ default: m.PlacementPage })));
 const NoteBookPage = lazy(() => prep().then((m) => ({ default: m.NoteBookPage })));
 const RemindersOffPage = lazy(() => prep().then((m) => ({ default: m.RemindersOffPage })));
 const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
@@ -83,7 +85,8 @@ export type Route =
   | { readonly page: "tracks" }
   | { readonly page: "track"; readonly slug: string }
   | { readonly page: "lesson"; readonly slug: string }
-  | { readonly page: "plan"; readonly track: string | undefined }
+  | { readonly page: "plan"; readonly track: string | undefined; readonly level?: Level | undefined }
+  | { readonly page: "placement"; readonly track: string | undefined }
   | { readonly page: "revise" }
   | { readonly page: "lists" }
   | { readonly page: "notes" }
@@ -108,6 +111,8 @@ export function siteOf(pathname: string): string | null {
   return match === null ? null : match[1]!;
 }
 
+const LEVELS: readonly Level[] = ["beginner", "intermediate", "advanced"];
+
 export function parseRoute(pathname: string, search: string): Route {
   const rest = pathname.replace(/^\/practice\/[^/]+/, "").replace(/\/+$/, "");
   const query = new URLSearchParams(search);
@@ -129,7 +134,9 @@ export function parseRoute(pathname: string, search: string): Route {
     case "lessons":
       return second === undefined ? { page: "tracks" } : { page: "lesson", slug: second };
     case "plan":
-      return { page: "plan", track: query.get("track") ?? undefined };
+      return { page: "plan", track: query.get("track") ?? undefined, level: LEVELS.find((l) => l === query.get("level")) };
+    case "placement":
+      return { page: "placement", track: query.get("track") ?? undefined };
     case "revise":
       return { page: "revise" };
     case "lists":
@@ -421,13 +428,15 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <StorePage {...context} />
         ) : route.page === "rating" ? (
           <RatingPage {...context} />
-        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "coins" ? (
+        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "placement" || route.page === "coins" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
           ) : route.page === "home" ? (
             <HomePage {...context} learner={learner} />
           ) : route.page === "plan" ? (
-            <PlanPage {...context} learner={learner} track={route.track} />
+            <PlanPage {...context} learner={learner} track={route.track} level={route.level} />
+          ) : route.page === "placement" ? (
+            <PlacementPage {...context} learner={learner} track={route.track} />
           ) : route.page === "sprint" ? (
             route.view === "quiz" ? (
               <SprintQuizPage {...context} learner={learner} sprint={route.sprint} />

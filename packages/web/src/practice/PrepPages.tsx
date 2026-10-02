@@ -792,12 +792,12 @@ export function RevisePage({ client, nav, learner, site }: Signed) {
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const plusDays = (days: number) => new Date(Date.now() + 5.5 * 3_600_000 + days * 86_400_000).toISOString().slice(0, 10);
 
-export function PlanPage({ client, nav, learner, site, track: wanted }: Signed & { readonly track: string | undefined }) {
+export function PlanPage({ client, nav, learner, site, track: wanted, level }: Signed & { readonly track: string | undefined; readonly level?: Level | undefined }) {
   const plan = useQuery({ queryKey: key(site, "plan", learner.id), queryFn: () => client.plan() });
   if (plan.isPending) return <Loading />;
   if (plan.isError) return <Failed error={plan.error} />;
   return plan.data === null ? (
-    <PlanSetup client={client} nav={nav} learner={learner} site={site} track={wanted} />
+    <PlanSetup client={client} nav={nav} learner={learner} site={site} track={wanted} level={level} />
   ) : (
     <PlanView client={client} nav={nav} learner={learner} site={site} />
   );
@@ -852,12 +852,12 @@ function TargetPicker({ client, site, learner }: Pick<Signed, "client" | "site" 
   );
 }
 
-function PlanSetup({ client, nav, learner, site, track: wanted }: Signed & { readonly track: string | undefined }) {
+function PlanSetup({ client, nav, learner, site, track: wanted, level: suggested }: Signed & { readonly track: string | undefined; readonly level?: Level | undefined }) {
   const p = usePrepText();
   const day = useDay();
   const queryClient = useQueryClient();
   const tracks = useQuery({ queryKey: key(site, "tracks", learner.id), queryFn: () => client.tracks() });
-  const [input, setInput] = useState<PlanInput>({ track: wanted ?? "", level: "intermediate", deadline: plusDays(90), dailyMinutes: 120, offDays: [0] });
+  const [input, setInput] = useState<PlanInput>({ track: wanted ?? "", level: suggested ?? "intermediate", deadline: plusDays(90), dailyMinutes: 120, offDays: [0] });
   const [goal, setGoal] = useState("");
   useEffect(() => {
     if (input.track === "" && tracks.data !== undefined && tracks.data[0] !== undefined) setInput((i) => ({ ...i, track: tracks.data[0]!.slug }));
@@ -899,6 +899,13 @@ function PlanSetup({ client, nav, learner, site, track: wanted }: Signed & { rea
           </select>
           <fieldset>
             <legend>{p("plan.level")}</legend>
+            {suggested === undefined ? (
+              <Link nav={nav} to={`/placement${input.track === "" ? "" : `?track=${encodeURIComponent(input.track)}`}`}>
+                {p("placement.take")}
+              </Link>
+            ) : (
+              <p className="notice">{p("placement.suggested", { level: p(`plan.level.${suggested}` as PrepKey) })}</p>
+            )}
             {(["beginner", "intermediate", "advanced"] as const).map((level: Level) => (
               <label key={level} className="check-row">
                 <input type="radio" name="plan-level" value={level} checked={input.level === level} onChange={() => set({ level })} /> {p(`plan.level.${level}` as PrepKey)}
@@ -1250,6 +1257,72 @@ export function SprintNotesPage({ client, nav, learner, site, sprint }: Signed &
         </section>
       ))}
     </article>
+  );
+}
+
+/** Eight questions to suggest where a plan should start (blueprint S2): marked by the server, nothing kept. */
+export function PlacementPage({ client, nav, site, track }: Signed & { readonly track: string | undefined }) {
+  const p = usePrepText();
+  const quiz = useQuery({ queryKey: key(site, "placement"), queryFn: () => client.placement(), staleTime: Infinity });
+  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const mark = useMutation({ mutationFn: () => client.markPlacement(Object.entries(answers).map(([id, choice]) => ({ id, choice }))) });
+  if (quiz.isPending) return <Loading />;
+  if (quiz.isError) return <Failed error={quiz.error} />;
+  const result = mark.data;
+  const resultOf = new Map((result?.results ?? []).map((r) => [r.id, r]));
+  const plan = (level: Level) => `/plan?level=${level}${track === undefined ? "" : `&track=${encodeURIComponent(track)}`}`;
+  return (
+    <div className="prep-page">
+      <header className="prep-head">
+        <div>
+          <h1>{p("placement.title")}</h1>
+          <p className="notice">{p("placement.hint")}</p>
+        </div>
+      </header>
+      <form
+        className="card quiz-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          mark.mutate();
+        }}
+      >
+        {quiz.data.map((q, i) => {
+          const r = resultOf.get(q.id);
+          return (
+            <fieldset key={q.id} className={r === undefined ? "" : r.right ? "right" : "wrong"} disabled={result !== undefined}>
+              <legend>
+                {i + 1}. <Markdown source={q.text} />
+              </legend>
+              {q.options.map((option, j) => (
+                <label key={j} className="check">
+                  <input type="radio" name={q.id} checked={answers[q.id] === j} onChange={() => setAnswers({ ...answers, [q.id]: j })} /> {option}
+                </label>
+              ))}
+              {r === undefined ? null : (
+                <p className="notice">
+                  {r.right ? p("placement.right") : p("placement.wrong", { answer: q.options[r.correct] ?? "" })} {r.why}
+                </p>
+              )}
+            </fieldset>
+          );
+        })}
+        {result === undefined ? (
+          <button type="submit" disabled={mark.isPending || Object.keys(answers).length < quiz.data.length}>
+            {p("placement.mark")}
+          </button>
+        ) : null}
+        {mark.isError ? <Failed error={mark.error} /> : null}
+      </form>
+      {result === undefined ? null : (
+        <section className="card" role="status" aria-label={p("placement.result")}>
+          <h2>{p("placement.score", { score: result.score, of: result.of })}</h2>
+          <p>{p("placement.level", { level: p(`plan.level.${result.level}` as PrepKey) })}</p>
+          <Link nav={nav} to={plan(result.level)} className="button">
+            <Target aria-hidden="true" /> {p("placement.plan")}
+          </Link>
+        </section>
+      )}
+    </div>
   );
 }
 
