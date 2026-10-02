@@ -164,12 +164,19 @@ export const ACTIONS: Record<string, string> = {
   "prep.potd_set": "set the problem of the day",
   "prep.plus_settings": "changed the Plus settings",
   "prep.plus_granted": "gave a learner Plus",
+  "prep.order_refunded": "refunded a plan",
   "prep.cohort_created": "made a campus cohort",
   "prep.cohort_imported": "added students to a campus cohort",
   "prep.company_created": "added a company",
   "prep.starter_pack_imported": "imported a starter pack",
   "prep.store_item_created": "added an item to the coin store",
   "prep.store_item_changed": "changed an item in the coin store",
+  "prep.experience_kept": "kept a reported interview experience",
+  "prep.experience_removed": "removed a reported interview experience",
+  "prep.story_published": "published a success story",
+  "prep.story_rejected": "turned down a success story",
+  "prep.company_logo": "changed a company's logo",
+  "prep.lesson_quiz": "set a lesson's quiz",
 };
 export const describeAction = (action: string) => ACTIONS[action] ?? action.replace(/[._]/g, " ");
 

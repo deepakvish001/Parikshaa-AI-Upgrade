@@ -61,6 +61,7 @@ const lessonView = z.object({
   estMinutes: z.number(),
   done: z.boolean(),
   locked: z.boolean().describe("Needs Plus, which this learner does not hold."),
+  quiz: z.array(z.object({ slug: z.string(), title: z.string(), question: S.candidateQuestion })).readonly().describe("The lesson's quiz, as a candidate sees questions: no answers. Empty while locked."),
 });
 
 const taskView = z.object({
@@ -81,6 +82,7 @@ const planView = z.object({
   level: z.enum(["beginner", "intermediate", "advanced"]),
   deadline: day,
   dailyMinutes: z.number(),
+  weekendMinutes: z.number().nullable(),
   offDays: z.array(z.number()).readonly(),
   goal: z.string(),
   startedAt: z.string(),
@@ -102,8 +104,10 @@ const planInput = z.object({
   level: z.enum(["beginner", "intermediate", "advanced"]),
   deadline: day,
   dailyMinutes: z.number().int(),
+  weekendMinutes: z.number().int().nullable().optional().describe("Minutes on Saturday and Sunday, when they differ from `dailyMinutes`."),
   offDays: z.array(z.number().int()).max(7).default([]),
   goal: z.string().max(200).optional(),
+  upTo: z.number().int().optional().describe("Plan only the first this many of the track's remaining items: the one that fit by the deadline, say."),
 });
 const planPreview = z.object({
   track: z.object({ slug: z.string(), title: z.string() }),
@@ -114,6 +118,7 @@ const planPreview = z.object({
   fits: z.boolean(),
   sprints: z.array(sprint).readonly(),
   dailyMinutesToFit: z.number().nullable().describe("When it does not fit: minutes a day that would finish by the deadline."),
+  itemsThatFit: z.object({ items: z.number(), of: z.number() }).nullable().describe("When it does not fit: how many of the remaining items the deadline holds, to plan just those (`upTo`)."),
 });
 
 const potdDay = z.object({ day, slug: z.string(), title: z.string(), difficulty, solved: z.boolean(), solvedThatDay: z.boolean() });
@@ -344,6 +349,77 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
     },
   );
 
+  routes.post(
+    "/practice/:site/lessons/:lesson/quiz",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Hand in a lesson's quiz",
+        description: "Each answer checked, the right answer and the explanation given back; each wrong one is due for revision today.",
+        security: LEARNER,
+        params: slugParam("lesson"),
+        body: z.object({ answers: z.record(z.string(), z.string().max(200)).describe("By problem address: an option's position, several comma-separated, or a number.") }),
+        response: {
+          200: z.object({
+            score: z.number(),
+            total: z.number(),
+            results: z.array(z.object({ slug: z.string(), right: z.boolean(), answer: z.string(), explanation: z.string() })).readonly(),
+            revise: z.number().describe("Wrong answers now due for revision."),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send(await prep.takeLessonQuiz(who.site, who.learner, (request.params as { lesson: string }).lesson, request.body.answers));
+    },
+  );
+
+  routes.post(
+    "/practice/:site/problems/:problem/share",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Share my solution read-only, at a link",
+        description: "Only the code: never a test. Refused while a contest that includes the problem runs. Twenty a day.",
+        security: LEARNER,
+        params: slugParam("problem"),
+        body: z.object({ language: z.string().min(1).max(40), source: z.string().max(65_536) }),
+        response: { 201: z.object({ id: z.string(), path: z.string().describe("Under the site: /shares/<id>.") }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.code(201).send(await prep.shareCode(who.site, who.learner, (request.params as { problem: string }).problem, request.body));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/shares/:id",
+    {
+      schema: {
+        tags: PREP,
+        summary: "A shared solution",
+        security: OPEN,
+        params: siteParams.extend({ id: z.string().min(1).max(40) }),
+        response: {
+          200: z.object({
+            problem: z.object({ slug: z.string(), title: z.string() }).nullable().describe("Null when the problem is no longer published."),
+            author: z.string(),
+            language: z.string(),
+            source: z.string(),
+            createdAt: z.string(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => reply.send(await prep.sharedCode(await siteOf(request), request.params.id)),
+  );
+
   // --- the plan -------------------------------------------------------------------------------
 
   routes.get(
@@ -392,6 +468,39 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
       const who = await signedIn(request, reply);
       if (who === null) return;
       return reply.code(201).send({ plan: await prep.startPlan(who.site, who.learner, request.body) });
+    },
+  );
+
+  routes.patch(
+    "/practice/:site/plan",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Change my running plan: its deadline, minutes or days off",
+        description: "Done tasks stay done, and so do the learner's own tasks; the track's remaining items are laid out again from today, in new sprints.",
+        security: LEARNER,
+        params: siteParams,
+        body: z.object({
+          deadline: day.optional(),
+          dailyMinutes: z.number().int().optional(),
+          weekendMinutes: z.number().int().nullable().optional(),
+          offDays: z.array(z.number().int()).max(7).optional(),
+        }),
+        response: { 200: z.object({ plan: planView }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      const { deadline, dailyMinutes, weekendMinutes, offDays } = request.body;
+      return reply.send({
+        plan: await prep.changePlan(who.site, who.learner, {
+          ...(deadline === undefined ? {} : { deadline }),
+          ...(dailyMinutes === undefined ? {} : { dailyMinutes }),
+          ...(weekendMinutes === undefined ? {} : { weekendMinutes }),
+          ...(offDays === undefined ? {} : { offDays }),
+        }),
+      });
     },
   );
 
@@ -763,7 +872,7 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
         summary: "Learners by coins",
         security: OPEN,
         params: siteParams,
-        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), coins: z.number(), you: z.boolean() })).readonly() }), ...refusals },
+        response: { 200: z.object({ leaders: z.array(z.object({ rank: z.number(), name: z.string(), title: z.string().nullable(), username: z.string().nullable(), coins: z.number(), you: z.boolean() })).readonly() }), ...refusals },
       },
     },
     async (request, reply) => {
@@ -837,6 +946,38 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
       const lesson = await prep.saveLesson(actor.orgId, request.params.id, stripUndefined(request.body));
       await service.recordAudit(actor, "prep.lesson_changed", lesson.id);
       return reply.send(lesson);
+    },
+  );
+
+  routes.get(
+    "/practice-admin/lessons/:id/quiz",
+    { schema: { tags: ADMIN, summary: "A lesson's quiz: its problems, in order", security: STAFF, params: idParams, response: { 200: z.object({ problemIds: z.array(z.string()).readonly() }), ...refusals } } },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:read");
+      if (actor === null) return;
+      return reply.send({ problemIds: await prep.staffLessonQuiz(actor.orgId, request.params.id) });
+    },
+  );
+
+  routes.put(
+    "/practice-admin/lessons/:id/quiz",
+    {
+      schema: {
+        tags: ADMIN,
+        summary: "Set a lesson's quiz",
+        description: "Up to ten of the site's multiple-choice or number problems; they may be unpublished, asked only here.",
+        security: STAFF,
+        params: idParams,
+        body: z.object({ problemIds: z.array(z.string().min(1)).max(20) }),
+        response: { 200: z.object({ problemIds: z.array(z.string()).readonly() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      const problemIds = await prep.setLessonQuiz(actor.orgId, request.params.id, request.body.problemIds);
+      await service.recordAudit(actor, "prep.lesson_quiz", request.params.id, { questions: problemIds.length });
+      return reply.send({ problemIds });
     },
   );
 

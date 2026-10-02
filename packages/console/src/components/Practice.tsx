@@ -12,8 +12,8 @@ import {
 } from "../api.ts";
 import { DifficultyBadge, KIND_NAME } from "./Bank.tsx";
 import { EmptyState, SkeletonRows } from "./kit.tsx";
-import { CoinStore, Companies, Experiences, StarterPacks } from "./CommunityAdmin.tsx";
-import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks } from "./PrepAdmin.tsx";
+import { CoinStore, Companies, Experiences, StarterPacks, Stories } from "./CommunityAdmin.tsx";
+import { Lessons, PlusAdmin, ProblemOfTheDay, Tracks, TutorEvals } from "./PrepAdmin.tsx";
 
 // Coupons and sales are a manager's, and seldom opened: a chunk of their own.
 const Sales = lazy(() => import("./Sales.tsx").then((m) => ({ default: m.Sales })));
@@ -27,7 +27,7 @@ const Analytics = lazy(() => import("./PrepAnalytics.tsx").then((m) => ({ defaul
  * nothing published.
  */
 
-type Tab = "site" | "analytics" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "sales" | "campus" | "companies" | "experiences" | "store" | "contests" | "learners" | "discussion";
+type Tab = "site" | "analytics" | "problems" | "tracks" | "lessons" | "potd" | "plus" | "sales" | "campus" | "companies" | "experiences" | "stories" | "store" | "contests" | "learners" | "discussion";
 
 export interface PracticeCan {
   readonly manage: boolean;
@@ -54,6 +54,7 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
     ["campus", "Campus"],
     ["companies", "Companies"],
     ["experiences", "Experiences"],
+    ["stories", "Success stories"],
     ["store", "Coin store"],
     ["contests", "Contests"],
     ...(can.readLearners ? ([["learners", "Learners"]] as [Tab, string][]) : []),
@@ -83,7 +84,12 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
       ) : null}
       {tab === "lessons" ? <Lessons client={client} canWrite={can.write} /> : null}
       {tab === "potd" ? <ProblemOfTheDay client={client} canWrite={can.write} /> : null}
-      {tab === "plus" ? <PlusAdmin client={client} canManage={can.manage} /> : null}
+      {tab === "plus" ? (
+        <>
+          <PlusAdmin client={client} canManage={can.manage} />
+          <TutorEvals client={client} />
+        </>
+      ) : null}
       {tab === "analytics" ? (
         <Suspense fallback={<p className="notice">Loading…</p>}>
           <Analytics client={client} />
@@ -101,6 +107,7 @@ export function PracticePanel({ client, can }: { client: ConsoleClient; can: Pra
       ) : null}
       {tab === "companies" ? <Companies client={client} canWrite={can.write} /> : null}
       {tab === "experiences" ? <Experiences client={client} canWrite={can.write} /> : null}
+      {tab === "stories" ? <Stories client={client} canWrite={can.write} /> : null}
       {tab === "store" ? <CoinStore client={client} canManage={can.manage} /> : null}
       {tab === "contests" ? <Contests client={client} canWrite={can.write} /> : null}
       {tab === "learners" ? <Learners client={client} /> : null}

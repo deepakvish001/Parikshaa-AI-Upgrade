@@ -14,7 +14,7 @@
 }
 .shortlist-table .good {
   color: var(--success);
-  font-weight: 700;
+  font-weight: var(--weight-bold);
 }
 .shortlist-table .bad {
   color: var(--danger);
@@ -38,18 +38,18 @@
 }
 .drive-facts dt {
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: var(--text-base);
 }
 .drive-facts dd {
   margin: 0;
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .drive-description {
   white-space: pre-line;
 }
 .applied {
   color: var(--success);
-  font-weight: 600;
+  font-weight: var(--weight-semibold);
 }
 .interview-grid {
   display: grid;

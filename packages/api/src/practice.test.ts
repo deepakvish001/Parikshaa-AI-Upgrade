@@ -331,8 +331,9 @@ describe("solving", () => {
 
     const board = (await call("GET", token, "/practice/nit-practice/leaderboard")).json().leaders;
     expect(board).toEqual([
-      { rank: 1, name: "Ravi", solved: 2, you: false },
-      { rank: 2, name: "Asha", solved: 1, you: true },
+      // No title until a rated contest; no username until a public profile.
+      { rank: 1, name: "Ravi", title: null, username: null, solved: 2, you: false },
+      { rank: 2, name: "Asha", title: null, username: null, solved: 1, you: true },
     ]);
     expect(JSON.stringify(board)).not.toContain("@example.com");
   });
@@ -425,6 +426,62 @@ describe("contests", () => {
       problemIds: ["not-ours"],
     });
     expect(foreign.statusCode).toBe(422);
+  });
+});
+
+describe("the judge's queue", () => {
+  it("runs a running contest's submissions before practice's, and says when it is full", async () => {
+    // The runner holds each program until the test lets it finish.
+    const started: string[] = [];
+    const release = new Map<string, () => void>();
+    const held: CodeRunner = {
+      run: (request) =>
+        new Promise((resolve) => {
+          started.push(request.source.trim());
+          release.set(request.source.trim(), () => resolve({ compiled: true, tests: [] }));
+        }),
+    };
+    await app.close();
+    ({ app } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic, runner: held, judge: { concurrency: 1, maxWaiting: 2 } }));
+    await openSite();
+    const sum = await publish("sum");
+    const res = await call("POST", author, "/practice-admin/contests", {
+      title: "Weekly 1",
+      description: "",
+      startsAt: new Date(Date.now() - 10 * 60_000).toISOString(),
+      endsAt: new Date(Date.now() + 50 * 60_000).toISOString(),
+      problemIds: [sum.id],
+    });
+    expect(res.statusCode, res.payload).toBe(201);
+    const [asha, ravi, meena, kiran] = [await signUp(), await signUp("ravi@example.com", "Ravi"), await signUp("meena@example.com", "Meena"), await signUp("kiran@example.com", "Kiran")];
+    const judge = async () => (await call("GET", viewer, "/practice-admin/judge")).json().judge;
+    const until = async (check: (j: { running: number; waiting: { contest: number; practice: number } }) => boolean) => {
+      for (let i = 0; i < 200 && !check(await judge()); i++) await new Promise((r) => setTimeout(r, 10));
+    };
+
+    const first = submit(asha, sum.slug, "print('practice-1')");
+    await until((j) => j.running === 1);
+    const second = submit(ravi, sum.slug, "print('practice-2')");
+    await until((j) => j.waiting.practice === 1);
+    const third = submit(meena, sum.slug, "print('contest-1')", { contest: "weekly-1" });
+    await until((j) => j.waiting.contest === 1);
+    expect(await judge()).toMatchObject({ concurrency: 1, running: 1, waiting: { contest: 1, practice: 1 } });
+
+    // Full: turned away at once, with when to try again.
+    const busy = await submit(kiran, sum.slug, "print('practice-3')");
+    expect(busy.statusCode).toBe(503);
+    expect(busy.headers["retry-after"]).toBe("30");
+    expect(busy.json().error).toBe("judge_busy");
+
+    release.get("print('practice-1')")!();
+    await until((j) => j.waiting.contest === 0);
+    release.get("print('contest-1')")!();
+    await until((j) => j.waiting.practice === 0);
+    release.get("print('practice-2')")!();
+    for (const r of await Promise.all([first, second, third])) expect(r.statusCode, r.payload).toBe(200);
+    expect(started).toEqual(["print('practice-1')", "print('contest-1')", "print('practice-2')"]);
+    expect(await judge()).toMatchObject({ running: 0, served: { contest: 1, practice: 2 }, refused: 1 });
+    expect((await call("GET", asha, "/practice-admin/judge")).statusCode).toBe(401);
   });
 });
 

@@ -324,6 +324,31 @@ npm run billing -w @parikshaa/api -- irn acme PKS/2627/000012 <irn> <ack no> "<a
 E-invoices need a six-digit PIN code in both the supplier's and the buyer's
 address.
 
+## Practice sites as an app, and notifications
+
+A practice site (`/practice/<site>`) installs as an app: the browser reads its
+manifest at `/api/practice/<site>/manifest.webmanifest` (named after the site,
+opening on the learner's dashboard) and a production build registers
+`/sw.js`, scoped to the site. The service worker keeps the page and its
+scripts, and the learner's day (who they are, the dashboard, the plan), so the
+plan opens without a network. What it keeps is filed under a hash of the
+learner's session, so another learner on the same phone never sees it.
+Nothing is sent from offline: answers and submissions still need the network.
+
+The daily reminder can also arrive as a notification. That needs a VAPID key
+pair, made once and kept (a new pair ends every existing subscription):
+
+```sh
+npx web-push generate-vapid-keys
+export VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:ops@example.in
+```
+
+Without them, the reminder is email only and the plan page offers no
+notifications. The server sends only to the push services browsers use
+(Google's FCM, Mozilla, Apple, Microsoft); a subscription naming any other
+address is refused. One the push service says is gone is deleted, and an
+erased account's subscriptions go with it.
+
 ## The hardening suites
 
 `packages/e2e` holds three runs against a real Postgres, each also in CI

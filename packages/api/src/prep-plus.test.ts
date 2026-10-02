@@ -1,9 +1,15 @@
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { CodeRunner } from "@parikshaa/runner";
 import { pgliteExecutor, type SqlExecutor } from "@parikshaa/store";
+import type { PrivacyService } from "./privacy.js";
+import { sahayakEvalReport } from "./prep-plus-routes.js";
+import { scoresOf } from "./testing/sahayak-eval/record-scores.js";
 import type { FakeRazorpay } from "./razorpay.js";
 import { TUTOR_CREDITS } from "./sahayak.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
@@ -23,26 +29,37 @@ let db: PGlite;
 let sql: SqlExecutor;
 let app: FastifyInstance;
 let razorpay: FakeRazorpay;
+let privacy: PrivacyService;
 let owner: string;
 let author: string;
 const problems: Record<string, { id: string; slug: string }> = {};
 
 /** The model: records each request, answers with what the test says. */
 const model = {
-  requests: [] as { system: string; user: string; effort: string }[],
+  requests: [] as { system: string; user: string; effort: string; format?: unknown }[],
   reply: (): { text: string; stop?: string } => ({ text: "Think about what stays sorted." }),
   fail: false,
 };
 const client = {
   messages: {
-    async create(params: { system: { text: string }[]; messages: { content: string }[]; output_config: { effort: string } }) {
-      model.requests.push({ system: params.system.map((b) => b.text).join("\n"), user: params.messages[0]!.content, effort: params.output_config.effort });
+    async create(params: { system: { text: string }[]; messages: { content: string }[]; output_config: { effort: string; format?: unknown } }) {
+      model.requests.push({ system: params.system.map((b) => b.text).join("\n"), user: params.messages[0]!.content, effort: params.output_config.effort, format: params.output_config.format });
       if (model.fail) throw new Error("overloaded");
       const { text, stop } = model.reply();
       return { content: [{ type: "text", text }], stop_reason: stop ?? "end_turn", stop_details: null, usage: { input_tokens: 1200, output_tokens: 300 } };
     },
   },
 } as unknown as Anthropic;
+
+/** A review in its fixed shape. */
+const REVIEW = {
+  verdict: "correct",
+  summary: "Reads both numbers and prints their sum.",
+  logic: { right: ["Reads the input."], wrong: ["Ignores it and prints a constant."] },
+  complexity: { time: "O(1)", space: "O(1)", better: "" },
+  quality: [],
+  edgeCases: ["Negative numbers"],
+};
 
 /** Every submission of code passes; enough to have one to review. */
 const runner: CodeRunner = {
@@ -68,7 +85,7 @@ beforeEach(async () => {
   db = await freshDatabase();
   sql = pgliteExecutor(db);
   let identity;
-  ({ app, identity, razorpay } = await wire(sql, { client, runner, now: () => clock }));
+  ({ app, identity, razorpay, privacy } = await wire(sql, { client, runner, now: () => clock }));
   const org = await addOrganisation(identity, "org-a", "NIT Trichy");
   await addStaff(identity, org, "owner@nit.test", "owner", "Ravi Kumar");
   await addStaff(identity, org, "author@nit.test", "author");
@@ -316,6 +333,103 @@ describe("coupons and invoices", () => {
   });
 });
 
+describe("trials, refunds and the DSA Pass", () => {
+  const planInput = { track: "dsa", level: "beginner", deadline: "2026-12-31", dailyMinutes: 60, offDays: [] };
+
+  it("gives each learner one free trial of Plus, when the site offers one", async () => {
+    await paidTrack();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, freeModules: 1 }, 200);
+    const asha = await signUp();
+    expect((await ok("GET", asha, `${S}/plus`)).trialDays).toBe(0);
+    expect((await call("POST", asha, `${S}/plus/trial`)).statusCode).toBe(404);
+    expect((await call("PUT", owner, "/practice-admin/plus", { trialDays: 61 })).statusCode).toBe(422);
+    expect(await ok("PUT", owner, "/practice-admin/plus", { trialDays: 30 }, 200)).toMatchObject({ trialDays: 30 });
+
+    expect((await ok("GET", null, `${S}/plus`)).trialDays).toBe(0);
+    expect((await ok("GET", asha, `${S}/plus`)).trialDays).toBe(30);
+    expect(await ok("POST", asha, `${S}/plus/trial`)).toEqual({ active: true, until: "2026-11-04T04:00:00.000Z" });
+    expect((await ok("GET", asha, `${S}/lessons/heaps`)).locked).toBe(false);
+    expect((await ok("GET", asha, `${S}/plus`)).trialDays).toBe(0);
+    expect((await call("POST", asha, `${S}/plus/trial`)).statusCode).toBe(409);
+    // Once over, it is not had again.
+    clock += 31 * DAY;
+    const after = await ok("POST", null, `${S}/signin`, { email: "asha@example.com", password: PASSWORD }, 200);
+    expect((await ok("GET", after.token, `${S}/lessons/heaps`)).locked).toBe(true);
+    expect((await ok("GET", after.token, `${S}/plus`)).trialDays).toBe(0);
+    const refused = await call("POST", after.token, `${S}/plus/trial`);
+    expect(refused.json()).toMatchObject({ error: "limit_reached", message: "You have had your free trial" });
+  });
+
+  it("refunds a paid order in full: the money back, the pass and unspent credits taken, a credit note against the invoice", async () => {
+    await paidTrack();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, freeModules: 1, monthlyCredits: 0 }, 200);
+    const plan = await ok("POST", owner, "/practice-admin/plus/products", { title: "Plus, 3 months", kind: "plus", days: 90, credits: 1000, pricePaise: 99_900 });
+    const asha = await signUp();
+    const purchase = await buy(asha, plan.id);
+    expect((await purchase.confirm()).statusCode).toBe(200);
+    const order = (await ok("GET", asha, `${S}/orders`)).orders[0];
+    expect(order).toMatchObject({ status: "paid", invoice: "PKP/2627/000001", creditNote: null, refundedAt: null });
+
+    expect((await call("POST", author, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" })).statusCode).toBe(403);
+    expect((await call("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "no" })).statusCode).toBe(422);
+    expect((await call("POST", owner, `/practice-admin/plus/orders/nothing/refund`, { reason: "Asked within a week" })).statusCode).toBe(404);
+    // Razorpay refusing changes nothing here.
+    razorpay.refuseRefunds = true;
+    expect((await call("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" })).statusCode).toBe(503);
+    expect((await ok("GET", asha, `${S}/plus`)).active).toBe(true);
+    razorpay.refuseRefunds = false;
+
+    clock += DAY;
+    expect(await ok("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" }, 200)).toEqual({
+      status: "refunded",
+      creditNote: "PKC/2627/000001",
+      creditsTaken: 1000,
+    });
+    expect(razorpay.refunds).toEqual([{ id: "rfnd_fake000001", paymentId: purchase.paymentId, amountPaise: 99_900, notes: { kind: "prep", orgId: "org-a", orderId: order.id } }]);
+    expect((await ok("GET", asha, `${S}/plus`)).active).toBe(false);
+    expect((await ok("GET", asha, `${S}/lessons/heaps`)).locked).toBe(true);
+    const credits = await ok("GET", asha, `${S}/credits`);
+    expect(credits.balance).toBe(0);
+    expect(credits.history[0]).toMatchObject({ delta: -1000, reason: "order_refund" });
+    const refunded = (await ok("GET", asha, `${S}/orders`)).orders[0];
+    expect(refunded).toMatchObject({ status: "refunded", invoice: "PKP/2627/000001", creditNote: "PKC/2627/000001", refundedAt: new Date(clock).toISOString() });
+    const note = await ok("GET", asha, `${S}/invoices/${encodeURIComponent("PKC/2627/000001")}`);
+    expect(note.document).toMatchObject({
+      title: "Credit Note",
+      against: { number: "PKP/2627/000001" },
+      reason: "Asked within a week",
+      totalPaise: 99_900,
+      taxablePaise: 99_900 - 15_239,
+    });
+    expect((await ok("GET", owner, "/practice-admin/plus/orders")).orders[0]).toMatchObject({ status: "refunded", creditNote: "PKC/2627/000001" });
+
+    // Twice is once.
+    expect(await ok("POST", owner, `/practice-admin/plus/orders/${order.id}/refund`, { reason: "Asked within a week" }, 200)).toMatchObject({ creditNote: "PKC/2627/000001", creditsTaken: 0 });
+    expect(razorpay.refunds).toHaveLength(1);
+    const audit = await ok("GET", owner, "/audit");
+    expect(JSON.stringify(audit)).toContain("prep.order_refunded");
+  });
+
+  it("sells a DSA Pass, which opens every lesson and the plan but is not Plus", async () => {
+    await paidTrack();
+    await ok("PUT", owner, "/practice-admin/plus", { plusEnabled: true, freeModules: 1, monthlyCredits: 0 }, 200);
+    const pass = await ok("POST", owner, "/practice-admin/plus/products", { title: "DSA Pass", kind: "dsa", days: 60, pricePaise: 49_900 });
+    expect(pass).toMatchObject({ kind: "dsa", days: 60 });
+    const asha = await signUp();
+    expect((await call("POST", asha, `${S}/plan/preview`, planInput)).statusCode).toBe(402);
+    const purchase = await buy(asha, pass.id);
+    expect((await purchase.confirm()).statusCode).toBe(200);
+    expect(await ok("GET", asha, `${S}/plus`)).toMatchObject({ active: false, dsaUntil: "2026-12-04T04:00:00.000Z" });
+    expect((await ok("GET", asha, `${S}/lessons/heaps`)).locked).toBe(false);
+    expect((await ok("POST", asha, `${S}/plan/preview`, planInput, 200)).fits).toBe(true);
+    const invoice = await ok("GET", asha, `${S}/invoices/${encodeURIComponent("PKP/2627/000001")}`);
+    expect(invoice.document.lines[0].description).toBe("DSA Pass: DSA Pass for 60 days");
+    // A grant of Plus runs from today, not from the end of the DSA Pass.
+    const me = await ok("GET", asha, `${S}/me`);
+    expect(await ok("POST", owner, `/practice-admin/learners/${me.id}/plus`, { days: 10 }, 200)).toEqual({ until: "2026-10-15T04:00:00.000Z" });
+  });
+});
+
 describe("the tutor", () => {
   it("climbs the hint ladder a rung at a time, for credits, and keeps the solution until three wrong tries", async () => {
     const asha = await signUp();
@@ -388,13 +502,90 @@ describe("the tutor", () => {
     expect((await coins(asha)).find((h) => h.rule === "solve_after_solution")!.amount * 2).toBe((await coins(ravi)).find((h) => h.rule === "solve")!.amount);
   });
 
+  it("answers a review in its fixed shape, and gives the credits back when the shape is wrong", async () => {
+    await ok("PUT", owner, "/practice-admin/plus", { monthlyCredits: 100 }, 200);
+    const asha = await signUp();
+    const url = `${S}/problems/${problems.code!.slug}/tutor`;
+    await ok("POST", asha, `${S}/problems/${problems.code!.slug}/submit`, { answer: "print(5)", language: "python" }, 200);
+    const before = (await ok("GET", asha, `${S}/credits`)).balance;
+
+    model.reply = () => ({ text: "Looks fine to me." });
+    const wrong = await call("POST", asha, `${url}/review`, { replyIn: "en" });
+    expect(wrong.statusCode).toBe(503);
+    expect((await ok("GET", asha, `${S}/credits`)).balance).toBe(before);
+    // Asked for in the shape, with the rule that a review never writes the fixed program.
+    expect(model.requests.at(-1)!.format).toMatchObject({ type: "json_schema", schema: { required: ["verdict", "summary", "logic", "complexity", "quality", "edgeCases"] } });
+
+    model.reply = () => ({ text: JSON.stringify({ ...REVIEW, verdict: "wrong", summary: "It prints 5 for every input." }) });
+    const review = await ok("POST", asha, `${url}/review`, { replyIn: "en" }, 200);
+    expect(review).toMatchObject({ mode: "review", credits: TUTOR_CREDITS.review, data: { verdict: "wrong", complexity: { time: "O(1)" } } });
+    expect(review.answer).toBe(
+      [
+        "**Not right yet.** It prints 5 for every input.",
+        "### Logic",
+        "- ✓ Reads the input.\n- ✗ Ignores it and prints a constant.",
+        "### Complexity",
+        "- Time: O(1)\n- Space: O(1)",
+        "### Code quality",
+        "Nothing to add.",
+        "### Edge cases to check",
+        "- Negative numbers",
+      ].join("\n\n"),
+    );
+    expect((await ok("GET", asha, url)).entries.at(-1)).toMatchObject({ mode: "review", data: { verdict: "wrong" } });
+    expect((await ok("GET", asha, `${S}/credits`)).balance).toBe(before - TUTOR_CREDITS.review);
+  });
+
+  it("asks two interview follow-ups only after a solve, and judges the learner's answer to one", async () => {
+    await ok("PUT", owner, "/practice-admin/plus", { monthlyCredits: 200 }, 200);
+    const asha = await signUp();
+    const url = `${S}/problems/${problems.code!.slug}/tutor`;
+    model.reply = () => ({ text: JSON.stringify({ questions: ["What if the numbers did not fit in 64 bits?", "How would you add a million pairs fast?", "A third one"] }) });
+    const early = await call("POST", asha, `${url}/followups`, { replyIn: "en" });
+    expect(early.statusCode).toBe(422);
+    expect(model.requests).toHaveLength(0);
+
+    await ok("POST", asha, `${S}/problems/${problems.code!.slug}/submit`, { answer: "a, b = map(int, input().split())\nprint(a + b)\n", language: "python" }, 200);
+    const asked = await ok("POST", asha, `${url}/followups`, { replyIn: "en" }, 200);
+    expect(asked).toMatchObject({ mode: "followup", credits: TUTOR_CREDITS.followup, data: { questions: ["What if the numbers did not fit in 64 bits?", "How would you add a million pairs fast?"] } });
+    expect(asked.answer).toBe("1. What if the numbers did not fit in 64 bits?\n2. How would you add a million pairs fast?");
+    expect(model.requests.at(-1)!.user).toContain("print(a + b)");
+
+    model.reply = () => ({ text: JSON.stringify({ verdict: "partial", feedback: "Right that Python has big integers; say what changes in Java.", stronger: "Use BigInteger in Java, or long when the bound allows." }) });
+    expect((await call("POST", asha, `${url}/followups/${asked.id}/reply`, { question: 2, answer: "Python has big ints", replyIn: "en" })).statusCode).toBe(400);
+    expect((await call("POST", asha, `${url}/followups/nothing/reply`, { question: 0, answer: "Python has big ints", replyIn: "en" })).statusCode).toBe(404);
+    const replied = await ok("POST", asha, `${url}/followups/${asked.id}/reply`, { question: 0, answer: "Python has big ints", replyIn: "en" }, 200);
+    expect(replied).toMatchObject({ mode: "followup_reply", credits: TUTOR_CREDITS.followupReply, data: { verdict: "partial" } });
+    expect(replied.answer).toBe("**Partly there.** Right that Python has big integers; say what changes in Java.\n\n**A stronger answer:** Use BigInteger in Java, or long when the bound allows.");
+    expect(model.requests.at(-1)!.user).toContain("<follow_up_question>\nWhat if the numbers did not fit in 64 bits?");
+    expect(model.requests.at(-1)!.user).toContain("<learner_question>\nPython has big ints");
+    // Another learner cannot answer Asha's questions.
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    expect((await call("POST", ravi, `${url}/followups/${asked.id}/reply`, { question: 0, answer: "mine now", replyIn: "en" })).statusCode).toBe(404);
+  });
+
+  it("forgets what it said after 180 days", async () => {
+    const asha = await signUp();
+    await ok("POST", asha, `${S}/problems/${problems.code!.slug}/tutor/hint`, { code: "", language: "python" }, 200);
+    const url = `${S}/problems/${problems.code!.slug}/tutor`;
+    expect((await ok("GET", asha, url)).entries).toHaveLength(1);
+    clock += 179 * DAY;
+    expect(await privacy.sweepTutor()).toBe(0);
+    clock += 2 * DAY;
+    expect(await privacy.sweepTutor()).toBe(1);
+    const fresh = await ok("POST", null, `${S}/signin`, { email: "asha@example.com", password: PASSWORD }, 200);
+    expect((await ok("GET", fresh.token, url)).entries).toEqual([]);
+  });
+
   it("is never shown a hidden test, and reviews only what was submitted", async () => {
     const asha = await signUp();
     const url = `${S}/problems/${problems.code!.slug}/tutor`;
     await ok("POST", asha, `${url}/hint`, { code: "print(input())", language: "python" }, 200);
     expect((await call("POST", asha, `${url}/review`, {})).statusCode).toBe(422);
     await ok("POST", asha, `${S}/problems/${problems.code!.slug}/submit`, { answer: "a, b = map(int, input().split())\nprint(a + b)\n", language: "python" }, 200);
-    await ok("POST", asha, `${url}/review`, {}, 200);
+    model.reply = () => ({ text: JSON.stringify(REVIEW) });
+    const review = await ok("POST", asha, `${url}/review`, {}, 200);
+    expect(review.data).toEqual(REVIEW);
     for (const r of model.requests) {
       expect(r.system).toContain("2 3");
       expect(r.system).not.toContain("SECRET-INPUT");
@@ -510,5 +701,39 @@ describe("the tutor", () => {
     expect(spent.json().message).toMatch(/this month/);
     // And nothing was charged for the refusal.
     expect((await ok("GET", asha, `${S}/credits`)).balance).toBe(90);
+  });
+});
+
+describe("the tutor's eval scores", () => {
+  it("are shown to staff beside their targets, empty before a run", async () => {
+    const report = await ok("GET", author, "/practice-admin/tutor/evals");
+    expect(report).toMatchObject({ recordedAt: null, model: null });
+    expect(report.flows.map((f: { flow: string }) => f.flow)).toEqual(["hint", "review", "doubt"]);
+    expect(report.flows[1].metrics[0]).toEqual({ id: "bug_found", label: "Bug found", target: 90, percent: null, met: null });
+    expect((await call("GET", await signUp(), "/practice-admin/tutor/evals")).statusCode).toBe(401);
+  });
+
+  it("are read from a run's newest results: a truncated answer counts against it", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "sahayak-scores-"));
+    const write = async (version: string, rows: object[]) => {
+      await mkdir(join(dir, version), { recursive: true });
+      await writeFile(join(dir, version, "results.jsonl"), rows.map((r) => JSON.stringify(r)).join("\n") + "\n");
+    };
+    await write("baseline", [{ status: "ok", model: "claude-opus-5-5", grade: { bug_found: 0 } }]);
+    await write("v2", [
+      { status: "ok", model: "claude-opus-5-5", grade: { bug_found: 1, complexity_right: 1, no_fixed_program: 1 } },
+      { status: "ok", model: "claude-opus-5-5", grade: { bug_found: 1, complexity_right: 0, no_fixed_program: 1 } },
+      { status: "truncated", model: "claude-opus-5-5", grade: { bug_found: 1, complexity_right: 1, no_fixed_program: 1 } },
+      { status: "ok", model: "claude-opus-5-5", grade: { bug_found: 0, complexity_right: 1, no_fixed_program: 1 } },
+    ]);
+    const s = scoresOf(dir)!;
+    expect(s).toEqual({ version: "v2", cases: 4, passed: { bug_found: 2, complexity_right: 2, no_fixed_program: 3 }, model: "claude-opus-5-5" });
+    const review = sahayakEvalReport({ recordedAt: "2026-10-02T00:00:00Z", model: s.model, flows: { review: s } }).flows[1]!;
+    expect(review.metrics.slice(0, 3)).toEqual([
+      { id: "bug_found", label: "Bug found", target: 90, percent: 50, met: false },
+      { id: "complexity_right", label: "Complexity right", target: 95, percent: 50, met: false },
+      { id: "no_fixed_program", label: "No fixed program", target: 100, percent: 75, met: false },
+    ]);
+    expect(scoresOf(join(dir, "missing"))).toBeNull();
   });
 });

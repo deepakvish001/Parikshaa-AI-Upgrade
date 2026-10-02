@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { candidateQuestion, scoreDeterministic, type OrgId } from "@parikshaa/core";
 import {
   practiceLearner,
@@ -16,7 +17,7 @@ import {
   type TaskDraft,
   type Track,
 } from "@parikshaa/store";
-import { PracticeError, istDay, slugOf, streaks } from "./practice.js";
+import { PracticeError, istDay, slugOf, streaks, type People } from "./practice.js";
 import { addDays, countStudyDays, daysBetween, generatePlan, reschedule, review, studyDays, type PlanItem } from "./prep-plan.js";
 import type { PrepPlus } from "./prep-plus.js";
 
@@ -54,8 +55,12 @@ export const FREEZES_PER_MONTH = 2;
 export const QUIZ_PASS_PERCENT = 70;
 /** Questions in a sprint's quiz at most. */
 export const QUIZ_QUESTIONS = 10;
-// Paid outside the daily cap: milestones, a published interview experience, and coins a cancelled order gives back.
-const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant"];
+// Paid outside the daily cap: milestones, a published interview experience, a contest rank, and coins a cancelled order gives back.
+const MILESTONES = ["module", "track", "streak", "experience", "store_refund", "grant", "contest_rank"];
+/** Questions a lesson's quiz asks at most. */
+export const LESSON_QUIZ_MAX = 10;
+/** Solutions one learner may share in a day. */
+export const SHARES_PER_DAY = 20;
 /** Cards shown for revision in a day, oldest first; the rest wait. */
 export const REVISE_PER_DAY = 15;
 const LIST_NAME = /^[\p{L}\p{N} _\-'&()]{1,60}$/u;
@@ -92,6 +97,9 @@ interface State {
   readonly frozen: ReadonlySet<string>;
 }
 
+/** What a plan is made from: and, to plan only part of the track, how many of its remaining items. */
+type PlanRequest = { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[]; upTo?: number | undefined };
+
 const levels: readonly PlanLevel[] = ["beginner", "intermediate", "advanced"];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -99,8 +107,10 @@ export class PrepService {
   readonly #practice: PracticeStore;
   readonly #store: PrepStore;
   readonly #now: () => number;
+  #people: People = async () => new Map();
   readonly #plus: PrepPlus | null;
   readonly #companyProblems: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
+  readonly #planLate: (site: PracticeSite, learner: Learner, plan: { finishOn: string; deadline: string }) => Promise<void>;
 
   constructor(options: {
     practice: PracticeStore;
@@ -108,12 +118,15 @@ export class PrepService {
     plus?: PrepPlus | null;
     /** The learner's target companies' unsolved problems, most asked first: a plan puts them in its last days. */
     companyProblems?: (site: PracticeSite, learner: Learner) => Promise<readonly string[]>;
+    /** Told when a plan's finish date has just slipped past its deadline (once a week at most): an email goes out. */
+    planLate?: (site: PracticeSite, learner: Learner, plan: { finishOn: string; deadline: string }) => Promise<void>;
     now?: () => number;
   }) {
     this.#practice = options.practice;
     this.#store = options.store;
     this.#plus = options.plus ?? null;
     this.#companyProblems = options.companyProblems ?? (async () => []);
+    this.#planLate = options.planLate ?? (async () => undefined);
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -123,7 +136,7 @@ export class PrepService {
    */
   async #locked(site: PracticeSite, learner: Learner | null, tracks: readonly Track[]): Promise<ReadonlySet<string>> {
     if (this.#plus === null) return new Set();
-    const status = await this.#plus.status(site, learner);
+    const status = await this.#plus.learnAccess(site, learner);
     if (status.active) return new Set();
     const { freeModules } = await this.#plus.settings(site.orgId);
     const free = new Set<string>();
@@ -139,7 +152,7 @@ export class PrepService {
   /** A study plan needs Plus when the site sells it. */
   async #planAllowed(site: PracticeSite, learner: Learner): Promise<void> {
     if (this.#plus === null) return;
-    if (!(await this.#plus.status(site, learner)).active) throw new PracticeError("plus_required", "A study plan comes with Plus");
+    if (!(await this.#plus.learnAccess(site, learner)).active) throw new PracticeError("plus_required", "A study plan comes with Plus");
   }
 
   #today(): string {
@@ -233,6 +246,7 @@ export class PrepService {
     if (lesson === null) throw new PracticeError("not_found", "No such lesson");
     const done = learner === null ? false : (await this.#store.lessonsDone(scope)).some((d) => d.lessonId === lesson.id);
     const locked = (await this.#locked(site, learner, await this.#store.tracks(scope))).has(lesson.id);
+    const quiz = locked ? [] : await this.#quiz(site, lesson.id);
     return {
       slug: lesson.slug,
       title: lesson.title,
@@ -242,7 +256,53 @@ export class PrepService {
       estMinutes: lesson.estMinutes,
       done,
       locked,
+      // Asked as candidates see questions: no answer in them.
+      quiz: quiz.map((p) => ({ slug: p.slug, title: p.title, question: candidateQuestion(p.question) })),
     };
+  }
+
+  /** A lesson's quiz: its problems that can still be checked at once. */
+  async #quiz(site: PracticeSite, lessonId: string): Promise<readonly PracticeProblem[]> {
+    const ids = await this.#store.lessonQuiz(practiceStaff(site.orgId), lessonId);
+    if (ids.length === 0) return [];
+    const byId = new Map((await this.#practice.problems(practiceStaff(site.orgId))).map((p) => [p.id, p]));
+    return ids.map((id) => byId.get(id)).filter((p): p is PracticeProblem => p !== undefined && (p.question.kind === "mcq" || p.question.kind === "numeric"));
+  }
+
+  /**
+   * Hand in a lesson's quiz: each answer checked, the right one shown for a
+   * wrong one, and each question got wrong due for revision today.
+   */
+  async takeLessonQuiz(site: PracticeSite, learner: Learner, slug: string, answers: Readonly<Record<string, string>>) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const lesson = await this.#store.lessonBySlug(scope, slug);
+    if (lesson === null) throw new PracticeError("not_found", "No such lesson");
+    if ((await this.#locked(site, learner, await this.#store.tracks(scope))).has(lesson.id)) throw new PracticeError("plus_required", "This lesson comes with Plus");
+    const quiz = await this.#quiz(site, lesson.id);
+    if (quiz.length === 0) throw new PracticeError("invalid", "This lesson has no quiz");
+    const today = this.#today();
+    const cards = new Map((await this.#store.cards(scope)).map((c) => [c.problemId, c]));
+    const results = [];
+    let revise = 0;
+    for (const p of quiz) {
+      const score = scoreDeterministic(p.question, answers[p.slug] ?? "");
+      const right = score !== null && score.score >= p.question.maxScore;
+      if (!right) {
+        const card = cards.get(p.id);
+        if (card === undefined) await this.#store.addCard(scope, p.id, today);
+        else if (card.dueOn > today) await this.#store.saveCard(scope, { ...card, dueOn: today });
+        revise++;
+      }
+      const q = p.question;
+      results.push({
+        slug: p.slug,
+        right,
+        // Shown once answered, so a wrong answer teaches something.
+        answer: q.kind === "mcq" ? (q.correctIndices ?? [q.correctIndex]).map((i) => q.options[i] ?? "").join(", ") : q.kind === "numeric" ? String(q.expected) : "",
+        explanation: p.editorial,
+      });
+    }
+    return { score: results.filter((r) => r.right).length, total: results.length, results, revise };
   }
 
   async completeLesson(site: PracticeSite, learner: Learner, slug: string): Promise<Reward> {
@@ -393,7 +453,7 @@ export class PrepService {
     const plan = await this.#store.activePlan(scope);
     if (plan !== null) {
       // As if today were already over.
-      const { moves } = reschedule(await this.#store.tasks(scope, plan.id), addDays(today, 1), plan.dailyMinutes, plan.offDays);
+      const { moves } = reschedule(await this.#store.tasks(scope, plan.id), addDays(today, 1), plan.dailyMinutes, plan.offDays, plan.weekendMinutes);
       await this.#store.moveTasks(scope, moves);
       moved = moves.length;
     }
@@ -501,35 +561,50 @@ export class PrepService {
 
   // --- the plan ------------------------------------------------------------------------------------
 
-  #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
+  #settings(input: { deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[] }) {
     const today = this.#today();
-    if (!levels.includes(input.level as PlanLevel)) throw new PracticeError("invalid", "A level is beginner, intermediate or advanced");
     if (!DAY.test(input.deadline) || input.deadline < addDays(today, 6)) throw new PracticeError("invalid", "A deadline is a date at least a week away");
     if (input.deadline > addDays(today, 3 * 365)) throw new PracticeError("invalid", "A deadline is within three years");
-    if (!Number.isInteger(input.dailyMinutes) || input.dailyMinutes < 15 || input.dailyMinutes > 720) throw new PracticeError("invalid", "Study 15 minutes to 12 hours a day");
+    const minutes = (m: number) => Number.isInteger(m) && m >= 15 && m <= 720;
+    if (!minutes(input.dailyMinutes)) throw new PracticeError("invalid", "Study 15 minutes to 12 hours a day");
+    const weekendMinutes = input.weekendMinutes ?? null;
+    if (weekendMinutes !== null && !minutes(weekendMinutes)) throw new PracticeError("invalid", "Study 15 minutes to 12 hours on a weekend day");
     const offDays = [...new Set(input.offDays)].sort();
     if (offDays.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) throw new PracticeError("invalid", "Days off are 0 (Sunday) to 6 (Saturday)");
     if (offDays.length >= 7) throw new PracticeError("invalid", "Leave at least one day a week to study");
-    return { today, level: input.level as PlanLevel, offDays };
+    return { today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays };
   }
 
-  async #planFor(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
-    const { today, level, offDays } = this.#planInput(input);
-    const state = await this.#state(site, learner);
-    const track = state.tracks.find((t) => t.slug === input.track);
-    if (track === undefined) throw new PracticeError("not_found", "No such track");
-    const items: PlanItem[] = this.#items(track, state)
+  #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[] }) {
+    if (!levels.includes(input.level as PlanLevel)) throw new PracticeError("invalid", "A level is beginner, intermediate or advanced");
+    return { ...this.#settings(input), level: input.level as PlanLevel };
+  }
+
+  /** The track's items not yet done, in order. */
+  #remaining(track: Track, state: State): PlanItem[] {
+    return this.#items(track, state)
       .flatMap((m) => m.items)
       .filter((i) => i.status !== "done")
       .map((i) => ({ itemId: i.id, kind: i.kind === "lesson" ? "learn" : "practice", title: i.title, minutes: i.kind === "lesson" ? i.estMinutes : null, difficulty: i.difficulty }));
-    const outcome = generatePlan({ items, level, start: today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, offDays });
-    return { track, level, offDays, outcome };
+  }
+
+  async #planFor(site: PracticeSite, learner: Learner, input: PlanRequest) {
+    const { today, level, offDays, weekendMinutes } = this.#planInput(input);
+    const state = await this.#state(site, learner);
+    const track = state.tracks.find((t) => t.slug === input.track);
+    if (track === undefined) throw new PracticeError("not_found", "No such track");
+    const all = this.#remaining(track, state);
+    if (input.upTo !== undefined && (!Number.isInteger(input.upTo) || input.upTo < 1)) throw new PracticeError("invalid", "Plan at least one item");
+    const items = input.upTo === undefined ? all : all.slice(0, input.upTo);
+    const outcome = generatePlan({ items, level, start: today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays });
+    return { track, level, offDays, weekendMinutes, outcome, of: all.length };
   }
 
   /** What a plan would be, before it is started. */
-  async previewPlan(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[] }) {
+  async previewPlan(site: PracticeSite, learner: Learner, input: PlanRequest) {
     await this.#planAllowed(site, learner);
-    const { track, outcome } = await this.#planFor(site, learner, input);
+    const { track, outcome, of } = await this.#planFor(site, learner, input);
+    const work = outcome.tasks.filter((t) => t.kind !== "revise");
     const neededMinutes = outcome.studyDaysToDeadline === 0 ? null : Math.ceil(outcome.totalMinutes / outcome.studyDaysToDeadline / 0.8 / 5) * 5;
     return {
       track: { slug: track.slug, title: track.title },
@@ -541,17 +616,19 @@ export class PrepService {
       sprints: sprintSummary(outcome.tasks),
       // When it does not fit: how much a day it would take to finish in time.
       dailyMinutesToFit: outcome.fits || neededMinutes === null ? null : Math.min(720, Math.max(input.dailyMinutes + 5, neededMinutes)),
+      // The third way when it does not fit: plan only the items that fit by the deadline, in the track's order.
+      itemsThatFit: outcome.fits ? null : { items: work.filter((t) => t.day <= input.deadline).length, of },
     };
   }
 
-  async startPlan(site: PracticeSite, learner: Learner, input: { track: string; level: string; deadline: string; dailyMinutes: number; offDays: readonly number[]; goal?: string | undefined }) {
+  async startPlan(site: PracticeSite, learner: Learner, input: PlanRequest & { goal?: string | undefined }) {
     await this.#planAllowed(site, learner);
-    const { track, level, offDays, outcome } = await this.#planFor(site, learner, input);
+    const { track, level, offDays, weekendMinutes, outcome } = await this.#planFor(site, learner, input);
     const goal = (input.goal ?? "").trim().slice(0, 200);
     const tasks = await this.#withCompanies(site, learner, outcome.tasks);
     await this.#store.startPlan(
       practiceLearner(site.orgId, learner.id),
-      { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, offDays, goal },
+      { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays, goal },
       tasks,
     );
     return (await this.plan(site, learner))!;
@@ -587,6 +664,41 @@ export class PrepService {
     return out;
   }
 
+  /**
+   * Change a running plan's deadline, minutes or days off. What is done stays
+   * done; the track's remaining items are laid out again from today, in new
+   * sprints after the ones begun, so a sprint's quiz keeps its questions.
+   */
+  async changePlan(site: PracticeSite, learner: Learner, change: { deadline?: string; dailyMinutes?: number; weekendMinutes?: number | null; offDays?: readonly number[] }) {
+    const scope = practiceLearner(site.orgId, learner.id);
+    const plan = await this.#store.activePlan(scope);
+    if (plan === null) throw new PracticeError("not_found", "There is no plan to change");
+    const settings = this.#settings({
+      deadline: change.deadline ?? plan.deadline,
+      dailyMinutes: change.dailyMinutes ?? plan.dailyMinutes,
+      weekendMinutes: change.weekendMinutes === undefined ? plan.weekendMinutes : change.weekendMinutes,
+      offDays: change.offDays ?? plan.offDays,
+    });
+    const state = await this.#state(site, learner);
+    const track = state.tracks.find((t) => t.id === plan.trackId);
+    if (track === undefined) throw new PracticeError("not_found", "The plan's track is gone");
+    const tasks = await this.#store.tasks(scope, plan.id);
+    const kept = tasks.filter((t) => t.doneAt !== null || t.kind === "custom" || (t.kind === "revise" && t.itemId !== null));
+    const begun = Math.max(0, ...tasks.filter((t) => t.doneAt !== null || t.day < settings.today).map((t) => t.sprint));
+    const outcome = generatePlan({ ...settings, items: this.#remaining(track, state), level: plan.level, start: settings.today });
+    const laid = (await this.#withCompanies(site, learner, outcome.tasks)).map((t) => ({ ...t, sprint: t.sprint + begun, title: t.kind === "revise" && t.itemId === null ? `Sprint ${t.sprint + begun} revision` : t.title }));
+    // A task kept for today goes first; new ones follow it on the same day.
+    const after = new Map<string, number>();
+    for (const t of kept.filter((k) => k.doneAt === null)) after.set(t.day, Math.max(after.get(t.day) ?? -1, t.position));
+    await this.#store.replan(
+      scope,
+      plan.id,
+      { deadline: settings.deadline, dailyMinutes: settings.dailyMinutes, weekendMinutes: settings.weekendMinutes, offDays: settings.offDays },
+      laid.map((t) => ({ ...t, position: t.position + (after.get(t.day) ?? -1) + 1 })),
+    );
+    return (await this.plan(site, learner))!;
+  }
+
   async archivePlan(site: PracticeSite, learner: Learner): Promise<void> {
     await this.#store.archivePlan(practiceLearner(site.orgId, learner.id));
   }
@@ -598,10 +710,15 @@ export class PrepService {
     if (plan === null) return null;
     const today = this.#today();
     let tasks = await this.#store.tasks(scope, plan.id);
-    const { moves } = reschedule(tasks, today, plan.dailyMinutes, plan.offDays);
+    const { moves } = reschedule(tasks, today, plan.dailyMinutes, plan.offDays, plan.weekendMinutes);
     if (moves.length > 0) {
       await this.#store.moveTasks(scope, moves);
       tasks = await this.#store.tasks(scope, plan.id);
+    }
+    const lastDay = tasks.length === 0 ? today : [...tasks].sort((a, b) => b.day.localeCompare(a.day))[0]!.day;
+    // Running past the deadline: the learner hears it, once a week at most.
+    if (moves.length > 0 && lastDay > plan.deadline && (await this.#store.noteLate(scope, plan.id, today))) {
+      await this.#planLate(site, learner, { finishOn: lastDay, deadline: plan.deadline });
     }
     const tracks = await this.#store.tracks(scope);
     const track = tracks.find((t) => t.id === plan.trackId);
@@ -614,6 +731,7 @@ export class PrepService {
       level: plan.level,
       deadline: plan.deadline,
       dailyMinutes: plan.dailyMinutes,
+      weekendMinutes: plan.weekendMinutes,
       offDays: plan.offDays,
       goal: plan.goal,
       startedAt: plan.createdAt,
@@ -837,6 +955,8 @@ export class PrepService {
     const existing = await this.#store.notes(scope);
     if (!existing.some((n) => n.refKind === r.kind && n.refId === r.id) && existing.length >= 2000) throw new PracticeError("invalid", "Keep 2,000 notes at most");
     const saved = await this.#store.saveNote(scope, { refKind: r.kind, refId: r.id, title, body: input.body });
+    // A note on a problem is something to come back to: it gets a revision card, if it has none.
+    if (r.kind === "problem") await this.#store.addCard(scope, r.id, addDays(this.#today(), 1));
     return { kind: r.kind, ref, title: saved.title, body: saved.body, updatedAt: saved.updatedAt };
   }
 
@@ -869,8 +989,15 @@ export class PrepService {
     return { balance, dailyCap: DAILY_COIN_CAP, history: history.map(({ rule, amount, createdAt }) => ({ rule, amount, at: createdAt })) };
   }
 
+  /** Where titles and usernames come from (Prep's ratings and profiles), once that service exists. */
+  usePeople(people: People): void {
+    this.#people = people;
+  }
+
   async coinLeaders(site: PracticeSite, learner: Learner | null) {
-    return (await this.#store.coinLeaders(site.orgId, 100)).map((r, i) => ({ rank: i + 1, name: r.name, coins: r.coins, you: learner !== null && r.learnerId === learner.id }));
+    const rows = await this.#store.coinLeaders(site.orgId, 100);
+    const people = await this.#people(site.orgId, rows.map((r) => r.learnerId));
+    return rows.map((r, i) => ({ rank: i + 1, name: r.name, title: people.get(r.learnerId)?.title ?? null, username: people.get(r.learnerId)?.username ?? null, coins: r.coins, you: learner !== null && r.learnerId === learner.id }));
   }
 
   // --- staff: content ---------------------------------------------------------------------------------------
@@ -935,6 +1062,64 @@ export class PrepService {
       if ((error as Error).name === "PrepSlugTaken") throw new PracticeError("slug_taken", "Another track uses that address");
       throw error;
     }
+  }
+
+  // --- shared solutions ----------------------------------------------------------------------------
+
+  /**
+   * Share a solution read-only: the code, at a link. Never during a contest
+   * that includes the problem, and never a test: only what the learner wrote.
+   */
+  async shareCode(site: PracticeSite, learner: Learner, slug: string, input: { language: string; source: string }) {
+    const problem = await this.#problem(site, learner, slug);
+    if (problem.question.kind !== "code") throw new PracticeError("invalid", "Only code is shared");
+    const source = input.source;
+    if (source.trim() === "" || source.length > 65_536) throw new PracticeError("invalid", "Share 1 to 65,536 characters of code");
+    const now = this.#now();
+    const running = (await this.#practice.contests(practiceStaff(site.orgId))).some((c) => c.problemIds.includes(problem.id) && Date.parse(c.startsAt) <= now && now < Date.parse(c.endsAt));
+    if (running) throw new PracticeError("invalid", "Code for this problem cannot be shared while a contest that includes it runs");
+    if ((await this.#store.sharesSince(site.orgId, learner.id, new Date(now - 86_400_000))) >= SHARES_PER_DAY) throw new PracticeError("too_many_runs", `Share up to ${SHARES_PER_DAY} solutions a day`);
+    const id = randomBytes(9).toString("base64url");
+    await this.#store.addShare(site.orgId, { id, learnerId: learner.id, problemId: problem.id, language: input.language.slice(0, 40), source }, new Date(now));
+    return { id, path: `/shares/${id}` };
+  }
+
+  /** A shared solution, as anyone with its link reads it. */
+  async sharedCode(site: PracticeSite, id: string) {
+    const share = /^[A-Za-z0-9_-]{10,24}$/.test(id) ? await this.#store.share(site.orgId, id) : null;
+    if (share === null) throw new PracticeError("not_found", "No such shared solution");
+    const [problem, author] = await Promise.all([
+      (await this.#practice.problems(practiceStaff(site.orgId))).find((p) => p.id === share.problemId),
+      this.#practice.learnerById(site.orgId, share.learnerId),
+    ]);
+    return {
+      problem: problem === undefined || !problem.published ? null : { slug: problem.slug, title: problem.title },
+      author: author?.name ?? "A learner",
+      language: share.language,
+      source: share.source,
+      createdAt: share.createdAt,
+    };
+  }
+
+  // --- staff: lesson quizzes ------------------------------------------------------------------------
+
+  async staffLessonQuiz(orgId: OrgId, lessonId: string): Promise<readonly string[]> {
+    return this.#store.lessonQuiz(practiceStaff(orgId), lessonId);
+  }
+
+  /** Set a lesson's quiz: up to ten of the site's problems that can be checked at once (multiple choice, a number). */
+  async setLessonQuiz(orgId: OrgId, lessonId: string, problemIds: readonly string[]): Promise<readonly string[]> {
+    if (!(await this.#store.lessons(practiceStaff(orgId))).some((l) => l.id === lessonId)) throw new PracticeError("not_found", "No such lesson");
+    const ids = [...new Set(problemIds)];
+    if (ids.length > LESSON_QUIZ_MAX) throw new PracticeError("invalid", `A quiz asks ${LESSON_QUIZ_MAX} questions at most`);
+    const byId = new Map((await this.#practice.problems(practiceStaff(orgId))).map((p) => [p.id, p]));
+    for (const id of ids) {
+      const p = byId.get(id);
+      if (p === undefined) throw new PracticeError("not_found", "No such problem");
+      if (p.question.kind !== "mcq" && p.question.kind !== "numeric") throw new PracticeError("invalid", `${p.title} cannot be checked at once: a quiz asks multiple choice and number questions`);
+    }
+    await this.#store.setLessonQuiz(orgId, lessonId, ids);
+    return ids;
   }
 
   async staffLessons(orgId: OrgId): Promise<readonly Lesson[]> {

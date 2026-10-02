@@ -1240,6 +1240,14 @@ export class ConsoleClient {
     return (await this.#request<{ lessons: PrepLesson[] }>("/practice-admin/lessons")).lessons;
   }
 
+  async lessonQuiz(id: string): Promise<readonly string[]> {
+    return (await this.#request<{ problemIds: string[] }>(`/practice-admin/lessons/${encodeURIComponent(id)}/quiz`)).problemIds;
+  }
+
+  async setLessonQuiz(id: string, problemIds: readonly string[]): Promise<readonly string[]> {
+    return (await this.#request<{ problemIds: string[] }>(`/practice-admin/lessons/${encodeURIComponent(id)}/quiz`, { method: "PUT", body: JSON.stringify({ problemIds }) })).problemIds;
+  }
+
   saveLesson(id: string | null, draft: PrepLessonDraft): Promise<PrepLesson> {
     return id === null
       ? this.#request("/practice-admin/lessons", { method: "POST", body: JSON.stringify(draft) })
@@ -1266,6 +1274,14 @@ export class ConsoleClient {
     return id === null
       ? this.#request("/practice-admin/plus/products", { method: "POST", body: JSON.stringify(draft) })
       : this.#request(`/practice-admin/plus/products/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) });
+  }
+
+  refundPlusOrder(id: string, reason: string): Promise<{ readonly status: "refunded"; readonly creditNote: string | null; readonly creditsTaken: number }> {
+    return this.#request(`/practice-admin/plus/orders/${encodeURIComponent(id)}/refund`, { method: "POST", body: JSON.stringify({ reason }) });
+  }
+
+  tutorEvals(): Promise<TutorEvals> {
+    return this.#request("/practice-admin/tutor/evals");
   }
 
   async plusOrders(): Promise<readonly PlusOrder[]> {
@@ -1339,6 +1355,27 @@ export class ConsoleClient {
 
   async experiences(status?: StaffExperience["status"]): Promise<readonly StaffExperience[]> {
     return (await this.#request<{ experiences: StaffExperience[] }>(`/practice-admin/experiences${status === undefined ? "" : `?status=${status}`}`)).experiences;
+  }
+
+  async flaggedExperiences(): Promise<readonly FlaggedExperience[]> {
+    return (await this.#request<{ flagged: FlaggedExperience[] }>("/practice-admin/experiences/flags")).flagged;
+  }
+
+  async resolveFlags(id: string, keep: boolean): Promise<void> {
+    await this.#request(`/practice-admin/experiences/${encodeURIComponent(id)}/flags`, { method: "POST", body: JSON.stringify({ keep }) });
+  }
+
+  async stories(status?: SuccessStory["status"]): Promise<readonly SuccessStory[]> {
+    return (await this.#request<{ stories: SuccessStory[] }>(`/practice-admin/stories${status === undefined ? "" : `?status=${status}`}`)).stories;
+  }
+
+  async decideStory(id: string, status: "published" | "rejected"): Promise<void> {
+    await this.#request(`/practice-admin/stories/${encodeURIComponent(id)}/decision`, { method: "POST", body: JSON.stringify({ status }) });
+  }
+
+  /** A company's logo, as base64 of a PNG, JPEG or WebP; null takes it away. */
+  async setCompanyLogo(id: string, logo: { readonly mime: string; readonly data: string } | null): Promise<void> {
+    await this.#request(`/practice-admin/companies/${encodeURIComponent(id)}/logo`, { method: "PUT", body: JSON.stringify({ logo }) });
   }
 
   async decideExperience(id: string, status: "published" | "rejected"): Promise<void> {
@@ -2286,17 +2323,31 @@ export interface PlusSettings {
   readonly freeModules: number;
   readonly monthlyCredits: number;
   readonly tutorEnabled: boolean;
+  /** Days of free Plus each learner may start once; 0 for no trial. */
+  readonly trialDays: number;
 }
 
 export interface PlusProduct {
   readonly id: string;
   readonly title: string;
-  readonly kind: "plus" | "company" | "credits";
+  readonly kind: "plus" | "company" | "credits" | "dsa";
   readonly days: number;
   readonly credits: number;
   readonly pricePaise: number;
   readonly active: boolean;
   readonly position: number;
+}
+
+/** Sahayak's eval scores against their targets: every score null before the first run. */
+export interface TutorEvals {
+  readonly recordedAt: string | null;
+  readonly model: string | null;
+  readonly flows: readonly {
+    readonly flow: "hint" | "review" | "doubt";
+    readonly version: string | null;
+    readonly cases: number;
+    readonly metrics: readonly { readonly id: string; readonly label: string; readonly target: number | null; readonly percent: number | null; readonly met: boolean | null }[];
+  }[];
 }
 
 export interface PlusOrder {
@@ -2312,9 +2363,12 @@ export interface PlusOrder {
   readonly taxPaise: number;
   /** The tax invoice's number, once paid. */
   readonly invoice: string | null;
-  readonly status: "created" | "paid";
+  /** The credit note's number, once refunded. */
+  readonly creditNote: string | null;
+  readonly status: "created" | "paid" | "refunded";
   readonly createdAt: string;
   readonly paidAt: string | null;
+  readonly refundedAt: string | null;
 }
 
 export interface PlusCoupon {
@@ -2392,17 +2446,39 @@ export interface StaffExperience {
   readonly rounds: readonly { readonly kind: string; readonly asked: string; readonly problemSlugs: readonly string[]; readonly problems?: readonly { readonly slug: string; readonly title: string }[] }[];
   readonly tips: string;
   readonly author: string;
-  readonly status: "pending" | "published" | "rejected";
+  /** held: three learners flagged it; out of their sight until staff decide. */
+  readonly status: "pending" | "published" | "rejected" | "held";
   readonly votes: number;
   readonly at: string;
+}
+
+export interface FlaggedExperience {
+  readonly experience: StaffExperience;
+  readonly flags: readonly { readonly reason: "fake" | "offensive" | "wrong_company" | "other"; readonly note: string; readonly at: string }[];
+}
+
+export interface SuccessStory {
+  readonly id: string;
+  readonly learnerId: string;
+  readonly company: string;
+  readonly role: string;
+  readonly story: string;
+  readonly authorName: string;
+  readonly status: "pending" | "published" | "rejected";
+  readonly createdAt: string;
+  readonly publishedAt: string | null;
 }
 
 export interface StoreItem {
   readonly id: string;
   readonly title: string;
   readonly description: string;
-  readonly kind: "plus" | "digital" | "physical";
+  readonly kind: "plus" | "coupon" | "digital" | "physical";
   readonly plusDays: number;
+  /** For a coupon item: the share it takes off a Plus plan. */
+  readonly couponPercent: number;
+  /** How many one learner may buy in a calendar month; null for no such limit. */
+  readonly perMonth: number | null;
   readonly priceCoins: number;
   /** Null: no limit. */
   readonly stock: number | null;

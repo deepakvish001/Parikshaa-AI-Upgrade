@@ -1,3 +1,4 @@
+import type { PushSender } from "../push.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -38,6 +39,7 @@ import {
   type StaffRole,
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
+import type { JudgeOptions } from "../judge-queue.js";
 import { LabService } from "../lab.js";
 import { RecheckService } from "../rechecks.js";
 import { MarkingService } from "../marking.js";
@@ -148,12 +150,15 @@ export async function wire(
     readonly now?: () => Timestamp;
     readonly newId?: () => string;
     readonly runner?: CodeRunner;
+    /** The judge's queue for practice, when a test needs it small. */
+    readonly judge?: JudgeOptions;
     readonly server?: Partial<ServerOptions>;
     /** For integration tests against a local server. */
     readonly http?: SafeHttpOptions;
     readonly greenhouseHosts?: readonly string[];
     /** Where staff mail (password resets) goes. */
     readonly mailer?: Mailer;
+    readonly push?: PushSender;
     /** Results may go by WhatsApp too, as when the server has it set up. */
     readonly whatsapp?: boolean;
     /**
@@ -201,6 +206,7 @@ export async function wire(
     invitations: invitationStore,
     identity,
     exams: service,
+    tutor: new PrepPlusStore(sql),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const labStore = new LabStore(sql);
@@ -251,23 +257,29 @@ export async function wire(
     store: new PracticeStore(sql),
     bank: new QuestionBank(sql),
     ...(options.runner === undefined ? {} : { runner: options.runner }),
+    ...(options.judge === undefined ? {} : { judge: options.judge }),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(sql), practice: new PracticeStore(sql), gateway: razorpay, supplier: SUPPLIER, ...(options.now === undefined ? {} : { now: options.now }) });
-  const prepCommunity = new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, ...(options.now === undefined ? {} : { now: options.now }) });
+  const prepCommunity = new PrepCommunity({ practice: new PracticeStore(sql), prep: new PrepStore(sql), store: new PrepCommunityStore(sql), plus: prepPlus, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) });
+  practice.usePeople((orgId, ids) => prepCommunity.people(orgId, ids));
+  practice.useCompanies((site, learner) => prepCommunity.problemCompanies(site, learner));
   const prepService = new PrepService({
     practice: new PracticeStore(sql),
     store: new PrepStore(sql),
     plus: prepPlus,
     companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner),
+    planLate: (site, learner, plan) => prepEngage.queueLate(site, learner, plan),
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  prepService.usePeople((orgId, ids) => prepCommunity.people(orgId, ids));
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(sql),
     practiceStore: new PracticeStore(sql),
     practice,
     prep: prepService,
     mailer: options.mailer ?? null,
+    push: options.push ?? null,
     secret: TOKEN_SECRET,
     publicUrl: PUBLIC_URL,
     ...(options.now === undefined ? {} : { now: options.now }),
@@ -405,7 +417,7 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)) },
   };
 }
 

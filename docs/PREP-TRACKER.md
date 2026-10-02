@@ -27,23 +27,23 @@ Status ka matlab:
 
 | Hissa | ✅ | 🟡 | ⬜ | ❌ |
 |---|---|---|---|---|
-| Dashboard aur planner | 10 | 3 | 2 | 0 |
-| Learn aur practice | 6 | 3 | 2 | 0 |
-| Revision, lists, notes | 6 | 1 | 0 | 0 |
-| Sahayak AI | 13 | 3 | 2 | 0 |
-| Plus aur payment | 10 | 1 | 2 | 0 |
-| Coins, store, gamification | 10 | 3 | 2 | 0 |
-| Company prep aur community | 11 | 1 | 3 | 0 |
-| Contests | 3 | 0 | 2 | 0 |
+| Dashboard aur planner | 14 | 1 | 0 | 0 |
+| Learn aur practice | 9 | 1 | 1 | 0 |
+| Revision, lists, notes | 7 | 0 | 0 | 0 |
+| Sahayak AI | 17 | 1 | 0 | 0 |
+| Plus aur payment | 13 | 0 | 0 | 0 |
+| Coins, store, gamification | 15 | 0 | 0 | 0 |
+| Company prep aur community | 15 | 0 | 0 | 0 |
+| Contests | 4 | 1 | 0 | 0 |
 | Content | 5 | 3 | 2 | 1 |
-| Platform, quality, B2B | 9 | 1 | 3 | 0 |
-| **Kul** | **83** | **19** | **20** | **1** |
+| Platform, quality, B2B | 11 | 2 | 0 | 0 |
+| **Kul** | **110** | **9** | **3** | **1** |
 
 Ye ginti neeche ki tables se hai. Koi row badle to ye bhi badlo.
 
-**College aur company ([V2-12](#v2-12-college-aur-company-end-to-end-feature-list), 94 features):** ✅ 59 · 🟡 9 · ⬜ 25 · ❌ 1. Top 12 aur baad ke 6 (moderation, console Hindi, kai college ki drive, offer tracking, proxy, DPA/SLA) sab code me hain; kaunsa aadha hai, wo row ke note me likha hai.
+**College aur company ([V2-12](#v2-12-college-aur-company-end-to-end-feature-list), 94 features):** ✅ 60 · 🟡 9 · ⬜ 24 · ❌ 1. Top 12 aur baad ke 6 (moderation, console Hindi, kai college ki drive, offer tracking, proxy, DPA/SLA) sab code me hain; kaunsa aadha hai, wo row ke note me likha hai.
 
-Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sahayak → coins aur streak → company readiness) **chal raha hai**. Sabse bade baaki kaam hain: **content** (editorials, videos, static hints, company data), **payments ki poori dukaan** (coupons, invoices, passes), **Sahayak ke evals**, aur **reminders aur analytics**.
+Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sahayak → coins aur streak → company readiness) **chal raha hai**, aur plan 1b–9 ban gaye (PR #35, #37). Aage ka kaam Plan table ki rows 34–41 me hai (contests, payments v2, planner settings, Sahayak v2, profile aur cards, community, learn, PWA). Jo owner par ruka hai wo "Ruka hua kaam" me hai.
 
 ---
 
@@ -57,7 +57,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Onboarding: track, level, deadline, roz ke minutes, off days, plan preview | ✅ | `PlanSetup`; `POST /practice/:site/plan/preview` | |
 | Onboarding: 8 sawaal ka placement quiz | ✅ | `content/placement-quiz.ts`, `GET/POST /placement`, `PlacementPage` | 40 apne likhe sawaal; har baar 3 aasaan, 3 medium, 2 kathin; server jaanchta hai, jawab browser ko nahi jaate, kuch save nahi hota; nateeja level sujhata hai aur plan setup me bhar jaata hai |
 | Onboarding: target role aur companies | 🟡 | `PlanSetup` → `TargetPicker`; `PUT /companies/:company/target` | Plan banate waqt target companies chun sakte hain (company page se bhi). Unke problems plan ke aakhri 30% dino me. Target **role** abhi nahi |
-| Weekday aur weekend ke alag minutes | ⬜ | | Abhi ek hi "roz ke minutes" |
+| Weekday aur weekend ke alag minutes | ✅ | `weekendMinutes` (migration 0041), `minutesOn` in `prep-plan.ts`; plan setup aur "Change this plan" | Shanivaar-Ravivaar ke apne minutes; plan banana aur khiskana dono har din ki apni capacity se |
 
 ### 2. Planner, "Planly" jaisa (S6, F2, F6, F7)
 
@@ -65,14 +65,14 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 |---|---|---|---|
 | Deterministic plan generator, 7 din ke sprints, har sprint ke ant me revision, 20% din khaali | ✅ | `api/src/prep-plan.ts` | Golden tests: `prep-plan.test.ts` |
 | Chhoota task apne aap aage, nayi finish date, "on track" | ✅ | `reschedule()`; plan padhte waqt chalta hai | Cron nahi: app kholne par hota hai |
-| Time kam pade to 3 raaste (deadline aage, time zyada, chhoti sheet) | 🟡 | `fits` flag | Suggestion wala UI baaki |
+| Time kam pade to 3 raaste (deadline aage, time zyada, chhoti sheet) | ✅ | preview me `dailyMinutesToFit`, `finishOn`, `itemsThatFit`; plan me `upTo` | Teen button: roz itne minute, itni tareekh tak, ya pehle N items ka hi plan |
 | Today, Sprints, Completed tabs | ✅ | `PlanView` | |
 | Apne custom tasks | ✅ | `POST /plan/tasks` | |
 | Study mode / focus timer, hafte ka total | ✅ | `FocusTimer`; `prep_focus` | |
-| Plan settings (deadline ya time badalna) | 🟡 | `DELETE /plan` | Abhi plan band karke naya banana padta hai |
+| Plan settings (deadline ya time badalna) | ✅ | `PATCH /plan`, `PrepService.changePlan`, plan page par "Change this plan" | Jo ho gaya wo rehta hai, apne tasks aur quiz ke revise tasks bhi; baaki aaj se naye sprint me dobara bichhta hai |
 | Streak freeze ("aaj chhutti") | ✅ | `prep_freezes` (migration 0035), `POST /streak/freeze`, dashboard par "Take today off" | Mahine me 2. Streak na badhta na tootta; aaj ke tasks aage; us din reminder nahi. Coins se aur freeze kharidna nahi |
 | Sprint ke revision notes + sprint quiz | ✅ | `prep.ts` `sprintQuiz`/`takeSprintQuiz`/`sprintNotes`, `/sprints/:n/quiz`, `/sprints/:n/notes` | Quiz me sirf MCQ/numeric sawaal (10 tak); code problems quiz me nahi aate. 70% se kam par galat sawaal revise task + aaj due card. Notes page browser se print/PDF |
-| Finish date badalne par email | ⬜ | | Reminders ke saath aayega |
+| Finish date badalne par email | ✅ | `PrepEngage.lateMail`, `prep_plans.late_notified_on` | Jab finish date deadline ke paar khisakti hai: hafte me ek baar, sirf unhe jinhone email reminder chaalu kiya. Khiskaav app kholne par ginta hai (cron nahi) |
 
 ### 3. Learn aur practice (S3, S4, F3, F10)
 
@@ -82,20 +82,20 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Lessons: Markdown + video link, "done" | ✅ | `LessonPage` | |
 | Har track ke pehle modules free, baaki Plus | ✅ | `PrepService.#locked` | |
 | Video hosting, player progress, signed URL, watermark | ⬜ | | Abhi sirf bahar ka link. Host ka faisla baaki |
-| Lesson ke andar quiz | 🟡 | | Track me lesson ke baad MCQ problems rakhe ja sakte hain (CS pack yahi karta hai) |
+| Lesson ke andar quiz | ✅ | `prep_lesson_quiz` (migration 0046), `PrepService.takeLessonQuiz`, `POST /practice/:site/lessons/:lesson/quiz`, web `LessonQuiz`, console "Quiz" (Lessons), `learn-v2.test.ts` | Staff 10 tak MCQ/number problems chunte hain; lesson page par jawab ke bina poochhe jaate hain, turant jaanche jaate hain, galat ka sahi jawab aur editorial dikhta hai. Code problem quiz me nahi (turant jaanch nahi hoti) |
 | Problem workspace, Run/Submit, drafts device par | ✅ | §15 practice site | |
 | Editorial Brute / Better / Optimal tabs | ✅ | `web/src/practice/editorial.ts` | `## Brute force`, `## Better`, `## Optimal` headings se |
 | SQL practice | 🟡 | runner `sql` language (SQLite) | Chalta hai. Result table aur schema viewer UI baaki: output text me dikhta hai |
 | Problem of the day + calendar, +5 coins | ✅ | `PotdPage`, console → Problem of the day | |
-| Online IDE ka share link | ⬜ | | |
-| Company, topic aur pattern se problem filter | 🟡 | | Topic (tags) aur difficulty hai. Company aur pattern filter baaki |
+| Online IDE ka share link | ✅ | `prep_code_shares` (migration 0046), `PrepService.shareCode/sharedCode`, `/practice/:site/problems/:problem/share`, `/practice/:site/shares/:id`, web `ShareCode` + `SharedCodePage` | Editor ka code read-only link par; sirf code, koi test nahi. Contest chalte hue us problem ka share band; din me 20. Link par koi bhi padh sakta hai (login nahi). Share hata dene ka button abhi nahi |
+| Company, topic aur pattern se problem filter | ✅ | `ProblemListItem.patterns/companies`, `PrepCommunity.problemCompanies`, problems page ke "Pattern" aur "Company" filter, `learn-v2.test.ts` | Company filter wahi dikhata hai jo company page dikhata: Plus ke bina har company ke top 5 (180 din), Plus/Company Pass ke saath sab. Pattern tags se nikalta hai (`patterns.ts`) |
 
 ### 4. Revision, lists, notes (S8, F8, F15)
 
 | Feature | Status | Kahan | Note |
 |---|---|---|---|
 | Spaced revision (SM-2 lite), roz max 15 cards | ✅ | `RevisePage`; `review()` in `prep-plan.ts` | Solve karte hi card banta hai |
-| Galat quiz sawaal ya note se bhi card | 🟡 | | Abhi sirf solved problems se |
+| Galat quiz sawaal ya note se bhi card | ✅ | `takeLessonQuiz`, `saveNote` (`prep.ts`), `learn-v2.test.ts` | Lesson quiz ka galat jawab: card aaj due (pehle se card ho to aaj par aa jaata hai). Problem par note: card kal due (ek hi baar). Lesson ke note se card nahi banta, kyunki card sirf problem ka hota hai |
 | Lists (bookmarks + apni lists) | ✅ | `SaveMenu`, `ListsPage` | |
 | Notes: problem, lesson ya topic par | ✅ | `NoteEditor`, `NotesPage` | |
 | Notes ka AI draft | ✅ | `NoteEditor` → "Draft with Sahayak"; `POST /tutor/notes` | Lesson par, ya **solve kiye hue** problem par (learner ke accepted code se). 15 credits. Draft box me aata hai, save learner karta hai |
@@ -118,12 +118,12 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Learner apni baatcheet mita sake | ✅ | `DELETE /tutor` | |
 | Pehla hint static (admin ka likha), AI ka kharcha bachane ke liye | ✅ | `practice_problems.hint` (migration 0024), `sahayak.ts`, console Problems → Edit → "First hint" | Hint likha ho to rung 1 wahi: model call nahi, 0 credit. Na likha ho to AI rung 1. Hints ka content (300) abhi likhna baaki, Content table dekho |
 | Poora solution dekhne par us problem ke coins aadhe | ✅ | `prep.ts` `afterSubmit`, coin rule `solve_after_solution` | Sirf Sahayak ka rung 4 (worked solution) ginta hai. 3 galat submit ke baad editorial khulna nahi ginta |
-| Review ka fixed JSON (logic, complexity, quality, edge cases) | 🟡 | | Review Markdown me aata hai, fixed JSON nahi |
+| Review ka fixed JSON (logic, complexity, quality, edge cases) | ✅ | `sahayak.ts` `ReviewData`, `reviewMarkdown`; tutor entry `data` (migration 0043) | Model se structured output (JSON schema): verdict, summary, logic (sahi/galat), complexity (time, space, behtar), quality, edge cases. Learner wahi Markdown me padhta hai (Hindi headings bhi), API `data` me JSON deti hai. JSON galat shakl me aaye to credits wapas aur 503. Evals bhi yahi Markdown grade karte hain. Tests: `prep-plus.test.ts`, `sahayak-eval.test.ts` |
 | Notes draft mode | ✅ | `Sahayak.notesDraft` (migration 0037: tutor mode `notes`) | Bina solve kiye problem par mana (solution leak na ho). Contest ke dauran band. Plus wala lesson bina Plus ke tutor ko nahi padha jaata (doubt me bhi ye rok ab lagi) |
-| Interview follow-up sawaal | ⬜ | | Phase 6 |
-| Chats 180 din baad apne aap delete | ⬜ | | DPDP |
+| Interview follow-up sawaal | ✅ | `Sahayak.followups`, `replyToFollowup`; `POST …/tutor/followups`, `…/followups/:id/reply`; web Sahayak tab | Solve ke baad hi: interviewer ke 2 agle sawaal (15 credit). Har sawaal ka jawab likho, Sahayak interviewer ki tarah bataye: strong / partial / missing, kya chhoota, ek behtar jawab (10 credit). Dusre learner ke sawaal ka jawab nahi de sakte. Awaaz wala mock interview (A8) alag hai, nahi bana. Tests: API, web |
+| Chats 180 din baad apne aap delete | ✅ | `PrivacyService.sweepTutor`, `PrepPlusStore.purgeTutor`, `TUTOR_KEEP_DAYS`, retention worker (`main.ts`) | Har ghante wale retention sweep me, har organisation ke 180 din se purane tutor entries mit jaate hain. Learner ko Sahayak tab me ye likha dikhta hai. Tests: `prep-plus.test.ts` (179 din par nahi, 181 par haan) |
 | Evals (hint me code leak nahi, review bug pakde, doubt par solution nahi) | 🟡 | `api/src/testing/sahayak-eval/`, `.claude/hillclimb/sahayak-*` | 360 cases (40 problems), grading aur runner tests ke saath ban gaye. **Paid baseline run abhi nahi hua**: API key aur owner ki manzoori chahiye. Scores abhi nahi hain |
-| Admin page par AI kharcha aur eval scores | 🟡 | console Usage page | Kharcha dikhta hai, evals nahi |
+| Admin page par AI kharcha aur eval scores | ✅ | console Usage page (kharcha); console Practice → Plus → "Sahayak evals", `GET /practice-admin/tutor/evals`, `content/sahayak-eval-scores.ts`, `testing/sahayak-eval/record-scores.ts` | Har check (leak, bug pakda, complexity, solution nahi diya…) apne target ke saath. Scores eval run ke baad `record-scores.ts` se file me aate hain, haath se kabhi nahi. **Abhi "Not run"**: paid run owner par ruka hai (Ruka hua kaam). Tests: API, console |
 
 ### 6. Plus aur payment (section 16, F12, F16)
 
@@ -138,9 +138,9 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Billing page: orders | ✅ | `GET /orders`, `PlusPages.tsx` | Har order ke saath coupon ki chhoot aur invoice ka link |
 | Learner ke liye GST invoice (PDF, number series) | ✅ | `prep_invoices` (migration 0033), `gst.ts` `inclusiveInvoice`, `GET /invoices/:number`, `InvoicePage` | Paid hote hi usi transaction me, series `PKP/2627/000001`; state se CGST+SGST ya IGST. PDF browser ke "Print → Save as PDF" se; server PDF file nahi banata. Invoice tabhi banta hai jab server par `PARIKSHAA_SUPPLIER_*` set ho |
 | Coupons aur affiliate `?ref=` | ✅ | `prep_coupons`, `POST /plus/quote`, console "Coupons and sales" (`Sales.tsx`) | % ya flat, ek plan ya sab, kitni baar, kab tak, affiliate ka naam; har learner ek baar. `?ref=CODE` link se code apne aap bhar jaata hai. Affiliate ko commission dene ka hisaab nahi, sirf bikri ki report |
-| Alag passes (DSA Pass, Company Pass) | 🟡 | product kind `company` (migration 0036), `PrepPlus.companyAccess` | **Company Pass** ban gaya: sirf companies ki poori list kholta hai, Plus nahi deta; invoice par "Company Pass" likha aata hai. Alag "DSA Pass" nahi: Plus hi lessons aur plan kholta hai |
-| Purane users ko 30 din ka trial | ⬜ | | Staff grant se haath se ho sakta hai |
-| Refund flow | ⬜ | | |
+| Alag passes (DSA Pass, Company Pass) | ✅ | product kinds `company` (migration 0036) aur `dsa` (migration 0042), `PrepPlus.companyAccess`, `PrepPlus.learnAccess` | **Company Pass** sirf companies ki poori list kholta hai. **DSA Pass** har lesson aur study plan kholta hai, par Plus nahi deta (tutor credits, company list nahi). Invoice par pass ka naam aata hai. Staff ka Plus grant DSA Pass ke baad nahi, aaj se chalta hai. Tests: `prep-plus.test.ts` "sells a DSA Pass" |
+| Purane users ko 30 din ka trial | ✅ | `prep_settings.trial_days` (migration 0042), `PrepPlus.startTrial`, `POST /practice/:site/plus/trial`, web `PlusPage`, console Plus settings | Owner trial ke din set kare (0–60); har learner ek baar khud shuru kare, koi paisa nahi, kuch apne-aap renew nahi. Jiske paas Plus hai use nahi milta. Purane users ko bulk me ek saath dena nahi bana: woh khud button dabaate hain. Tests: store, API, web |
+| Refund flow | ✅ | `PrepPlusStore.refundOrder`, `prep_credit_notes` (migration 0042), `PrepPlus.refundOrder`, `POST /practice-admin/plus/orders/:id/refund`, console Sales | Staff wajah likh kar poora refund kare: Razorpay refund, us order ka pass band, bache hue credits wapas (jitne kharch nahi hue), invoice ke against GST credit note (`PKC/…`), audit `prep.order_refunded`. Do baar refund = ek baar. Learner ko order par "Refunded" aur credit note dikhta hai. Aadha (partial) refund nahi bana. Tests: store, API, console |
 | Campus licence: CSV se bulk Plus, college dashboard | ✅ | `prep_cohorts` (migration 0038), `api/src/prep-campus.ts`, console → Practice → Campus | Cohort (college/batch + Plus ke din); emails ki CSV, pehle dry run; verified account ko turant Plus, baaki ko us email ke verify hone par (link ya Google). Har email ko ek baar. Dashboard: joined, Plus mila, 7 din me active, solved, har student ki line. College ke apne login wala dashboard nahi: staff console hi dikhata hai |
 
 ### 7. Coins, store, gamification (section 13.3, S7, F10, F13)
@@ -157,11 +157,11 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Physical item: address, fulfil/cancel, cancel par refund | ✅ | | |
 | Plus ke din coins se | ✅ | | |
 | Titles (Newbie → Grandmaster) aur 13 achievements | ✅ | `RatingPage` | Computed, store nahi hote |
-| "Mahine me 1" jaisi limit | 🟡 | `per_learner` | Abhi kul limit hai, mahine wali nahi |
-| Title naam ke saath har jagah | 🟡 | | Rating page par dikhta hai |
-| Quiz pass par +20, contest rank par coins | 🟡 | coin rule `quiz` | Sprint quiz pass par +20 (ek baar). Contest rank par coins baaki |
-| Shareable achievement cards | ⬜ | | |
-| Store me coupons | ⬜ | | |
+| "Mahine me 1" jaisi limit | ✅ | `prep_store_items.per_month` (migration 0042), `PrepCommunityStore.redeem` | Kul limit (`per_learner`) ke saath ab India ke calendar mahine ki limit bhi. Tests: store, API, console |
+| Title naam ke saath har jagah | ✅ | `PrepCommunity.people`, `PracticeService.usePeople`, web `Who` (`parts.tsx`) | Rated learner ka title (Newbie → Grandmaster) naam ke saath: contest scoreboard, leaderboard, coin leaderboard, discussion comments aur rating page. Public profile ho to naam us par link hota hai. Experiences me naam nahi (wahan "Anonymous" ka vikalp hai). Tests: API, web |
+| Quiz pass par +20, contest rank par coins | ✅ | coin rules `quiz`, `contest_rank`; `CONTEST_RANK_COINS`, `prizeOrder` (`api/src/prep-community.ts`) | Sprint quiz pass par +20 (ek baar). Contest khatam hone par pehle 10 ko 100, 75, 50, 30, 30, 20×5 coins, ek hi baar (rating se pehle diye jaate hain, crash me bhi chhootte nahi). Sirf jisne kuch hal kiya. Tie (same solved, same penalty) me jisne aakhri sawaal pehle hal kiya woh aage, isliye inaam hamesha 10 ko hi. Daily coin cap se bahar. Tests: `prep-community.test.ts` |
+| Shareable achievement cards | ✅ | `api/src/achievement-card.ts`, `GET /practice/:site/achievements/:id/card`, rating page par "Share card" | Server par SVG: 9:16 (status/story) aur 1:1, English ya Hindi; sirf kamaayi gayi achievement ka, warna 404. Public profile ho to uska address card par. Phone file share kar sake to wahin se share, warna download. QR code aur Pramaan link nahi (Pramaan bana nahi). Tests: API (escape bhi), web |
+| Store me coupons | ✅ | item kind `coupon` (migration 0042), `PrepCommunityStore.redeem`, `prep_coupons.learner_id` | Coins se Plus par N% ka coupon: code `COIN-…`, sirf khareedne wale ke liye, ek baar, 90 din tak; order ke note me code aata hai. Dusra learner use kare to "not valid". Tests: store, API, console |
 
 ### 8. Company prep aur community (S5, F9, F14)
 
@@ -175,13 +175,13 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Experience ke problems company reports ban jaate hain | ✅ | | |
 | Helpful votes, ek learner ke max 5 pending | ✅ | | |
 | Account delete par write-up bina naam ke | ✅ | | |
-| Pattern analysis (sirf topic nahi) | 🟡 | | Tags se topics. Alag "pattern" field nahi |
+| Pattern analysis (sirf topic nahi) | ✅ | `api/src/patterns.ts` (`patternsOf`, `patternCounts`), company page "Patterns" | Author ke tags (kisi bhi tarah likhe: "Sliding Window", "two_pointers", "fenwick tree") 17 patterns me badalte hain (two pointers, sliding window, prefix sums, DP, graphs…). Company page par har pattern: kitne problems aur learner ne kitne solve kiye, yaani kahan kamzor. Alag "pattern" field nahi: tags se hi. Tests: `patterns.test.ts`, API, web |
 | "Is company ki list shuru karo" (folder) | ✅ | `POST /companies/:company/start`, `CompanyPage` | Company ke naam ki list me top problems (180 din, 50 tak): Plus/Company Pass ke saath sab, bina 5. Company target bhi ho jaati hai |
 | Readiness score (top 50 me kitne solved) | ✅ | `PrepCommunity.#readiness`; company page aur dashboard (`TargetsCard`) | 180 din ke sabse zyada poochhe gaye 50 me se kitne solve. Target companies `prep_targets` me (10 tak) |
 | Plan ke aakhri 30% din me target company problems | ✅ | `PrepService.#withCompanies`, `PrepCommunity.targetProblems` | Naya plan banate waqt targets ke 10 tak unsolved problems, har company se baari-baari; bina Plus/Pass sirf free 5 me se |
-| Company logos | ⬜ | | |
-| Experience report/flag karna (learner) | ⬜ | | |
-| Success stories | ⬜ | | |
+| Company logos | ✅ | `prep_company_logos` (migration 0045), `PUT /practice-admin/companies/:id/logo`, `GET /practice/:site/companies/:company/logo`, console Companies → Logo | Staff PNG/JPEG/WebP upload kare, 100 KB tak; file ke bytes se jaancha jaata hai (naam/mime se nahi). SVG nahi (script ka khatra). Address me version, isliye browser hamesha cache kar sakta hai. Logos khud nahi bhare: staff upload kare (kisi company ka logo bina ijazat nahi). Tests: store, API, console |
+| Experience report/flag karna (learner) | ✅ | `prep_experience_flags` (migration 0045), `POST /practice/:site/experiences/:id/flag`, console Experiences → "Reported write-ups" | Wajah ke saath (fake, rude, galat company, kuch aur); har learner ek baar, apna nahi. 3 flags par write-up "held" (learners ko nahi dikhta) jab tak staff "Keep" ya "Remove" na kare. Audit me faisla. Tests: store, API, web, console |
+| Success stories | ✅ | `prep_stories` (migration 0045), `GET/POST /practice/:site/stories`, web `/stories`, console "Success stories" | Learner likhe (company, role, 50–3,000 akshar, naam ya Anonymous); staff padh kar publish kare; ek learner ke 2 tak pending. Coins nahi milte (jhooth ko badhava na mile). Tests: store, API, web, console |
 
 ### 9. Contests (F11)
 
@@ -190,8 +190,8 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Weekly contests, ICPC scoreboard | ✅ | §15 | |
 | Rating: Elo, contest khatam hone ke baad ek baar | ✅ | `api/src/prep-community.ts` | |
 | Contest me Sahayak aur editorial band | ✅ | | |
-| Judge ki priority lane, queue, autoscale | ⬜ | | Contest day ke liye |
-| Public profile `/u/:username` | ⬜ | | |
+| Judge ki priority lane, queue, autoscale | 🟡 | `api/src/judge-queue.ts`, `PracticeService`, `GET /practice-admin/judge`, env `JUDGE_CONCURRENCY`, `JUDGE_QUEUE_MAX`, `JUDGE_WAIT_MS` | Queue ban gayi: ek saath utne hi program jitne runner sambhale, chalte contest ke pehle, par har 4 contest ke baad 1 practice (practice kabhi poora nahi rukta). Queue bhari ho ya intezaar lamba ho to 503 `judge_busy` + `Retry-After`, spinner nahi. Contest ka submission us pal ka gina jaata hai jab aaya, judge baad me kare to bhi. **Autoscale nahi**: queue har API process me alag hai, runner machines kitni hon ye deploy ka faisla (Ruka hua kaam). Tests: `judge-queue.test.ts`, `practice.test.ts` |
+| Public profile `/u/:username` | ✅ | `prep_profiles` (migration 0044), `GET/PUT /practice/:site/profile`, `GET /practice/:site/u/:username`, web `ProfilePage` | Default **private**: learner username chune aur khud "public" kare. Dikhta hai: naam, bio, title, rating, aakhri 10 contests, easy/medium/hard solve, streak, achievements. Email kabhi nahi. Username har site me alag (unique). SEO wala static page nahi (SPA hai). Tests: API, web |
 
 ### 10. Content (section 15)
 
@@ -222,10 +222,10 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Playwright e2e: onboarding → plan, solve, purchase, redeem | ✅ | `e2e/tests/prep-flows.spec.ts`, `e2e/tests/practice.spec.ts` | F1 (signup → plan → dashboard), F3 (Run + Submit code), F12 (Plus kharidna → invoice), F13 (coin store). Is container me Chromium par chale aur pass hue; Firefox/WebKit CI par chalenge |
 | Design system par prep pages, screenshots, visual baselines | ✅ | `e2e/visual/prep.visual.ts`, `docs/screenshots/prep-*` | 19 learner + 7 console screenshots, 17 visual baselines |
 | Analytics events (signup, task_done, hint_used, purchase…) | ✅ | `prep-engage-store.ts` `analytics`, `GET /practice-admin/analytics`, console Practice → Analytics | Activation (7 din me pehla solve), D1/D7, funnel (signup → plan → solve → tutor → kharid), roz ke active learners, 30 din. Alag events table nahi: maujooda tables se gina jaata hai (Faisle dekho). Page views aur click jaisi cheezein nahi gini jaatin |
-| Roz ke reminders (email/push) | ✅ | `prep_reminders` (migration 0034), `prep-engage.ts`, plan page par "Daily reminder", `REMINDER_WORKER` | Email: learner ka chuna ghanta (IST), din me ek, sirf jab kaam baaki ho; ek click se band. Push notification nahi (PWA push wali row) |
-| Contest load test (2,000 ek saath) | ⬜ | | |
-| Runner queue + autoscale | ⬜ | | |
-| PWA push | ⬜ | | Phase 6 |
+| Roz ke reminders (email/push) | ✅ | `prep_reminders` (migration 0034), `prep-engage.ts`, plan page par "Daily reminder", `REMINDER_WORKER` | Email: learner ka chuna ghanta (IST), din me ek, sirf jab kaam baaki ho; ek click se band. Push notification bhi (PWA push wali row), jab learner us browser me chalu kare |
+| Contest load test (2,000 ek saath) | ✅ | `e2e/src/contest-load.ts` (`npm run contest-load -w @parikshaa/e2e`), reports `e2e/contest-2000-judge32.txt`, `contest-2000-judge64.txt` | 2,000 contestants + 200 practice, 3 minute, asli Postgres, ek 4-core machine par (server, database aur sab learners ek hi jagah). **0 errors**, har jawab database me, inaam theek 10 ko. Judge 32 (×400 ms): judge hi rukaawat, contest submit p95 22 s, practice 1.3 s, scoreboard 0.6 s. Judge 64: ek API process khud bhar gaya (problem page p95 11 s). Matlab: blueprint ka "contest me verdict < 5 s" ek machine par **nahi** milta; zyada runner workers aur 2+ API processes chahiye. Is test ne 3 kamiyan pakdi aur theek hui: practice bhookha rehta tha (198 × 503), queue me ruka submission contest ke baad gina jaata tha, scoreboard aur rating page bahut mehenge the |
+| Runner queue + autoscale | 🟡 | `api/src/judge-queue.ts` | Queue ✅ (upar wali row). Autoscale ⬜: runner machines ka hisaab deploy par |
+| PWA push | ✅ | `push.ts`, `prep_push_subscriptions` (migration 0047), `/practice/:site/push`, `/manifest.webmanifest`, `web/public/sw.js`, plan page par "Also as a notification", `pwa.test.ts`, `sw.test.ts` | Site install hoti hai (manifest, icons); offline me page aur aaj ka plan/dashboard khulta hai (session ke hash par, dusre learner ko nahi dikhta). Reminder push se bhi, sirf browsers ke push services ko (FCM, Mozilla, Apple, Microsoft); 10 browser tak; gone subscription mit jaati hai. **Server par VAPID keys chahiye** (Ruka hua kaam). Abhi nahi: offline me submit queue, lessons/problems ka offline cache, Play Store TWA |
 
 ---
 
@@ -234,12 +234,12 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Phase | Blueprint me | Status | Kya baaki |
 |---|---|---|---|
 | P0 · Cleanup aur foundation | Parikshaa-New ke retired model, do plan systems, runner shadow mode | ❌ yahan laagu nahi | Base repo badla (neeche faisle dekho). Parikshaa-New me ye kaam abhi bhi pending hain, agar wahan kaam ho |
-| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | 🟡 | Trial, refund |
-| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | 🟡 | Plan settings (weekday/weekend minutes) |
-| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run, 180 din delete |
+| P1 · Plans aur payment | Products, entitlements, Razorpay, pricing, billing | ✅ | Trial, refund + credit note bhi ban gaye (plan 35) |
+| P2 · Planner v2 | Onboarding, generator, sprints, reschedule, revision, dashboard | ✅ | |
+| P3 · Sahayak AI | Hint, review, doubt, credits, contest lock, evals | 🟡 | Evals ka paid run (180 din delete, fixed JSON review, follow-ups ban gaye) |
 | P4 · Coins, store, company v2 | Coins, store, company 30/60/180, titles | ✅ zyaadatar | Contest coins |
 | P5 · Lessons aur NoteSpace | Lessons, videos, editorial format, notes, PDF | 🟡 | Video hosting aur videos |
-| P6 · Aage | Content, follow-ups, PWA, campus, subscriptions | 🟡 | Campus ban gaya. Content, interview follow-ups, PWA, subscriptions baaki |
+| P6 · Aage | Content, follow-ups, PWA, campus, subscriptions | 🟡 | Campus, interview follow-ups aur PWA (install, offline plan, push) ban gaye. Content aur subscriptions baaki |
 
 ## Flows (blueprint section 9)
 
@@ -249,13 +249,13 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | F2 Roz ka loop | ✅ | Reminder email ke saath |
 | F3 Run aur Submit | ✅ | |
 | F4 Sahayak hint ladder | ✅ | Static hint 1 aur coins aadhe ban gaye. Hints ka content likhna baaki |
-| F5 Submit ke baad review | 🟡 | Fixed JSON format baaki |
-| F6 Chhoota task reschedule | ✅ | App kholne par. Cron aur email baaki |
+| F5 Submit ke baad review | ✅ | Fixed JSON format ban gaya (plan 37) |
+| F6 Chhoota task reschedule | ✅ | App kholne par; deadline ke paar jaane par email. Cron nahi |
 | F7 Sprint notes + quiz | ✅ | MCQ/numeric sawaalon ke saath |
 | F8 Spaced revision | ✅ | |
 | F9 Company prep | ✅ | Target, readiness, list shuru karo, Company Pass, plan me company problems |
 | F10 POTD, streak, coins | ✅ | |
-| F11 Contest + rating | ✅ | Contest coins aur priority lane baaki |
+| F11 Contest + rating | ✅ | Rank coins aur judge ki priority lane ban gaye; autoscale baaki |
 | F12 Plus kharidna | ✅ | Coupon aur GST invoice ke saath |
 | F13 Coins se redeem | ✅ | |
 | F14 Interview experience | ✅ | |
@@ -279,6 +279,9 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 | Proxy ke sanket | Network address kabhi save nahi hota, sirf keyed hash; lab mode wale exam me "ek network" nahi gina jaata. AI photo-check sirf sanket, faisla insaan | 1 Oct 2026 |
 | Interview ka video | Apna video server nahi: recruiter ka apna link (Meet/Zoom/Teams) ya naya Jitsi room. Code editor aur scorecard hamare | 1 Oct 2026 |
 | Console Hindi | Pehle navigation, titles aur page ki line; pages ke andar ka text baad me, jab TPO feedback de | 1 Oct 2026 |
+| Migration ke number takraayein to | Do branches ek hi number le lein (jaise #36 aur #37 ne 0033–0038) to **file ka naam nahi badalte**: runner poore naam se, alphabetical kram me chalata hai (0024 pehle se do baar hai), aur naam badalne se deploy hua database wahi migration dobara chalaane lagega. Sirf migration test ki list theek karte hain | 2 Oct 2026 |
+| Contest inaam me tie | Blueprint: "top 10 ko coins". ICPC board par tie aam hai (chhote contest me sainkdon). Faisla: tie me jisne aakhri sawaal pehle hal kiya (millisecond tak) woh aage; inaam hamesha 10 ko | 2 Oct 2026 |
+| Judge ki queue | Har API process me apni queue; chalte contest ke pehle, par har 4 contest ke baad 1 practice. Exam ke code tests is queue me nahi (woh alag raste se runner jaate hain) | 2 Oct 2026 |
 | Sahayak evals ka size | Blueprint me 200 problems the; owner ne **40 problems × 3 galat programs** chune (har flow me 120 cases, kul 360). Problems apne likhe hain, kisi site se copy nahi | 30 Sep 2026 |
 
 ---
@@ -292,10 +295,13 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Companies ka asli data** (plan 9) | Har company ke asli reports (kaunsa problem kab poocha gaya). Hum ye bana nahi sakte: galat data learners ko gumraah karega. Owner/content team console → Companies me reports jode, ya interview experiences se aata rahe | Company pages, readiness aur plan me company problems apne aap bhar jaayenge | 1 Oct 2026 |
 | **Video lessons** (plan 9) | Kaun banayega, kis bhasha me, hosting kahan (Faisle me "baaki"). Lesson me `videoUrl` field taiyaar hai | Lessons me video dikhne lagega | 1 Oct 2026 |
 | **Baaki editorials aur hints** (plan 9) | 110 editorials aur 260 hints ke liye pehle utne naye problems chahiye (apne likhe, asli tests ke saath). Content team ya owner ki haan ki main aur problems likhoon | DSA pack jaisa hi naya pack | 1 Oct 2026 |
-| **Sahayak evals ka paid run** (plan 1a) | Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, tracker me scores | 30 Sep 2026 |
+| **Sahayak evals ka paid run** (plan 1a) | (2 Oct: review ab fixed JSON me hai, isliye eval ki files badli; run se pehle `--approve-harness` dobara.) Environment me `ANTHROPIC_API_KEY` (cloud environment → Edit → environment variable; `api.anthropic.com` network me allow). Phir owner ki haan | 1) judge-sanity (~$0.10) 2) pilot, 24 cases 3) grading par owner ki manzoori 4) pilot se kharche ka andaaza aur haan 5) poora baseline (360 cases), `report.html`, `record-scores.ts` se console aur tracker me scores | 30 Sep 2026 |
 | **Bank transfer (NEFT) ke details** | Server env me `PARIKSHAA_BANK_ACCOUNT`, `PARIKSHAA_BANK_IFSC`, `PARIKSHAA_BANK_ACCOUNT_NAME`, `PARIKSHAA_BANK_NAME` | Quotation PDF par bank details chhapenge; tab tak console "bank details set nahi" batata hai | 1 Oct 2026 |
 | **DPA aur SLA par lawyer** | `docs/legal/DPA.md`, `SLA.md` ke [ ] wale hisse: company ka naam, liability, uptime target, support ghante, sub-processors ke region | Pehli badi company ko bhej sakte hain | 1 Oct 2026 |
 | **Asli model par pehla trial** | `ANTHROPIC_API_KEY` (upar wali hi) aur kuch asli samples: 3 JD, 5 handwritten copies (scan), 5 candidates ki photos (sahmati ke saath) | JD se test, handwritten marking aur proxy photo-check ki asli quality pata chalegi; abhi sab fake model se tested hain | 1 Oct 2026 |
+| **Contest day ke liye runner aur API ka size** (plan 34) | Kitne runner workers aur kitne API processes chalayein: load test (`e2e/contest-2000-*.txt`) batata hai ki ek 4-core machine par 2,000 ka contest bina error chalta hai, par verdict p95 ~22 s hai. 5 s ke liye zyada runner aur 2+ API processes chahiye: ye kharche ka faisla owner ka | `JUDGE_CONCURRENCY` set karke, aur machines badha kar, load test dobara | 2 Oct 2026 |
+| **Push notifications ki keys** (plan 41) | Server env me `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (ek baar `npx web-push generate-vapid-keys`; private key chat me mat bhejiye, seedha server env me) | Plan page par "notification bhi" ka option dikhega, aur roz ka reminder phone par aayega | 2 Oct 2026 |
+| **Agle features: Plan rows 42–52** (2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa pehle. 43, 50, 51, 52 me owner se cheezein bhi chahiye (Play Console, cloud, video host, content) | Har row apne tests ke saath banegi, phir ✅ | 2 Oct 2026 |
 | **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
 
 ## Plan: aage kya banega
@@ -340,6 +346,25 @@ Sujhaya gaya kram (sabse zaroori pehle):
 | 31 | **Offer tracking** (CO30): offer link (role, LPA, joining date, note), candidate ek baar accept/decline kare; drive me sent/accepted/declined/waiting/joined/"join nahi kiya" | V2-12 | Company aur college dono ko pata ho kaun join karega | Tests: link, ek hi jawab, ginti, joined | ✅ ban gaya (1 Oct 2026): migration 0039, `placement.ts` (sendOffer, respondToOffer); web OfferPage; console `DriveNetwork.tsx`. Offer email/WhatsApp se apne aap nahi jaata, link copy karke bhejna hai |
 | 32 | **Proxy pakadna** (CO19): ek network + browser se kai candidates, ek hi identity photo do attempts me, AI se selfie ↔ ID ↔ webcam photo milana (sirf sanket, faisla insaan) | V2-12 | Remote hiring test ka sabse bada dar | Tests: shared origin, lab me nahi ginna, reused photo, AI flag, audit | 🟡 (1 Oct 2026): migration 0040, `api/src/proxy.ts`; console `ProxyCheck.tsx`. Awaaz wala viva aur do device nahi; asli model par abhi nahi chalaya |
 | 33 | **Enterprise ke liye DPA aur SLA** (CO35): code se likhe templates, Annex me data, suraksha aur sub-processors; SECURITY.md me naya data | V2-12 | Badi company ka procurement | Lawyer review | 🟡 (1 Oct 2026): `docs/legal/DPA.md`, `docs/legal/SLA.md`. Lawyer aur owner ki terms baaki (Ruka hua kaam); status page aur questionnaire nahi |
+| 34 | **Contests v2** (F11, §20): contest me rank par coins (top 10 ko, ek baar), judge ki priority lane (contest ke submissions pehle), runner queue jo bheed me bhi kram se chale, 2,000 learners ek saath ka load test | F11, §20 | Contest bina atke chale, aur jeetne ka inaam | Tests: rank coins ek hi baar, queue ka kram aur timeout; load test ki report (p95, errors) | ✅ ban gaya (2 Oct 2026); autoscale ⬜ |
+| 35 | **Payments v2** (§16): naye/purane users ko 30 din ka trial (ek baar), refund flow (staff refund kare → Razorpay refund, Plus ke din wapas, credit note), coin store me coupons, "mahine me 1" jaisi limit, alag DSA Pass | §16, F12 | Bechne ke aam tareeke poore | Tests: trial ek baar, refund se Plus band aur credit note, monthly limit | ✅ ban gaya (2 Oct 2026) |
+| 36 | **Planner settings** (S6, F6): weekday/weekend ke alag minutes, chalte plan me deadline ya roz ka time badalna (plan dobara bane, kiya hua kaam rahe), time kam pade to 3 raaste (deadline aage, roz zyada, chhoti sheet), finish date khiskne par email | S6, F6 | Planner "Planly" jaisa poora | Tests: alag minutes se din, badlav par kiya hua bacha rahe, 3 raaste ke numbers, email ek baar | ✅ ban gaya (2 Oct 2026) |
+| 37 | **Sahayak v2** (§14): review ka fixed JSON (logic, complexity, quality, edge cases), interview follow-up sawaal (solve ke baad 2 sawaal), chats 180 din baad apne aap delete (DPDP), admin page par evals ke scores | §14, F5 | Review ek jaisa aur jaancha ja sake; data kam rakhna | Tests: JSON schema, follow-up ka flow, 180 din wala delete, admin page | ✅ ban gaya (2 Oct 2026); evals ka paid run alag se owner par |
+| 38 | **Profile aur cards** (S7, C1, C6): public profile `/u/:username` (learner chaahe to), share karne layak achievement cards (image), title naam ke saath har jagah | S7, F10 | Viral aur pehchaan | Tests: profile private by default, card image, title dikhna | ✅ ban gaya (2 Oct 2026) |
+| 39 | **Community v2** (F14): interview experience par report/flag (staff queue), success stories, company logos (staff upload), pattern analysis (tags se aage) | F14, S5 | Bharosa aur content ki quality | Tests: flag queue, ek learner ek baar, logo upload ki seema | ✅ ban gaya (2 Oct 2026) |
+| 40 | **Learn v2** (S3, S4, F8): lesson ke andar quiz, problem list me company/topic/pattern filter, IDE ka share link (code read-only), galat quiz sawaal ya note se revision card | S3, S4, F8 | Seekhna aur dohrana ek jagah | Tests: lesson quiz, filters, share link me hidden tests nahi, naye cards | ✅ ban gaya (`learn-v2.test.ts`; lesson note se card nahi, share hatane ka button nahi) |
+| 41 | **PWA aur push** (§17): installable app, offline me aaj ka plan, push notification (reminder email ke saath) | §17, A1 | Mobile par roz ka loop | Tests: manifest, service worker cache, push ki subscription aur band karna | ✅ ban gaya (`pwa.test.ts`, `sw.test.ts`; VAPID keys owner se; offline submit queue aur TWA baaki) |
+| 42 | **Offline v2** (A1 baaki): net na ho to submission queue me rahe aur net aate hi jaaye; lessons aur problems offline padhne ke liye cache | §17, A1 | 2G aur bina net wale din bhi kaam | Tests: offline submit queue (dobara na jaaye), lesson/problem cache, sw tests | ⬜ pending (owner bole tab) |
+| 43 | **Play Store app (TWA)**: PWA ko Play Store par app ki tarah | A1 | Bharat me log app store se hi install karte hain | Play Store par listing, `assetlinks.json` | ⬜ pending: Play Console account aur app ka naam owner se |
+| 44 | **Shared code ke links sambhalna**: learner apne share kiye links dekhe aur hata sake | F8 | Galti se share kiya code wapas lena | Tests: list, delete, delete ke baad 404 | ⬜ pending (owner bole tab) |
+| 45 | **SQL practice v2**: result table ki shakal me output, tables ka schema viewer | S4 | Abhi output sirf text hai | Tests: table render, schema dikhna | ⬜ pending (owner bole tab) |
+| 46 | **Onboarding me target role** (SDE, data, frontend…), plan me us role ke topic pehle | S1 | Plan zyada apna lage | Tests: role chunna, plan ka kram | ⬜ pending (owner bole tab) |
+| 47 | **Account delete par baaki prep data**: plan, cards, coins ke rows bhi hatana | §11 | DPDP: account gaya to data bhi | Tests: erase ke baad koi prep row nahi | ⬜ pending (owner bole tab) |
+| 48 | **Staff ke editorials ka code CI me jaanchna**: editorial me diya code save par asli runner par tests ke saath chale | Content quality | Galat editorial na chhape | Tests: toota code save na ho | ⬜ pending (owner bole tab) |
+| 49 | **Editorial me "Better" approach ka tab** (Brute/Better/Optimal teeno) | F4 | Blueprint ka format | Tests: teen tab | ⬜ pending (owner bole tab) |
+| 50 | **Judge autoscale**: queue lambi ho to runner machines badhein, khaali ho to ghatein | G | Bade contest me verdict jaldi | Load test me p95 < 5 s | ⬜ pending: deploy kahan hoga (cloud) aur kharcha owner se |
+| 51 | **Video hosting**: player, kitna dekha (progress), signed URL, watermark | S3 | Video lessons ke liye | Tests: progress save, URL ki expiry | ⬜ pending: host ka faisla aur videos owner se |
+| 52 | **Content**: 110 aur editorials, 260 aur hints, 25 companies ka asli data, 60 video lessons | Content | Platform ki asli keemat | Har pack ke tests | ⬜ pending: content/data owner se ("Ruka hua kaam") |
 
 ## Master plan v2: taiyaari se naukri tak, ek bharosemand platform
 
@@ -677,7 +702,7 @@ Ye list ek college aur ek company ke **poore safar** ke hisaab se hai, pehle din
 | ID | Feature | Status | Note |
 |---|---|---|---|
 | CL49 | College ki practice site aur Prep (plan, Sahayak, contests) | ✅ | ROADMAP §15, §16 |
-| CL50 | Campus licence: CSV se sabko Plus | ⬜ | Tracker plan #8 |
+| CL50 | Campus licence: CSV se sabko Plus | ✅ | Tracker plan #8 (PR #35): cohort, CSV dry run, verify par Plus, console → Practice → Campus |
 | CL51 | **Readiness heatmap** (branch/batch × topic), kamzor students ki list | ✅ | Branch × topic, <40% wale students aur unka sabse kamzor topic (Placement → Readiness) |
 | CL52 | **Drive manager**: company, JD, eligibility (CGPA, backlogs, branch), apply, rounds, offer | ✅ | Console → Placement → Drives: eligible students apne aap, drive ka test ek click me, rounds (applied → test → interview → offer/join), offer LPA, company ke liye CSV. Student apply link se khud bhi apply kar sakta hai (CO14). Screenshot `pilot-20` |
 | CL53 | Company ke liye college ka portal (drive request, shortlist dekhna) | ⬜ | E3 se juda |
@@ -797,6 +822,15 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `ea7e802` | Plan 41: PWA (manifest, icons, `sw.js`: page aur aaj ka plan offline, session ke hash par), push (`prep_push_subscriptions` 0047, `web-push`, sirf browsers ke push services, reminder email ke saath); account mitane par push aur public profile bhi mitte hain. `aefd54e`: CI stylelint ke 13 errors theek |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `c5aefc4` | Plan 40: lesson quiz (0046), galat jawab aur problem note se revision card, code ka read-only share link, problem list me company aur pattern filter |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `2a870a7` | Plan 39: interview experience report/flag (3 par hold), success stories, company logos, pattern analysis (0045) |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `a62d9e2` | Plan 38: public profile `/u/:username` (0044), achievement cards (SVG, story/square, en/hi), title har naam ke saath |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `a75c4c0` | Plan 37: Sahayak review fixed JSON me, interview follow-ups, 180 din baad chats delete (0043), console par eval scores |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `e175562` | Plan 34: contest rank coins, judge queue me contest lane (4:1), 2,000 learners ka load test (`e2e/contest-2000-*.txt`) |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `3799f75`, `471b592` | Plan 35: free trial, refund ke saath credit note, coins se coupon, monthly limit, DSA Pass |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `2206cfd` | Plan 36: weekday/weekend minutes, plan fit karne ke 3 tareeke, plan badalna, late email |
+| 2 Oct 2026 | [#38](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/38) `e1b1892`, `2b543e2` | Main ki marammat (#36/#37 ke merge ke baad imports, migration list, openapi); baaki Prep features Plan me rows 34–41 |
 | 1 Oct 2026 | [#34](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/34) | Top 12 ke baaki 10 aur 6 aur: admit card + seats + attendance (0031), shortlist link (0032), PO/NEFT (0033), readiness heatmap, apply link (0034), NIRF report + CO–PO (0035), bolkar jawab, interview room (0036), handwritten checking + moderation (0037), kai college ki drive (0038), offer tracking (0039), proxy sanket (0040), console Hindi, DPA/SLA templates. e2e 39/39, visual 74/74 |
 | 1 Oct 2026 | [#34](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/34) | Student master + drive manager (CL8, CL52), JD se test + 9 roles ki library (CO6, CO7); console me Placement page aur "From a job"; migrations 0029, 0030; screenshots `pilot-19`…`pilot-22` |
 | 1 Oct 2026 | — (branch `claude/elegant-ramanujan-hmolxs`) | V2-12: college aur company ka end-to-end feature list (94 features, har ek ka aaj ka status), 3 usool, pehle banne wale top 12 |

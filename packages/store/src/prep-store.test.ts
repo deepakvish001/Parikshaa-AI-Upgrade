@@ -100,7 +100,7 @@ describe("a learner's own rows", () => {
     await store.saveNote(mine, { refKind: "problem", refId: p.id, title: "Stable", body: "merge" });
     await store.addCard(mine, p.id, "2026-10-02");
     const planTrack = (await store.saveTrack(A, null, { slug: "track", title: "T", description: "", position: 0, published: true, modules: [] }))!;
-    await store.startPlan(mine, { trackId: planTrack, level: "beginner", deadline: "2027-01-01", dailyMinutes: 60, offDays: [0], goal: "" }, []);
+    await store.startPlan(mine, { trackId: planTrack, level: "beginner", deadline: "2027-01-01", dailyMinutes: 60, weekendMinutes: null, offDays: [0], goal: "" }, []);
 
     expect(await store.saved(theirs)).toEqual([]);
     expect(await store.notes(theirs)).toEqual([]);
@@ -155,7 +155,7 @@ describe("the plan", () => {
     const p = await problem();
     const track = (await store.saveTrack(A, null, { slug: "track", title: "T", description: "", position: 0, published: true, modules: [] }))!;
     const scope = practiceLearner(A, (await learner()).id);
-    const draft = { trackId: track, level: "beginner" as const, deadline: "2027-01-01", dailyMinutes: 60, offDays: [], goal: "SDE-1" };
+    const draft = { trackId: track, level: "beginner" as const, deadline: "2027-01-01", dailyMinutes: 60, weekendMinutes: null, offDays: [], goal: "SDE-1" };
     const first = await store.startPlan(scope, draft, [{ day: "2026-10-01", sprint: 1, position: 0, kind: "learn", itemId: null, title: "Old", estMinutes: 10 }]);
     const planId = await store.startPlan(scope, draft, [
       { day: "2026-10-01", sprint: 1, position: 0, kind: "practice", itemId: p.id, title: "Stable sort", estMinutes: 20 },
@@ -174,6 +174,33 @@ describe("the plan", () => {
     expect(after.find((t) => t.id === custom!.id)).toMatchObject({ day: "2026-10-04", rescheduledFrom: "2026-10-01" });
     expect(await store.setTaskDone(scope, custom!.id, new Date())).toBe(true);
     expect(await store.setTaskDone(scope, "nope", new Date())).toBe(false);
+  });
+
+  it("changes a running plan: new settings, open tasks laid out again, done and own tasks kept", async () => {
+    const track = (await store.saveTrack(A, null, { slug: "track", title: "T", description: "", position: 0, published: true, modules: [] }))!;
+    const scope = practiceLearner(A, (await learner()).id);
+    const draft = { trackId: track, level: "beginner" as const, deadline: "2027-01-01", dailyMinutes: 60, weekendMinutes: null, offDays: [], goal: "" };
+    const planId = await store.startPlan(scope, draft, [
+      { day: "2026-10-01", sprint: 1, position: 0, kind: "learn", itemId: null, title: "Done one", estMinutes: 10 },
+      { day: "2026-10-02", sprint: 1, position: 0, kind: "learn", itemId: null, title: "Open one", estMinutes: 10 },
+      { day: "2026-10-02", sprint: 1, position: 1, kind: "custom", itemId: null, title: "Mine", estMinutes: 10 },
+      { day: "2026-10-02", sprint: 1, position: 2, kind: "revise", itemId: "quiz-question", title: "Revise: a quiz question", estMinutes: 10 },
+    ]);
+    const before = await store.tasks(scope, planId);
+    await store.setTaskDone(scope, before[0]!.id, new Date("2026-10-01T10:00:00Z"));
+    await store.replan(scope, planId, { deadline: "2027-03-01", dailyMinutes: 90, weekendMinutes: 180, offDays: [0] }, [
+      { day: "2026-10-03", sprint: 2, position: 0, kind: "learn", itemId: null, title: "Laid out again", estMinutes: 10 },
+    ]);
+    expect(await store.activePlan(scope)).toMatchObject({ deadline: "2027-03-01", dailyMinutes: 90, weekendMinutes: 180, offDays: [0] });
+    expect((await store.tasks(scope, planId)).map((t) => t.title).sort()).toEqual(["Done one", "Laid out again", "Mine", "Revise: a quiz question"]);
+
+    // Told it runs late once a week at most.
+    expect(await store.noteLate(scope, planId, "2026-10-05")).toBe(true);
+    expect(await store.noteLate(scope, planId, "2026-10-08")).toBe(false);
+    expect(await store.noteLate(scope, planId, "2026-10-12")).toBe(true);
+    // Changing the plan starts the count again.
+    await store.replan(scope, planId, { deadline: "2027-03-01", dailyMinutes: 90, weekendMinutes: null, offDays: [] }, []);
+    expect(await store.noteLate(scope, planId, "2026-10-13")).toBe(true);
   });
 
   it("times focus, one session at a time", async () => {

@@ -6,6 +6,7 @@ import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
 import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
 import { bankFromEnv, supplierFromEnv } from "./gst.js";
+import { webPushSender } from "./push.js";
 import { RazorpayGateway } from "./razorpay.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
@@ -38,6 +39,15 @@ async function main(): Promise<void> {
   const runnerUrl = process.env["RUNNER_URL"];
   const runner =
     runnerUrl === undefined || runnerUrl === "" ? undefined : new HttpCodeRunner(runnerUrl, required("RUNNER_TOKEN"));
+  // Practice's programs queue for it: so many at once (match the runner's
+  // workers), contests first, and a learner told the judge is busy rather
+  // than left waiting past JUDGE_WAIT_MS.
+  const judgeNumber = (name: string) => (process.env[name] === undefined || process.env[name] === "" ? undefined : Number.parseInt(process.env[name]!, 10));
+  const judge = {
+    ...(judgeNumber("JUDGE_CONCURRENCY") === undefined ? {} : { concurrency: judgeNumber("JUDGE_CONCURRENCY")! }),
+    ...(judgeNumber("JUDGE_QUEUE_MAX") === undefined ? {} : { maxWaiting: judgeNumber("JUDGE_QUEUE_MAX")! }),
+    ...(judgeNumber("JUDGE_WAIT_MS") === undefined ? {} : { waitMs: judgeNumber("JUDGE_WAIT_MS")! }),
+  };
 
   // Built client bundles, when they are present beside the server. In
   // development the Vite dev servers proxy to this process instead.
@@ -99,6 +109,7 @@ async function main(): Promise<void> {
     pilotReportTo,
     sql,
     ...(runner === undefined ? {} : { runner }),
+    judge,
     // Resolves ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN or an `ant auth login`
     // profile from the environment.
     client: new Anthropic(),
@@ -117,6 +128,13 @@ async function main(): Promise<void> {
     supplier: supplierFromEnv(process.env),
     bank: bankFromEnv(process.env),
     mailer: smtpUrl === undefined || smtpUrl === "" ? null : new SmtpMailer(smtpUrl, required("EMAIL_FROM")),
+    // Notifications for the learners' daily reminder (Prep §17). A key pair
+    // made once with `npx web-push generate-vapid-keys`; keep the private half
+    // secret. VAPID_SUBJECT is how a push service reaches you (mailto: or https:).
+    push:
+      (process.env["VAPID_PUBLIC_KEY"] ?? "") === ""
+        ? null
+        : webPushSender({ publicKey: required("VAPID_PUBLIC_KEY"), privateKey: required("VAPID_PRIVATE_KEY"), subject: required("VAPID_SUBJECT") }),
     sms: msg91Key === undefined || msg91Key === "" ? null : new Msg91Sender(msg91Key, required("MSG91_TEMPLATE_ID")),
     whatsapp:
       whatsAppToken === undefined || whatsAppToken === ""
@@ -162,6 +180,8 @@ async function main(): Promise<void> {
       privacy
         .sweep()
         .then((erased) => (erased > 0 ? app.log.info({ erased }, "retention sweep") : undefined))
+        .then(() => privacy.sweepTutor())
+        .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "tutor chats past 180 days deleted") : undefined))
         .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "retention sweep failed"));
     retaining = setInterval(sweep, 60 * 60 * 1000);
     setTimeout(sweep, 60_000).unref();

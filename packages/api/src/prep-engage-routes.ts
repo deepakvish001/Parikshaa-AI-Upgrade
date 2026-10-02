@@ -59,10 +59,10 @@ export function registerPrepEngageRoutes(routes: Routes, deps: PrepEngageRouteDe
       schema: {
         tags: PREP,
         summary: "My daily reminder",
-        description: "Off until turned on. `email` says whether this server can send email at all.",
+        description: "Off until turned on. `email` says whether this server can send email at all, `push` whether it sends notifications; `devices` is how many browsers take them.",
         security: LEARNER,
         params: siteParams,
-        response: { 200: prefs.extend({ email: z.boolean() }), ...refusals },
+        response: { 200: prefs.extend({ email: z.boolean(), push: z.boolean(), devices: z.number() }), ...refusals },
       },
     },
     async (request, reply) => {
@@ -109,6 +109,102 @@ export function registerPrepEngageRoutes(routes: Routes, deps: PrepEngageRouteDe
       const site = await siteOf(request);
       await engage.turnOff(site, request.body.token);
       return reply.send({ off: true as const });
+    },
+  );
+
+  // --- the installable app and its notifications ----------------------------------------------
+
+  routes.get(
+    "/practice/:site/manifest.webmanifest",
+    {
+      schema: {
+        tags: PREP,
+        summary: "The site as an installable app (a web app manifest)",
+        description: "Named after the site; opens on the learner's dashboard. JSON, served as application/manifest+json.",
+        security: OPEN,
+        params: siteParams,
+      },
+    },
+    async (request, reply) => {
+      const site = await siteOf(request);
+      const base = `/practice/${site.slug}`;
+      const manifest = {
+        id: `${base}/`,
+        name: site.title,
+        short_name: site.title.length <= 12 ? site.title : site.title.slice(0, 12).trimEnd(),
+        description: "Practice, a study plan and revision, every day.",
+        lang: "en-IN",
+        start_url: `${base}/home`,
+        scope: `${base}/`,
+        display: "standalone",
+        background_color: "#ffffff",
+        theme_color: "#4338ca",
+        icons: [
+          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+      };
+      return reply.type("application/manifest+json").header("cache-control", "public, max-age=3600").send(JSON.stringify(manifest));
+    },
+  );
+
+  routes.get(
+    "/practice/:site/push/key",
+    {
+      schema: {
+        tags: PREP,
+        summary: "The key a browser subscribes to notifications with",
+        description: "Null when this server sends no notifications.",
+        security: OPEN,
+        params: siteParams,
+        response: { 200: z.object({ key: z.string().nullable().describe("The VAPID public key, base64url.") }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      await siteOf(request);
+      return reply.send({ key: engage.pushKey() });
+    },
+  );
+
+  routes.post(
+    "/practice/:site/push",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Take my daily reminder as a notification in this browser too",
+        description: "The browser's push subscription. Only the push services browsers use are accepted. Ten browsers at most.",
+        security: LEARNER,
+        params: siteParams,
+        body: z.object({ endpoint: z.string().min(1).max(1000), keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }) }),
+        response: { 201: z.object({ devices: z.number() }), ...refusals, 503: S.errorResponse },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      await engage.subscribe(who.site, who.learner, { endpoint: request.body.endpoint, p256dh: request.body.keys.p256dh, auth: request.body.keys.auth });
+      return reply.code(201).send({ devices: (await engage.reminder(who.site, who.learner)).devices });
+    },
+  );
+
+  routes.delete(
+    "/practice/:site/push",
+    {
+      schema: {
+        tags: PREP,
+        summary: "No more notifications in this browser",
+        security: LEARNER,
+        params: siteParams,
+        body: z.object({ endpoint: z.string().min(1).max(1000) }),
+        response: { 200: z.object({ devices: z.number() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      await engage.unsubscribe(who.site, who.learner, request.body.endpoint);
+      return reply.send({ devices: (await engage.reminder(who.site, who.learner)).devices });
     },
   );
 

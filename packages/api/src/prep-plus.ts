@@ -8,13 +8,15 @@ import {
   type PracticeSite,
   type PracticeStore,
   type PrepCoupon,
+  type PrepCreditNoteBuilder,
   type PrepInvoiceBuilder,
   type PrepOrder,
   type PrepPlusStore,
   type PrepProduct,
   type PrepSettings,
+  type Pass,
 } from "@parikshaa/store";
-import { STATES, inclusiveInvoice, validGstin, type Supplier } from "./gst.js";
+import { STATES, creditNote, inclusiveInvoice, validGstin, type Supplier } from "./gst.js";
 import { PracticeError, istDay } from "./practice.js";
 import { GatewayUnavailable, type PaymentGateway } from "./razorpay.js";
 
@@ -63,6 +65,7 @@ export const discountOf = (coupon: Pick<PrepCoupon, "kind" | "value">, listPaise
   return Math.max(0, Math.min(off, listPaise - MIN_PRICE_PAISE));
 };
 const monthOf = (ms: number) => istDay(ms).slice(0, 7);
+const PASS_NAMES: Record<Pass, string> = { plus: "Plus", company: "Company Pass", dsa: "DSA Pass" };
 
 export interface PlusStatus {
   readonly enabled: boolean;
@@ -105,7 +108,14 @@ export class PrepPlus {
     return this.#holds(site, learner, "company");
   }
 
-  async #holds(site: PracticeSite, learner: Learner | null, pass: "plus" | "company"): Promise<PlusStatus> {
+  /** Whether a learner may open every lesson and keep a study plan: Plus, or a DSA Pass. */
+  async learnAccess(site: PracticeSite, learner: Learner | null): Promise<PlusStatus> {
+    const plus = await this.#holds(site, learner, "plus");
+    if (plus.active) return plus;
+    return this.#holds(site, learner, "dsa");
+  }
+
+  async #holds(site: PracticeSite, learner: Learner | null, pass: Pass): Promise<PlusStatus> {
     const settings = await this.#store.settings(practiceLearner(site.orgId, null));
     if (!settings.plusEnabled) return { enabled: false, active: true, until: null };
     if (learner === null) return { enabled: true, active: false, until: null };
@@ -148,18 +158,36 @@ export class PrepPlus {
     if (amount > 0) await this.#store.credit(site.orgId, learner.id, { delta: amount, reason: "refund", key: `refund:${key}` }, new Date(this.#now()));
   }
 
+  /**
+   * A learner's free trial of Plus: once each, from today, for as many days
+   * as the site gives. Not for one who holds Plus already.
+   */
+  async startTrial(site: PracticeSite, learner: Learner): Promise<PlusStatus> {
+    const settings = await this.#store.settings(practiceLearner(site.orgId, null));
+    if (!settings.plusEnabled || settings.trialDays <= 0) throw new PracticeError("not_found", "This site has no free trial");
+    if ((await this.status(site, learner)).active) throw new PracticeError("limit_reached", "You have Plus already");
+    if (!(await this.#store.startTrial(site.orgId, learner.id, settings.trialDays, new Date(this.#now())))) {
+      throw new PracticeError("limit_reached", "You have had your free trial");
+    }
+    return this.status(site, learner);
+  }
+
   // --- the learner's side of buying ------------------------------------------------------------
 
   async overview(site: PracticeSite, learner: Learner | null) {
-    const [settings, products, status] = await Promise.all([
+    const [settings, products, status, dsa] = await Promise.all([
       this.#store.settings(practiceLearner(site.orgId, null)),
       this.#store.products(practiceLearner(site.orgId, null)),
       this.status(site, learner),
+      this.#holds(site, learner, "dsa"),
     ]);
+    const trialDays = settings.plusEnabled && settings.trialDays > 0 && learner !== null && !status.active && !(await this.#store.hadTrial(site.orgId, learner.id)) ? settings.trialDays : 0;
     return {
       enabled: settings.plusEnabled,
       active: status.active,
       until: status.until,
+      dsaUntil: status.active ? null : dsa.until,
+      trialDays,
       freeModules: settings.freeModules,
       monthlyCredits: settings.monthlyCredits,
       tutor: settings.tutorEnabled,
@@ -192,6 +220,7 @@ export class PrepPlus {
     };
     const coupon = COUPON.test(code) ? await this.#store.coupon(site.orgId, code) : null;
     if (coupon === null || !coupon.active) return refuse("That coupon code is not valid");
+    if (coupon.learnerId !== null && coupon.learnerId !== learner?.id) return refuse("That coupon code is not valid");
     if (coupon.endsAt !== null && Date.parse(coupon.endsAt) <= this.#now()) return refuse("That coupon has expired");
     if (coupon.productId !== null && coupon.productId !== product.id) return refuse("That coupon is for a different plan");
     const uses = await this.#store.couponUses(site.orgId, coupon.code, learner?.id ?? "");
@@ -223,7 +252,7 @@ export class PrepPlus {
         buyer: { legalName: order.buyerName, gstin: order.buyerGstin, stateCode: order.buyerState, address: "" },
         description:
           order.days > 0
-            ? `${order.title}: ${order.pass === "company" ? "Company Pass" : "Plus"} for ${order.days} days${order.credits > 0 ? ` and ${order.credits} AI credits` : ""}`
+            ? `${order.title}: ${PASS_NAMES[order.pass]} for ${order.days} days${order.credits > 0 ? ` and ${order.credits} AI credits` : ""}`
             : `${order.title}: ${order.credits} AI credits`,
         totalPaise: order.amountPaise,
         taxPaise: order.taxPaise,
@@ -269,7 +298,7 @@ export class PrepPlus {
       amountPaise: quote.pricePaise,
       taxPaise: quote.taxPaise,
       ...buyer,
-      pass: product.kind === "company" ? "company" : "plus",
+      pass: product.kind === "company" || product.kind === "dsa" ? product.kind : "plus",
       gatewayOrderId: order.id,
     });
     return { keyId: gateway.keyId, orderId: order.id, amountPaise: quote.pricePaise, title: product.title, learner: { name: learner.name, email: learner.email } };
@@ -306,9 +335,10 @@ export class PrepPlus {
 
   async orders(site: PracticeSite, learner: Learner) {
     const scope = practiceLearner(site.orgId, learner.id);
-    const [orders, invoices] = await Promise.all([this.#store.orders(scope), this.#store.invoices(scope)]);
+    const [orders, invoices, notes] = await Promise.all([this.#store.orders(scope), this.#store.invoices(scope), this.#store.creditNotes(scope)]);
     const invoiceOf = new Map(invoices.map((i) => [i.orderId, i.number]));
-    return orders.map(({ id, title, days, credits, listPaise, couponCode, discountPaise, amountPaise, taxPaise, status, createdAt, paidAt }) => ({
+    const noteOf = new Map(notes.map((n) => [n.orderId, n.number]));
+    return orders.map(({ id, title, days, credits, listPaise, couponCode, discountPaise, amountPaise, taxPaise, status, createdAt, paidAt, refundedAt }) => ({
       id,
       title,
       days,
@@ -321,13 +351,16 @@ export class PrepPlus {
       status,
       createdAt,
       paidAt,
+      refundedAt,
       invoice: invoiceOf.get(id) ?? null,
+      creditNote: noteOf.get(id) ?? null,
     }));
   }
 
-  /** A learner's own invoice, to read and print. */
+  /** A learner's own invoice or credit note, to read and print. */
   async invoice(site: PracticeSite, learner: Learner, number: string) {
-    const found = (await this.#store.invoices(practiceLearner(site.orgId, learner.id))).find((i) => i.number === number);
+    const scope = practiceLearner(site.orgId, learner.id);
+    const found = [...(await this.#store.invoices(scope)), ...(await this.#store.creditNotes(scope))].find((i) => i.number === number);
     if (found === undefined) throw new PracticeError("not_found", "No such invoice");
     return { number: found.number, issuedAt: found.issuedAt, document: found.document };
   }
@@ -339,6 +372,7 @@ export class PrepPlus {
     const next = { ...DEFAULT_PREP_SETTINGS, ...current, ...input };
     if (!Number.isInteger(next.freeModules) || next.freeModules < 0 || next.freeModules > 60) throw new PracticeError("invalid", "Free modules are 0 to 60");
     if (!Number.isInteger(next.monthlyCredits) || next.monthlyCredits < 0 || next.monthlyCredits > 100_000) throw new PracticeError("invalid", "Monthly credits are 0 to 100,000");
+    if (!Number.isInteger(next.trialDays) || next.trialDays < 0 || next.trialDays > 60) throw new PracticeError("invalid", "A free trial is 0 to 60 days");
     await this.#store.saveSettings(orgId, next);
     return next;
   }
@@ -374,7 +408,7 @@ export class PrepPlus {
     const learner = await this.#practice.learnerById(orgId, learnerId);
     if (learner === null) throw new PracticeError("not_found", "No such learner");
     const now = this.#now();
-    const spans = await this.#store.plus(practiceStaff(orgId), learnerId);
+    const spans = (await this.#store.plus(practiceStaff(orgId), learnerId)).filter((s) => s.pass === "plus");
     const from = Math.max(now, ...spans.map((s) => Date.parse(s.endsAt)));
     const until = new Date(from + days * 86_400_000);
     // Each grant is its own: two on the same day are two grants, not one made twice.
@@ -383,15 +417,65 @@ export class PrepPlus {
   }
 
   async staffOrders(orgId: OrgId) {
-    const [orders, invoices] = await Promise.all([this.#store.orders(practiceStaff(orgId)), this.#store.invoices(practiceStaff(orgId))]);
+    const scope = practiceStaff(orgId);
+    const [orders, invoices, notes] = await Promise.all([this.#store.orders(scope), this.#store.invoices(scope), this.#store.creditNotes(scope)]);
     const invoiceOf = new Map(invoices.map((i) => [i.orderId, i.number]));
-    return orders.map((o) => ({ ...o, invoice: invoiceOf.get(o.id) ?? null }));
+    const noteOf = new Map(notes.map((n) => [n.orderId, n.number]));
+    return orders.map((o) => ({ ...o, invoice: invoiceOf.get(o.id) ?? null, creditNote: noteOf.get(o.id) ?? null }));
   }
 
   async staffInvoice(orgId: OrgId, number: string) {
-    const found = (await this.#store.invoices(practiceStaff(orgId))).find((i) => i.number === number);
+    const scope = practiceStaff(orgId);
+    const found = [...(await this.#store.invoices(scope)), ...(await this.#store.creditNotes(scope))].find((i) => i.number === number);
     if (found === undefined) throw new PracticeError("not_found", "No such invoice");
     return { number: found.number, issuedAt: found.issuedAt, document: found.document };
+  }
+
+  /** The credit note for a refunded order, against its invoice. */
+  #creditNote(reason: string): PrepCreditNoteBuilder | undefined {
+    const supplier = this.#supplier;
+    if (supplier === null) return undefined;
+    return (number, order, invoice, at) =>
+      creditNote({
+        number,
+        issuedAt: at,
+        supplier,
+        buyer: { legalName: order.buyerName, gstin: order.buyerGstin, stateCode: order.buyerState, address: "" },
+        original: invoice === null ? { number: "none", date: "" } : { number: invoice.number, date: String(invoice.document["date"] ?? invoice.issuedAt.slice(0, 10)) },
+        description: `Refund of ${order.title}`,
+        quantity: 1,
+        taxablePaise: order.amountPaise - order.taxPaise,
+        taxPaise: order.taxPaise,
+        reason,
+      });
+  }
+
+  /**
+   * Refund a paid order in full: the money back through Razorpay, then the
+   * pass it gave taken away, its unspent credits taken back, and a credit
+   * note against its invoice. Refunding a refunded order changes nothing.
+   */
+  async refundOrder(orgId: OrgId, orderId: string, reason: string) {
+    const why = reason.trim();
+    if (why.length < 5 || why.length > 300) throw new PracticeError("invalid", "Say why, in 5 to 300 characters");
+    const order = (await this.#store.orders(practiceStaff(orgId))).find((o) => o.id === orderId);
+    if (order === undefined || order.status === "created") throw new PracticeError("not_found", "No such paid order");
+    if (order.status !== "refunded") {
+      const gateway = this.#gatewayOrRefuse();
+      if (order.paymentId === null) throw new PracticeError("not_found", "No such paid order");
+      let refund: { id: string };
+      try {
+        refund = await gateway.refund(order.paymentId, order.amountPaise, { kind: "prep", orgId, orderId: order.id });
+      } catch (error) {
+        if (error instanceof GatewayUnavailable) throw new PracticeError("unavailable", error.message);
+        throw error;
+      }
+      const done = await this.#store.refundOrder(orgId, order.id, { refundId: refund.id, reason: why }, new Date(this.#now()), this.#creditNote(why));
+      if (done === null) throw new PracticeError("not_found", "No such paid order");
+      return { order: done.order, creditNote: done.creditNote?.number ?? null, creditsTaken: done.creditsTaken };
+    }
+    const again = await this.#store.refundOrder(orgId, order.id, { refundId: "", reason: why }, new Date(this.#now()));
+    return { order: again!.order, creditNote: again!.creditNote?.number ?? null, creditsTaken: 0 };
   }
 
   // --- coupons -------------------------------------------------------------------------------------

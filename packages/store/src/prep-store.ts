@@ -135,11 +135,15 @@ export interface Plan {
   readonly level: PlanLevel;
   readonly deadline: string;
   readonly dailyMinutes: number;
+  /** Minutes on Saturday and Sunday; null when they are like any other day. */
+  readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
   readonly createdAt: string;
 }
 export type PlanDraft = Omit<Plan, "id" | "createdAt">;
+/** What a learner may change in a plan already running. */
+export type PlanSettings = Pick<Plan, "deadline" | "dailyMinutes" | "weekendMinutes" | "offDays">;
 
 export type TaskKind = "learn" | "practice" | "revise" | "custom";
 export interface Task {
@@ -556,6 +560,58 @@ export class PrepStore {
     );
   }
 
+  // --- a lesson's quiz -------------------------------------------------------------------------------
+
+  /** The problems a lesson's quiz asks, in order. */
+  async lessonQuiz(scope: PracticeScope, lessonId: string): Promise<readonly string[]> {
+    return scoped(this.#sql, scope, async (tx) =>
+      (await tx.query<{ problem_id: string }>(`SELECT problem_id FROM prep_lesson_quiz WHERE org_id = $1 AND lesson_id = $2 ORDER BY position`, [scope.orgId, lessonId])).map((r) => r.problem_id),
+    );
+  }
+
+  async setLessonQuiz(orgId: OrgId, lessonId: string, problemIds: readonly string[]): Promise<void> {
+    await scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      await tx.query(`DELETE FROM prep_lesson_quiz WHERE org_id = $1 AND lesson_id = $2`, [orgId, lessonId]);
+      for (const [position, problemId] of problemIds.entries()) {
+        await tx.query(`INSERT INTO prep_lesson_quiz (org_id, lesson_id, position, problem_id) VALUES ($1, $2, $3, $4)`, [orgId, lessonId, position, problemId]);
+      }
+    });
+  }
+
+  // --- shared code ----------------------------------------------------------------------------------
+
+  async addShare(orgId: OrgId, share: { id: string; learnerId: string; problemId: string; language: string; source: string }, at: Date): Promise<void> {
+    await scoped(this.#sql, practiceStaff(orgId), (tx) =>
+      tx.query(`INSERT INTO prep_code_shares (org_id, id, learner_id, problem_id, language, source, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)`, [
+        orgId,
+        share.id,
+        share.learnerId,
+        share.problemId,
+        share.language,
+        share.source,
+        at,
+      ]),
+    );
+  }
+
+  async share(orgId: OrgId, id: string): Promise<{ readonly learnerId: string; readonly problemId: string; readonly language: string; readonly source: string; readonly createdAt: string } | null> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ learner_id: string; problem_id: string; language: string; source: string; created_at: string | Date }>(
+        `SELECT learner_id, problem_id, language, source, created_at FROM prep_code_shares WHERE org_id = $1 AND id = $2`,
+        [orgId, id],
+      );
+      const r = rows[0];
+      return r === undefined ? null : { learnerId: r.learner_id, problemId: r.problem_id, language: r.language, source: r.source, createdAt: iso(r.created_at) };
+    });
+  }
+
+  /** How many a learner shared since a moment: shares are capped per day. */
+  async sharesSince(orgId: OrgId, learnerId: string, since: Date): Promise<number> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      Number((await tx.query<{ n: string }>(`SELECT count(*) AS n FROM prep_code_shares WHERE org_id = $1 AND learner_id = $2 AND created_at >= $3`, [orgId, learnerId, since]))[0]!.n),
+    );
+  }
+
   // --- coins ---------------------------------------------------------------------------------------
 
   /** Pay a reward. False when that key was paid already. */
@@ -626,11 +682,12 @@ export class PrepStore {
         level: PlanLevel;
         deadline: string;
         daily_minutes: number;
+        weekend_minutes: number | null;
         off_days: number[];
         goal: string;
         created_at: string | Date;
       }>(
-        `SELECT id, track_id, level, to_char(deadline, 'YYYY-MM-DD') AS deadline, daily_minutes, off_days, goal, created_at
+        `SELECT id, track_id, level, to_char(deadline, 'YYYY-MM-DD') AS deadline, daily_minutes, weekend_minutes, off_days, goal, created_at
            FROM prep_plans WHERE org_id = $1 AND learner_id = $2 AND status = 'active'`,
         [scope.orgId, own(scope)],
       );
@@ -643,6 +700,7 @@ export class PrepStore {
             level: r.level,
             deadline: r.deadline,
             dailyMinutes: Number(r.daily_minutes),
+            weekendMinutes: r.weekend_minutes === null ? null : Number(r.weekend_minutes),
             offDays: r.off_days.map(Number),
             goal: r.goal,
             createdAt: iso(r.created_at),
@@ -657,13 +715,51 @@ export class PrepStore {
       await tx.query(`UPDATE prep_plans SET status = 'archived' WHERE org_id = $1 AND learner_id = $2 AND status = 'active'`, [scope.orgId, who]);
       const planId = this.#newId();
       await tx.query(
-        `INSERT INTO prep_plans (org_id, id, learner_id, track_id, level, deadline, daily_minutes, off_days, goal)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-        [scope.orgId, planId, who, plan.trackId, plan.level, plan.deadline, plan.dailyMinutes, [...plan.offDays], plan.goal],
+        `INSERT INTO prep_plans (org_id, id, learner_id, track_id, level, deadline, daily_minutes, weekend_minutes, off_days, goal)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [scope.orgId, planId, who, plan.trackId, plan.level, plan.deadline, plan.dailyMinutes, plan.weekendMinutes, [...plan.offDays], plan.goal],
       );
       for (const task of tasks) await this.#insertTask(tx, scope.orgId, planId, who, task);
       return planId;
     });
+  }
+
+  /**
+   * Change a running plan: its settings, and its open tasks laid out again.
+   * Done tasks stay as they were, and so do the learner's own tasks and the
+   * revision a sprint quiz set; every other open task gives way to `tasks`.
+   */
+  async replan(scope: PracticeScope, planId: string, settings: PlanSettings, tasks: readonly TaskDraft[]): Promise<void> {
+    await scoped(this.#sql, scope, async (tx) => {
+      const who = own(scope);
+      const changed = await tx.query(
+        `UPDATE prep_plans SET deadline = $4, daily_minutes = $5, weekend_minutes = $6, off_days = $7, late_notified_on = NULL
+          WHERE org_id = $1 AND learner_id = $2 AND id = $3 AND status = 'active' RETURNING id`,
+        [scope.orgId, who, planId, settings.deadline, settings.dailyMinutes, settings.weekendMinutes, [...settings.offDays]],
+      );
+      if (changed.length === 0) throw new Error("No such active plan");
+      await tx.query(
+        `DELETE FROM prep_tasks WHERE org_id = $1 AND learner_id = $2 AND plan_id = $3 AND done_at IS NULL
+            AND kind <> 'custom' AND NOT (kind = 'revise' AND item_id IS NOT NULL)`,
+        [scope.orgId, who, planId],
+      );
+      for (const task of tasks) await this.#insertTask(tx, scope.orgId, planId, who, task);
+    });
+  }
+
+  /** Record that the learner is told their plan runs late; false when they were told within the week before `today`. */
+  async noteLate(scope: PracticeScope, planId: string, today: string): Promise<boolean> {
+    return scoped(this.#sql, scope, async (tx) =>
+      (
+        await tx.query(
+          `UPDATE prep_plans SET late_notified_on = $4::date
+            WHERE org_id = $1 AND learner_id = $2 AND id = $3 AND status = 'active'
+              AND (late_notified_on IS NULL OR late_notified_on <= $4::date - 7)
+           RETURNING id`,
+          [scope.orgId, own(scope), planId, today],
+        )
+      ).length > 0,
+    );
   }
 
   async archivePlan(scope: PracticeScope): Promise<void> {

@@ -58,7 +58,15 @@ export function Sales({ client }: { client: ConsoleClient }) {
   const products = admin.data?.products ?? [];
   const planName = new Map(products.map((p) => [p.id, p.title]));
   const nameOf = new Map((learners.data ?? []).map((l) => [l.id, l.name]));
-  const paid = (orders.data ?? []).filter((o) => o.status === "paid");
+  const paid = (orders.data ?? []).filter((o) => o.status !== "created");
+  const [refunding, setRefunding] = useState<{ id: string; reason: string } | null>(null);
+  const refund = useMutation({
+    mutationFn: (r: { id: string; reason: string }) => client.refundPlusOrder(r.id, r.reason.trim()),
+    onSuccess: () => {
+      setRefunding(null);
+      void queryClient.invalidateQueries({ queryKey: ["prep", "plus-orders"] });
+    },
+  });
   const linkOf = (code: string) => (site.data === undefined || site.data === null ? null : `${window.location.origin}/practice/${site.data.slug}/plus?ref=${code}`);
 
   return (
@@ -196,6 +204,7 @@ export function Sales({ client }: { client: ConsoleClient }) {
                 <th scope="col">Amount</th>
                 <th scope="col">GST within</th>
                 <th scope="col">Invoice</th>
+                <th scope="col">Refund</th>
               </tr>
             </thead>
             <tbody>
@@ -216,13 +225,55 @@ export function Sales({ client }: { client: ConsoleClient }) {
                       </button>
                     )}
                   </td>
+                  <td>
+                    {o.status === "refunded" ? (
+                      <>
+                        <span className="pill">Refunded {o.refundedAt === null ? "" : day(o.refundedAt)}</span>{" "}
+                        {(o.creditNote ?? null) === null ? null : (
+                          <button type="button" className="link-button" aria-expanded={open === o.creditNote} onClick={() => setOpen(open === o.creditNote ? null : o.creditNote)}>
+                            {o.creditNote}
+                          </button>
+                        )}
+                      </>
+                    ) : refunding?.id === o.id ? (
+                      <form
+                        className="row"
+                        aria-label={`Refund ${o.title}`}
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          refund.mutate(refunding);
+                        }}
+                      >
+                        <label>
+                          Why
+                          <input value={refunding.reason} required minLength={5} maxLength={300} onChange={(e) => setRefunding({ ...refunding, reason: e.target.value })} />
+                        </label>
+                        <button type="submit" disabled={refund.isPending}>
+                          Refund {rupees(o.amountPaise)}
+                        </button>
+                        <button type="button" className="secondary" onClick={() => setRefunding(null)}>
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <button type="button" className="secondary" onClick={() => setRefunding({ id: o.id, reason: "" })}>
+                        Refund…
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+        <p className="notice">A refund gives the whole amount back through Razorpay, ends the pass the order gave, takes back its credits as far as they are unspent, and issues a GST credit note against the invoice.</p>
+        {refund.isError ? (
+          <p className="error" role="alert">
+            {failure(refund.error, "The order could not be refunded.")}
+          </p>
+        ) : null}
         {open === null || invoice.data === undefined ? null : (
-          <dl className="invoice-summary" aria-label={`Invoice ${open}`}>
+          <dl className="invoice-summary" aria-label={`${open.startsWith("PKC") ? "Credit note" : "Invoice"} ${open}`}>
             <dt>Billed to</dt>
             <dd>
               {invoice.data.document.buyer.legalName}

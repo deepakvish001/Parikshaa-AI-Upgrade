@@ -15,8 +15,8 @@ let calls: { method: string; path: string; body: unknown; auth: string | null }[
 
 const site = { slug: "nit-practice", title: "NIT Practice", welcome: "Solve **one** a day." };
 const problems = [
-  { slug: "stable-sort", title: "Stable sort", difficulty: "easy", tags: ["sorting"], kind: "mcq", acceptance: 0.5, solvedBy: 3, status: null },
-  { slug: "sum-of-two", title: "Sum of two", difficulty: "medium", tags: ["math"], kind: "code", acceptance: null, solvedBy: 0, status: null },
+  { slug: "stable-sort", title: "Stable sort", difficulty: "easy", tags: ["sorting"], patterns: ["Sorting"], companies: [{ slug: "acme", name: "Acme" }], kind: "mcq", acceptance: 0.5, solvedBy: 3, status: null },
+  { slug: "sum-of-two", title: "Sum of two", difficulty: "medium", tags: ["math"], patterns: ["Math"], companies: [], kind: "code", acceptance: null, solvedBy: 0, status: null },
 ];
 const mcq = {
   slug: "stable-sort",
@@ -101,6 +101,18 @@ describe("the problem set", () => {
 
     await userEvent.type(screen.getByRole("searchbox"), "zzz");
     expect(screen.getByText("No problem matches these filters.")).toBeInTheDocument();
+  });
+
+  it("filters by the pattern behind the tags and by the company that asked", async () => {
+    open("/practice/nit-practice");
+    const table = await screen.findByRole("table");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Pattern" }), "Math");
+    expect(within(table).queryByText("1. Stable sort")).not.toBeInTheDocument();
+    expect(within(table).getByRole("link", { name: "2. Sum of two" })).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Pattern" }), "");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Company" }), "acme");
+    expect(within(table).getByRole("link", { name: "1. Stable sort" })).toBeInTheDocument();
+    expect(within(table).queryByText("2. Sum of two")).not.toBeInTheDocument();
   });
 
   it("says so when the site is not there", async () => {
@@ -251,6 +263,12 @@ describe("a problem", () => {
     expect(within(results).getByText(/1\/2 tests passed/)).toBeInTheDocument();
     const submitted = calls.find((c) => c.method === "POST");
     expect(submitted?.body).toEqual({ answer: expect.stringContaining("print(5)"), language: "python" });
+
+    // What is in the editor is shared read-only, at a link the learner can copy.
+    routes["POST /practice/nit-practice/problems/sum-of-two/share"] = () => ({ status: 201, body: { id: "AbCdEfGhIjKl", path: "/shares/AbCdEfGhIjKl" } });
+    await userEvent.click(screen.getByRole("button", { name: "Share code" }));
+    expect(await screen.findByRole("textbox", { name: "Read-only link" })).toHaveValue("http://localhost:3000/practice/nit-practice/shares/AbCdEfGhIjKl");
+    expect(calls.find((c) => c.path.endsWith("/share"))?.body).toEqual({ language: "python", source: "print(5)" });
   });
 });
 

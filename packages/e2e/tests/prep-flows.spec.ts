@@ -155,7 +155,9 @@ test("F12: a learner buys Plus through Checkout, holds it, and opens the tax inv
   await expect(invoice).toBeVisible();
   await invoice.click();
   await expect(page.getByText("Invoice number")).toBeVisible();
-  await expect(page.getByText(/PKP\/\d{4}\/000001/)).toBeVisible();
+  // One series for the whole platform, as GST has it: the browsers' runs share
+  // the database, so this invoice is the first in the series only for the first.
+  await expect(page.getByText(/PKP\/\d{4}\/\d{6}/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Print or save as PDF/ })).toBeVisible();
 });
 

@@ -1,8 +1,10 @@
+import type { PushSender } from "./push.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
+import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCommunityStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -54,6 +56,8 @@ export interface AssembleOptions {
   readonly sql: SqlExecutor;
   readonly client: Anthropic;
   readonly runner?: CodeRunner;
+  /** How practice's programs queue for the runner: at most so many at once, contests first. */
+  readonly judge?: JudgeOptions;
   /** The server's secret: attempt tokens, invitation codes and integration secrets derive from it. */
   readonly secret: string;
   /** Where candidates open their links. */
@@ -73,6 +77,8 @@ export interface AssembleOptions {
   /** Where bank transfers against a quotation go. */
   readonly bank?: BankDetails | null;
   readonly mailer?: Mailer | null;
+  /** Web Push for the learners' daily reminder; absent or null: none. */
+  readonly push?: PushSender | null;
   readonly sms?: SmsSender | null;
   readonly whatsapp?: WhatsAppSender | null;
   /** Lever's API root, such as its sandbox https://api.sandbox.lever.co; Lever's own when absent. */
@@ -122,7 +128,7 @@ export function assemble(o: AssembleOptions): {
   });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
-  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore });
+  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore, tutor: new PrepPlusStore(o.sql) });
   const labStore = new LabStore(o.sql);
   const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service });
   // Made below, once the results it reads exist; the hook is called only when a candidate starts.
@@ -169,7 +175,7 @@ export function assemble(o: AssembleOptions): {
     publicUrl: o.publicUrl,
   });
   const practiceStore = new PracticeStore(o.sql);
-  const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }) });
+  const practice = new PracticeService({ store: practiceStore, bank, ...(o.runner === undefined ? {} : { runner: o.runner }), ...(o.judge === undefined ? {} : { judge: o.judge }) });
   const prepCampus = new PrepCampus({ store: new PrepCampusStore(o.sql), plus: new PrepPlusStore(o.sql) });
   const practiceIdentity = new PracticeIdentity({
     store: practiceStore,
@@ -182,14 +188,19 @@ export function assemble(o: AssembleOptions): {
   });
   const prepStore = new PrepStore(o.sql);
   const prepPlus = new PrepPlus({ store: new PrepPlusStore(o.sql), practice: practiceStore, gateway: o.gateway ?? null, supplier: o.supplier ?? null });
-  const prepCommunity = new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus });
-  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus, companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner) });
+  const prepCommunity = new PrepCommunity({ practice: practiceStore, prep: prepStore, store: new PrepCommunityStore(o.sql), plus: prepPlus, publicUrl: o.publicUrl });
+  const people = (orgId: Parameters<PrepCommunity["people"]>[0], ids: readonly string[]) => prepCommunity.people(orgId, ids);
+  practice.usePeople(people);
+  practice.useCompanies((site, learner) => prepCommunity.problemCompanies(site, learner));
+  const prepService = new PrepService({ practice: practiceStore, store: prepStore, plus: prepPlus, companyProblems: (site, learner) => prepCommunity.targetProblems(site, learner), planLate: (site, learner, plan) => prepEngage.queueLate(site, learner, plan) });
+  prepService.usePeople(people);
   const prepEngage = new PrepEngage({
     store: new PrepEngageStore(o.sql),
     practiceStore,
     practice,
     prep: prepService,
     mailer: o.mailer ?? null,
+    push: o.push ?? null,
     secret: o.secret,
     publicUrl: o.publicUrl,
   });
@@ -277,7 +288,7 @@ export function assemble(o: AssembleOptions): {
           : item.purpose === "pilot_report"
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
-      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : practiceIdentity.verificationMail(item)) },
+      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)) },
   });
 
   return { app, worker, privacy, billing, identity, dailyReport, prepEngage };

@@ -28,6 +28,8 @@ import {
   type QuestionBank,
   type Submission,
 } from "@parikshaa/store";
+import { JudgeQueue, type JudgeLane, type JudgeOptions } from "./judge-queue.js";
+import { patternsOf } from "./patterns.js";
 import { RateLimiter } from "./rate-limit.js";
 import { digest, hashPassword } from "./staff-auth.js";
 
@@ -48,6 +50,8 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const EDITORIAL_AFTER_FAILURES = 3;
 /** ICPC's rule: each wrong submission before the accepted one costs this many minutes. */
 export const PENALTY_MINUTES = 20;
+/** How long a contest's scoreboard is kept before it is read again. */
+const BOARD_KEEP_MS = 5_000;
 
 export class PracticeError extends Error {
   constructor(
@@ -108,6 +112,10 @@ export interface ProblemListItem {
   readonly title: string;
   readonly difficulty: Difficulty;
   readonly tags: readonly string[];
+  /** The ideas behind the tags (see patterns.ts). */
+  readonly patterns: readonly string[];
+  /** Companies that asked it lately, as far as the learner may see. */
+  readonly companies: readonly { readonly slug: string; readonly name: string }[];
   readonly kind: Question["kind"];
   /** Share of submissions accepted, 0–1; null before anyone submits. */
   readonly acceptance: number | null;
@@ -250,19 +258,32 @@ export function scoreboard(contest: Contest, submissions: readonly (Submission &
   });
 }
 
+/** Shown beside a learner's name wherever it appears: their title, and their public profile's username. */
+export interface Person {
+  readonly title: string | null;
+  readonly username: string | null;
+}
+export type People = (orgId: OrgId, learnerIds: readonly string[]) => Promise<ReadonlyMap<string, Person>>;
+/** Each problem's companies, as a learner may see them (Prep's reports). */
+export type ProblemCompanies = (site: PracticeSite, learner: Learner | null) => Promise<ReadonlyMap<string, readonly { readonly slug: string; readonly name: string }[]>>;
+const NOBODY: Person = { title: null, username: null };
+
 export class PracticeService {
   readonly #store: PracticeStore;
   readonly #bank: QuestionBank;
-  readonly #runner: CodeRunner | null;
+  readonly #judge: JudgeQueue | null;
+  readonly #boards = new Map<string, { readonly key: string; readonly at: number; readonly board: (ScoreboardRow & Person)[] }>();
+  #people: People = async () => new Map();
+  #companies: ProblemCompanies = async () => new Map();
   readonly #now: () => number;
   readonly #runs = new RateLimiter({ perSecond: 0.5, burst: 20 });
   readonly #submits = new RateLimiter({ perSecond: 0.2, burst: 10 });
   readonly #comments = new RateLimiter({ perSecond: 0.05, burst: 5 });
 
-  constructor(options: { store: PracticeStore; bank: QuestionBank; runner?: CodeRunner | null; now?: () => number }) {
+  constructor(options: { store: PracticeStore; bank: QuestionBank; runner?: CodeRunner | null; judge?: JudgeOptions; now?: () => number }) {
     this.#store = options.store;
     this.#bank = options.bank;
-    this.#runner = options.runner ?? null;
+    this.#judge = options.runner === undefined || options.runner === null ? null : new JudgeQueue(options.runner, options.judge);
     this.#now = options.now ?? (() => Date.now());
   }
 
@@ -340,10 +361,11 @@ export class PracticeService {
 
   async problems(site: PracticeSite, learner: Learner | null): Promise<readonly ProblemListItem[]> {
     const scope = practiceLearner(site.orgId, learner?.id ?? null);
-    const [problems, stats, progress] = await Promise.all([
+    const [problems, stats, progress, companies] = await Promise.all([
       this.#store.problems(scope),
       this.#store.problemStats(site.orgId),
       this.#store.progress(scope),
+      this.#companies(site, learner),
     ]);
     const statsOf = new Map(stats.map((s) => [s.problemId, s]));
     const solved = new Set(progress.solved.map((s) => s.problemId));
@@ -355,6 +377,8 @@ export class PracticeService {
         title: p.title,
         difficulty: p.difficulty,
         tags: p.tags,
+        patterns: patternsOf(p.tags),
+        companies: companies.get(p.id) ?? [],
         kind: p.question.kind,
         acceptance: s === undefined || s.submissions === 0 ? null : s.accepted / s.submissions,
         solvedBy: s?.solvedBy ?? 0,
@@ -422,28 +446,47 @@ export class PracticeService {
     if (!limiter.take(key).ok) throw new PracticeError("too_many_runs", "Slow down a little and try again in a moment");
   }
 
-  async #run(question: CodeQuestion, answer: CodeAnswer, tests: readonly { id: string; input: string; expected: string }[], ownInput = false): Promise<RunResult> {
-    if (this.#runner === null) throw new RunnerUnavailable("No code runner is configured");
+  /** Where titles and usernames come from (Prep's ratings and profiles), once that service exists. */
+  usePeople(people: People): void {
+    this.#people = people;
+  }
+
+  /** Where a problem's companies come from, for the list's filter. */
+  useCompanies(companies: ProblemCompanies): void {
+    this.#companies = companies;
+  }
+
+  /** The judge's queue as it stands: for staff on a contest day. */
+  judgeStats() {
+    return this.#judge?.stats() ?? null;
+  }
+
+  async #run(question: CodeQuestion, answer: CodeAnswer, tests: readonly { id: string; input: string; expected: string }[], lane: JudgeLane, ownInput = false): Promise<RunResult> {
+    if (this.#judge === null) throw new RunnerUnavailable("No code runner is configured");
     const prepared = runnable(question, answer);
-    return this.#runner.run({
+    return this.#judge.run({
       language: answer.language as never,
       source: prepared.source,
       tests,
       checker: ownInput && prepared.checker.kind === "custom" ? { kind: "exact" } : prepared.checker,
       ...(prepared.resultMarker === undefined ? {} : { resultMarker: prepared.resultMarker }),
       ...(question.limits === undefined ? {} : { limits: question.limits }),
-    });
+    }, lane);
+  }
+
+  #lane(contest: Contest | null): JudgeLane {
+    return contest !== null && stateOf(contest, this.#now()) === "running" ? "contest" : "practice";
   }
 
   /** Run on the examples, or on the learner's own input. Records nothing. */
   async run(site: PracticeSite, learner: Learner, slug: string, answer: CodeAnswer, input?: string, contestSlug?: string) {
-    const { problem } = await this.#find(site, slug, contestSlug);
+    const { problem, contest } = await this.#find(site, slug, contestSlug);
     const question = this.#code(problem, answer.language);
     this.#limit(this.#runs, learner.id);
     const samples = (question.tests ?? []).filter((t) => !t.hidden);
     const tests =
       input !== undefined ? [{ id: "custom", input, expected: "" }] : samples.map((t, i) => ({ id: `sample-${i + 1}`, input: t.input, expected: t.expected }));
-    const result = await this.#run(question, answer, tests, input !== undefined);
+    const result = await this.#run(question, answer, tests, this.#lane(contest), input !== undefined);
     if (!result.compiled) return { compiled: false as const, compileOutput: result.compileOutput };
     return {
       compiled: true as const,
@@ -466,8 +509,10 @@ export class PracticeService {
    * includes the problem — counted on its scoreboard.
    */
   async submit(site: PracticeSite, learner: Learner, slug: string, answer: string, language: string | null, contestSlug?: string): Promise<Verdict> {
+    // A contest's submission counts from when it came in, not from when the judge got to it.
+    const receivedAt = new Date(this.#now());
     const { problem, contest } = await this.#find(site, slug, contestSlug);
-    const running = contest !== null && stateOf(contest, this.#now()) === "running" ? contest : null;
+    const running = contest !== null && stateOf(contest, receivedAt.getTime()) === "running" ? contest : null;
     this.#limit(this.#submits, learner.id);
     const scope = practiceLearner(site.orgId, learner.id);
     const before = await this.#store.submissions(scope, { problemId: problem.id, limit: 500 });
@@ -482,7 +527,7 @@ export class PracticeService {
       stored = encodeCodeAnswer(code);
       const tests = question.tests ?? [];
       if (tests.length === 0) throw new PracticeError("not_practicable", "This problem has no tests to check an answer against");
-      const result = await this.#run(question, code, tests);
+      const result = await this.#run(question, code, tests, running === null ? "practice" : "contest");
       verdict = this.#codeVerdict(tests, result);
     } else if (question.kind === "mcq" || question.kind === "numeric") {
       stored = answer;
@@ -503,7 +548,8 @@ export class PracticeService {
       total: verdict.total,
       timeMs: verdict.timeMs,
       memoryKb: verdict.memoryKb,
-    });
+    }, running === null ? undefined : receivedAt);
+    if (running !== null) this.#boards.delete(running.id);
     return { ...verdict, submissionId: saved.id, firstSolve: !solvedBefore && verdict.status === "passed" };
   }
 
@@ -581,7 +627,8 @@ export class PracticeService {
 
   async leaderboard(site: PracticeSite, learner: Learner | null) {
     const rows = await this.#store.leaderboard(site.orgId, 100);
-    return rows.map((r, i) => ({ rank: i + 1, name: r.name, solved: r.solved, you: learner !== null && r.learnerId === learner.id }));
+    const people = await this.#people(site.orgId, rows.map((r) => r.learnerId));
+    return rows.map((r, i) => ({ rank: i + 1, name: r.name, ...(people.get(r.learnerId) ?? NOBODY), solved: r.solved, you: learner !== null && r.learnerId === learner.id }));
   }
 
   // --- contests ------------------------------------------------------------------------------------
@@ -598,6 +645,23 @@ export class PracticeService {
     }));
   }
 
+  /**
+   * A contest's scoreboard, kept for a few seconds: thousands look at it while
+   * it runs, and each look would otherwise read every submission. A
+   * submission to the contest through this server drops it at once.
+   */
+  async #board(site: PracticeSite, contest: Contest): Promise<(ScoreboardRow & Person)[]> {
+    const key = `${contest.startsAt}|${contest.endsAt}|${contest.problemIds.join(",")}`;
+    const kept = this.#boards.get(contest.id);
+    if (kept !== undefined && kept.key === key && this.#now() - kept.at < BOARD_KEEP_MS) return kept.board;
+    const rows = scoreboard(contest, await this.#store.contestSubmissions(site.orgId, contest.id));
+    const people = await this.#people(site.orgId, rows.map((r) => r.learnerId));
+    const board = rows.map((r) => ({ ...r, ...(people.get(r.learnerId) ?? NOBODY) }));
+    if (this.#boards.size > 100) this.#boards.clear();
+    this.#boards.set(contest.id, { key, at: this.#now(), board });
+    return board;
+  }
+
   async contest(site: PracticeSite, slug: string, learner: Learner | null) {
     const contest = await this.#store.contestBySlug(practiceLearner(site.orgId, null), slug);
     if (contest === null) throw new PracticeError("not_found", "No such contest");
@@ -605,7 +669,7 @@ export class PracticeService {
     // Before the start, a contest's problems are not named: that would be a head start.
     const all = state === "upcoming" ? [] : await this.#store.problems(practiceStaff(site.orgId));
     const byId = new Map(all.map((p) => [p.id, p]));
-    const board = state === "upcoming" ? [] : scoreboard(contest, await this.#store.contestSubmissions(site.orgId, contest.id));
+    const board = state === "upcoming" ? [] : await this.#board(site, contest);
     const mine = learner === null ? undefined : board.find((r) => r.learnerId === learner.id);
     return {
       slug: contest.slug,
@@ -638,9 +702,12 @@ export class PracticeService {
     const { problem } = await this.#find(site, slug, undefined).catch(() => {
       throw new PracticeError("not_found", "No such problem");
     });
-    return (await this.#store.comments(practiceLearner(site.orgId, null), problem.id)).map(({ id, authorName, fromStaff, body, createdAt }) => ({
+    const comments = await this.#store.comments(practiceLearner(site.orgId, null), problem.id);
+    const people = await this.#people(site.orgId, comments.flatMap((c) => (c.learnerId === null ? [] : [c.learnerId])));
+    return comments.map(({ id, authorName, learnerId, fromStaff, body, createdAt }) => ({
       id,
       authorName,
+      ...((learnerId === null ? undefined : people.get(learnerId)) ?? NOBODY),
       fromStaff,
       body,
       createdAt,
@@ -653,7 +720,8 @@ export class PracticeService {
     const { problem } = await this.#find(site, slug, undefined);
     this.#limit(this.#comments, learner.id);
     const c = await this.#store.addComment(practiceLearner(site.orgId, learner.id), { problemId: problem.id, authorName: learner.name, body: text });
-    return { id: c.id, authorName: c.authorName, fromStaff: false, body: c.body, createdAt: c.createdAt };
+    const person = (await this.#people(site.orgId, [learner.id])).get(learner.id) ?? NOBODY;
+    return { id: c.id, authorName: c.authorName, ...person, fromStaff: false, body: c.body, createdAt: c.createdAt };
   }
 
   // --- staff -----------------------------------------------------------------------------------------

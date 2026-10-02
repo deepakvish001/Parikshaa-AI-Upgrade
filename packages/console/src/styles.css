@@ -4261,7 +4261,7 @@ button.month-day.picked::after {
   display: inline-block;
   height: 0.6rem;
   min-width: 2px;
-  border-radius: 2px;
+  border-radius: var(--radius-hair);
   background: var(--primary);
   vertical-align: middle;
 }

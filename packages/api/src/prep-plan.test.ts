@@ -34,6 +34,23 @@ describe("generatePlan", () => {
     expect(outcome.tasks.at(-1)).toMatchObject({ kind: "revise", day: "2026-10-08", sprint: 1 });
   });
 
+  it("gives the weekend its own minutes", () => {
+    // Saturday the 10th and Sunday the 11th hold 120 a day (96 once revision is set aside); weekdays 30 (24).
+    const outcome = generatePlan({
+      items: [problem(1, "easy"), problem(2, "easy"), problem(3, "easy"), problem(4, "easy")],
+      level: "intermediate",
+      start: "2026-10-09",
+      deadline: "2026-10-30",
+      dailyMinutes: 30,
+      weekendMinutes: 120,
+      offDays: [],
+    });
+    expect(outcome.tasks.filter((t) => t.kind === "practice").map((t) => t.day)).toEqual(["2026-10-09", "2026-10-10", "2026-10-10", "2026-10-10"]);
+    // Moving work on fills a weekend day up to its own capacity too.
+    const late = reschedule([task("a", "2026-10-08", 40), task("b", "2026-10-08", 40), task("c", "2026-10-08", 40)], "2026-10-10", 30, [], 120);
+    expect(late.moves.map((m) => m.day)).toEqual(["2026-10-10", "2026-10-10", "2026-10-11"]);
+  });
+
   it("gives an item bigger than a day a day to itself, and says when it will not finish in time", () => {
     const outcome = generatePlan({ items: [problem(1, "hard"), problem(2, "hard")], level: "beginner", start: MONDAY, deadline: "2026-10-05", dailyMinutes: 30, offDays: [] });
     expect(outcome.tasks.filter((t) => t.kind === "practice").map((t) => [t.estMinutes, t.day])).toEqual([

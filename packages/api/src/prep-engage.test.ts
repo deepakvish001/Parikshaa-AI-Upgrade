@@ -93,7 +93,7 @@ describe("the daily reminder", () => {
   it("is off until turned on, and goes at the learner's hour, once a day, only with something left to do", async () => {
     const asha = await signUp("asha@example.com", "Asha");
     await ok("POST", asha, `${S}/plan`, plan);
-    expect(await ok("GET", asha, `${S}/reminders`)).toEqual({ enabled: false, hour: 19, email: true });
+    expect(await ok("GET", asha, `${S}/reminders`)).toEqual({ enabled: false, hour: 19, email: true, push: false, devices: 0 });
     expect((await call("PUT", asha, `${S}/reminders`, { enabled: true, hour: 24 })).statusCode).toBe(422);
     expect(await ok("PUT", asha, `${S}/reminders`, { enabled: true, hour: 19 })).toEqual({ enabled: true, hour: 19 });
 
@@ -126,6 +126,33 @@ describe("the daily reminder", () => {
     expect((await ok("GET", asha, `${S}/reminders`)).enabled).toBe(false);
     clock = at("2026-10-06T19:05:00");
     expect(await engage.queueDue(["org-a"])).toBe(0);
+  });
+
+  it("tells a learner who asked for email when their plan slips past its deadline, once a week at most", async () => {
+    const asha = await signUp("asha@example.com", "Asha");
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    for (const t of [asha, ravi]) await ok("POST", t, `${S}/plan`, { ...plan, deadline: "2026-10-11" });
+    await ok("PUT", asha, `${S}/reminders`, { enabled: true, hour: 19 });
+    const late = () => mail.sent.filter((m): m is EmailMessage => "subject" in m && m.subject.includes("after your deadline"));
+
+    // Nothing done for a week: the work moves past Sunday the 11th.
+    clock = at("2026-10-12T10:00:00");
+    for (const t of [asha, ravi]) expect((await ok("GET", t, `${S}/plan`)).plan.onTrack).toBe(false);
+    await worker.tick();
+    expect(late().map((m) => m.to)).toEqual(["asha@example.com"]);
+    expect(late()[0]!.text).toContain("now finishes on 2026-10-14, after your deadline of 2026-10-11");
+    expect(late()[0]!.text).toContain("https://exam.test/practice/nit-practice/plan");
+
+    // It slips again the next day: not told again within the week.
+    clock = at("2026-10-13T10:00:00");
+    await ok("GET", asha, `${S}/plan`);
+    await worker.tick();
+    expect(late()).toHaveLength(1);
+    // A week on, still late: told again.
+    clock = at("2026-10-19T10:00:00");
+    await ok("GET", asha, `${S}/plan`);
+    await worker.tick();
+    expect(late()).toHaveLength(2);
   });
 
   it("says nothing on a day whose tasks are done, and nothing a day late", async () => {
