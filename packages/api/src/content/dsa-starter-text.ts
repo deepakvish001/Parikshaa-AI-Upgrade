@@ -167,3 +167,80 @@ export const DSA_TEXT: Readonly<Record<string, { readonly hint: string; readonly
     brute: "Before each join, sort all the ropes again and join the two shortest. O(n² log n).",
   },
 };
+
+/**
+ * The middle approach, for the problems that have a real one: faster than the
+ * brute force, or as fast with less to remember, but not yet the optimal. The
+ * editorial shows it as its own tab, between the two. A problem whose brute
+ * force leads straight to the optimal has none, rather than an invented one.
+ */
+export const DSA_BETTER: Readonly<Record<string, { readonly text: string; readonly time: string }>> = {
+  "pairs-with-target-sum": {
+    text: "Sort the numbers. For each `a[i]`, the partners are the values equal to `T − a[i]` after position `i`; two binary searches (first and last such value) count them.",
+    time: "O(n log n)",
+  },
+  "longest-window-under-budget": {
+    text: "Tolls are never negative, so prefix sums only grow. For each start, binary search the prefix sums for the farthest end whose total stays within `B`.",
+    time: "O(n log n)",
+  },
+  "largest-pair-product": {
+    text: "Sort. The answer is the larger of the two largest numbers multiplied and the two smallest multiplied. Correct, but the sort does more work than the answer needs.",
+    time: "O(n log n)",
+  },
+  "trapped-rainwater": {
+    text: "Precompute, for every wall, the tallest wall to its left (one pass from the left) and to its right (one pass from the right). The water above wall `i` is then `min(left[i], right[i]) − h[i]`. Linear time, but two extra arrays of `n` numbers.",
+    time: "O(n), O(n) memory",
+  },
+  "largest-rectangle-histogram": {
+    text: "Divide and conquer at the lowest column: the best rectangle either spans the whole range at that height, or lies wholly to its left or right. Find each range's lowest column with a sparse table built once, and recurse with an explicit stack rather than recursion (sorted heights go 10^5 deep).",
+    time: "O(n log n)",
+  },
+  "two-lists-budget": {
+    text: "Both lists are sorted. For each main, binary search the desserts for the last price within `T − main`; every dessert up to it is affordable.",
+    time: "O(n log m)",
+  },
+  "best-k-window": {
+    text: "Build prefix sums once; the window ending at day `i` totals `p[i] − p[i−k]`. Linear, but it keeps an array of `n + 1` sums where one running sum would do.",
+    time: "O(n), O(n) memory",
+  },
+  "heaviest-square": {
+    text: "Prefix sums along each row: a row's stretch of `k` cells is then one subtraction, so a square is `k` look-ups instead of `k²` additions.",
+    time: "O(n·m·k)",
+  },
+  "coin-change-ways": {
+    text: "A table `ways[i][x]`: the ways to pay `x` with the first `i` coin values, either not using value `i` (`ways[i−1][x]`) or using it once more (`ways[i][x − value]`). The same time as the optimal, but `c × A` numbers in memory instead of `A`.",
+    time: "O(c·A), O(c·A) memory",
+  },
+  "knapsack-max-value": {
+    text: "A table `best[i][c]`: the most value from the first `i` goods within capacity `c`, either skipping good `i` or taking it once (`best[i−1][c − wi] + vi`). The same time as the optimal, but `n × W` numbers in memory instead of `W`.",
+    time: "O(n·W), O(n·W) memory",
+  },
+  "range-min-sum": {
+    text: "A segment tree over the days: each node keeps the minimum of its range, and a query combines O(log n) nodes.",
+    time: "O(n + q log n)",
+  },
+  "running-median-sum": {
+    text: "Keep the amounts in a sorted list, inserting each new one at its place found by binary search (Python's `bisect.insort`); the median is the middle element. Finding the place is O(log n), but shifting the list is O(n) per insert.",
+    time: "O(n²)",
+  },
+  "house-robber": {
+    text: "`best[i]` is the most from the first `i` houses: `max(best[i−1], best[i−2] + ai)`. Linear, but it keeps an array of `n` totals where two would do.",
+    time: "O(n), O(n) memory",
+  },
+  "pairs-with-difference": {
+    text: "Sort. For each value `v`, binary search for the copies of `v + K` (for `K = 0`, count each run of equal values as c(c − 1)/2 instead).",
+    time: "O(n log n)",
+  },
+  "rope-joining": {
+    text: "Keep the ropes in a sorted list. Join the first two and insert the joined rope at its place, found by binary search, instead of sorting again. Finding the place is O(log n), but inserting shifts the list: O(n) per join.",
+    time: "O(n²)",
+  },
+  "frequent-value-score": {
+    text: "Sort, then walk the runs of equal values: each run's length is the count, and the best value × count is the answer.",
+    time: "O(n log n)",
+  },
+  "paint-houses": {
+    text: "A table `cost[i][colour]`: the least cost of painting the first `i` houses with house `i` in that colour, from the cheaper of the other two colours at `i − 1`. Linear, but `3n` totals in memory where three would do.",
+    time: "O(n), O(n) memory",
+  },
+};

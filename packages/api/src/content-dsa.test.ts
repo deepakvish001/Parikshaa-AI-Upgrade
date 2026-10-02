@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { examId, validateExam } from "@parikshaa/core";
 import { execute, type CodeRunner } from "@parikshaa/runner";
 import { DSA_STARTER } from "./content/dsa-starter.js";
-import { DSA_TEXT } from "./content/dsa-starter-text.js";
+import { DSA_BETTER, DSA_TEXT } from "./content/dsa-starter-text.js";
 import type { DsaPack } from "./content/packs.js";
 import { dsaEditorial, dsaQuestion } from "./starter-packs.js";
 import { PROBLEMS_A } from "./testing/sahayak-eval/problems-a.js";
@@ -90,10 +90,23 @@ describe("the DSA starter", () => {
       expect(text.hint, p.slug).not.toMatch(/```|def |for \(|while /);
       expect(text.hint.length, p.slug).toBeLessThan(260);
       expect(p.tests.some((t) => !t.hidden) && p.tests.some((t) => t.hidden), p.slug).toBe(true);
-      const editorial = dsaEditorial(p, text.brute);
+      const better = DSA_BETTER[p.slug];
+      const editorial = dsaEditorial(p, text.brute, better);
       expect(editorial, p.slug).toMatch(/^## Brute force\n/);
       expect(editorial, p.slug).toMatch(/\n## Optimal\n/);
       expect(editorial, p.slug).toContain(p.reference.trim());
+      if (better !== undefined) {
+        // Between the two, in that order, with its own time.
+        expect(editorial.indexOf("## Better"), p.slug).toBeGreaterThan(editorial.indexOf("## Brute force"));
+        expect(editorial.indexOf("## Better"), p.slug).toBeLessThan(editorial.indexOf("## Optimal"));
+        expect(better.time, p.slug).toMatch(/^O\(/);
+        expect(better.text, p.slug).not.toMatch(/```/);
+      } else {
+        expect(editorial, p.slug).not.toContain("## Better");
+      }
     }
+    // Only real problems of the pack, and enough of them to matter.
+    expect(Object.keys(DSA_BETTER).every((slug) => DSA_STARTER.problems.some((p) => p.slug === slug))).toBe(true);
+    expect(Object.keys(DSA_BETTER).length).toBeGreaterThanOrEqual(15);
   });
 });
