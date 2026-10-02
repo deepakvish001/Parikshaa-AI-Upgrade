@@ -51,3 +51,10 @@ export async function migrate(
 
   return { applied, skipped };
 }
+
+/** The migrations not yet applied, in the order `migrate` would apply them. Reads only: writes nothing. */
+export async function pendingMigrations(sql: SqlExecutor, directory: string = MIGRATIONS_DIR): Promise<readonly string[]> {
+  const [table] = await sql.query<{ exists: boolean }>(`SELECT to_regclass('schema_migrations') IS NOT NULL AS exists`);
+  const done = new Set(table?.exists === true ? (await sql.query<{ name: string }>(`SELECT name FROM schema_migrations`)).map((r) => r.name) : []);
+  return (await readdir(directory)).filter((f) => f.endsWith(".sql") && !done.has(f)).sort();
+}

@@ -1,4 +1,4 @@
-import { migrate } from "./migrate.js";
+import { migrate, pendingMigrations } from "./migrate.js";
 import { connect } from "./sql.js";
 
 const url = process.env["DATABASE_URL"];
@@ -9,6 +9,13 @@ if (url === undefined || url === "") {
 
 const sql = connect(url, { max: 1 });
 try {
+  // --dry-run: say what would be applied, and change nothing.
+  if (process.argv.includes("--dry-run")) {
+    const pending = await pendingMigrations(sql);
+    for (const name of pending) process.stdout.write(`would apply      ${name}\n`);
+    process.stdout.write(`${pending.length} migration(s) to apply (dry run: nothing changed)\n`);
+    process.exit(0);
+  }
   const { applied, skipped } = await migrate(sql);
   for (const name of skipped) process.stdout.write(`already applied  ${name}\n`);
   for (const name of applied) process.stdout.write(`applied          ${name}\n`);

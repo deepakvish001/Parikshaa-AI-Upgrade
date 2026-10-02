@@ -1,0 +1,68 @@
+name: Migrate
+
+# Applies the migrations in packages/store/migrations that the Parikshaa
+# database (the Supabase Mumbai project, docs/SUPABASE.md) does not have yet,
+# each in its own transaction, recorded in schema_migrations: the same as
+# `npm run migrate` from the VM. Run by hand only. A dry run, the default,
+# lists what would be applied and changes nothing.
+#
+# Needs the repository secret PARIKSHAA_DATABASE_URL: the Mumbai project's
+# connection string from its Connect panel (session pooler), password in it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List what would be applied; change nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Before anything else: an empty secret is the usual reason this fails,
+      # so say so plainly rather than as a connection error later.
+      - name: The secret is set
+        env:
+          DATABASE_URL: ${{ secrets.PARIKSHAA_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The repository secret PARIKSHAA_DATABASE_URL is empty or missing. Add it under Settings → Secrets and variables → Actions → Repository secrets (not Variables, Environments, Codespaces or Dependabot)."
+            exit 1
+          fi
+          case "$DATABASE_URL" in
+            postgres://*|postgresql://*) echo "PARIKSHAA_DATABASE_URL is set." ;;
+            *) echo "::error::PARIKSHAA_DATABASE_URL does not start with postgresql:// — paste the whole connection string from the Connect panel."; exit 1 ;;
+          esac
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Migrate
+        env:
+          DATABASE_URL: ${{ secrets.PARIKSHAA_DATABASE_URL }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "$DRY_RUN" = "true" ]; then
+            node packages/store/dist/migrate-cli.js --dry-run
+          else
+            node packages/store/dist/migrate-cli.js
+          fi

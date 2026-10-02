@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { migrate } from "./migrate.js";
+import { migrate, pendingMigrations } from "./migrate.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
 
 let db: PGlite;
@@ -52,6 +52,19 @@ describe("migrate", () => {
 
     await write("0002_second.sql", "CREATE TABLE gadgets (id int primary key);");
     expect((await migrate(sql, dir)).applied).toEqual(["0002_second.sql"]);
+  });
+
+  it("lists what is still to apply without changing anything", async () => {
+    await write("0001_first.sql", "CREATE TABLE widgets (id int primary key);");
+    await write("0002_second.sql", "CREATE TABLE gadgets (id int primary key);");
+    // Before any run there is no record table, and listing does not make one.
+    expect(await pendingMigrations(sql, dir)).toEqual(["0001_first.sql", "0002_second.sql"]);
+    expect(await sql.query(`SELECT to_regclass('schema_migrations') AS t`)).toEqual([{ t: null }]);
+
+    await migrate(sql, dir);
+    await write("0003_third.sql", "CREATE TABLE gizmos (id int primary key);");
+    expect(await pendingMigrations(sql, dir)).toEqual(["0003_third.sql"]);
+    expect(await sql.query(`SELECT to_regclass('gizmos') AS t`)).toEqual([{ t: null }]);
   });
 
   it("records nothing when a migration fails", async () => {
