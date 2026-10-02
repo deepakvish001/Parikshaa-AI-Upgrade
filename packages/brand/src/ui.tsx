@@ -244,6 +244,8 @@ export function Menu({ label, items, className }: { label: string; items: readon
   const list = useRef<HTMLDivElement>(null);
   // Focus moves in once the list is placed: while it is still hidden, measuring, nothing in it can take focus.
   const toFocus = useRef<false | "first" | "last">(false);
+  // Where the button was when the list was placed beside it.
+  const placedAt = useRef<{ top: number; right: number } | null>(null);
   const ordered = [...items.filter((item) => item.danger !== true), ...items.filter((item) => item.danger === true)];
 
   const entries = () => [...(list.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
@@ -258,6 +260,7 @@ export function Menu({ label, items, className }: { label: string; items: readon
     const at = button.current.getBoundingClientRect();
     const height = list.current.offsetHeight;
     const right = Math.max(8, window.innerWidth - at.right);
+    placedAt.current = { top: at.top, right: at.right };
     setPlace(at.bottom + 4 + height > window.innerHeight && at.top - 4 - height > 0 ? { bottom: window.innerHeight - at.top + 4, right } : { top: at.bottom + 4, right });
     toFocus.current = open;
   }, [open]);
@@ -277,8 +280,14 @@ export function Menu({ label, items, className }: { label: string; items: readon
     const away = (event: Event) => {
       if (!(event.target instanceof Node) || !wrap.current?.contains(event.target)) close(false);
     };
+    // Closed when its button moves, as the list would no longer sit beside it. A
+    // scroll that leaves the button where it was (a part of the page loading in,
+    // WebKit's scroll on focus) leaves it open.
     const moved = (event: Event) => {
-      if (!(event.target instanceof Node) || !list.current?.contains(event.target)) close(false);
+      if (event.target instanceof Node && list.current?.contains(event.target)) return;
+      const at = button.current?.getBoundingClientRect();
+      const was = placedAt.current;
+      if (at === undefined || was === null || Math.abs(at.top - was.top) > 1 || Math.abs(at.right - was.right) > 1) close(false);
     };
     document.addEventListener("pointerdown", away);
     window.addEventListener("scroll", moved, true);

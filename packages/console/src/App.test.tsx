@@ -675,6 +675,24 @@ describe("console", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "More actions for Campus Drive" })).toHaveFocus();
   });
+
+  it("keeps the ⋯ menu open through a scroll that leaves its button in place, and closes it when the button moves", async () => {
+    const client = stubClient({
+      listExams: vi.fn(async () => [{ id: "e1", title: "Campus Drive", questionCount: 2, attempts: { invited: 0, inProgress: 0, submitted: 1, graded: 0, void: 0 } }]),
+    });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Exams" }));
+    const more = await screen.findByRole("button", { name: "More actions for Campus Drive" });
+    await userEvent.click(more);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    // A part of the page loading in scrolls something else: the button has not moved.
+    fireEvent.scroll(window);
+    expect(screen.getByRole("menu")).toBeInTheDocument();
+    // The page scrolls under it: the list would no longer sit beside its button.
+    vi.spyOn(more, "getBoundingClientRect").mockReturnValue(new DOMRect(0, -120, 32, 32));
+    fireEvent.scroll(window);
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
 });
 
 describe("exam editor", () => {
