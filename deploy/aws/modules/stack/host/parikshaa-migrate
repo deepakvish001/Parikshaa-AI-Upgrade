@@ -1,0 +1,19 @@
+#!/bin/bash
+# Applies the migrations in the image tagged $1 as the schema's owner, then
+# lets the runtime role log in with its password: what docker-compose.yml's
+# migrate service does. On an API machine only; release.sh runs it there over
+# SSM before any machine starts the new code.
+#
+#   sudo parikshaa-migrate <tag>
+set -euo pipefail
+# shellcheck source=common.sh
+. /usr/local/lib/parikshaa/common.sh
+[[ "$ROLE" == api ]] || die "migrations run on an API machine; this one is a $ROLE"
+
+tag="${1:-}"
+[[ -n "$tag" && "$tag" != none ]] || die "usage: parikshaa-migrate <tag>"
+image="$(pull "$REPOSITORY" "$tag")"
+file="$(env_file "DATABASE_URL=$(owner_url)" "PARIKSHAA_APP_PASSWORD=$(app_password)")"
+trap 'rm -f "$file"' EXIT
+docker run --rm --env-file "$file" -v /etc/parikshaa/rds-ca.pem:/certs/rds.pem:ro \
+  "$image" node packages/store/dist/migrate-cli.js

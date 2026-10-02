@@ -1,7 +1,8 @@
 # Operations
 
 Running Parikshaa for real: sizing, logs, limits, backups, and the tests that
-say it holds up (ROADMAP §10, §13).
+say it holds up (ROADMAP §10, §13). Going live on AWS in Mumbai, from one
+machine to the managed setup, is in [DEPLOY-AWS.md](DEPLOY-AWS.md).
 
 ## Sizing
 
@@ -121,7 +122,9 @@ fairness, not billing.
 (ap-south-1) or Hyderabad (ap-south-2), Cloud SQL in Mumbai (asia-south1) or
 Delhi (asia-south2), Azure in Central India — with automated backups and
 point-in-time recovery on, retained at least 14 days. A drive's results are
-settled within a week; two weeks covers the discovery of a problem after that.
+settled within a week; two weeks covers the discovery of a problem after that. On AWS,
+`deploy/aws` sets this up: 14 days in production, the backups copied to
+Hyderabad as well.
 
 **Self-hosting**, archive WAL continuously to object storage with pgBackRest
 or WAL-G, and take a base backup nightly. A nightly `pg_dump` alone is not

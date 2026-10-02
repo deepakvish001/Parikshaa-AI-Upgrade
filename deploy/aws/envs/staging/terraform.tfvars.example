@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (git ignores it) and fill in.
+domain      = "staging.parikshaa.in"
+alarm_email = "ops@parikshaa.in"
+
+# route53_zone_id = "Z0123456789ABCDEFGHIJ"   # if the DNS is in Route 53
+
+settings = {
+  SELF_SIGNUP          = "on"
+  SIGNUP_PRICE_RUPEES  = "49"
+  SIGNUP_TRIAL_CREDITS = "25"
+  SIGNUP_NOTIFY_EMAIL  = "ops@parikshaa.in"
+}

@@ -1,0 +1,38 @@
+#!/bin/bash
+# Imports a pilot's dump into this stack's new, empty database, then migrates
+# and verifies every ledger chain in it (docs/DEPLOY-AWS.md, "Pilot se RDS").
+# On an API machine; the dump is waiting in the stack's ops bucket.
+#
+#   sudo parikshaa-import s3://<ops-bucket>/import/pilot.dump <tag>
+#
+# <tag> is an image release.sh --images-only pushed: its migrations and its
+# chain verifier run after the import. The database must have no tables yet,
+# so this comes before the stack's first release.
+set -euo pipefail
+# shellcheck source=common.sh
+. /usr/local/lib/parikshaa/common.sh
+[[ "$ROLE" == api ]] || die "imports run on an API machine; this one is a $ROLE"
+
+source="${1:-}"
+tag="${2:-}"
+[[ "$source" == s3://* && -n "$tag" && "$tag" != none ]] || die "usage: parikshaa-import s3://<ops-bucket>/import/<file>.dump <tag from release.sh --images-only>"
+
+work="$(mktemp -d /var/tmp/parikshaa-import.XXXXXX)"
+file=""
+trap 'rm -rf "$work"; [[ -z "$file" ]] || rm -f "$file"' EXIT
+aws s3 cp --only-show-errors "$source" "$work/pilot.dump"
+cp /usr/local/lib/parikshaa/import-dump.sh "$work/"
+url="$(owner_url)"
+file="$(env_file "OWNER_URL=$url" "DATABASE_URL=$url")"
+
+echo "parikshaa: importing $source"
+docker run --rm --env-file "$file" -v "$work:/work:ro" -v /etc/parikshaa/rds-ca.pem:/certs/rds.pem:ro \
+  postgres:16 bash /work/import-dump.sh /work/pilot.dump
+
+echo "parikshaa: migrating to $tag"
+/usr/local/bin/parikshaa-migrate "$tag"
+
+echo "parikshaa: verifying every chain"
+docker run --rm --env-file "$file" -v /etc/parikshaa/rds-ca.pem:/certs/rds.pem:ro \
+  "$(pull "$REPOSITORY" "$tag")" node packages/api/dist/verify-all-cli.js
+echo "parikshaa: imported. Next: release.sh with --tag $tag"

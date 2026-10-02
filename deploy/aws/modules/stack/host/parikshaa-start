@@ -1,0 +1,70 @@
+#!/bin/bash
+# Runs this machine's part of Parikshaa at the released image tag: the API
+# (ROLE=api) or the code runner (ROLE=runner). systemd's parikshaa.service runs
+# it at every boot; release.sh never calls it, it replaces machines instead.
+set -euo pipefail
+# shellcheck source=common.sh
+. /usr/local/lib/parikshaa/common.sh
+
+tag="$(released_tag)"
+if [[ "$tag" == none ]]; then
+  echo "parikshaa: nothing released yet; the placeholder answers health checks until release.sh runs"
+  systemctl start parikshaa-placeholder
+  exit 0
+fi
+systemctl stop parikshaa-placeholder 2>/dev/null || true
+
+container="parikshaa-$ROLE"
+logs=(--log-driver awslogs --log-opt "awslogs-region=$REGION" --log-opt "awslogs-group=$LOG_GROUP" --log-opt "awslogs-stream=$(instance_id)")
+secrets="$(secret_json "$SECRET_ID")"
+# One NAME=value per line: a line break inside a value would cut it short.
+jq -e 'all(.[]; tostring | test("\n") | not)' <<<"$secrets" >/dev/null || die "a value in $SECRET_ID has a line break"
+
+if [[ "$ROLE" == api ]]; then
+  image="$(pull "$REPOSITORY" "$tag")"
+  password="$(app_password)"
+  mapfile -t lines < <(jq -r 'to_entries[] | select(.key != "PARIKSHAA_APP_PASSWORD" and .value != "") | "\(.key)=\(.value)"' <<<"$secrets")
+  # The stack's own settings come after the secrets, so they win.
+  mapfile -t settings </etc/parikshaa/settings.env
+  file="$(env_file "${lines[@]}" "${settings[@]}" "DATABASE_URL=$(db_url parikshaa_app "$password")")"
+  docker rm -f "$container" >/dev/null 2>&1 || true
+  docker run -d --name "$container" --restart unless-stopped \
+    --env-file "$file" \
+    -v /etc/parikshaa/rds-ca.pem:/certs/rds.pem:ro \
+    -p 3000:3000 "${logs[@]}" "$image" >/dev/null
+  rm -f "$file"
+  health=http://127.0.0.1:3000/api/health
+else
+  # Candidate code may open no connection at all: not to the internet, not to
+  # this machine, not to the metadata service (IMDS hop limit 1 as well).
+  # Replies to the runs the load balancer sends in are still allowed.
+  iptables -C DOCKER-USER -i docker0 ! -o docker0 -m conntrack --ctstate NEW -j DROP 2>/dev/null ||
+    iptables -I DOCKER-USER -i docker0 ! -o docker0 -m conntrack --ctstate NEW -j DROP
+  iptables -C INPUT -i docker0 -m conntrack --ctstate NEW -j DROP 2>/dev/null ||
+    iptables -I INPUT -i docker0 -m conntrack --ctstate NEW -j DROP
+
+  image="$(pull "$REPOSITORY" "$tag")"
+  token="$(jq -r '.RUNNER_TOKEN // empty' <<<"$secrets")"
+  [[ -n "$token" ]] || die "RUNNER_TOKEN is not in $SECRET_ID yet: run deploy/aws/scripts/put-secrets.sh first."
+  memory_mb=$(($(awk '/MemTotal/ {print $2}' /proc/meminfo) * 8 / 10 / 1024))
+  file="$(env_file "RUNNER_TOKEN=$token" "RUNNER_ISOLATION=gvisor")"
+  docker rm -f "$container" >/dev/null 2>&1 || true
+  # As docker-compose.yml runs it: gVisor, read-only, a small /tmp, limits.
+  docker run -d --name "$container" --restart unless-stopped \
+    --runtime runsc --read-only --tmpfs /tmp:size=512m,mode=1777 \
+    --memory "${memory_mb}m" --pids-limit 1024 --cpus "$(nproc)" \
+    --env-file "$file" \
+    -p 4000:4000 "${logs[@]}" "$image" >/dev/null
+  rm -f "$file"
+  health=http://127.0.0.1:4000/health
+fi
+
+for _ in $(seq 1 60); do
+  if curl -fsS "$health" >/dev/null 2>&1; then
+    echo "parikshaa: $ROLE is up at $tag"
+    exit 0
+  fi
+  sleep 2
+done
+docker logs --tail 50 "$container" >&2 || true
+die "$ROLE did not answer $health within two minutes"
