@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor, type PushSubscriptionRecord } from "@parikshaa/store";
 import { DeliveryWorker, OutboxLog, type Mailer } from "./delivery.js";
 import type { PrepEngage } from "./prep-engage.js";
+import { androidAppFromEnv } from "./android-app.js";
 import { isPushEndpoint, type PushMessage, type PushSender } from "./push.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
@@ -231,5 +232,31 @@ describe("a server without notifications", () => {
     const asha = await signUp("asha@example.com", "Asha");
     expect((await call("POST", asha, `${S}/push`, { endpoint: `${FCM}one`, keys })).statusCode).toBe(503);
     expect(await ok("GET", asha, `${S}/reminders`)).toEqual({ enabled: false, hour: 19, email: true, push: false, devices: 0 });
+  });
+});
+
+describe("the Android app (plan row 43)", () => {
+  const FP = Array.from({ length: 32 }, (_, i) => (i * 7).toString(16).padStart(2, "0").toUpperCase()).join(":");
+
+  it("is read from the environment, and refused when it is not a package and a fingerprint", () => {
+    expect(androidAppFromEnv({})).toBeNull();
+    expect(androidAppFromEnv({ TWA_PACKAGE: "in.parikshaa.practice", TWA_SHA256: `${FP.toLowerCase()}, ${FP}` })).toEqual({ packageName: "in.parikshaa.practice", fingerprints: [FP, FP] });
+    expect(() => androidAppFromEnv({ TWA_PACKAGE: "parikshaa", TWA_SHA256: FP })).toThrow(/package name/);
+    expect(() => androidAppFromEnv({ TWA_PACKAGE: "in.parikshaa.practice" })).toThrow(/fingerprint/);
+    expect(() => androidAppFromEnv({ TWA_PACKAGE: "in.parikshaa.practice", TWA_SHA256: "AB:CD" })).toThrow(/fingerprint/);
+  });
+
+  it("is published as Digital Asset Links when configured, and not otherwise", async () => {
+    db = await freshDatabase();
+    started = true;
+    ({ app } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic, server: { androidApp: { packageName: "in.parikshaa.practice", fingerprints: [FP] } } }));
+    const res = await app.inject({ method: "GET", url: "/.well-known/assetlinks.json" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([
+      { relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: "in.parikshaa.practice", sha256_cert_fingerprints: [FP] } },
+    ]);
+    await app.close();
+    ({ app } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic }));
+    expect((await app.inject({ method: "GET", url: "/.well-known/assetlinks.json" })).statusCode).toBe(404);
   });
 });

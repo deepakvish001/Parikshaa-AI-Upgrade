@@ -12596,6 +12596,20 @@
         }
       }
     },
+    "/.well-known/assetlinks.json": {
+      "get": {
+        "summary": "Digital Asset Links for the Android app (TWA)",
+        "tags": [
+          "Institution"
+        ],
+        "description": "404 when no app is configured.",
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Liveness",
