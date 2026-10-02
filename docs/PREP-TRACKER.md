@@ -2,6 +2,8 @@
 
 **Parikshaa Prep Blueprint** (28 Sep 2026) ka har feature yahan track hota hai: kya ban gaya, kya aadha hai, kya baaki hai, aur aage kya banana hai. Blueprint ka poora plan (design, flows, data model, pricing) yahan hai: <https://claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh>. Isi ka engineering version [ROADMAP §16](ROADMAP.md#16-prep-a-practice-site-to-prepare-on) me hai. Blueprint ke aage ka bada plan (Pramaan, Parikshaa Score, college aur company ka hissa, dusre exams) [Master plan v2](#master-plan-v2-taiyaari-se-naukri-tak-ek-bharosemand-platform) me hai: abhi prastaav, owner ki haan baaki.
 
+**Poora product plan (students, college, company, UI/UX, platform): [MASTER-PLAN.md](MASTER-PLAN.md)** (v3, 2 Oct 2026). Wahan ~90 epics (`M-S1`, `M-C1`…) phases aur "done kab" ke saath hain. Yahan sirf status rehta hai; koi epic shuru ho to uski row neeche Plan table me banti hai.
+
 Aakhri update: **1 Oct 2026** (Master plan v2 joda) · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
 
 ## Is file ko kaise update karna hai
@@ -308,7 +310,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Push notifications ki keys** (plan 41) | Server env me `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (ek baar `npx web-push generate-vapid-keys`; private key chat me mat bhejiye, seedha server env me) | Plan page par "notification bhi" ka option dikhega, aur roz ka reminder phone par aayega | 2 Oct 2026 |
 | **College/company ke agle features: Plan rows 65–74** (Batch A–J, 2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa batch pehle. F, G, H, I, J me owner se cheezein chahiye (API key, data, prices, manzoori, auditor) | Har batch apne tests aur screenshots ke saath | 2 Oct 2026 |
 | **Agle features: Plan rows 42–52** (2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa pehle. 43, 50, 51, 52 me owner se cheezein bhi chahiye (Play Console, cloud, video host, content) | Har row apne tests ke saath banegi, phir ✅ | 2 Oct 2026 |
-| **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
+| **Master plan v3 par faisla** ([MASTER-PLAN.md](MASTER-PLAN.md), v2 ki jagah) | Owner ki haan ya na, aur [§19](MASTER-PLAN.md#19-owner-se-kya-chahiye) ki list: cloud + domain, API key + AI budget, providers (email/SMS/WhatsApp/Razorpay live), 3 pilot colleges + 2 companies, naam/brand, content team, vakeel, designer | Haan ke baad Phase 0 (M-F1 go-live) ki row Plan table me, phir build | 2 Oct 2026 |
 
 ## Plan: aage kya banega
 
