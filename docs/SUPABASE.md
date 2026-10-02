@@ -9,23 +9,35 @@ and Supabase's Data API are not used.
 
 | Project | Ref | Region | What it is |
 |---|---|---|---|
-| `parikshaa-mumbai` | `sjjbicutbofkfatnvczk` | ap-south-1 (Mumbai) | **Parikshaa's database.** Every migration in `packages/store/migrations` up to 0057, except 0054 and 0055 (below) |
+| `parikshaa-mumbai` | `sjjbicutbofkfatnvczk` | ap-south-1 (Mumbai) | **Parikshaa's database.** Every migration in `packages/store/migrations` up to 0058, except 0054 and 0055 (below) |
 | `Parikshaa` | `axowhidnctqdmpuqxibx` | ap-southeast-1 (Singapore) | The owner's earlier app. Read only, as the source of the legacy import; never written to |
 
 The organisation is on Supabase's free plan. Before real candidates, move it
 to Pro: daily backups and point-in-time recovery come only with a paid plan.
 
-## Nothing is served to the public key
+## No Supabase key opens a table
 
-Supabase gives its API roles, `anon` and `authenticated`, every privilege on
-new tables in `public` and serves them to anyone holding the project's
-publishable key. Migration 0056 takes every privilege away from both roles,
-on every table, sequence and function, now and for whatever later migrations
-make. The test in `packages/store/src/migrate.test.ts` sets up those roles
-the way Supabase does and fails if either can touch a table afterwards.
+Supabase gives its API roles every privilege on new tables in `public`:
+`anon` and `authenticated` (the publishable key) and `service_role` (the
+secret key). Parikshaa uses none of them for its tables: the server connects
+as `parikshaa_app` and does its own sign-in. Migration 0056 takes every
+privilege on every table, sequence and function away from the first two, and
+0058 from `service_role`, now and for whatever later migrations make. So a
+leaked key, even the secret one, opens no table. The test in
+`packages/store/src/migrate.test.ts` sets up the three roles the way Supabase
+does and fails if any can touch a table afterwards.
 
-Checked on the live project on 2 Oct 2026: no grant to either role, no table
-either can read, and Supabase's security advisor reports nothing.
+Checked on the live project on 2 Oct 2026: no grant to any of the three, no
+table any can read, and Supabase's security advisor reports nothing. The
+default grants left in `public` belong to `supabase_admin` and cover only
+objects Supabase itself makes; the migrations run as `postgres`, whose
+defaults now grant nothing.
+
+The API keys are not used and need not be kept anywhere. Storage uploads,
+when they come, will use the secret key from the VM's environment only. Both
+projects' secret keys were shared in a chat on 2 Oct 2026 and are to be
+rotated (Project Settings → API Keys); until then, 0058 keeps the Mumbai one
+away from every table.
 
 ## How the schema got there, and how to keep it current
 
@@ -61,9 +73,11 @@ tests) and `legacy-import-cli.ts` runs it. A dry run of the source on
 Run it again and it updates what it brought before; it never adds a problem
 twice and never touches a problem of the site's own.
 
-**To run it**, from GitHub: Actions → *Legacy import* → Run workflow. It needs
-two repository secrets, each the *session pooler* connection string from the
-project's **Connect** panel:
+**To run it**, from GitHub: Actions → *Legacy import* → Run workflow. GitHub
+offers a hand-run workflow only once it is on the default branch, so this
+works after the pull request that adds it is merged. It needs two repository
+secrets (added by the owner on 2 Oct 2026), each the *session pooler*
+connection string from the project's **Connect** panel:
 
 - `LEGACY_DATABASE_URL`: the Singapore project;
 - `PARIKSHAA_DATABASE_URL`: the Mumbai project.

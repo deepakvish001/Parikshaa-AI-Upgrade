@@ -137,6 +137,7 @@ describe("migrate", () => {
       "0055_remove_extras.sql",
       "0056_supabase_lockdown.sql",
       "0057_function_search_path.sql",
+      "0058_supabase_service_role.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -186,28 +187,30 @@ describe("migrate", () => {
     for (const gone of ["answer_scripts", "answer_script_pages", "exam_outcomes"]) expect(tables.map((t) => t.tablename)).not.toContain(gone);
   });
 
-  it("leaves Supabase's public API roles no privilege on any table, then or later", async () => {
+  it("leaves Supabase's API roles, the secret key's included, no privilege on any table, then or later", async () => {
     // What a Supabase project does before our first migration: two API roles
     // that receive every privilege on whatever is created in public.
     await sql.exec(`
       CREATE ROLE anon NOLOGIN;
       CREATE ROLE authenticated NOLOGIN;
-      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated;
-      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated;
+      CREATE ROLE service_role NOLOGIN BYPASSRLS;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
     `);
     await migrate(sql);
     await sql.exec(`CREATE TABLE later_table (id int)`);
 
     const granted = await sql.query<{ grantee: string; table_name: string }>(
       `SELECT grantee, table_name FROM information_schema.role_table_grants
-        WHERE table_schema = 'public' AND grantee IN ('anon', 'authenticated')`,
+        WHERE table_schema = 'public' AND grantee IN ('anon', 'authenticated', 'service_role')`,
     );
     expect(granted).toEqual([]);
     const usable = await sql.query<{ n: number }>(
       `SELECT count(*)::int AS n FROM pg_tables t
         WHERE t.schemaname = 'public'
           AND (has_table_privilege('anon', format('%I.%I', t.schemaname, t.tablename), 'SELECT')
-            OR has_table_privilege('authenticated', format('%I.%I', t.schemaname, t.tablename), 'INSERT'))`,
+            OR has_table_privilege('authenticated', format('%I.%I', t.schemaname, t.tablename), 'INSERT')
+            OR has_table_privilege('service_role', format('%I.%I', t.schemaname, t.tablename), 'SELECT'))`,
     );
     expect(usable[0]!.n).toBe(0);
   });
