@@ -905,6 +905,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `a54d2aa`, `2fa24cd`, `c4827a7` | main (#39) merge: is branch ki migration ab `0054_prep_next`. CI (WebKit): "⋯" menu sirf button hilne par band hota hai (page ka koi hissa baad me load hone par nahi); onboarding test me beech me cancel hua animation bhi khatam gina jaata hai |
 | 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `95d19a3`, `c4bb7ed` | Plan 42: offline me diya jawab device par, net aate hi jama (contest ka nahi); lessons/tracks/problems offline. Plan 43: TWA ka server hissa (`assetlinks.json`), `docs/PLAY-STORE.md` |
 | 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `2e36ab7`, `783cf63`, `ce85a5e` | Plan 48: staff editorial ka code save par tests par chalta hai. Plan 45: SQL examples aur result tables me. Plan 46: plan me target role (SDE/backend/frontend/data) |
 | 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `eaecb4f`, `931ce8b`, `9da00af` | Plan 49: 17 DSA problems me "Better" tab. Plan 47: account delete par saara prep data (`prep_erase_study`). Plan 44: apne share links ki list aur hatana |
