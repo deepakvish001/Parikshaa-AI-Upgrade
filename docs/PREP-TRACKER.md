@@ -2,6 +2,8 @@
 
 **Parikshaa Prep Blueprint** (28 Sep 2026) ka har feature yahan track hota hai: kya ban gaya, kya aadha hai, kya baaki hai, aur aage kya banana hai. Blueprint ka poora plan (design, flows, data model, pricing) yahan hai: <https://claude.ai/artifact/AGkGV3SkmmsszWzL4EVZuh>. Isi ka engineering version [ROADMAP §16](ROADMAP.md#16-prep-a-practice-site-to-prepare-on) me hai. Blueprint ke aage ka bada plan (Pramaan, Parikshaa Score, college aur company ka hissa, dusre exams) [Master plan v2](#master-plan-v2-taiyaari-se-naukri-tak-ek-bharosemand-platform) me hai: abhi prastaav, owner ki haan baaki.
 
+**Poora product plan (students, college, company, UI/UX, platform): [MASTER-PLAN.md](MASTER-PLAN.md)** (v3, 2 Oct 2026). Wahan ~90 epics (`M-S1`, `M-C1`…) phases aur "done kab" ke saath hain. Yahan sirf status rehta hai; koi epic shuru ho to uski row neeche Plan table me banti hai.
+
 Aakhri update: **1 Oct 2026** (Master plan v2 joda) · Prep ka kaam PR [#27](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/27) aur [#30](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/30) me merge hua
 
 ## Is file ko kaise update karna hai
@@ -313,7 +315,7 @@ Ye kaam code me taiyaar hain, lekin owner ki taraf se kuch chahiye. Owner "kya p
 | **Play Store app (TWA)** (plan 43) | Google Play Console account, app ka naam aur package name (jaise `in.parikshaa.practice`), signing key kaun rakhega, aur learners ke liye privacy policy ka public page | `docs/PLAY-STORE.md` ke kadam: Bubblewrap se app, `TWA_PACKAGE`/`TWA_SHA256` server par, Play par upload | 2 Oct 2026 |
 | **Agle features: Plan rows 50–52** (2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge"; 42–49 ban gaye) | Owner kab kahe ki shuru karo. 50 (judge autoscale), 51 (video hosting), 52 (content) teeno me owner se cheezein chahiye (cloud, video host, content) | Har row apne tests ke saath banegi, phir ✅ | 2 Oct 2026 |
 | **College/company ke agle features: Plan rows 65–74** (Batch A–J, 2 Oct 2026 ko owner ne kaha "yaad rakho, baad me karenge") | Owner kab kahe ki shuru karo, aur kaunsa batch pehle. F, G, H, I, J me owner se cheezein chahiye (API key, data, prices, manzoori, auditor) | Har batch apne tests aur screenshots ke saath | 2 Oct 2026 |
-| **Master plan v2 par faisla** | Owner ki haan ya na, aur [V2-11](#v2-11-owner-se-kya-chahiye) ki list (naam, budget, content, DigiLocker, pilot partners) | Haan ke baad V2-P0 ki entries upar ki Plan table me (row 10 se), phir build | 1 Oct 2026 |
+| **Master plan v3 par faisla** ([MASTER-PLAN.md](MASTER-PLAN.md), v2 ki jagah) | Owner ki haan ya na, aur [§19](MASTER-PLAN.md#19-owner-se-kya-chahiye) ki list: cloud + domain, API key + AI budget, providers (email/SMS/WhatsApp/Razorpay live), 3 pilot colleges + 2 companies, naam/brand, content team, vakeel, designer | Haan ke baad Phase 0 (M-F1 go-live) ki row Plan table me, phir build | 2 Oct 2026 |
 
 ## Plan: aage kya banega
 
@@ -905,6 +907,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 2 Oct 2026 | [#41](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/41) | [Master plan v3](MASTER-PLAN.md): ek Parikshaa ID, teen darwaze (Learn, Campus, Hire), ~90 epics phases 0–5 ke saath, UI/UX plan, Phase 0–1 ka task-level breakdown. Sirf plan, code nahi |
 | 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `a54d2aa`, `2fa24cd`, `c4827a7` | main (#39) merge: is branch ki migration ab `0054_prep_next`. CI (WebKit): "⋯" menu sirf button hilne par band hota hai (page ka koi hissa baad me load hone par nahi); onboarding test me beech me cancel hua animation bhi khatam gina jaata hai |
 | 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `95d19a3`, `c4bb7ed` | Plan 42: offline me diya jawab device par, net aate hi jama (contest ka nahi); lessons/tracks/problems offline. Plan 43: TWA ka server hissa (`assetlinks.json`), `docs/PLAY-STORE.md` |
 | 2 Oct 2026 | [#40](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/40) `2e36ab7`, `783cf63`, `ce85a5e` | Plan 48: staff editorial ka code save par tests par chalta hai. Plan 45: SQL examples aur result tables me. Plan 46: plan me target role (SDE/backend/frontend/data) |
