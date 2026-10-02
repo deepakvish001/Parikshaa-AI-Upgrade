@@ -115,8 +115,6 @@ jobs:
   # the deploy scripts pass shellcheck and their tests against a fake AWS.
   deploy:
     runs-on: ubuntu-latest
-    env:
-      TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/terraform-plugins
     steps:
       - uses: actions/checkout@v7
 
@@ -125,9 +123,11 @@ jobs:
         run: |
           curl -sSfL -o terraform.zip https://releases.hashicorp.com/terraform/1.16.4/terraform_1.16.4_linux_amd64.zip
           echo "dc94af0eef1147718ad7c8daea792ed199e3e0492eec180d0adafa2a65a879df  terraform.zip" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/bin" "$TF_PLUGIN_CACHE_DIR"
+          mkdir -p "$RUNNER_TEMP/bin" "$RUNNER_TEMP/terraform-plugins"
           unzip -q terraform.zip terraform -d "$RUNNER_TEMP/bin"
           echo "$RUNNER_TEMP/bin" >>"$GITHUB_PATH"
+          # One download of the AWS provider for every directory below.
+          echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/terraform-plugins" >>"$GITHUB_ENV"
 
       - run: terraform fmt -check -recursive deploy/aws
 
