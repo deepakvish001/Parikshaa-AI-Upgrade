@@ -194,6 +194,23 @@ export interface CodeQuestion extends QuestionBase {
   /** When present, the answer is scored by running these, not by a rubric grader. */
   readonly tests?: readonly CodeTest[];
   readonly limits?: { readonly timeMs?: number; readonly memoryMb?: number };
+  /**
+   * An AI-fluency question (plan row 87): the candidate may ask an AI
+   * assistant while answering, as they would at work. Every prompt and reply
+   * goes in the ledger (`ai_assisted`), so the reviewer sees how it was used.
+   */
+  readonly aiAssist?: boolean;
+}
+
+/** One question to the AI assistant on an AI-fluency question, and its answer. */
+export interface AiAssistExchange {
+  readonly questionId: QuestionId;
+  /** What the candidate asked. */
+  readonly prompt: string;
+  /** The assistant's answer, as shown to the candidate. */
+  readonly reply: string;
+  /** The candidate's code when they asked, sent with the question; null if the editor was empty. */
+  readonly code: string | null;
 }
 
 export type Question = McqQuestion | ShortQuestion | NumericQuestion | CodeQuestion;
@@ -399,6 +416,16 @@ export type ExamEvent =
   | { readonly type: "viva_probed"; readonly attemptId: AttemptId; readonly probe: VivaProbe }
   | { readonly type: "viva_replied"; readonly attemptId: AttemptId; readonly exchange: VivaExchange }
   | { readonly type: "viva_assessed"; readonly attemptId: AttemptId; readonly assessment: VivaAssessment }
+  | {
+      /**
+       * The candidate asked the AI assistant on an AI-fluency question, and
+       * this is what it said. Only while the attempt is open; the prompt, the
+       * reply and the code are sealed like answers.
+       */
+      readonly type: "ai_assisted";
+      readonly attemptId: AttemptId;
+      readonly exchange: AiAssistExchange;
+    }
   | { readonly type: "question_scored"; readonly attemptId: AttemptId; readonly questionId: QuestionId; readonly score: number }
   | { readonly type: "attempt_graded"; readonly attemptId: AttemptId; readonly total: number }
   | {

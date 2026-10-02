@@ -21,8 +21,7 @@
     "PublicPages-*.js": 6,
     "PublicPages-*.css": 1,
     "AiInterview-*.js": 3,
-    "AiInterview-*.css": 1,
-    "user-round-*.js": 1
+    "AiInterview-*.css": 1
   },
   "packages/console/dist": {
     "index-*.js": 178,

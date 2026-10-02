@@ -111,6 +111,8 @@ export interface CandidateData {
   readonly erased: boolean;
   readonly answers: readonly { readonly questionId: string; readonly answer: string; readonly at: number }[];
   readonly followUps: readonly { readonly questionId: string; readonly question: string; readonly reply: string | null; readonly at: number }[];
+  /** What they asked the AI assistant on AI-fluency questions, and its answers. */
+  readonly assists: readonly { readonly questionId: string; readonly prompt: string; readonly reply: string; readonly at: number }[];
   readonly timeline: readonly { readonly at: number; readonly event: string }[];
   /** A proctored exam's photos (not the images: ask the grievance officer for those) and what the browser reported. */
   readonly proctoring: {
@@ -202,6 +204,7 @@ export class PrivacyService {
 
     const answers: { questionId: string; answer: string; at: number }[] = [];
     const followUps: { questionId: string; question: string; reply: string | null; at: number; probeId: string }[] = [];
+    const assists: { questionId: string; prompt: string; reply: string; at: number }[] = [];
     let consent: CandidateData["consent"] = null;
     for (const { event, timestamp } of opened) {
       if (event.type === "answer_submitted") answers.push({ questionId: event.response.questionId, answer: event.response.answer, at: timestamp });
@@ -210,6 +213,7 @@ export class PrivacyService {
         const probe = followUps.find((f) => f.probeId === event.exchange.probeId);
         if (probe !== undefined) probe.reply = event.exchange.reply;
       }
+      if (event.type === "ai_assisted") assists.push({ questionId: event.exchange.questionId, prompt: event.exchange.prompt, reply: event.exchange.reply, at: timestamp });
       if (event.type === "consent_given") consent = { noticeVersion: event.noticeVersion, noticeHash: event.noticeHash, at: timestamp };
     }
 
@@ -225,6 +229,7 @@ export class PrivacyService {
       erased: erasedAt,
       answers,
       followUps: followUps.map(({ probeId: _, ...f }) => f),
+      assists,
       // What happened when, in the words a receipt uses — no scores or verdicts.
       timeline: opened.filter((e) => TIMELINE.has(e.event.type)).map((e) => ({ at: e.timestamp, event: e.event.type })),
       proctoring:
@@ -324,6 +329,7 @@ const TIMELINE = new Set<ExamEvent["type"]>([
   "answer_submitted",
   "viva_probed",
   "viva_replied",
+  "ai_assisted",
   "time_extended",
   "attempt_submitted",
   "attempt_reopened",

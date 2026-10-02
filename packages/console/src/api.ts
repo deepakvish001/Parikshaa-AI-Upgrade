@@ -54,6 +54,8 @@ export interface AttemptReview {
   readonly voidReason: string | null;
   readonly voidedBy?: { readonly userId: string; readonly name: string } | null;
   readonly vivas: readonly VivaReview[];
+  /** What the candidate asked the AI assistant on AI-fluency questions; an older server leaves it out. */
+  readonly assists?: readonly { readonly questionId: string; readonly prompt: string; readonly reply: string; readonly code: string | null; readonly at: number }[];
 }
 
 export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer";

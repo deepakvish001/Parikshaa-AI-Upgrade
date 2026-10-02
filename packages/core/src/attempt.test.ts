@@ -402,3 +402,21 @@ describe("foldAttempt", () => {
     });
   });
 });
+
+describe("the AI assistant on an AI-fluency question (plan row 87)", () => {
+  const assisted = (prompt: string): ExamEvent => ({
+    type: "ai_assisted",
+    attemptId: A,
+    exchange: { questionId: Q1, prompt, reply: "Use a hash set.", code: null },
+  });
+
+  it("keeps every ask, in order, with when it was asked", () => {
+    const projection = project(chain(started, assisted("first"), answered(), assisted("second")));
+    expect(projection.assists.map((a) => a.prompt)).toEqual(["first", "second"]);
+    expect(projection.assists[0]!.at).toBeLessThan(projection.assists[1]!.at);
+  });
+
+  it("refuses an ask once the attempt is submitted", () => {
+    expect(foldAttempt(chain(started, submitted, assisted("late")))).toMatchObject({ ok: false, reason: "not_in_progress", seq: 2 });
+  });
+});

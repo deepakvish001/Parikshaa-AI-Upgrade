@@ -32,6 +32,7 @@ const PERSONAL: Partial<Record<ExamEvent["type"], readonly (readonly string[])[]
   viva_probed: [["probe", "prompt"]],
   viva_replied: [["exchange", "reply"]],
   viva_assessed: [["assessment", "reasoning"]],
+  ai_assisted: [["exchange", "prompt"], ["exchange", "reply"], ["exchange", "code"]],
 };
 
 /** Whether an event carries anything personal, and so needs a key to write. */

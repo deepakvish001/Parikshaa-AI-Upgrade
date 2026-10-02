@@ -19,6 +19,10 @@ export interface FakeModelScript {
     question: string;
     reading: { criteria: { name: string; score: number; evidence: string[] }[]; summary: string; concerns: string[] };
   };
+  /** What the AI assistant on an AI-fluency question answers. */
+  assist: string;
+  /** Each conversation sent to the AI assistant, its messages joined: tests read it to see what the model was told. */
+  assistPrompts: string[];
   /** Each prompt the AI interviewer sent, as sent: tests read it to see what the model was told. */
   interviewPrompts: string[];
   /** Milliseconds before a probe finishes streaming, and before a grade or reading returns. */
@@ -49,6 +53,8 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
       },
     },
     interviewPrompts: [],
+    assist: "Use a hash set: one pass, O(n).",
+    assistPrompts: [],
     latencyMs: 0,
     ...overrides,
   };
@@ -74,6 +80,10 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
       async parse(params: { system?: unknown; messages?: { content: unknown }[] }) {
         await pause(script.latencyMs);
         const system = JSON.stringify(params.system);
+        if (system.includes("AI coding assistant inside a hiring test")) {
+          script.assistPrompts.push((params.messages ?? []).map((m) => String(m.content)).join("\n---\n"));
+          return { stop_reason: "end_turn", stop_details: null, parsed_output: { reply: script.assist }, usage: USAGE };
+        }
         if (system.includes("You interview candidates") || system.includes("You read a finished")) {
           script.interviewPrompts.push(String(params.messages?.[0]?.content ?? ""));
           const reading = system.includes("You read a finished");

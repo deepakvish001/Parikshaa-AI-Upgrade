@@ -132,6 +132,7 @@ export function registerPrivacyRoutes(routes: Routes, deps: PrivacyRouteDeps): v
             erased: z.boolean(),
             answers: z.array(z.object({ questionId: z.string(), answer: z.string(), at: z.number() })).readonly(),
             followUps: z.array(z.object({ questionId: z.string(), question: z.string(), reply: z.string().nullable(), at: z.number() })).readonly(),
+            assists: z.array(z.object({ questionId: z.string(), prompt: z.string(), reply: z.string(), at: z.number() })).readonly().describe("What was asked of the AI assistant on AI-fluency questions, and its answers."),
             timeline: z.array(z.object({ at: z.number(), event: z.string() })).readonly(),
             proctoring: z
               .object({

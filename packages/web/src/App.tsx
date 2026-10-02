@@ -21,6 +21,7 @@ import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { IdentityCapture } from "./components/IdentityCapture.tsx";
 import { useProctoring, type ShareProblem } from "./proctoring.ts";
+import { AiAssist, sourceOf } from "./components/AiAssist.tsx";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
@@ -1127,6 +1128,19 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           completion={exam.codeCompletion ?? false}
           startFull={wide && !lite}
           rail={<QuestionRail items={items} current={currentId} onGo={goTo} />}
+          {...(q.kind === "code" && q.aiAssist
+            ? {
+                assistant: (
+                  <AiAssist
+                    key={`assist-${q.id}`}
+                    initial={(state.data?.assists ?? []).filter((a) => a.questionId === q.id)}
+                    disabled={partTimeUp}
+                    code={() => sourceOf(value)}
+                    ask={(prompt, source) => client.askAssistant(q.id, prompt, source)}
+                  />
+                ),
+              }
+            : {})}
         />
       </section>
     );

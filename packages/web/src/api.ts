@@ -291,6 +291,11 @@ export class ParikshaaClient {
     return this.#request("/attempts/me/code/submit", { method: "POST", body: JSON.stringify({ questionId, language, source }) });
   }
 
+  /** Ask the AI assistant on an AI-fluency question; the exchange is recorded before the reply comes back. */
+  askAssistant(questionId: string, prompt: string, code: string | null): Promise<{ readonly questionId: string; readonly prompt: string; readonly reply: string; readonly at: number; readonly left: number }> {
+    return this.#request("/attempts/me/assist", { method: "POST", body: JSON.stringify({ questionId, prompt, code }) });
+  }
+
   /** Autosave the text so far. Not an answer until committed; see the server's drafts route. */
   async saveDraft(questionId: string, answer: string): Promise<void> {
     await this.#request(`/attempts/me/drafts/${encodeURIComponent(questionId)}`, {
