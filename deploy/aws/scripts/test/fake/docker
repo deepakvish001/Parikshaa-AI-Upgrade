@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# A stand-in for docker in the release test: logs the call, takes the build
+# context from stdin, and records a pushed image as present in the fake ECR.
+set -euo pipefail
+printf 'docker %s\n' "$*" >>"$FAKE_AWS/calls"
+case "$1" in
+  login) cat >/dev/null ;;
+  buildx)
+    bytes="$(wc -c)"
+    [[ "$bytes" -gt 0 ]] || { echo "fake docker: empty build context" >&2; exit 1; }
+    tag=""
+    while [[ $# -gt 0 ]]; do
+      if [[ "$1" == --tag ]]; then tag="$2"; fi
+      shift
+    done
+    repository="${tag%:*}"
+    name="${repository#*/}"
+    mkdir -p "$FAKE_AWS/images"
+    touch "$FAKE_AWS/images/$(printf '%s' "$name" | tr '/:!' '___'):${tag##*:}" ;;
+esac

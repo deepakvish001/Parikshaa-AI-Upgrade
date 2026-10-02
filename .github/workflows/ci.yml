@@ -109,6 +109,51 @@ jobs:
           cache-from: type=gha,scope=runner
           cache-to: type=gha,mode=max,scope=runner
 
+  # docs/DEPLOY-AWS.md: the AWS setup is code, held to what it promises
+  # without an AWS account. The Terraform is formatted and valid, its tests
+  # (provider mocked) check who may reach whom and what production keeps, and
+  # the deploy scripts pass shellcheck and their tests against a fake AWS.
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned and checked against HashiCorp's published checksum.
+      - name: Terraform
+        run: |
+          curl -sSfL -o terraform.zip https://releases.hashicorp.com/terraform/1.16.4/terraform_1.16.4_linux_amd64.zip
+          echo "dc94af0eef1147718ad7c8daea792ed199e3e0492eec180d0adafa2a65a879df  terraform.zip" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin" "$RUNNER_TEMP/terraform-plugins"
+          unzip -q terraform.zip terraform -d "$RUNNER_TEMP/bin"
+          echo "$RUNNER_TEMP/bin" >>"$GITHUB_PATH"
+          # One download of the AWS provider for every directory below.
+          echo "TF_PLUGIN_CACHE_DIR=$RUNNER_TEMP/terraform-plugins" >>"$GITHUB_ENV"
+
+      - run: terraform fmt -check -recursive deploy/aws
+
+      - name: Validate and test
+        working-directory: deploy/aws
+        run: |
+          for dir in bootstrap pilot envs/staging envs/production; do
+            terraform -chdir="$dir" init -backend=false -input=false >/dev/null
+            terraform -chdir="$dir" validate
+          done
+          # The stack needs its Hyderabad provider from an environment, so it
+          # is validated above through them and tested here on its own.
+          terraform -chdir=modules/stack init -backend=false -input=false >/dev/null
+          terraform -chdir=pilot test
+          terraform -chdir=modules/stack test
+
+      - name: Shellcheck
+        working-directory: deploy/aws
+        run: |
+          shellcheck -x -P modules/stack/host modules/stack/host/bootstrap.sh modules/stack/host/parikshaa-* \
+            scripts/*.sh scripts/test/scripts.test.sh scripts/test/fake/*
+          # Terraform fills ${…} in the template, quotes or not.
+          shellcheck --shell=bash -e SC2154,SC2016 pilot/user-data.sh.tftpl
+
+      - run: deploy/aws/scripts/test/scripts.test.sh
+
   # ROADMAP §13: the product in real browsers against a real Postgres, then
   # killed mid-write, then under load. Slower than `check`, so its own job.
   e2e:
@@ -174,6 +219,31 @@ jobs:
           SOURCE_URL=postgres://parikshaa_backup@localhost:5432/parikshaa_e2e \
           ADMIN_URL=postgres://postgres@localhost:5432/postgres \
           ./scripts/restore-drill.sh
+
+      # docs/DEPLOY-AWS.md, "Pilot se RDS": the pilot's database moved into a
+      # new server shaped like RDS: no parikshaa_app yet, and the schema's
+      # owner a login with CREATEROLE but no superuser, as RDS's master user
+      # is. The migrations then find nothing to do but the app's password,
+      # every chain verifies, and the app can log in.
+      - name: Import as RDS would
+        run: |
+          docker run -d --name rds -p 5499:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:16
+          for _ in $(seq 1 30); do pg_isready -q -h localhost -p 5499 && break; sleep 2; done
+          psql -h localhost -p 5499 -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE ROLE parikshaa_owner LOGIN CREATEROLE CREATEDB" \
+            -c "CREATE DATABASE parikshaa OWNER parikshaa_owner"
+          pg_dump --format=custom --file=pilot.dump postgres://parikshaa_backup@localhost:5432/parikshaa_e2e
+          export OWNER_URL=postgres://parikshaa_owner@localhost:5499/parikshaa
+          app_password="$(openssl rand -hex 16)"
+          ./deploy/aws/scripts/import-dump.sh pilot.dump
+          DATABASE_URL="$OWNER_URL" PARIKSHAA_APP_PASSWORD="$app_password" node packages/store/dist/migrate-cli.js | tee migrate.log
+          grep -q "^0 migration(s) applied" migrate.log
+          DATABASE_URL="$OWNER_URL" node packages/api/dist/verify-all-cli.js
+          PGPASSWORD="$app_password" psql -h localhost -p 5499 -U parikshaa_app -d parikshaa -v ON_ERROR_STOP=1 -qc "SELECT 1"
+          # A second import into a database that has data is refused.
+          if ./deploy/aws/scripts/import-dump.sh pilot.dump; then
+            echo "imported into a database that already had data"; exit 1
+          fi
 
       - uses: actions/upload-artifact@v7
         if: failure()
