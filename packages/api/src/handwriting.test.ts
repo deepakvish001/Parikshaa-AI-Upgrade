@@ -101,6 +101,29 @@ describe("a handwritten copy", () => {
     expect((await call("GET", "/exams/bio/scripts", owner)).json()).toMatchObject({ total: 10, tolerancePercent: 10, scripts: [{ candidateRef: "R1" }, { candidateRef: "R2" }] });
   });
 
+  it("puts checked copies into the exam's results and its course-outcome attainment, and leaves out disputed ones", async () => {
+    const a = (await page(first, "R1", "Ananya")).json().script.id;
+    const b = (await page(first, "R2", "Rohan")).json().script.id;
+    await page(first, "R3");
+    await call("PUT", `/scripts/${a}/marks`, first, marks(5, 3.5));
+    await call("PUT", `/scripts/${b}/marks`, first, marks(1, 1));
+    const results = (await call("GET", "/exams/bio/results", owner)).json();
+    // R3's copy is not checked yet: it has no result.
+    expect(results.rows.map((r: { ref: string; total: number; percent: number; paper: boolean }) => [r.ref, r.total, r.percent, r.paper])).toEqual([
+      ["R1", 8.5, 85, true],
+      ["R2", 2, 20, true],
+    ]);
+    expect(results.analytics.graded).toBe(2);
+
+    await call("PUT", "/exams/bio/outcomes", owner, { mapping: { q1: ["CO1"], q2: ["CO2"] }, matrix: {}, threshold: 60 });
+    const attainment = (await call("GET", "/exams/bio/attainment", owner)).json();
+    expect(attainment.courseOutcomes).toEqual([expect.objectContaining({ co: "CO1", candidates: 2, attained: 1 }), expect.objectContaining({ co: "CO2", candidates: 2, attained: 1 })]);
+
+    // Disputed: out of the results until a head examiner settles it.
+    await call("POST", `/scripts/${a}/moderation`, second, marks(1, 1));
+    expect((await call("GET", "/exams/bio/results", owner)).json().rows.map((r: { ref: string }) => r.ref)).toEqual(["R2"]);
+  });
+
   it("refuses what is not a picture, and stops reading at the spend cap", async () => {
     expect((await call("POST", "/exams/bio/scripts/pages", first, { ref: "R1", image: Buffer.from("%PDF-1.4").toString("base64") })).statusCode).toBe(409);
     const id = (await page(first, "R1")).json().script.id;

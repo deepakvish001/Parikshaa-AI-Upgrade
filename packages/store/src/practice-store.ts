@@ -449,7 +449,7 @@ export class PracticeStore {
       await tx.query(`DELETE FROM prep_reminders WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_push_subscriptions WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_profiles WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);
-      // Their study itself goes too (plan row 47; migration 0048): plan, cards,
+      // Their study itself goes too (plan row 47; migration 0054): plan, cards,
       // lists, focus, coins, credits, ratings, shares, stories and reports.
       await tx.query(`SELECT prep_erase_study($1, $2)`, [orgId, learnerId]);
       await tx.query(`DELETE FROM prep_experience_votes WHERE org_id = $1 AND learner_id = $2`, [orgId, learnerId]);

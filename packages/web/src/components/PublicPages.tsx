@@ -209,7 +209,7 @@ function who(e: PublicDrive["eligibility"]): string {
 export function ApplyPage({ code }: { readonly code: string }) {
   const [drive, setDrive] = useState<PublicDrive | "missing" | null>(null);
   const [form, setForm] = useState({ ref: "", email: "", name: "", phone: "", branch: "", batch: "", cgpa: "", backlogs: "0" });
-  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; text: string; statusLink?: string } | null>(null);
   const [sending, setSending] = useState(false);
   const url = `/api/apply/${encodeURIComponent(code)}`;
   useEffect(() => {
@@ -243,10 +243,14 @@ export function ApplyPage({ code }: { readonly code: string }) {
         ...(drive.openToNew ? { name: form.name, phone: form.phone.trim() === "" ? null : form.phone, branch: form.branch, batch: number(form.batch), cgpa: number(form.cgpa), backlogs: Number(form.backlogs) || 0 } : {}),
       }),
     }).catch(() => null);
-    const body = (await response?.json().catch(() => ({}))) as { status?: string; message?: string };
+    const body = (await response?.json().catch(() => ({}))) as { status?: string; message?: string; statusLink?: string };
     setResult(
       response?.ok === true
-        ? { ok: true, text: body.status === "already" ? "You had already applied. Nothing more to do." : "You have applied. Your placement cell will tell you about the test." }
+        ? {
+            ok: true,
+            text: body.status === "already" ? "You had already applied. Nothing more to do." : "You have applied. Your placement cell will tell you about the test.",
+            ...(body.statusLink === undefined ? {} : { statusLink: body.statusLink }),
+          }
         : { ok: false, text: body.message ?? "That did not go through. Try again." },
     );
     setSending(false);
@@ -295,9 +299,16 @@ export function ApplyPage({ code }: { readonly code: string }) {
             Applications have closed.
           </p>
         ) : result?.ok === true ? (
-          <p className="applied" role="status">
-            <CheckCircle2 aria-hidden="true" className="inline-icon" /> {result.text}
-          </p>
+          <>
+            <p className="applied" role="status">
+              <CheckCircle2 aria-hidden="true" className="inline-icon" /> {result.text}
+            </p>
+            {result.statusLink === undefined ? null : (
+              <p className="notice">
+                Keep this link to see where your application stands, round by round: <a href={result.statusLink}>follow your application</a>.
+              </p>
+            )}
+          </>
         ) : (
           <form
             aria-label="Your details"
@@ -583,6 +594,83 @@ export function OfferPage({ code }: { readonly code: string }) {
         {error === null ? null : (
           <p className="error" role="alert">
             {error}
+          </p>
+        )}
+      </section>
+    </GateShell>
+  );
+}
+
+interface ApplicationStatus {
+  readonly institution: string;
+  readonly company: string;
+  readonly role: string;
+  readonly name: string;
+  readonly stage: "applied" | "test" | "interview" | "offered" | "joined" | "rejected" | "withdrawn";
+  readonly updatedAt: string;
+  readonly offer: { readonly ctcLpa: number | null; readonly joiningDate: string | null; readonly response: "accepted" | "declined" | null; readonly link: string | null } | null;
+}
+
+const ROUNDS: readonly [ApplicationStatus["stage"], string][] = [
+  ["applied", "Applied"],
+  ["test", "Test"],
+  ["interview", "Interview"],
+  ["offered", "Offer"],
+  ["joined", "Joined"],
+];
+
+/** A student's own page for one application (CO39): the rounds, and their offer while it waits for an answer. */
+export function StatusPage({ code }: { readonly code: string }) {
+  const [view, setView] = useState<ApplicationStatus | "missing" | null>(null);
+  useEffect(() => {
+    fetch(`/api/status/${encodeURIComponent(code)}`).then(
+      async (r) => setView(r.ok ? ((await r.json()) as ApplicationStatus) : "missing"),
+      () => setView("missing"),
+    );
+  }, [code]);
+  if (view === null) {
+    return (
+      <GateShell width="narrow">
+        <section className="gate-card status-card" aria-busy="true" aria-label="Your application">
+          <Loader className="status-icon spin" aria-hidden="true" />
+          <h1>Opening your application…</h1>
+        </section>
+      </GateShell>
+    );
+  }
+  if (view === "missing") return <Problem title="This link does not open an application" note="Check that the whole link was copied, or ask your placement cell." />;
+  const ended = view.stage === "rejected" || view.stage === "withdrawn";
+  const reached = ROUNDS.findIndex(([s]) => s === view.stage);
+  const updated = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium" }).format(new Date(view.updatedAt));
+  return (
+    <GateShell width="reading">
+      <section className="gate-card public-page" aria-label="Your application">
+        <p className="notice">{view.institution}</p>
+        <h1>
+          <BriefcaseBusiness aria-hidden="true" className="inline-icon" /> {view.company} — {view.role}
+        </h1>
+        <p>
+          {view.name === "" ? "Your" : `${view.name}, your`} application, as of {updated}.
+        </p>
+        <ol className="rounds" aria-label="Rounds">
+          {ROUNDS.map(([stage, label], i) => (
+            <li key={stage} aria-current={stage === view.stage ? "step" : undefined} className={!ended && i <= reached ? "done" : undefined}>
+              {label}
+            </li>
+          ))}
+        </ol>
+        {ended ? (
+          <p className="notice" role="status">
+            {view.stage === "withdrawn" ? "You withdrew from this drive." : "You were not selected in this drive. Your placement cell can tell you about others."}
+          </p>
+        ) : null}
+        {view.offer === null ? null : view.offer.link !== null ? (
+          <p className="applied" role="status">
+            <HandCoins aria-hidden="true" className="inline-icon" /> You have an offer{view.offer.ctcLpa === null ? "" : ` of ₹${view.offer.ctcLpa} lakh a year`}. <a href={view.offer.link}>See it and answer</a>.
+          </p>
+        ) : (
+          <p className="notice" role="status">
+            You {view.offer.response} the offer.
           </p>
         )}
       </section>

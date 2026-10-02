@@ -90,6 +90,7 @@ describe("the OpenAPI document", () => {
       "post /apply/{code}",
       "get /offers/{code}",
       "post /offers/{code}/response",
+      "get /status/{code}",
       "get /interviews/room/{code}",
       "put /interviews/room/{code}/code",
       "get /media/{sha256}",

@@ -67,6 +67,7 @@ const offer = z.object({
   joiningDate: z.string().nullable(),
   note: z.string(),
 });
+const funnel = z.object({ applied: z.number(), test: z.number(), interview: z.number(), offered: z.number(), joined: z.number(), dropped: z.number() });
 const college = z.object({ id: z.string(), driveId: z.string(), name: z.string(), code: z.string(), applyCode: z.string(), createdAt: z.string(), applied: z.number(), link: z.string() });
 const drive = z.object({
   id: z.string(),
@@ -290,6 +291,7 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
                   updatedAt: z.string(),
                   test: z.object({ percent: z.number(), outcome: z.enum(["qualified", "failed"]).nullable() }).nullable(),
                   offer: offer.optional(),
+                  statusLink: z.string().describe("The student's own page to follow this application."),
                 }),
               )
               .readonly(),
@@ -297,6 +299,7 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
             applyLink: z.string().nullable(),
             colleges: z.array(college).readonly(),
             offers: z.object({ sent: z.number(), accepted: z.number(), declined: z.number(), pending: z.number(), joined: z.number(), notJoined: z.number() }),
+            funnel: funnel.extend({ colleges: z.array(funnel.extend({ college: z.string() })).readonly() }),
           }),
           ...refusals,
         },
@@ -447,13 +450,84 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
           joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().default(null),
           note: z.string().max(2000).default(""),
         }),
-        response: { 201: z.object({ link: z.string() }), ...refusals },
+        response: { 201: z.object({ link: z.string(), sent: z.array(z.enum(["email", "whatsapp"])).readonly().describe("How the link went to the student: by the email and phone on the student list, where this server can send.") }), ...refusals },
       },
     },
     async (request, reply) => {
       const actor = await staff(request, reply, "attempt:review");
       if (actor === null) return;
       return reply.code(201).send(await placement.sendOffer(actor, request.params.driveId, request.body));
+    },
+  );
+
+  routes.post(
+    "/drives/:driveId/alert",
+    {
+      schema: {
+        tags: TAGS,
+        summary: "Tell eligible students about the drive",
+        description:
+          "Every student on the list who meets the drive's criteria and is not in it yet hears of it by email and WhatsApp, with the link to apply. Each student hears of a drive once. Needs the drive's link to apply open. Audited.",
+        security: SECURED,
+        params: driveParams,
+        response: { 200: z.object({ queued: z.number(), already: z.number(), unreachable: z.number() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.send(await placement.alertEligible(actor, request.params.driveId));
+    },
+  );
+
+  routes.get(
+    "/placement/funnel",
+    {
+      schema: {
+        tags: TAGS,
+        summary: "Every drive's funnel",
+        description: "How many reached each round, drive by drive: applied, sat the test, interview, offered, joined, and how many fell away.",
+        security: SECURED,
+        response: { 200: z.object({ drives: z.array(z.object({ id: z.string(), company: z.string(), role: z.string(), status: z.enum(["open", "closed"]), funnel })).readonly() }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:review");
+      if (actor === null) return;
+      return reply.send({ drives: await placement.funnels(actor) });
+    },
+  );
+
+  routes.get(
+    "/status/:code",
+    {
+      schema: {
+        tags: ["Apply"],
+        summary: "Where one application stands, for the student",
+        description: "No account: the signed code in the link is the proof, and it opens this one application only. The round, and the offer's link while it waits for an answer.",
+        params: z.object({ code: z.string().min(5).max(400) }),
+        response: {
+          200: z.object({
+            institution: z.string(),
+            company: z.string(),
+            role: z.string(),
+            name: z.string(),
+            stage,
+            updatedAt: z.string(),
+            offer: z.object({ ctcLpa: z.number().nullable(), joiningDate: z.string().nullable(), response: z.enum(["accepted", "declined"]).nullable(), link: z.string().nullable() }).nullable(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      if (throttle.blocked(request.ip, "status")) return reply.code(429).send({ error: "too_many_attempts", message: "Try again in a few minutes" });
+      try {
+        return reply.send(await placement.status(request.params.code));
+      } catch (error) {
+        throttle.failed(request.ip, "status");
+        throw error;
+      }
     },
   );
 
@@ -573,7 +647,7 @@ export function registerPlacementRoutes(routes: Routes, deps: PlacementRouteDeps
           cgpa: z.number().min(0).max(10).nullable().default(null),
           backlogs: z.number().int().min(0).max(100).default(0),
         }),
-        response: { 200: z.object({ status: z.enum(["applied", "already"]) }), ...refusals },
+        response: { 200: z.object({ status: z.enum(["applied", "already"]), statusLink: z.string().describe("The student's own page to follow the application.") }), ...refusals },
       },
     },
     async (request, reply) => {

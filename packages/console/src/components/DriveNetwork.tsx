@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { Building2, Copy, HandCoins, Plus, Trash2 } from "lucide-react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Building2, Copy, Filter, HandCoins, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@parikshaa/brand/ui";
-import { ConsoleError, type ConsoleClient, type DriveApplication, type DriveCollege, type OfferFigures } from "../api.ts";
+import { ConsoleError, type ConsoleClient, type DriveApplication, type DriveCollege, type DriveFunnel, type OfferFigures } from "../api.ts";
 
 /**
  * A company's side of a drive (docs/PREP-TRACKER.md, V2-12: CO15, CO33):
@@ -117,10 +117,14 @@ export function Offers({
   const [form, setForm] = useState({ ref: "", ctc: "", joining: "", note: "" });
   const send = useMutation({
     mutationFn: () => client.sendOffer(driveId, { ref: form.ref, ctcLpa: Number(form.ctc), joiningDate: form.joining === "" ? null : form.joining, note: form.note }),
-    onSuccess: async ({ link }) => {
+    onSuccess: async ({ link, sent = [] }) => {
       setForm({ ref: "", ctc: form.ctc, joining: form.joining, note: form.note });
       onChange();
-      await copy(link, toast, "Offer made: its link is copied to send the candidate");
+      await copy(
+        link,
+        toast,
+        sent.length === 0 ? "Offer made: its link is copied to send the candidate" : `Offer made and sent by ${sent.map((c) => (c === "email" ? "email" : "WhatsApp")).join(" and ")}; the link is copied too`,
+      );
     },
   });
   const sent = applications.filter((a) => a.offer !== undefined);
@@ -216,6 +220,108 @@ export function Offers({
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+const STEPS: readonly [keyof DriveFunnel, string][] = [
+  ["applied", "Applied"],
+  ["test", "Sat the test"],
+  ["interview", "Interview"],
+  ["offered", "Offered"],
+  ["joined", "Joined"],
+];
+
+const share = (n: number, of: number) => (of === 0 ? "—" : `${Math.round((n * 100) / of)}%`);
+
+/** One drive's funnel (CO38): how many reached each round, of those who applied, and by college. */
+export function FunnelCard({ funnel }: { funnel: DriveFunnel & { readonly colleges: readonly (DriveFunnel & { readonly college: string })[] } }) {
+  const rows = [{ name: "All", ...funnel }, ...funnel.colleges.map((c) => ({ name: c.college, ...c }))];
+  return (
+    <section className="card" aria-label="Funnel">
+      <div className="bar">
+        <Filter aria-hidden="true" />
+        <strong>Funnel</strong>
+        <span className="notice">How many reached each round, of those who applied. {funnel.dropped > 0 ? `${funnel.dropped} not selected or withdrew.` : ""}</span>
+      </div>
+      <div className="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">{funnel.colleges.length === 0 ? "" : "College"}</th>
+              {STEPS.map(([key, label]) => (
+                <th key={key} scope="col" className="num">
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.name}>
+                <th scope="row">{r.name}</th>
+                {STEPS.map(([key]) => (
+                  <td key={key} className="num">
+                    {r[key]} {key === "applied" ? null : <span className="notice">({share(r[key], r.applied)})</span>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+/** Every drive's funnel side by side. */
+export function FunnelTable({ client }: { client: ConsoleClient }) {
+  const funnels = useQuery({ queryKey: ["funnels"], queryFn: () => client.funnels() });
+  const rows = funnels.data ?? [];
+  return (
+    <section className="card" aria-label="Funnel by drive">
+      <div className="bar">
+        <Filter aria-hidden="true" />
+        <strong>Funnel by drive</strong>
+        <span className="notice">Where students fall away, drive by drive.</span>
+      </div>
+      {funnels.isPending ? <p className="notice">Loading…</p> : null}
+      {funnels.isSuccess && rows.length === 0 ? <p className="notice">No drives yet.</p> : null}
+      {rows.length === 0 ? null : (
+        <div className="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Drive</th>
+                {STEPS.map(([key, label]) => (
+                  <th key={key} scope="col" className="num">
+                    {label}
+                  </th>
+                ))}
+                <th scope="col" className="num">
+                  Fell away
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((d) => (
+                <tr key={d.id}>
+                  <th scope="row">
+                    {d.company} — {d.role}
+                    {d.status === "closed" ? <span className="notice"> · closed</span> : null}
+                  </th>
+                  {STEPS.map(([key]) => (
+                    <td key={key} className="num">
+                      {d.funnel[key]}
+                    </td>
+                  ))}
+                  <td className="num">{d.funnel.dropped}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

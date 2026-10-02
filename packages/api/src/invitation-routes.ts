@@ -323,6 +323,10 @@ export function registerInvitationRoutes(routes: Routes, deps: InvitationRouteDe
               .object({ centre: z.string(), room: z.string(), seat: z.string() })
               .nullable()
               .describe("Where to sit, when the exam is held in rooms; the admit card (GET /invitations/admit-card.pdf) says the same."),
+            arrangements: z
+              .object({ extraMinutes: z.number(), scribe: z.boolean(), largeText: z.boolean() })
+              .nullable()
+              .describe("This candidate's arrangements for a disability: extra minutes (added as the attempt starts), a scribe, larger text."),
           }),
           404: S.errorResponse,
           429: S.errorResponse,

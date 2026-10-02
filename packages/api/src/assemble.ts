@@ -3,8 +3,9 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { FastifyInstance } from "fastify";
 import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
-import { attemptId, examId, orgId } from "@parikshaa/core";
-import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore, ScriptStore, ProxyStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
+import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, OutcomeStore, InterviewStore,
+  AccommodationStore, ScriptStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -12,9 +13,14 @@ import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { OutcomeService } from "./outcomes.js";
+import { InternalMarksService } from "./internal-marks.js";
+import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
+import { StudentMessages } from "./student-messages.js";
 import { HandwritingService } from "./handwriting.js";
 import { ProxyService } from "./proxy.js";
+import { ExamReviewService } from "./exam-review.js";
+import { DepartmentService } from "./departments.js";
 import { AttemptTokens } from "./auth.js";
 import { DeliveryWorker, type Mailer, type SmsSender, type WhatsAppSender } from "./delivery.js";
 import { buildIntegrations } from "./integrations.js";
@@ -109,10 +115,16 @@ export function assemble(o: AssembleOptions): {
   const identity = new IdentityStore(o.sql);
   // Metering needs the exam service for its audit, and the exam service meters: bound late.
   let billing: BillingService | undefined;
+  const reviewStore = new ReviewStore(o.sql);
+  // A paper with its reviewer, or approved, is locked (CL60): bound late, as the review service audits through the exam service.
+  let examReviews: ExamReviewService | undefined;
+  let departments: DepartmentService | undefined;
   const service = new ExamService({
+    departments: (actor) => departments!.scope(actor),
     store,
     identity,
     client: o.client,
+    locked: (org, exam) => examReviews?.locked(org, exam) ?? Promise.resolve(null),
     ...(o.runner === undefined ? {} : { runner: o.runner }),
     meter: { consume: (org, attempt) => billing!.consume(org, attempt), refund: (org, attempt) => billing!.refund(org, attempt) },
   });
@@ -126,9 +138,45 @@ export function assemble(o: AssembleOptions): {
     supplier: o.supplier ?? null,
     bank: o.bank ?? null,
   });
+  examReviews = new ExamReviewService({ reviews: reviewStore, ledger: store, exams: service });
   const tokens = new AttemptTokens(o.secret);
   const invitationStore = new InvitationStore(o.sql);
-  const privacy = new PrivacyService({ store, privacy: new PrivacyStore(o.sql), invitations: invitationStore, identity, exams: service, proctor: proctorStore, tutor: new PrepPlusStore(o.sql) });
+  // Records kept sealed outside the ledger (T1), and swept with the retention period.
+  const scriptStore = new ScriptStore(o.sql, keys.records("scripts"));
+  const interviewStore = new InterviewStore(o.sql, keys.records("interviews"));
+  const placementStore = new PlacementStore(o.sql, keys.records("students"));
+  const accommodations = new AccommodationService({ store: new AccommodationStore(o.sql, keys.records("accommodations")), exams: service });
+  const interviews = new InterviewService({
+    store: interviewStore,
+    exams: service,
+    secret: o.secret,
+    publicUrl: o.publicUrl,
+    staff: (org) => identity.listUsers(org),
+    mailer: o.mailer ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
+  });
+  const studentMessages = new StudentMessages({
+    placement: placementStore,
+    identity,
+    mailer: o.mailer ?? null,
+    whatsapp: o.whatsapp ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
+    offerLink: (org, code) => `${o.publicUrl.replace(/\/$/, "")}/?offer=${encodeURIComponent(`${org}.${code}`)}`,
+    applyLink: (org, code) => `${o.publicUrl.replace(/\/$/, "")}/?apply=${encodeURIComponent(`${org}.${code}`)}`,
+  });
+  const privacy = new PrivacyService({
+    store,
+    privacy: new PrivacyStore(o.sql),
+    invitations: invitationStore,
+    identity,
+    exams: service,
+    proctor: proctorStore,
+    tutor: new PrepPlusStore(o.sql),
+    records: [
+      { kind: "answer_scripts", sweep: (orgId, before) => scriptStore.sweep(orgId, before) },
+      { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
+    ],
+  });
   const labStore = new LabStore(o.sql);
   const lab = new LabService({ lab: labStore, invitations: invitationStore, store, exams: service });
   // Made below, once the results it reads exist; the hook is called only when a candidate starts.
@@ -146,6 +194,7 @@ export function assemble(o: AssembleOptions): {
     tokens,
     publicUrl: o.publicUrl,
   });
+  invitations.arrangements = accommodations;
   const integrations = buildIntegrations({
     sql: o.sql,
     store,
@@ -161,6 +210,7 @@ export function assemble(o: AssembleOptions): {
   const secrets = new StaffSecrets(o.secret);
   const auth = new StaffAuth(identity, { secrets });
   const security = new StaffSecurity({ identity, auth, secrets, publicUrl: o.publicUrl, mailer: o.mailer ?? null });
+  departments = new DepartmentService({ departments: new DepartmentStore(o.sql), identity, exams: service, invite: (email) => security.requestReset(email) });
 
   const bank = new QuestionBank(o.sql);
   const onboarding = new Onboarding({
@@ -206,7 +256,7 @@ export function assemble(o: AssembleOptions): {
   });
   const recheckStore = new RecheckStore(o.sql);
   const rechecks = new RecheckService({ store, rechecks: recheckStore, invitations: invitationStore, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl });
-  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, releases: recheckStore });
+  const results = new ResultsService({ store, invitations: invitationStore, exams: service, proctor: proctorStore, identity, mailer: o.mailer ?? null, whatsapp: (o.whatsapp ?? null) !== null, paperCopies: (orgId, examId) => scriptStore.forExam(orgId as OrgId, examId), releases: recheckStore });
   const proctorService = new ProctorService({ store, proctor: proctorStore, exams: service });
   proxy = new ProxyService({
     store: new ProxyStore(o.sql),
@@ -235,16 +285,20 @@ export function assemble(o: AssembleOptions): {
     billing,
     proctor: proctorService,
     proxy,
+    examReviews,
+    departments,
     feedback: new FeedbackStore(o.sql),
     lab,
     rechecks,
     marking: new MarkingService({ store, marking: new MarkingStore(o.sql), exams: service }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(o.secret), secret: o.secret }),
-    handwriting: new HandwritingService({ scripts: new ScriptStore(o.sql), ledger: store, exams: service }),
-    interviews: new InterviewService({ store: new InterviewStore(o.sql), exams: service, secret: o.secret, publicUrl: o.publicUrl }),
+    handwriting: new HandwritingService({ scripts: scriptStore, ledger: store, exams: service }),
+    interviews,
     outcomes: new OutcomeService({ outcomes: new OutcomeStore(o.sql), store, results, exams: service }),
+    internalMarks: new InternalMarksService({ results, exams: service }),
+    accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
-    placement: new PlacementService({ placement: new PlacementStore(o.sql), store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
+    placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,
     auth,
     security,
@@ -288,7 +342,8 @@ export function assemble(o: AssembleOptions): {
           : item.purpose === "pilot_report"
             ? (dailyReport?.mail(item) ?? Promise.resolve({ skip: "No pilot report address" }))
             : onboarding.mail(item),
-      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)) },
+      learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)),
+      student: (item) => studentMessages.deliver(item), interview: (item) => interviews.deliver(item) },
   });
 
   return { app, worker, privacy, billing, identity, dailyReport, prepEngage };

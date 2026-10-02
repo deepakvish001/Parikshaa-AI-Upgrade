@@ -3531,6 +3531,20 @@ button.tools-grid-item svg {
   align-content: start;
   gap: var(--space-4);
 }
+.briefing-side .arranged {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.briefing-side .arranged h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+}
+.briefing-side .arranged ul {
+  margin: 0;
+  padding-left: var(--space-5);
+}
 .instructions h3 {
   margin: var(--space-6) 0 var(--space-2);
   font-size: var(--text-md);

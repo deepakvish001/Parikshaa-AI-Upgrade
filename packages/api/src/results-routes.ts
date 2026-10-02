@@ -56,6 +56,7 @@ const result = z.object({
     .readonly()
     .describe('Marks by part of the paper, for an exam with sections; "" is the fixed questions.'),
   outcome: z.enum(["qualified", "failed"]).nullable().describe("Against the exam's cut-off, once graded; null without one."),
+  paper: z.literal(true).optional().describe("Marks from a handwritten copy checked here; its attemptId is `paper:<copy>` and it has no scorecard."),
 });
 const similaritySide = z.object({ attemptId: z.string(), ref: z.string(), name: z.string(), language: z.string(), source: z.string() });
 const similarityResponse = z.object({

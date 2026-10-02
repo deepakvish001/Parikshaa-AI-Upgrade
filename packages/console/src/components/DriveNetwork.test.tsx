@@ -48,3 +48,12 @@ describe("offers", () => {
     await waitFor(() => expect(sendOffer).toHaveBeenCalledWith("d1", { ref: "R2", ctcLpa: 7.5, joiningDate: null, note: "" }));
   });
 });
+
+describe("the funnel", () => {
+  it("shows each round's count and share, by college", async () => {
+    const { FunnelCard } = await import("./DriveNetwork.tsx");
+    wrap(<FunnelCard funnel={{ applied: 10, test: 8, interview: 4, offered: 2, joined: 1, dropped: 3, colleges: [{ college: "PSG Tech", applied: 4, test: 4, interview: 2, offered: 1, joined: 0, dropped: 1 }] }} />);
+    expect(screen.getByRole("row", { name: /All 10 8 \(80%\) 4 \(40%\) 2 \(20%\) 1 \(10%\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /PSG Tech 4 4 \(100%\)/ })).toBeInTheDocument();
+  });
+});

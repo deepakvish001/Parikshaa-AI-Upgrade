@@ -139,7 +139,7 @@ export interface Plan {
   readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
-  /** The job aimed at (migration 0048): its topics come first. Null for none. */
+  /** The job aimed at (migration 0054): its topics come first. Null for none. */
   readonly role: string | null;
   readonly createdAt: string;
 }

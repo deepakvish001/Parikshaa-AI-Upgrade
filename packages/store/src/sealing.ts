@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import type { ExamEvent } from "@parikshaa/core";
 
 /**
@@ -73,7 +73,57 @@ export class DataKeys {
   unwrap(orgId: string, attemptId: string, wrapped: string): Buffer {
     return aesOpen(this.#kek, wrapped, `${orgId}/${attemptId}`);
   }
+
+  /** A record sealer for one kind of record, its key derived from the key-encryption key (nothing stored). */
+  records(purpose: string): RecordSeal {
+    return new RecordSeal(Buffer.from(hkdfSync("sha256", this.#kek, "parikshaa-records", purpose, 32)));
+  }
 }
+
+/**
+ * Sealing records outside the ledger (docs/PREP-TRACKER.md, T1): scanned
+ * answer pages, a student's email and phone, an interview's code and notes.
+ * Each value is sealed under a key derived from `PARIKSHAA_DATA_KEY` for its
+ * kind of record, and bound to the row it belongs to, so a copy of the
+ * database reads as nothing and a value moved to another row will not open.
+ * Values written before sealing pass through unchanged.
+ */
+export class RecordSeal {
+  readonly #key: Buffer;
+
+  constructor(key: Buffer) {
+    this.#key = key;
+  }
+
+  text(value: string, aad: string): string;
+  text(value: string | null, aad: string): string | null;
+  text(value: string | null, aad: string): string | null {
+    return value === null ? null : `${PREFIX}${aesSeal(this.#key, Buffer.from(value, "utf8"), aad)}`;
+  }
+
+  open(value: string, aad: string): string;
+  open(value: string | null, aad: string): string | null;
+  open(value: string | null, aad: string): string | null {
+    if (value === null || !value.startsWith(PREFIX)) return value;
+    return aesOpen(this.#key, value.slice(PREFIX.length), aad).toString("utf8");
+  }
+
+  bytes(value: Uint8Array, aad: string): Buffer {
+    return sealBytes(this.#key, Buffer.from(value), aad);
+  }
+
+  openBytes(value: Buffer, aad: string): Buffer {
+    return openBytes(this.#key, value, aad);
+  }
+}
+
+/** Seals nothing: for tools with no data key, which then read and write plain values. */
+export const NO_SEAL = {
+  text: <T extends string | null>(value: T) => value,
+  open: <T extends string | null>(value: T) => value,
+  bytes: (value: Uint8Array) => Buffer.from(value),
+  openBytes: (value: Buffer) => value,
+} as unknown as RecordSeal;
 
 type Json = { [key: string]: unknown };
 

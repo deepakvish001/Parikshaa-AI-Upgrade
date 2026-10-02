@@ -23,6 +23,8 @@ export interface ExamSummary {
   readonly window?: { readonly opensAt: string; readonly closesAt: string } | null;
   /** When it was put away, or null while it is current. */
   readonly archivedAt?: string | null;
+  /** The department that owns it, if one is set. */
+  readonly department?: string | null;
 }
 
 export interface AttemptSummary {
@@ -290,6 +292,67 @@ export interface DriveApplication extends Student {
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
   readonly college?: string | null;
   readonly offer?: SentOffer;
+  /** The student's own page to follow this application. */
+  readonly statusLink?: string;
+}
+
+export interface Arrangement {
+  readonly candidateRef: string;
+  readonly extraPercent: number;
+  readonly scribe: boolean;
+  readonly largeText: boolean;
+  readonly note: string;
+  readonly setBy: { readonly userId: string; readonly name: string };
+  readonly setAt: string;
+}
+
+export interface InternalMarksRequest {
+  readonly components: readonly { readonly examId: string; readonly label?: string; readonly marks: number }[];
+  readonly best?: number;
+  readonly rounding: "up" | "nearest" | "none";
+}
+
+export interface InternalMarks {
+  readonly columns: readonly { readonly examId: string; readonly label: string; readonly marks: number }[];
+  readonly outOf: number;
+  readonly best: number | null;
+  readonly rows: readonly { readonly ref: string; readonly name: string; readonly marks: readonly (number | null)[]; readonly total: number }[];
+  readonly csv: string;
+}
+
+export interface Departments {
+  readonly departments: readonly string[];
+  readonly staff: readonly { readonly userId: string; readonly department: string }[];
+  readonly exams: readonly { readonly examId: string; readonly department: string }[];
+}
+
+export interface StaffImport {
+  readonly dryRun: boolean;
+  readonly added: number;
+  readonly skipped: number;
+  readonly problems: readonly { readonly row: number; readonly message: string }[];
+  readonly preview: readonly { readonly row: number; readonly email: string; readonly name: string; readonly role: string; readonly department: string | null }[];
+}
+
+export interface ExamReview {
+  readonly examId: string;
+  readonly status: "in_review" | "approved" | "returned" | "reopened";
+  readonly submittedBy: string;
+  readonly submittedById: string;
+  readonly submittedAt: string;
+  readonly note: string;
+  readonly reviewer: string | null;
+  readonly decidedAt: string | null;
+  readonly comment: string;
+}
+
+export interface DriveFunnel {
+  readonly applied: number;
+  readonly test: number;
+  readonly interview: number;
+  readonly offered: number;
+  readonly joined: number;
+  readonly dropped: number;
 }
 
 export interface Readiness {
@@ -365,6 +428,10 @@ export interface Interview {
   readonly scorecard: InterviewScorecard | null;
   readonly status: "scheduled" | "done" | "cancelled";
   readonly link: string;
+  /** The staff on its panel, and who has scored; an older server leaves it out. */
+  readonly panel?: readonly { readonly userId: string; readonly name: string; readonly scored: boolean }[];
+  /** Each panel member's own scorecard; the interview's scorecard is their average. */
+  readonly scores?: readonly { readonly userId: string; readonly name: string; readonly scorecard: InterviewScorecard; readonly scoredAt: string }[];
 }
 
 export interface PlacementReport {
@@ -393,6 +460,7 @@ export interface DriveDetail {
   /** A company's drive across colleges: each partner college and its own link. */
   readonly colleges?: readonly DriveCollege[];
   readonly offers?: OfferFigures;
+  readonly funnel?: DriveFunnel & { readonly colleges: readonly (DriveFunnel & { readonly college: string })[] };
 }
 
 export interface DriveCollege {
@@ -633,6 +701,8 @@ export interface ResultRow {
   readonly sections?: readonly SectionScore[];
   /** Against the exam's cut-off, once graded; null without one. */
   readonly outcome?: Outcome | null;
+  /** Marks from a handwritten copy checked here: no online attempt, no scorecard. */
+  readonly paper?: true;
 }
 
 export type Outcome = "qualified" | "failed";
@@ -1624,8 +1694,16 @@ export class ConsoleClient {
     readonly meetingUrl: string | null;
     readonly problem: string;
     readonly language: string;
+    readonly panel?: readonly string[];
   }): Promise<Interview> {
     return this.#request("/interviews", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  /** The interview as a calendar file (.ics). */
+  async interviewCalendar(id: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/interviews/${encodeURIComponent(id)}/calendar`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
   }
 
   editInterview(id: string, patch: { readonly problem?: string; readonly notes?: string; readonly cancel?: boolean }): Promise<Interview> {
@@ -1742,7 +1820,66 @@ export class ConsoleClient {
     await this.#request(`/drives/${encodeURIComponent(id)}/colleges/${encodeURIComponent(collegeId)}`, { method: "DELETE" });
   }
 
-  sendOffer(id: string, offer: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+  funnels(): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: "open" | "closed"; readonly funnel: DriveFunnel }[]> {
+    return this.#request<{ drives: readonly { id: string; company: string; role: string; status: "open" | "closed"; funnel: DriveFunnel }[] }>("/placement/funnel").then((b) => b.drives);
+  }
+
+  arrangements(examId: string): Promise<readonly Arrangement[]> {
+    return this.#request<{ accommodations: Arrangement[] }>(`/exams/${encodeURIComponent(examId)}/accommodations`).then((r) => r.accommodations);
+  }
+
+  setArrangement(examId: string, ref: string, body: { readonly extraPercent: number; readonly scribe: boolean; readonly largeText: boolean; readonly note: string }): Promise<Arrangement> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/accommodations/${encodeURIComponent(ref)}`, { method: "PUT", body: JSON.stringify(body) });
+  }
+
+  removeArrangement(examId: string, ref: string): Promise<void> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/accommodations/${encodeURIComponent(ref)}`, { method: "DELETE" }).then(() => undefined);
+  }
+
+  internalMarks(request: InternalMarksRequest): Promise<InternalMarks> {
+    return this.#request("/reports/internal-marks", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  departments(): Promise<Departments> {
+    return this.#request("/departments");
+  }
+
+  setStaffDepartment(userId: string, department: string | null): Promise<void> {
+    return this.#request(`/staff/${encodeURIComponent(userId)}/department`, { method: "PUT", body: JSON.stringify({ department }) }).then(() => undefined);
+  }
+
+  setExamDepartment(examId: string, department: string | null): Promise<void> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/department`, { method: "PUT", body: JSON.stringify({ department }) }).then(() => undefined);
+  }
+
+  importStaff(csv: string, dryRun: boolean): Promise<StaffImport> {
+    return this.#request("/staff/import", { method: "POST", body: JSON.stringify({ csv, dryRun }) });
+  }
+
+  examReview(examId: string): Promise<ExamReview | null> {
+    return this.#request<{ review: ExamReview | null }>(`/exams/${encodeURIComponent(examId)}/review`).then((b) => b.review);
+  }
+
+  sendForReview(examId: string, note: string): Promise<ExamReview> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/review`, { method: "POST", body: JSON.stringify({ note }) });
+  }
+
+  decideReview(examId: string, decision: "approve" | "return", comment: string): Promise<ExamReview> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/review/decision`, { method: "POST", body: JSON.stringify({ decision, comment }) });
+  }
+
+  reopenReview(examId: string, reason: string): Promise<ExamReview> {
+    return this.#request(`/exams/${encodeURIComponent(examId)}/review/reopen`, { method: "POST", body: JSON.stringify({ reason }) });
+  }
+
+  alertDrive(id: string): Promise<{ readonly queued: number; readonly already: number; readonly unreachable: number }> {
+    return this.#request(`/drives/${encodeURIComponent(id)}/alert`, { method: "POST" });
+  }
+
+  sendOffer(
+    id: string,
+    offer: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string },
+  ): Promise<{ readonly link: string; readonly sent?: readonly ("email" | "whatsapp")[] }> {
     return this.#request(`/drives/${encodeURIComponent(id)}/offers`, { method: "POST", body: JSON.stringify(offer) });
   }
 

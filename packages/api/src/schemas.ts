@@ -318,6 +318,7 @@ export const examListResponse = z.object({
           .nullable()
           .describe("When it can be sat, or null before a window is set."),
         archivedAt: z.string().nullable().describe("When it was put away, or null while it is current."),
+        department: z.string().nullable().optional().describe("The department it belongs to, if any."),
       }),
     )
     .readonly(),

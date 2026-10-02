@@ -161,12 +161,12 @@ From [SECURITY.md](../SECURITY.md), where each is shown in the code:
 - **Development:** every change runs the full test suite, secret scanning,
   dependency audit and static analysis.
 
-Known gaps, stated so the Customer can weigh them: scanned handwritten pages,
-the student list and interview notes are protected by row-level security and
-the database's own encryption at rest, but are **not** sealed under per-record
-keys as answers and photos are; the automatic retention sweep covers exam
-attempts, not yet these. [Owner: decide whether to close these before the
-first enterprise signature.]
+Sealing beyond the ledger: scanned handwritten pages (and what the model
+read from them), a student's email and phone, and an interview's code, notes
+and candidate email are sealed under keys derived from the same key held
+outside the database. Copies and finished interviews are removed by the
+retention sweep; the student list is the Customer's register and is removed
+when the Customer removes a student.
 
 ## Annex C — Sub-processors
 

@@ -1,9 +1,11 @@
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { funnelOf, type Funnel } from "./funnel.js";
 import { allQuestions, examId as toExamId, orgId as toOrgId } from "@parikshaa/core";
 import { indianMobile } from "./candidate-import.js";
 import { eligible, staffScope, STAGES, type IdentityStore, type QuestionBank, type Application, type Drive, type DriveCollege, type DriveDraft, type Offer, type LedgerStore, type PlacementStore, type Stage, type Student, type StudentRow } from "@parikshaa/store";
 import type { Channel, InvitationService } from "./invitation-service.js";
 import type { ResultsService } from "./results.js";
+import type { StudentChannel, StudentMessages } from "./student-messages.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
 import { can, type Actor } from "./staff-auth.js";
 import { importStudents, type StudentProblem } from "./student-import.js";
@@ -29,6 +31,8 @@ export interface DriveApplication extends Omit<Application, "offer"> {
   readonly test: { readonly percent: number; readonly outcome: "qualified" | "failed" | null } | null;
   /** An offer sent with a link, and the link. */
   readonly offer?: Offer & { readonly link: string };
+  /** The student's own page to follow their application (CO39). */
+  readonly statusLink: string;
 }
 
 /** Below this overall percentage across recent tests, a student is listed for extra help. */
@@ -65,6 +69,8 @@ export interface DriveDetail {
   readonly colleges: readonly (DriveCollege & { readonly link: string })[];
   /** Offers sent with a link, and how they stand. */
   readonly offers: OfferFigures;
+  /** How many reached each round (CO38), over all and by college for a drive across colleges. */
+  readonly funnel: Funnel & { readonly colleges: readonly (Funnel & { readonly college: string })[] };
 }
 
 export interface OfferFigures {
@@ -102,6 +108,8 @@ export class PlacementService {
   readonly #bank: QuestionBank | null;
   readonly #publicUrl: string;
   readonly #identity: IdentityStore | null;
+  readonly #messages: StudentMessages | null;
+  readonly #statusKey: Buffer;
   readonly #now: () => number;
   readonly #newId: () => string;
 
@@ -116,9 +124,15 @@ export class PlacementService {
     /** Where students open a drive's link to apply. */
     readonly publicUrl?: string;
     readonly identity?: IdentityStore;
+    /** Offers and new drives sent to students by email and WhatsApp (CO42, CL67). */
+    readonly messages?: StudentMessages;
+    /** Signs a student's link to their own application. */
+    readonly secret?: string;
     readonly now?: () => number;
     readonly newId?: () => string;
   }) {
+    this.#messages = options.messages ?? null;
+    this.#statusKey = createHmac("sha256", options.secret ?? "parikshaa-placement").update("parikshaa-application-status").digest();
     this.#placement = options.placement;
     this.#store = options.store;
     this.#exams = options.exams;
@@ -173,6 +187,19 @@ export class PlacementService {
   async drives(actor: Actor): Promise<readonly Drive[]> {
     this.#require(actor);
     return this.#placement.drives(actor.orgId);
+  }
+
+  /** Every drive's funnel side by side (CO38): where students fall away, drive by drive. */
+  async funnels(actor: Actor): Promise<readonly { readonly id: string; readonly company: string; readonly role: string; readonly status: Drive["status"]; readonly funnel: Funnel }[]> {
+    this.#require(actor);
+    const drives = await this.#placement.drives(actor.orgId);
+    return Promise.all(
+      drives.map(async (d) => {
+        const detail = await this.drive(actor, d.id);
+        const { colleges: _colleges, ...funnel } = detail.funnel;
+        return { id: d.id, company: d.company, role: d.role, status: d.status, funnel };
+      }),
+    );
   }
 
   async #check(actor: Actor, draft: DriveDraft): Promise<DriveDraft> {
@@ -246,10 +273,18 @@ export class PlacementService {
       joined: sent.filter((a) => a.stage === "joined").length,
       notJoined: sent.filter((a) => a.offer!.response === "accepted" && a.stage === "offered" && a.offer!.joiningDate !== null && a.offer!.joiningDate < today).length,
     };
+    const rows = applications.map((a) => ({ stage: a.stage, tested: graded.has(a.ref), college: a.college ?? null }));
+    const collegeNames = [...new Set(rows.map((r) => r.college).filter((c): c is string => c !== null))].sort();
     return {
       drive,
       offers,
-      applications: applications.map(({ offer, ...a }) => ({ ...a, test: graded.get(a.ref) ?? null, ...(offer === undefined ? {} : { offer: { ...offer, link: this.offerLink(actor.orgId, offer.code) } }) })),
+      funnel: { ...funnelOf(rows), colleges: collegeNames.map((college) => ({ college, ...funnelOf(rows.filter((r) => r.college === college)) })) },
+      applications: applications.map(({ offer, ...a }) => ({
+        ...a,
+        test: graded.get(a.ref) ?? null,
+        statusLink: this.statusLink(actor.orgId, drive.id, a.ref),
+        ...(offer === undefined ? {} : { offer: { ...offer, link: this.offerLink(actor.orgId, offer.code) } }),
+      })),
       eligibleNotAdded: students.filter((s) => !inDrive.has(s.ref) && eligible(s, drive.eligibility)).length,
       applyLink: drive.applyCode === null ? null : this.applyLink(actor.orgId, drive.applyCode),
       colleges: colleges.map((c) => ({ ...c, link: this.applyLink(actor.orgId, c.applyCode) })),
@@ -288,7 +323,11 @@ export class PlacementService {
    * package, and the link lets them accept or decline it. Sending it again
    * makes a new link and forgets the old answer. Audited.
    */
-  async sendOffer(actor: Actor, driveId: string, request: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string }): Promise<{ readonly link: string }> {
+  async sendOffer(
+    actor: Actor,
+    driveId: string,
+    request: { readonly ref: string; readonly ctcLpa: number; readonly joiningDate: string | null; readonly note: string },
+  ): Promise<{ readonly link: string; readonly sent: readonly StudentChannel[] }> {
     this.#require(actor);
     const drive = await this.#drive(actor, driveId);
     if (drive.status === "closed") throw new AttemptError("invalid_state", "This drive is closed: open it again to make an offer");
@@ -302,8 +341,29 @@ export class PlacementService {
       at: new Date(this.#now()),
     });
     if (!made) throw new AttemptError("not_found", `${request.ref} is not in this drive`);
-    await this.#exams.recordAudit(actor, "drive.offer_sent", driveId, { ref: request.ref, ctcLpa: request.ctcLpa });
-    return { link: this.offerLink(actor.orgId, code) };
+    // The link goes to the student by email and WhatsApp, where the college has them.
+    let sent: readonly StudentChannel[] = [];
+    if (this.#messages !== null) {
+      const student = (await this.#placement.applications(actor.orgId, driveId)).find((a) => a.ref === request.ref);
+      if (student !== undefined) sent = await this.#messages.queueOffer(actor.orgId, driveId, student, code);
+    }
+    await this.#exams.recordAudit(actor, "drive.offer_sent", driveId, { ref: request.ref, ctcLpa: request.ctcLpa, sent });
+    return { link: this.offerLink(actor.orgId, code), sent };
+  }
+
+  /**
+   * Tell every eligible student not in the drive yet about it, with its link
+   * to apply (CL67). Each student hears of a drive once. Audited.
+   */
+  async alertEligible(actor: Actor, driveId: string): Promise<{ readonly queued: number; readonly already: number; readonly unreachable: number }> {
+    this.#require(actor);
+    const drive = await this.#drive(actor, driveId);
+    if (drive.status === "closed") throw new AttemptError("invalid_state", "This drive is closed");
+    if (drive.applyCode === null) throw new AttemptError("invalid_state", "Open the drive's link to apply first: the message carries it");
+    if (this.#messages === null || this.#messages.channels().length === 0) throw new AttemptError("invalid_state", "Neither email nor WhatsApp is set up on this server");
+    const outcome = await this.#messages.queueDriveAlert(actor.orgId, drive);
+    await this.#exams.recordAudit(actor, "drive.alerted", driveId, outcome);
+    return outcome;
   }
 
   async #offer(code: string) {
@@ -581,7 +641,7 @@ export class PlacementService {
    * Either way the drive's criteria are checked, and applying twice changes
    * nothing.
    */
-  async apply(code: string, form: Student): Promise<{ readonly status: "applied" | "already" }> {
+  async apply(code: string, form: Student): Promise<{ readonly status: "applied" | "already"; readonly statusLink: string }> {
     const { orgId, drive, college } = await this.#byCode(code);
     if (drive.status === "closed" || (drive.applyBy !== null && drive.applyBy < this.#today())) throw new AttemptError("invalid_state", "Applications to this drive have closed");
     const given = form.ref.trim();
@@ -603,7 +663,47 @@ export class PlacementService {
     }
     if (!eligible(student, drive.eligibility)) throw new AttemptError("invalid_state", "You do not meet this drive's criteria, as the college's records have them");
     const added = await this.#placement.addApplications(orgId, drive.id, [student.ref], `${student.name || student.ref} (applied online)`, new Date(this.#now()));
-    return { status: added > 0 ? "applied" : "already" };
+    return { status: added > 0 ? "applied" : "already", statusLink: this.statusLink(orgId, drive.id, student.ref) };
+  }
+
+  // --- the student's own page (CO39) --------------------------------------------------
+
+  #statusMac(orgId: string, driveId: string, ref: string) {
+    return createHmac("sha256", this.#statusKey).update(`${orgId}\n${driveId}\n${ref}`).digest("base64url").slice(0, 22);
+  }
+
+  /** A link only this student's application opens: signed, nothing stored. */
+  statusLink(orgId: string, driveId: string, ref: string): string {
+    const code = `${orgId}.${driveId}.${Buffer.from(ref).toString("base64url")}.${this.#statusMac(orgId, driveId, ref)}`;
+    return `${this.#publicUrl}/?status=${encodeURIComponent(code)}`;
+  }
+
+  /** Where one application stands, for the student: the rounds, and their offer if it waits for an answer. Never anyone else's. */
+  async status(code: string) {
+    const [org, driveId, refPart, mac, ...rest] = code.trim().split(".");
+    if (org === undefined || driveId === undefined || refPart === undefined || mac === undefined || rest.length > 0) throw new AttemptError("not_found", "This link is not one of ours");
+    const ref = Buffer.from(refPart, "base64url").toString("utf8");
+    const expected = Buffer.from(this.#statusMac(org, driveId, ref));
+    const given = Buffer.from(mac);
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) throw new AttemptError("not_found", "This link is not one of ours");
+    const orgId = toOrgId(org);
+    const drive = await this.#placement.drive(orgId, driveId);
+    const application = drive === null ? undefined : (await this.#placement.applications(orgId, driveId)).find((a) => a.ref === ref);
+    if (drive === null || application === undefined) throw new AttemptError("not_found", "This application is no longer on record");
+    const institution = this.#identity === null ? "" : ((await this.#identity.getOrganisation(orgId))?.name ?? "");
+    const offer = application.offer;
+    return {
+      institution,
+      company: drive.company,
+      role: drive.role,
+      name: application.name,
+      stage: application.stage,
+      updatedAt: application.updatedAt,
+      offer:
+        offer === undefined || (application.stage !== "offered" && application.stage !== "joined")
+          ? null
+          : { ctcLpa: application.offerLpa, joiningDate: offer.joiningDate, response: offer.response, link: offer.response === null ? this.offerLink(orgId, offer.code) : null },
+    };
   }
 
   /** The drive's students as a spreadsheet, to send the company. Audited: it leaves the system. */

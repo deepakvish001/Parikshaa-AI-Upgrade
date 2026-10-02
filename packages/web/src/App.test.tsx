@@ -772,3 +772,21 @@ describe("a coding question", () => {
     await waitFor(() => expect(screen.getByText("Saved", { selector: ".qfoot .saved" })).toBeInTheDocument());
   });
 });
+
+describe("the practice test", () => {
+  afterEach(() => window.history.replaceState(null, "", "/"));
+
+  it("opens the real exam screen on a sample paper, answered in the browser alone", async () => {
+    const fetch = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetch);
+    window.history.replaceState(null, "", "/?demo");
+    renderApp(<App />);
+    expect((await screen.findAllByText(/Practice test — nothing is recorded/)).length).toBeGreaterThan(0);
+    await userEvent.click(await screen.findByRole("radio", { name: /60 km\/h/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Submit attempt" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Submit your attempt?" })).getByRole("button", { name: "Yes, submit" }));
+    expect(await screen.findByRole("region", { name: "Submitted" })).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
