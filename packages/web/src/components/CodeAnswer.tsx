@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { CircleCheck, CircleX, Lock, Maximize2, Minimize2, Minus, Moon, Play, Plus, RotateCcw, Send } from "lucide-react";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
-import type { RunOutcome, SubmitOutcome } from "../api.ts";
+import { ApiError, type RunOutcome, type SubmitOutcome } from "../api.ts";
 import { usePreferences, type MessageKey } from "../i18n.tsx";
 import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, starterIn } from "./code-meta.ts";
 import { SqlResult } from "./SqlTables.tsx";
@@ -139,7 +139,9 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
       setShown({ kind: "submit", outcome: await onSubmit(language, source) });
     } catch (error) {
       setShown(null);
-      setFailed(error instanceof Error && error.message.includes("503") ? t("code.cannotRun") : t("code.runFailed"));
+      // Kept on the device for later (practice, offline): say that, not that it failed.
+      const kept = error instanceof ApiError && error.code === "queued_offline" && typeof error.detail["message"] === "string" ? error.detail["message"] : null;
+      setFailed(kept ?? (error instanceof Error && error.message.includes("503") ? t("code.cannotRun") : t("code.runFailed")));
     } finally {
       setBusy(null);
     }

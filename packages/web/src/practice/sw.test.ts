@@ -128,6 +128,19 @@ describe("the service worker", () => {
     await expect(stranger.responded!).rejects.toThrow("offline");
   });
 
+  it("keeps the tracks, lessons and problems a learner read, for reading offline", async () => {
+    for (const path of ["/api/practice/nit-practice/tracks", "/api/practice/nit-practice/tracks/dsa", "/api/practice/nit-practice/lessons/arrays", "/api/practice/nit-practice/problems", "/api/practice/nit-practice/problems/two-sum"]) {
+      network.mockResolvedValueOnce(json({ path }));
+      const online = event({ request: get(path, "pl_asha") });
+      listeners["fetch"]!(online);
+      await online.responded;
+      network.mockRejectedValueOnce(new TypeError("offline"));
+      const offline = event({ request: get(path, "pl_asha") });
+      listeners["fetch"]!(offline);
+      expect(await (await offline.responded!).json(), path).toEqual({ path });
+    }
+  });
+
   it("forgets what it kept for a session the server has ended", async () => {
     network.mockResolvedValueOnce(json({ name: "Asha" }));
     const first = event({ request: get("/api/practice/nit-practice/me", "pl_asha") });
@@ -146,7 +159,9 @@ describe("the service worker", () => {
   it("leaves everything else to the network: answers, other sites' data, other origins", () => {
     for (const request of [
       new Request(`${ORIGIN}/api/practice/nit-practice/problems/two-sum/submit`, { method: "POST", body: "{}" }),
-      get("/api/practice/nit-practice/problems"),
+      get("/api/practice/nit-practice/problems/two-sum/comments"),
+      get("/api/practice/nit-practice/companies"),
+      get("/api/practice/nit-practice/problems/two-sum?contest=weekly-1"),
       get("/api/practice/nit-practice/plan?x=1"),
       new Request("https://cdn.example/x.js"),
     ]) {

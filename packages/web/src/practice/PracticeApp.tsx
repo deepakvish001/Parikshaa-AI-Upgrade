@@ -228,6 +228,17 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
   const reading = useReadingPreferences();
   const [token, setToken] = useState<string | null>(() => loadToken(site));
   const client = useMemo(() => new PracticeClient(site, token, baseUrl), [site, token, baseUrl]);
+  // Answers kept while offline go when the network is back (and on opening).
+  useEffect(() => {
+    const send = () =>
+      void client
+        .submitQueued()
+        .then((n) => (n > 0 ? queryClient.invalidateQueries({ queryKey: ["practice", site] }) : undefined))
+        .catch(() => undefined);
+    send();
+    window.addEventListener("online", send);
+    return () => window.removeEventListener("online", send);
+  }, [client, queryClient, site]);
   const [location, setLocation] = useState(() => ({ path: window.location.pathname, search: window.location.search }));
   const route = parseRoute(location.path, location.search);
 

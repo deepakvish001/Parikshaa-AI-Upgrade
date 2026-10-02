@@ -1,5 +1,6 @@
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import { ApiError, type RunOutcome, type SubmitOutcome } from "../api.ts";
+import { keepQueued, ownerOf, queuedAnswers, queuedOffline } from "./offline-queue.ts";
 
 /**
  * A practice site's API (ROADMAP §15), as a learner uses it: `/practice/<site>`
@@ -297,12 +298,39 @@ export class PracticeClient {
     });
   }
 
-  submit(slug: string, answer: string, language?: string, contest?: string): Promise<Verdict> {
-    return this.#post(`/problems/${encodeURIComponent(slug)}/submit`, {
-      answer,
-      ...(language === undefined ? {} : { language }),
-      ...(contest === undefined ? {} : { contest }),
-    });
+  async submit(slug: string, answer: string, language?: string, contest?: string): Promise<Verdict> {
+    try {
+      return await this.#post(`/problems/${encodeURIComponent(slug)}/submit`, {
+        answer,
+        ...(language === undefined ? {} : { language }),
+        ...(contest === undefined ? {} : { contest }),
+      });
+    } catch (error) {
+      // No network at all (fetch itself failed): outside a contest, keep it for later.
+      if (!(error instanceof TypeError) || contest !== undefined || this.#token === null) throw error;
+      keepQueued(this.slug, [...queuedAnswers(this.slug), { slug, answer, ...(language === undefined ? {} : { language }), owner: ownerOf(this.#token), at: Date.now() }]);
+      throw queuedOffline();
+    }
+  }
+
+  /** Submit what was kept while offline, this session's only; how many went. */
+  async submitQueued(): Promise<number> {
+    if (this.#token === null) return 0;
+    const owner = ownerOf(this.#token);
+    let left = queuedAnswers(this.slug);
+    let sent = 0;
+    for (const q of left.filter((x) => x.owner === owner)) {
+      try {
+        await this.#post(`/problems/${encodeURIComponent(q.slug)}/submit`, { answer: q.answer, ...(q.language === undefined ? {} : { language: q.language }) });
+        sent++;
+      } catch (error) {
+        // Still offline: try again later. Any answer from the server settles it.
+        if (error instanceof TypeError) break;
+      }
+      left = left.filter((x) => x !== q);
+      keepQueued(this.slug, left);
+    }
+    return sent;
   }
 
   async submissions(slug: string, contest?: string): Promise<readonly Submission[]> {
