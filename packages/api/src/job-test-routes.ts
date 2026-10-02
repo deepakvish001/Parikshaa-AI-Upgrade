@@ -10,6 +10,7 @@ import type {
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { JobTestService } from "./job-test.js";
+import { FAMILIES } from "./roles.js";
 import * as S from "./schemas.js";
 import type { Actor, Permission } from "./staff-auth.js";
 
@@ -38,7 +39,7 @@ export function registerJobTestRoutes(routes: Routes, deps: JobTestRouteDeps): v
       schema: {
         tags: TAGS,
         summary: "The role library",
-        description: "Ready tests by role: the sections each draws from the question bank, how many questions, the time and the qualifying mark.",
+        description: "Sixty ready tests by role, tech only, grouped by family: the sections each draws from the question bank, how many questions, the time and the qualifying mark.",
         security: SECURED,
         response: {
           200: z.object({
@@ -46,6 +47,7 @@ export function registerJobTestRoutes(routes: Routes, deps: JobTestRouteDeps): v
               .array(
                 z.object({
                   id: z.string(),
+                  family: z.enum(FAMILIES),
                   title: z.string(),
                   summary: z.string(),
                   minutes: z.number(),

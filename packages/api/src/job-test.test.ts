@@ -3,7 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { pgliteExecutor } from "@parikshaa/store";
 import { fakeModel } from "./fake-model.js";
-import { ROLES } from "./roles.js";
+import { FAMILIES, MINUTES, ROLES } from "./roles.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, wire } from "./testing/harness.js";
 
 /** A test from a job: a role from the library, or a job description read by the model, built from the bank. */
@@ -57,9 +57,37 @@ describe("the role library", () => {
   it("lists every role with its sections, time and qualifying mark", async () => {
     const roles = (await call("GET", "/job-tests/roles", owner)).json().roles;
     expect(roles.map((r: { id: string }) => r.id)).toEqual(ROLES.map((r) => r.id));
-    expect(roles.length).toBeGreaterThanOrEqual(8);
+    expect(roles).toHaveLength(60);
     expect(roles.find((r: { id: string }) => r.id === "fresher-aptitude")).toMatchObject({ minutes: 75, cutoffPercent: 60 });
     expect((await call("GET", "/job-tests/roles", invigilator)).statusCode).toBe(403);
+  });
+
+  it("holds sixty tech roles, each family filled, every role a sound paper", () => {
+    expect(new Set(ROLES.map((r) => r.id)).size).toBe(60);
+    for (const family of FAMILIES) expect(ROLES.filter((r) => r.family === family).length, family).toBeGreaterThanOrEqual(5);
+    // Tech only (docs/LAUNCH-PLAN.md §1): the non-tech support test is gone.
+    expect(ROLES.find((r) => r.id === "support-bpo")).toBeUndefined();
+    for (const r of ROLES) {
+      expect(r.id, r.id).toMatch(/^[a-z0-9-]+$/);
+      expect(new Set(r.sections.map((s) => s.id)).size, r.id).toBe(r.sections.length);
+      expect(r.cutoffPercent, r.id).toBeGreaterThanOrEqual(50);
+      for (const s of r.sections) {
+        expect(s.count, `${r.id}/${s.id}`).toBeGreaterThan(0);
+        expect(s.keywords.length, `${r.id}/${s.id}`).toBeGreaterThan(0);
+        for (const k of s.keywords) expect(k, `${r.id}/${s.id}`).toBe(k.trim().toLowerCase());
+      }
+      const minutes = r.sections.reduce((sum, s) => sum + s.count * Math.min(...s.kinds.map((k) => MINUTES[k])), 0);
+      expect(minutes, r.id).toBeGreaterThanOrEqual(20);
+      expect(minutes, r.id).toBeLessThanOrEqual(120);
+    }
+  });
+
+  it("drafts every role without a model", async () => {
+    for (const r of ROLES) {
+      const res = await call("POST", "/job-tests/draft", owner, { roleId: r.id });
+      expect(res.statusCode, r.id).toBe(200);
+      expect(res.json()).toMatchObject({ roleId: r.id, source: "role", title: `${r.title} — online test` });
+    }
   });
 });
 

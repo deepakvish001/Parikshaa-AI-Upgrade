@@ -161,7 +161,7 @@ describe("a test from a job", () => {
 
   it("reads a job description, shows where the bank is short, and makes the exam", async () => {
     const client = {
-      jobRoles: vi.fn(async () => [{ id: "java-developer", title: "Java developer", summary: "Java and OOP.", minutes: 60, cutoffPercent: 60, sections: [] }]),
+      jobRoles: vi.fn(async () => [{ id: "java-developer", family: "Software engineering", title: "Java developer", summary: "Java and OOP.", minutes: 60, cutoffPercent: 60, sections: [] }]),
       jobDraft: vi.fn(async () => draft),
       createJobTest: vi.fn(async () => ({ examId: "java-1", questions: 10 })),
     };
@@ -188,6 +188,35 @@ describe("a test from a job", () => {
       }),
     );
     expect(created).toHaveBeenCalledWith("java-1");
+  });
+
+  it("groups the roles by family and finds one by searching", async () => {
+    const section = (id: string, title: string) => ({ id, title, keywords: [id], kinds: ["mcq"], count: 10 });
+    const client = {
+      jobRoles: vi.fn(async () => [
+        { id: "java-developer", family: "Software engineering", title: "Java developer", summary: "Java and OOP.", minutes: 60, cutoffPercent: 60, sections: [section("java", "Java and OOP")] },
+        { id: "data-analyst", family: "Data and AI", title: "Data analyst", summary: "SQL and statistics.", minutes: 40, cutoffPercent: 60, sections: [section("sql", "SQL and databases")] },
+        { id: "aws-engineer", family: "Cloud and infrastructure", title: "AWS cloud engineer", summary: "AWS services.", minutes: 35, cutoffPercent: 60, sections: [section("aws", "AWS")] },
+      ]),
+      jobDraft: vi.fn(async () => draft),
+    };
+    const user = userEvent.setup();
+    show(<JobTestDrawer client={client as unknown as ConsoleClient} onClose={() => undefined} onCreated={() => undefined} />);
+    expect(await screen.findByRole("group", { name: "Data and AI" })).toBeTruthy();
+    expect(screen.getAllByRole("radio", { name: /engineer|developer|analyst/ })).toHaveLength(3);
+
+    await user.type(screen.getByRole("searchbox", { name: "Find a role" }), "sql");
+    expect(screen.getByRole("radio", { name: /Data analyst/ })).toBeTruthy();
+    expect(screen.queryByRole("radio", { name: /Java developer/ })).toBeNull();
+    expect(screen.queryByRole("group", { name: "Cloud and infrastructure" })).toBeNull();
+    await user.click(screen.getByRole("radio", { name: /Data analyst/ }));
+
+    // A chosen role stays in view while the search changes.
+    await user.clear(screen.getByRole("searchbox", { name: "Find a role" }));
+    await user.type(screen.getByRole("searchbox", { name: "Find a role" }), "kubernetes zzz");
+    expect(screen.getByRole("radio", { name: /Data analyst/ })).toBeChecked();
+    await user.click(screen.getByRole("button", { name: "Draft the test" }));
+    await waitFor(() => expect(client.jobDraft).toHaveBeenCalledWith({ roleId: "data-analyst" }));
   });
 
   it("says plainly when the month's AI spend is used up", async () => {

@@ -93091,7 +93091,7 @@
         "tags": [
           "Exams"
         ],
-        "description": "Ready tests by role: the sections each draws from the question bank, how many questions, the time and the qualifying mark.",
+        "description": "Sixty ready tests by role, tech only, grouped by family: the sections each draws from the question bank, how many questions, the time and the qualifying mark.",
         "security": [
           {
             "staffAuth": []
@@ -93113,6 +93113,18 @@
                         "properties": {
                           "id": {
                             "type": "string"
+                          },
+                          "family": {
+                            "type": "string",
+                            "enum": [
+                              "Campus and mass hiring",
+                              "Software engineering",
+                              "Web and mobile",
+                              "Data and AI",
+                              "Cloud and infrastructure",
+                              "Quality and security",
+                              "Enterprise platforms"
+                            ]
                           },
                           "title": {
                             "type": "string"
@@ -93175,6 +93187,7 @@
                         },
                         "required": [
                           "id",
+                          "family",
                           "title",
                           "summary",
                           "minutes",

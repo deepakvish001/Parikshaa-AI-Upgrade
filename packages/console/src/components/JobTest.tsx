@@ -25,6 +25,7 @@ export function JobTestDrawer({ client, onClose, onCreated }: { client: ConsoleC
   const roles = useQuery({ queryKey: ["job-roles"], queryFn: () => client.jobRoles() });
   const [mode, setMode] = useState<"role" | "description">("role");
   const [roleId, setRoleId] = useState<string>("");
+  const [find, setFind] = useState("");
   const [description, setDescription] = useState("");
   const [seniority, setSeniority] = useState<Seniority | "">("");
   const [draft, setDraft] = useState<JobDraft | null>(null);
@@ -73,19 +74,36 @@ export function JobTestDrawer({ client, onClose, onCreated }: { client: ConsoleC
           ) : (
             <fieldset className="role-list">
               <legend>{mode === "role" ? "Role" : "Role (optional: the model chooses otherwise)"}</legend>
-              {(roles.data ?? []).map((r) => (
-                <label key={r.id} className={`role-option${roleId === r.id ? " chosen" : ""}`}>
-                  <input type="radio" name="job-role" value={r.id} checked={roleId === r.id} onChange={() => setRoleId(r.id)} />
-                  <span>
-                    <strong>{r.title}</strong>
-                    <span className="notice">
-                      {" "}
-                      · {r.minutes} min · {r.sections.map((s) => `${s.count} ${s.title.toLowerCase()}`).join(", ")}
-                    </span>
-                    <span className="role-summary">{r.summary}</span>
-                  </span>
-                </label>
-              ))}
+              <input type="search" className="role-find" aria-label="Find a role" placeholder="Find a role: Java, data, cloud…" value={find} onChange={(e) => setFind(e.target.value)} />
+              {(() => {
+                const words = find.trim().toLowerCase().split(/\s+/).filter((w) => w !== "");
+                const shown = (roles.data ?? []).filter((r) => {
+                  const text = `${r.title} ${r.summary} ${r.family} ${r.sections.map((s) => s.title).join(" ")}`.toLowerCase();
+                  return r.id === roleId || words.every((w) => text.includes(w));
+                });
+                if (shown.length === 0) return <p className="notice">No role matches. Try fewer words, or paste the job description instead.</p>;
+                const families = [...new Set(shown.map((r) => r.family))];
+                return families.map((family) => (
+                  <div key={family} className="role-family" role="group" aria-label={family}>
+                    <h3 className="role-family-title">{family}</h3>
+                    {shown
+                      .filter((r) => r.family === family)
+                      .map((r) => (
+                        <label key={r.id} className={`role-option${roleId === r.id ? " chosen" : ""}`}>
+                          <input type="radio" name="job-role" value={r.id} checked={roleId === r.id} onChange={() => setRoleId(r.id)} />
+                          <span>
+                            <strong>{r.title}</strong>
+                            <span className="notice">
+                              {" "}
+                              · {r.minutes} min · {r.sections.map((s) => `${s.count} ${s.title.toLowerCase()}`).join(", ")}
+                            </span>
+                            <span className="role-summary">{r.summary}</span>
+                          </span>
+                        </label>
+                      ))}
+                  </div>
+                ));
+              })()}
             </fieldset>
           )}
           <div className="field">

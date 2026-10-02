@@ -444,6 +444,7 @@ export type Seniority = "fresher" | "junior" | "mid" | "senior";
 
 export interface JobRole {
   readonly id: string;
+  readonly family: string;
   readonly title: string;
   readonly summary: string;
   readonly minutes: number;
