@@ -363,6 +363,14 @@ export class PracticeClient {
     return this.#post(`/problems/${encodeURIComponent(slug)}/share`, { language, source });
   }
 
+  async myShares(): Promise<readonly MyShare[]> {
+    return (await this.#request<{ shares: MyShare[] }>("/shares")).shares;
+  }
+
+  async deleteShare(id: string): Promise<void> {
+    await this.#request(`/shares/${encodeURIComponent(id)}`, { method: "DELETE" });
+  }
+
   sharedCode(id: string): Promise<SharedCode> {
     return this.#request(`/shares/${encodeURIComponent(id)}`);
   }
@@ -713,6 +721,14 @@ export interface QuizResult {
   readonly results: readonly { readonly slug: string; readonly right: boolean; readonly answer: string; readonly explanation: string }[];
   /** Wrong answers now due for revision. */
   readonly revise: number;
+}
+
+export interface MyShare {
+  readonly id: string;
+  readonly path: string;
+  readonly problem: { readonly slug: string; readonly title: string } | null;
+  readonly language: string;
+  readonly createdAt: string;
 }
 
 export interface SharedCode {

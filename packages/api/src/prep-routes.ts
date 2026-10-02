@@ -398,6 +398,59 @@ export function registerPrepRoutes(routes: Routes, deps: PrepRouteDeps): void {
   );
 
   routes.get(
+    "/practice/:site/shares",
+    {
+      schema: {
+        tags: PREP,
+        summary: "The solutions I shared",
+        security: LEARNER,
+        params: siteParams,
+        response: {
+          200: z.object({
+            shares: z
+              .array(
+                z.object({
+                  id: z.string(),
+                  path: z.string(),
+                  problem: z.object({ slug: z.string(), title: z.string() }).nullable(),
+                  language: z.string(),
+                  createdAt: z.string(),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      return reply.send({ shares: await prep.myShares(who.site, who.learner) });
+    },
+  );
+
+  routes.delete(
+    "/practice/:site/shares/:id",
+    {
+      schema: {
+        tags: PREP,
+        summary: "Take down a solution I shared",
+        description: "The link stops working at once. Only the learner who shared it can.",
+        security: LEARNER,
+        params: siteParams.extend({ id: z.string().min(1).max(40) }),
+        response: { 204: z.null(), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const who = await signedIn(request, reply);
+      if (who === null) return;
+      await prep.deleteShare(who.site, who.learner, request.params.id);
+      return reply.code(204).send(null);
+    },
+  );
+
+  routes.get(
     "/practice/:site/shares/:id",
     {
       schema: {

@@ -546,10 +546,58 @@ export function ShareCode({ client, nav, slug, code }: { readonly client: Contex
       {link === null ? null : (
         <p className="notice" role="status">
           {p("share.copied")}{" "}
-          <input readOnly aria-label={p("share.link")} value={link} onFocus={(e) => e.currentTarget.select()} />
+          <input readOnly aria-label={p("share.link")} value={link} onFocus={(e) => e.currentTarget.select()} />{" "}
+          <Link nav={nav} to="/shares">
+            {p("share.manage")}
+          </Link>
         </p>
       )}
       {share.isError ? <p className="error">{messageOf(share.error, p("share.failed"))}</p> : null}
+    </div>
+  );
+}
+
+/** The solutions a learner shared, each one's link, and the way to take one down. */
+export function MySharesPage({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const when = useWhen();
+  const queryClient = useQueryClient();
+  const k = key(site, "shares", learner.id);
+  const shares = useQuery({ queryKey: k, queryFn: () => client.myShares() });
+  const remove = useMutation({
+    mutationFn: (id: string) => client.deleteShare(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: k }),
+  });
+  if (shares.isPending) return <Loading />;
+  if (shares.isError) return <Failed error={shares.error} />;
+  return (
+    <div className="prep-page my-shares">
+      <header className="prep-head">
+        <h1>{p("share.mine")}</h1>
+      </header>
+      <p className="notice">{p("share.mineHint")}</p>
+      {shares.data.length === 0 ? (
+        <p className="notice empty">{p("share.none")}</p>
+      ) : (
+        <ul className="card plain-list">
+          {shares.data.map((s) => (
+            <li key={s.id} className="row">
+              <span className="grow">
+                <Link nav={nav} to={s.path}>
+                  {s.problem?.title ?? p("share.gone")}
+                </Link>{" "}
+                <span className="notice">
+                  {s.language} · {when(s.createdAt)}
+                </span>
+              </span>
+              <button type="button" className="secondary" disabled={remove.isPending} aria-label={p("share.removeOne", { problem: s.problem?.title ?? s.id })} onClick={() => remove.mutate(s.id)}>
+                {p("share.remove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {remove.isError ? <Failed error={remove.error} /> : null}
     </div>
   );
 }

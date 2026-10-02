@@ -605,6 +605,25 @@ export class PrepStore {
     });
   }
 
+  /** A learner's shared solutions, newest first. */
+  async sharesOf(orgId: OrgId, learnerId: string): Promise<readonly { readonly id: string; readonly problemId: string; readonly language: string; readonly createdAt: string }[]> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (
+        await tx.query<{ id: string; problem_id: string; language: string; created_at: string | Date }>(
+          `SELECT id, problem_id, language, created_at FROM prep_code_shares WHERE org_id = $1 AND learner_id = $2 ORDER BY created_at DESC, id LIMIT 500`,
+          [orgId, learnerId],
+        )
+      ).map((r) => ({ id: r.id, problemId: r.problem_id, language: r.language, createdAt: iso(r.created_at) })),
+    );
+  }
+
+  /** Take a shared solution down: only its own learner's. False when there was none. */
+  async deleteShare(orgId: OrgId, learnerId: string, id: string): Promise<boolean> {
+    return scoped(this.#sql, practiceStaff(orgId), async (tx) =>
+      (await tx.query<{ id: string }>(`DELETE FROM prep_code_shares WHERE org_id = $1 AND learner_id = $2 AND id = $3 RETURNING id`, [orgId, learnerId, id])).length > 0,
+    );
+  }
+
   /** How many a learner shared since a moment: shares are capped per day. */
   async sharesSince(orgId: OrgId, learnerId: string, since: Date): Promise<number> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) =>

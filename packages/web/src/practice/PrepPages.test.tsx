@@ -878,6 +878,26 @@ describe("Plus", () => {
     expect(screen.getByRole("link", { name: "Solve it yourself" }).getAttribute("href")).toBe("/practice/nit-practice/problems/sum-of-two");
   });
 
+  it("lists the learner's shared solutions and takes one down", async () => {
+    let shares = [
+      { id: "AbCdEfGhIjKl", path: "/shares/AbCdEfGhIjKl", problem: { slug: "sum-of-two", title: "Sum of two" }, language: "python", createdAt: "2026-10-05T04:00:00Z" },
+      { id: "MnOpQrStUvWx", path: "/shares/MnOpQrStUvWx", problem: null, language: "cpp", createdAt: "2026-10-04T04:00:00Z" },
+    ];
+    routes["GET /practice/nit-practice/shares"] = () => ({ body: { shares } });
+    routes["DELETE /practice/nit-practice/shares/AbCdEfGhIjKl"] = () => {
+      shares = shares.filter((s) => s.id !== "AbCdEfGhIjKl");
+      return { status: 204, body: undefined };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/shares");
+    expect(await screen.findByRole("heading", { name: "My shared solutions" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sum of two" }).getAttribute("href")).toBe("/practice/nit-practice/shares/AbCdEfGhIjKl");
+    expect(screen.getByText("The problem is no longer on the site.")).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Take down the link for Sum of two" }));
+    await waitFor(() => expect(screen.queryByRole("link", { name: "Sum of two" })).toBeNull());
+    expect(calls.some((c) => c.method === "DELETE" && c.path.endsWith("/shares/AbCdEfGhIjKl"))).toBe(true);
+  });
+
   it("shows a locked lesson by name, with the way to Plus", async () => {
     routes["GET /practice/nit-practice/lessons/heaps"] = () => ({ body: { slug: "heaps", title: "Heaps", body: "", videoUrl: null, estMinutes: 20, done: false, locked: true, quiz: [] } });
     open("/practice/nit-practice/lessons/heaps");

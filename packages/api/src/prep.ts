@@ -1084,6 +1084,21 @@ export class PrepService {
     return { id, path: `/shares/${id}` };
   }
 
+  /** The solutions a learner shared, with the problem each is for. */
+  async myShares(site: PracticeSite, learner: Learner) {
+    const [shares, problems] = await Promise.all([this.#store.sharesOf(site.orgId, learner.id), this.#practice.problems(practiceStaff(site.orgId))]);
+    const byId = new Map(problems.map((p) => [p.id, p]));
+    return shares.map((s) => {
+      const p = byId.get(s.problemId);
+      return { id: s.id, path: `/shares/${s.id}`, problem: p === undefined || !p.published ? null : { slug: p.slug, title: p.title }, language: s.language, createdAt: s.createdAt };
+    });
+  }
+
+  /** Take one down: the link stops working at once. */
+  async deleteShare(site: PracticeSite, learner: Learner, id: string): Promise<void> {
+    if (!(await this.#store.deleteShare(site.orgId, learner.id, id))) throw new PracticeError("not_found", "No such shared solution");
+  }
+
   /** A shared solution, as anyone with its link reads it. */
   async sharedCode(site: PracticeSite, id: string) {
     const share = /^[A-Za-z0-9_-]{10,24}$/.test(id) ? await this.#store.share(site.orgId, id) : null;

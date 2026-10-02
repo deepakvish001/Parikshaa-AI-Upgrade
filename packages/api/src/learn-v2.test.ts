@@ -162,6 +162,28 @@ describe("a shared solution", () => {
     expect((await call("GET", null, `${S}/shares/AAAAAAAAAAAA`)).statusCode).toBe(404);
   });
 
+  it("is listed for its learner, and taken down by them alone", async () => {
+    const asha = await signUp();
+    const ravi = await signUp("ravi@example.com", "Ravi");
+    const first = await ok("POST", asha, `${S}/problems/${problems.sum!.slug}/share`, { language: "python", source: "print(1)" });
+    clock += 60_000;
+    const second = await ok("POST", asha, `${S}/problems/${problems.sum!.slug}/share`, { language: "cpp", source: "int main(){}" });
+    const mine = await ok("GET", asha, `${S}/shares`);
+    expect(mine.shares.map((s: { id: string }) => s.id)).toEqual([second.id, first.id]);
+    expect(mine.shares[0]).toMatchObject({ path: `/shares/${second.id}`, problem: { slug: problems.sum!.slug, title: "Sum of two" }, language: "cpp" });
+    expect(JSON.stringify(mine)).not.toContain("int main");
+    expect((await ok("GET", ravi, `${S}/shares`)).shares).toEqual([]);
+    expect((await call("GET", null, `${S}/shares`)).statusCode).toBe(401);
+
+    // Not Ravi's to take down.
+    expect((await app.inject({ method: "DELETE", url: `${S}/shares/${first.id}`, headers: bearer(ravi) })).statusCode).toBe(404);
+    await ok("GET", null, `${S}/shares/${first.id}`);
+    expect((await app.inject({ method: "DELETE", url: `${S}/shares/${first.id}`, headers: bearer(asha) })).statusCode).toBe(204);
+    expect((await call("GET", null, `${S}/shares/${first.id}`)).statusCode).toBe(404);
+    expect((await ok("GET", asha, `${S}/shares`)).shares.map((s: { id: string }) => s.id)).toEqual([second.id]);
+    expect((await app.inject({ method: "DELETE", url: `${S}/shares/${first.id}`, headers: bearer(asha) })).statusCode).toBe(404);
+  });
+
   it("is refused while a contest that includes the problem runs", async () => {
     const asha = await signUp();
     await ok("POST", owner, "/practice-admin/contests", {

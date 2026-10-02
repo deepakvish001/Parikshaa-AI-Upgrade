@@ -46,6 +46,7 @@ const NotesPage = lazy(() => prep().then((m) => ({ default: m.NotesPage })));
 const PotdPage = lazy(() => prep().then((m) => ({ default: m.PotdPage })));
 const CoinsPage = lazy(() => prep().then((m) => ({ default: m.CoinsPage })));
 const SharedCodePage = lazy(() => prep().then((m) => ({ default: m.SharedCodePage })));
+const MySharesPage = lazy(() => prep().then((m) => ({ default: m.MySharesPage })));
 const NoteEditor = lazy(() => prep().then((m) => ({ default: m.NoteEditor })));
 const SaveMenu = lazy(() => prep().then((m) => ({ default: m.SaveMenu })));
 const ShareCode = lazy(() => prep().then((m) => ({ default: m.ShareCode })));
@@ -109,6 +110,7 @@ export type Route =
   | { readonly page: "profile"; readonly username: string }
   | { readonly page: "stories" }
   | { readonly page: "share"; readonly id: string }
+  | { readonly page: "shares" }
   | { readonly page: "signin"; readonly next: string | undefined }
   | { readonly page: "signup"; readonly next: string | undefined };
 
@@ -173,7 +175,7 @@ export function parseRoute(pathname: string, search: string): Route {
     case "stories":
       return { page: "stories" };
     case "shares":
-      return second === undefined ? { page: "problems" } : { page: "share", id: second };
+      return second === undefined ? { page: "shares" } : { page: "share", id: second };
     case "u":
       return second === undefined ? { page: "rating" } : { page: "profile", username: second };
     case "signin":
@@ -447,7 +449,7 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <SharedCodePage {...context} id={route.id} />
         ) : route.page === "profile" ? (
           <ProfilePage {...context} username={route.username} />
-        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "placement" || route.page === "coins" ? (
+        ) : route.page === "home" || route.page === "plan" || route.page === "sprint" || route.page === "revise" || route.page === "lists" || route.page === "notes" || route.page === "notebook" || route.page === "placement" || route.page === "coins" || route.page === "shares" ? (
           learner === null ? (
             <SignInNeeded nav={nav} next={location.path.replace(nav.href(""), "") + location.search} />
           ) : route.page === "home" ? (
@@ -470,6 +472,8 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
             <NotesPage {...context} learner={learner} />
           ) : route.page === "notebook" ? (
             <NoteBookPage {...context} learner={learner} track={route.track} />
+          ) : route.page === "shares" ? (
+            <MySharesPage {...context} learner={learner} />
           ) : (
             <CoinsPage {...context} learner={learner} />
           )
