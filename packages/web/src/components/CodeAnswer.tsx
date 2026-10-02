@@ -4,6 +4,7 @@ import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome, SubmitOutcome } from "../api.ts";
 import { usePreferences, type MessageKey } from "../i18n.tsx";
 import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, starterIn } from "./code-meta.ts";
+import { SqlResult } from "./SqlTables.tsx";
 import { ArgumentList, ProblemStatement } from "./ProblemStatement.tsx";
 import { SplitPane } from "./SplitPane.tsx";
 
@@ -457,14 +458,18 @@ function Meta({ timeMs, memoryKb }: { readonly timeMs: number; readonly memoryKb
   );
 }
 
-function Block({ label, text, className }: { readonly label: string; readonly text: string; readonly className?: string }) {
+function Block({ label, text, className, sql = false }: { readonly label: string; readonly text: string; readonly className?: string; readonly sql?: boolean }) {
   const { t } = usePreferences();
   return (
     <div className="run-block">
       <span className="eyebrow">{label}</span>
-      <pre className={className} aria-label={label}>
-        {text === "" ? t("code.noOutput") : text}
-      </pre>
+      {sql ? (
+        <SqlResult text={text} label={label} />
+      ) : (
+        <pre className={className} aria-label={label}>
+          {text === "" ? t("code.noOutput") : text}
+        </pre>
+      )}
     </div>
   );
 }
@@ -478,6 +483,7 @@ function RunView({ question, outcome, custom }: { readonly question: CandidateCo
   const { t } = usePreferences();
   const [at, setAt] = useState(0);
   const functionMode = question.function !== null && question.function !== undefined;
+  const sql = question.language === "sql";
   if (!outcome.compiled) {
     return (
       <section className="run-output" aria-label="Compiler output" data-status="compile_error">
@@ -517,8 +523,8 @@ function RunView({ question, outcome, custom }: { readonly question: CandidateCo
           ) : (
             <Block label={t("code.input")} text={shownResult.input} />
           )}
-          <Block label={t("code.output")} text={functionMode ? (shownResult.result ?? "null") : shownResult.stdout} />
-          {shownResult.expectedOutput === null ? null : <Block label={t("code.expected")} text={shownResult.expectedOutput} />}
+          <Block label={t("code.output")} text={functionMode ? (shownResult.result ?? "null") : shownResult.stdout} sql={sql} />
+          {shownResult.expectedOutput === null ? null : <Block label={t("code.expected")} text={shownResult.expectedOutput} sql={sql} />}
           {functionMode && shownResult.stdout !== "" ? <Block label={t("code.stdout")} text={shownResult.stdout} /> : null}
           {shownResult.stderr === "" ? null : <Block label="stderr" text={shownResult.stderr} className="stderr" />}
           {shownResult.checkerMessage === null || shownResult.checkerMessage === undefined ? null : (
@@ -536,6 +542,7 @@ function SubmitView({ question, outcome }: { readonly question: CandidateCodeQue
   const { t } = usePreferences();
   const [at, setAt] = useState(0);
   const functionMode = question.function !== null && question.function !== undefined;
+  const sql = question.language === "sql";
   if (!outcome.tested) {
     return (
       <section className="run-output" aria-label="Submission results">
@@ -586,8 +593,8 @@ function SubmitView({ question, outcome }: { readonly question: CandidateCodeQue
           ) : (
             <Block label={t("code.input")} text={picked.input ?? ""} />
           )}
-          <Block label={t("code.output")} text={functionMode ? (picked.result ?? "null") : (picked.stdout ?? "")} />
-          <Block label={t("code.expected")} text={picked.expectedOutput ?? ""} />
+          <Block label={t("code.output")} text={functionMode ? (picked.result ?? "null") : (picked.stdout ?? "")} sql={sql} />
+          <Block label={t("code.expected")} text={picked.expectedOutput ?? ""} sql={sql} />
           {picked.stderr === null || picked.stderr === "" ? null : <Block label="stderr" text={picked.stderr} className="stderr" />}
           <Meta timeMs={picked.timeMs} memoryKb={picked.memoryKb} />
         </div>

@@ -96,6 +96,38 @@ describe("the coding workspace", () => {
     expect(screen.getByRole("tab", { name: "Test result" })).toHaveAttribute("aria-selected", "true");
   });
 
+  it("shows an SQL question's tables and what a query returned as tables", async () => {
+    const setup = "CREATE TABLE World (name TEXT PRIMARY KEY, area INTEGER);\nINSERT INTO World (name, area) VALUES ('India', 3287263), ('Nepal', 147516);\n";
+    const sqlQuestion = {
+      ...question,
+      id: "big",
+      stem: "Big countries\n\nReturn the names.",
+      language: "sql",
+      languages: ["sql"],
+      starter: "",
+      starters: { sql: "" },
+      inputFormat: null,
+      constraints: null,
+      samples: [{ input: setup, output: "India\t3287263\n", explanation: null }],
+    } as unknown as CandidateCodeQuestion;
+    const onRun = vi.fn(async () => ({
+      compiled: true as const,
+      results: [{ input: setup, expectedOutput: "India\t3287263\n", status: "wrong_answer", stdout: "India\t3287263\nNepal\t147516\n", stderr: "", timeMs: 12, memoryKb: 9216 }],
+    }));
+    render(<CodeAnswer question={sqlQuestion} value={answer("SELECT * FROM World;", "sql")} disabled={false} onChange={vi.fn()} onRun={onRun} />);
+
+    const world = await screen.findByRole("table", { name: "World" });
+    expect(within(world).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["name TEXT", "area INTEGER"]);
+    expect(within(world).getAllByRole("row")).toHaveLength(3);
+    expect(screen.getByText("The SQL that makes them")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Run" }));
+    const results = await screen.findByRole("region", { name: "Run results" });
+    const output = within(results).getByRole("table", { name: "Output" });
+    expect(within(output).getAllByRole("row").map((r) => r.textContent)).toEqual(["India3287263", "Nepal147516"]);
+    expect(within(within(results).getByRole("table", { name: "Expected" })).getAllByRole("row")).toHaveLength(1);
+  });
+
   it("runs a custom case on the candidate's own input", async () => {
     const onRun = vi.fn(async () => ({
       compiled: true as const,

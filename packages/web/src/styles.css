@@ -4506,3 +4506,20 @@ button.paper-row.current {
   background: var(--chrome-fill);
   border-color: var(--chrome-border);
 }
+
+/* SQL problems: tables for the examples and what a query returned. */
+.sql-table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+.sql-table caption {
+  text-align: start;
+  font-weight: var(--weight-semibold);
+}
+.sql-table th,
+.sql-table td {
+  border: 1px solid var(--border);
+  padding: 0.2rem 0.5rem;
+  text-align: start;
+}
