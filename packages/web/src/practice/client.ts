@@ -756,6 +756,9 @@ export interface PlacementResult {
   readonly results: readonly { readonly id: string; readonly choice: number; readonly correct: number; readonly right: boolean; readonly why: string }[];
 }
 
+export type PrepRole = "sde" | "backend" | "frontend" | "data";
+export const PREP_ROLES: readonly PrepRole[] = ["sde", "backend", "frontend", "data"];
+
 export interface PlanInput {
   readonly track: string;
   readonly level: Level;
@@ -765,6 +768,8 @@ export interface PlanInput {
   readonly weekendMinutes?: number | null;
   readonly offDays: readonly number[];
   readonly goal?: string;
+  /** The job aimed at: its topics come first. */
+  readonly role?: PrepRole | null;
   /** Plan only the first this many of the track's remaining items. */
   readonly upTo?: number;
 }
@@ -819,6 +824,7 @@ export interface Plan {
   readonly weekendMinutes: number | null;
   readonly offDays: readonly number[];
   readonly goal: string;
+  readonly role: PrepRole | null;
   readonly startedAt: string;
   readonly finishOn: string;
   readonly onTrack: boolean;

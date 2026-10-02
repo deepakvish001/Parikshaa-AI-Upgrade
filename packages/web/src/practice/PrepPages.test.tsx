@@ -35,6 +35,7 @@ const plan = {
   dailyMinutes: 90,
   offDays: [0],
   goal: "",
+  role: null,
   startedAt: "2026-10-05T04:00:00Z",
   finishOn: "2026-11-20",
   onTrack: true,
@@ -207,6 +208,27 @@ describe("the plan", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")).toBe(true));
     const started = calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body as { track: string; dailyMinutes: number; offDays: number[] };
     expect(started).toMatchObject({ track: "dsa-basics", dailyMinutes: 150, offDays: [0] });
+  });
+
+  it("plans for the job the learner chooses, and names it on the plan", async () => {
+    routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: null } });
+    routes["POST /practice/nit-practice/plan/preview"] = () => ({
+      body: { track: { slug: "dsa-basics", title: "DSA Basics" }, tasks: 29, totalMinutes: 1200, finishOn: "2026-12-20", deadline: "2026-12-31", fits: true, sprints: [], dailyMinutesToFit: null },
+    });
+    routes["POST /practice/nit-practice/plan"] = () => {
+      routes["GET /practice/nit-practice/plan"] = () => ({ body: { plan: { ...plan, role: "data" } } });
+      return { status: 201, body: { plan: { ...plan, role: "data" } } };
+    };
+    const user = userEvent.setup();
+    open("/practice/nit-practice/plan?track=dsa-basics");
+    await screen.findByRole("heading", { name: "Plan a track" });
+    await user.selectOptions(screen.getByLabelText("The job you are preparing for"), "data");
+    await user.click(screen.getByRole("button", { name: "Show the plan" }));
+    await user.click(await screen.findByRole("button", { name: "Start this plan" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")).toBe(true));
+    expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan/preview")!.body).toMatchObject({ role: "data" });
+    expect(calls.find((c) => c.method === "POST" && c.path === "/practice/nit-practice/plan")!.body).toMatchObject({ role: "data" });
+    expect(await screen.findByText(/Data analyst or data engineer/)).toBeTruthy();
   });
 
   it("suggests a level from the placement quiz, and plans with it", async () => {

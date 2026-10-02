@@ -85,6 +85,7 @@ const planView = z.object({
   weekendMinutes: z.number().nullable(),
   offDays: z.array(z.number()).readonly(),
   goal: z.string(),
+  role: z.enum(["sde", "backend", "frontend", "data"]).nullable().describe("The job the plan aims at; its topics come first."),
   startedAt: z.string(),
   finishOn: day,
   onTrack: z.boolean().describe("The last task falls on or before the deadline."),
@@ -107,6 +108,11 @@ const planInput = z.object({
   weekendMinutes: z.number().int().nullable().optional().describe("Minutes on Saturday and Sunday, when they differ from `dailyMinutes`."),
   offDays: z.array(z.number().int()).max(7).default([]),
   goal: z.string().max(200).optional(),
+  role: z
+    .enum(["sde", "backend", "frontend", "data"])
+    .nullable()
+    .optional()
+    .describe("The job aimed at: within each module its problems come first, and up to eight of the site's other problems on its topics join the plan."),
   upTo: z.number().int().optional().describe("Plan only the first this many of the track's remaining items: the one that fit by the deadline, say."),
 });
 const planPreview = z.object({

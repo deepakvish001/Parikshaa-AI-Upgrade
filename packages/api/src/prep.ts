@@ -1,3 +1,4 @@
+import { fitsRole, ROLE_SLUGS, type PrepRole } from "./prep-roles.js";
 import { randomBytes } from "node:crypto";
 import { candidateQuestion, scoreDeterministic, type OrgId } from "@parikshaa/core";
 import {
@@ -98,7 +99,19 @@ interface State {
 }
 
 /** What a plan is made from: and, to plan only part of the track, how many of its remaining items. */
-type PlanRequest = { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[]; upTo?: number | undefined };
+type PlanRequest = {
+  track: string;
+  level: string;
+  deadline: string;
+  dailyMinutes: number;
+  weekendMinutes?: number | null | undefined;
+  offDays: readonly number[];
+  upTo?: number | undefined;
+  role?: string | null | undefined;
+};
+
+/** Problems on the role's topics that join a plan from outside its track. */
+export const ROLE_EXTRAS = 8;
 
 const levels: readonly PlanLevel[] = ["beginner", "intermediate", "advanced"];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -575,29 +588,75 @@ export class PrepService {
     return { today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays };
   }
 
-  #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[] }) {
+  #planInput(input: { track: string; level: string; deadline: string; dailyMinutes: number; weekendMinutes?: number | null | undefined; offDays: readonly number[]; role?: string | null | undefined }) {
     if (!levels.includes(input.level as PlanLevel)) throw new PracticeError("invalid", "A level is beginner, intermediate or advanced");
-    return { ...this.#settings(input), level: input.level as PlanLevel };
+    const role = input.role ?? null;
+    if (role !== null && !ROLE_SLUGS.includes(role)) throw new PracticeError("invalid", `A role is one of ${ROLE_SLUGS.join(", ")}`);
+    return { ...this.#settings(input), level: input.level as PlanLevel, role };
   }
 
-  /** The track's items not yet done, in order. */
-  #remaining(track: Track, state: State): PlanItem[] {
+  /**
+   * The track's items not yet done, in order. With a role, each module's
+   * problems on its topics come before the module's others; lessons keep
+   * their places, and modules their order.
+   */
+  #remaining(track: Track, state: State, role: string | null = null): PlanItem[] {
+    const fits = (id: string) => {
+      const p = state.problems.get(id);
+      return p !== undefined && fitsRole(role, p);
+    };
     return this.#items(track, state)
-      .flatMap((m) => m.items)
-      .filter((i) => i.status !== "done")
+      .flatMap((m) => {
+        const left = m.items.filter((i) => i.status !== "done");
+        const problems = left.filter((i) => i.kind === "problem");
+        const ordered = [...problems.filter((i) => fits(i.id)), ...problems.filter((i) => !fits(i.id))];
+        return left.map((i) => (i.kind === "problem" ? ordered.shift()! : i));
+      })
       .map((i) => ({ itemId: i.id, kind: i.kind === "lesson" ? "learn" : "practice", title: i.title, minutes: i.kind === "lesson" ? i.estMinutes : null, difficulty: i.difficulty }));
   }
 
+  /**
+   * Up to ROLE_EXTRAS of the site's problems on the role's topics, not in the
+   * plan and not solved, easiest first: one a day through the middle of the
+   * plan, after the day's own work.
+   */
+  #withRole(state: State, role: string | null, tasks: readonly TaskDraft[]): readonly TaskDraft[] {
+    if (role === null || tasks.length === 0) return tasks;
+    const order = { easy: 0, medium: 1, hard: 2 } as const;
+    const extras = [...state.problems.values()]
+      .filter((p) => !tasks.some((t) => t.itemId === p.id) && !state.solved.has(p.id) && fitsRole(role, p))
+      .sort((a, b) => order[a.difficulty] - order[b.difficulty] || a.title.localeCompare(b.title))
+      .slice(0, ROLE_EXTRAS);
+    if (extras.length === 0) return tasks;
+    const days = [...new Set(tasks.map((t) => t.day))].sort();
+    const middle = days.slice(Math.floor(days.length * 0.35), Math.max(Math.floor(days.length * 0.35) + 1, Math.floor(days.length * 0.7)));
+    const out = [...tasks];
+    extras.forEach((p, i) => {
+      const day = middle[i % middle.length]!;
+      const onDay = out.filter((t) => t.day === day);
+      out.push({
+        day,
+        sprint: onDay[0]?.sprint ?? Math.max(...tasks.map((t) => t.sprint)),
+        position: Math.max(-1, ...onDay.map((t) => t.position)) + 1,
+        kind: "practice",
+        itemId: p.id,
+        title: p.title,
+        estMinutes: { easy: 20, medium: 40, hard: 60 }[p.difficulty],
+      });
+    });
+    return out;
+  }
+
   async #planFor(site: PracticeSite, learner: Learner, input: PlanRequest) {
-    const { today, level, offDays, weekendMinutes } = this.#planInput(input);
+    const { today, level, offDays, weekendMinutes, role } = this.#planInput(input);
     const state = await this.#state(site, learner);
     const track = state.tracks.find((t) => t.slug === input.track);
     if (track === undefined) throw new PracticeError("not_found", "No such track");
-    const all = this.#remaining(track, state);
+    const all = this.#remaining(track, state, role);
     if (input.upTo !== undefined && (!Number.isInteger(input.upTo) || input.upTo < 1)) throw new PracticeError("invalid", "Plan at least one item");
     const items = input.upTo === undefined ? all : all.slice(0, input.upTo);
     const outcome = generatePlan({ items, level, start: today, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays });
-    return { track, level, offDays, weekendMinutes, outcome, of: all.length };
+    return { track, level, offDays, weekendMinutes, role, state, outcome, of: all.length };
   }
 
   /** What a plan would be, before it is started. */
@@ -623,12 +682,12 @@ export class PrepService {
 
   async startPlan(site: PracticeSite, learner: Learner, input: PlanRequest & { goal?: string | undefined }) {
     await this.#planAllowed(site, learner);
-    const { track, level, offDays, weekendMinutes, outcome } = await this.#planFor(site, learner, input);
+    const { track, level, offDays, weekendMinutes, role, state, outcome } = await this.#planFor(site, learner, input);
     const goal = (input.goal ?? "").trim().slice(0, 200);
-    const tasks = await this.#withCompanies(site, learner, outcome.tasks);
+    const tasks = await this.#withCompanies(site, learner, this.#withRole(state, role, outcome.tasks));
     await this.#store.startPlan(
       practiceLearner(site.orgId, learner.id),
-      { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays, goal },
+      { trackId: track.id, level, deadline: input.deadline, dailyMinutes: input.dailyMinutes, weekendMinutes, offDays, goal, role },
       tasks,
     );
     return (await this.plan(site, learner))!;
@@ -685,8 +744,10 @@ export class PrepService {
     const tasks = await this.#store.tasks(scope, plan.id);
     const kept = tasks.filter((t) => t.doneAt !== null || t.kind === "custom" || (t.kind === "revise" && t.itemId !== null));
     const begun = Math.max(0, ...tasks.filter((t) => t.doneAt !== null || t.day < settings.today).map((t) => t.sprint));
-    const outcome = generatePlan({ ...settings, items: this.#remaining(track, state), level: plan.level, start: settings.today });
-    const laid = (await this.#withCompanies(site, learner, outcome.tasks)).map((t) => ({ ...t, sprint: t.sprint + begun, title: t.kind === "revise" && t.itemId === null ? `Sprint ${t.sprint + begun} revision` : t.title }));
+    const outcome = generatePlan({ ...settings, items: this.#remaining(track, state, plan.role), level: plan.level, start: settings.today });
+    // Role problems already in the plan, done or kept, are not added twice.
+    const withRole = this.#withRole(state, plan.role, outcome.tasks).filter((t) => !kept.some((k) => k.itemId !== null && k.itemId === t.itemId));
+    const laid = (await this.#withCompanies(site, learner, withRole)).map((t) => ({ ...t, sprint: t.sprint + begun, title: t.kind === "revise" && t.itemId === null ? `Sprint ${t.sprint + begun} revision` : t.title }));
     // A task kept for today goes first; new ones follow it on the same day.
     const after = new Map<string, number>();
     for (const t of kept.filter((k) => k.doneAt === null)) after.set(t.day, Math.max(after.get(t.day) ?? -1, t.position));
@@ -734,6 +795,7 @@ export class PrepService {
       weekendMinutes: plan.weekendMinutes,
       offDays: plan.offDays,
       goal: plan.goal,
+      role: plan.role as PrepRole | null,
       startedAt: plan.createdAt,
       finishOn,
       onTrack: finishOn <= plan.deadline,

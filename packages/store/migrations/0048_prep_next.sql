@@ -33,3 +33,7 @@ BEGIN
 END $$;
 REVOKE ALL ON FUNCTION prep_erase_study(text, text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION prep_erase_study(text, text) TO parikshaa_app;
+
+-- The job a plan aims at (row 46): its topics come first in each module, and
+-- some of the site's problems on them join the plan. Null: none chosen.
+ALTER TABLE prep_plans ADD COLUMN role text CHECK (role IN ('sde', 'backend', 'frontend', 'data'));
