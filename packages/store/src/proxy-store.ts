@@ -2,7 +2,7 @@ import { staffScope, withScope } from "./ledger-store.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Where attempts were opened from, and the model's identity comparisons (migration 0046). */
+/** Where attempts were opened from, and the model's identity comparisons (migration 0040). */
 
 export interface AttemptOrigin {
   readonly attemptId: string;

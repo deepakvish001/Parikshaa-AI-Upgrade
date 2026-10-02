@@ -4,7 +4,7 @@ import type { ImageMime } from "./question-media.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Handwritten answer copies, their scanned pages, suggested and checked marks, and moderation (migration 0043). */
+/** Handwritten answer copies, their scanned pages, suggested and checked marks, and moderation (migration 0037). */
 
 export type ScriptStatus = "uploaded" | "checked" | "moderated" | "disputed";
 

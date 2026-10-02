@@ -3,7 +3,7 @@ import { NO_SEAL, type RecordSeal } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** A candidate's arrangements on an exam: extra time, a scribe, larger text (migration 0052). */
+/** A candidate's arrangements on an exam: extra time, a scribe, larger text (migration 0046). */
 export interface Accommodation {
   readonly candidateRef: string;
   readonly extraPercent: number;

@@ -3,7 +3,7 @@ import { NO_SEAL, type RecordSeal } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
 import type { OrgId } from "@parikshaa/core";
 
-/** Interviews: the room, the candidate's code, the notes and the scorecard (migration 0042). */
+/** Interviews: the room, the candidate's code, the notes and the scorecard (migration 0036). */
 
 export type Recommendation = "strong_yes" | "yes" | "no" | "strong_no";
 
