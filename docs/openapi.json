@@ -108,6 +108,14 @@
                           "browserEvents": {
                             "type": "boolean",
                             "description": "Record leaving the tab or full screen, and copying or pasting."
+                          },
+                          "screenShare": {
+                            "description": "Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started.",
+                            "type": "boolean"
+                          },
+                          "audio": {
+                            "description": "Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -3756,6 +3764,14 @@
                             "browserEvents": {
                               "type": "boolean",
                               "description": "Record leaving the tab or full screen, and copying or pasting."
+                            },
+                            "screenShare": {
+                              "description": "Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started.",
+                              "type": "boolean"
+                            },
+                            "audio": {
+                              "description": "Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -9425,6 +9441,14 @@
                                 "browserEvents": {
                                   "type": "boolean",
                                   "description": "Record leaving the tab or full screen, and copying or pasting."
+                                },
+                                "screenShare": {
+                                  "description": "Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started.",
+                                  "type": "boolean"
+                                },
+                                "audio": {
+                                  "description": "Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent.",
+                                  "type": "boolean"
                                 }
                               },
                               "required": [
@@ -72689,6 +72713,14 @@
                             "browserEvents": {
                               "type": "boolean",
                               "description": "Record leaving the tab or full screen, and copying or pasting."
+                            },
+                            "screenShare": {
+                              "description": "Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started.",
+                              "type": "boolean"
+                            },
+                            "audio": {
+                              "description": "Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -73293,6 +73325,14 @@
                             "browserEvents": {
                               "type": "boolean",
                               "description": "Record leaving the tab or full screen, and copying or pasting."
+                            },
+                            "screenShare": {
+                              "description": "Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started.",
+                              "type": "boolean"
+                            },
+                            "audio": {
+                              "description": "Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -80396,7 +80436,7 @@
                                     "additionalProperties": {
                                       "type": "number"
                                     },
-                                    "description": "What the browser reported, by kind: tab_hidden, fullscreen_exit, copy, paste, camera_off."
+                                    "description": "What the browser reported, by kind: tab_hidden, fullscreen_exit, copy, paste, camera_off, camera_on, screen_share_off, screen_share_on, second_screen, voice."
                                   }
                                 },
                                 "required": [
@@ -85000,6 +85040,14 @@
                             "browserEvents": {
                               "type": "boolean",
                               "description": "Record leaving the tab or full screen, and copying or pasting."
+                            },
+                            "screenShare": {
+                              "description": "Secure mode: the whole screen shared for the whole sitting, and a second screen recorded. Nothing of the screen is captured; only when sharing stopped or started.",
+                              "type": "boolean"
+                            },
+                            "audio": {
+                              "description": "Listen for sustained speech or noise. Loudness is measured in the browser; no sound is recorded or sent.",
+                              "type": "boolean"
                             }
                           },
                           "required": [

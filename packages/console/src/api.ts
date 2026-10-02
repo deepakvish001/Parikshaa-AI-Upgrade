@@ -808,7 +808,13 @@ export interface ProctoringMedia {
 }
 
 export interface ProctoringView {
-  readonly policy: { readonly identity: boolean; readonly snapshotEverySeconds: number | null; readonly browserEvents: boolean } | null;
+  readonly policy: {
+    readonly identity: boolean;
+    readonly snapshotEverySeconds: number | null;
+    readonly browserEvents: boolean;
+    readonly screenShare?: boolean;
+    readonly audio?: boolean;
+  } | null;
   readonly identity: {
     readonly selfie: ProctoringMedia | null;
     readonly id: ProctoringMedia | null;

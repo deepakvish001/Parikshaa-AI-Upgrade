@@ -17,11 +17,14 @@ import { can, type Actor } from "./staff-auth.js";
 /**
  * Camera proctoring (ROADMAP §14), for an exam whose author turns it on.
  *
- * Three things, each optional per exam: an identity check (a photo of the
- * candidate and of their photo ID before they begin, which a person compares
- * and decides on, on the record), a webcam photo every so often while they
- * answer, and what the browser reports (the tab hidden, full screen left, a
- * copy or a paste, the camera stopping).
+ * Each optional per exam: an identity check (a photo of the candidate and of
+ * their photo ID before they begin, which a person compares and decides on,
+ * on the record), a webcam photo every so often while they answer, what the
+ * browser reports (the tab hidden, full screen left, a copy or a paste, the
+ * camera stopping), and, in secure mode, the whole screen shared throughout
+ * (sharing stopping or a second screen connecting is recorded) and speech or
+ * noise heard. Neither the screen nor any sound is ever captured: only that
+ * something happened, and when.
  *
  * None of it decides anything. A photo, a switched tab, a camera that went
  * dark are reasons for a person to look; they never fail anyone by
@@ -32,10 +35,28 @@ import { can, type Actor } from "./staff-auth.js";
 /** JPEG or PNG, and no bigger than a webcam frame needs to be. */
 const MAX_IDENTITY_BYTES = 600_000;
 const MAX_SNAPSHOT_BYTES = 250_000;
-const EVENT_KINDS: readonly ProctorEventKind[] = ["tab_hidden", "fullscreen_exit", "copy", "paste", "camera_off", "camera_on"];
+/** Which policy setting lets the page report each kind of event. The camera's own come with any camera use. */
+const EVENT_NEEDS: Readonly<Record<ProctorEventKind, (p: ProctoringPolicy) => boolean>> = {
+  tab_hidden: (p) => p.browserEvents,
+  fullscreen_exit: (p) => p.browserEvents,
+  copy: (p) => p.browserEvents,
+  paste: (p) => p.browserEvents,
+  camera_off: () => true,
+  camera_on: () => true,
+  screen_share_off: (p) => p.screenShare === true,
+  screen_share_on: (p) => p.screenShare === true,
+  second_screen: (p) => p.screenShare === true,
+  voice: (p) => p.audio === true,
+};
 
+/**
+ * Whether the candidate must get a device working before the clock starts:
+ * the camera for photos, the screen to share, or the microphone to listen.
+ */
 export const needsCamera = (policy: ProctoringPolicy | undefined | null): boolean =>
-  policy !== undefined && policy !== null && (policy.identity || policy.snapshotEverySeconds !== null);
+  policy !== undefined &&
+  policy !== null &&
+  (policy.identity || policy.snapshotEverySeconds !== null || policy.screenShare === true || policy.audio === true);
 
 /** A photo that is not an image, or too large to be one from a webcam. */
 function decodeImage(base64: string, max: number): Buffer {
@@ -147,15 +168,13 @@ export class ProctorService {
   /** What the browser reported. Timed by the server, which the candidate's clock cannot move. */
   async events(access: CandidateAccess, kinds: readonly string[]): Promise<void> {
     const { policy } = await this.#open(access);
-    if (!policy.browserEvents && kinds.some((k) => k !== "camera_off" && k !== "camera_on")) {
-      throw new AttemptError("invalid_state", "This exam does not record browser events");
+    for (const kind of kinds) {
+      if (!Object.hasOwn(EVENT_NEEDS, kind)) throw new AttemptError("invalid_proctoring", `Not an event: ${kind}`);
+      if (!EVENT_NEEDS[kind as ProctorEventKind](policy)) throw new AttemptError("invalid_state", `This exam does not record ${kind.replaceAll("_", " ")}`);
     }
     const scope = candidateScope(access.orgId, access.attemptId);
     const at = new Date(this.#o.now());
-    for (const kind of kinds) {
-      if (!(EVENT_KINDS as readonly string[]).includes(kind)) throw new AttemptError("invalid_proctoring", `Not an event: ${kind}`);
-      await this.#o.proctor.addEvent(scope, access.attemptId, kind as ProctorEventKind, at);
-    }
+    for (const kind of kinds) await this.#o.proctor.addEvent(scope, access.attemptId, kind as ProctorEventKind, at);
   }
 
   // --- the invigilator's side -------------------------------------------------

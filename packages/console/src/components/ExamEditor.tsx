@@ -685,6 +685,14 @@ function ProctoringFields({ value, onChange }: { value: ProctoringPolicy | undef
             <input type="checkbox" checked={policy.browserEvents} onChange={(e) => onChange({ ...policy, browserEvents: e.target.checked })} /> Record leaving
             the tab or full screen, copy and paste
           </label>
+          <label className="inline">
+            <input type="checkbox" checked={policy.screenShare === true} onChange={(e) => onChange({ ...policy, screenShare: e.target.checked })} /> Secure
+            mode: whole screen shared throughout, second screen recorded
+          </label>
+          <label className="inline">
+            <input type="checkbox" checked={policy.audio === true} onChange={(e) => onChange({ ...policy, audio: e.target.checked })} /> Listen for talking or
+            noise (nothing recorded)
+          </label>
         </div>
       ) : (
         <p className="notice">Off: the test uses no camera, and records nothing about the candidate's browser.</p>

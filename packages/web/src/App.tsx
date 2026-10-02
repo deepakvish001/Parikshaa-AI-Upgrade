@@ -19,7 +19,7 @@ const ApplyPage = lazy(() => import("./components/PublicPages.tsx").then((m) => 
 import { InviteGate } from "./components/InviteGate.tsx";
 import { TokenGate } from "./components/TokenGate.tsx";
 import { IdentityCapture } from "./components/IdentityCapture.tsx";
-import { useProctoring } from "./proctoring.ts";
+import { useProctoring, type ShareProblem } from "./proctoring.ts";
 import { clearLocalDrafts, loadLocalDrafts, purgeExpiredDrafts, saveLocalDraft } from "./drafts.ts";
 import { LANGUAGE_NAMES, PreferencesProvider, usePreferences, type Language } from "./i18n.tsx";
 import { TopBar } from "./components/Chrome.tsx";
@@ -311,7 +311,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
   // Proctored (ROADMAP §14): photos and browser events once the identity step, if any, is done.
   const policy = state.data?.exam.proctoring ?? null;
   const identityDue = inProgress && policy?.identity === true && state.data?.identityCaptured === false;
-  const { cameraOn } = useProctoring(client, policy, inProgress && !identityDue, lite);
+  const { cameraOn, screenShared, shareAgain } = useProctoring(client, policy, inProgress && !identityDue, lite);
+  const [shareProblem, setShareProblem] = useState<ShareProblem | null>(null);
 
   const announcements = useQuery({ queryKey: ["announcements"], queryFn: () => client.announcements(), enabled: inProgress });
   const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
@@ -1294,6 +1295,20 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
             <p className="offline" role="alert">
               {t("camera.offBanner")}
             </p>
+          ) : null}
+          {screenShared === false ? (
+            <div className="offline share-again" role="alert">
+              <p>
+                {shareProblem === "window"
+                  ? t("camera.screenWindow")
+                  : shareProblem === "unsupported"
+                    ? t("camera.screenUnsupported")
+                    : t("screen.offBanner")}
+              </p>
+              <button type="button" onClick={() => void shareAgain().then(setShareProblem)}>
+                {t("screen.shareAgain")}
+              </button>
+            </div>
           ) : null}
           {welcome !== null ? (
             <p className="welcome-back" role="status">
