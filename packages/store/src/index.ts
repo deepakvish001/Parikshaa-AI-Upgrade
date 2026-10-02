@@ -34,3 +34,4 @@ export * from "./accommodation-store.js";
 export * from "./proxy-store.js";
 export * from "./review-store.js";
 export * from "./department-store.js";
+export * from "./ai-interview-store.js";

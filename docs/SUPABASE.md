@@ -51,11 +51,12 @@ tables match.
 From the VM, keep it current the ordinary way: `DATABASE_URL=… npm run migrate`
 applies whatever is missing.
 
-**0054 and 0055 are not applied yet.** The connector asks for the owner's
+**0054, 0055, 0059 and 0060 are not applied yet.** The connector asks for the owner's
 approval before any SQL containing `DELETE` or `DROP` and gives up after a
 minute; 0054's function deletes a removed learner's study data and 0055 drops
-the removed features' tables. Either the owner approves them when asked, or
-`npm run migrate` applies both from the VM.
+the removed features' tables; 0059 and 0060 (the AI interviewer's tables)
+each drop and remake a check constraint to allow new values. Either the owner
+approves them when asked, or `npm run migrate` applies them from the VM.
 
 ## The legacy import
 

@@ -29,6 +29,7 @@ import {
   SeatStore,
   ShortlistStore,
   InterviewStore,
+  AiInterviewStore,
   AccommodationStore,
   ProxyStore,
   ReviewStore,
@@ -49,6 +50,7 @@ import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
 import { AccommodationService } from "../accommodations.js";
 import { InterviewService } from "../interviews.js";
+import { AiInterviewService } from "../ai-interview.js";
 import { StudentMessages } from "../student-messages.js";
 import { ProxyService } from "../proxy.js";
 import { ExamReviewService } from "../exam-review.js";
@@ -412,6 +414,7 @@ export async function wire(
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
     interviews,
+    aiInterviews: new AiInterviewService({ store: new AiInterviewStore(sql, records.records("ai-interviews")), exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),

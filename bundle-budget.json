@@ -19,7 +19,10 @@
     "??-*.js": 12,
     "i18n-*.js": 26,
     "PublicPages-*.js": 6,
-    "PublicPages-*.css": 1
+    "PublicPages-*.css": 1,
+    "AiInterview-*.js": 3,
+    "AiInterview-*.css": 1,
+    "user-round-*.js": 1
   },
   "packages/console/dist": {
     "index-*.js": 178,
@@ -45,8 +48,10 @@
     "BankTransfer-*.js": 2,
     "Interviews-*.js": 4,
     "Interviews-*.css": 1,
+    "AiInterviews-*.js": 5,
+    "AiInterviews-*.css": 1,
     "ProxyCheck-*.js": 2,
-    "hindi-*.js": 3,
+    "hindi-*.js": 4,
     "PaperReview-*.js": 2,
     "StaffSheet-*.js": 3,
     "Arrangements-*.js": 3,

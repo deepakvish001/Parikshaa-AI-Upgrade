@@ -1,0 +1,42 @@
+/* The AI interviewer's transcript: loaded with the page. */
+.ai-transcript .ai-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+  gap: var(--space-4);
+}
+.ai-transcript .ai-turns {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-transcript .ai-turns li {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.ai-transcript .ai-turns .from-ai {
+  background: var(--surface-sunken);
+}
+.ai-transcript .ai-turns p {
+  margin: var(--space-1) 0 0;
+  white-space: pre-wrap;
+}
+.ai-transcript pre {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+}
+.ai-transcript .evidence {
+  color: var(--text-secondary);
+}
+.ai-transcript .scorecard .criterion {
+  min-width: 10rem;
+}
+.ai-transcript .pre-line {
+  white-space: pre-line;
+}

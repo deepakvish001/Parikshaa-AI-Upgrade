@@ -397,6 +397,47 @@ export interface Interview {
   readonly scores?: readonly { readonly userId: string; readonly name: string; readonly scorecard: InterviewScorecard; readonly scoredAt: string }[];
 }
 
+export interface AiTurn {
+  readonly seq: number;
+  readonly speaker: "interviewer" | "candidate";
+  readonly kind: "question" | "follow_up" | "answer" | "closing";
+  readonly body: string;
+  readonly code: string | null;
+  readonly language: string | null;
+  readonly at: string;
+  readonly hash: string;
+}
+
+/** A first-round interview the AI holds by chat (plan row 86); a person reads it and decides. */
+export interface AiInterview {
+  readonly id: string;
+  readonly title: string;
+  readonly roleId: string | null;
+  readonly job: string;
+  readonly seniority: Seniority;
+  readonly questions: number;
+  readonly minutes: number;
+  readonly candidateRef: string;
+  readonly candidateName: string;
+  readonly candidateEmail: string | null;
+  readonly status: "invited" | "in_progress" | "done" | "cancelled";
+  readonly startedAt: string | null;
+  readonly endedAt: string | null;
+  /** The model's reading: each criterion 1–5 with the candidate's words as evidence (0 when it gave none). */
+  readonly assessment: { readonly criteria: readonly { readonly name: string; readonly score: number; readonly evidence: readonly string[] }[]; readonly summary: string; readonly concerns: readonly string[] } | null;
+  readonly scorecard: InterviewScorecard | null;
+  readonly decidedBy: string | null;
+  readonly decidedAt: string | null;
+  readonly createdBy: string;
+  readonly createdAt: string;
+  readonly link: string;
+}
+
+export interface AiInterviewDetail extends AiInterview {
+  readonly turns: readonly AiTurn[];
+  readonly transcriptIntact: boolean;
+}
+
 export interface PlacementReport {
   readonly batches: readonly (PlacementFigures & { readonly batch: number | null; readonly branches: readonly (PlacementFigures & { readonly branch: string })[] })[];
 }
@@ -1667,6 +1708,42 @@ export class ConsoleClient {
 
   scoreInterview(id: string, card: InterviewScorecard): Promise<Interview> {
     return this.#request(`/interviews/${encodeURIComponent(id)}/scorecard`, { method: "POST", body: JSON.stringify(card) });
+  }
+
+  // --- AI interviews ------------------------------------------------------------
+
+  aiInterviews(): Promise<readonly AiInterview[]> {
+    return this.#request<{ interviews: readonly AiInterview[] }>("/ai-interviews").then((b) => b.interviews);
+  }
+
+  aiInterview(id: string): Promise<AiInterviewDetail> {
+    return this.#request(`/ai-interviews/${encodeURIComponent(id)}`);
+  }
+
+  createAiInterview(request: {
+    readonly title: string;
+    readonly roleId: string | null;
+    readonly job: string;
+    readonly seniority: Seniority;
+    readonly questions: number;
+    readonly minutes: number;
+    readonly candidateName: string;
+    readonly candidateRef: string;
+    readonly candidateEmail: string | null;
+  }): Promise<AiInterviewDetail> {
+    return this.#request("/ai-interviews", { method: "POST", body: JSON.stringify(request) });
+  }
+
+  decideAiInterview(id: string, card: InterviewScorecard): Promise<AiInterviewDetail> {
+    return this.#request(`/ai-interviews/${encodeURIComponent(id)}/scorecard`, { method: "POST", body: JSON.stringify(card) });
+  }
+
+  reassessAiInterview(id: string): Promise<AiInterviewDetail> {
+    return this.#request(`/ai-interviews/${encodeURIComponent(id)}/assess`, { method: "POST" });
+  }
+
+  cancelAiInterview(id: string): Promise<AiInterviewDetail> {
+    return this.#request(`/ai-interviews/${encodeURIComponent(id)}/cancel`, { method: "POST" });
   }
 
   placementReport(): Promise<PlacementReport> {

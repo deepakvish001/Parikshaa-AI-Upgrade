@@ -277,6 +277,24 @@ export class ExamService {
     return result;
   }
 
+  /**
+   * A model call made for the organisation with no staff member behind it —
+   * the AI interviewer's next question, asked while the candidate waits.
+   * Refused once the month's spend cap is reached, like any other.
+   */
+  async modelCall<T>(
+    orgId: OrgId,
+    route: "interview",
+    run: (client: Anthropic, model: string) => Promise<{ readonly result: T; readonly usage: ReportedUsage }>,
+  ): Promise<T> {
+    const scope = staffScope(orgId);
+    if (!(await this.#withinBudget(scope))) throw new SpendCapReached();
+    const model = this.#engine.model ?? DEFAULT_MODEL;
+    const { result, usage } = await run(this.#engine.client, model);
+    await this.#store.recordUsage(scope, { ...measure(route, model, usage), attemptId: null });
+    return result;
+  }
+
   // --- candidate: reading ---------------------------------------------------
 
   /**

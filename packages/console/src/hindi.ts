@@ -10,6 +10,7 @@ export const HINDI: Readonly<Record<string, string>> = {
   Insights: "विश्लेषण",
   Placement: "प्लेसमेंट",
   Interviews: "इंटरव्यू",
+  "AI interviews": "AI इंटरव्यू",
   Practice: "अभ्यास",
   Staff: "स्टाफ़",
   "API keys": "API कुंजियाँ",
@@ -54,6 +55,8 @@ export const HINDI: Readonly<Record<string, string>> = {
     "आपके विद्यार्थी, एक बार दर्ज, और हर कंपनी की ड्राइव: कौन योग्य है, परीक्षा, हर राउंड और ऑफ़र।",
   "Interviews with a video call and a shared code editor: watch the candidate type, keep notes, score it.":
     "वीडियो कॉल और साझा कोड एडिटर के साथ इंटरव्यू: उम्मीदवार को लिखते देखें, नोट्स रखें, स्कोर दें।",
+  "A first round by chat, held by the AI for a role: read the transcript and its evidence, and decide.":
+    "रोल के लिए AI द्वारा चैट पर पहला राउंड: ट्रांसक्रिप्ट और उसके प्रमाण पढ़ें, और फ़ैसला आप करें।",
   "Who can sign in to this console, and what each can do.": "इस कंसोल में कौन साइन इन कर सकता है, और हर व्यक्ति क्या कर सकता है।",
   "Keys for your own systems to call Parikshaa.": "आपके अपने सिस्टम के लिए कुंजियाँ, जिनसे वे परीक्षा को कॉल करें।",
   "What the AI model has cost this month, and the cap on it.": "इस महीने AI मॉडल का ख़र्च, और उसकी सीमा।",

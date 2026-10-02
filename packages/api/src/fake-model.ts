@@ -14,6 +14,13 @@ export interface FakeModelScript {
   job: { roleId: string; title: string; seniority: "fresher" | "junior" | "mid" | "senior"; skills: { name: string; keywords: string[] }[] };
   /** What comparing a candidate's identity photos finds. */
   identity: { idMatchesSelfie: "same" | "different" | "unclear"; snapshots: { photo: number; person: "same" | "different" | "no_face" | "unclear"; otherPeople: boolean }[]; summary: string };
+  /** What the AI interviewer asks (numbered, call by call), and what its reading of a finished interview finds. */
+  interview: {
+    question: string;
+    reading: { criteria: { name: string; score: number; evidence: string[] }[]; summary: string; concerns: string[] };
+  };
+  /** Each prompt the AI interviewer sent, as sent: tests read it to see what the model was told. */
+  interviewPrompts: string[];
   /** Milliseconds before a probe finishes streaming, and before a grade or reading returns. */
   latencyMs: number;
 }
@@ -28,6 +35,20 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
     verdict: { verdict: "consistent", confidence: 0.8, reasoning: "The reply engages the specifics of the answer." },
     job: { roleId: "java-developer", title: "Java Developer — online test", seniority: "junior", skills: [{ name: "Apache Kafka", keywords: ["kafka", "event streaming"] }, { name: "Core Java", keywords: ["java"] }] },
     identity: { idMatchesSelfie: "same", snapshots: [{ photo: 1, person: "same", otherPeople: false }], summary: "The same person throughout." },
+    interview: {
+      question: "How would you find a duplicate in an array?",
+      reading: {
+        criteria: [
+          { name: "Problem solving", score: 4, evidence: ["I would use a set"] },
+          { name: "Technical knowledge", score: 3, evidence: [] },
+          { name: "Code quality", score: 3, evidence: [] },
+          { name: "Communication", score: 4, evidence: [] },
+        ],
+        summary: "Clear reasoning on the basics.",
+        concerns: [],
+      },
+    },
+    interviewPrompts: [],
     latencyMs: 0,
     ...overrides,
   };
@@ -50,9 +71,15 @@ export function fakeModel(overrides: Partial<FakeModelScript> = {}): { client: A
       },
     },
     messages: {
-      async parse(params: { system?: unknown }) {
+      async parse(params: { system?: unknown; messages?: { content: unknown }[] }) {
         await pause(script.latencyMs);
         const system = JSON.stringify(params.system);
+        if (system.includes("You interview candidates") || system.includes("You read a finished")) {
+          script.interviewPrompts.push(String(params.messages?.[0]?.content ?? ""));
+          const reading = system.includes("You read a finished");
+          const parsed = reading ? script.interview.reading : { question: `${script.interview.question} (${script.interviewPrompts.length})` };
+          return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed, usage: USAGE };
+        }
         const grading = system.includes("grade exam answers");
         const parsed = system.includes("compare photos of an exam candidate") ? script.identity : system.includes("read job descriptions") ? script.job : grading ? { score: script.rubricScore, criteriaMet: [], reasoning: "Scored against the rubric." } : script.verdict;
         return { stop_reason: "end_turn", stop_details: null, parsed_output: parsed, usage: USAGE };

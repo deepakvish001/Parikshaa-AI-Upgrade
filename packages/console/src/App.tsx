@@ -1,5 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
+  Bot,
   Building2,
   ChevronRight,
   ClipboardList,
@@ -56,6 +57,7 @@ const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
 const PaperReview = lazy(() => import("./components/PaperReview.tsx").then((m) => ({ default: m.PaperReview })));
 const Arrangements = lazy(() => import("./components/Arrangements.tsx").then((m) => ({ default: m.Arrangements })));
+const AiInterviewsPanel = lazy(() => import("./components/AiInterviews.tsx").then((m) => ({ default: m.AiInterviewsPanel })));
 const InterviewsPanel = lazy(() => import("./components/Interviews.tsx").then((m) => ({ default: m.InterviewsPanel })));
 const PlacementPanel = lazy(() => import("./components/Placement.tsx").then((m) => ({ default: m.PlacementPanel })));
 const JobTestDrawer = lazy(() => import("./components/JobTest.tsx").then((m) => ({ default: m.JobTestDrawer })));
@@ -74,6 +76,7 @@ type View =
   | { readonly name: "insights" }
   | { readonly name: "placement" }
   | { readonly name: "interviews" }
+  | { readonly name: "ai-interviews" }
   | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "results"; readonly examId: string }
   | { readonly name: "live"; readonly examId: string }
@@ -424,6 +427,7 @@ function Console({
     { view: { name: "insights" }, label: "Insights", permission: "attempt:review", group: "assess", icon: TrendingUp },
     { view: { name: "placement" }, label: "Placement", permission: "attempt:review", group: "assess", icon: BriefcaseBusiness },
     { view: { name: "interviews" }, label: "Interviews", permission: "attempt:review", group: "assess", icon: Video },
+    { view: { name: "ai-interviews" }, label: "AI interviews", permission: "attempt:review", group: "assess", icon: Bot },
     { view: { name: "practice" }, label: "Practice", permission: "exam:read_key", group: "assess", icon: GraduationCap },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage", group: "org", icon: Users },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage", group: "org", icon: KeySquare },
@@ -916,6 +920,11 @@ function Console({
                 <InterviewsPanel client={client} />
               </Suspense>
             ) : null}
+            {view.name === "ai-interviews" ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={4} label="Loading AI interviews…" />}>
+                <AiInterviewsPanel client={client} canWrite={can("exam:write")} />
+              </Suspense>
+            ) : null}
             {view.name === "practice" ? (
               <Suspense fallback={<SkeletonRows rows={5} columns={3} label="Loading the practice site…" />}>
                 <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
@@ -1001,6 +1010,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   insights: "insights",
   placement: "placement",
   interviews: "interviews",
+  "ai-interviews": "ai-interviews",
   staff: "staff",
   keys: "keys",
   usage: "usage",
@@ -1043,6 +1053,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Placement";
     case "interviews":
       return "Interviews";
+    case "ai-interviews":
+      return "AI interviews";
     case "staff":
       return "Staff";
     case "keys":
@@ -1087,6 +1099,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   insights: "Candidates across every test, lined up by roll number, and the questions worth a second look.",
   placement: "Your students, entered once, and every company's drive: who is eligible, the test, each round and the offers.",
   interviews: "Interviews with a video call and a shared code editor: watch the candidate type, keep notes, score it.",
+  "ai-interviews": "A first round by chat, held by the AI for a role: read the transcript and its evidence, and decide.",
   staff: "Who can sign in to this console, and what each can do.",
   keys: "Keys for your own systems to call Parikshaa.",
   usage: "What the AI model has cost this month, and the cap on it.",

@@ -12,6 +12,7 @@ import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
 
 /** Pages opened from a link with no account; loaded only when one is. */
 const ShortlistPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ShortlistPage })));
+const AiInterviewPage = lazy(() => import("./components/AiInterview.tsx").then((m) => ({ default: m.AiInterviewPage })));
 const InterviewPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.InterviewPage })));
 const OfferPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.OfferPage })));
 const StatusPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.StatusPage })));
@@ -128,6 +129,7 @@ export function App(props: { client?: ParikshaaClient } = {}) {
   const shortlist = query?.get("shortlist") ?? null;
   const apply = query?.get("apply") ?? null;
   const interview = query?.get("interview") ?? null;
+  const aiInterview = query?.get("ai-interview") ?? null;
   const offer = query?.get("offer") ?? null;
   const status = query?.get("status") ?? null;
   return (
@@ -141,6 +143,10 @@ export function App(props: { client?: ParikshaaClient } = {}) {
       ) : apply !== null ? (
         <Suspense fallback={null}>
           <ApplyPage code={apply} />
+        </Suspense>
+      ) : aiInterview !== null ? (
+        <Suspense fallback={null}>
+          <AiInterviewPage code={aiInterview} />
         </Suspense>
       ) : interview !== null ? (
         <Suspense fallback={null}>

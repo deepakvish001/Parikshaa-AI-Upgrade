@@ -60,6 +60,8 @@ import type { AccommodationService } from "./accommodations.js";
 import { registerAccommodationRoutes } from "./accommodation-routes.js";
 import type { InterviewService } from "./interviews.js";
 import { registerInterviewRoutes } from "./interview-routes.js";
+import type { AiInterviewService } from "./ai-interview.js";
+import { registerAiInterviewRoutes } from "./ai-interview-routes.js";
 import type { ProxyService } from "./proxy.js";
 import { registerProxyRoutes } from "./proxy-routes.js";
 import type { ExamReviewService } from "./exam-review.js";
@@ -147,6 +149,7 @@ export interface ServerOptions {
   readonly accommodations?: AccommodationService;
   /** The interview room. Absent: none of its routes. */
   readonly interviews?: InterviewService;
+  readonly aiInterviews?: AiInterviewService;
   /** Signs of a proxy. Absent: none of its routes. */
   readonly proxy?: ProxyService;
   /** A paper's review and lock. Absent: none of its routes. */
@@ -1310,6 +1313,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.examReviews !== undefined) registerExamReviewRoutes(routes, { reviews: options.examReviews, staff });
     if (options.proxy !== undefined) registerProxyRoutes(routes, { proxy: options.proxy, staff });
     if (options.interviews !== undefined) registerInterviewRoutes(routes, { interviews: options.interviews, throttle, staff });
+    if (options.aiInterviews !== undefined) registerAiInterviewRoutes(routes, { aiInterviews: options.aiInterviews, throttle, staff });
     if (options.accommodations !== undefined) registerAccommodationRoutes(routes, { accommodations: options.accommodations, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
