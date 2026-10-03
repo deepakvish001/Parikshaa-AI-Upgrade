@@ -303,7 +303,7 @@ export function assemble(o: AssembleOptions): {
     interviews,
     aiInterviews,
     accommodations,
-    classes: new ClassService({ classes: new ClassStore(o.sql), campus: new PrepCampusStore(o.sql), prep: new PrepStore(o.sql), practice: new PracticeStore(o.sql), results, exams: service }),
+    classes: new ClassService({ classes: new ClassStore(o.sql), campus: new PrepCampusStore(o.sql), prep: new PrepStore(o.sql), practice: new PracticeStore(o.sql), results, exams: service, identity }),
     reports: new CandidateReports({ results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),

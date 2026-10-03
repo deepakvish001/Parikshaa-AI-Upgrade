@@ -57,6 +57,9 @@ const SprintQuizPage = lazy(() => prep().then((m) => ({ default: m.SprintQuizPag
 const SprintNotesPage = lazy(() => prep().then((m) => ({ default: m.SprintNotesPage })));
 const PlacementPage = lazy(() => prep().then((m) => ({ default: m.PlacementPage })));
 const NoteBookPage = lazy(() => prep().then((m) => ({ default: m.NoteBookPage })));
+const classPages = () => import("./ClassPages.tsx");
+const ClassesPage = lazy(() => classPages().then((m) => ({ default: m.ClassesPage })));
+const ClassLabPage = lazy(() => classPages().then((m) => ({ default: m.ClassLabPage })));
 const RemindersOffPage = lazy(() => prep().then((m) => ({ default: m.RemindersOffPage })));
 const InvoicePage = lazy(() => plusPages().then((m) => ({ default: m.InvoicePage })));
 const community = () => import("./CommunityPages.tsx");
@@ -101,6 +104,8 @@ export type Route =
   | { readonly page: "plus" }
   | { readonly page: "invoice"; readonly number: string }
   | { readonly page: "reminders"; readonly token: string | undefined }
+  | { readonly page: "classes" }
+  | { readonly page: "class-lab"; readonly id: string }
   | { readonly page: "sprint"; readonly sprint: number; readonly view: "quiz" | "notes" }
   | { readonly page: "companies" }
   | { readonly page: "company"; readonly slug: string }
@@ -162,6 +167,8 @@ export function parseRoute(pathname: string, search: string): Route {
       return /^\d+$/.test(second ?? "") && (third === "quiz" || third === "notes") ? { page: "sprint", sprint: Number(second), view: third } : { page: "plan", track: undefined };
     case "reminders":
       return { page: "reminders", token: query.get("off") ?? undefined };
+    case "classes":
+      return second === undefined ? { page: "classes" } : { page: "class-lab", id: second };
     case "invoices":
       return second === undefined ? { page: "plus" } : { page: "invoice", number: second };
     case "companies":
@@ -438,6 +445,10 @@ function Shell({ site, baseUrl }: { readonly site: string; readonly baseUrl: str
           <LessonPage {...context} slug={route.slug} />
         ) : route.page === "potd" ? (
           <PotdPage {...context} />
+        ) : route.page === "classes" ? (
+          <ClassesPage {...context} />
+        ) : route.page === "class-lab" ? (
+          <ClassLabPage {...context} classId={route.id} />
         ) : route.page === "reminders" ? (
           <RemindersOffPage {...context} token={route.token} />
         ) : route.page === "invoice" ? (

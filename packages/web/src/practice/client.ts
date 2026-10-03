@@ -199,6 +199,35 @@ export function saveToken(site: string, token: string | null): void {
   }
 }
 
+/** A class as its student sees it (plan row 96). */
+export interface MyClass {
+  readonly id: string;
+  readonly name: string;
+  readonly course: { readonly slug: string; readonly title: string } | null;
+  readonly tests: readonly { readonly title: string }[];
+  readonly contests: readonly { readonly slug: string; readonly title: string; readonly startsAt: string; readonly endsAt: string }[];
+  readonly attendance: {
+    readonly present: number;
+    readonly of: number;
+    readonly sessions: readonly { readonly heldOn: string; readonly topic: string; readonly present: boolean | null }[];
+  };
+  readonly lab: { readonly practicals: number; readonly done: number; readonly signed: number };
+}
+
+export interface LabRecord {
+  readonly class: { readonly id: string; readonly name: string; readonly course: string | null };
+  readonly student: { readonly email: string; readonly name: string | null };
+  readonly practicals: readonly {
+    readonly problemId: string;
+    readonly slug: string;
+    readonly title: string;
+    readonly module: string;
+    readonly submission: { readonly language: string | null; readonly source: string; readonly passed: number; readonly total: number; readonly at: string } | null;
+    readonly signedBy: string | null;
+    readonly signedAt: string | null;
+  }[];
+}
+
 export class PracticeClient {
   readonly #base: string;
   readonly #token: string | null;
@@ -536,6 +565,23 @@ export class PracticeClient {
 
   saveReminders(prefs: { readonly enabled: boolean; readonly hour: number }): Promise<{ readonly enabled: boolean; readonly hour: number }> {
     return this.#request("/reminders", { method: "PUT", body: JSON.stringify(prefs) });
+  }
+
+  /** My classes (plan row 96): empty, with verified false, until my address is confirmed. */
+  myClasses(): Promise<{ readonly verified: boolean; readonly classes: readonly MyClass[] }> {
+    return this.#request("/classes");
+  }
+
+  myLab(classId: string): Promise<LabRecord> {
+    return this.#request(`/classes/${encodeURIComponent(classId)}/lab`);
+  }
+
+  async myLabPdf(classId: string): Promise<Blob> {
+    const response = await fetch(`${this.#base}/classes/${encodeURIComponent(classId)}/lab.pdf`, {
+      headers: this.#token === null ? {} : { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ApiError(response.status, "request_failed", {});
+    return response.blob();
   }
 
   turnOffReminders(token: string): Promise<{ readonly off: true }> {

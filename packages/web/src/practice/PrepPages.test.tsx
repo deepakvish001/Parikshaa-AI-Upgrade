@@ -120,6 +120,8 @@ describe("addresses", () => {
     expect(parseRoute("/practice/nit-practice/lessons/arrays", "")).toEqual({ page: "lesson", slug: "arrays" });
     expect(parseRoute("/practice/nit-practice/plan", "?track=dsa")).toEqual({ page: "plan", track: "dsa" });
     expect(parseRoute("/practice/nit-practice/revise", "")).toEqual({ page: "revise" });
+    expect(parseRoute("/practice/nit-practice/classes", "")).toEqual({ page: "classes" });
+    expect(parseRoute("/practice/nit-practice/classes/c1", "")).toEqual({ page: "class-lab", id: "c1" });
   });
 });
 
@@ -131,6 +133,78 @@ describe("the words", () => {
     }
     expect(prepText("hi", "home.streak", { n: 3 })).toBe("3 दिन की लगातार पढ़ाई");
     expect(prepText("ta", "home.streak", { n: 3 })).toBe("3-day streak");
+  });
+});
+
+describe("my classes", () => {
+  const mine = {
+    verified: true,
+    classes: [
+      {
+        id: "c1",
+        name: "Python Lab — CSE A",
+        course: { slug: "python-lab", title: "Python Lab" },
+        tests: [{ title: "Unit test 1" }],
+        contests: [{ slug: "lab-contest", title: "Lab contest", startsAt: "2026-10-07T04:00:00.000Z", endsAt: "2026-10-07T06:00:00.000Z" }],
+        attendance: {
+          present: 1,
+          of: 2,
+          sessions: [
+            { heldOn: "2026-10-05", topic: "Lab 1", present: true },
+            { heldOn: "2026-10-06", topic: "Lab 2", present: false },
+          ],
+        },
+        lab: { practicals: 2, done: 1, signed: 1 },
+      },
+    ],
+  };
+  const lab = {
+    class: { id: "c1", name: "Python Lab — CSE A", course: "Python Lab" },
+    student: { email: "asha@example.com", name: "Asha Rao" },
+    practicals: [
+      { problemId: "p1", slug: "sum", title: "Sum of two", module: "Week 1", submission: { language: "python", source: "print(1 + 2)", passed: 2, total: 2, at: "2026-10-05T05:00:00.000Z" }, signedBy: "Meena", signedAt: "2026-10-05T06:00:00.000Z" },
+      { problemId: "p2", slug: "max", title: "Larger of two", module: "Week 2", submission: null, signedBy: null, signedAt: null },
+    ],
+  };
+
+  it("shows each class's course, tests, contests and attendance, and links to the lab record", async () => {
+    routes["GET /practice/nit-practice/classes"] = () => ({ body: mine });
+    open("/practice/nit-practice/classes");
+    const card = await screen.findByRole("region", { name: "Python Lab — CSE A" });
+    expect(within(card).getByRole("link", { name: "Python Lab" })).toBeTruthy();
+    expect(card.textContent).toContain("Unit test 1");
+    expect(within(card).getByRole("link", { name: "Lab contest" })).toBeTruthy();
+    expect(card.textContent).toContain("1 of 2 sessions");
+    const days = within(card).getByRole("list", { name: "Attendance" });
+    expect(within(days).getAllByRole("listitem").map((li) => li.className)).toEqual(["present", "absent"]);
+    expect(card.textContent).toContain("1 of 2 practicals done · 1 signed");
+    expect(within(card).getByRole("link", { name: "Open the lab record" }).getAttribute("href")).toBe("/practice/nit-practice/classes/c1");
+  });
+
+  it("says why there is nothing until the address is confirmed", async () => {
+    routes["GET /practice/nit-practice/classes"] = () => ({ body: { verified: false, classes: [] } });
+    open("/practice/nit-practice/classes");
+    expect(await screen.findByText("Confirm your email address first: your classes are matched to it.")).toBeTruthy();
+  });
+
+  it("puts the lab record's practicals in order, signed or waiting, with the program", async () => {
+    routes["GET /practice/nit-practice/classes/c1/lab"] = () => ({ body: lab });
+    open("/practice/nit-practice/classes/c1");
+    expect(await screen.findByRole("heading", { level: 1, name: "Lab record · Python Lab — CSE A" })).toBeTruthy();
+    const items = screen.getAllByRole("listitem");
+    expect(items[0]!.textContent).toContain("Signed by Meena");
+    expect(items[0]!.textContent).toContain("2 of 2 tests passed");
+    expect(within(items[0]!).getByText("print(1 + 2)")).toBeTruthy();
+    expect(items[1]!.textContent).toContain("Waiting for your teacher's signature");
+    expect(items[1]!.textContent).toContain("Not done yet");
+    expect(screen.getByRole("button", { name: "Download PDF" })).toBeTruthy();
+  });
+
+  it("are on the dashboard while the learner is in one", async () => {
+    routes["GET /practice/nit-practice/classes"] = () => ({ body: mine });
+    open("/practice/nit-practice/home");
+    const card = await screen.findByRole("region", { name: "Your classes" });
+    expect(within(card).getByRole("link", { name: "Python Lab — CSE A" }).getAttribute("href")).toBe("/practice/nit-practice/classes");
   });
 });
 

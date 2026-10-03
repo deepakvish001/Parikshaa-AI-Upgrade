@@ -1349,7 +1349,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.accommodations !== undefined) registerAccommodationRoutes(routes, { accommodations: options.accommodations, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
     if (options.reports !== undefined) registerCandidateReportRoutes(routes, { reports: options.reports, throttle, staff });
-    if (options.classes !== undefined) registerClassRoutes(routes, { classes: options.classes, staff });
+    if (options.classes !== undefined) registerClassRoutes(routes, { classes: options.classes, staff, practice: options.practice, bearer });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });

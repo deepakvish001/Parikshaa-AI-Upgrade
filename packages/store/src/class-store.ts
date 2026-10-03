@@ -53,6 +53,17 @@ export interface ClassProgress {
   readonly students: readonly ClassStudentProgress[];
 }
 
+/** One practical of a lab record: a coding problem of the course, the student's latest accepted program, and its sign-off. */
+export interface LabPractical {
+  readonly problemId: string;
+  readonly slug: string;
+  readonly title: string;
+  readonly module: string;
+  readonly submission: { readonly language: string | null; readonly source: string; readonly passed: number; readonly total: number; readonly at: string } | null;
+  readonly signedBy: string | null;
+  readonly signedAt: string | null;
+}
+
 export class ClassNameTaken extends Error {
   constructor() {
     super("A class has that name already");
@@ -189,6 +200,90 @@ export class ClassStore {
         );
       }
       return true;
+    });
+  }
+
+  // --- a student's own classes, and the lab record -------------------------------------
+
+  /** Exams' titles, by id: what a student is told their class's tests are called. */
+  examTitles(orgId: OrgId, ids: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    return staff(this.#sql, orgId, async (tx) => {
+      const rows = await tx.query<{ id: string; title: string }>(`SELECT id, title FROM exams WHERE org_id = $1 AND id = ANY($2::text[])`, [orgId, ids]);
+      return new Map(rows.map((r) => [r.id, r.title]));
+    });
+  }
+
+  /** The classes whose cohort has this address. */
+  forEmail(orgId: OrgId, email: string): Promise<readonly ClassRecord[]> {
+    return staff(this.#sql, orgId, async (tx) =>
+      (
+        await tx.query<ClassRow>(
+          `${SELECT_CLASS}
+            WHERE c.org_id = $1 AND EXISTS (SELECT 1 FROM prep_cohort_members m WHERE m.org_id = c.org_id AND m.cohort_id = c.cohort_id AND m.email = lower($2))
+            ORDER BY c.created_at, c.name`,
+          [orgId, email],
+        )
+      ).map(classOf),
+    );
+  }
+
+  /** Each coding problem of the class's course, in course order, with this student's latest accepted program and its sign-off. */
+  labRecord(orgId: OrgId, record: ClassRecord, email: string): Promise<readonly LabPractical[]> {
+    return staff(this.#sql, orgId, async (tx) => {
+      const rows = await tx.query<{
+        problem_id: string;
+        slug: string;
+        title: string;
+        module: string;
+        language: string | null;
+        answer: string | null;
+        passed: number | null;
+        total: number | null;
+        at: string | Date | null;
+        signed_by: string | null;
+        signed_at: string | Date | null;
+      }>(
+        `SELECT p.id AS problem_id, p.slug, p.title, m.title AS module,
+                s.language, s.answer, s.passed, s.total, s.created_at AS at,
+                o.signed_by, o.signed_at
+           FROM prep_items i
+           JOIN prep_modules m ON m.org_id = i.org_id AND m.id = i.module_id
+           JOIN practice_problems p ON p.org_id = i.org_id AND p.id = i.problem_id
+           LEFT JOIN learners l ON l.org_id = i.org_id AND lower(l.email) = lower($3) AND l.erased_at IS NULL
+           LEFT JOIN LATERAL (
+             SELECT language, answer, passed, total, created_at FROM practice_submissions
+              WHERE org_id = i.org_id AND learner_id = l.id AND problem_id = p.id AND status = 'passed'
+              ORDER BY created_at DESC LIMIT 1
+           ) s ON l.id IS NOT NULL
+           LEFT JOIN class_lab_signoffs o ON o.org_id = i.org_id AND o.class_id = $4 AND o.email = lower($3) AND o.problem_id = p.id
+          WHERE i.org_id = $1 AND m.track_id = $2 AND p.question->>'kind' = 'code'
+          ORDER BY m.position, i.position`,
+        [orgId, record.trackId, email, record.id],
+      );
+      return rows.map((r) => ({
+        problemId: r.problem_id,
+        slug: r.slug,
+        title: r.title,
+        module: r.module,
+        submission: r.answer === null ? null : { language: r.language, source: r.answer, passed: Number(r.passed ?? 0), total: Number(r.total ?? 0), at: iso(r.at!) },
+        signedBy: r.signed_by,
+        signedAt: r.signed_at === null ? null : iso(r.signed_at),
+      }));
+    });
+  }
+
+  /** Sign a practical off for a student, or take the sign-off back. */
+  async signOff(orgId: OrgId, classId: string, email: string, problemId: string, signed: boolean, by: string, at: Date): Promise<void> {
+    await staff(this.#sql, orgId, async (tx) => {
+      if (signed) {
+        await tx.query(
+          `INSERT INTO class_lab_signoffs (org_id, class_id, email, problem_id, signed_by, signed_at) VALUES ($1, $2, $3, $4, $5, $6)
+           ON CONFLICT (org_id, class_id, email, problem_id) DO NOTHING`,
+          [orgId, classId, email.toLowerCase(), problemId, by, at],
+        );
+      } else {
+        await tx.query(`DELETE FROM class_lab_signoffs WHERE org_id = $1 AND class_id = $2 AND email = $3 AND problem_id = $4`, [orgId, classId, email.toLowerCase(), problemId]);
+      }
     });
   }
 

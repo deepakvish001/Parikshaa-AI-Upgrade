@@ -40,6 +40,15 @@ const report: ClassReport = {
 };
 const session: ClassSession = { id: "s1", heldOn: "2026-10-05", topic: "Arrays", marks: { "asha@college.edu": true, "ravi@college.edu": false } };
 
+const lab = {
+  class: { id: "c1", name: "Java A", course: "Java Programming" },
+  student: { email: "asha@college.edu", name: "Asha" },
+  practicals: [
+    { problemId: "p1", slug: "sum", title: "Sum of two", module: "Week 1", submission: { language: "python", source: "print(1 + 2)", passed: 2, total: 2, at: "2026-10-05T05:00:00.000Z" }, signedBy: null, signedAt: null },
+    { problemId: "p2", slug: "max", title: "Larger of two", module: "Week 2", submission: null, signedBy: null, signedAt: null },
+  ],
+};
+
 function client(overrides: Partial<ConsoleClient> = {}) {
   return {
     classes: vi.fn(async () => [summary]),
@@ -59,6 +68,9 @@ function client(overrides: Partial<ConsoleClient> = {}) {
     addClassSession: vi.fn(async () => ({ id: "s2", heldOn: "2026-10-06", topic: "Loops", marks: {} })),
     removeClassSession: vi.fn(async () => undefined),
     markAttendance: vi.fn(async () => session),
+    classLab: vi.fn(async () => lab),
+    signOffLab: vi.fn(async () => ({ ...lab, practicals: [{ ...lab.practicals[0]!, signedBy: "Meena", signedAt: "2026-10-05T06:00:00.000Z" }, lab.practicals[1]!] })),
+    classLabPdf: vi.fn(async () => new Blob(["%PDF"])),
     ...overrides,
   } as unknown as ConsoleClient & Record<string, ReturnType<typeof vi.fn>>;
 }
@@ -95,8 +107,8 @@ describe("classes", () => {
     expect(page).toHaveTextContent("CSE 2027 A · 2 students · course: Java Programming (1 lessons, 2 problems) · 1 sessions");
     const rows = within(page).getAllByRole("row");
     expect(within(rows[0]!).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Student", "Course", "Java unit 1", "Weekly 1", "Attendance"]);
-    expect(within(rows[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Ashaasha@college.edu", "66.7%", "100%", "2 / 3", "1 of 1"]);
-    expect(within(rows[2]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["ravi@college.eduravi@college.edu · no account yet", "0%", "—", "0 / 3", "0 of 1"]);
+    expect(within(rows[1]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["Ashaasha@college.eduLab record", "66.7%", "100%", "2 / 3", "1 of 1"]);
+    expect(within(rows[2]!).getAllByRole("cell").map((c) => c.textContent)).toEqual(["ravi@college.eduravi@college.edu · no account yetLab record", "0%", "—", "0 / 3", "0 of 1"]);
   });
 
   it("sets the class's tests and contests", async () => {
@@ -128,6 +140,23 @@ describe("classes", () => {
     await userEvent.click(within(register).getByRole("checkbox", { name: "ravi@college.edu" }));
     await userEvent.click(within(register).getByRole("button", { name: "Save attendance" }));
     expect(c.markAttendance).toHaveBeenCalledWith("c1", "s2", { "asha@college.edu": true, "ravi@college.edu": false });
+  });
+
+  it("opens a student's lab record and signs a practical off", async () => {
+    const c = client();
+    renderPanel(c);
+    await userEvent.click(await screen.findByRole("button", { name: "Java A" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Lab record of Asha" }));
+    const drawer = await screen.findByRole("dialog", { name: "Lab record" });
+    expect(c.classLab).toHaveBeenCalledWith("c1", "asha@college.edu");
+    expect(await within(drawer).findByText("print(1 + 2)")).toBeInTheDocument();
+    expect(within(drawer).getByText("Not done yet.")).toBeInTheDocument();
+    // Nothing to sign before there is a program.
+    expect(within(drawer).queryByRole("button", { name: "Sign off Larger of two" })).toBeNull();
+    await userEvent.click(within(drawer).getByRole("button", { name: "Sign off Sum of two" }));
+    expect(c.signOffLab).toHaveBeenCalledWith("c1", "asha@college.edu", "p1", true);
+    expect(await within(drawer).findByText("Signed by Meena")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Take back" })).toBeInTheDocument();
   });
 
   it("shows the page without editing to someone who may only read", async () => {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, CalendarCheck, Plus, School, Trash2 } from "lucide-react";
-import { useToast } from "@parikshaa/brand/ui";
+import { ArrowLeft, CalendarCheck, Download, FlaskConical, Plus, School, Trash2 } from "lucide-react";
+import { Drawer, useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type ClassOptions, type ClassReport, type ClassSession, type ConsoleClient } from "../api.ts";
 import { EmptyState } from "./kit.tsx";
 import "./Classes.css";
@@ -163,6 +163,7 @@ function NewClass({ client, onCancel, onMade }: { client: ConsoleClient; onCance
 
 function ClassPage({ client, id, canWrite, onBack }: { client: ConsoleClient; id: string; canWrite: boolean; onBack: () => void }) {
   const report = useQuery({ queryKey: ["class", id], queryFn: () => client.classReport(id) });
+  const [lab, setLab] = useState<string | null>(null);
   if (report.isPending) return <p className="notice">Loading the class…</p>;
   if (report.error !== null) return <p className="error">{failure(report.error)}</p>;
   const r = report.data;
@@ -180,15 +181,16 @@ function ClassPage({ client, id, canWrite, onBack }: { client: ConsoleClient; id
           {r.class.cohort.name} · {r.students.length} students · course: {r.class.track === null ? "none yet" : `${r.class.track.title} (${r.course.lessons} lessons, ${r.course.problems} problems)`} ·{" "}
           {r.sessions.length} sessions
         </p>
-        <Students report={r} />
+        <Students report={r} onLab={setLab} />
       </section>
+      {lab === null ? null : <LabDrawer client={client} classId={id} email={lab} canWrite={canWrite} onClose={() => setLab(null)} />}
       {canWrite ? <Plan client={client} report={r} /> : null}
       <Attendance client={client} report={r} canWrite={canWrite} />
     </div>
   );
 }
 
-function Students({ report }: { report: ClassReport }) {
+function Students({ report, onLab }: { report: ClassReport; onLab: (email: string) => void }) {
   if (report.students.length === 0) return <p className="notice">The cohort has no students yet.</p>;
   return (
     <div className="scroll">
@@ -220,6 +222,11 @@ function Students({ report }: { report: ClassReport }) {
               <td>
                 <strong>{s.name ?? s.email}</strong>
                 <div className="notice small">{s.joined ? s.email : `${s.email} · no account yet`}</div>
+                {report.class.track === null ? null : (
+                  <button type="button" className="link small" onClick={() => onLab(s.email)} aria-label={`Lab record of ${s.name ?? s.email}`}>
+                    Lab record
+                  </button>
+                )}
               </td>
               <td className="num" title={`${s.course.lessonsDone} lessons, ${s.course.problemsSolved} problems`}>
                 {pct(s.course.percent)}
@@ -242,6 +249,80 @@ function Students({ report }: { report: ClassReport }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** A student's lab record: each coding practical of the course, their accepted program, and the sign-off. */
+function LabDrawer({ client, classId, email, canWrite, onClose }: { client: ConsoleClient; classId: string; email: string; canWrite: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const lab = useQuery({ queryKey: ["class-lab", classId, email], queryFn: () => client.classLab(classId, email) });
+  const sign = useMutation({
+    mutationFn: (v: { problemId: string; signed: boolean }) => client.signOffLab(classId, email, v.problemId, v.signed),
+    onSuccess: (updated) => queryClient.setQueryData(["class-lab", classId, email], updated),
+  });
+  const pdf = useMutation({
+    mutationFn: async () => {
+      const url = URL.createObjectURL(await client.classLabPdf(classId, email));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "lab-record.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+  const r = lab.data;
+  return (
+    <Drawer label="Lab record" onClose={onClose}>
+      <h2 className="dialog-title">
+        <FlaskConical aria-hidden="true" /> Lab record
+      </h2>
+      {lab.isPending ? <p className="notice">Loading…</p> : null}
+      {lab.error === null ? null : <p className="error">{failure(lab.error)}</p>}
+      {r === undefined ? null : (
+        <>
+          <p className="notice">
+            {r.student.name ?? r.student.email} · {r.class.course ?? ""} · {r.practicals.filter((p) => p.submission !== null).length} of {r.practicals.length} done ·{" "}
+            {r.practicals.filter((p) => p.signedBy !== null).length} signed
+          </p>
+          <button type="button" className="secondary" disabled={pdf.isPending} onClick={() => pdf.mutate()}>
+            <Download aria-hidden="true" />
+            PDF
+          </button>
+          {sign.error === null ? null : (
+            <p className="error" role="alert">
+              {failure(sign.error)}
+            </p>
+          )}
+          <ol className="class-lab">
+            {r.practicals.map((p) => (
+              <li key={p.problemId}>
+                <div className="bar">
+                  <strong>{p.title}</strong>
+                  <span className="notice small">{p.module}</span>
+                  <span className="spacer" />
+                  {p.signedBy === null ? null : <span className="pill outcome ok">Signed by {p.signedBy}</span>}
+                  {canWrite && p.submission !== null ? (
+                    <button type="button" className={p.signedBy === null ? "" : "quiet"} disabled={sign.isPending} onClick={() => sign.mutate({ problemId: p.problemId, signed: p.signedBy === null })}>
+                      {p.signedBy === null ? `Sign off ${p.title}` : "Take back"}
+                    </button>
+                  ) : null}
+                </div>
+                {p.submission === null ? (
+                  <p className="notice small">Not done yet.</p>
+                ) : (
+                  <>
+                    <p className="notice small">
+                      {p.submission.language ?? ""} · {p.submission.passed} of {p.submission.total} tests passed
+                    </p>
+                    <pre className="code">{p.submission.source}</pre>
+                  </>
+                )}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+    </Drawer>
   );
 }
 

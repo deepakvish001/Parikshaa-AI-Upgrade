@@ -95,6 +95,8 @@ export const ACTIONS: Record<string, string> = {
   "report.shared": "sent a candidate's report to a hiring manager",
   "class.created": "made a class",
   "class.updated": "changed a class's course, tests or contests",
+  "class.lab_signed": "signed off a practical in a lab record",
+  "class.lab_unsigned": "took back a lab record sign-off",
   "shortlist.withdrawn": "withdrew a shortlist link",
   "billing.quoted": "asked for a quotation",
   "drive.apply_opened": "opened a drive's link to apply",

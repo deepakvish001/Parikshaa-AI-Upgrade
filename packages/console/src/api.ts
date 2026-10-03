@@ -1404,6 +1404,20 @@ export class ConsoleClient {
     await this.#request(`/classes/${encodeURIComponent(id)}/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
   }
 
+  classLab(id: string, email: string): Promise<ClassLab> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/lab?email=${encodeURIComponent(email)}`);
+  }
+
+  signOffLab(id: string, email: string, problemId: string, signed: boolean): Promise<ClassLab> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/lab`, { method: "PUT", body: JSON.stringify({ email, problemId, signed }) });
+  }
+
+  async classLabPdf(id: string, email: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/classes/${encodeURIComponent(id)}/lab.pdf?email=${encodeURIComponent(email)}`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
   markAttendance(id: string, sessionId: string, marks: Readonly<Record<string, boolean>>): Promise<ClassSession> {
     return this.#request(`/classes/${encodeURIComponent(id)}/sessions/${encodeURIComponent(sessionId)}/attendance`, { method: "PUT", body: JSON.stringify({ marks }) });
   }
@@ -2716,6 +2730,21 @@ export interface ClassSession {
   readonly heldOn: string;
   readonly topic: string;
   readonly marks: Readonly<Record<string, boolean>>;
+}
+
+/** A student's lab record (plan row 96). */
+export interface ClassLab {
+  readonly class: { readonly id: string; readonly name: string; readonly course: string | null };
+  readonly student: { readonly email: string; readonly name: string | null };
+  readonly practicals: readonly {
+    readonly problemId: string;
+    readonly slug: string;
+    readonly title: string;
+    readonly module: string;
+    readonly submission: { readonly language: string | null; readonly source: string; readonly passed: number; readonly total: number; readonly at: string } | null;
+    readonly signedBy: string | null;
+    readonly signedAt: string | null;
+  }[];
 }
 
 /** A class's page: each student on a line. */

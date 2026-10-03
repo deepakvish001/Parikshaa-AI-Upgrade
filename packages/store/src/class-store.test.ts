@@ -59,7 +59,7 @@ describe("classes", () => {
     const made = await classes.create(A, { name: "Java A", cohortId: cohortA, trackId: null, createdBy: "Meena" }, new Date());
     await classes.addSession(A, made.id, "2026-10-05", "");
     const asLearner = { "parikshaa.org_id": A, "parikshaa.actor": "learner", "parikshaa.attempt_id": "", "parikshaa.learner_id": "l1" };
-    for (const table of ["classes", "class_tests", "class_contests", "class_sessions", "class_attendance"]) {
+    for (const table of ["classes", "class_tests", "class_contests", "class_sessions", "class_attendance", "class_lab_signoffs"]) {
       expect(await sql.transaction((tx) => tx.query(`SELECT * FROM ${table}`), asLearner), table).toEqual([]);
     }
     await expect(
