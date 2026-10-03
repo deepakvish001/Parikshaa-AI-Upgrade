@@ -4390,9 +4390,12 @@ button.month-day.picked::after {
   font-size: var(--text-sm);
 }
 
+.org-text {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
 .org-id {
-  margin-left: auto;
-  flex: none;
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--chrome-text-muted);

@@ -522,12 +522,14 @@ function Console({
               <span className="org-badge" aria-hidden="true">
                 <Building2 />
               </span>
-              <span className="org-name">{me.data.organisation.name}</span>
-              {me.data.organisation.publicId === undefined || me.data.organisation.publicId === "" ? null : (
-                <span className="org-id" title="Your Company ID: quote it when you write to Parikshaa">
-                  {me.data.organisation.publicId}
-                </span>
-              )}
+              <span className="org-text">
+                <span className="org-name">{me.data.organisation.name}</span>
+                {me.data.organisation.publicId === undefined || me.data.organisation.publicId === "" ? null : (
+                  <span className="org-id" title="Your Company ID: quote it when you write to Parikshaa">
+                    {me.data.organisation.publicId}
+                  </span>
+                )}
+              </span>
             </div>
           )}
           <nav className="side-nav account" aria-label="Account">
