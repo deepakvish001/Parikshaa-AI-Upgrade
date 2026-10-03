@@ -21,6 +21,8 @@ export const HINDI: Readonly<Record<string, string>> = {
   Privacy: "गोपनीयता",
   Billing: "बिलिंग",
   "Sign-in": "साइन-इन",
+  Companies: "कंपनियाँ",
+  Parikshaa: "परीक्षा",
   Account: "खाता",
   "Sign out": "साइन आउट",
   Search: "खोजें",
@@ -66,5 +68,7 @@ export const HINDI: Readonly<Record<string, string>> = {
   "The notice candidates agree to, how long their data is kept, and erasure.": "उम्मीदवार जिस सूचना पर सहमति देते हैं, उनका डेटा कितने समय रखा जाता है, और मिटाना।",
   "Attempt credits, payments and GST invoices.": "परीक्षा क्रेडिट, भुगतान और GST चालान।",
   "How your staff sign in: your institution's own provider, and two-step sign-in for owners.": "आपका स्टाफ़ कैसे साइन इन करता है: आपके संस्थान का अपना प्रदाता, और मालिकों के लिए दो-चरणीय साइन-इन।",
+  "Every company and college on Parikshaa by its Company ID: open one with its owner, pause it, give credits.":
+    "परीक्षा पर हर कंपनी और कॉलेज, उसकी कंपनी ID के साथ: मालिक के साथ खाता खोलें, रोकें, क्रेडिट दें।",
   "Your password and two-step sign-in.": "आपका पासवर्ड और दो-चरणीय साइन-इन।",
 };

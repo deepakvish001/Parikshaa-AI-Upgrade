@@ -700,7 +700,13 @@ export const whoAmIResponse = z.object({
   name: z.string(),
   email: z.string().nullable(),
   role: staffRole,
-  organisation: z.object({ id: z.string(), name: z.string(), kind: z.enum(["institution", "company"]) }),
+  organisation: z.object({
+    id: z.string(),
+    publicId: z.string().describe("The organisation's ID as people use it: PKC- and six characters."),
+    name: z.string(),
+    kind: z.enum(["institution", "company"]),
+  }),
+  operator: z.boolean().describe("Parikshaa's own operator: may see and manage every organisation (GET /operator/companies)."),
   permissions: z.array(z.string()).readonly(),
   emailVerified: z.boolean().describe("False for an owner who signed their institution up and has not opened the link sent to their address: until then they cannot invite candidates, add staff or issue API keys."),
   mustEnrol2fa: z

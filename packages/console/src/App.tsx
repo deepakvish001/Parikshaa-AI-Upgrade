@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   Bot,
+  Building,
   Building2,
   ChevronRight,
   ClipboardList,
@@ -58,6 +59,7 @@ const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
 const PaperReview = lazy(() => import("./components/PaperReview.tsx").then((m) => ({ default: m.PaperReview })));
 const Arrangements = lazy(() => import("./components/Arrangements.tsx").then((m) => ({ default: m.Arrangements })));
+const OperatorPanel = lazy(() => import("./components/Operator.tsx").then((m) => ({ default: m.OperatorPanel })));
 const ClassesPanel = lazy(() => import("./components/Classes.tsx").then((m) => ({ default: m.ClassesPanel })));
 const AiInterviewsPanel = lazy(() => import("./components/AiInterviews.tsx").then((m) => ({ default: m.AiInterviewsPanel })));
 const InterviewsPanel = lazy(() => import("./components/Interviews.tsx").then((m) => ({ default: m.InterviewsPanel })));
@@ -92,6 +94,7 @@ type View =
   | { readonly name: "privacy" }
   | { readonly name: "billing" }
   | { readonly name: "signin" }
+  | { readonly name: "companies" }
   | { readonly name: "account" };
 
 /**
@@ -520,6 +523,11 @@ function Console({
                 <Building2 />
               </span>
               <span className="org-name">{me.data.organisation.name}</span>
+              {me.data.organisation.publicId === undefined || me.data.organisation.publicId === "" ? null : (
+                <span className="org-id" title="Your Company ID: quote it when you write to Parikshaa">
+                  {me.data.organisation.publicId}
+                </span>
+              )}
             </div>
           )}
           <nav className="side-nav account" aria-label="Account">
@@ -529,6 +537,12 @@ function Console({
             {visible.filter((tab) => tab.group === "assess").map((tab) => navItem(tab.view, tab.label, tab.icon))}
             {visible.some((tab) => tab.group === "org") ? <p className="nav-group">{t("Organisation")}</p> : null}
             {visible.filter((tab) => tab.group === "org").map((tab) => navItem(tab.view, tab.label, tab.icon))}
+            {me.data?.operator === true ? (
+              <>
+                <p className="nav-group">Parikshaa</p>
+                {navItem({ name: "companies" }, "Companies", Building)}
+              </>
+            ) : null}
             <div className="sidebar-foot">
               {me.data === undefined ? null : (
                 <div className="me">
@@ -956,6 +970,11 @@ function Console({
             {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
             {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
             {view.name === "billing" ? <BillingPanel client={client} /> : null}
+            {view.name === "companies" && me.data?.operator === true ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={6} label="Loading organisations…" />}>
+                <OperatorPanel client={client} />
+              </Suspense>
+            ) : null}
             {view.name === "signin" && me.data !== undefined ? (
               <div className="settings-page-groups">
                 <OrgSignInPanel client={client} orgId={me.data.organisation.id} />
@@ -1039,6 +1058,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   privacy: "privacy",
   billing: "billing",
   signin: "signin",
+  companies: "companies",
   account: "account",
 };
 
@@ -1091,6 +1111,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Privacy";
     case "billing":
       return "Billing";
+    case "companies":
+      return "Companies";
     case "signin":
       return "Sign-in";
     case "account":
@@ -1130,6 +1152,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   integrations: "Webhooks and applicant-tracking systems that hear about results.",
   privacy: "The notice candidates agree to, how long their data is kept, and erasure.",
   billing: "Attempt credits, payments and GST invoices.",
+  companies: "Every company and college on Parikshaa by its Company ID: open one with its owner, pause it, give credits.",
   signin: "How your staff sign in: your institution's own provider, and two-step sign-in for owners.",
   account: "Your password and two-step sign-in.",
 };

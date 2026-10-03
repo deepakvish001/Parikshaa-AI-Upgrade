@@ -115,6 +115,8 @@ async function main(): Promise<void> {
 
   const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia } = assemble({
     blobs,
+    // Parikshaa's own operators, by address: they see and open every organisation (docs/STAGING.md).
+    operators: (process.env["PARIKSHAA_OPERATORS"] ?? "").split(","),
     signup,
     pilotReportTo,
     sql,

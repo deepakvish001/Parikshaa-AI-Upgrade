@@ -1,4 +1,5 @@
 import type { PushSender } from "../push.js";
+import { OperatorService, Operators } from "../operator.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -34,6 +35,7 @@ import {
   ProxyStore,
   ReviewStore,
   DepartmentStore,
+  ReportStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -184,6 +186,8 @@ export async function wire(
     readonly signup?: SignupPolicy;
     /** A bucket for proctoring photos, as when Supabase Storage is configured. */
     readonly blobs?: BlobStore;
+    /** Parikshaa's operators, by address (PARIKSHAA_OPERATORS). */
+    readonly operators?: readonly string[];
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -441,6 +445,14 @@ export async function wire(
     auth,
     security,
     onboarding,
+    operator: new OperatorService({
+      identity,
+      billing: new BillingStore(sql),
+      reports: new ReportStore(sql),
+      exams: service,
+      operators: new Operators(options.operators ?? []),
+      now: options.now ?? (() => Date.now()),
+    }),
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
@@ -478,7 +490,7 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
+      item.purpose === "password_reset" || item.purpose === "staff_invite" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
   };
 }
 

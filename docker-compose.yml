@@ -84,6 +84,8 @@ services:
       SIGNUP_TRIAL_CREDITS: ${SIGNUP_TRIAL_CREDITS:-}
       SIGNUP_NOTIFY_EMAIL: ${SIGNUP_NOTIFY_EMAIL:-}
       PILOT_REPORT: ${PILOT_REPORT:-}
+      # Parikshaa's own operators, by address (comma-separated): the operator panel (G1).
+      PARIKSHAA_OPERATORS: ${PARIKSHAA_OPERATORS:-}
       # Behind a reverse proxy on the same host (as in docs/PILOT.md): the client's address comes from it.
       TRUST_PROXY: ${TRUST_PROXY:-}
       # Optional: proctoring photos in Supabase Storage (docs/F1-GO-LIVE-PLAN.md §8.2).

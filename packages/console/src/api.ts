@@ -76,12 +76,41 @@ export interface WhoAmI {
   readonly name: string;
   readonly email: string | null;
   readonly role: StaffRole;
-  readonly organisation: { readonly id: string; readonly name: string };
+  readonly organisation: { readonly id: string; readonly name: string; readonly publicId?: string };
+  /** Parikshaa's own operator: may see and open every organisation. Absent from an older server. */
+  readonly operator?: boolean;
   readonly permissions: readonly string[];
   /** The organisation requires owners to use a second factor and this one has none yet. */
   readonly mustEnrol2fa: boolean;
   /** False for an owner who signed up and has not opened the link sent to their address. Absent from an older server. */
   readonly emailVerified?: boolean;
+}
+
+/** An organisation as Parikshaa's operator sees it (G1). */
+export interface OperatorOrg {
+  readonly id: string;
+  readonly publicId: string;
+  readonly name: string;
+  readonly kind: "institution" | "company";
+  readonly createdAt: string;
+  readonly suspended: { readonly at: string; readonly reason: string } | null;
+  readonly owner: { readonly name: string; readonly email: string; readonly verified: boolean } | null;
+  readonly staff: number;
+  readonly exams: number;
+  readonly invited: number;
+  readonly started: number;
+  readonly credits: number | null;
+  readonly lastActivity: string | null;
+}
+
+export interface NewOrg {
+  readonly name: string;
+  readonly kind: "institution" | "company";
+  readonly ownerName: string;
+  readonly ownerEmail: string;
+  readonly pricePerAttemptRupees: number;
+  readonly invoiced: boolean;
+  readonly credits: number;
 }
 
 export interface TwoFactorStatus {
@@ -1368,6 +1397,32 @@ export class ConsoleClient {
 
   async plusOrders(): Promise<readonly PlusOrder[]> {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
+  }
+
+  // --- the operator panel (G1) ---------------------------------------------------------
+
+  async operatorOrgs(): Promise<readonly OperatorOrg[]> {
+    return (await this.#request<{ companies: OperatorOrg[] }>("/operator/companies")).companies;
+  }
+
+  createOrg(draft: NewOrg): Promise<OperatorOrg> {
+    return this.#request("/operator/companies", { method: "POST", body: JSON.stringify(draft) });
+  }
+
+  suspendOrg(publicId: string, reason: string): Promise<OperatorOrg> {
+    return this.#request(`/operator/companies/${encodeURIComponent(publicId)}/suspend`, { method: "POST", body: JSON.stringify({ reason }) });
+  }
+
+  resumeOrg(publicId: string): Promise<OperatorOrg> {
+    return this.#request(`/operator/companies/${encodeURIComponent(publicId)}/resume`, { method: "POST" });
+  }
+
+  grantOrgCredits(publicId: string, credits: number, note: string): Promise<OperatorOrg> {
+    return this.#request(`/operator/companies/${encodeURIComponent(publicId)}/credits`, { method: "POST", body: JSON.stringify({ credits, note }) });
+  }
+
+  async reinviteOwner(publicId: string): Promise<void> {
+    await this.#request(`/operator/companies/${encodeURIComponent(publicId)}/invite`, { method: "POST" });
   }
 
   // --- classes (plan row 95) ---------------------------------------------------------

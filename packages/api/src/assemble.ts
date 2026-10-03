@@ -49,6 +49,7 @@ import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
 import { StaffSecrets } from "./staff-secrets.js";
 import { StaffSecurity } from "./staff-security.js";
+import { OperatorService, Operators } from "./operator.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
 import { DailyPilotReport } from "./pilot-report.js";
 
@@ -97,6 +98,8 @@ export interface AssembleOptions {
   readonly pilotReportTo?: string | null;
   /** A bucket for proctoring photos (Supabase Storage). Absent: they stay in Postgres. */
   readonly blobs?: BlobStore | null;
+  /** Parikshaa's operators by address (PARIKSHAA_OPERATORS): the operator panel is theirs alone. */
+  readonly operators?: readonly string[];
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy" | "androidApp">;
 }
 
@@ -315,6 +318,14 @@ export function assemble(o: AssembleOptions): {
     auth,
     security,
     onboarding,
+    operator: new OperatorService({
+      identity,
+      billing: billingStore,
+      reports: new ReportStore(o.sql),
+      exams: service,
+      operators: new Operators(o.operators ?? []),
+      now: () => Date.now(),
+    }),
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,
@@ -347,7 +358,7 @@ export function assemble(o: AssembleOptions): {
     recheck: (org, id) => rechecks.note(orgId(org), id),
     result: (org, invitation) => results.candidateResult(orgId(org), attemptId(invitation.attemptId!), examId(invitation.examId)),
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset"
+      item.purpose === "password_reset" || item.purpose === "staff_invite"
         ? security.resetMail(item)
         : item.purpose === "results_file"
           ? results.mail(item)
