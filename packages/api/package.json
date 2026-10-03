@@ -37,6 +37,7 @@
     "verify-all": "node dist/verify-all-cli.js",
     "import-legacy": "node dist/legacy-import-cli.js",
     "media-move": "node dist/media-move-cli.js",
+    "parity": "node dist/parity-cli.js",
     "vercel-output": "node dist/vercel-output-cli.js"
   },
   "dependencies": {

@@ -93,6 +93,10 @@ services:
       SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
       MEDIA_BUCKET: ${MEDIA_BUCKET:-}
       RUNNER_URL: http://runner:4000
+      # Optional: Judge0 on its own VM, with the runner above behind it (deploy/judge0/README.md).
+      RUNNER_BACKEND: ${RUNNER_BACKEND:-}
+      JUDGE0_URL: ${JUDGE0_URL:-}
+      JUDGE0_TOKEN: ${JUDGE0_TOKEN:-}
       RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
       PORT: "3000"
     ports:

@@ -160,6 +160,14 @@ jobs:
           shellcheck -x scripts/setup-server.sh scripts/test/setup-server.test.sh
           scripts/test/setup-server.test.sh
 
+      # The Judge0 VM (G3): cgroup v1, secrets, the purge, the check.
+      - name: Judge0 setup script
+        run: |
+          shellcheck -x deploy/judge0/setup-judge0.sh deploy/judge0/test/setup-judge0.test.sh
+          deploy/judge0/test/setup-judge0.test.sh
+          sed 's|/etc/parikshaa/judge0.secrets.conf|judge0.conf|' deploy/judge0/docker-compose.yml > /tmp/judge0-compose.yml
+          cp deploy/judge0/judge0.conf /tmp/ && docker compose -f /tmp/judge0-compose.yml config -q
+
   # ROADMAP §13: the product in real browsers against a real Postgres, then
   # killed mid-write, then under load. Slower than `check`, so its own job.
   e2e:

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
-import { HttpCodeRunner } from "@parikshaa/runner";
+import { runnerFromEnv } from "@parikshaa/runner";
 import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
 import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
@@ -36,11 +36,12 @@ async function main(): Promise<void> {
     onError: (error) => connectionLost(error),
   });
 
-  // Code questions need the runner service; without it they can be answered
-  // but not run, and grading them waits until it is configured.
-  const runnerUrl = process.env["RUNNER_URL"];
-  const runner =
-    runnerUrl === undefined || runnerUrl === "" ? undefined : new HttpCodeRunner(runnerUrl, required("RUNNER_TOKEN"));
+  // Code questions need a runner: the in-house one (RUNNER_URL), or Judge0
+  // (RUNNER_BACKEND=judge0) with the in-house one behind it. Without either
+  // they can be answered but not run, and grading them waits until one is set.
+  // A fall back to the in-house runner is logged once the server is up.
+  let fellBack: (error: Error) => void = () => undefined;
+  const runner = runnerFromEnv(process.env, (error) => fellBack(error));
   // Practice's programs queue for it: so many at once (match the runner's
   // workers), contests first, and a learner told the judge is busy rather
   // than left waiting past JUDGE_WAIT_MS.
@@ -176,6 +177,7 @@ async function main(): Promise<void> {
 
   connectionLost = (error) =>
     app.log.warn({ err: { type: error.name, code: (error as { code?: unknown }).code } }, "database connection lost");
+  fellBack = (error) => app.log.warn({ err: { type: error.name, message: error.message } }, "Judge0 unavailable; running code on the in-house runner");
 
   // Every instance runs a worker; the outbox's SKIP LOCKED claims keep them
   // from sending anything twice. Set DELIVERY_WORKER=off to run API-only nodes.
