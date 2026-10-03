@@ -92,6 +92,7 @@ export const ACTIONS: Record<string, string> = {
   "exam.seats_allocated": "seated the candidates",
   "exam.attendance_marked": "marked a candidate present",
   "shortlist.created": "sent a shortlist to a hiring manager",
+  "report.shared": "sent a candidate's report to a hiring manager",
   "shortlist.withdrawn": "withdrew a shortlist link",
   "billing.quoted": "asked for a quotation",
   "drive.apply_opened": "opened a drive's link to apply",
