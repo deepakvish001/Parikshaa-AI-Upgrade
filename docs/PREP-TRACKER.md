@@ -973,6 +973,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G2 Parikshaa Library** (plan 102): global library (version, open/hire-only, exposure), console → Parikshaa Library (filters, preview, add, pick at random, newer version), operator tools, 165 built-in sawaal (CS, programming, DSA, SQL) |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G1 Company ID + operator panel** (plan 101): har organisation ka `PKC-XXXXXX`, console → Companies (sirf operator, second factor ke saath): company kholna + owner ko 7 din ka link, pause/resume, credits, invite dobara; audit dono taraf |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G0 staging ka code** (plan 100): photos Supabase Storage me (sealed), Vercel build + `/api` proxy edge secret ke saath, VM sirf API + runner Supabase DB par, deploy workflows, pooler test, [STAGING.md](STAGING.md); microphone wali Permissions-Policy galti theek |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **F1 go-live plan** (sirf plan, code nahi): [F1-GO-LIVE-PLAN.md](F1-GO-LIVE-PLAN.md): Supabase/Vercel/VM ka bantwara, company ID + operator panel, Parikshaa Library, Judge0, LeetCode jaisa IDE, proctoring levels (live video, third eye, SEB), staging, kharcha; plan rows 100–109 |
