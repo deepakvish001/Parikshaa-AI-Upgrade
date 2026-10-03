@@ -949,6 +949,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F1g candidate report v2**: report me AI use, poori report ka PDF, hiring manager ke liye expiry wala share link aur uska web page, console me PDF/Share (plan 90) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F1f startup ka self-serve rasta**: signup par company/college, company home par "Hire in four steps", khaali bank me starter sawal ek click, signup se shortlist tak API test (plan 89) |
 | 3 Oct 2026 | [#45](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/45) | **F1e take-home sawaal**: link + notes, model grade nahi karta, Marking me insaan marks deta hai (plan 88) |
 | 2 Oct 2026 | [#45](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/45) | **F1d AI-fluency, pehla hissa**: code sawaal par AI assistant tab, har prompt/jawab ledger me (`ai_assisted`), reviewer ko poori baatcheet; migration 0062 (plan 87) |
