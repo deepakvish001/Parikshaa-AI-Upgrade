@@ -12,7 +12,8 @@ import type { Exam, ExamPolicy, McqQuestion, Question, QuestionId, Response } fr
  * majority of scoring stays cheap, offline and exactly reproducible.
  */
 
-export type ScoreMethod = "deterministic" | "rubric" | "tests";
+/** `person`: a take-home, scored 0 at grading until a person marks it (a `score_revised` entry). */
+export type ScoreMethod = "deterministic" | "rubric" | "tests" | "person";
 
 export interface QuestionScore {
   readonly questionId: QuestionId;
@@ -25,7 +26,7 @@ export interface QuestionScore {
 
 /** Whether this question can only be scored by a rubric grader. A code question with tests is scored by running them. */
 export function needsRubricGrading(question: Question): boolean {
-  return question.kind === "short" || (question.kind === "code" && (question.tests ?? []).length === 0);
+  return (question.kind === "short" && question.takeHome !== true) || (question.kind === "code" && (question.tests ?? []).length === 0);
 }
 
 /**
@@ -65,6 +66,10 @@ export function scoreDeterministic(question: Question, answer: string): Question
         : scored(penalty(question.negativeMarks));
     }
     case "short":
+      // A take-home's work is behind its link, where no model can look: a person marks it.
+      return question.takeHome === true
+        ? { questionId: question.id, score: 0, maxScore: question.maxScore, method: "person", reasoning: "A take-home: a person opens the link and marks it." }
+        : null;
     case "code":
       return null;
   }

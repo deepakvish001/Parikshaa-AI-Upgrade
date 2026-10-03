@@ -506,6 +506,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -1444,6 +1448,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "takeHome": {
+                                    "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -4184,6 +4192,10 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "takeHome": {
+                                "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -5155,6 +5167,10 @@
                                       "items": {
                                         "type": "string"
                                       }
+                                    },
+                                    "takeHome": {
+                                      "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
@@ -8905,6 +8921,10 @@
                                   "maxScore": {
                                     "type": "number"
                                   },
+                                  "takeHome": {
+                                    "type": "boolean",
+                                    "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                                  },
                                   "translations": {
                                     "type": "object",
                                     "propertyNames": {
@@ -9021,6 +9041,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "takeHome",
                                   "translations",
                                   "images",
                                   "passage"
@@ -13448,6 +13469,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "takeHome": {
+                                    "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -14537,6 +14562,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "takeHome": {
+                            "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -15498,6 +15527,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -16617,6 +16650,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "takeHome": {
+                            "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -17589,6 +17626,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -21317,6 +21358,10 @@
                             "maxScore": {
                               "type": "number"
                             },
+                            "takeHome": {
+                              "type": "boolean",
+                              "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                            },
                             "translations": {
                               "type": "object",
                               "propertyNames": {
@@ -21433,6 +21478,7 @@
                             "kind",
                             "stem",
                             "maxScore",
+                            "takeHome",
                             "translations",
                             "images",
                             "passage"
@@ -25953,6 +25999,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "takeHome": {
+                                    "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -27242,6 +27292,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -28526,6 +28580,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -33420,6 +33478,10 @@
                                   "maxScore": {
                                     "type": "number"
                                   },
+                                  "takeHome": {
+                                    "type": "boolean",
+                                    "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                                  },
                                   "translations": {
                                     "type": "object",
                                     "propertyNames": {
@@ -33536,6 +33598,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "takeHome",
                                   "translations",
                                   "images",
                                   "passage"
@@ -39152,6 +39215,10 @@
                                   "maxScore": {
                                     "type": "number"
                                   },
+                                  "takeHome": {
+                                    "type": "boolean",
+                                    "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                                  },
                                   "translations": {
                                     "type": "object",
                                     "propertyNames": {
@@ -39268,6 +39335,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "takeHome",
                                   "translations",
                                   "images",
                                   "passage"
@@ -86804,6 +86872,10 @@
                               "type": "string"
                             }
                           },
+                          "takeHome": {
+                            "type": "boolean",
+                            "description": "A take-home: each answer is `{link, notes}` as JSON, scored 0 until marked here."
+                          },
                           "answers": {
                             "type": "number"
                           },
@@ -86819,6 +86891,7 @@
                           "max",
                           "rubric",
                           "expectedPoints",
+                          "takeHome",
                           "answers",
                           "reviewed"
                         ],

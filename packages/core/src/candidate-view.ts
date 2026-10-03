@@ -47,6 +47,8 @@ export interface CandidateMcqQuestion extends CandidateQuestionBase {
 
 export interface CandidateShortQuestion extends CandidateQuestionBase {
   readonly kind: "short";
+  /** A take-home: the answer is a link to the work and notes on it, not text written here. */
+  readonly takeHome: boolean;
 }
 
 export interface CandidateNumericQuestion extends CandidateQuestionBase {
@@ -124,7 +126,7 @@ export function candidateQuestion(question: Question): CandidateQuestion {
     case "mcq":
       return { ...base, kind: "mcq", options: question.options, multiple: choosesSeveral(question), negativeMarks: question.negativeMarks ?? 0 };
     case "short":
-      return { ...base, kind: "short" };
+      return { ...base, kind: "short", takeHome: question.takeHome === true };
     case "numeric":
       return { ...base, kind: "numeric", negativeMarks: question.negativeMarks ?? 0 };
     case "code": {

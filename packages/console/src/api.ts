@@ -218,6 +218,8 @@ export interface MarkingQuestion {
   readonly expectedPoints: readonly string[];
   readonly answers: number;
   readonly reviewed: number;
+  /** A take-home: each answer is `{link, notes}`, scored 0 until marked. An older server leaves it out. */
+  readonly takeHome?: boolean;
 }
 
 /** One answer to mark: whose is not said. */

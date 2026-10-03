@@ -21,6 +21,9 @@ import {
   selectProbeTargets,
   totalScore,
   needsRubricGrading,
+  decodeTakeHomeAnswer,
+  validTakeHomeLink,
+  MAX_TAKE_HOME_NOTES,
   type AiAssistExchange,
   type AttemptId,
   type AttemptProjection,
@@ -840,6 +843,12 @@ export class ExamService {
     }
     await this.#refuseIfExpired(scope, id, context);
     await this.#refuseOutsidePart(scope, id, context, questionId);
+    const question = context.exam.questions.find((q) => q.id === questionId);
+    if (question?.kind === "short" && question.takeHome === true && answer.trim() !== "") {
+      const work = decodeTakeHomeAnswer(answer);
+      if (work === null || !validTakeHomeLink(work.link)) throw new AttemptError("invalid_state", "Give the link to your work: an https address, such as your repository's");
+      if (work.notes.length > MAX_TAKE_HOME_NOTES) throw new AttemptError("invalid_state", "Your notes are too long");
+    }
 
     const submittedAt = this.#now();
     await this.#appendWhileOpen(scope, id, {

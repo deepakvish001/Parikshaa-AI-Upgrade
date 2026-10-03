@@ -123,6 +123,12 @@ export interface McqQuestion extends QuestionBase {
 export interface ShortQuestion extends QuestionBase {
   readonly kind: "short";
   readonly expectedPoints: readonly string[];
+  /**
+   * A take-home (plan row 88): the candidate submits a link to work done on
+   * their own time, with notes, instead of writing an answer here. A person
+   * marks it against the rubric; it is never graded by a model.
+   */
+  readonly takeHome?: boolean;
 }
 
 export interface NumericQuestion extends QuestionBase {

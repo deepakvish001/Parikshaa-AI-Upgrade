@@ -19,5 +19,6 @@ export * from "./candidate-view.js";
 export * from "./validate.js";
 export * from "./paper.js";
 export * from "./code.js";
+export * from "./takehome.js";
 export * from "./signature.js";
 export * from "./scoring.js";

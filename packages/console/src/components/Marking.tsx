@@ -30,7 +30,10 @@ export function Marking({ client, examId }: { client: ConsoleClient; examId: str
           {read === 0 ? "Start marking" : read === answers ? "Read them again" : "Carry on marking"}
         </button>
       </div>
-      <p className="notice">The model marked these. Read each one, without the candidate's name, and keep the mark or change it.</p>
+      <p className="notice">
+        The model marked these. Read each one, without the candidate's name, and keep the mark or change it.
+        {questions.some((q) => q.takeHome === true) ? " Take-homes are not marked by the model: they count as 0 until you mark them." : ""}
+      </p>
       {open && queue.data !== undefined ? <MarkingDrawer client={client} examId={examId} onClose={() => setOpen(false)} /> : null}
     </section>
   );
@@ -131,7 +134,11 @@ function MarkingDrawer({ client, examId, onClose }: { client: ConsoleClient; exa
               </strong>
               <span className="notice">{item.reviewed ? "Read" : "Not read yet"}</span>
             </div>
-            <pre className={item.language === null ? "marking-text" : "marking-text code"}>{item.answer}</pre>
+            {current.takeHome === true ? (
+              <TakeHomeWork answer={item.answer} />
+            ) : (
+              <pre className={item.language === null ? "marking-text" : "marking-text code"}>{item.answer}</pre>
+            )}
             <div className="marking-controls">
               <label className="inline">
                 Mark{" "}
@@ -169,5 +176,47 @@ function MarkingDrawer({ client, examId, onClose }: { client: ConsoleClient; exa
         )}
       </div>
     </Drawer>
+  );
+}
+
+/** A take-home's stored answer, `{link, notes}` (core's takehome.ts), read here without pulling core into this chunk. */
+function decodeTakeHomeAnswer(stored: string): { link: string; notes: string } | null {
+  try {
+    const parsed = JSON.parse(stored) as { link?: unknown; notes?: unknown };
+    return typeof parsed.link === "string" ? { link: parsed.link, notes: typeof parsed.notes === "string" ? parsed.notes : "" } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Only an https address becomes a link (as core's validTakeHomeLink). */
+function validTakeHomeLink(link: string): boolean {
+  try {
+    const url = new URL(link);
+    return url.protocol === "https:" && url.hostname.includes(".");
+  } catch {
+    return false;
+  }
+}
+
+/** A take-home's answer: the link to open, and the candidate's notes. Scored 0 until marked here. */
+function TakeHomeWork({ answer }: { answer: string }) {
+  const work = decodeTakeHomeAnswer(answer);
+  if (work === null) return <pre className="marking-text">{answer === "" ? "No work was submitted." : answer}</pre>;
+  return (
+    <div className="take-home-work">
+      <p>
+        {/* Checked when the candidate committed it; checked again before it becomes a link. */}
+        {validTakeHomeLink(work.link) ? (
+          <a href={work.link} target="_blank" rel="noreferrer noopener">
+            {work.link}
+          </a>
+        ) : (
+          <span className="mono">{work.link}</span>
+        )}
+      </p>
+      <p className="notice">Open the work, and mark it against the rubric. Until you do, it counts as 0.</p>
+      {work.notes.trim() === "" ? null : <pre className="marking-text">{work.notes}</pre>}
+    </div>
   );
 }

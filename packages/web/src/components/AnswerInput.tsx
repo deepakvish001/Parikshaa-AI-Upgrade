@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome, SubmitOutcome } from "../api.ts";
 import { CodeAnswer } from "./CodeAnswer.tsx";
+import { TakeHomeAnswer } from "./TakeHome.tsx";
 
 interface Props {
   readonly question: CandidateQuestion;
@@ -103,6 +104,7 @@ export function AnswerInput({ question, value, disabled, onChange, onRun, onSubm
       );
 
     case "short":
+      if (question.takeHome) return <TakeHomeAnswer label={question.stem} value={value} disabled={disabled} onChange={onChange} />;
       return (
         <textarea
           aria-label={question.stem}

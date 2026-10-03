@@ -118,7 +118,14 @@ const kinds = {
     partialCredit: z.boolean().optional().describe("With several right options: a share for each right one chosen, if no wrong one is."),
     negativeMarks,
   },
-  short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
+  short: {
+    kind: z.literal("short"),
+    expectedPoints: z.array(z.string()).readonly(),
+    takeHome: z
+      .boolean()
+      .optional()
+      .describe("A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it."),
+  },
   numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number(), negativeMarks },
   code: {
     kind: z.literal("code"),
@@ -426,7 +433,15 @@ export const candidateQuestion = z.discriminatedUnion("kind", [
     translations,
     ...shown,
   }),
-  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations, ...shown }),
+  z.object({
+    id: z.string(),
+    kind: z.literal("short"),
+    stem: z.string(),
+    maxScore: z.number(),
+    takeHome: z.boolean().describe("Answered with a link and notes, as JSON `{link, notes}`, rather than text."),
+    translations,
+    ...shown,
+  }),
   z.object({
     id: z.string(),
     kind: z.literal("numeric"),

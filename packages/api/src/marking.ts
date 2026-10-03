@@ -22,6 +22,8 @@ export interface MarkingQuestion {
   readonly expectedPoints: readonly string[];
   readonly answers: number;
   readonly reviewed: number;
+  /** A take-home: each answer is `{link, notes}`, scored 0 until marked here. */
+  readonly takeHome: boolean;
 }
 
 export interface MarkingItem {
@@ -95,6 +97,7 @@ export class MarkingService {
         max: q.maxScore,
         rubric: "rubric" in q ? q.rubric.map((r) => r.description) : [],
         expectedPoints: "expectedPoints" in q ? [...(q.expectedPoints ?? [])] : [],
+        takeHome: q.kind === "short" && q.takeHome === true,
         answers: mine.length,
         reviewed: mine.filter((i) => i.reviewed).length,
       };
