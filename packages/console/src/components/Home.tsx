@@ -10,10 +10,16 @@ import { Banner, EmptyState, FigureStrip, PageActions, PageMeta, PhaseBadge, Ske
  * organisation has done them — the first steps to running a test.
  */
 
-export type HomeTarget = "new-exam" | "bank" | "exams" | "staff" | "privacy" | "search" | "billing";
+export type HomeTarget = "new-exam" | "bank" | "exams" | "staff" | "privacy" | "search" | "billing" | "job-test";
 
 /** Credits left at which a prepaid organisation is warned: about a small batch's worth. */
 export const FEW_CREDITS = 5;
+
+/** Taking the starter questions into an empty bank, for a company's first test from a role. */
+export interface StarterActions {
+  readonly onLoad: () => void;
+  readonly busy: boolean;
+}
 
 /** What the home page can do with the sample exam (see the API's `onboarding.ts`). */
 export interface SampleActions {
@@ -125,6 +131,7 @@ export const ACTIONS: Record<string, string> = {
   "org.created": "made the organisation's account",
   "sample.loaded": "loaded the sample exam",
   "sample.removed": "put the sample exam away",
+  "starter.loaded": "took the starter questions into the bank",
   "org.sso_configured": "set up signing in through the organisation",
   "org.spend_cap_set": "set the spending limit",
   "privacy.saved": "updated the privacy notice",
@@ -195,6 +202,7 @@ export function Home({
   onExams,
   onGo,
   sample,
+  starter,
   onTour,
   canBuy = false,
   onResults,
@@ -210,6 +218,8 @@ export function Home({
   onGo: (target: HomeTarget) => void;
   /** Absent for an account that cannot write exams. */
   sample?: SampleActions;
+  /** Absent for an account that cannot write exams. */
+  starter?: StarterActions;
   /** Start the guided tour. */
   onTour?: () => void;
   /** This account buys credits (an owner): the warning then offers to. */
@@ -256,7 +266,9 @@ export function Home({
       {dashboard === undefined ? null : <Credits left={dashboard.setup.prepaidCredits ?? null} canBuy={canBuy} onBuy={() => onGo("billing")} />}
       {onResults === undefined ? null : <ToGrade exams={exams} onResults={onResults} onExams={onExams} />}
 
-      {dashboard === undefined || !canWrite ? null : (
+      {dashboard === undefined || !canWrite ? null : dashboard.setup.kind === "company" ? (
+        <HirePath setup={dashboard.setup} starter={starter} onGo={onGo} />
+      ) : (
         <Welcome setup={dashboard.setup} sample={sample} onGo={onGo} onTour={onTour} />
       )}
 
@@ -272,7 +284,7 @@ export function Home({
       <div className="home-grid">
         <Calendar sittings={dashboard?.sittings} now={now} onExam={onExam} onSchedule={() => onGo("exams")} />
         <div className="home-side">
-          {dashboard === undefined ? null : <Setup setup={dashboard.setup} onGo={onGo} onTour={onTour} />}
+          {dashboard === undefined || dashboard.setup.kind === "company" ? null : <Setup setup={dashboard.setup} onGo={onGo} onTour={onTour} />}
           {dashboard?.activity == null ? null : <Activity activity={dashboard.activity} now={now} onExam={onExam} />}
         </div>
       </div>
@@ -685,6 +697,66 @@ function Welcome({
             Import questions
           </button>
         </li>
+      </ol>
+    </section>
+  );
+}
+
+/**
+ * A company's way from signing up to a shortlist (plan row 89), each step
+ * ticked from what the organisation has done, until all four are. An empty
+ * bank is offered the starter questions first, so the role has something to
+ * draw.
+ */
+function HirePath({ setup, starter, onGo }: { setup: Dashboard["setup"]; starter: StarterActions | undefined; onGo: (target: HomeTarget) => void }) {
+  const emptyBank = setup.bankQuestions === 0 && (setup.starterQuestions ?? 0) === 0;
+  const steps: readonly { label: string; done: boolean; target: HomeTarget; action: string; hint: string }[] = [
+    { label: "Choose a role", done: setup.exams > 0, target: "job-test", action: "Choose a role", hint: "Sixty tech roles, each a ready test with a time and a qualifying mark, or paste your job description." },
+    { label: "Invite candidates", done: setup.invited > 0, target: "exams", action: "Open the test", hint: "Set when it opens, then a spreadsheet of names and emails. Each gets their own link." },
+    { label: "See the results", done: (setup.finished ?? 0) > 0, target: "exams", action: "Open the test", hint: "Marks, time per question and anything the proctoring saw, as each candidate submits." },
+    { label: "Share a shortlist", done: (setup.shortlists ?? 0) > 0, target: "exams", action: "Open the results", hint: "A link for the hiring manager with marks only, to shortlist, hold or reject." },
+  ];
+  const done = steps.filter((s) => s.done).length;
+  if (done === steps.length) return null;
+  const next = steps.findIndex((s) => !s.done);
+  return (
+    <section className="card welcome hire-path" aria-labelledby="hire-title" data-tour="welcome">
+      <div className="welcome-head">
+        <div>
+          <h2 id="hire-title">Hire in four steps</h2>
+          <p className="notice">
+            {done} of {steps.length} done. Nothing reaches a candidate until you invite one.
+          </p>
+        </div>
+      </div>
+      <ol className="welcome-paths">
+        {steps.map((step, i) => (
+          <li key={step.label} className={step.done ? "done" : undefined}>
+            {step.done ? <CircleCheck aria-hidden="true" className="welcome-icon" /> : <Circle aria-hidden="true" className="welcome-icon" />}
+            <h3>
+              {i + 1}. {step.label}
+              {step.done ? <span className="visually-hidden"> (done)</span> : null}
+            </h3>
+            <p>{step.hint}</p>
+            {step.done || i !== next ? null : i === 0 && emptyBank && starter !== undefined ? (
+              <div className="row">
+                <button type="button" disabled={starter.busy} onClick={starter.onLoad}>
+                  {starter.busy ? "Adding…" : "Add starter questions"}
+                </button>
+                <button type="button" className="quiet" onClick={() => onGo("bank")}>
+                  Use my own
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => onGo(step.target)}>
+                {step.action}
+              </button>
+            )}
+            {i === 0 && emptyBank && !step.done ? (
+              <p className="notice small">Your question bank is empty. The starter set is 80 CS fundamentals questions and 40 coding problems that run; add your own beside them.</p>
+            ) : null}
+          </li>
+        ))}
       </ol>
     </section>
   );

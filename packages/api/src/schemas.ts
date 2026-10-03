@@ -700,7 +700,7 @@ export const whoAmIResponse = z.object({
   name: z.string(),
   email: z.string().nullable(),
   role: staffRole,
-  organisation: z.object({ id: z.string(), name: z.string() }),
+  organisation: z.object({ id: z.string(), name: z.string(), kind: z.enum(["institution", "company"]) }),
   permissions: z.array(z.string()).readonly(),
   emailVerified: z.boolean().describe("False for an owner who signed their institution up and has not opened the link sent to their address: until then they cannot invite candidates, add staff or issue API keys."),
   mustEnrol2fa: z
@@ -912,6 +912,10 @@ export const dashboardResponse = z.object({
     privacyNotice: z.boolean(),
     sampleExamId: z.string().nullable().describe("The sample exam, while it is loaded and not put away."),
     prepaidCredits: z.number().int().nullable().describe("Attempt credits left, for a prepaid organisation; null for one not billed that way."),
+    kind: z.enum(["institution", "company"]).describe("A college examining its students, or a company hiring: which first steps the home page leads with."),
+    starterQuestions: z.number().int().describe("Starter questions taken into the bank; not counted in `bankQuestions`."),
+    finished: z.number().int().describe("Attempts submitted or graded, the sample's aside."),
+    shortlists: z.number().int().describe("Shortlist links made for hiring managers."),
   }),
 });
 
@@ -927,9 +931,14 @@ export const signupBody = z.object({
   name: z.string().min(1).max(120),
   email: z.string().min(3).max(320),
   password: z.string().min(1).max(200).describe("At least 12 characters."),
+  kind: z
+    .enum(["institution", "company"])
+    .optional()
+    .describe("A college examining its students (the default), or a company hiring; the home page leads with the matching first steps."),
 });
 
 export const sampleResponse = z.object({ examId: z.string() });
+export const starterResponse = z.object({ added: z.number().int().describe("Questions added now; 0 when the starter set was already taken in.") });
 
 export const emailWorkbookResponse = z.object({ to: z.string().describe("The address it goes to: the asker's own.") });
 

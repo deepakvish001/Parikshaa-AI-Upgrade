@@ -143,6 +143,56 @@ describe("the tour", () => {
   });
 });
 
+describe("a company's four steps", () => {
+  const company: Dashboard = { ...fresh, setup: { ...fresh.setup, kind: "company", starterQuestions: 0, finished: 0, shortlists: 0, prepaidCredits: 10 } };
+  const renderCompany = (dashboard: Dashboard) => {
+    const onGo = vi.fn();
+    const starter = { onLoad: vi.fn<() => void>(), busy: false };
+    render(
+      <PageFrame title="Home" note="">
+        <Home dashboard={dashboard} exams={[]} name="Neha Iyer" canWrite onExam={vi.fn()} onGo={onGo} sample={sampleActions()} starter={starter} canBuy />
+      </PageFrame>,
+    );
+    return { onGo, starter };
+  };
+
+  it("leads with hiring, offering starter questions to an empty bank", async () => {
+    const { onGo, starter } = renderCompany(company);
+    const path = screen.getByRole("region", { name: "Hire in four steps" });
+    expect(within(path).getAllByRole("heading", { level: 3 }).map((h) => h.textContent)).toEqual([
+      "1. Choose a role",
+      "2. Invite candidates",
+      "3. See the results",
+      "4. Share a shortlist",
+    ]);
+    // Neither the institution's welcome nor its checklist.
+    expect(screen.queryByRole("region", { name: "Welcome to Parikshaa. Three ways to begin." })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get started" })).toBeNull();
+    await userEvent.click(within(path).getByRole("button", { name: "Add starter questions" }));
+    expect(starter.onLoad).toHaveBeenCalled();
+    await userEvent.click(within(path).getByRole("button", { name: "Use my own" }));
+    expect(onGo).toHaveBeenCalledWith("bank");
+  });
+
+  it("sends the first step to the role library once the bank has questions", async () => {
+    const { onGo } = renderCompany({ ...company, setup: { ...company.setup, starterQuestions: 120 } });
+    await userEvent.click(screen.getByRole("button", { name: "Choose a role" }));
+    expect(onGo).toHaveBeenCalledWith("job-test");
+  });
+
+  it("marks the steps done and offers only the next", () => {
+    renderCompany({ ...company, setup: { ...company.setup, starterQuestions: 120, exams: 1, invited: 3 } });
+    const path = screen.getByRole("region", { name: "Hire in four steps" });
+    expect(within(path).getByText("2 of 4 done. Nothing reaches a candidate until you invite one.")).toBeInTheDocument();
+    expect(within(path).getAllByRole("button").map((b) => b.textContent)).toEqual(["Open the test"]);
+  });
+
+  it("is gone when the four steps are done", () => {
+    renderCompany({ ...company, setup: { ...company.setup, exams: 1, invited: 3, finished: 2, shortlists: 1 } });
+    expect(screen.queryByRole("region", { name: "Hire in four steps" })).toBeNull();
+  });
+});
+
 describe("making an institution's account", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -198,7 +248,30 @@ describe("making an institution's account", () => {
       name: "Asha Rao",
       email: "asha@nalanda.test",
       password: "short but longer now",
+      kind: "institution",
     });
+  });
+
+  it("makes a company's account when the owner says they are hiring", async () => {
+    const fetch = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? new Response(JSON.stringify({ token: "pks_co", expiresAt: "", user: { id: "u", name: "Neha", email: "neha@kiranshala.test", role: "owner", disabled: false } }), { status: 201 })
+        : new Response(JSON.stringify({ open: true, trialCredits: 10 })),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const onSignedIn = renderSignIn();
+    await userEvent.click(await screen.findByRole("button", { name: "Make your institution's account" }));
+    await userEvent.click(await screen.findByRole("radio", { name: "A company, hiring" }));
+    expect(screen.getByRole("heading", { name: "Make your company's account" })).toBeInTheDocument();
+    expect(screen.getByText(/enough for a first round/)).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Company"), "Kiranshala Labs");
+    await userEvent.type(screen.getByLabelText("Your name"), "Neha");
+    await userEvent.type(screen.getByLabelText("Work email"), "neha@kiranshala.test");
+    await userEvent.type(screen.getByLabelText("Password"), "a long startup password");
+    await userEvent.click(screen.getByRole("button", { name: "Make the account" }));
+    await vi.waitFor(() => expect(onSignedIn).toHaveBeenCalledWith("pks_co", true));
+    const sent = fetch.mock.calls.find(([, init]) => init?.method === "POST")!;
+    expect(JSON.parse(sent[1]!.body as string)).toMatchObject({ organisation: "Kiranshala Labs", kind: "company" });
   });
 
   it("says so when a confirmation link has just been opened", () => {

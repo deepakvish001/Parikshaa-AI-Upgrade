@@ -1,9 +1,12 @@
 import { randomBytes } from "node:crypto";
 import { examId, orgId, type Exam, type OrgId } from "@parikshaa/core";
-import { SAMPLE_EXAM_ID, SAMPLE_TAG, staffScope, type BankDraft, type BillingStore, type IdentityStore, type QuestionBank } from "@parikshaa/store";
+import { SAMPLE_EXAM_ID, SAMPLE_TAG, STARTER_TAG, staffScope, type BankDraft, type BillingStore, type IdentityStore, type QuestionBank } from "@parikshaa/store";
 import type { OutboxItem } from "@parikshaa/store";
+import { CS_FUNDAMENTALS } from "./content/cs-fundamentals.js";
+import { DSA_STARTER } from "./content/dsa-starter.js";
 import type { ItemHandler, Mailer } from "./delivery.js";
 import { AttemptError, Forbidden, type ExamService } from "./service.js";
+import { dsaQuestion } from "./starter-packs.js";
 import type { StaffSecrets } from "./staff-secrets.js";
 import { can, hashPassword, MIN_PASSWORD_LENGTH, WeakPassword, type Actor, type LoginResult, type StaffAuth } from "./staff-auth.js";
 
@@ -18,6 +21,10 @@ import { can, hashPassword, MIN_PASSWORD_LENGTH, WeakPassword, type Actor, type 
  *   among the exams, to preview as a candidate would, schedule, and sit. It
  *   does not count as the organisation's own first exam, and one more click
  *   puts it away.
+ * - **Starter questions.** A company that signs up has an empty bank, so a
+ *   test from the role library would have nothing to draw. One click takes in
+ *   the CS fundamentals questions and the DSA problems the practice site's
+ *   starter packs carry, filed under the words the roles look for.
  */
 
 export interface SignupPolicy {
@@ -42,6 +49,8 @@ export interface SignupRequest {
   readonly name: string;
   readonly email: string;
   readonly password: string;
+  /** A college examining its students (the default), or a company hiring. */
+  readonly kind?: "institution" | "company" | undefined;
 }
 
 /** Why a sign-up was refused, each with a message a person can act on. */
@@ -137,13 +146,13 @@ export class Onboarding {
       throw error;
     }
     const id = organisationId(organisation);
-    await this.#o.identity.createOrganisation(id, organisation);
+    await this.#o.identity.createOrganisation(id, organisation, request.kind ?? "institution");
     const scope = staffScope(id);
     await this.#o.billing.setPlan(scope, "prepaid", policy.pricePaise);
     if (policy.trialCredits > 0) await this.#o.billing.grant(scope, policy.trialCredits, "Trial credits on signing up");
     const user = await this.#o.identity.createUser({ orgId: id, email, name, role: "owner", passwordHash, emailVerified: false });
     const session = await this.#o.auth.startSession(user);
-    await this.#o.exams.recordAudit({ kind: "user", ...user }, "org.created", id, { trialCredits: policy.trialCredits });
+    await this.#o.exams.recordAudit({ kind: "user", ...user }, "org.created", id, { trialCredits: policy.trialCredits, kind: request.kind ?? "institution" });
     await this.#queueVerification(id, user.id);
     if ((policy.notify ?? "") !== "") {
       await this.#o.identity.queueStaffEmail(id, "signup_notice", { userId: user.id }, `signup:${user.id}`, new Date(this.#o.now()));
@@ -264,7 +273,43 @@ export class Onboarding {
     }
     await this.#o.exams.recordAudit(actor, "sample.removed", id, {});
   }
+
+  /** Take the starter questions into the bank, once. The number added: 0 when they are already there. */
+  async loadStarter(actor: Actor): Promise<{ added: number }> {
+    if (!can(actor, "exam:write")) throw new Forbidden("exam:write");
+    const scope = staffScope(actor.orgId);
+    if ((await this.#o.bank.list(scope, { tag: STARTER_TAG })).length > 0) return { added: 0 };
+    const filed = await this.#o.bank.add(scope, STARTER_QUESTIONS);
+    await this.#o.exams.recordAudit(actor, "starter.loaded", "bank", { questions: filed.length });
+    return { added: filed.length };
+  }
 }
+
+/** The words each CS subject is filed under, so the role library's sections find it (`roles.ts`). */
+const SUBJECT_TAGS: Readonly<Record<string, readonly string[]>> = {
+  os: ["os", "operating system"],
+  dbms: ["dbms", "database", "sql"],
+  cn: ["cn", "computer network"],
+  oops: ["oop", "object oriented"],
+};
+
+/** Starter questions for a new bank: every CS fundamentals MCQ and every DSA problem, tagged `starter`. */
+export const STARTER_QUESTIONS: readonly BankDraft[] = [
+  ...CS_FUNDAMENTALS.subjects.flatMap((subject) =>
+    subject.topics.flatMap((topic) =>
+      topic.questions.map((q): BankDraft => ({
+        question: { kind: "mcq", stem: q.title, maxScore: 1, rubric: [], options: q.options, correctIndex: q.correct },
+        topic: subject.name,
+        difficulty: q.difficulty,
+        tags: [STARTER_TAG, "computer science", topic.name.toLowerCase(), ...(SUBJECT_TAGS[subject.id] ?? [])],
+      })),
+    ),
+  ),
+  ...DSA_STARTER.problems.map((p): BankDraft => {
+    const { id: _, ...question } = dsaQuestion(p);
+    return { question, topic: "DSA", difficulty: p.difficulty, tags: [STARTER_TAG, "dsa", "coding", ...p.tags] };
+  }),
+];
 
 const tagged = (topic: string, difficulty: BankDraft["difficulty"], question: BankDraft["question"]): BankDraft => ({
   question,

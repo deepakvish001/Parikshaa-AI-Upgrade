@@ -133,3 +133,49 @@ test("an address that already has an account is told so, and offered sign-in", a
   await alert.getByRole("button", { name: "Sign in instead" }).click();
   await expect(page.getByRole("heading", { name: "Sign in to the console" })).toBeVisible();
 });
+
+test("a company signs itself up and has a test from a role in a few clicks", async ({ page }) => {
+  test.slow();
+  const email = `hr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}@startup.e2e.test`;
+
+  await page.goto("/console/");
+  await page.getByRole("button", { name: "Make your institution's account" }).click();
+  await page.getByRole("radio", { name: "A company, hiring" }).check();
+  await expect(page.getByRole("heading", { name: "Make your company's account" })).toBeVisible();
+  expect(await violations(page)).toEqual([]);
+  await page.getByLabel("Company", { exact: true }).fill("Kiranshala Labs");
+  await page.getByLabel("Your name").fill("Neha Iyer");
+  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(PASSWORD);
+  await page.getByRole("button", { name: "Make the account" }).click();
+
+  const tour = page.getByTestId("tour");
+  await expect(tour.getByRole("dialog", { name: "Home" })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tour).toHaveCount(0);
+
+  // Hiring leads, not the institution's welcome.
+  const path = page.getByRole("region", { name: "Hire in four steps" });
+  await expect(path).toBeVisible();
+  await expect(page.getByRole("region", { name: "Welcome to Parikshaa. Three ways to begin." })).toHaveCount(0);
+  expect(await violations(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect(await violations(page)).toEqual([]);
+  await page.emulateMedia({ colorScheme: "light" });
+
+  // An empty bank takes the starter questions, then a role becomes a test.
+  await path.getByRole("button", { name: "Add starter questions" }).click();
+  await path.getByRole("button", { name: "Choose a role" }).click();
+  const drawer = page.getByRole("dialog", { name: "New test from a job" });
+  await drawer.getByRole("searchbox", { name: "Find a role" }).fill("intern");
+  await drawer.getByRole("radio", { name: /Software engineering intern/ }).check();
+  await drawer.getByRole("button", { name: "Draft the test" }).click();
+  await drawer.getByRole("button", { name: /Make the test · 10 questions/ }).click();
+  await expect(drawer).toHaveCount(0);
+
+  // Home ticks the first step and offers the next.
+  await page.getByRole("navigation", { name: "Account" }).getByRole("button", { name: "Home" }).click();
+  await expect(path.getByText("1 of 4 done.", { exact: false })).toBeVisible();
+  await expect(path.getByRole("heading", { name: "1. Choose a role (done)" })).toBeVisible();
+  await expect(path.getByRole("button", { name: "Open the test" })).toBeVisible();
+});

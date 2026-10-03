@@ -10,13 +10,14 @@ import { remembered } from "./SignIn.tsx";
  * what candidates will see.
  */
 export default function SignupForm({ trialCredits, onSignedIn, onBack }: { trialCredits: number; onSignedIn: (token: string) => void; onBack: () => void }) {
+  const [kind, setKind] = useState<"institution" | "company">("institution");
   const [organisation, setOrganisation] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const create = useMutation({
-    mutationFn: () => ConsoleClient.signUp({ organisation: organisation.trim(), name: name.trim(), email: email.trim(), password }),
+    mutationFn: () => ConsoleClient.signUp({ organisation: organisation.trim(), name: name.trim(), email: email.trim(), password, kind }),
     onSuccess: ({ token }) => {
       remembered.setEmail(email.trim());
       onSignedIn(token);
@@ -39,7 +40,9 @@ export default function SignupForm({ trialCredits, onSignedIn, onBack }: { trial
   const short = password !== "" && password.length < 12;
   const missing =
     organisation.trim() === ""
-      ? "Enter your institution's name"
+      ? kind === "company"
+        ? "Enter your company's name"
+        : "Enter your institution's name"
       : name.trim() === ""
         ? "Enter your name"
         : email.trim() === ""
@@ -50,10 +53,10 @@ export default function SignupForm({ trialCredits, onSignedIn, onBack }: { trial
 
   return (
     <>
-      <h1>Make your institution's account</h1>
+      <h1>{kind === "company" ? "Make your company's account" : "Make your institution's account"}</h1>
       <p className="notice">
         You will be its owner: you add your colleagues afterwards.
-        {trialCredits > 0 ? ` The first ${trialCredits} attempts are free — enough for a pilot batch.` : ""}
+        {trialCredits > 0 ? ` The first ${trialCredits} attempts are free — enough for a ${kind === "company" ? "first round" : "pilot batch"}.` : ""}
       </p>
       <form
         onSubmit={(e) => {
@@ -61,11 +64,22 @@ export default function SignupForm({ trialCredits, onSignedIn, onBack }: { trial
           if (missing === null) create.mutate();
         }}
       >
+        <fieldset className="field signup-kind">
+          <legend>We are</legend>
+          <label>
+            <input type="radio" name="signup-kind" checked={kind === "institution"} onChange={() => setKind("institution")} />
+            A college or institute, testing our students
+          </label>
+          <label>
+            <input type="radio" name="signup-kind" checked={kind === "company"} onChange={() => setKind("company")} />
+            A company, hiring
+          </label>
+        </fieldset>
         <div className="field">
-          <label htmlFor="signup-org">Institution</label>
+          <label htmlFor="signup-org">{kind === "company" ? "Company" : "Institution"}</label>
           <input id="signup-org" autoComplete="organization" value={organisation} onChange={(e) => setOrganisation(e.target.value)} aria-describedby="signup-org-hint" />
           <p className="notice small" id="signup-org-hint">
-            As candidates will see it, e.g. “Nalanda Institute of Technology”.
+            As candidates will see it, e.g. {kind === "company" ? "“Kiranshala Labs”" : "“Nalanda Institute of Technology”"}.
           </p>
         </div>
         <div className="field">

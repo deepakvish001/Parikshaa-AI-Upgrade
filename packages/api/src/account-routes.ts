@@ -132,7 +132,7 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
         name: actor.name,
         email: actor.kind === "user" ? actor.email : null,
         role: actor.role,
-        organisation: { id: actor.orgId, name: org?.name ?? actor.orgId },
+        organisation: { id: actor.orgId, name: org?.name ?? actor.orgId, kind: org?.kind ?? "institution" },
         permissions: permissionsOf(actor),
         emailVerified: !(actor.kind === "user" && actor.emailUnverified === true),
         mustEnrol2fa: actor.kind === "user" && actor.mustEnrol2fa === true,

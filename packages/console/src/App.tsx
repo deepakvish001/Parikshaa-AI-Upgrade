@@ -336,6 +336,14 @@ function Console({
     },
     onError: () => toast("The sample exam could not be loaded. Try again.", "error"),
   });
+  const loadStarter = useMutation({
+    mutationFn: () => client.loadStarter(),
+    onSuccess: async ({ added }) => {
+      toast(added > 0 ? `${added} starter questions are in the bank. Now choose a role.` : "The starter questions are already in the bank.", "success");
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => toast("The starter questions could not be added. Try again.", "error"),
+  });
   const removeSample = useMutation({
     mutationFn: () => client.removeSample(),
     onSuccess: async () => {
@@ -663,10 +671,12 @@ function Console({
                         onRemove: () => removeSample.mutate(),
                         busy: loadSample.isPending || removeSample.isPending,
                       },
+                      starter: { onLoad: () => loadStarter.mutate(), busy: loadStarter.isPending },
                     }
                   : {})}
                 onGo={(target) => {
                   if (target === "search") return setSearching(true);
+                  if (target === "job-test") return setFromJob(true);
                   if (target === "new-exam") {
                     setProblems([]);
                     return go({ name: "editor", examId: null });

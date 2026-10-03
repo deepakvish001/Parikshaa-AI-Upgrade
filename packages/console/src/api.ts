@@ -648,6 +648,14 @@ export interface Dashboard {
     readonly sampleExamId?: string | null;
     /** Attempt credits left, for a prepaid organisation; null for one not billed that way. */
     readonly prepaidCredits?: number | null;
+    /** A college examining its students, or a company hiring. Absent from an older server: an institution. */
+    readonly kind?: "institution" | "company";
+    /** Starter questions taken into the bank; not counted in `bankQuestions`. */
+    readonly starterQuestions?: number;
+    /** Attempts submitted or graded. */
+    readonly finished?: number;
+    /** Shortlist links made for hiring managers. */
+    readonly shortlists?: number;
   };
 }
 
@@ -1024,7 +1032,7 @@ export class ConsoleClient {
 
   /** Make an institution's account: its organisation and first owner, signed in. */
   static async signUp(
-    details: { readonly organisation: string; readonly name: string; readonly email: string; readonly password: string },
+    details: { readonly organisation: string; readonly name: string; readonly email: string; readonly password: string; readonly kind?: "institution" | "company" },
     baseUrl = "/api",
   ): Promise<{ readonly token: string; readonly user: StaffUser }> {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/signup`, {
@@ -1552,6 +1560,11 @@ export class ConsoleClient {
   /** A short aptitude paper to look around with, in the bank and among the exams. */
   loadSample(): Promise<{ readonly examId: string }> {
     return this.#request("/onboarding/sample", { method: "POST" });
+  }
+
+  /** CS fundamentals questions and DSA problems for an empty bank, so a test from a role has something to draw. */
+  loadStarter(): Promise<{ readonly added: number }> {
+    return this.#request("/onboarding/starter", { method: "POST" });
   }
 
   async removeSample(): Promise<void> {
