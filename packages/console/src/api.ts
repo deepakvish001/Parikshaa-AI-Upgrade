@@ -1370,6 +1370,44 @@ export class ConsoleClient {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
 
+  // --- classes (plan row 95) ---------------------------------------------------------
+
+  async classes(): Promise<readonly ClassSummary[]> {
+    return (await this.#request<{ classes: ClassSummary[] }>("/classes")).classes;
+  }
+
+  classOptions(): Promise<ClassOptions> {
+    return this.#request("/classes/options");
+  }
+
+  createClass(draft: { readonly name: string; readonly cohortId: string; readonly trackId: string | null }): Promise<ClassSummary> {
+    return this.#request("/classes", { method: "POST", body: JSON.stringify(draft) });
+  }
+
+  classReport(id: string): Promise<ClassReport> {
+    return this.#request(`/classes/${encodeURIComponent(id)}`);
+  }
+
+  updateClass(id: string, change: { readonly trackId?: string | null; readonly examIds?: readonly string[]; readonly contestIds?: readonly string[] }): Promise<ClassReport> {
+    return this.#request(`/classes/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(change) });
+  }
+
+  async classSessions(id: string): Promise<readonly ClassSession[]> {
+    return (await this.#request<{ sessions: ClassSession[] }>(`/classes/${encodeURIComponent(id)}/sessions`)).sessions;
+  }
+
+  addClassSession(id: string, session: { readonly heldOn: string; readonly topic: string }): Promise<ClassSession> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/sessions`, { method: "POST", body: JSON.stringify(session) });
+  }
+
+  async removeClassSession(id: string, sessionId: string): Promise<void> {
+    await this.#request(`/classes/${encodeURIComponent(id)}/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+  }
+
+  markAttendance(id: string, sessionId: string, marks: Readonly<Record<string, boolean>>): Promise<ClassSession> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/sessions/${encodeURIComponent(sessionId)}/attendance`, { method: "PUT", body: JSON.stringify({ marks }) });
+  }
+
   async cohorts(): Promise<readonly CohortSummary[]> {
     return (await this.#request<{ cohorts: CohortSummary[] }>("/practice-admin/cohorts")).cohorts;
   }
@@ -2653,6 +2691,50 @@ export interface Cohort {
   readonly plusDays: number;
   readonly createdBy: string;
   readonly createdAt: string;
+}
+
+/** A class (plan row 95): a cohort, its course, its tests and contests. */
+export interface ClassSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly cohort: { readonly id: string; readonly name: string };
+  readonly track: { readonly id: string; readonly title: string } | null;
+  readonly tests: number;
+  readonly contests: number;
+  readonly createdAt: string;
+}
+
+export interface ClassOptions {
+  readonly cohorts: readonly { readonly id: string; readonly name: string }[];
+  readonly tracks: readonly { readonly id: string; readonly title: string }[];
+  readonly contests: readonly { readonly id: string; readonly title: string; readonly startsAt: string }[];
+  readonly exams: readonly { readonly id: string; readonly title: string }[];
+}
+
+export interface ClassSession {
+  readonly id: string;
+  readonly heldOn: string;
+  readonly topic: string;
+  readonly marks: Readonly<Record<string, boolean>>;
+}
+
+/** A class's page: each student on a line. */
+export interface ClassReport {
+  readonly class: ClassSummary;
+  readonly course: { readonly lessons: number; readonly problems: number };
+  readonly tests: readonly { readonly examId: string; readonly title: string }[];
+  readonly contests: readonly { readonly id: string; readonly title: string; readonly problems: number; readonly startsAt: string }[];
+  readonly sessions: readonly { readonly id: string; readonly heldOn: string; readonly topic: string; readonly present: number; readonly marked: number }[];
+  readonly students: readonly {
+    readonly email: string;
+    readonly name: string | null;
+    readonly joined: boolean;
+    readonly course: { readonly lessonsDone: number; readonly problemsSolved: number; readonly percent: number | null };
+    readonly tests: Readonly<Record<string, number | null>>;
+    readonly contests: Readonly<Record<string, number>>;
+    readonly attendance: { readonly present: number; readonly of: number; readonly percent: number | null };
+    readonly lastActiveAt: string | null;
+  }[];
 }
 
 export interface CohortSummary extends Cohort {

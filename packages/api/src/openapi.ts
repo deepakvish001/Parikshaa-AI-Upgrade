@@ -1,7 +1,7 @@
 import { Onboarding } from "./onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -9,6 +9,7 @@ import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
 import { CandidateReports } from "./candidate-report.js";
+import { ClassService } from "./classes.js";
 import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
 import { ProxyService } from "./proxy.js";
@@ -102,6 +103,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     interviews: new InterviewService({ store: new InterviewStore(unusable), exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     aiInterviews: new AiInterviewService({ store: new AiInterviewStore(unusable), exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     accommodations: new AccommodationService({ store: new AccommodationStore(unusable), exams: service }),
+    classes: new ClassService({ classes: new ClassStore(unusable), campus: new PrepCampusStore(unusable), prep: new PrepStore(unusable), practice: new PracticeStore(unusable), results, exams: service }),
     reports: new CandidateReports({ results, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     shortlists: new ShortlistService({ store: new ShortlistStore(unusable), results, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     placement: new PlacementService({ placement: new PlacementStore(unusable), store, exams: service, invitations, results, bank: new QuestionBank(unusable), publicUrl: "https://example.invalid", identity }),

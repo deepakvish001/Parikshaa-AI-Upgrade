@@ -11,6 +11,7 @@ export const HINDI: Readonly<Record<string, string>> = {
   Placement: "प्लेसमेंट",
   Interviews: "इंटरव्यू",
   "AI interviews": "AI इंटरव्यू",
+  Classes: "कक्षाएँ",
   Practice: "अभ्यास",
   Staff: "स्टाफ़",
   "API keys": "API कुंजियाँ",
