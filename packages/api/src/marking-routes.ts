@@ -50,6 +50,7 @@ export function registerMarkingRoutes(routes: Routes, deps: MarkingRouteDeps): v
                   max: z.number(),
                   rubric: z.array(z.string()).readonly(),
                   expectedPoints: z.array(z.string()).readonly(),
+                  takeHome: z.boolean().describe("A take-home: each answer is `{link, notes}` as JSON, scored 0 until marked here."),
                   answers: z.number(),
                   reviewed: z.number(),
                 }),

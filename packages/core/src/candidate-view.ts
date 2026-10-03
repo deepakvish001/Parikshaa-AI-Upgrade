@@ -47,6 +47,8 @@ export interface CandidateMcqQuestion extends CandidateQuestionBase {
 
 export interface CandidateShortQuestion extends CandidateQuestionBase {
   readonly kind: "short";
+  /** A take-home: the answer is a link to the work and notes on it, not text written here. */
+  readonly takeHome: boolean;
 }
 
 export interface CandidateNumericQuestion extends CandidateQuestionBase {
@@ -71,6 +73,8 @@ export interface CandidateCodeQuestion extends CandidateQuestionBase {
   readonly inputFormat: string | null;
   readonly outputFormat: string | null;
   readonly constraints: string | null;
+  /** The candidate may ask the AI assistant on this question; everything asked is recorded. */
+  readonly aiAssist: boolean;
   /**
    * The visible tests, as worked examples. Hidden tests have no field here and
    * so cannot reach a candidate by any route.
@@ -122,7 +126,7 @@ export function candidateQuestion(question: Question): CandidateQuestion {
     case "mcq":
       return { ...base, kind: "mcq", options: question.options, multiple: choosesSeveral(question), negativeMarks: question.negativeMarks ?? 0 };
     case "short":
-      return { ...base, kind: "short" };
+      return { ...base, kind: "short", takeHome: question.takeHome === true };
     case "numeric":
       return { ...base, kind: "numeric", negativeMarks: question.negativeMarks ?? 0 };
     case "code": {
@@ -148,6 +152,7 @@ export function candidateQuestion(question: Question): CandidateQuestion {
         inputFormat: question.inputFormat ?? null,
         outputFormat: question.outputFormat ?? null,
         constraints: question.constraints ?? null,
+        aiAssist: question.aiAssist === true,
         samples: (question.tests ?? [])
           .filter((t) => !t.hidden)
           // `output`, not `expected`: `expected` is the numeric answer key's

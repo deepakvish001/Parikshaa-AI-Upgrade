@@ -54,6 +54,8 @@ export interface AttemptReview {
   readonly voidReason: string | null;
   readonly voidedBy?: { readonly userId: string; readonly name: string } | null;
   readonly vivas: readonly VivaReview[];
+  /** What the candidate asked the AI assistant on AI-fluency questions; an older server leaves it out. */
+  readonly assists?: readonly { readonly questionId: string; readonly prompt: string; readonly reply: string; readonly code: string | null; readonly at: number }[];
 }
 
 export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer";
@@ -216,6 +218,8 @@ export interface MarkingQuestion {
   readonly expectedPoints: readonly string[];
   readonly answers: number;
   readonly reviewed: number;
+  /** A take-home: each answer is `{link, notes}`, scored 0 until marked. An older server leaves it out. */
+  readonly takeHome?: boolean;
 }
 
 /** One answer to mark: whose is not said. */
@@ -420,6 +424,8 @@ export interface AiInterview {
   readonly candidateRef: string;
   readonly candidateName: string;
   readonly candidateEmail: string | null;
+  /** The resume the recruiter pasted; the model reads it with who wrote it taken out. */
+  readonly resume: string | null;
   readonly status: "invited" | "in_progress" | "done" | "cancelled";
   readonly startedAt: string | null;
   readonly endedAt: string | null;
@@ -1730,6 +1736,7 @@ export class ConsoleClient {
     readonly candidateName: string;
     readonly candidateRef: string;
     readonly candidateEmail: string | null;
+    readonly resume: string | null;
   }): Promise<AiInterviewDetail> {
     return this.#request("/ai-interviews", { method: "POST", body: JSON.stringify(request) });
   }

@@ -58,6 +58,8 @@ function describe(event: ExamEvent): string {
       return `Follow-up asked about ${event.probe.questionId}`;
     case "viva_replied":
       return `Replied to the follow-up after ${Math.round(event.exchange.latencyMs / 1000)}s`;
+    case "ai_assisted":
+      return `Asked the AI assistant about ${event.exchange.questionId}`;
     case "viva_assessed":
       return `Follow-up read as "${event.assessment.verdict}"`;
     case "question_scored":

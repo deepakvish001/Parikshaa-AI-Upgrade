@@ -1,4 +1,5 @@
 import type {
+  AiAssistExchange,
   Attempt,
   AttemptState,
   Exam,
@@ -62,6 +63,8 @@ export interface AttemptProjection {
   readonly consent: { readonly noticeVersion: number; readonly noticeHash: string } | null;
   /** Test results for each code question's current answer; cleared when the answer changes. */
   readonly codeScores: ReadonlyMap<QuestionId, { readonly score: number; readonly passed: number; readonly total: number }>;
+  /** Everything asked of the AI assistant, in order, with when. */
+  readonly assists: readonly (AiAssistExchange & { readonly at: Timestamp })[];
 }
 
 export type FoldFailure =
@@ -132,6 +135,7 @@ export function foldAttempt(
   const responses: Response[] = [];
   const vivas = new Map<VivaId, MutableViva>();
   const scores = new Map<QuestionId, number>();
+  const assists: (AiAssistExchange & { at: Timestamp })[] = [];
 
   const project = (): FoldResult => ({
     ok: true,
@@ -149,6 +153,7 @@ export function foldAttempt(
       identity,
       consent,
       codeScores,
+      assists: [...assists],
     },
   });
 
@@ -207,6 +212,12 @@ export function foldAttempt(
         const viva = vivas.get(event.exchange.probeId);
         if (viva === undefined) return fail("unknown_probe");
         viva.exchange = event.exchange;
+        break;
+      }
+
+      case "ai_assisted": {
+        if (state !== "in_progress") return fail("not_in_progress");
+        assists.push({ ...event.exchange, at: entry.timestamp });
         break;
       }
 

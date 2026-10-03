@@ -4319,3 +4319,24 @@ button.month-day.picked::after {
   margin: 0;
   padding-left: 1.1rem;
 }
+
+/* Use of the AI assistant, on an attempt's review (plan row 87). */
+.ai-use .assist-log {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-use .assist-reply {
+  margin: 0;
+  padding: var(--space-2);
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+}
+.ai-use .pre-line {
+  white-space: pre-line;
+}

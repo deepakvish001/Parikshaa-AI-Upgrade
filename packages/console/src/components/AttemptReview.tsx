@@ -170,6 +170,44 @@ export function AttemptReview({
           <p className="notice mono">{attemptId}</p>
         </div>
 
+        {(review.assists ?? []).length === 0 ? null : (
+          <section className="card ai-use" aria-label="Use of the AI assistant">
+            <h2>Use of the AI assistant</h2>
+            <p className="notice">
+              AI was allowed on these questions. This is everything the candidate asked it, in order, with what it answered and their code at the time: how they
+              used it is for you to judge.
+            </p>
+            <ol className="assist-log">
+              {review.assists!.map((a, i) => (
+                <li key={i}>
+                  <p className="notice">
+                    {a.questionId} · {new Date(a.at).toLocaleTimeString("en-IN")}
+                  </p>
+                  <dl>
+                    <dt>Asked</dt>
+                    <dd className="pre-line">{a.prompt}</dd>
+                    <dt>AI answered</dt>
+                    <dd>
+                      <pre className="assist-reply">{a.reply}</pre>
+                    </dd>
+                    {a.code === null ? null : (
+                      <>
+                        <dt>Their code then</dt>
+                        <dd>
+                          <details>
+                            <summary>Show</summary>
+                            <pre className="assist-reply">{a.code}</pre>
+                          </details>
+                        </dd>
+                      </>
+                    )}
+                  </dl>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
         <section className="card evidence review-evidence" aria-label="Provenance evidence">
           <p className="evidence-label">Evidence · does not change marks</p>
           <h2>Provenance evidence</h2>

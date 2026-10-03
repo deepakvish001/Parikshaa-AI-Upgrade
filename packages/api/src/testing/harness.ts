@@ -224,6 +224,17 @@ export async function wire(
     mailer: options.mailer ?? null,
     enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts), ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const aiInterviewStore = new AiInterviewStore(sql, records.records("ai-interviews"));
+  const aiInterviews = new AiInterviewService({
+    store: aiInterviewStore,
+    exams: service,
+    secret: TOKEN_SECRET,
+    publicUrl: PUBLIC_URL,
+    mailer: options.mailer ?? null,
+    enqueue: (org, drafts) => invitationStore.enqueue(staffScope(org), drafts),
+    ...(options.now === undefined ? {} : { now: options.now }),
+    ...(options.newId === undefined ? {} : { newId: options.newId }),
+  });
   const studentMessages = new StudentMessages({
     placement: placementStore,
     identity,
@@ -237,6 +248,7 @@ export async function wire(
   const privacy = new PrivacyService({
     records: [
       { kind: "interviews", sweep: (orgId, before) => interviewStore.sweep(orgId, before) },
+      { kind: "ai_interviews", sweep: (orgId, before) => aiInterviewStore.sweep(orgId, before) },
     ],
     store,
     proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
@@ -414,7 +426,7 @@ export async function wire(
     marking: new MarkingService({ store, marking: new MarkingStore(sql), exams: service, ...(options.now === undefined ? {} : { now: options.now }) }),
     seats: new SeatService({ seats: seatStore, invitations: invitationStore, store, identity, exams: service, codes: new InviteCodes(TOKEN_SECRET), secret: TOKEN_SECRET, ...(options.now === undefined ? {} : { now: options.now }) }),
     interviews,
-    aiInterviews: new AiInterviewService({ store: new AiInterviewStore(sql, records.records("ai-interviews")), exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
+    aiInterviews,
     accommodations,
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
@@ -459,7 +471,7 @@ export async function wire(
     results,
     rechecks,
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => interviews.deliver(item) },
+      item.purpose === "password_reset" ? security.resetMail(item) : item.purpose === "results_file" ? results.mail(item) : onboarding.mail(item), learner_email: (item) => (item.purpose === "reminder" ? prepEngage.reminderMail(item) : item.purpose === "plan_late" ? prepEngage.lateMail(item) : practiceIdentity.verificationMail(item)), student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
   };
 }
 

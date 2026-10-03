@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
 import type { RunOutcome, SubmitOutcome } from "../api.ts";
 import { CodeAnswer } from "./CodeAnswer.tsx";
+import { TakeHomeAnswer } from "./TakeHome.tsx";
 
 interface Props {
   readonly question: CandidateQuestion;
@@ -21,10 +22,12 @@ interface Props {
   readonly startFull?: boolean;
   /** Beside the full-screen workspace: the paper's question numbers, to move without leaving it. */
   readonly rail?: ReactNode;
+  /** An AI-fluency code question's assistant, beside the editor. */
+  readonly assistant?: ReactNode;
 }
 
 /** The input for one question, chosen by its kind. */
-export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion, startFull, rail }: Props) {
+export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion, startFull, rail, assistant }: Props) {
   switch (question.kind) {
     case "mcq": {
       // The letter is drawn by CSS (a counter), so it is in neither the label's text nor its name.
@@ -96,10 +99,12 @@ export function AnswerInput({ question, value, disabled, onChange, onRun, onSubm
           {...(completion === undefined ? {} : { completion })}
           {...(startFull === undefined ? {} : { startFull })}
           {...(rail === undefined ? {} : { rail })}
+          {...(assistant === undefined ? {} : { assistant })}
         />
       );
 
     case "short":
+      if (question.takeHome) return <TakeHomeAnswer label={question.stem} value={value} disabled={disabled} onChange={onChange} />;
       return (
         <textarea
           aria-label={question.stem}

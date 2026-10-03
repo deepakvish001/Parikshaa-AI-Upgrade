@@ -539,7 +539,9 @@ export function buildServer(options: ServerOptions): FastifyInstance {
               ? 422
               : error.code === "too_many_runs"
                 ? 429
-                : 409;
+                : error.code === "assist_unavailable"
+                  ? 503
+                  : 409;
       return reply.code(status).send({ error: error.code, message: error.message });
     }
     if (error instanceof JudgeBusy) {
@@ -954,6 +956,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           total: projection.total,
           voidReason: projection.voidReason,
           voidedBy: projection.voidedBy,
+          assists: projection.assists.map((a) => ({ questionId: a.questionId, prompt: a.prompt, reply: a.reply, code: a.code, at: a.at })),
           vivas: projection.vivas.map((v) => ({
             probeId: v.probe.id,
             questionId: v.probe.questionId,
@@ -1119,6 +1122,27 @@ export function buildServer(options: ServerOptions): FastifyInstance {
      * timestamp, not anything the client reports, is what reply latency is
      * measured from.
      */
+    routes.post(
+      "/attempts/me/assist",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "Ask the AI assistant, on an AI-fluency question",
+          description:
+            "Only on a code question whose author allows it, while the attempt is open, up to 20 times a question. The problem, the candidate's code and the conversation so far go with the ask; the exchange is recorded in the ledger (sealed) before the reply returns, for the reviewer. 503 when the organisation's model budget is spent: carry on without it.",
+          security: [{ attemptToken: [] }],
+          body: S.assistBody,
+          response: { 200: S.assistResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        const { questionId: question, prompt, code } = request.body;
+        return reply.send(await service.askAssistant(claims, questionId(question), prompt, code));
+      },
+    );
+
     routes.post(
       "/attempts/me/sections/next",
       {

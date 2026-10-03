@@ -4567,3 +4567,53 @@ button.paper-row.current {
   padding: 0.2rem 0.5rem;
   text-align: start;
 }
+
+/* The AI assistant on an AI-fluency question (plan row 87): a tab beside the testcase. */
+.ai-assist {
+  display: grid;
+  gap: var(--space-2);
+}
+.assist-turns {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.assist-you,
+.assist-ai {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin: 0;
+}
+.assist-ai {
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+.assist-ai pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.assist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.assist-form textarea {
+  width: 100%;
+}
+
+/* A take-home's answer (plan row 88): the link to the work and notes on it. */
+.take-home {
+  display: grid;
+  gap: var(--space-2);
+}
+.take-home textarea {
+  min-height: 8rem;
+}

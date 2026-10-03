@@ -506,6 +506,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -1073,6 +1077,10 @@
                                   "type": "number"
                                 }
                               }
+                            },
+                            "aiAssist": {
+                              "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -1440,6 +1448,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "takeHome": {
+                                    "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -2007,6 +2019,10 @@
                                         "type": "number"
                                       }
                                     }
+                                  },
+                                  "aiAssist": {
+                                    "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -4176,6 +4192,10 @@
                                 "items": {
                                   "type": "string"
                                 }
+                              },
+                              "takeHome": {
+                                "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -4764,6 +4784,10 @@
                                   }
                                 },
                                 "additionalProperties": false
+                              },
+                              "aiAssist": {
+                                "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                                "type": "boolean"
                               }
                             },
                             "required": [
@@ -5143,6 +5167,10 @@
                                       "items": {
                                         "type": "string"
                                       }
+                                    },
+                                    "takeHome": {
+                                      "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
@@ -5731,6 +5759,10 @@
                                         }
                                       },
                                       "additionalProperties": false
+                                    },
+                                    "aiAssist": {
+                                      "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                                      "type": "boolean"
                                     }
                                   },
                                   "required": [
@@ -8338,6 +8370,42 @@
                       ],
                       "description": "The member of staff who set the attempt aside."
                     },
+                    "assists": {
+                      "readOnly": true,
+                      "description": "Everything the candidate asked the AI assistant on AI-fluency questions, with what it answered and their code at the time.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "questionId": {
+                            "type": "string"
+                          },
+                          "prompt": {
+                            "type": "string"
+                          },
+                          "reply": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "at": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "questionId",
+                          "prompt",
+                          "reply",
+                          "code",
+                          "at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "vivas": {
                       "type": "array",
                       "items": {
@@ -8416,6 +8484,7 @@
                     "total",
                     "voidReason",
                     "voidedBy",
+                    "assists",
                     "vivas"
                   ],
                   "additionalProperties": false,
@@ -8852,6 +8921,10 @@
                                   "maxScore": {
                                     "type": "number"
                                   },
+                                  "takeHome": {
+                                    "type": "boolean",
+                                    "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                                  },
                                   "translations": {
                                     "type": "object",
                                     "propertyNames": {
@@ -8968,6 +9041,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "takeHome",
                                   "translations",
                                   "images",
                                   "passage"
@@ -9364,6 +9438,10 @@
                                       "null"
                                     ]
                                   },
+                                  "aiAssist": {
+                                    "type": "boolean",
+                                    "description": "The candidate may ask the AI assistant on this question; everything asked is recorded."
+                                  },
                                   "samples": {
                                     "readOnly": true,
                                     "description": "The visible tests, as worked examples.",
@@ -9409,6 +9487,7 @@
                                   "inputFormat",
                                   "outputFormat",
                                   "constraints",
+                                  "aiAssist",
                                   "samples"
                                 ],
                                 "additionalProperties": false
@@ -9660,6 +9739,35 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "assists": {
+                      "readOnly": true,
+                      "description": "What the candidate has asked the AI assistant on AI-fluency questions, and its answers.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "questionId": {
+                            "type": "string"
+                          },
+                          "prompt": {
+                            "type": "string"
+                          },
+                          "reply": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "questionId",
+                          "prompt",
+                          "reply",
+                          "at"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
@@ -9674,7 +9782,8 @@
                     "answers",
                     "openProbe",
                     "answeredProbeCount",
-                    "drafts"
+                    "drafts",
+                    "assists"
                   ],
                   "additionalProperties": false
                 }
@@ -11749,6 +11858,303 @@
         }
       }
     },
+    "/attempts/me/assist": {
+      "post": {
+        "summary": "Ask the AI assistant, on an AI-fluency question",
+        "tags": [
+          "Candidate"
+        ],
+        "description": "Only on a code question whose author allows it, while the attempt is open, up to 20 times a question. The problem, the candidate's code and the conversation so far go with the ask; the exchange is recorded in the ledger (sealed) before the reply returns, for the reviewer. 503 when the organisation's model budget is spent: carry on without it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "code": {
+                    "default": null,
+                    "description": "The candidate's code as it stands, sent with the question.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "questionId",
+                  "prompt"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "attemptToken": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "questionId": {
+                      "type": "string"
+                    },
+                    "prompt": {
+                      "type": "string"
+                    },
+                    "reply": {
+                      "type": "string"
+                    },
+                    "at": {
+                      "type": "number"
+                    },
+                    "left": {
+                      "type": "number",
+                      "description": "How many more questions to the assistant this question allows."
+                    }
+                  },
+                  "required": [
+                    "questionId",
+                    "prompt",
+                    "reply",
+                    "at",
+                    "left"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/attempts/me/sections/next": {
       "post": {
         "summary": "Leave the current part and enter the next section",
@@ -13063,6 +13469,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "takeHome": {
+                                    "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -13651,6 +14061,10 @@
                                       }
                                     },
                                     "additionalProperties": false
+                                  },
+                                  "aiAssist": {
+                                    "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -14148,6 +14562,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "takeHome": {
+                            "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -14705,6 +15123,10 @@
                                 "type": "number"
                               }
                             }
+                          },
+                          "aiAssist": {
+                            "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -15105,6 +15527,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -15693,6 +16119,10 @@
                                 }
                               },
                               "additionalProperties": false
+                            },
+                            "aiAssist": {
+                              "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -16220,6 +16650,10 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "takeHome": {
+                            "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -16777,6 +17211,10 @@
                                 "type": "number"
                               }
                             }
+                          },
+                          "aiAssist": {
+                            "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -17188,6 +17626,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -17776,6 +18218,10 @@
                                 }
                               },
                               "additionalProperties": false
+                            },
+                            "aiAssist": {
+                              "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -20912,6 +21358,10 @@
                             "maxScore": {
                               "type": "number"
                             },
+                            "takeHome": {
+                              "type": "boolean",
+                              "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                            },
                             "translations": {
                               "type": "object",
                               "propertyNames": {
@@ -21028,6 +21478,7 @@
                             "kind",
                             "stem",
                             "maxScore",
+                            "takeHome",
                             "translations",
                             "images",
                             "passage"
@@ -21424,6 +21875,10 @@
                                 "null"
                               ]
                             },
+                            "aiAssist": {
+                              "type": "boolean",
+                              "description": "The candidate may ask the AI assistant on this question; everything asked is recorded."
+                            },
                             "samples": {
                               "readOnly": true,
                               "description": "The visible tests, as worked examples.",
@@ -21469,6 +21924,7 @@
                             "inputFormat",
                             "outputFormat",
                             "constraints",
+                            "aiAssist",
                             "samples"
                           ],
                           "additionalProperties": false
@@ -25543,6 +25999,10 @@
                                     "items": {
                                       "type": "string"
                                     }
+                                  },
+                                  "takeHome": {
+                                    "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -26131,6 +26591,10 @@
                                       }
                                     },
                                     "additionalProperties": false
+                                  },
+                                  "aiAssist": {
+                                    "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                                    "type": "boolean"
                                   }
                                 },
                                 "required": [
@@ -26828,6 +27292,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -27416,6 +27884,10 @@
                                 }
                               },
                               "additionalProperties": false
+                            },
+                            "aiAssist": {
+                              "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -28108,6 +28580,10 @@
                               "items": {
                                 "type": "string"
                               }
+                            },
+                            "takeHome": {
+                              "description": "A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -28696,6 +29172,10 @@
                                 }
                               },
                               "additionalProperties": false
+                            },
+                            "aiAssist": {
+                              "description": "An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer.",
+                              "type": "boolean"
                             }
                           },
                           "required": [
@@ -32998,6 +33478,10 @@
                                   "maxScore": {
                                     "type": "number"
                                   },
+                                  "takeHome": {
+                                    "type": "boolean",
+                                    "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                                  },
                                   "translations": {
                                     "type": "object",
                                     "propertyNames": {
@@ -33114,6 +33598,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "takeHome",
                                   "translations",
                                   "images",
                                   "passage"
@@ -33510,6 +33995,10 @@
                                       "null"
                                     ]
                                   },
+                                  "aiAssist": {
+                                    "type": "boolean",
+                                    "description": "The candidate may ask the AI assistant on this question; everything asked is recorded."
+                                  },
                                   "samples": {
                                     "readOnly": true,
                                     "description": "The visible tests, as worked examples.",
@@ -33555,6 +34044,7 @@
                                   "inputFormat",
                                   "outputFormat",
                                   "constraints",
+                                  "aiAssist",
                                   "samples"
                                 ],
                                 "additionalProperties": false
@@ -38725,6 +39215,10 @@
                                   "maxScore": {
                                     "type": "number"
                                   },
+                                  "takeHome": {
+                                    "type": "boolean",
+                                    "description": "Answered with a link and notes, as JSON `{link, notes}`, rather than text."
+                                  },
                                   "translations": {
                                     "type": "object",
                                     "propertyNames": {
@@ -38841,6 +39335,7 @@
                                   "kind",
                                   "stem",
                                   "maxScore",
+                                  "takeHome",
                                   "translations",
                                   "images",
                                   "passage"
@@ -39237,6 +39732,10 @@
                                       "null"
                                     ]
                                   },
+                                  "aiAssist": {
+                                    "type": "boolean",
+                                    "description": "The candidate may ask the AI assistant on this question; everything asked is recorded."
+                                  },
                                   "samples": {
                                     "readOnly": true,
                                     "description": "The visible tests, as worked examples.",
@@ -39282,6 +39781,7 @@
                                   "inputFormat",
                                   "outputFormat",
                                   "constraints",
+                                  "aiAssist",
                                   "samples"
                                 ],
                                 "additionalProperties": false
@@ -82113,6 +82613,35 @@
                         "additionalProperties": false
                       }
                     },
+                    "assists": {
+                      "readOnly": true,
+                      "description": "What was asked of the AI assistant on AI-fluency questions, and its answers.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "questionId": {
+                            "type": "string"
+                          },
+                          "prompt": {
+                            "type": "string"
+                          },
+                          "reply": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "questionId",
+                          "prompt",
+                          "reply",
+                          "at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "timeline": {
                       "readOnly": true,
                       "type": "array",
@@ -82204,6 +82733,7 @@
                     "erased",
                     "answers",
                     "followUps",
+                    "assists",
                     "timeline",
                     "proctoring"
                   ],
@@ -86342,6 +86872,10 @@
                               "type": "string"
                             }
                           },
+                          "takeHome": {
+                            "type": "boolean",
+                            "description": "A take-home: each answer is `{link, notes}` as JSON, scored 0 until marked here."
+                          },
                           "answers": {
                             "type": "number"
                           },
@@ -86357,6 +86891,7 @@
                           "max",
                           "rubric",
                           "expectedPoints",
+                          "takeHome",
                           "answers",
                           "reviewed"
                         ],
@@ -99754,12 +100289,26 @@
                   },
                   "candidateEmail": {
                     "default": null,
+                    "description": "When given, and the server sends email, the candidate is emailed the link.",
                     "anyOf": [
                       {
                         "type": "string",
                         "maxLength": 320,
                         "format": "email",
                         "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "resume": {
+                    "default": null,
+                    "description": "The candidate's resume as text, for questions from their own work. Sealed; the model never sees the name, email, phone or links in it.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 20000
                       },
                       {
                         "type": "null"
@@ -99825,6 +100374,13 @@
                       "type": "string"
                     },
                     "candidateEmail": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
                       "type": [
                         "string",
                         "null"
@@ -100056,6 +100612,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -100303,6 +100860,13 @@
                               "null"
                             ]
                           },
+                          "resume": {
+                            "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "status": {
                             "type": "string",
                             "enum": [
@@ -100465,6 +101029,7 @@
                           "candidateRef",
                           "candidateName",
                           "candidateEmail",
+                          "resume",
                           "status",
                           "startedAt",
                           "endedAt",
@@ -100724,6 +101289,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -100950,6 +101522,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -101259,6 +101832,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -101485,6 +102065,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -101739,6 +102320,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -101965,6 +102553,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -102219,6 +102808,13 @@
                         "null"
                       ]
                     },
+                    "resume": {
+                      "description": "The resume the recruiter pasted. The model reads it with the name, email, phone and links taken out.",
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
                     "status": {
                       "type": "string",
                       "enum": [
@@ -102445,6 +103041,7 @@
                     "candidateRef",
                     "candidateName",
                     "candidateEmail",
+                    "resume",
                     "status",
                     "startedAt",
                     "endedAt",
@@ -110694,7 +111291,8 @@
                               "grade",
                               "tutor",
                               "author",
-                              "interview"
+                              "interview",
+                              "assist"
                             ]
                           },
                           "calls": {

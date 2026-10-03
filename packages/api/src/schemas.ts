@@ -118,7 +118,14 @@ const kinds = {
     partialCredit: z.boolean().optional().describe("With several right options: a share for each right one chosen, if no wrong one is."),
     negativeMarks,
   },
-  short: { kind: z.literal("short"), expectedPoints: z.array(z.string()).readonly() },
+  short: {
+    kind: z.literal("short"),
+    expectedPoints: z.array(z.string()).readonly(),
+    takeHome: z
+      .boolean()
+      .optional()
+      .describe("A take-home: the candidate submits a link (https) to work done on their own time, with notes. A person marks it; no model grades it."),
+  },
   numeric: { kind: z.literal("numeric"), expected: z.number(), tolerance: z.number(), negativeMarks },
   code: {
     kind: z.literal("code"),
@@ -146,6 +153,7 @@ const kinds = {
       .optional()
       .describe("When present, the answer is scored by running these rather than by a rubric grader."),
     limits: z.object({ timeMs: z.number().optional(), memoryMb: z.number().optional() }).optional(),
+    aiAssist: z.boolean().optional().describe("An AI-fluency question: the candidate may ask an AI assistant while answering; every prompt and reply goes in the ledger for the reviewer."),
   },
 };
 
@@ -379,6 +387,10 @@ export const reviewResponse = z
       .object({ userId: z.string(), name: z.string() })
       .nullable()
       .describe("The member of staff who set the attempt aside."),
+    assists: z
+      .array(z.object({ questionId: z.string(), prompt: z.string(), reply: z.string(), code: z.string().nullable(), at: z.number() }))
+      .readonly()
+      .describe("Everything the candidate asked the AI assistant on AI-fluency questions, with what it answered and their code at the time."),
     vivas: z.array(
       z.object({
         probeId: z.string(),
@@ -421,7 +433,15 @@ export const candidateQuestion = z.discriminatedUnion("kind", [
     translations,
     ...shown,
   }),
-  z.object({ id: z.string(), kind: z.literal("short"), stem: z.string(), maxScore: z.number(), translations, ...shown }),
+  z.object({
+    id: z.string(),
+    kind: z.literal("short"),
+    stem: z.string(),
+    maxScore: z.number(),
+    takeHome: z.boolean().describe("Answered with a link and notes, as JSON `{link, notes}`, rather than text."),
+    translations,
+    ...shown,
+  }),
   z.object({
     id: z.string(),
     kind: z.literal("numeric"),
@@ -449,6 +469,7 @@ export const candidateQuestion = z.discriminatedUnion("kind", [
     inputFormat: z.string().nullable(),
     outputFormat: z.string().nullable(),
     constraints: z.string().nullable(),
+    aiAssist: z.boolean().describe("The candidate may ask the AI assistant on this question; everything asked is recorded."),
     samples: z
       .array(z.object({ input: z.string(), output: z.string(), explanation: z.string().nullable() }))
       .readonly()
@@ -500,6 +521,24 @@ export const candidateStateResponse = z.object({
     .array(z.object({ questionId: z.string(), answer: z.string(), savedAt: z.number() }))
     .readonly()
     .describe("Typed but not yet committed, where that differs from the committed answer. Restored on resume."),
+  assists: z
+    .array(z.object({ questionId: z.string(), prompt: z.string(), reply: z.string(), at: z.number() }))
+    .readonly()
+    .describe("What the candidate has asked the AI assistant on AI-fluency questions, and its answers."),
+});
+
+export const assistBody = z.object({
+  questionId: z.string().min(1),
+  prompt: z.string().min(1).max(2_000),
+  code: z.string().max(40_000).nullable().default(null).describe("The candidate's code as it stands, sent with the question."),
+});
+
+export const assistResponse = z.object({
+  questionId: z.string(),
+  prompt: z.string(),
+  reply: z.string(),
+  at: z.number(),
+  left: z.number().describe("How many more questions to the assistant this question allows."),
 });
 
 export const draftParams = z.object({ questionId: z.string().min(1) });
@@ -711,7 +750,7 @@ export const createApiKeyResponse = z.object({
 export const apiKeyParams = z.object({ keyId: z.string().min(1) });
 
 const routeUsage = z.object({
-  route: z.enum(["probe", "assess", "grade", "tutor", "author", "interview"]),
+  route: z.enum(["probe", "assess", "grade", "tutor", "author", "interview", "assist"]),
   calls: z.number(),
   inputTokens: z.number(),
   outputTokens: z.number(),

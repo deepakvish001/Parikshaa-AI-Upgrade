@@ -148,6 +148,17 @@ export function CodeFields({ question, onChange }: { question: CodeQuestion; onC
         </div>
       </fieldset>
 
+      <label className="field inline">
+        <input
+          type="checkbox"
+          checked={question.aiAssist === true}
+          onChange={(e) => onChange(e.target.checked ? { ...question, aiAssist: true } : without(question, "aiAssist"))}
+          style={{ width: "auto" }}
+        />{" "}
+        AI allowed: the candidate may ask an AI assistant on this question, as at work. Every question and answer is recorded for review (an AI-fluency
+        question).
+      </label>
+
       <fieldset className="field">
         <legend>Languages the candidate may use</legend>
         <div className="row" style={{ marginTop: ".2rem" }}>

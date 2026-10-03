@@ -259,6 +259,25 @@ export function QuestionFields({
 
       {question.kind === "code" ? <CodeFields question={question} onChange={onChange} /> : null}
 
+      {question.kind === "short" ? (
+        <label className="field inline">
+          <input
+            type="checkbox"
+            checked={question.takeHome === true}
+            onChange={(e) => {
+              if (e.target.checked) onChange({ ...question, takeHome: true });
+              else {
+                const { takeHome: _, ...rest } = question;
+                onChange(rest);
+              }
+            }}
+            style={{ width: "auto" }}
+          />{" "}
+          Take-home: the candidate shares a link to their work (a repository) with notes, instead of writing here. You mark it in Marking against the rubric;
+          no model grades it.
+        </label>
+      ) : null}
+
       <PassageFields question={question} onChange={onChange} {...(upload === undefined ? {} : { upload })} {...(previousPassage === undefined ? {} : { previousPassage })} />
 
       <Translations question={question} onChange={onChange} />

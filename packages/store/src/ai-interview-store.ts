@@ -40,6 +40,8 @@ export interface AiInterview {
   readonly candidateRef: string;
   readonly candidateName: string;
   readonly candidateEmail: string | null;
+  /** The resume the recruiter pasted, or null. */
+  readonly resume: string | null;
   readonly status: AiInterviewStatus;
   readonly startedAt: string | null;
   readonly endedAt: string | null;
@@ -96,7 +98,7 @@ export class TurnTaken extends Error {
   }
 }
 
-const COLUMNS = `id, title, role_id, job, seniority, questions, minutes, candidate_ref, candidate_name, candidate_email, status,
+const COLUMNS = `id, title, role_id, job, seniority, questions, minutes, candidate_ref, candidate_name, candidate_email, resume, status,
   started_at, ended_at, assessment, scorecard, decided_by, decided_at, created_by, created_at`;
 
 interface Row {
@@ -110,6 +112,7 @@ interface Row {
   candidate_ref: string;
   candidate_name: string;
   candidate_email: string | null;
+  resume: string | null;
   status: AiInterviewStatus;
   started_at: string | Date | null;
   ended_at: string | Date | null;
@@ -145,6 +148,7 @@ export class AiInterviewStore {
       candidateRef: r.candidate_ref,
       candidateName: r.candidate_name,
       candidateEmail: this.#seal.open(r.candidate_email, aad(orgId, r.id, "email")),
+      resume: this.#seal.open(r.resume, aad(orgId, r.id, "resume")),
       status: r.status,
       startedAt: iso(r.started_at),
       endedAt: iso(r.ended_at),
@@ -159,13 +163,13 @@ export class AiInterviewStore {
 
   async create(
     orgId: OrgId,
-    i: Pick<AiInterview, "id" | "title" | "roleId" | "job" | "seniority" | "questions" | "minutes" | "candidateRef" | "candidateName" | "candidateEmail" | "createdBy" | "createdAt">,
+    i: Pick<AiInterview, "id" | "title" | "roleId" | "job" | "seniority" | "questions" | "minutes" | "candidateRef" | "candidateName" | "candidateEmail" | "createdBy" | "createdAt"> & { readonly resume?: string | null },
   ): Promise<AiInterview> {
     return withScope(this.#sql, staffScope(orgId), async (tx) => {
       const rows = await tx.query<Row>(
-        `INSERT INTO ai_interviews (org_id, id, title, role_id, job, seniority, questions, minutes, candidate_ref, candidate_name, candidate_email, created_by, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING ${COLUMNS}`,
-        [orgId, i.id, i.title, i.roleId, i.job, i.seniority, i.questions, i.minutes, i.candidateRef, i.candidateName, this.#seal.text(i.candidateEmail, aad(orgId, i.id, "email")), i.createdBy, i.createdAt],
+        `INSERT INTO ai_interviews (org_id, id, title, role_id, job, seniority, questions, minutes, candidate_ref, candidate_name, candidate_email, resume, created_by, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING ${COLUMNS}`,
+        [orgId, i.id, i.title, i.roleId, i.job, i.seniority, i.questions, i.minutes, i.candidateRef, i.candidateName, this.#seal.text(i.candidateEmail, aad(orgId, i.id, "email")), this.#seal.text(i.resume ?? null, aad(orgId, i.id, "resume")), i.createdBy, i.createdAt],
       );
       return this.#toInterview(orgId, rows[0]!);
     });
@@ -272,5 +276,23 @@ export class AiInterviewStore {
       }
       return [...after, ...written];
     });
+  }
+
+  /**
+   * Interviews finished or cancelled before `before`, and invitations never
+   * taken up since then, with their transcripts: removed by the retention
+   * sweep (T1). Returns how many.
+   */
+  async sweep(orgId: OrgId, before: Date): Promise<number> {
+    return withScope(this.#sql, staffScope(orgId), async (tx) =>
+      (
+        await tx.query(
+          `DELETE FROM ai_interviews WHERE org_id = $1
+             AND ((status IN ('done', 'cancelled') AND COALESCE(ended_at, created_at) < $2) OR (status = 'invited' AND created_at < $2))
+           RETURNING id`,
+          [orgId, before.toISOString()],
+        )
+      ).length,
+    );
   }
 }

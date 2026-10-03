@@ -43,6 +43,8 @@ interface Props {
   readonly startFull?: boolean;
   /** Beside the full-screen workspace, on its left: the paper's question numbers. */
   readonly rail?: ReactNode;
+  /** An AI-fluency question's assistant, as a third tab beside the testcase and the result. */
+  readonly assistant?: ReactNode;
 }
 
 // --- editor preferences --------------------------------------------------------
@@ -89,7 +91,7 @@ type Shown = { readonly kind: "run"; readonly outcome: RunOutcome; readonly cust
  * reporting as much as the exam allows. It sits in the question's card, and
  * opens full screen with the problem beside the editor.
  */
-export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked, startFull = false, rail }: Props) {
+export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked, startFull = false, rail, assistant }: Props) {
   const { t, lite } = usePreferences();
   const { language, source } = readCodeAnswer(value, question);
   const functionMode = question.function !== null && question.function !== undefined;
@@ -100,7 +102,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   // On a phone the full-screen workspace shows one pane at a time, by tab.
   const [phoneTab, setPhoneTab] = useState<"problem" | "code" | "result">("code");
   const [top, setTop] = useState(0);
-  const [tab, setTab] = useState<"testcase" | "result">("testcase");
+  const [tab, setTab] = useState<"testcase" | "result" | "assistant">(assistant === undefined ? "testcase" : "assistant");
   const [picked, setPicked] = useState<number | "custom">(question.samples.length > 0 ? 0 : "custom");
   const [customStdin, setCustomStdin] = useState(question.samples[0]?.input ?? "");
   const [customArgs, setCustomArgs] = useState<string[]>(() => params.map((_p, i) => argumentsOf(question.samples[0]?.input ?? "")[i] ?? ""));
@@ -297,7 +299,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   const console_ = (
     <div className="ws-console">
       <div className="ws-tabs" role="tablist" aria-label={t("code.result")}>
-        {(["testcase", "result"] as const).map((name) => (
+        {(assistant === undefined ? (["testcase", "result"] as const) : (["assistant", "testcase", "result"] as const)).map((name) => (
           <button
             key={name}
             type="button"
@@ -308,12 +310,14 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
             className={tab === name ? "on" : ""}
             onClick={() => setTab(name)}
           >
-            {name === "testcase" ? t("code.testcase") : t("code.result")}
+            {name === "testcase" ? t("code.testcase") : name === "assistant" ? t("assist.tab") : t("code.result")}
           </button>
         ))}
       </div>
       <div className="ws-panel" role="tabpanel" id={`${question.id}-panel-${tab}`} aria-labelledby={`${question.id}-tab-${tab}`}>
-        {tab === "testcase" ? (
+        {tab === "assistant" ? (
+          assistant
+        ) : tab === "testcase" ? (
           <>
             <div className="case-chips">
               {question.samples.map((_s, i) => (
