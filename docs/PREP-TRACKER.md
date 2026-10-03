@@ -979,6 +979,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G3 Judge0 backend** (plan 103): `Judge0CodeRunner` (batch + poll, bhasha naam se, verdict/checker hamare), in-house runner par fallback, `RUNNER_BACKEND`, `npm run parity`, `deploy/judge0` (hardened conf, apna compiler image, VM setup script + tests), image workflow |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G2 Parikshaa Library** (plan 102): global library (version, open/hire-only, exposure), console → Parikshaa Library (filters, preview, add, pick at random, newer version), operator tools, 165 built-in sawaal (CS, programming, DSA, SQL) |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G1 Company ID + operator panel** (plan 101): har organisation ka `PKC-XXXXXX`, console → Companies (sirf operator, second factor ke saath): company kholna + owner ko 7 din ka link, pause/resume, credits, invite dobara; audit dono taraf |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G0 staging ka code** (plan 100): photos Supabase Storage me (sealed), Vercel build + `/api` proxy edge secret ke saath, VM sirf API + runner Supabase DB par, deploy workflows, pooler test, [STAGING.md](STAGING.md); microphone wali Permissions-Policy galti theek |
