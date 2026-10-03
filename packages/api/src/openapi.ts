@@ -1,8 +1,9 @@
 import { Onboarding } from "./onboarding.js";
 import { OperatorService, Operators } from "./operator.js";
+import { LibraryService } from "./library.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, LibraryStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -114,6 +115,11 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     security: new StaffSecurity({ identity, auth, secrets, publicUrl: "https://example.invalid" }),
     onboarding: new Onboarding({ identity, auth, billing: new BillingStore(unusable), bank: new QuestionBank(unusable), exams: service }),
     operator: new OperatorService({ identity, billing: new BillingStore(unusable), reports: new ReportStore(unusable), exams: service, operators: new Operators([]), now: () => 0 }),
+    library: new LibraryService({
+      library: new LibraryStore(unusable),
+      operator: new OperatorService({ identity, billing: new BillingStore(unusable), reports: new ReportStore(unusable), exams: service, operators: new Operators([]), now: () => 0 }),
+      exams: service,
+    }),
     identity,
     bank: new QuestionBank(unusable),
     media: new QuestionMedia(unusable),

@@ -5,7 +5,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type BlobStore, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -50,6 +50,7 @@ import { StaffAuth } from "./staff-auth.js";
 import { StaffSecrets } from "./staff-secrets.js";
 import { StaffSecurity } from "./staff-security.js";
 import { OperatorService, Operators } from "./operator.js";
+import { LibraryService } from "./library.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
 import { DailyPilotReport } from "./pilot-report.js";
 
@@ -115,6 +116,8 @@ export function assemble(o: AssembleOptions): {
   prepEngage: PrepEngage;
   /** Deletes from the bucket the photos of erased attempts, every organisation's. Returns how many. */
   sweepMedia: () => Promise<number>;
+  /** The Parikshaa Library, to file its built-in questions at boot. */
+  library: LibraryService;
 } {
   const keys = new DataKeys(o.dataKey);
   const proctorStore = new ProctorStore(o.sql, keys, { blobs: o.blobs ?? null });
@@ -228,6 +231,15 @@ export function assemble(o: AssembleOptions): {
   departments = new DepartmentService({ departments: new DepartmentStore(o.sql), identity, exams: service, invite: (email) => security.requestReset(email) });
 
   const bank = new QuestionBank(o.sql);
+  const operator = new OperatorService({
+    identity,
+    billing: billingStore,
+    reports: new ReportStore(o.sql),
+    exams: service,
+    operators: new Operators(o.operators ?? []),
+    now: () => Date.now(),
+  });
+  const library = new LibraryService({ library: new LibraryStore(o.sql), operator, exams: service });
   const onboarding = new Onboarding({
     identity,
     auth,
@@ -318,14 +330,8 @@ export function assemble(o: AssembleOptions): {
     auth,
     security,
     onboarding,
-    operator: new OperatorService({
-      identity,
-      billing: billingStore,
-      reports: new ReportStore(o.sql),
-      exams: service,
-      operators: new Operators(o.operators ?? []),
-      now: () => Date.now(),
-    }),
+    operator,
+    library,
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,
@@ -375,5 +381,5 @@ export function assemble(o: AssembleOptions): {
     return deleted;
   };
 
-  return { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia };
+  return { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia, library };
 }

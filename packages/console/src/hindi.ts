@@ -22,6 +22,9 @@ export const HINDI: Readonly<Record<string, string>> = {
   Billing: "बिलिंग",
   "Sign-in": "साइन-इन",
   Companies: "कंपनियाँ",
+  "Parikshaa Library": "परीक्षा लाइब्रेरी",
+  "Questions written by Parikshaa — CS fundamentals, programming, DSA coding and SQL — to copy into your bank.":
+    "परीक्षा के लिखे प्रश्न — CS के मूल विषय, प्रोग्रामिंग, DSA कोडिंग और SQL — अपने बैंक में कॉपी करने के लिए।",
   Parikshaa: "परीक्षा",
   Account: "खाता",
   "Sign out": "साइन आउट",

@@ -113,7 +113,7 @@ async function main(): Promise<void> {
   const blobs = storageFromEnv(process.env);
   if (blobs !== null) await blobs.ensureBucket();
 
-  const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia } = assemble({
+  const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia, library } = assemble({
     blobs,
     // Parikshaa's own operators, by address: they see and open every organisation (docs/STAGING.md).
     operators: (process.env["PARIKSHAA_OPERATORS"] ?? "").split(","),
@@ -165,6 +165,14 @@ async function main(): Promise<void> {
       androidApp: androidAppFromEnv(process.env),
     },
   });
+
+  // The Parikshaa Library (G2): its built-in questions are filed at every
+  // start, so a new database has them and an updated release versions them.
+  // Several instances doing this at once is safe; LIBRARY_SEED=off skips it.
+  if (process.env["LIBRARY_SEED"] !== "off") {
+    const filed = await library.seedAtBoot();
+    if (filed.added + filed.updated > 0) app.log.info(filed, "library questions filed");
+  }
 
   connectionLost = (error) =>
     app.log.warn({ err: { type: error.name, code: (error as { code?: unknown }).code } }, "database connection lost");

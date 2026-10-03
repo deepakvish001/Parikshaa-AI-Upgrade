@@ -30,3 +30,8 @@
 .operator-inline input {
   max-width: 20rem;
 }
+.operator-library {
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+}

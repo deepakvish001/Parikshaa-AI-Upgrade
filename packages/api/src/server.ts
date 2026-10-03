@@ -5,6 +5,8 @@ import fastifyStatic from "@fastify/static";
 import { baseHeaders, pagePolicy } from "./page-headers.js";
 import type { OperatorService } from "./operator.js";
 import { registerOperatorRoutes } from "./operator-routes.js";
+import type { LibraryService } from "./library.js";
+import { registerLibraryRoutes } from "./library-routes.js";
 import fastifySwagger from "@fastify/swagger";
 import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import {
@@ -174,6 +176,8 @@ export interface ServerOptions {
   readonly onboarding?: Onboarding;
   /** Parikshaa's operator panel: every organisation by its Company ID (G1). Absent: none of its routes. */
   readonly operator?: OperatorService;
+  /** The Parikshaa Library (G2). Absent: none of its routes. */
+  readonly library?: LibraryService;
   /**
    * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
    * opened a page of ours can reach into it. On unless set false, which only
@@ -310,6 +314,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Institution", description: "Authoring exams, issuing access codes, grading and review." },
         { name: "Candidate", description: "Sitting one attempt. Scoped entirely by the bearer token." },
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
+        { name: "Library", description: "The Parikshaa Library: Parikshaa's own questions, to browse and copy into the bank; and, for operators, to file and retire." },
         { name: "Operator", description: "Parikshaa's own operators: every organisation by its Company ID, opening one with its owner, pausing it, and giving credits." },
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
@@ -1338,6 +1343,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       ...(options.operator === undefined ? {} : { operators: options.operator.operators }),
     });
     if (options.operator !== undefined) registerOperatorRoutes(routes, { operator: options.operator, staff });
+    if (options.library !== undefined) registerLibraryRoutes(routes, { library: options.library, staff });
     if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
     if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
   });

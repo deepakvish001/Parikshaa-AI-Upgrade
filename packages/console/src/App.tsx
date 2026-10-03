@@ -1,6 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   Bot,
+  BookOpenCheck,
   Building,
   Building2,
   ChevronRight,
@@ -59,6 +60,7 @@ const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
 const PaperReview = lazy(() => import("./components/PaperReview.tsx").then((m) => ({ default: m.PaperReview })));
 const Arrangements = lazy(() => import("./components/Arrangements.tsx").then((m) => ({ default: m.Arrangements })));
+const LibraryPanel = lazy(() => import("./components/Library.tsx").then((m) => ({ default: m.LibraryPanel })));
 const OperatorPanel = lazy(() => import("./components/Operator.tsx").then((m) => ({ default: m.OperatorPanel })));
 const ClassesPanel = lazy(() => import("./components/Classes.tsx").then((m) => ({ default: m.ClassesPanel })));
 const AiInterviewsPanel = lazy(() => import("./components/AiInterviews.tsx").then((m) => ({ default: m.AiInterviewsPanel })));
@@ -95,6 +97,7 @@ type View =
   | { readonly name: "billing" }
   | { readonly name: "signin" }
   | { readonly name: "companies" }
+  | { readonly name: "library" }
   | { readonly name: "account" };
 
 /**
@@ -438,6 +441,7 @@ function Console({
     readonly icon: LucideIcon;
   }[] = [
     { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key", group: "assess", icon: Library },
+    { view: { name: "library" }, label: "Parikshaa Library", permission: "exam:read_key", group: "assess", icon: BookOpenCheck },
     { view: { name: "insights" }, label: "Insights", permission: "attempt:review", group: "assess", icon: TrendingUp },
     { view: { name: "placement" }, label: "Placement", permission: "attempt:review", group: "assess", icon: BriefcaseBusiness },
     { view: { name: "interviews" }, label: "Interviews", permission: "attempt:review", group: "assess", icon: Video },
@@ -972,6 +976,11 @@ function Console({
             {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
             {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
             {view.name === "billing" ? <BillingPanel client={client} /> : null}
+            {view.name === "library" ? (
+              <Suspense fallback={<SkeletonRows rows={6} columns={5} label="Loading the library…" />}>
+                <LibraryPanel client={client} canWrite={can("exam:write")} />
+              </Suspense>
+            ) : null}
             {view.name === "companies" && me.data?.operator === true ? (
               <Suspense fallback={<SkeletonRows rows={5} columns={6} label="Loading organisations…" />}>
                 <OperatorPanel client={client} />
@@ -1061,6 +1070,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   billing: "billing",
   signin: "signin",
   companies: "companies",
+  library: "library",
   account: "account",
 };
 
@@ -1115,6 +1125,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Billing";
     case "companies":
       return "Companies";
+    case "library":
+      return "Parikshaa Library";
     case "signin":
       return "Sign-in";
     case "account":
@@ -1154,6 +1166,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   integrations: "Webhooks and applicant-tracking systems that hear about results.",
   privacy: "The notice candidates agree to, how long their data is kept, and erasure.",
   billing: "Attempt credits, payments and GST invoices.",
+  library: "Questions written by Parikshaa — CS fundamentals, programming, DSA coding and SQL — to copy into your bank.",
   companies: "Every company and college on Parikshaa by its Company ID: open one with its owner, pause it, give credits.",
   signin: "How your staff sign in: your institution's own provider, and two-step sign-in for owners.",
   account: "Your password and two-step sign-in.",

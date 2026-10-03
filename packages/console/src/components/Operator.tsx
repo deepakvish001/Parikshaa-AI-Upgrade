@@ -47,6 +47,7 @@ export function OperatorPanel({ client }: { client: ConsoleClient }) {
       ) : null}
       {list.error !== null && !needs2fa ? <p className="error">{failure(list.error)}</p> : null}
       {creating ? <NewOrgForm client={client} onDone={() => setCreating(false)} /> : null}
+      {needs2fa ? null : <LibrarySeed client={client} />}
       {list.isPending ? <p className="notice">Loading…</p> : null}
       {list.isSuccess && list.data.length === 0 && !creating ? (
         <EmptyState icon={Building} action={{ label: "New company", onClick: () => setCreating(true), icon: Plus }}>
@@ -88,6 +89,28 @@ export function OperatorPanel({ client }: { client: ConsoleClient }) {
         </>
       ) : null}
     </section>
+  );
+}
+
+/** File Parikshaa's built-in questions again: the API does it at start; this is for after a content change. */
+function LibrarySeed({ client }: { client: ConsoleClient }) {
+  const toast = useToast();
+  const seed = useMutation({
+    mutationFn: () => client.seedLibrary(),
+    onSuccess: (r) => toast(`Library: ${r.added} added, ${r.updated} updated, ${r.unchanged} unchanged`, "success"),
+  });
+  return (
+    <div className="row operator-library">
+      <span className="notice">Parikshaa Library: Parikshaa's built-in questions are filed when the API starts.</span>
+      <button type="button" className="secondary" disabled={seed.isPending} onClick={() => seed.mutate()}>
+        File them now
+      </button>
+      {seed.error === null ? null : (
+        <span className="error" role="alert">
+          {failure(seed.error)}
+        </span>
+      )}
+    </div>
   );
 }
 

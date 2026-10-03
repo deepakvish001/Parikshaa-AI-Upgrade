@@ -33,6 +33,7 @@ function client(overrides: Partial<ConsoleClient> = {}) {
     resumeOrg: vi.fn(async () => acme),
     grantOrgCredits: vi.fn(async () => ({ ...acme, credits: 37 })),
     reinviteOwner: vi.fn(async () => undefined),
+    seedLibrary: vi.fn(async () => ({ added: 3, updated: 1, unchanged: 161 })),
     ...overrides,
   } as unknown as ConsoleClient & Record<string, ReturnType<typeof vi.fn>>;
 }
@@ -106,5 +107,13 @@ describe("the operator panel", () => {
     renderPanel(client({ operatorOrgs: vi.fn(async () => Promise.reject(new ConsoleError(403, "operator_needs_2fa", [], "Set up a second factor on your account first"))) } as Partial<ConsoleClient>));
     expect(await screen.findByRole("alert")).toHaveTextContent("Set up a second factor on your account first. Turn it on under Account.");
     expect(screen.queryByRole("button", { name: "New company" })).toBeNull();
+  });
+
+  it("files Parikshaa's built-in questions in the library again", async () => {
+    const c = client();
+    renderPanel(c);
+    await userEvent.click(await screen.findByRole("button", { name: "File them now" }));
+    expect(c.seedLibrary).toHaveBeenCalled();
+    expect(await screen.findByText("Library: 3 added, 1 updated, 161 unchanged")).toBeInTheDocument();
   });
 });

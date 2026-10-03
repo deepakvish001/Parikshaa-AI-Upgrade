@@ -186,6 +186,49 @@ export interface BankEntry {
   readonly archived: boolean;
 }
 
+/** The Parikshaa Library (G2). */
+export type LibrarySection = "aptitude" | "cs" | "programming" | "dsa" | "sql" | "frontend";
+
+export interface LibraryEntry {
+  readonly id: string;
+  readonly version: number;
+  readonly section: LibrarySection;
+  readonly topic: string;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+  readonly question: Question;
+  readonly explanation: string;
+  readonly tier: "open" | "hire";
+  readonly source: string;
+  /** How many organisations took it: for Parikshaa's operators only, null for everyone else. */
+  readonly exposure: number | null;
+  readonly updatedAt: string;
+  readonly retired: boolean;
+  readonly adopted: { readonly bankQuestionId: string; readonly version: number } | null;
+  readonly newerVersion: boolean;
+}
+
+export interface LibraryFacets {
+  readonly total: number;
+  readonly sections: readonly { readonly section: LibrarySection; readonly count: number; readonly topics: readonly { readonly topic: string; readonly count: number }[] }[];
+}
+
+/** Unset, or undefined, means no filter on it. */
+export interface LibraryFilter {
+  readonly section?: LibrarySection | undefined;
+  readonly topic?: string | undefined;
+  readonly difficulty?: Difficulty | undefined;
+  readonly kind?: Question["kind"] | undefined;
+  readonly q?: string | undefined;
+  readonly notTaken?: boolean | undefined;
+}
+
+export interface LibraryTaken {
+  readonly added: number;
+  readonly already: number;
+  readonly bankQuestionIds: readonly string[];
+}
+
 export interface BankDraft {
   readonly question: Omit<Question, "id">;
   readonly topic: string;
@@ -1217,6 +1260,34 @@ export class ConsoleClient {
       Object.entries(filter).filter((entry): entry is [string, string] => entry[1] !== undefined && entry[1] !== ""),
     ).toString();
     return this.#request(`/bank${query === "" ? "" : `?${query}`}`);
+  }
+
+  // --- the Parikshaa Library (G2) ---------------------------------------------------------
+
+  library(filter: LibraryFilter = {}, offset = 0): Promise<{ readonly items: readonly LibraryEntry[]; readonly total: number; readonly facets: LibraryFacets }> {
+    const params = new URLSearchParams({ offset: String(offset) });
+    for (const [key, value] of Object.entries(filter)) {
+      if (value === true) params.set(key, "true");
+      else if (typeof value === "string" && value !== "") params.set(key, value);
+    }
+    const query = params.toString();
+    return this.#request(`/library?${query}`);
+  }
+
+  takeFromLibrary(ids: readonly string[]): Promise<LibraryTaken> {
+    return this.#request("/library/take", { method: "POST", body: JSON.stringify({ ids }) });
+  }
+
+  pickFromLibrary(filter: Omit<LibraryFilter, "notTaken">, count: number): Promise<LibraryTaken> {
+    return this.#request("/library/pick", { method: "POST", body: JSON.stringify({ ...filter, count }) });
+  }
+
+  refreshFromLibrary(id: string): Promise<{ readonly bankQuestionId: string; readonly version: number }> {
+    return this.#request(`/library/${encodeURIComponent(id)}/refresh`, { method: "POST" });
+  }
+
+  seedLibrary(): Promise<{ readonly added: number; readonly updated: number; readonly unchanged: number }> {
+    return this.#request("/operator/library/seed", { method: "POST" });
   }
 
   fileQuestion(draft: BankDraft): Promise<BankEntry> {

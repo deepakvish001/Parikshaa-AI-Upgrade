@@ -1,5 +1,6 @@
 import type { PushSender } from "../push.js";
 import { OperatorService, Operators } from "../operator.js";
+import { LibraryService } from "../library.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -36,6 +37,7 @@ import {
   ReviewStore,
   DepartmentStore,
   ReportStore,
+  LibraryStore,
   staffScope,
   migrate,
   pgliteExecutor,
@@ -395,6 +397,14 @@ export async function wire(
     labbed: async (orgId, examId) => (await labStore.get(staffScope(orgId), examId)).networks.length > 0,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
+  const operator = new OperatorService({
+    identity,
+    billing: new BillingStore(sql),
+    reports: new ReportStore(sql),
+    exams: service,
+    operators: new Operators(options.operators ?? []),
+    now: options.now ?? (() => Date.now()),
+  });
   const onboarding = new Onboarding({
     identity,
     auth,
@@ -445,14 +455,8 @@ export async function wire(
     auth,
     security,
     onboarding,
-    operator: new OperatorService({
-      identity,
-      billing: new BillingStore(sql),
-      reports: new ReportStore(sql),
-      exams: service,
-      operators: new Operators(options.operators ?? []),
-      now: options.now ?? (() => Date.now()),
-    }),
+    operator,
+    library: new LibraryService({ library: new LibraryStore(sql), operator, exams: service }),
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),
