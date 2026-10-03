@@ -39,6 +39,7 @@ import {
   pgliteExecutor,
   type SqlExecutor,
   type StaffRole,
+  type BlobStore,
 } from "@parikshaa/store";
 import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "../judge-queue.js";
@@ -181,6 +182,8 @@ export async function wire(
     readonly googleIssuer?: string;
     /** Institutions may sign themselves up, on these terms. */
     readonly signup?: SignupPolicy;
+    /** A bucket for proctoring photos, as when Supabase Storage is configured. */
+    readonly blobs?: BlobStore;
   },
 ): Promise<Wiring> {
   const store = new LedgerStore(sql, { keys: new DataKeys(DATA_KEY), ...(options.now === undefined ? {} : { clock: options.now }) });
@@ -253,7 +256,7 @@ export async function wire(
       { kind: "ai_interviews", sweep: (orgId, before) => aiInterviewStore.sweep(orgId, before) },
     ],
     store,
-    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY), { blobs: options.blobs ?? null }),
     privacy: new PrivacyStore(sql),
     invitations: invitationStore,
     identity,
@@ -366,7 +369,7 @@ export async function wire(
     store,
     invitations: invitationStore,
     exams: service,
-    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY), { blobs: options.blobs ?? null }),
     identity,
     mailer: options.mailer ?? null,
     whatsapp: options.whatsapp ?? false,
@@ -375,7 +378,7 @@ export async function wire(
   });
   const proctorService = new ProctorService({
     store,
-    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+    proctor: new ProctorStore(sql, new DataKeys(DATA_KEY), { blobs: options.blobs ?? null }),
     exams: service,
     ...(options.now === undefined ? {} : { now: options.now }),
   });
@@ -410,7 +413,7 @@ export async function wire(
     lti: integrations.lti,
     invigilation: new InvigilationService({
       store,
-      proctor: new ProctorStore(sql, new DataKeys(DATA_KEY)),
+      proctor: new ProctorStore(sql, new DataKeys(DATA_KEY), { blobs: options.blobs ?? null }),
       invitations: invitationStore,
       invigilation: new InvigilationStore(sql),
       exams: service,

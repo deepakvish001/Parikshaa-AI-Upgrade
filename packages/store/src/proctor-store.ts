@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { BlobStore } from "./blobs.js";
 import { withScope, type Scope } from "./ledger-store.js";
 import { openBytes, sealBytes, type DataKeys } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
@@ -10,6 +11,10 @@ import type { SqlExecutor } from "./sql.js";
  * bound to the attempt and to its own id, so a photo cannot be moved to
  * another attempt and read there; erasing the attempt's key makes every photo
  * unreadable, as it does the answers.
+ *
+ * Given a {@link BlobStore}, the sealed bytes go to it (a bucket) under
+ * `<org>/<attempt>/<photo>`, and the row keeps the key (migration 0066). Rows
+ * from before keep their bytes in the table, and still open.
  */
 
 export type MediaKind = "selfie" | "id" | "snapshot";
@@ -53,17 +58,20 @@ export class NoDataKey extends Error {
 }
 
 const aadOf = (attemptId: string, mediaId: string) => `${attemptId}/media/${mediaId}`;
+const objectKeyOf = (orgId: string, attemptId: string, mediaId: string) => `${orgId}/${attemptId}/${mediaId}`;
 const toBuffer = (value: Buffer | Uint8Array): Buffer => (Buffer.isBuffer(value) ? value : Buffer.from(value));
 
 export class ProctorStore {
   readonly #sql: SqlExecutor;
   readonly #keys: DataKeys | null;
   readonly #newId: () => string;
+  readonly #blobs: BlobStore | null;
 
-  constructor(sql: SqlExecutor, keys: DataKeys | null, options: { readonly newId?: () => string } = {}) {
+  constructor(sql: SqlExecutor, keys: DataKeys | null, options: { readonly newId?: () => string; readonly blobs?: BlobStore | null } = {}) {
     this.#sql = sql;
     this.#keys = keys;
     this.#newId = options.newId ?? (() => crypto.randomUUID());
+    this.#blobs = options.blobs ?? null;
   }
 
   async #key(tx: SqlExecutor, scope: Scope, attemptId: string): Promise<Buffer> {
@@ -78,16 +86,25 @@ export class ProctorStore {
 
   /** Seal and keep a photo. Returns its id and the SHA-256 of the image as taken. */
   async addMedia(scope: Scope, attemptId: string, kind: MediaKind, image: Buffer, takenAt: Date): Promise<MediaRecord> {
-    return withScope(this.#sql, scope, async (tx) => {
-      const key = await this.#key(tx, scope, attemptId);
-      const id = this.#newId();
-      const sha256 = createHash("sha256").update(image).digest("hex");
-      await tx.query(
-        `INSERT INTO proctor_media (org_id, attempt_id, id, kind, taken_at, sha256, sealed) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [scope.orgId, attemptId, id, kind, takenAt.toISOString(), sha256, sealBytes(key, image, aadOf(attemptId, id))],
-      );
-      return { id, kind, takenAt: takenAt.toISOString(), sha256 };
-    });
+    const id = this.#newId();
+    const sha256 = createHash("sha256").update(image).digest("hex");
+    const record = { id, kind, takenAt: takenAt.toISOString(), sha256 };
+    const insert = `INSERT INTO proctor_media (org_id, attempt_id, id, kind, taken_at, sha256, sealed, object_key) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`;
+    const blobs = this.#blobs;
+    if (blobs === null) {
+      return withScope(this.#sql, scope, async (tx) => {
+        const sealed = sealBytes(await this.#key(tx, scope, attemptId), image, aadOf(attemptId, id));
+        await tx.query(insert, [scope.orgId, attemptId, id, kind, record.takenAt, sha256, sealed, null]);
+        return record;
+      });
+    }
+    // The upload happens outside a transaction, so no connection waits on the
+    // bucket; the object is in place before the row that names it.
+    const sealed = sealBytes(await withScope(this.#sql, scope, (tx) => this.#key(tx, scope, attemptId)), image, aadOf(attemptId, id));
+    const objectKey = objectKeyOf(scope.orgId, attemptId, id);
+    await blobs.put(objectKey, sealed);
+    await withScope(this.#sql, scope, (tx) => tx.query(insert, [scope.orgId, attemptId, id, kind, record.takenAt, sha256, null, objectKey]));
+    return record;
   }
 
   /** How many photos of a kind an attempt already has: a cap on what a page can send. */
@@ -116,19 +133,78 @@ export class ProctorStore {
 
   /** One photo, opened. Null if there is no such photo. Throws {@link NoDataKey} once the attempt is erased. */
   async open(scope: Scope, attemptId: string, mediaId: string): Promise<{ record: MediaRecord; image: Buffer } | null> {
-    return withScope(this.#sql, scope, async (tx) => {
-      const rows = await tx.query<{ id: string; kind: MediaKind; taken_at: string | Date; sha256: string; sealed: Buffer | Uint8Array }>(
-        `SELECT id, kind, taken_at, sha256, sealed FROM proctor_media WHERE org_id = $1 AND attempt_id = $2 AND id = $3`,
+    const found = await withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{
+        id: string;
+        kind: MediaKind;
+        taken_at: string | Date;
+        sha256: string;
+        sealed: Buffer | Uint8Array | null;
+        object_key: string | null;
+      }>(
+        `SELECT id, kind, taken_at, sha256, sealed, object_key FROM proctor_media WHERE org_id = $1 AND attempt_id = $2 AND id = $3`,
         [scope.orgId, attemptId, mediaId],
       );
       const row = rows[0];
       if (row === undefined) return null;
-      const key = await this.#key(tx, scope, attemptId);
-      return {
-        record: { id: row.id, kind: row.kind, takenAt: new Date(row.taken_at).toISOString(), sha256: row.sha256 },
-        image: openBytes(key, toBuffer(row.sealed), aadOf(attemptId, row.id)),
-      };
+      return { row, key: await this.#key(tx, scope, attemptId) };
     });
+    if (found === null) return null;
+    const { row, key } = found;
+    let sealed: Buffer | null = row.sealed === null ? null : toBuffer(row.sealed);
+    if (sealed === null && row.object_key !== null) {
+      if (this.#blobs === null) throw new Error("This photo is kept in storage, and no storage is configured");
+      sealed = await this.#blobs.get(row.object_key);
+    }
+    if (sealed === null) return null;
+    return {
+      record: { id: row.id, kind: row.kind, takenAt: new Date(row.taken_at).toISOString(), sha256: row.sha256 },
+      image: openBytes(key, sealed, aadOf(attemptId, row.id)),
+    };
+  }
+
+  /**
+   * Carry up to `limit` photos kept in the table over to storage: each sealed
+   * as it was, put in the bucket, then the row changed to name it. Returns
+   * how many moved; run until it returns 0.
+   */
+  async moveToBlobs(scope: Scope, limit = 100): Promise<number> {
+    const blobs = this.#blobs;
+    if (blobs === null) throw new Error("No storage to move photos to");
+    const rows = await withScope(this.#sql, scope, (tx) =>
+      tx.query<{ attempt_id: string; id: string; sealed: Buffer | Uint8Array }>(
+        `SELECT attempt_id, id, sealed FROM proctor_media WHERE org_id = $1 AND sealed IS NOT NULL ORDER BY taken_at, id LIMIT $2`,
+        [scope.orgId, limit],
+      ),
+    );
+    let moved = 0;
+    for (const row of rows) {
+      const objectKey = objectKeyOf(scope.orgId, row.attempt_id, row.id);
+      await blobs.put(objectKey, toBuffer(row.sealed));
+      const done = await withScope(this.#sql, scope, (tx) =>
+        tx.query(
+          `UPDATE proctor_media SET sealed = NULL, object_key = $3 WHERE org_id = $1 AND id = $2 AND sealed IS NOT NULL RETURNING id`,
+          [scope.orgId, row.id, objectKey],
+        ),
+      );
+      moved += done.length;
+    }
+    return moved;
+  }
+
+  /** Delete from storage the objects of erased attempts' photos (migration 0066's trash). Returns how many. */
+  async emptyTrash(scope: Scope, limit = 500): Promise<number> {
+    const blobs = this.#blobs;
+    if (blobs === null) return 0;
+    const keys = await withScope(this.#sql, scope, async (tx) =>
+      (await tx.query<{ object_key: string }>(`SELECT object_key FROM media_trash WHERE org_id = $1 ORDER BY trashed_at LIMIT $2`, [scope.orgId, limit])).map(
+        (r) => r.object_key,
+      ),
+    );
+    if (keys.length === 0) return 0;
+    await blobs.remove(keys);
+    await withScope(this.#sql, scope, (tx) => tx.query(`DELETE FROM media_trash WHERE org_id = $1 AND object_key = ANY($2::text[])`, [scope.orgId, keys]));
+    return keys.length;
   }
 
   async addEvent(scope: Scope, attemptId: string, kind: ProctorEventKind, at: Date): Promise<void> {

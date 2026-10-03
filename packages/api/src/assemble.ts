@@ -5,7 +5,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type BlobStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -95,6 +95,8 @@ export interface AssembleOptions {
   readonly signup?: SignupPolicy | null;
   /** The operator's address for the pilot report each morning. Absent: no report is sent. */
   readonly pilotReportTo?: string | null;
+  /** A bucket for proctoring photos (Supabase Storage). Absent: they stay in Postgres. */
+  readonly blobs?: BlobStore | null;
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy" | "androidApp">;
 }
 
@@ -108,9 +110,11 @@ export function assemble(o: AssembleOptions): {
   dailyReport: DailyPilotReport | null;
   /** Queues the hour's daily reminders. */
   prepEngage: PrepEngage;
+  /** Deletes from the bucket the photos of erased attempts, every organisation's. Returns how many. */
+  sweepMedia: () => Promise<number>;
 } {
   const keys = new DataKeys(o.dataKey);
-  const proctorStore = new ProctorStore(o.sql, keys);
+  const proctorStore = new ProctorStore(o.sql, keys, { blobs: o.blobs ?? null });
   const store = new LedgerStore(o.sql, { keys });
   const identity = new IdentityStore(o.sql);
   // Metering needs the exam service for its audit, and the exam service meters: bound late.
@@ -354,5 +358,11 @@ export function assemble(o: AssembleOptions): {
       student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
   });
 
-  return { app, worker, privacy, billing, identity, dailyReport, prepEngage };
+  const sweepMedia = async () => {
+    let deleted = 0;
+    for (const org of await identity.organisationIds()) deleted += await proctorStore.emptyTrash(staffScope(org));
+    return deleted;
+  };
+
+  return { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia };
 }

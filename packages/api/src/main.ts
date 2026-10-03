@@ -9,6 +9,7 @@ import { bankFromEnv, supplierFromEnv } from "./gst.js";
 import { webPushSender } from "./push.js";
 import { androidAppFromEnv } from "./android-app.js";
 import { RazorpayGateway } from "./razorpay.js";
+import { storageFromEnv } from "./storage.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
 function required(name: string): string {
@@ -105,7 +106,15 @@ async function main(): Promise<void> {
   // The pilot report each morning goes where new sign-ups are announced; PILOT_REPORT=off keeps it quiet.
   const pilotReportTo = process.env["PILOT_REPORT"] === "off" ? null : process.env["SIGNUP_NOTIFY_EMAIL"] || null;
 
-  const { app, worker, privacy, billing, identity, dailyReport, prepEngage } = assemble({
+  // Proctoring photos in Supabase Storage (docs/F1-GO-LIVE-PLAN.md §8.2):
+  // SUPABASE_URL and SUPABASE_SECRET_KEY, and MEDIA_BUCKET ("proctor-media"
+  // unless set). The bucket is made, private, if it is not there. Without
+  // them, photos stay in Postgres as before.
+  const blobs = storageFromEnv(process.env);
+  if (blobs !== null) await blobs.ensureBucket();
+
+  const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia } = assemble({
+    blobs,
     signup,
     pilotReportTo,
     sql,
@@ -184,6 +193,8 @@ async function main(): Promise<void> {
         .then((erased) => (erased > 0 ? app.log.info({ erased }, "retention sweep") : undefined))
         .then(() => privacy.sweepTutor())
         .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "tutor chats past 180 days deleted") : undefined))
+        .then(() => sweepMedia())
+        .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "erased attempts' photos deleted from storage") : undefined))
         .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "retention sweep failed"));
     retaining = setInterval(sweep, 60 * 60 * 1000);
     setTimeout(sweep, 60_000).unref();

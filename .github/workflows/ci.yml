@@ -154,6 +154,12 @@ jobs:
 
       - run: deploy/aws/scripts/test/scripts.test.sh
 
+      # The machine for the API alone, with Supabase and Vercel (docs/STAGING.md).
+      - name: Setup script
+        run: |
+          shellcheck -x scripts/setup-server.sh scripts/test/setup-server.test.sh
+          scripts/test/setup-server.test.sh
+
   # ROADMAP §13: the product in real browsers against a real Postgres, then
   # killed mid-write, then under load. Slower than `check`, so its own job.
   e2e:

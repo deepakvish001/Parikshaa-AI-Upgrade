@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import fastifyCompress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
+import { baseHeaders, pagePolicy } from "./page-headers.js";
 import fastifySwagger from "@fastify/swagger";
 import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import {
@@ -371,46 +372,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
-    // ROADMAP §11. Every response: nothing sniffed into a script, never
-    // framed (a framed exam page is a clickjacking target), and no Referer —
-    // an invitation code or a reset link in the address must not follow a
-    // click to another site.
-    reply.header("x-content-type-options", "nosniff");
-    reply.header("x-frame-options", "DENY");
-    reply.header("referrer-policy", "no-referrer");
-    if (options.openerPolicy !== false) reply.header("cross-origin-opener-policy", "same-origin");
-    reply.header("permissions-policy", "camera=(self), microphone=(), geolocation=(), payment=(self)");
-    if (options.hsts === true) reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
+    // ROADMAP §11: the same headers the Vercel build serves (page-headers.ts).
+    for (const [name, value] of Object.entries(baseHeaders({ openerPolicy: options.openerPolicy !== false, hsts: options.hsts === true }))) reply.header(name, value);
   });
-  // The pages themselves: scripts only from this origin, so an injected
-  // <script> or inline handler does not run. The console alone may load
-  // Razorpay's Checkout, which the Billing page opens to buy credits.
+  // The pages themselves (page-headers.ts): scripts only from this origin.
   app.addHook("onSend", async (request, reply, payload) => {
     const type = reply.getHeader("content-type");
     if (typeof type !== "string" || !type.startsWith("text/html")) return payload;
-    const console = request.originalUrl.startsWith("/console");
-    // A practice site's learners buy Plus there, through the same Checkout.
-    const pays = console || request.originalUrl.startsWith("/practice/");
-    const razorpay = pays ? " https://*.razorpay.com" : "";
-    reply.header(
-      "content-security-policy",
-      [
-        "default-src 'self'",
-        `script-src 'self'${razorpay}`,
-        // React sets style attributes; no stylesheet is fetched from elsewhere.
-        "style-src 'self' 'unsafe-inline'",
-        `img-src 'self' data: blob:${razorpay}`,
-        "font-src 'self' data:",
-        `connect-src 'self'${razorpay}`,
-        `frame-src ${pays ? "https://*.razorpay.com" : "'none'"}`,
-        "media-src 'self' blob:",
-        "worker-src 'self' blob:",
-        "object-src 'none'",
-        "base-uri 'none'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-      ].join("; "),
-    );
+    reply.header("content-security-policy", pagePolicy(request.originalUrl));
     return payload;
   });
   // The route *pattern*, never the URL: a URL can carry a token or an invitation code.

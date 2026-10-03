@@ -34,7 +34,8 @@ services:
   api:
     build: .
     environment:
-      DATABASE_URL: postgres://parikshaa_app:${PARIKSHAA_APP_PASSWORD}@db:5432/parikshaa
+      # The database here, or Supabase's when DATABASE_URL is set (docs/STAGING.md).
+      DATABASE_URL: ${DATABASE_URL:-postgres://parikshaa_app:${PARIKSHAA_APP_PASSWORD}@db:5432/parikshaa}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?set ANTHROPIC_API_KEY}
       ATTEMPT_TOKEN_SECRET: ${ATTEMPT_TOKEN_SECRET:?set ATTEMPT_TOKEN_SECRET (32+ characters)}
       # Wraps each attempt's data key; candidates' answers are sealed under them.
@@ -85,6 +86,10 @@ services:
       PILOT_REPORT: ${PILOT_REPORT:-}
       # Behind a reverse proxy on the same host (as in docs/PILOT.md): the client's address comes from it.
       TRUST_PROXY: ${TRUST_PROXY:-}
+      # Optional: proctoring photos in Supabase Storage (docs/F1-GO-LIVE-PLAN.md §8.2).
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      MEDIA_BUCKET: ${MEDIA_BUCKET:-}
       RUNNER_URL: http://runner:4000
       RUNNER_TOKEN: ${RUNNER_TOKEN:?set RUNNER_TOKEN (32+ characters)}
       PORT: "3000"
