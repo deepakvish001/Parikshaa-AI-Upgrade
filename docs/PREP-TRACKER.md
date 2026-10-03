@@ -954,6 +954,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F2b class ka student hissa + lab record**: practice site par "Meri classes" (verified email par), lab record me teacher ka sign-off aur PDF, console me lab drawer (plan 96) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F2a Classes (staff ka hissa)**: class = cohort + course (track) + tests + contests, sessions aur haazri, har student ek line wala dashboard, console "Classes" page (plan 95) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F1g candidate report v2**: report me AI use, poori report ka PDF, hiring manager ke liye expiry wala share link aur uska web page, console me PDF/Share (plan 90) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F1f startup ka self-serve rasta**: signup par company/college, company home par "Hire in four steps", khaali bank me starter sawal ek click, signup se shortlist tak API test (plan 89) |
