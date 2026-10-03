@@ -92,3 +92,77 @@
 .rounds li[aria-current="step"] {
   font-weight: var(--weight-bold);
 }
+
+.report-page h2 {
+  margin: var(--space-6) 0 var(--space-2);
+  font-size: var(--text-md);
+}
+.report-figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  align-items: flex-end;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+.report-figures div {
+  display: flex;
+  flex-direction: column;
+}
+.report-figures strong {
+  font-size: var(--text-xl);
+}
+.report-figures .good {
+  color: var(--success);
+}
+.report-figures .bad {
+  color: var(--danger);
+}
+.report-figures .report-pdf {
+  margin-left: auto;
+}
+.report-sections {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.report-sections li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+.report-code {
+  max-height: 24rem;
+  overflow: auto;
+  padding: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.report-followups div {
+  margin-bottom: var(--space-3);
+}
+.report-followups dt {
+  font-weight: var(--weight-semibold);
+}
+.report-followups dd {
+  margin: var(--space-1) 0 0;
+}
+@media (max-width: 560px) {
+  .report-sections li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .report-sections meter {
+    display: none;
+  }
+  .report-figures .report-pdf {
+    margin-left: 0;
+  }
+}

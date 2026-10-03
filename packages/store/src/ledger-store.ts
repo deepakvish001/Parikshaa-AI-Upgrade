@@ -858,16 +858,25 @@ export class LedgerStore {
         notice: boolean;
         sample: boolean;
         credits: number | string | null;
+        kind: "institution" | "company";
+        starter: string | number;
+        finished: string | number;
+        shortlists: string | number;
       }>(
         `SELECT (SELECT count(*) FROM exams WHERE org_id = $1 AND id <> $2) AS exams,
-                (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL AND NOT ($3 = ANY (tags))) AS bank,
+                (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL AND NOT ($3 = ANY (tags)) AND NOT ($4 = ANY (tags))) AS bank,
+                (SELECT count(*) FROM bank_questions WHERE org_id = $1 AND archived_at IS NULL AND $4 = ANY (tags)) AS starter,
                 (SELECT count(*) FROM exam_windows WHERE org_id = $1) AS windows,
                 (SELECT count(*) FROM invitations WHERE org_id = $1) AS invited,
                 (SELECT count(*) FROM staff_users WHERE org_id = $1 AND disabled_at IS NULL) AS staff,
                 EXISTS (SELECT 1 FROM privacy_settings WHERE org_id = $1) AS notice,
                 EXISTS (SELECT 1 FROM exams WHERE org_id = $1 AND id = $2 AND archived_at IS NULL) AS sample,
-                (SELECT credits FROM billing_accounts WHERE org_id = $1 AND mode = 'prepaid') AS credits`,
-        [scope.orgId, SAMPLE_EXAM_ID, SAMPLE_TAG],
+                (SELECT credits FROM billing_accounts WHERE org_id = $1 AND mode = 'prepaid') AS credits,
+                (SELECT kind FROM organisations WHERE id = $1) AS kind,
+                (SELECT count(*) FROM attempts t WHERE t.org_id = $1 AND t.exam_id <> $2
+                    AND ${lifecycleSql("t.org_id", "t.id")} IN ('attempt_submitted', 'attempt_graded')) AS finished,
+                (SELECT count(*) FROM shortlists WHERE org_id = $1) AS shortlists`,
+        [scope.orgId, SAMPLE_EXAM_ID, SAMPLE_TAG, STARTER_TAG],
       );
       return {
         sittings: [...windows].sort((a, b) => new Date(a.opens_at).getTime() - new Date(b.opens_at).getTime()).map((w) => ({
@@ -897,6 +906,10 @@ export class LedgerStore {
           privacyNotice: facts!.notice,
           sampleExamId: facts!.sample ? SAMPLE_EXAM_ID : null,
           prepaidCredits: facts!.credits === null ? null : Number(facts!.credits),
+          kind: facts!.kind ?? "institution",
+          starterQuestions: Number(facts!.starter),
+          finished: Number(facts!.finished),
+          shortlists: Number(facts!.shortlists),
         },
       };
     });
@@ -1101,6 +1114,14 @@ export interface Dashboard {
     readonly sampleExamId: string | null;
     /** Attempt credits left, for a prepaid organisation; null for one not billed that way. */
     readonly prepaidCredits: number | null;
+    /** A college examining its students, or a company hiring: which first steps the home page leads with. */
+    readonly kind: "institution" | "company";
+    /** Starter questions taken into the bank; not counted in `bankQuestions`. */
+    readonly starterQuestions: number;
+    /** Attempts submitted or graded, the sample's aside. */
+    readonly finished: number;
+    /** Shortlist links made for hiring managers. */
+    readonly shortlists: number;
   };
 }
 
@@ -1108,6 +1129,8 @@ export interface Dashboard {
 export const SAMPLE_EXAM_ID = "sample-aptitude";
 /** The tag on the sample's questions in the bank. */
 export const SAMPLE_TAG = "sample";
+/** The tag on the starter questions a new organisation can take into its bank (plan row 89). */
+export const STARTER_TAG = "starter";
 
 export interface AuditRecord {
   readonly at: string;

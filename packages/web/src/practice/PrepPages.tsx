@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Crown, Flame, ListChecks, Lock, NotebookPen, Play, Plus, Printer, Repeat, Sparkles, Square, Target, Timer } from "lucide-react";
+import { Bookmark, BookmarkCheck, BookOpen, CalendarDays, CircleCheck, Coins, Crown, Flame, ListChecks, Lock, NotebookPen, Play, Plus, Printer, Repeat, School, Sparkles, Square, Target, Timer } from "lucide-react";
 import { Markdown } from "@parikshaa/brand/markdown";
 import { usePreferences } from "../i18n.tsx";
 import { ApiError } from "../api.ts";
@@ -51,6 +51,37 @@ function Failed({ error }: { readonly error: unknown }) {
     <p className="error" role="alert">
       {messageOf(error, p("common.failed"))}
     </p>
+  );
+}
+
+// --- classes (plan row 96) -----------------------------------------------------------------
+
+/** On the dashboard, while the learner is in a class: a way to it. */
+function ClassesCard({ client, nav, learner, site }: Signed) {
+  const p = usePrepText();
+  const mine = useQuery({ queryKey: key(site, "classes", learner.id), queryFn: () => client.myClasses() });
+  const classes = mine.data?.classes ?? [];
+  if (classes.length === 0) return null;
+  return (
+    <section className="card classes-card" aria-labelledby="classes-card-title">
+      <div className="card-head">
+        <h2 id="classes-card-title">
+          <School aria-hidden="true" className="inline-icon" /> {p("class.homeCard")}
+        </h2>
+      </div>
+      <ul className="classes-card-list">
+        {classes.map((c) => (
+          <li key={c.id}>
+            <Link nav={nav} to="/classes">
+              {c.name}
+            </Link>
+            <span className="notice">
+              {p("class.attended", { present: c.attendance.present, of: c.attendance.of })} · {p("class.labProgress", { done: c.lab.done, total: c.lab.practicals, signed: c.lab.signed })}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -125,6 +156,7 @@ export function HomePage({ client, nav, learner, site }: Signed) {
         </p>
       ) : null}
 
+      <ClassesCard client={client} nav={nav} learner={learner} site={site} />
       <div className="home-grid">
         <section className="card today-card" aria-labelledby="today-title">
           <div className="card-head">

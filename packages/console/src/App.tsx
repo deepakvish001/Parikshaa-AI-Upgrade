@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Gauge,
   GraduationCap,
+  School,
   TrendingUp,
   BriefcaseBusiness,
   KeyRound,
@@ -57,6 +58,7 @@ const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
 const PaperReview = lazy(() => import("./components/PaperReview.tsx").then((m) => ({ default: m.PaperReview })));
 const Arrangements = lazy(() => import("./components/Arrangements.tsx").then((m) => ({ default: m.Arrangements })));
+const ClassesPanel = lazy(() => import("./components/Classes.tsx").then((m) => ({ default: m.ClassesPanel })));
 const AiInterviewsPanel = lazy(() => import("./components/AiInterviews.tsx").then((m) => ({ default: m.AiInterviewsPanel })));
 const InterviewsPanel = lazy(() => import("./components/Interviews.tsx").then((m) => ({ default: m.InterviewsPanel })));
 const PlacementPanel = lazy(() => import("./components/Placement.tsx").then((m) => ({ default: m.PlacementPanel })));
@@ -77,6 +79,7 @@ type View =
   | { readonly name: "placement" }
   | { readonly name: "interviews" }
   | { readonly name: "ai-interviews" }
+  | { readonly name: "classes" }
   | { readonly name: "candidates"; readonly examId: string }
   | { readonly name: "results"; readonly examId: string }
   | { readonly name: "live"; readonly examId: string }
@@ -336,6 +339,14 @@ function Console({
     },
     onError: () => toast("The sample exam could not be loaded. Try again.", "error"),
   });
+  const loadStarter = useMutation({
+    mutationFn: () => client.loadStarter(),
+    onSuccess: async ({ added }) => {
+      toast(added > 0 ? `${added} starter questions are in the bank. Now choose a role.` : "The starter questions are already in the bank.", "success");
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => toast("The starter questions could not be added. Try again.", "error"),
+  });
   const removeSample = useMutation({
     mutationFn: () => client.removeSample(),
     onSuccess: async () => {
@@ -428,6 +439,7 @@ function Console({
     { view: { name: "placement" }, label: "Placement", permission: "attempt:review", group: "assess", icon: BriefcaseBusiness },
     { view: { name: "interviews" }, label: "Interviews", permission: "attempt:review", group: "assess", icon: Video },
     { view: { name: "ai-interviews" }, label: "AI interviews", permission: "attempt:review", group: "assess", icon: Bot },
+    { view: { name: "classes" }, label: "Classes", permission: "exam:read", group: "assess", icon: School },
     { view: { name: "practice" }, label: "Practice", permission: "exam:read_key", group: "assess", icon: GraduationCap },
     { view: { name: "staff" }, label: "Staff", permission: "staff:manage", group: "org", icon: Users },
     { view: { name: "keys" }, label: "API keys", permission: "apikey:manage", group: "org", icon: KeySquare },
@@ -663,10 +675,12 @@ function Console({
                         onRemove: () => removeSample.mutate(),
                         busy: loadSample.isPending || removeSample.isPending,
                       },
+                      starter: { onLoad: () => loadStarter.mutate(), busy: loadStarter.isPending },
                     }
                   : {})}
                 onGo={(target) => {
                   if (target === "search") return setSearching(true);
+                  if (target === "job-test") return setFromJob(true);
                   if (target === "new-exam") {
                     setProblems([]);
                     return go({ name: "editor", examId: null });
@@ -925,6 +939,11 @@ function Console({
                 <AiInterviewsPanel client={client} canWrite={can("exam:write")} />
               </Suspense>
             ) : null}
+            {view.name === "classes" ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={4} label="Loading classes…" />}>
+                <ClassesPanel client={client} canWrite={can("exam:write")} />
+              </Suspense>
+            ) : null}
             {view.name === "practice" ? (
               <Suspense fallback={<SkeletonRows rows={5} columns={3} label="Loading the practice site…" />}>
                 <PracticePanel client={client} can={{ manage: can("org:manage"), write: can("exam:write"), readLearners: can("attempt:read"), review: can("attempt:review") }} />
@@ -1011,6 +1030,7 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   placement: "placement",
   interviews: "interviews",
   "ai-interviews": "ai-interviews",
+  classes: "classes",
   staff: "staff",
   keys: "keys",
   usage: "usage",
@@ -1055,6 +1075,8 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Interviews";
     case "ai-interviews":
       return "AI interviews";
+    case "classes":
+      return "Classes";
     case "staff":
       return "Staff";
     case "keys":
@@ -1100,6 +1122,7 @@ const PAGE_NOTE: Record<View["name"], string> = {
   placement: "Your students, entered once, and every company's drive: who is eligible, the test, each round and the offers.",
   interviews: "Interviews with a video call and a shared code editor: watch the candidate type, keep notes, score it.",
   "ai-interviews": "A first round by chat, held by the AI for a role: read the transcript and its evidence, and decide.",
+  classes: "A cohort of your students, the course they work through, their tests and contests, and attendance: each student on a line.",
   staff: "Who can sign in to this console, and what each can do.",
   keys: "Keys for your own systems to call Parikshaa.",
   usage: "What the AI model has cost this month, and the cap on it.",

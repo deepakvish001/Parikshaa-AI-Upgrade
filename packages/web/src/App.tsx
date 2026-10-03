@@ -12,6 +12,7 @@ import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
 
 /** Pages opened from a link with no account; loaded only when one is. */
 const ShortlistPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ShortlistPage })));
+const ReportPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.ReportPage })));
 const AiInterviewPage = lazy(() => import("./components/AiInterview.tsx").then((m) => ({ default: m.AiInterviewPage })));
 const InterviewPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.InterviewPage })));
 const OfferPage = lazy(() => import("./components/PublicPages.tsx").then((m) => ({ default: m.OfferPage })));
@@ -128,6 +129,7 @@ export function App(props: { client?: ParikshaaClient } = {}) {
   // The practice test: the exam screen on a sample paper, answered in the browser alone.
   const [demo] = useState(() => (query?.has("demo") === true ? new DemoClient().asClient() : null));
   const shortlist = query?.get("shortlist") ?? null;
+  const report = query?.get("report") ?? null;
   const apply = query?.get("apply") ?? null;
   const interview = query?.get("interview") ?? null;
   const aiInterview = query?.get("ai-interview") ?? null;
@@ -140,6 +142,10 @@ export function App(props: { client?: ParikshaaClient } = {}) {
       ) : shortlist !== null ? (
         <Suspense fallback={null}>
           <ShortlistPage code={shortlist} />
+        </Suspense>
+      ) : report !== null ? (
+        <Suspense fallback={null}>
+          <ReportPage code={report} />
         </Suspense>
       ) : apply !== null ? (
         <Suspense fallback={null}>

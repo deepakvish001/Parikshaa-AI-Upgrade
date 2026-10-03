@@ -394,6 +394,8 @@ function stubClient(overrides: Record<string, unknown> = {}) {
     markAnswer: vi.fn(async (_e: string, _a: string, _q: string, score: number) => ({ score, changed: false })),
     answerRecheck: vi.fn(async () => ({ status: "changed" })),
     scorecardPdf: vi.fn(async () => new Blob(["%PDF"])),
+    reportPdf: vi.fn(async () => new Blob(["%PDF"])),
+    shareReport: vi.fn(async () => ({ link: "https://exam.test/?report=org-a.a2.x.mac", expiresAt: "2026-10-06T05:00:00.000Z" })),
     releaseResults: vi.fn(async () => ({ sent: 0, alreadySent: 0, notGraded: 0, unreachable: 0, channels: ["email"] as const })),
     similarity: vi.fn(async () => ({
       exam: { id: "exam-1", title: "Algorithms" },
@@ -2526,6 +2528,30 @@ describe("the scorecard", () => {
     expect(within(sections).getByText("80%")).toBeInTheDocument();
     expect(screen.getByText(/First saved at 1:30 \(minutes/)).toBeInTheDocument();
     expect(screen.getByText(/First saved at 3:00, last at 6:40 · saved 2 times/)).toBeInTheDocument();
+  });
+});
+
+describe("the candidate report", () => {
+  it("downloads the report PDF, says how the AI was used, and makes a link for a hiring manager", async () => {
+    URL.createObjectURL = vi.fn(() => "blob:report");
+    URL.revokeObjectURL = vi.fn();
+    const client = stubClient({ report: vi.fn(async () => ({ ...report, aiUse: [{ questionId: "q2", prompts: 3 }] })) });
+    renderApp(<App client={client} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Algorithms" }));
+    await userEvent.click(within(screen.getByRole("navigation", { name: "Exam" })).getByRole("button", { name: "Results" }));
+    const table = await screen.findByRole("region", { name: "Candidates" });
+    await userEvent.click(within((await within(table).findByText("CS001")).closest("tr")!).getByRole("button", { name: "Scorecard" }));
+
+    expect(await screen.findByRole("region", { name: "Use of the AI assistant" })).toHaveTextContent("Question 2: 3 prompts");
+    await userEvent.click(screen.getByRole("button", { name: "Report PDF" }));
+    await waitFor(() => expect(client.reportPdf).toHaveBeenCalledWith("a2"));
+
+    const share = screen.getByRole("region", { name: "Share the report" });
+    await userEvent.selectOptions(within(share).getByRole("combobox", { name: "Works for" }), "3");
+    await userEvent.click(within(share).getByRole("button", { name: "Make a link" }));
+    expect(client.shareReport).toHaveBeenCalledWith("a2", 3);
+    expect(await within(share).findByRole("textbox", { name: "Link to the report" })).toHaveValue("https://exam.test/?report=org-a.a2.x.mac");
+    expect(within(share).getByText("Until 6 Oct 2026")).toBeInTheDocument();
   });
 });
 

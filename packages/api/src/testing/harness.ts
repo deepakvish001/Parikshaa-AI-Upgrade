@@ -17,7 +17,7 @@ import {
   PrepCommunityStore,
   PrepPlusStore,
   PrepEngageStore,
-  PrepCampusStore,
+  PrepCampusStore, ClassStore,
   QuestionBank,
   QuestionMedia,
   DataKeys,
@@ -48,6 +48,8 @@ import { MarkingService } from "../marking.js";
 import { PlacementService } from "../placement.js";
 import { SeatService } from "../seats.js";
 import { ShortlistService } from "../shortlists.js";
+import { CandidateReports } from "../candidate-report.js";
+import { ClassService } from "../classes.js";
 import { AccommodationService } from "../accommodations.js";
 import { InterviewService } from "../interviews.js";
 import { AiInterviewService } from "../ai-interview.js";
@@ -428,6 +430,8 @@ export async function wire(
     interviews,
     aiInterviews,
     accommodations,
+    classes: new ClassService({ classes: new ClassStore(sql), campus: new PrepCampusStore(sql), prep: new PrepStore(sql), practice: new PracticeStore(sql), results, exams: service, identity, ...(options.now === undefined ? {} : { now: options.now }) }),
+    reports: new CandidateReports({ results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     shortlists: new ShortlistService({ store: new ShortlistStore(sql), results, identity, exams: service, secret: TOKEN_SECRET, publicUrl: PUBLIC_URL, ...(options.now === undefined ? {} : { now: options.now }) }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: TOKEN_SECRET, store, exams: service, invitations, results, bank: new QuestionBank(sql), publicUrl: PUBLIC_URL, identity, ...(options.now === undefined ? {} : { now: options.now }), ...(options.newId === undefined ? {} : { newId: options.newId }) }),
     tokens,

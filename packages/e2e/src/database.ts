@@ -130,3 +130,18 @@ export async function ripenLearner(org: string, email: string, coins: number): P
     await sql.end();
   }
 }
+
+/**
+ * Mark a learner's address as confirmed, as the emailed link would: a class
+ * shows its student only once their address is theirs (plan row 96), and a
+ * screenshot run has no inbox.
+ */
+export async function verifyLearner(org: string, email: string): Promise<void> {
+  const sql = connect(ownerUrl, { max: 1 });
+  try {
+    const rows = await sql.query(`UPDATE learners SET email_verified_at = now() WHERE org_id = $1 AND email = $2 RETURNING id`, [org, email]);
+    if (rows.length === 0) throw new Error(`No learner ${email} in ${org}`);
+  } finally {
+    await sql.end();
+  }
+}

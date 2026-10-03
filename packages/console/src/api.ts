@@ -648,6 +648,14 @@ export interface Dashboard {
     readonly sampleExamId?: string | null;
     /** Attempt credits left, for a prepaid organisation; null for one not billed that way. */
     readonly prepaidCredits?: number | null;
+    /** A college examining its students, or a company hiring. Absent from an older server: an institution. */
+    readonly kind?: "institution" | "company";
+    /** Starter questions taken into the bank; not counted in `bankQuestions`. */
+    readonly starterQuestions?: number;
+    /** Attempts submitted or graded. */
+    readonly finished?: number;
+    /** Shortlist links made for hiring managers. */
+    readonly shortlists?: number;
   };
 }
 
@@ -780,6 +788,8 @@ export interface CandidateReport {
     readonly confidence: number | null;
     readonly reasoning: string | null;
   }[];
+  /** Questions where the AI assistant was asked, with how many prompts. Absent from an older server. */
+  readonly aiUse?: readonly { readonly questionId: string; readonly prompts: number }[];
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
   /** Among the exam's graded candidates. */
@@ -1024,7 +1034,7 @@ export class ConsoleClient {
 
   /** Make an institution's account: its organisation and first owner, signed in. */
   static async signUp(
-    details: { readonly organisation: string; readonly name: string; readonly email: string; readonly password: string },
+    details: { readonly organisation: string; readonly name: string; readonly email: string; readonly password: string; readonly kind?: "institution" | "company" },
     baseUrl = "/api",
   ): Promise<{ readonly token: string; readonly user: StaffUser }> {
     const response = await fetch(`${baseUrl.replace(/\/$/, "")}/auth/signup`, {
@@ -1360,6 +1370,58 @@ export class ConsoleClient {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
   }
 
+  // --- classes (plan row 95) ---------------------------------------------------------
+
+  async classes(): Promise<readonly ClassSummary[]> {
+    return (await this.#request<{ classes: ClassSummary[] }>("/classes")).classes;
+  }
+
+  classOptions(): Promise<ClassOptions> {
+    return this.#request("/classes/options");
+  }
+
+  createClass(draft: { readonly name: string; readonly cohortId: string; readonly trackId: string | null }): Promise<ClassSummary> {
+    return this.#request("/classes", { method: "POST", body: JSON.stringify(draft) });
+  }
+
+  classReport(id: string): Promise<ClassReport> {
+    return this.#request(`/classes/${encodeURIComponent(id)}`);
+  }
+
+  updateClass(id: string, change: { readonly trackId?: string | null; readonly examIds?: readonly string[]; readonly contestIds?: readonly string[] }): Promise<ClassReport> {
+    return this.#request(`/classes/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(change) });
+  }
+
+  async classSessions(id: string): Promise<readonly ClassSession[]> {
+    return (await this.#request<{ sessions: ClassSession[] }>(`/classes/${encodeURIComponent(id)}/sessions`)).sessions;
+  }
+
+  addClassSession(id: string, session: { readonly heldOn: string; readonly topic: string }): Promise<ClassSession> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/sessions`, { method: "POST", body: JSON.stringify(session) });
+  }
+
+  async removeClassSession(id: string, sessionId: string): Promise<void> {
+    await this.#request(`/classes/${encodeURIComponent(id)}/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" });
+  }
+
+  classLab(id: string, email: string): Promise<ClassLab> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/lab?email=${encodeURIComponent(email)}`);
+  }
+
+  signOffLab(id: string, email: string, problemId: string, signed: boolean): Promise<ClassLab> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/lab`, { method: "PUT", body: JSON.stringify({ email, problemId, signed }) });
+  }
+
+  async classLabPdf(id: string, email: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/classes/${encodeURIComponent(id)}/lab.pdf?email=${encodeURIComponent(email)}`, { headers: { authorization: `Bearer ${this.#token}` } });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  markAttendance(id: string, sessionId: string, marks: Readonly<Record<string, boolean>>): Promise<ClassSession> {
+    return this.#request(`/classes/${encodeURIComponent(id)}/sessions/${encodeURIComponent(sessionId)}/attendance`, { method: "PUT", body: JSON.stringify({ marks }) });
+  }
+
   async cohorts(): Promise<readonly CohortSummary[]> {
     return (await this.#request<{ cohorts: CohortSummary[] }>("/practice-admin/cohorts")).cohorts;
   }
@@ -1552,6 +1614,11 @@ export class ConsoleClient {
   /** A short aptitude paper to look around with, in the bank and among the exams. */
   loadSample(): Promise<{ readonly examId: string }> {
     return this.#request("/onboarding/sample", { method: "POST" });
+  }
+
+  /** CS fundamentals questions and DSA problems for an empty bank, so a test from a role has something to draw. */
+  loadStarter(): Promise<{ readonly added: number }> {
+    return this.#request("/onboarding/starter", { method: "POST" });
   }
 
   async removeSample(): Promise<void> {
@@ -1917,6 +1984,20 @@ export class ConsoleClient {
     });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  /** The candidate report v2 as a PDF: one page to decide from, then the code. */
+  async reportPdf(attemptId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/attempts/${encodeURIComponent(attemptId)}/report.pdf`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  /** A link to the report for a hiring manager with no account, for `days` days. */
+  shareReport(attemptId: string, days: number): Promise<{ readonly link: string; readonly expiresAt: string }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/report-link`, { method: "POST", body: JSON.stringify({ days }) });
   }
 
   report(attemptId: string): Promise<CandidateReport> {
@@ -2624,6 +2705,65 @@ export interface Cohort {
   readonly plusDays: number;
   readonly createdBy: string;
   readonly createdAt: string;
+}
+
+/** A class (plan row 95): a cohort, its course, its tests and contests. */
+export interface ClassSummary {
+  readonly id: string;
+  readonly name: string;
+  readonly cohort: { readonly id: string; readonly name: string };
+  readonly track: { readonly id: string; readonly title: string } | null;
+  readonly tests: number;
+  readonly contests: number;
+  readonly createdAt: string;
+}
+
+export interface ClassOptions {
+  readonly cohorts: readonly { readonly id: string; readonly name: string }[];
+  readonly tracks: readonly { readonly id: string; readonly title: string }[];
+  readonly contests: readonly { readonly id: string; readonly title: string; readonly startsAt: string }[];
+  readonly exams: readonly { readonly id: string; readonly title: string }[];
+}
+
+export interface ClassSession {
+  readonly id: string;
+  readonly heldOn: string;
+  readonly topic: string;
+  readonly marks: Readonly<Record<string, boolean>>;
+}
+
+/** A student's lab record (plan row 96). */
+export interface ClassLab {
+  readonly class: { readonly id: string; readonly name: string; readonly course: string | null };
+  readonly student: { readonly email: string; readonly name: string | null };
+  readonly practicals: readonly {
+    readonly problemId: string;
+    readonly slug: string;
+    readonly title: string;
+    readonly module: string;
+    readonly submission: { readonly language: string | null; readonly source: string; readonly passed: number; readonly total: number; readonly at: string } | null;
+    readonly signedBy: string | null;
+    readonly signedAt: string | null;
+  }[];
+}
+
+/** A class's page: each student on a line. */
+export interface ClassReport {
+  readonly class: ClassSummary;
+  readonly course: { readonly lessons: number; readonly problems: number };
+  readonly tests: readonly { readonly examId: string; readonly title: string }[];
+  readonly contests: readonly { readonly id: string; readonly title: string; readonly problems: number; readonly startsAt: string }[];
+  readonly sessions: readonly { readonly id: string; readonly heldOn: string; readonly topic: string; readonly present: number; readonly marked: number }[];
+  readonly students: readonly {
+    readonly email: string;
+    readonly name: string | null;
+    readonly joined: boolean;
+    readonly course: { readonly lessonsDone: number; readonly problemsSolved: number; readonly percent: number | null };
+    readonly tests: Readonly<Record<string, number | null>>;
+    readonly contests: Readonly<Record<string, number>>;
+    readonly attendance: { readonly present: number; readonly of: number; readonly percent: number | null };
+    readonly lastActiveAt: string | null;
+  }[];
 }
 
 export interface CohortSummary extends Cohort {

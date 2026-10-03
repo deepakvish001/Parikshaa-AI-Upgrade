@@ -168,6 +168,10 @@ const reportResponse = z.object({
       }),
     )
     .readonly(),
+  aiUse: z
+    .array(z.object({ questionId: z.string(), prompts: z.number().int() }))
+    .readonly()
+    .describe("Questions where the candidate asked the AI assistant, with how many prompts; the exchanges are in the review."),
   voidReason: z.string().nullable(),
   voidedBy: z.string().nullable(),
   standing: z

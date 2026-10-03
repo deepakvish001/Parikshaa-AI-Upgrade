@@ -19,9 +19,13 @@ import type { SqlExecutor } from "./sql.js";
 export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer";
 export type ApiKeyRole = Exclude<StaffRole, "owner">;
 
+/** What an organisation is: a college examining its students, or a company hiring. */
+export type OrganisationKind = "institution" | "company";
+
 export interface Organisation {
   readonly id: OrgId;
   readonly name: string;
+  readonly kind: OrganisationKind;
   readonly monthlySpendCapMicroUsd: number | null;
   /** Owners must use a second factor (ROADMAP §1). */
   readonly requireOwner2fa: boolean;
@@ -114,9 +118,9 @@ export class IdentityStore {
 
   // --- organisations --------------------------------------------------------
 
-  async createOrganisation(id: OrgId, name: string): Promise<Organisation> {
-    await this.#sql.query(`INSERT INTO organisations (id, name) VALUES ($1, $2)`, [id, name]);
-    return { id, name, monthlySpendCapMicroUsd: null, requireOwner2fa: false };
+  async createOrganisation(id: OrgId, name: string, kind: OrganisationKind = "institution"): Promise<Organisation> {
+    await this.#sql.query(`INSERT INTO organisations (id, name, kind) VALUES ($1, $2, $3)`, [id, name, kind]);
+    return { id, name, kind, monthlySpendCapMicroUsd: null, requireOwner2fa: false };
   }
 
   /** Every organisation's id, for tooling that walks the whole database. */
@@ -129,14 +133,16 @@ export class IdentityStore {
     const rows = await this.#sql.query<{
       id: string;
       name: string;
+      kind: OrganisationKind;
       monthly_spend_cap_micro_usd: number | string | null;
       require_owner_2fa: boolean;
-    }>(`SELECT id, name, monthly_spend_cap_micro_usd, require_owner_2fa FROM organisations WHERE id = $1`, [id]);
+    }>(`SELECT id, name, kind, monthly_spend_cap_micro_usd, require_owner_2fa FROM organisations WHERE id = $1`, [id]);
     const row = rows[0];
     if (row === undefined) return null;
     return {
       id: row.id as OrgId,
       name: row.name,
+      kind: row.kind,
       monthlySpendCapMicroUsd:
         row.monthly_spend_cap_micro_usd === null ? null : Number(row.monthly_spend_cap_micro_usd),
       requireOwner2fa: row.require_owner_2fa === true,

@@ -89,6 +89,8 @@ export interface CandidateReport {
     readonly confidence: number | null;
     readonly reasoning: string | null;
   }[];
+  /** Questions where the candidate asked the AI assistant (plan row 87), with how many prompts. */
+  readonly aiUse: readonly { readonly questionId: string; readonly prompts: number }[];
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
   /** Among the graded candidates of the same exam. */
@@ -416,7 +418,12 @@ export class ResultsService {
   /** One candidate's report: grade, answers, and — separately — the follow-ups. */
   async report(actor: Actor, attemptId: AttemptId): Promise<CandidateReport> {
     if (!can(actor, "attempt:review")) throw new Forbidden("attempt:review");
-    const scope = staffScope(actor.orgId);
+    return this.reportFor(actor.orgId, attemptId);
+  }
+
+  /** The same report, for a caller that has already established it may read it (a shared report link). */
+  async reportFor(orgId: OrgId, attemptId: AttemptId): Promise<CandidateReport> {
+    const scope = staffScope(orgId);
     const entries = await this.#store.load(scope, attemptId);
     const first = entries[0];
     if (first === undefined || first.event.type !== "attempt_started") throw new AttemptError("not_found", `No attempt ${attemptId}`);
@@ -470,6 +477,10 @@ export class ResultsService {
         verdict: v.assessment?.verdict ?? null,
         confidence: v.assessment?.confidence ?? null,
         reasoning: v.assessment?.reasoning ?? null,
+      })),
+      aiUse: [...new Set(projection.assists.map((a) => a.questionId as string))].map((questionId) => ({
+        questionId,
+        prompts: projection.assists.filter((a) => a.questionId === questionId).length,
       })),
       voidReason: projection.voidReason,
       voidedBy: projection.voidedBy?.name ?? null,

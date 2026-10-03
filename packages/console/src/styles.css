@@ -530,6 +530,19 @@ fieldset.field,
 fieldset.proctoring {
   margin: 0 0 var(--space-4);
 }
+fieldset.signup-kind {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+}
+fieldset.signup-kind label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-weight: var(--weight-regular);
+}
 fieldset.proctoring {
   padding: var(--space-4);
   background: var(--surface-2);
@@ -4106,8 +4119,19 @@ button.month-day.picked::after {
   height: 1.5rem;
   color: var(--accent-text);
 }
+.hire-path .welcome-paths {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.hire-path li.done {
+  background: var(--success-soft);
+  border-color: var(--success-border);
+}
+.hire-path li.done .welcome-icon {
+  color: var(--success);
+}
 @media (max-width: 900px) {
-  .welcome-paths {
+  .welcome-paths,
+  .hire-path .welcome-paths {
     grid-template-columns: 1fr;
   }
 }
@@ -4340,3 +4364,29 @@ button.month-day.picked::after {
 .ai-use .pre-line {
   white-space: pre-line;
 }
+
+/* --- sharing a candidate's report (plan row 90) ------------------------------ */
+
+.share-report .bar {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.share-report .inline-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-weight: var(--weight-regular);
+}
+.share-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-3);
+}
+.share-link input {
+  flex: 1 1 20rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}
+

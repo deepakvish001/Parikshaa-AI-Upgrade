@@ -45,6 +45,10 @@ import { OutsideNetwork, type LabService } from "./lab.js";
 import { registerLabRoutes } from "./lab-routes.js";
 import type { RecheckService } from "./rechecks.js";
 import { registerRecheckRoutes } from "./rechecks-routes.js";
+import { registerCandidateReportRoutes } from "./candidate-report-routes.js";
+import { registerClassRoutes } from "./classes-routes.js";
+import type { ClassService } from "./classes.js";
+import type { CandidateReports } from "./candidate-report.js";
 import type { MarkingService } from "./marking.js";
 import { registerMarkingRoutes } from "./marking-routes.js";
 import { ProgressService } from "./progress.js";
@@ -145,6 +149,10 @@ export interface ServerOptions {
   readonly seats?: SeatService;
   /** Shortlist links for hiring managers. Absent: none of their routes. */
   readonly shortlists?: ShortlistService;
+  /** The candidate report v2: its PDF and a link for a hiring manager (plan row 90). */
+  readonly reports?: CandidateReports;
+  /** Classes: a cohort, its course, tests, contests and attendance (plan row 95). */
+  readonly classes?: ClassService;
   /** Arrangements for candidates with a disability. Absent: none of their routes. */
   readonly accommodations?: AccommodationService;
   /** The interview room. Absent: none of its routes. */
@@ -1340,6 +1348,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.aiInterviews !== undefined) registerAiInterviewRoutes(routes, { aiInterviews: options.aiInterviews, throttle, staff });
     if (options.accommodations !== undefined) registerAccommodationRoutes(routes, { accommodations: options.accommodations, staff });
     if (options.shortlists !== undefined) registerShortlistRoutes(routes, { shortlists: options.shortlists, throttle, staff });
+    if (options.reports !== undefined) registerCandidateReportRoutes(routes, { reports: options.reports, throttle, staff });
+    if (options.classes !== undefined) registerClassRoutes(routes, { classes: options.classes, staff, practice: options.practice, bearer });
     registerProgressRoutes(routes, { progress: new ProgressService({ exams: service, results: options.results }), staff });
     if (options.rechecks !== undefined) registerRecheckRoutes(routes, { rechecks: options.rechecks, staff, candidate: requireAttempt, throttle });
     if (options.feedback !== undefined) registerFeedbackRoutes(routes, { feedback: options.feedback, staff, candidate: requireAttempt, now: () => Date.now() });

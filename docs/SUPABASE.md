@@ -51,14 +51,14 @@ tables match.
 From the VM, keep it current the ordinary way: `DATABASE_URL=… npm run migrate`
 applies whatever is missing.
 
-**0054, 0055, 0059, 0060, 0061 and 0062 are not applied yet.** The connector asks for the owner's
+**0054, 0055, 0059, 0060, 0061, 0062, 0063, 0064 and 0065 are not applied yet.** The connector asks for the owner's
 approval before any SQL containing `DELETE` or `DROP` and gives up after a
 minute; 0054's function deletes a removed learner's study data and 0055 drops
 the removed features' tables; 0059, 0060 (the AI interviewer's tables) and 0062
 each drop and remake a check constraint to allow new values. Either the owner
 approves them when asked, or `npm run migrate` applies them from the VM.
 Three tries through the connector on 2 Oct 2026 ran out of the minute before
-any approval came, and changed nothing; 0061 only adds a column.
+any approval came, and changed nothing; 0061 and 0063 (an organisation's kind) only add a column, and 0064 and 0065 only add the classes' tables.
 
 **From GitHub instead:** Actions → *Migrate* → Run workflow. It needs the
 repository secret `PARIKSHAA_DATABASE_URL` (below), stops at once with a plain

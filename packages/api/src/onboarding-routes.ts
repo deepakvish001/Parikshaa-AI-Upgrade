@@ -154,6 +154,25 @@ export function registerOnboardingRoutes(
     },
   );
 
+  routes.post(
+    "/onboarding/starter",
+    {
+      schema: {
+        tags: INSTITUTION,
+        summary: "Take the starter questions into the bank",
+        description:
+          "CS fundamentals multiple-choice questions and DSA coding problems that run, tagged `starter` and filed under the words the role library looks for, so a test from a role has questions to draw. Once only: again, it adds nothing. They are public practice questions; a serious round should mix in the organisation's own.",
+        security: SECURED,
+        response: { 200: S.starterResponse, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "exam:write");
+      if (actor === null) return;
+      return reply.send(await onboarding.loadStarter(actor));
+    },
+  );
+
   routes.delete(
     "/onboarding/sample",
     {
