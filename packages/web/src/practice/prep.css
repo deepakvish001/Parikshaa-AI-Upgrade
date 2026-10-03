@@ -889,3 +889,6 @@
   background: var(--surface-2);
   border-radius: var(--radius);
 }
+.class-lab-line {
+  margin: var(--space-4) 0 0;
+}
