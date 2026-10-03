@@ -8,6 +8,7 @@ import { MarkingService } from "./marking.js";
 import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
+import { CandidateReports } from "./candidate-report.js";
 import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
 import { ProxyService } from "./proxy.js";
@@ -101,6 +102,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
     interviews: new InterviewService({ store: new InterviewStore(unusable), exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     aiInterviews: new AiInterviewService({ store: new AiInterviewStore(unusable), exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     accommodations: new AccommodationService({ store: new AccommodationStore(unusable), exams: service }),
+    reports: new CandidateReports({ results, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     shortlists: new ShortlistService({ store: new ShortlistStore(unusable), results, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),
     placement: new PlacementService({ placement: new PlacementStore(unusable), store, exams: service, invitations, results, bank: new QuestionBank(unusable), publicUrl: "https://example.invalid", identity }),
     rechecks: new RecheckService({ store, rechecks: new RecheckStore(unusable), invitations: invitationStore, identity, exams: service, secret: "x".repeat(40), publicUrl: "https://example.invalid" }),

@@ -18,7 +18,7 @@
     "CommunityPages-*.css": 2,
     "??-*.js": 12,
     "i18n-*.js": 27,
-    "PublicPages-*.js": 6,
+    "PublicPages-*.js": 7,
     "PublicPages-*.css": 1,
     "AiInterview-*.js": 3,
     "AiInterview-*.css": 1
@@ -40,7 +40,6 @@
     "Placement-*.css": 1,
     "JobTest-*.js": 4,
     "arrow-left-*.js": 1,
-    "link-2-*.js": 1,
     "Rooms-*.js": 4,
     "Rooms-*.css": 1,
     "Shortlists-*.js": 3,

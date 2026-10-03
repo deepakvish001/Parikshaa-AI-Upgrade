@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApplyPage, InterviewPage, OfferPage, ShortlistPage, StatusPage } from "./components/PublicPages.tsx";
+import { ApplyPage, InterviewPage, OfferPage, ReportPage, ShortlistPage, StatusPage } from "./components/PublicPages.tsx";
 import { PreferencesProvider } from "./i18n.tsx";
 
 /** Pages opened from a link with no account. */
@@ -53,6 +53,70 @@ describe("a hiring manager's shortlist", () => {
       </PreferencesProvider>,
     );
     expect(await screen.findByRole("heading", { name: "This shortlist has expired" })).toBeInTheDocument();
+  });
+});
+
+describe("a candidate report from its link", () => {
+  const report = {
+    valid: true,
+    institution: "Kiranshala Labs",
+    exam: { title: "Backend intern test" },
+    candidate: { name: "Arjun", ref: "K1" },
+    sat: "2026-10-03T04:31:00.000Z",
+    durationMs: 1_200_000,
+    total: 12,
+    maxTotal: 12,
+    percent: 100,
+    outcome: "qualified",
+    standing: { percentile: null, rank: 1, graded: 3, meanPercent: 70 },
+    sections: [{ title: "Coding", score: 10, max: 10 }],
+    questions: [
+      { number: 1, stem: "Which is O(1) on average?", kind: "mcq", score: 2, max: 2, tests: null, code: null, aiPrompts: 0 },
+      { number: 2, stem: "Add two numbers.", kind: "code", score: 10, max: 10, tests: { passed: 2, total: 2 }, code: { language: "python", source: "print(1 + 2)" }, aiPrompts: 1 },
+    ],
+    followUps: [{ number: 2, prompt: "Why split()?", reply: "One line, two numbers", verdict: "consistent" }],
+    integrity: { identity: "verified", snapshots: 4, events: [{ kind: "tab_hidden", label: "Left the tab", count: 2 }] },
+    record: { head: "abc", length: 9 },
+    expiresAt: "2026-10-10T00:00:00.000Z",
+  };
+  const open = () =>
+    render(
+      <PreferencesProvider>
+        <ReportPage code="org-a.at1.x.mac" />
+      </PreferencesProvider>,
+    );
+
+  it("shows the marks, each question, the program, the proctoring and the AI's use", async () => {
+    const fetch = vi.fn(async () => json(report));
+    vi.stubGlobal("fetch", fetch);
+    open();
+    const page = await screen.findByRole("article", { name: "Candidate report" });
+    expect(fetch).toHaveBeenCalledWith("/api/reports/org-a.at1.x.mac");
+    expect(within(page).getByRole("heading", { level: 1 })).toHaveTextContent("Arjun");
+    expect(page).toHaveTextContent("12 / 12");
+    expect(page).toHaveTextContent("1 of 3");
+    expect(page).toHaveTextContent("Reached");
+    expect(within(page).getByRole("meter", { name: "Coding: 10 of 10" })).toBeInTheDocument();
+    expect(within(page).getByRole("row", { name: /Add two numbers\. 2 of 2 1 10 \/ 10/ })).toBeInTheDocument();
+    expect(within(page).getByText("print(1 + 2)")).toBeInTheDocument();
+    expect(page).toHaveTextContent("Photo ID: Matched · 4 webcam photos");
+    expect(page).toHaveTextContent("Left the tab: 2");
+    expect(page).toHaveTextContent("Consistent with having produced the answer");
+    expect(page).toHaveTextContent("Q2: 1 prompt");
+    expect(within(page).getByRole("button", { name: "Download PDF" })).toBeInTheDocument();
+  });
+
+  it("says when the link has expired, the result was withdrawn, or the link is wrong", async () => {
+    for (const [reason, title] of [
+      ["expired", "This report link has expired"],
+      ["withdrawn", "This result was withdrawn"],
+      ["unknown", "This link is not a candidate report"],
+    ] as const) {
+      vi.stubGlobal("fetch", vi.fn(async () => json({ valid: false, reason })));
+      const { unmount } = open();
+      expect(await screen.findByRole("heading", { name: title })).toBeInTheDocument();
+      unmount();
+    }
   });
 });
 

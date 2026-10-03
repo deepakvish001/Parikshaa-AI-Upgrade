@@ -399,11 +399,11 @@ export class RecheckService {
   }
 }
 
-const MUTED: Rgb = [0.38, 0.42, 0.5];
-const BRAND: Rgb = [0.2, 0.25, 0.68];
-const SOFT: Rgb = [0.95, 0.96, 0.99];
-const GOOD: Rgb = [0.05, 0.45, 0.3];
-const BAD: Rgb = [0.7, 0.2, 0.15];
+export const MUTED: Rgb = [0.38, 0.42, 0.5];
+export const BRAND: Rgb = [0.2, 0.25, 0.68];
+export const SOFT: Rgb = [0.95, 0.96, 0.99];
+export const GOOD: Rgb = [0.05, 0.45, 0.3];
+export const BAD: Rgb = [0.7, 0.2, 0.15];
 
 /** The scorecard itself: one A4 page for most papers, more for a long one. */
 export function drawScorecard(card: {

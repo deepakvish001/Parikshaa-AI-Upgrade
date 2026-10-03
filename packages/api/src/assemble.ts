@@ -12,6 +12,7 @@ import { MarkingService } from "./marking.js";
 import { PlacementService } from "./placement.js";
 import { SeatService } from "./seats.js";
 import { ShortlistService } from "./shortlists.js";
+import { CandidateReports } from "./candidate-report.js";
 import { AccommodationService } from "./accommodations.js";
 import { InterviewService } from "./interviews.js";
 import { AiInterviewService } from "./ai-interview.js";
@@ -301,6 +302,7 @@ export function assemble(o: AssembleOptions): {
     interviews,
     aiInterviews,
     accommodations,
+    reports: new CandidateReports({ results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     shortlists: new ShortlistService({ store: new ShortlistStore(o.sql), results, identity, exams: service, secret: o.secret, publicUrl: o.publicUrl }),
     placement: new PlacementService({ placement: placementStore, messages: studentMessages, secret: o.secret, store, exams: service, invitations, results, bank, publicUrl: o.publicUrl, identity }),
     tokens,

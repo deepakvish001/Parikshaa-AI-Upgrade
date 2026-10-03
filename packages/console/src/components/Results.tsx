@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Award, CircleCheck, CircleX, Download, ListChecks, Mail, Printer, Search, Send, Users } from "lucide-react";
+import { Award, CircleCheck, CircleX, Copy, Download, FileText, Link2, ListChecks, Mail, Printer, Search, Send, Users } from "lucide-react";
 import { useToast } from "@parikshaa/brand/ui";
 import { ConsoleError, type CandidateReport, type ConsoleClient, type Outcome, type QuestionStats, type ResultRow, type Results, type SectionScore, type Similarity, type Verdict } from "../api.ts";
 import { Banner, EmptyState, FigureStrip, PageActions, SkeletonRows, StateBadge } from "./kit.tsx";
@@ -527,7 +527,13 @@ export function ReportPanel({
       <Report
         report={report.data}
         organisation={organisation}
-        {...(report.data.result.state === "graded" ? { onPdf: async () => save(await client.scorecardPdf(attemptId), `scorecard-${ref}.pdf`) } : {})}
+        {...(report.data.result.state === "graded"
+          ? {
+              onPdf: async () => save(await client.scorecardPdf(attemptId), `scorecard-${ref}.pdf`),
+              onReportPdf: async () => save(await client.reportPdf(attemptId), `report-${ref}.pdf`),
+              onShare: (days: number) => client.shareReport(attemptId, days),
+            }
+          : {})}
       />
       {erasable ? (
         <EraseCard
@@ -538,6 +544,59 @@ export function ReportPanel({
         />
       ) : null}
     </>
+  );
+}
+
+/**
+ * A link to the report for a hiring manager with no account: made for the
+ * days chosen, shown here to copy. It shows no contact details and stops
+ * when it expires or the result is set aside.
+ */
+function ShareReport({ onShare }: { onShare: (days: number) => Promise<{ readonly link: string; readonly expiresAt: string }> }) {
+  const toast = useToast();
+  const [days, setDays] = useState(7);
+  const share = useMutation({ mutationFn: () => onShare(days) });
+  const copy = async (link: string) => {
+    await navigator.clipboard?.writeText(link).catch(() => undefined);
+    toast("Link copied", "success");
+  };
+  return (
+    <section className="card share-report no-print" aria-label="Share the report">
+      <div className="bar">
+        <Link2 aria-hidden="true" />
+        <strong>Share with a hiring manager</strong>
+        <span className="spacer" />
+        <label className="inline-field">
+          Works for
+          <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
+            {[1, 3, 7, 14, 30].map((d) => (
+              <option key={d} value={d}>
+                {d} {d === 1 ? "day" : "days"}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="button" className="secondary" disabled={share.isPending} onClick={() => share.mutate()}>
+          {share.isPending ? "Making the link…" : "Make a link"}
+        </button>
+      </div>
+      <p className="notice small">Anyone with the link sees the marks, each question, the code, the proctoring's observations and the AI's use, but not the candidate's contact details.</p>
+      {share.error === null ? null : (
+        <p className="error" role="alert">
+          The link could not be made. Try again.
+        </p>
+      )}
+      {share.data === undefined ? null : (
+        <div className="share-link">
+          <input readOnly aria-label="Link to the report" value={share.data.link} onFocus={(e) => e.currentTarget.select()} />
+          <button type="button" onClick={() => void copy(share.data.link)}>
+            <Copy aria-hidden="true" />
+            Copy
+          </button>
+          <span className="notice small">Until {new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium" }).format(new Date(share.data.expiresAt))}</span>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -561,11 +620,17 @@ export function Report({
   report,
   organisation,
   onPdf,
+  onReportPdf,
+  onShare,
 }: {
   report: CandidateReport;
   organisation?: string | undefined;
   /** Download the candidate's scorecard, with its checking code: a graded attempt's. */
   onPdf?: () => Promise<void>;
+  /** Download the full report (plan row 90): a graded attempt's. */
+  onReportPdf?: () => Promise<void>;
+  /** Make a link to the report for a hiring manager: a graded attempt's. */
+  onShare?: (days: number) => Promise<{ readonly link: string; readonly expiresAt: string }>;
 }) {
   const { candidate, result } = report;
   const standing = report.standing;
@@ -580,11 +645,18 @@ export function Report({
             Scorecard PDF
           </button>
         )}
+        {onReportPdf === undefined ? null : (
+          <button type="button" className="secondary" onClick={() => void onReportPdf()}>
+            <FileText aria-hidden="true" />
+            Report PDF
+          </button>
+        )}
         <button type="button" className="secondary" onClick={() => window.print()}>
           <Printer aria-hidden="true" />
           Print or save as PDF
         </button>
       </PageActions>
+      {onShare === undefined ? null : <ShareReport onShare={onShare} />}
       {/* On paper only: repeated at the top and foot of every A4 page. */}
       <div className="print-head" aria-hidden="true">
         <span>{organisation ?? "Parikshaa"}</span>
@@ -648,6 +720,18 @@ export function Report({
               .map(([kind, n]) => ` · ${kind.replace(/_/g, " ")} ×${n}`)
               .join("")}
           </p>
+        </section>
+      )}
+
+      {report.aiUse === undefined || report.aiUse.length === 0 ? null : (
+        <section className="card" aria-label="Use of the AI assistant">
+          <strong>Use of the AI assistant</strong>
+          <p>
+            {report.aiUse
+              .map((a) => `Question ${report.questions.findIndex((q) => q.id === a.questionId) + 1}: ${a.prompts} ${a.prompts === 1 ? "prompt" : "prompts"}`)
+              .join(" · ")}
+          </p>
+          <p className="notice">Every prompt and reply is in the attempt's review.</p>
         </section>
       )}
 

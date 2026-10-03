@@ -4364,3 +4364,28 @@ button.month-day.picked::after {
 .ai-use .pre-line {
   white-space: pre-line;
 }
+
+/* --- sharing a candidate's report (plan row 90) ------------------------------ */
+
+.share-report .bar {
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.share-report .inline-field {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-weight: var(--weight-regular);
+}
+.share-link {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-3);
+}
+.share-link input {
+  flex: 1 1 20rem;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+}

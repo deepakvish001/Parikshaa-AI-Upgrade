@@ -7,7 +7,7 @@ import { shoot, shootPart } from "./shoot.js";
  * screen: exam day (seats, admit cards, arrangements), results (copies,
  * outcomes, internal marks, shortlists), the placement cell (readiness,
  * funnel, colleges, offers), the public pages (apply, status, offer,
- * shortlist, demo test), interviews with a panel, paper review, staff and
+ * shortlist, candidate report, demo test), interviews with a panel, paper review, staff and
  * departments, and the console in Hindi.
  */
 
@@ -88,6 +88,15 @@ test("results and a shortlist", async ({ page, request }) => {
     await expect(page.getByRole("region", { name: "Shortlist" })).toBeVisible();
     await shoot(page, "college-08-shortlist-for-the-manager");
   }
+
+  // One candidate's report, from the link a recruiter sends (plan row 90).
+  const rows = (await (await request.get(`/api/exams/${sitting.examId}/results`, { headers })).json()).rows as { attemptId: string; ref: string }[];
+  const first = rows.find((r) => r.ref === REFS[0])!;
+  const shared = await request.post(`/api/attempts/${first.attemptId}/report-link`, { headers, data: { days: 7 } });
+  expect(shared.status(), await shared.text()).toBe(201);
+  await page.goto(pathOf((await shared.json()).link as string));
+  await expect(page.getByRole("article", { name: "Candidate report" })).toBeVisible();
+  await shoot(page, "college-09-candidate-report", { fullPage: true });
 });
 
 test("the placement cell: readiness, funnel, colleges, offers, and the student's pages", async ({ page, request }) => {

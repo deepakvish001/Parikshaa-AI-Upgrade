@@ -788,6 +788,8 @@ export interface CandidateReport {
     readonly confidence: number | null;
     readonly reasoning: string | null;
   }[];
+  /** Questions where the AI assistant was asked, with how many prompts. Absent from an older server. */
+  readonly aiUse?: readonly { readonly questionId: string; readonly prompts: number }[];
   readonly voidReason: string | null;
   readonly voidedBy: string | null;
   /** Among the exam's graded candidates. */
@@ -1930,6 +1932,20 @@ export class ConsoleClient {
     });
     if (!response.ok) throw new ConsoleError(response.status, "request_failed");
     return response.blob();
+  }
+
+  /** The candidate report v2 as a PDF: one page to decide from, then the code. */
+  async reportPdf(attemptId: string): Promise<Blob> {
+    const response = await fetch(`${this.#baseUrl}/attempts/${encodeURIComponent(attemptId)}/report.pdf`, {
+      headers: { authorization: `Bearer ${this.#token}` },
+    });
+    if (!response.ok) throw new ConsoleError(response.status, "request_failed");
+    return response.blob();
+  }
+
+  /** A link to the report for a hiring manager with no account, for `days` days. */
+  shareReport(attemptId: string, days: number): Promise<{ readonly link: string; readonly expiresAt: string }> {
+    return this.#request(`/attempts/${encodeURIComponent(attemptId)}/report-link`, { method: "POST", body: JSON.stringify({ days }) });
   }
 
   report(attemptId: string): Promise<CandidateReport> {

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { BriefcaseBusiness, CheckCircle2, CircleX, Code2, HandCoins, Loader, Users, Video } from "lucide-react";
+import { BriefcaseBusiness, CheckCircle2, CircleX, Code2, Download, FileText, HandCoins, Loader, Users, Video } from "lucide-react";
 import { GateShell } from "./Chrome.tsx";
 import "./PublicPages.css";
 
 /**
  * Pages opened from a link by someone with no account here: a hiring
- * manager's shortlist, a placement drive's page to apply, a candidate's
+ * manager's shortlist and candidate report, a placement drive's page to apply, a candidate's
  * interview room, and their offer. They are written in English, for the companies and
  * recruiters who open them, and load only when such a link is opened.
  */
@@ -44,14 +44,222 @@ const remembered = () => {
   }
 };
 
-function Problem({ title, note }: { title: string; note: string }) {
+function Problem({ title, note, label = "Shortlist" }: { title: string; note: string; label?: string }) {
   return (
     <GateShell width="narrow">
-      <section className="gate-card status-card" aria-label="Shortlist">
+      <section className="gate-card status-card" aria-label={label}>
         <CircleX className="status-icon bad" aria-hidden="true" />
         <h1>{title}</h1>
         <p className="notice">{note}</p>
       </section>
+    </GateShell>
+  );
+}
+
+/** A candidate's report, as a link shows it (the API's `candidate-report.ts`). */
+interface ReportView {
+  readonly valid: true;
+  readonly institution: string;
+  readonly exam: { readonly title: string };
+  readonly candidate: { readonly name: string; readonly ref: string };
+  readonly sat: string;
+  readonly durationMs: number | null;
+  readonly total: number;
+  readonly maxTotal: number;
+  readonly percent: number;
+  readonly outcome: "qualified" | "failed" | null;
+  readonly standing: { readonly rank: number | null; readonly graded: number };
+  readonly sections: readonly { readonly title: string; readonly score: number; readonly max: number }[];
+  readonly questions: readonly {
+    readonly number: number;
+    readonly stem: string;
+    readonly score: number;
+    readonly max: number;
+    readonly tests: { readonly passed: number; readonly total: number } | null;
+    readonly code: { readonly language: string; readonly source: string } | null;
+    readonly aiPrompts: number;
+  }[];
+  readonly followUps: readonly { readonly number: number; readonly prompt: string; readonly reply: string | null; readonly verdict: string | null }[];
+  readonly integrity: { readonly identity: string; readonly snapshots: number; readonly events: readonly { readonly label: string; readonly count: number }[] } | null;
+  readonly expiresAt: string;
+}
+
+const IDENTITY: Readonly<Record<string, string>> = { not_taken: "No photo taken", pending: "Not decided yet", verified: "Matched", rejected: "Did not match" };
+const VERDICT: Readonly<Record<string, string>> = {
+  consistent: "Consistent with having produced the answer",
+  shallow: "Engaged the answer only superficially",
+  inconsistent: "Contradicts or misreads their own answer",
+  inconclusive: "Not enough to judge either way",
+};
+
+/** The report a recruiter sent: marks, sections, each question, the code, what the proctoring saw and the AI's use. */
+export function ReportPage({ code }: { readonly code: string }) {
+  const [view, setView] = useState<ReportView | { valid: false; reason: string } | null>(null);
+  const url = `/api/reports/${encodeURIComponent(code)}`;
+  useEffect(() => {
+    void (async () => {
+      const response = await fetch(url);
+      const body = (await response.json().catch(() => ({}))) as ReportView | { valid: false; reason: string };
+      setView(response.ok ? body : { valid: false, reason: "unknown" });
+    })();
+  }, [url]);
+
+  if (view === null) {
+    return (
+      <GateShell width="narrow">
+        <section className="gate-card status-card" aria-busy="true" aria-label="Candidate report">
+          <Loader className="status-icon spin" aria-hidden="true" />
+          <h1>Opening the report…</h1>
+        </section>
+      </GateShell>
+    );
+  }
+  if (!view.valid) {
+    return view.reason === "expired" ? (
+      <Problem label="Candidate report" title="This report link has expired" note="Ask the recruiter who sent it for a new link." />
+    ) : view.reason === "withdrawn" ? (
+      <Problem label="Candidate report" title="This result was withdrawn" note="The institution has set this result aside since the link was sent. Ask the recruiter what stands now." />
+    ) : (
+      <Problem label="Candidate report" title="This link is not a candidate report" note="Check that the whole link was copied." />
+    );
+  }
+
+  const date = (iso: string, time = false) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", ...(time ? { timeStyle: "short" } : {}) }).format(new Date(iso));
+  const assisted = view.questions.filter((q) => q.aiPrompts > 0);
+  return (
+    <GateShell width="full">
+      <article className="gate-card public-page report-page" aria-label="Candidate report">
+        <p className="notice">
+          {view.institution} · {view.exam.title}
+        </p>
+        <h1>
+          <FileText aria-hidden="true" className="inline-icon" /> {view.candidate.name || view.candidate.ref}
+        </h1>
+        <p className="notice">
+          {view.candidate.ref} · sat {date(view.sat, true)} IST{view.durationMs === null ? "" : ` · ${Math.round(view.durationMs / 60_000)} min`} · this link works until {date(view.expiresAt)}. Contact details stay with the recruiter.
+        </p>
+        <div className="report-figures">
+          <div>
+            <span className="notice">Marks</span>
+            <strong>
+              {view.total} / {view.maxTotal}
+            </strong>
+          </div>
+          <div>
+            <span className="notice">Percent</span>
+            <strong>{view.percent}%</strong>
+          </div>
+          <div>
+            <span className="notice">Standing</span>
+            <strong>{view.standing.rank === null ? "—" : `${view.standing.rank} of ${view.standing.graded}`}</strong>
+          </div>
+          {view.outcome === null ? null : (
+            <div>
+              <span className="notice">Qualifying mark</span>
+              <strong className={view.outcome === "qualified" ? "good" : "bad"}>{view.outcome === "qualified" ? "Reached" : "Not reached"}</strong>
+            </div>
+          )}
+          {/* The server sends it as an attachment, so the page stays where it is. */}
+          <button type="button" className="secondary report-pdf" onClick={() => window.location.assign(`${url}/report.pdf`)}>
+            <Download aria-hidden="true" /> Download PDF
+          </button>
+        </div>
+
+        {view.sections.length === 0 ? null : (
+          <section aria-labelledby="report-sections">
+            <h2 id="report-sections">By section</h2>
+            <ul className="report-sections">
+              {view.sections.map((s) => (
+                <li key={s.title}>
+                  <span>{s.title}</span>
+                  <meter min={0} max={s.max || 1} value={s.score} aria-label={`${s.title}: ${s.score} of ${s.max}`} />
+                  <strong>
+                    {s.score} / {s.max}
+                  </strong>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section aria-labelledby="report-questions">
+          <h2 id="report-questions">Question by question</h2>
+          <div className="scroll">
+            <table className="shortlist-table">
+              <thead>
+                <tr>
+                  <th scope="col">Q</th>
+                  <th scope="col">Question</th>
+                  <th scope="col">Tests</th>
+                  <th scope="col">AI prompts</th>
+                  <th scope="col" className="num">
+                    Marks
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {view.questions.map((q) => (
+                  <tr key={q.number}>
+                    <td className="notice">{q.number}</td>
+                    <td>{q.stem}</td>
+                    <td>{q.tests === null ? "—" : `${q.tests.passed} of ${q.tests.total}`}</td>
+                    <td>{q.aiPrompts === 0 ? "—" : q.aiPrompts}</td>
+                    <td className="num">
+                      {q.score} / {q.max}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {view.questions
+          .filter((q) => q.code !== null)
+          .map((q) => (
+            <section key={q.number} aria-labelledby={`report-code-${q.number}`}>
+              <h2 id={`report-code-${q.number}`}>
+                <Code2 aria-hidden="true" className="inline-icon" /> Q{q.number} · the program ({q.code!.language})
+              </h2>
+              <pre className="report-code" tabIndex={0}>
+                <code>{q.code!.source}</code>
+              </pre>
+            </section>
+          ))}
+
+        {view.integrity === null ? null : (
+          <section aria-labelledby="report-integrity">
+            <h2 id="report-integrity">What the proctoring saw</h2>
+            <p>
+              Photo ID: {IDENTITY[view.integrity.identity] ?? view.integrity.identity} · {view.integrity.snapshots} webcam photos
+            </p>
+            <p>{view.integrity.events.length === 0 ? "Nothing reported by the browser." : view.integrity.events.map((e) => `${e.label}: ${e.count}`).join(" · ")}</p>
+            <p className="notice">Observations for a person to weigh, never a finding.</p>
+          </section>
+        )}
+
+        {view.followUps.length === 0 ? null : (
+          <section aria-labelledby="report-followups">
+            <h2 id="report-followups">Follow-up questions</h2>
+            <dl className="report-followups">
+              {view.followUps.map((f, i) => (
+                <div key={i}>
+                  <dt>
+                    Q{f.number}: {f.prompt}
+                  </dt>
+                  <dd>{f.reply ?? "No reply"}</dd>
+                  <dd className="notice">{f.verdict === null ? "Not assessed" : (VERDICT[f.verdict] ?? f.verdict)}</dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+        )}
+
+        <section aria-labelledby="report-ai">
+          <h2 id="report-ai">Use of the AI assistant</h2>
+          <p>{assisted.length === 0 ? "None: no question allowed it, or the candidate did not ask." : assisted.map((q) => `Q${q.number}: ${q.aiPrompts} ${q.aiPrompts === 1 ? "prompt" : "prompts"}`).join(" · ")}</p>
+        </section>
+      </article>
     </GateShell>
   );
 }
