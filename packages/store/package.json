@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@parikshaa/core": "*",
-    "pg": "^8.23.0"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
