@@ -982,6 +982,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 4 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G4a LeetCode jaisa IDE, pehla hissa** (plan 104): attempt me submissions ki history (purana code wapas), code playback (sealed edits, reviewer player, bade paste ka sanket), author ka reference program (saare tests, expected output bharna) |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G3 Judge0 backend** (plan 103): `Judge0CodeRunner` (batch + poll, bhasha naam se, verdict/checker hamare), in-house runner par fallback, `RUNNER_BACKEND`, `npm run parity`, `deploy/judge0` (hardened conf, apna compiler image, VM setup script + tests), image workflow |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G2 Parikshaa Library** (plan 102): global library (version, open/hire-only, exposure), console → Parikshaa Library (filters, preview, add, pick at random, newer version), operator tools, 165 built-in sawaal (CS, programming, DSA, SQL) |
 | 3 Oct 2026 | [#47](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/47) | **G1 Company ID + operator panel** (plan 101): har organisation ka `PKC-XXXXXX`, console → Companies (sirf operator, second factor ke saath): company kholna + owner ko 7 din ka link, pause/resume, credits, invite dobara; audit dono taraf |
