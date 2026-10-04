@@ -1,4 +1,4 @@
-import type { Exam, ExamProblem, Question } from "@parikshaa/core/browser";
+import type { Exam, ExamProblem, Question, TimelineOp } from "@parikshaa/core/browser";
 
 export interface ExamSummary {
   readonly id: string;
@@ -934,6 +934,25 @@ export interface ProctoringMedia {
   readonly kind: "selfie" | "id" | "snapshot";
   readonly takenAt: string;
   readonly sha256: string;
+}
+
+/** What an author's reference program did on each test of a question being written (G4). */
+export type ReferenceRun =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly tests: readonly { readonly id: string; readonly status: string; readonly output: string; readonly stderr: string; readonly timeMs: number; readonly memoryKb: number | null }[];
+    };
+
+/** Runs a reference program on a draft code question's tests. */
+export type ReferenceChecker = (question: Question, language: string, source: string) => Promise<ReferenceRun>;
+
+/** How one code answer was written (G4), to play back. */
+export interface CodePlayback {
+  readonly questionId: string;
+  readonly ops: readonly TimelineOp[];
+  readonly pastes: readonly { readonly t: number; readonly chars: number }[];
+  readonly largePastes: number;
 }
 
 export interface ProctoringView {
@@ -2250,6 +2269,17 @@ export class ConsoleClient {
   }
 
   /** More time for an open attempt, with a reason that goes into its ledger. */
+  /** Run a reference program on every test of a code question being written; nothing is saved (G4). */
+  checkReference(question: Question, language: string, source: string): Promise<ReferenceRun> {
+    const { id: _id, ...draft } = question;
+    return this.#request("/questions/code/check", { method: "POST", body: JSON.stringify({ question: draft, language, source }) });
+  }
+
+  /** How each code answer of an attempt was written, to play back (G4). */
+  async playback(attemptId: string): Promise<readonly CodePlayback[]> {
+    return (await this.#request<{ questions: CodePlayback[] }>(`/attempts/${encodeURIComponent(attemptId)}/playback`)).questions;
+  }
+
   proctoring(attemptId: string): Promise<ProctoringView> {
     return this.#request(`/attempts/${encodeURIComponent(attemptId)}/proctoring`);
   }

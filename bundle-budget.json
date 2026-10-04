@@ -25,8 +25,8 @@
     "AiInterview-*.css": 1
   },
   "packages/console/dist": {
-    "index-*.js": 180,
-    "index-*.css": 19,
+    "index-*.js": 184,
+    "index-*.css": 20,
     "Practice-*.js": 17,
     "Sales-*.js": 3,
     "PrepAnalytics-*.js": 3,

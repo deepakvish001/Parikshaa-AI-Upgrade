@@ -1,5 +1,6 @@
 import type { CandidateLedger, CandidateState } from "@parikshaa/api";
 import type { ProctoringPolicy } from "@parikshaa/core/browser";
+import type { TimelineOp } from "./code-timeline.ts";
 
 /** Something an invigilator told everyone in the sitting. */
 export interface Announcement {
@@ -40,6 +41,18 @@ export type RunOutcome =
     };
 
 /** What Submit found. The answer is committed either way. */
+/** One of the candidate's own submissions of a code question (G4), newest first from the server. */
+export interface CodeSubmission {
+  readonly number: number;
+  readonly at: number;
+  readonly language: string;
+  readonly source: string;
+  readonly tested: boolean;
+  readonly accepted: boolean | null;
+  readonly passed: number | null;
+  readonly total: number | null;
+}
+
 export type SubmitOutcome =
   | { readonly tested: false; readonly reason: "no_tests" | "runner_unavailable" }
   | { readonly tested: true; readonly compiled: false; readonly compileOutput: string }
@@ -289,6 +302,16 @@ export class ParikshaaClient {
   /** Commit a code answer and test it against every test: the Submit of a coding test. */
   submitCode(questionId: string, language: string, source: string): Promise<SubmitOutcome> {
     return this.#request("/attempts/me/code/submit", { method: "POST", body: JSON.stringify({ questionId, language, source }) });
+  }
+
+  /** A batch of a code question's editor changes, for playback (G4). */
+  async sendTimeline(questionId: string, ops: readonly TimelineOp[]): Promise<void> {
+    await this.#request(`/attempts/me/code/${encodeURIComponent(questionId)}/timeline`, { method: "POST", body: JSON.stringify({ ops }) });
+  }
+
+  /** My submissions of a code question in this attempt, newest first. */
+  async codeSubmissions(questionId: string): Promise<readonly CodeSubmission[]> {
+    return (await this.#request<{ submissions: CodeSubmission[] }>(`/attempts/me/code/${encodeURIComponent(questionId)}/submissions`)).submissions;
   }
 
   /** Ask the AI assistant on an AI-fluency question; the exchange is recorded before the reply comes back. */

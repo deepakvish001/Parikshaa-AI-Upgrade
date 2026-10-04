@@ -17,7 +17,7 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
-import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
+import { attemptId, candidateId, examId, questionId, vivaId, type CodeQuestion, type Exam } from "@parikshaa/core";
 import { RunnerUnavailable } from "@parikshaa/runner";
 import { JudgeBusy } from "./judge-queue.js";
 import { ExamFrozen, type FeedbackStore, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
@@ -522,7 +522,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring" || error.code === "invalid_integration"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring" || error.code === "invalid_integration" || error.code === "no_tests"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -711,6 +711,49 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const actor = await staff(request, reply, "exam:read");
         if (actor === null) return;
         return reply.send({ exams: await service.listExams(actor) });
+      },
+    );
+
+    routes.post(
+      "/questions/code/check",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Run a reference program on a code question being written",
+          description:
+            "Every test, hidden included, with what the program printed or returned: to take the expected outputs from a program known to be right, and to see a wrong test before a candidate meets it. Nothing is saved.",
+          security: [{ staffAuth: [] }],
+          body: z.object({ question: S.newQuestionSchema, language: z.string().min(1), source: z.string().min(1).max(256 * 1024) }),
+          response: {
+            200: z.union([
+              z.object({ compiled: z.literal(false), compileOutput: z.string() }),
+              z.object({
+                compiled: z.literal(true),
+                tests: z
+                  .array(
+                    z.object({
+                      id: z.string(),
+                      status: z.string(),
+                      output: z.string().describe("What it printed; for a function question, the value it returned (JSON)."),
+                      stderr: z.string(),
+                      timeMs: z.number(),
+                      memoryKb: z.number().nullable(),
+                    }),
+                  )
+                  .readonly(),
+              }),
+            ]),
+            ...errors,
+            422: S.errorResponse,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
+        const { question, language, source } = request.body;
+        if (question.kind !== "code") return reply.code(422).send({ error: "not_code", message: "Only a code question has tests to run" });
+        return reply.send(await service.checkReference(actor, { ...question, id: questionId("draft") } as unknown as CodeQuestion, { language, source }));
       },
     );
 
@@ -1036,6 +1079,25 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         if (claims === null) return;
         const { questionId: q, language, source } = request.body;
         return reply.send(await service.submitCode(claims, questionId(q), { language, source }));
+      },
+    );
+
+    routes.get(
+      "/attempts/me/code/:questionId/submissions",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "My submissions of a code question in this attempt",
+          description: "Each committed program, newest first, with what testing it found, as much as the exam tells. Only the candidate's own code; a hidden test's content never.",
+          security: [{ attemptToken: [] }],
+          params: S.draftParams,
+          response: { 200: S.codeSubmissionsResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        return reply.send({ submissions: await service.codeSubmissions(claims, questionId(request.params.questionId)) });
       },
     );
 

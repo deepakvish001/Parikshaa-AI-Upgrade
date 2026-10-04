@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { ClipboardPaste, PlayCircle } from "lucide-react";
 import { Dialog } from "@parikshaa/brand/ui";
-import type { AttemptReview as Review, CandidateReport, VivaReview } from "../api.ts";
+import type { AttemptReview as Review, CandidateReport, CodePlayback, VivaReview } from "../api.ts";
 import { PageActions, PageMeta, PageStatus, StateBadge } from "./kit.tsx";
+import { PlaybackDrawer } from "./Playback.tsx";
 
 /** Mirrors the server's minimum; the reason is recorded and shown to the candidate. */
 const MIN_REASON = 10;
@@ -21,6 +23,8 @@ interface Props {
   readonly failure?: string | null;
   /** The candidate's answers and marks, when this account may read the scorecard. */
   readonly answers?: CandidateReport | undefined;
+  /** How each code answer was written, to play back (G4). */
+  readonly playback?: readonly CodePlayback[] | undefined;
 }
 
 const EVERYTHING = { grade: true, assess: true, void: true } as const;
@@ -56,10 +60,12 @@ export function AttemptReview({
   can = EVERYTHING,
   failure = null,
   answers,
+  playback,
 }: Props) {
   const gradable = review.state === "submitted" && can.grade;
   const [deciding, setDeciding] = useState(false);
   const list = useRef<HTMLOListElement>(null);
+  const [watching, setWatching] = useState<{ playback: CodePlayback; title: string } | null>(null);
 
   // J and K move between answers, as in a mail client; never while typing.
   useEffect(() => {
@@ -133,9 +139,28 @@ export function AttemptReview({
                       <span className="mono">{q.score === null ? `— / ${q.maxScore}` : `${q.score} / ${q.maxScore}`}</span>
                     </div>
                     {q.answer === null ? <p className="notice">Not answered.</p> : q.kind === "code" ? <pre className="code">{q.answer}</pre> : <p className="given">{q.answer}</p>}
+                    {(() => {
+                      const played = playback?.find((p) => p.questionId === q.id);
+                      if (played === undefined || played.ops.length === 0) return null;
+                      return (
+                        <div className="row">
+                          <button type="button" className="quiet" onClick={() => setWatching({ playback: played, title: `Answer ${i + 1}` })}>
+                            <PlayCircle aria-hidden="true" /> Watch it being written
+                          </button>
+                          {played.largePastes === 0 ? null : (
+                            <span className="pill tone-warn" title="Pastes of 200 characters or more: a signal to look at, not a finding">
+                              <ClipboardPaste aria-hidden="true" /> {played.largePastes === 1 ? "1 large paste" : `${played.largePastes} large pastes`}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </li>
                 ))}
               </ol>
+              {watching === null ? null : (
+                <PlaybackDrawer playback={watching.playback} title={watching.title} onClose={() => setWatching(null)} />
+              )}
             </section>
           )}
 

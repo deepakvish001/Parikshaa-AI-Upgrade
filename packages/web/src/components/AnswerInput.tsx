@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { CandidateQuestion } from "@parikshaa/core/browser";
-import type { RunOutcome, SubmitOutcome } from "../api.ts";
+import type { CodeSubmission, RunOutcome, SubmitOutcome } from "../api.ts";
+import type { TimelineOp } from "../code-timeline.ts";
 import { CodeAnswer } from "./CodeAnswer.tsx";
 import { TakeHomeAnswer } from "./TakeHome.tsx";
 
@@ -24,10 +25,14 @@ interface Props {
   readonly rail?: ReactNode;
   /** An AI-fluency code question's assistant, beside the editor. */
   readonly assistant?: ReactNode;
+  /** A code question's own submissions in this attempt (G4). */
+  readonly onHistory?: () => Promise<readonly CodeSubmission[]>;
+  /** Each change to a code answer, for playback (G4). */
+  readonly onEdit?: (op: TimelineOp) => void;
 }
 
 /** The input for one question, chosen by its kind. */
-export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion, startFull, rail, assistant }: Props) {
+export function AnswerInput({ question, value, disabled, onChange, onRun, onSubmit, submitLabel, number, completion, startFull, rail, assistant, onHistory, onEdit }: Props) {
   switch (question.kind) {
     case "mcq": {
       // The letter is drawn by CSS (a counter), so it is in neither the label's text nor its name.
@@ -100,6 +105,8 @@ export function AnswerInput({ question, value, disabled, onChange, onRun, onSubm
           {...(startFull === undefined ? {} : { startFull })}
           {...(rail === undefined ? {} : { rail })}
           {...(assistant === undefined ? {} : { assistant })}
+          {...(onHistory === undefined ? {} : { onHistory })}
+          {...(onEdit === undefined ? {} : { onEdit })}
         />
       );
 

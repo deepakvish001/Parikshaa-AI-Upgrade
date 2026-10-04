@@ -88,6 +88,7 @@ export class AttemptError extends Error {
       | "invalid_integration"
       | "section_closed"
       | "not_code"
+      | "no_tests"
       | "language_not_offered"
       | "too_many_runs"
       | "assist_unavailable",
@@ -985,6 +986,77 @@ export class ExamService {
     };
   }
 
+  /**
+   * The candidate's own submissions of a code question in this attempt,
+   * newest first (G4): each committed program, when, and what testing it
+   * found, as much as the exam tells. A committed answer that was not tested
+   * (no runner, or committed without Submit) is listed without a verdict.
+   */
+  async codeSubmissions(access: CandidateAccess, questionId: QuestionId): Promise<readonly CodeSubmission[]> {
+    const scope = candidateOf(access);
+    const context = await this.#context(scope, access.attemptId);
+    const question = context.exam.questions.find((q) => q.id === questionId);
+    if (question === undefined) throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
+    if (question.kind !== "code") throw new AttemptError("not_code", `Question ${questionId} is not a code question`);
+    const everything = (context.exam.policy.testFeedback ?? "all") === "all";
+
+    const found: { at: number; language: string; source: string; tested: { passed: number; total: number } | null }[] = [];
+    for (const entry of context.entries) {
+      const event = entry.event;
+      if (event.type === "answer_submitted" && event.response.questionId === questionId) {
+        const { language, source } = decodeCodeAnswer(event.response.answer, question);
+        found.push({ at: event.response.submittedAt, language, source, tested: null });
+      } else if (event.type === "code_tested" && event.questionId === questionId) {
+        const last = found.at(-1);
+        if (last !== undefined) last.tested = { passed: event.passed, total: event.total };
+      }
+    }
+    return found
+      .map((s, i) => ({
+        number: i + 1,
+        at: s.at,
+        language: s.language,
+        source: s.source,
+        tested: s.tested !== null,
+        accepted: s.tested === null || !everything ? null : s.tested.passed === s.tested.total,
+        passed: s.tested === null || !everything ? null : s.tested.passed,
+        total: s.tested === null || !everything ? null : s.tested.total,
+      }))
+      .reverse();
+  }
+
+  /**
+   * An author's reference program on a code question being written (G4):
+   * every test, hidden included, with what the program printed or returned,
+   * so the expected outputs can be taken from a program known to be right,
+   * and a wrong test shows before a candidate meets it. Nothing is recorded.
+   */
+  async checkReference(actor: Actor, question: CodeQuestion, answer: CodeAnswer): Promise<ReferenceRun> {
+    this.#require(actor, "exam:write");
+    if (!languagesOf(question).includes(answer.language)) {
+      throw new AttemptError("language_not_offered", `This question is answered in ${languagesOf(question).join(" or ")}`);
+    }
+    const tests = question.tests ?? [];
+    if (tests.length === 0) throw new AttemptError("no_tests", "Add a test first: the reference runs on the question's tests");
+    const result = await this.#run(question, answer, tests);
+    if (!result.compiled) return { compiled: false, compileOutput: result.compileOutput };
+    const byId = new Map(result.tests.map((r) => [r.id, r]));
+    return {
+      compiled: true,
+      tests: tests.map((test) => {
+        const r = byId.get(test.id);
+        return {
+          id: test.id,
+          status: r?.status ?? "runtime_error",
+          output: r === undefined ? "" : (r.result ?? r.stdout),
+          stderr: r?.stderr ?? "",
+          timeMs: r?.timeMs ?? 0,
+          memoryKb: r?.memoryKb ?? null,
+        };
+      }),
+    };
+  }
+
   #codeQuestion(exam: Exam, questionId: QuestionId, language: string): CodeQuestion {
     const question = exam.questions.find((q) => q.id === questionId);
     if (question === undefined) throw new AttemptError("unknown_question", `Question ${questionId} is not on this exam`);
@@ -1729,6 +1801,36 @@ export type CandidateRun =
     };
 
 /** What Submit reports: the answer is committed either way. */
+/** What an author's reference program did on each test of a question being written. */
+export type ReferenceRun =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly tests: readonly {
+        readonly id: string;
+        readonly status: string;
+        /** What it printed; for a function question, the value it returned. */
+        readonly output: string;
+        readonly stderr: string;
+        readonly timeMs: number;
+        readonly memoryKb: number | null;
+      }[];
+    };
+
+export interface CodeSubmission {
+  /** From 1, in the order they were committed. */
+  readonly number: number;
+  readonly at: number;
+  readonly language: string;
+  readonly source: string;
+  /** Whether it was run against the question's tests. */
+  readonly tested: boolean;
+  /** Every test passed; null when not tested, or when the exam reports only the visible tests. */
+  readonly accepted: boolean | null;
+  readonly passed: number | null;
+  readonly total: number | null;
+}
+
 export type CodeVerdict =
   | { readonly tested: false; readonly reason: "no_tests" | "runner_unavailable" }
   | { readonly tested: true; readonly compiled: false; readonly compileOutput: string }

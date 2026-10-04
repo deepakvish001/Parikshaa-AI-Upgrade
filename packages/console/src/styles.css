@@ -4306,6 +4306,11 @@ button.month-day.picked::after {
   background: var(--danger-soft);
   border-color: var(--danger-border);
 }
+.pill.tone-warn {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: var(--warning-border);
+}
 .role-list {
   display: grid;
   gap: var(--space-2);
@@ -4399,4 +4404,25 @@ button.month-day.picked::after {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   color: var(--chrome-text-muted);
+}
+
+/* An author's reference program on a code question's tests (G4). */
+.reference-run {
+  margin-top: var(--space-3);
+}
+.reference-run summary {
+  cursor: pointer;
+}
+.reference-run textarea {
+  width: 100%;
+}
+.reference-results pre {
+  margin: 0;
+  max-height: 6rem;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.reference-results tr[data-status="runtime_error"] td,
+.reference-results tr[data-status="time_limit"] td {
+  color: var(--danger);
 }

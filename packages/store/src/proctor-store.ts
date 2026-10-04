@@ -58,6 +58,7 @@ export class NoDataKey extends Error {
 }
 
 const aadOf = (attemptId: string, mediaId: string) => `${attemptId}/media/${mediaId}`;
+const timelineAad = (attemptId: string, questionId: string) => `${attemptId}/timeline/${questionId}`;
 const objectKeyOf = (orgId: string, attemptId: string, mediaId: string) => `${orgId}/${attemptId}/${mediaId}`;
 const toBuffer = (value: Buffer | Uint8Array): Buffer => (Buffer.isBuffer(value) ? value : Buffer.from(value));
 
@@ -226,6 +227,44 @@ export class ProctorStore {
         [scope.orgId, attemptId, limit],
       );
       return rows.map((r) => ({ kind: r.kind, at: new Date(r.at).toISOString() }));
+    });
+  }
+
+  // --- code playback (migration 0069, G4) ------------------------------------------
+
+  /** How many bytes of editor changes this attempt has sent, for the cap. */
+  async timelineBytes(scope: Scope, attemptId: string): Promise<number> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ total: string | number | null }>(`SELECT sum(bytes) AS total FROM code_timeline WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      return Number(rows[0]?.total ?? 0);
+    });
+  }
+
+  /** Seal and keep one batch of a code question's editor changes, as the browser sent it (JSON). */
+  async addTimeline(scope: Scope, attemptId: string, questionId: string, batch: string, receivedAt: Date): Promise<void> {
+    await withScope(this.#sql, scope, async (tx) => {
+      const sealed = sealBytes(await this.#key(tx, scope, attemptId), Buffer.from(batch, "utf8"), timelineAad(attemptId, questionId));
+      await tx.query(`INSERT INTO code_timeline (org_id, attempt_id, question_id, received_at, bytes, sealed) VALUES ($1, $2, $3, $4, $5, $6)`, [
+        scope.orgId,
+        attemptId,
+        questionId,
+        receivedAt.toISOString(),
+        Buffer.byteLength(batch, "utf8"),
+        sealed,
+      ]);
+    });
+  }
+
+  /** Every batch of an attempt's editor changes, opened, in the order they arrived. Staff only. */
+  async timeline(scope: Scope, attemptId: string): Promise<readonly { readonly questionId: string; readonly batch: string }[]> {
+    return withScope(this.#sql, scope, async (tx) => {
+      const rows = await tx.query<{ question_id: string; sealed: Buffer | Uint8Array }>(
+        `SELECT question_id, sealed FROM code_timeline WHERE org_id = $1 AND attempt_id = $2 ORDER BY seq ASC`,
+        [scope.orgId, attemptId],
+      );
+      if (rows.length === 0) return [];
+      const key = await this.#key(tx, scope, attemptId);
+      return rows.map((r) => ({ questionId: r.question_id, batch: openBytes(key, toBuffer(r.sealed), timelineAad(attemptId, r.question_id)).toString("utf8") }));
     });
   }
 

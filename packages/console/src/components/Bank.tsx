@@ -699,7 +699,7 @@ function BankEditor({
       }}
     >
       <section className="card">
-        <QuestionFields question={question} onChange={setQuestion} upload={(file) => client.uploadImage(file)} />
+        <QuestionFields question={question} onChange={setQuestion} upload={(file) => client.uploadImage(file)} checkReference={(q, language, source) => client.checkReference(q, language, source)} />
         <div className="grid">
           <div className="field">
             <label htmlFor="q-topic">Topic</label>

@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Avatar, Wordmark } from "@parikshaa/brand/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Exam } from "@parikshaa/core/browser";
+import type { Exam, Question } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError, type WhoAmI } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { BankPanel } from "./components/Bank.tsx";
@@ -293,6 +293,12 @@ function Console({
     queryKey: ["report", view.name === "review" ? view.attemptId : null],
     queryFn: () => client.report((view as { attemptId: string }).attemptId),
     enabled: view.name === "review" && can("attempt:review"),
+    retry: false,
+  });
+  const reviewPlayback = useQuery({
+    queryKey: ["playback", view.name === "review" ? view.attemptId : null],
+    queryFn: () => client.playback((view as { attemptId: string }).attemptId),
+    enabled: view.name === "review" && can("attempt:read"),
     retry: false,
   });
 
@@ -769,6 +775,7 @@ function Console({
                 onDirtyChange={setEditorDirty}
                 {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
                 {...(can("exam:write") ? { uploadImage: (file: File) => client.uploadImage(file) } : {})}
+                {...(can("exam:write") ? { checkReference: (q: Question, language: string, source: string) => client.checkReference(q, language, source) } : {})}
               />
             ) : null}
 
@@ -934,6 +941,7 @@ function Console({
                   can={{ grade: can("attempt:grade"), assess: can("attempt:assess"), void: can("attempt:void") }}
                   failure={actionFailure === undefined ? null : actionFailure.message}
                   answers={reviewAnswers.data}
+                  playback={reviewPlayback.data}
                 />
               )
             ) : null}

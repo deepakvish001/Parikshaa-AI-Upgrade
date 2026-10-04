@@ -89,6 +89,39 @@ describe("proctoring photos", () => {
   });
 });
 
+describe("code playback (migration 0069)", () => {
+  const batch = (ins: string) => JSON.stringify([{ t: 1, at: 0, del: 0, ins }]);
+
+  it("is sent by the candidate sealed, counted for the cap, and opened only by staff, in order", async () => {
+    const C = candidateScope(ORG, A);
+    await proctor.addTimeline(C, A, "q1", batch("def solve"), new Date());
+    await proctor.addTimeline(C, A, "q2", batch("SELECT 1"), new Date());
+    await proctor.addTimeline(C, A, "q1", batch("():"), new Date());
+    expect(await proctor.timelineBytes(C, A)).toBe(batch("def solve").length + batch("SELECT 1").length + batch("():").length);
+    expect(await proctor.timelineBytes(candidateScope(ORG, B), B)).toBe(0);
+
+    await db.exec(`RESET ROLE`);
+    const stored = (await db.query<{ sealed: Uint8Array }>(`SELECT sealed FROM code_timeline`)).rows.map((r) => Buffer.from(r.sealed));
+    await db.exec(`SET ROLE parikshaa_app`);
+    expect(stored.some((b) => b.includes(Buffer.from("def solve")))).toBe(false);
+
+    expect((await proctor.timeline(S, A)).map((r) => [r.questionId, JSON.parse(r.batch)[0].ins])).toEqual([
+      ["q1", "def solve"],
+      ["q2", "SELECT 1"],
+      ["q1", "():"],
+    ]);
+    await expect(proctor.addTimeline(C, B, "q1", batch("x"), new Date())).rejects.toThrow();
+  });
+
+  it("goes with the attempt's personal data", async () => {
+    await proctor.addTimeline(S, A, "q1", batch("x"), new Date());
+    await ledger.append(S, A, { type: "attempt_submitted", attemptId: A });
+    await ledger.erase(S, A, "request");
+    expect(await proctor.timeline(S, A)).toEqual([]);
+    await expect(proctor.addTimeline(S, A, "q1", batch("y"), new Date())).rejects.toBeInstanceOf(NoDataKey);
+  });
+});
+
 describe("photos kept in a bucket (migration 0066)", () => {
   let blobs: MemoryBlobs;
   let bucketed: ProctorStore;
