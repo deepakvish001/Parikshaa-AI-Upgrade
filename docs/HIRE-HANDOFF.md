@@ -194,6 +194,7 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 | # | Tareekh | Session | Kya kiya | Status / kahan ruka |
 |---|---|---|---|---|
 | 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
+| 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha), §5 step 0 (main merge + renumber) → W3 → H1 | Chal raha |
 
 ## 10. Log (naya upar)
 
