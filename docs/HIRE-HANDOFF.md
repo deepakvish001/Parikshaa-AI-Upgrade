@@ -49,7 +49,26 @@ me hoti hai. Har kadam poora hote hi: `[x]` lagao, us kadam ka code commit karo 
 push karo. Isliye limit achanak khatam ho, to zyada se zyada ek kadam ka kaam jaata hai. Jo kadam aadha chhoota ho,
 uske aage likho kya aadha hai (`[~]` aur ek line: kaunsi file, kya baaki).
 
-**2. Handoff purana lage to git se khud pata lagao** (jaise session ne checklist update karne se pehle hi ruk gaya ho):
+**2. Autosave (apne aap, owner ki manzoori se, 12 Oct 2026).** `.claude/settings.json` ke hooks har edit/command ke
+baad (30 s me ek baar) aur har turn/session ke aakhir me `scripts/autosave.sh` chalate hain. Ye **commit na hua kaam bhi**
+GitHub ki alag branch `autosave/<branch>` par push karta hai. Ye ek snapshot commit hota hai jiska parent us waqt ka
+HEAD hai. Asli branch aur uski history ko ye nahi chhoota. `.env*`, `*.pem`, `*.key` aur 5 MB se badi files bahar
+rehti hain. Naya session **shuru me** ye dekhe:
+
+```bash
+git fetch origin 'refs/heads/autosave/*:refs/remotes/origin/autosave/*'
+git for-each-ref --sort=-committerdate --format='%(committerdate:iso) %(refname:short)' refs/remotes/origin/autosave
+git log -1 --format='%P%n%B' origin/autosave/claude/festive-maxwell-pb4k5v   # parent + badli files ki list
+```
+
+- Agar autosave ka parent branch ka HEAD hai, ya HEAD ke peeche ka commit hai, aur usme aisi files hain jo branch me
+  nahi: wo adhoora kaam hai. Lagao: `git cherry-pick --no-commit origin/autosave/<branch>`. Isme deletions bhi aate hain.
+  Conflict ho to `git checkout origin/autosave/<branch> -- <file>` file-by-file karo.
+- Phir `git status` / `git diff` dekho, slice ki checklist se milao, tests chalao, aur `WIP(Hx): autosave se wapas`
+  commit karke push karo. Kaam shuru se dobara mat banao.
+- Agar autosave ka tree branch ke HEAD jaisa hi hai (sab commit ho chuka), to ise chhod do.
+
+**3. Handoff purana lage to git se khud pata lagao** (jaise session ne checklist update karne se pehle hi ruk gaya ho):
 
 1. `git log --oneline origin/claude/festive-maxwell-pb4k5v -20`. Neeche "Log" ki aakhri entry ke baad ke commits,
    khaaskar `WIP(Hx):` wale, batate hain ki aakhri session ne kya kiya.
