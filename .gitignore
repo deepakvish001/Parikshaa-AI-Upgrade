@@ -11,3 +11,5 @@ packages/e2e/load-*.txt
 
 # Autosave writes this only into its snapshot (scripts/autosave.sh); never commit it.
 .claude/live/
+# Worktrees Claude Code makes for isolated agents.
+.claude/worktrees/
