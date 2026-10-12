@@ -5,7 +5,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, HireStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -52,6 +52,7 @@ import { StaffSecurity } from "./staff-security.js";
 import { OperatorService, Operators } from "./operator.js";
 import { LibraryService } from "./library.js";
 import { Candidates } from "./candidates.js";
+import { HireService } from "./hire.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
 import { DailyPilotReport } from "./pilot-report.js";
 
@@ -243,6 +244,7 @@ export function assemble(o: AssembleOptions): {
     now: () => Date.now(),
   });
   const library = new LibraryService({ library: new LibraryStore(o.sql), operator, exams: service });
+  const hire = new HireService({ store: new HireStore(o.sql), identity, recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail) });
   const candidates = new Candidates({ store: new CandidateStore(o.sql, keys.records("candidates"), { blobs: o.blobs ?? null }), keys, mailer: o.mailer ?? null });
   const onboarding = new Onboarding({
     identity,
@@ -337,6 +339,7 @@ export function assemble(o: AssembleOptions): {
     operator,
     library,
     candidates,
+    hire,
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,

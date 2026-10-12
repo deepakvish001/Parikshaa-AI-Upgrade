@@ -92,7 +92,10 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
    "Fit (F#)". Bade slices toot gaye (critique-fit.md "Splits"): H1a/H1b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b.
 2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. **H1a poora ✅**.
 3. ✅ **(session 2)** H1b (resume).
-4. **AB AGLA: H2a** (Jobs): critique-fit.md "Splits" ki H2a row se checklist neeche "Agle slice" wale dhaanche me likho, phir banao. Migration `0071_hire.sql` (F29: saare status values ek saath; F3 `verified_*`).
+4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
+5. **AB AGLA: H2b** (Apply + portal): critique-fit.md "Splits" ki H2b row se checklist likho, phir banao.
+   H2b me: `/hire/public/*` (F7), apply (account, consent S8, snapshot, ref F5, hashes, `candidate_links` S2,
+   limits S17), suspension ka asar (F2), `hire-messages.ts` + outbox `{later}`, portal projection (S4), withdraw.
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
 W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
 snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
@@ -153,14 +156,14 @@ ek line ki kya baaki):
 - [x] 2. `staff-auth.ts`: `hire:manage|review|decide|offer`; roles (owner/author sab; reviewer review+decide; viewer
   review; recruiter P3; hiring_manager sirf review+decide F6); S7 (decide/offer sirf insaan; manage/offer
   `UNTIL_VERIFIED`); `StaffRole` store + console labels; tests (role matrix, API key)
-- [ ] 3. `store/src/hire-store.ts` (`HireScope` candidate-store se): jobs CRUD, rounds config, publish/pause/close,
+- [x] 3. `store/src/hire-store.ts` (`HireScope` candidate-store se): jobs CRUD, rounds config, publish/pause/close,
   duplicate (P20), list + counts; store tests (do org alag)
-- [ ] 4. `api/src/hire.ts`: validation (≤10 screening questions; S23 protected-topic knockout mana), S18 (unverified:
+- [x] 4. `api/src/hire.ts`: validation (≤10 screening questions; S23 protected-topic knockout mana), S18 (unverified:
   ≤2 open jobs, fee/deposit wala JD operator ke liye hold, auto-screen band), P1 (`max_applicants`, `screen_daily_max`),
   pehli publish par `public_code`, managers (staff ids) + tests
-- [ ] 5. `api/src/hire-routes.ts` staff `/hire/jobs*` (F7: `/jobs` nahi), tag `Hiring`, wiring + openapi, audit ACTIONS
+- [x] 5. `api/src/hire-routes.ts` staff `/hire/jobs*` (F7: `/jobs` nahi), tag `Hiring`, wiring + openapi, audit ACTIONS
   ke shabd + route tests
-- [ ] 6. `npm run check`; tracker row 112 🟡; §6 + §10; push
+- [x] 6. `npm run check` EXIT 0 (API 791), `build:clients` + `budget` theek; tracker row 112 🟡; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
@@ -171,7 +174,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
 | H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ✅ | H1a + H1b ✅ session 2 (H1 ka baaki: delete par company ki copy H2d me, web pages H9 me). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
-| H2 | Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
+| H2 | 🟡 H2a ✅ (jobs, rounds, publish, roles, 0071). Baaki H2b–d. Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
 | H5 | Integrity: reasons + `not_checked`/coverage P2, auto face check P7, AI interview signals P8, duplicates P9, high sirf S14 wale; overall score, compare, job report | ⬜ | |
@@ -243,6 +246,10 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (10, session 2): H2a: migration 0071 (saari Hire tables + statuses F29, `organisations.verified_*` F3,
+  roles recruiter/hiring_manager P3/F6), `hire-store.ts`, `hire.ts` (S18 limits, S23 knockouts, fee wali JD hold),
+  `/hire/jobs*` (409/422 me `problems`). Test ne pakda: ek transaction me fail hua INSERT poora transaction rollback
+  karta hai (test theek kiya).
 - 12 Oct 2026 (9, session 2): H1b poora (resume): `resume.ts` + `resume-worker.ts` (unpdf 1.8.1, fflate stream),
   store me file sealed (bucket ho to wahan), `PUT/GET/DELETE /candidate/resume`. HIRE-V2 §10 me "Build decisions"
   B1–B5. `npm run check` EXIT 0 (API 771). H2a ki checklist likhi.

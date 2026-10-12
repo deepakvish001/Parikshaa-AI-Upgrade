@@ -16,6 +16,7 @@ export * from "./proctor-store.js";
 export * from "./question-media.js";
 export * from "./practice-store.js";
 export * from "./candidate-store.js";
+export * from "./hire-store.js";
 export * from "./lti-store.js";
 export * from "./prep-store.js";
 export * from "./prep-plus-store.js";

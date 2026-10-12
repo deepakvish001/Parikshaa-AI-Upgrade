@@ -2,9 +2,10 @@ import { Onboarding } from "./onboarding.js";
 import { OperatorService, Operators } from "./operator.js";
 import { LibraryService } from "./library.js";
 import { Candidates } from "./candidates.js";
+import { HireService } from "./hire.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { BillingStore, FeedbackStore, IdentityStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, LibraryStore, CandidateStore, DataKeys, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, LibraryStore, CandidateStore, HireStore, DataKeys, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -122,6 +123,7 @@ export async function specDocument(): Promise<Record<string, unknown>> {
       exams: service,
     }),
     candidates: new Candidates({ store: new CandidateStore(unusable), keys: new DataKeys(Buffer.alloc(32)), mailer: null }),
+    hire: new HireService({ store: new HireStore(unusable), identity, recordAudit: async () => undefined }),
     identity,
     bank: new QuestionBank(unusable),
     media: new QuestionMedia(unusable),

@@ -34,6 +34,8 @@ export interface Organisation {
   readonly monthlySpendCapMicroUsd: number | null;
   /** Owners must use a second factor (ROADMAP §1). */
   readonly requireOwner2fa: boolean;
+  /** Checked by Parikshaa as a real employer (Hire, S18, F3); until then its hiring is limited. Null: not yet. */
+  readonly verified: { readonly at: string; readonly by: string } | null;
 }
 
 /** An organisation's OpenID Connect provider. `clientSecret` is sealed by the caller. */
@@ -119,9 +121,12 @@ interface OrganisationRow {
   suspended_reason: string | null;
   monthly_spend_cap_micro_usd: number | string | null;
   require_owner_2fa: boolean;
+  verified_at: string | Date | null;
+  verified_by: string | null;
 }
 
-const ORGANISATION_COLUMNS = "id, public_id, name, kind, suspended_at, suspended_reason, monthly_spend_cap_micro_usd, require_owner_2fa";
+const ORGANISATION_COLUMNS =
+  "id, public_id, name, kind, suspended_at, suspended_reason, monthly_spend_cap_micro_usd, require_owner_2fa, verified_at, verified_by";
 
 const toOrganisation = (row: OrganisationRow): Organisation => ({
   id: row.id as OrgId,
@@ -131,6 +136,7 @@ const toOrganisation = (row: OrganisationRow): Organisation => ({
   suspended: row.suspended_at === null ? null : { at: new Date(row.suspended_at).toISOString(), reason: row.suspended_reason ?? "" },
   monthlySpendCapMicroUsd: row.monthly_spend_cap_micro_usd === null ? null : Number(row.monthly_spend_cap_micro_usd),
   requireOwner2fa: row.require_owner_2fa === true,
+  verified: row.verified_at === null ? null : { at: new Date(row.verified_at).toISOString(), by: row.verified_by ?? "" },
 });
 
 const withoutSecret = ({ passwordHash: _, ...user }: StaffUserWithSecret): StaffUser => user;
@@ -152,7 +158,7 @@ export class IdentityStore {
     for (let attempt = 1; ; attempt++) {
       try {
         const rows = await this.#sql.query<{ public_id: string }>(`INSERT INTO organisations (id, name, kind) VALUES ($1, $2, $3) RETURNING public_id`, [id, name, kind]);
-        return { id, publicId: rows[0]!.public_id, name, kind, suspended: null, monthlySpendCapMicroUsd: null, requireOwner2fa: false };
+        return { id, publicId: rows[0]!.public_id, name, kind, suspended: null, monthlySpendCapMicroUsd: null, requireOwner2fa: false, verified: null };
       } catch (error) {
         if (attempt >= 5 || !String((error as Error).message).includes("organisations_public_id")) throw error;
       }

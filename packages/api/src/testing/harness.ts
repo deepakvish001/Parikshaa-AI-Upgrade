@@ -2,6 +2,7 @@ import type { PushSender } from "../push.js";
 import { OperatorService, Operators } from "../operator.js";
 import { LibraryService } from "../library.js";
 import { Candidates } from "../candidates.js";
+import { HireService } from "../hire.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -10,6 +11,7 @@ import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
 import {
   IdentityStore,
   CandidateStore,
+  HireStore,
   InvigilationStore,
   InvitationStore,
   LedgerStore,
@@ -459,6 +461,12 @@ export async function wire(
     onboarding,
     operator,
     library: new LibraryService({ library: new LibraryStore(sql), operator, exams: service }),
+    hire: new HireService({
+      store: new HireStore(sql),
+      identity,
+      recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail),
+      ...(options.now === undefined ? {} : { now: options.now }),
+    }),
     candidates: new Candidates({
       store: new CandidateStore(sql, new DataKeys(DATA_KEY).records("candidates"), { blobs: options.blobs ?? null }),
       keys: new DataKeys(DATA_KEY),

@@ -5,6 +5,8 @@ import fastifyStatic from "@fastify/static";
 import { baseHeaders, pagePolicy } from "./page-headers.js";
 import type { OperatorService } from "./operator.js";
 import type { Candidates } from "./candidates.js";
+import type { HireService } from "./hire.js";
+import { registerHireRoutes } from "./hire-routes.js";
 import { registerCandidateRoutes } from "./candidate-routes.js";
 import { registerOperatorRoutes } from "./operator-routes.js";
 import type { LibraryService } from "./library.js";
@@ -182,6 +184,8 @@ export interface ServerOptions {
   readonly library?: LibraryService;
   /** Candidates' own accounts for Hire (H1a): code sign-in, profile, export, delete. Absent: none of their routes. */
   readonly candidates?: Candidates;
+  /** A company's jobs for Hire (H2a). Absent: none of their routes. */
+  readonly hire?: HireService;
   /**
    * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
    * opened a page of ours can reach into it. On unless set false, which only
@@ -320,6 +324,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
         { name: "Library", description: "The Parikshaa Library: Parikshaa's own questions, to browse and copy into the bank; and, for operators, to file and retire." },
         { name: "Operator", description: "Parikshaa's own operators: every organisation by its Company ID, opening one with its owner, pausing it, and giving credits." },
+        { name: "Hiring", description: "A company's jobs, for its staff: writing a job, its screening questions and rounds, and publishing, pausing, closing and copying it." },
         { name: "Applicant", description: "A candidate's own account for Hire, across every company they apply to: signing in with a mailed code, the profile, the data export and deleting the account." },
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
@@ -1415,6 +1420,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
     if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
     if (options.candidates !== undefined) registerCandidateRoutes(routes, { candidates: options.candidates, bearer, throttle });
+    if (options.hire !== undefined) registerHireRoutes(routes, { hire: options.hire, staff });
   });
 
   if (options.clients !== undefined) {

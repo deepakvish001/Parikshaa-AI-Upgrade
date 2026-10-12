@@ -140,6 +140,9 @@ describe("the OpenAPI document", () => {
     // A Hire candidate's own account, under one root, never a page's path (F7).
     expect(tagged("Applicant").length).toBeGreaterThan(5);
     expect(tagged("Applicant").every((p) => p.startsWith("/candidate/"))).toBe(true);
+    // A company's jobs for its staff, never under a page's path (F7).
+    expect(tagged("Hiring").length).toBeGreaterThan(5);
+    expect(tagged("Hiring").every((p) => p.startsWith("/hire/"))).toBe(true);
   });
 
   it("puts no answer key anywhere in a candidate-facing or learner-facing response", () => {
