@@ -115840,7 +115840,9 @@
                             "author",
                             "invigilator",
                             "reviewer",
-                            "viewer"
+                            "viewer",
+                            "recruiter",
+                            "hiring_manager"
                           ]
                         },
                         "disabled": {
@@ -116271,7 +116273,9 @@
                         "author",
                         "invigilator",
                         "reviewer",
-                        "viewer"
+                        "viewer",
+                        "recruiter",
+                        "hiring_manager"
                       ]
                     },
                     "organisation": {
@@ -116766,7 +116770,9 @@
                               "author",
                               "invigilator",
                               "reviewer",
-                              "viewer"
+                              "viewer",
+                              "recruiter",
+                              "hiring_manager"
                             ]
                           },
                           "disabled": {
@@ -116984,7 +116990,9 @@
                       "author",
                       "invigilator",
                       "reviewer",
-                      "viewer"
+                      "viewer",
+                      "recruiter",
+                      "hiring_manager"
                     ]
                   },
                   "password": {
@@ -117032,7 +117040,9 @@
                         "author",
                         "invigilator",
                         "reviewer",
-                        "viewer"
+                        "viewer",
+                        "recruiter",
+                        "hiring_manager"
                       ]
                     },
                     "disabled": {
@@ -117236,7 +117246,9 @@
                       "author",
                       "invigilator",
                       "reviewer",
-                      "viewer"
+                      "viewer",
+                      "recruiter",
+                      "hiring_manager"
                     ]
                   }
                 },
@@ -117692,7 +117704,8 @@
                               "author",
                               "invigilator",
                               "reviewer",
-                              "viewer"
+                              "viewer",
+                              "recruiter"
                             ]
                           },
                           "createdAt": {
@@ -117914,7 +117927,8 @@
                       "author",
                       "invigilator",
                       "reviewer",
-                      "viewer"
+                      "viewer",
+                      "recruiter"
                     ],
                     "description": "An API key cannot be an owner, and cannot void an attempt whatever its role."
                   }
@@ -129187,7 +129201,9 @@
                             "author",
                             "invigilator",
                             "reviewer",
-                            "viewer"
+                            "viewer",
+                            "recruiter",
+                            "hiring_manager"
                           ]
                         },
                         "disabled": {
