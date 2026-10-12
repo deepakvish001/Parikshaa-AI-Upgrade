@@ -246,6 +246,13 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (11, session 2): Owner ne PR #65 `main` me merge kiya (`a861b2b`), usse pehle GitHub par `main` ko is
+  branch me merge kiya (`9cef709`); us merge ne `package-lock.json` ko kharab JSON bana diya, isliye `main` par `npm ci`
+  fail hota tha. Is branch me `main` merge kiya (history nahi badli) aur lockfile npm se dobara banaya
+  (`349949b` ka sahi lockfile + `npm install --package-lock-only`). H2a (`bbd86f8`) #65 ke baad ka hai: nayi PR chahiye.
+  Dependabot ke jsdom 30.1.2 se console ka editor test toot gaya (click ke baad focus question box me nahi jaata, test
+  galat field me type karta hai; browser par asar nahi): jsdom 30.1.1 par pin (console, web, root devDependency +
+  `overrides`), aur `.github/dependabot.yml` me 30.1.2 ignore. Agla jsdom release aaye to dobara aazmao.
 - 12 Oct 2026 (10, session 2): H2a: migration 0071 (saari Hire tables + statuses F29, `organisations.verified_*` F3,
   roles recruiter/hiring_manager P3/F6), `hire-store.ts`, `hire.ts` (S18 limits, S23 knockouts, fee wali JD hold),
   `/hire/jobs*` (409/422 me `problems`). Test ne pakda: ek transaction me fail hua INSERT poora transaction rollback

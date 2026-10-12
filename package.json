@@ -2,7 +2,7 @@
   "name": "parikshaa",
   "private": true,
   "version": "0.0.0",
-  "description": "Parikshaa (\u092a\u0930\u0940\u0915\u094d\u0937\u093e) \u2014 assessment platform with a tamper-evident exam ledger and an AI micro-viva engine.",
+  "description": "Parikshaa (परीक्षा) — assessment platform with a tamper-evident exam ledger and an AI micro-viva engine.",
   "workspaces": [
     "packages/*"
   ],
@@ -25,6 +25,10 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "jsdom": "30.1.1",
     "stylelint": "^17.16.0"
+  },
+  "overrides": {
+    "jsdom": "30.1.1"
   }
 }
