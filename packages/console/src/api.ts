@@ -58,8 +58,8 @@ export interface AttemptReview {
   readonly assists?: readonly { readonly questionId: string; readonly prompt: string; readonly reply: string; readonly code: string | null; readonly at: number }[];
 }
 
-export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer";
-export type ApiKeyRole = Exclude<StaffRole, "owner">;
+export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer" | "recruiter" | "hiring_manager";
+export type ApiKeyRole = Exclude<StaffRole, "owner" | "hiring_manager">;
 
 export interface StaffUser {
   readonly id: string;

@@ -143,14 +143,14 @@ ek line ki kya baaki):
 
 **H2a checklist (Jobs)** (critique-fit.md "Splits" H2a; har kadam: code + tests → `WIP(H2a)` commit → push → `[x]`):
 
-- [ ] 1. Migration `0071_hire.sql` (F29: baad ke slices ke saare status ek saath): `organisations.verified_at/
+- [x] 1. Migration `0071_hire.sql` (F29: baad ke slices ke saare status ek saath): `organisations.verified_at/
   verified_by/verification` (F3); roles `recruiter`, `hiring_manager` ke CHECK (P3); `hire_jobs`, `hire_rounds`,
   `hire_applications` (status + `invited`, `not_claimed`, `joined`, `did_not_join`; `candidate_id` NULL + `email_hash`
   S2; `reject_reason` P20), `hire_round_results` (+ `expired`, `abandoned`; `invitation_id` F9), `hire_screenings`,
   `hire_integrity`, `hire_events` (append-only, `candidate_visible` CHECK S4), `hire_offers`; outbox kind `hire`;
   model route `screen` (F28); policies: tenant + staff, applicant SELECT sirf applications/events(visible)/offers (S4);
   `migrate.test.ts`
-- [ ] 2. `staff-auth.ts`: `hire:manage|review|decide|offer`; roles (owner/author sab; reviewer review+decide; viewer
+- [x] 2. `staff-auth.ts`: `hire:manage|review|decide|offer`; roles (owner/author sab; reviewer review+decide; viewer
   review; recruiter P3; hiring_manager sirf review+decide F6); S7 (decide/offer sirf insaan; manage/offer
   `UNTIL_VERIFIED`); `StaffRole` store + console labels; tests (role matrix, API key)
 - [ ] 3. `store/src/hire-store.ts` (`HireScope` candidate-store se): jobs CRUD, rounds config, publish/pause/close,
