@@ -1,4 +1,5 @@
 import type { OrgId } from "@parikshaa/core";
+import type { BlobStore } from "./blobs.js";
 import { NO_SEAL, type RecordSeal } from "./sealing.js";
 import type { SqlExecutor } from "./sql.js";
 
@@ -57,6 +58,16 @@ export interface CandidateProfile {
   readonly resume: { readonly name: string; readonly type: "pdf" | "docx"; readonly sha256: string; readonly at: string } | null;
 }
 
+/** A resume as kept: its text for screening, its file for the candidate and the companies they apply to. */
+export interface ResumeUpload {
+  readonly text: string;
+  readonly file: Uint8Array;
+  readonly name: string;
+  readonly type: "pdf" | "docx";
+  readonly sha256: string;
+  readonly at: Date;
+}
+
 export interface CandidateSession {
   readonly account: CandidateAccount;
   readonly kept: boolean;
@@ -112,11 +123,14 @@ export class CandidateStore {
   readonly #sql: SqlExecutor;
   readonly #seal: RecordSeal;
   readonly #newId: () => string;
+  readonly #blobs: BlobStore | null;
 
-  constructor(sql: SqlExecutor, seal: RecordSeal = NO_SEAL, options: { readonly newId?: () => string } = {}) {
+  /** `blobs`: where resume files go (sealed) when object storage is set up; otherwise they stay in the row. */
+  constructor(sql: SqlExecutor, seal: RecordSeal = NO_SEAL, options: { readonly newId?: () => string; readonly blobs?: BlobStore | null } = {}) {
     this.#sql = sql;
     this.#seal = seal;
     this.#newId = options.newId ?? (() => crypto.randomUUID());
+    this.#blobs = options.blobs ?? null;
   }
 
   // --- codes ------------------------------------------------------------------
@@ -244,25 +258,104 @@ export class CandidateStore {
     return rows.length > 0;
   }
 
+  // --- the resume (H1b) -----------------------------------------------------------
+
+  /** Keep a resume in place of the one before, whose file is then deleted. False if the account is gone. */
+  async saveResume(id: string, r: ResumeUpload): Promise<boolean> {
+    const sealed = this.#seal.bytes(r.file, aad(id, "resume_file"));
+    const key = this.#blobs === null ? null : `candidates/${id}/resume/${this.#newId()}`;
+    if (key !== null) await this.#blobs!.put(key, sealed);
+    const old = await this.#sql.transaction(async (tx) => {
+      const before = await this.#lockedKey(tx, id);
+      if (before === null) return null;
+      await tx.query(
+        `UPDATE candidate_accounts
+            SET resume_text = $2, resume_file = $3, resume_key = $4, resume_name = $5, resume_type = $6, resume_sha256 = $7, resume_at = $8
+          WHERE id = $1`,
+        [id, this.#seal.text(r.text, aad(id, "resume_text")), key === null ? sealed : null, key, r.name, r.type, r.sha256, r.at],
+      );
+      return before;
+    });
+    if (old === null) {
+      if (key !== null) await this.#blobs!.remove([key]);
+      return false;
+    }
+    if (old.key !== null && old.key !== key) await this.#blobs?.remove([old.key]);
+    return true;
+  }
+
+  /** The resume's text, for screening (H3). */
+  async resumeText(id: string): Promise<string | null> {
+    const rows = await this.#sql.query<{ resume_text: string | null }>(`SELECT resume_text FROM candidate_accounts WHERE id = $1 AND erased_at IS NULL`, [id]);
+    return this.#seal.open(rows[0]?.resume_text ?? null, aad(id, "resume_text"));
+  }
+
+  /** The resume file as uploaded, opened. Null when there is none. */
+  async resumeFile(id: string): Promise<{ readonly file: Buffer; readonly name: string; readonly type: "pdf" | "docx" } | null> {
+    const rows = await this.#sql.query<{ resume_file: Buffer | null; resume_key: string | null; resume_name: string | null; resume_type: "pdf" | "docx" | null }>(
+      `SELECT resume_file, resume_key, resume_name, resume_type FROM candidate_accounts WHERE id = $1 AND erased_at IS NULL`,
+      [id],
+    );
+    const r = rows[0];
+    if (r === undefined || r.resume_name === null || r.resume_type === null) return null;
+    const sealed = r.resume_key === null ? r.resume_file : await this.#stored(r.resume_key);
+    if (sealed === null) return null;
+    return { file: this.#seal.openBytes(Buffer.from(sealed), aad(id, "resume_file")), name: r.resume_name, type: r.resume_type };
+  }
+
+  /** The resume file's key in object storage, locked for the rest of the transaction. */
+  async #lockedKey(tx: SqlExecutor, id: string): Promise<{ readonly key: string | null } | null> {
+    const rows = await tx.query<{ resume_key: string | null }>(`SELECT resume_key FROM candidate_accounts WHERE id = $1 AND erased_at IS NULL FOR UPDATE`, [id]);
+    return rows[0] === undefined ? null : { key: rows[0].resume_key };
+  }
+
+  async #stored(key: string): Promise<Buffer | null> {
+    if (this.#blobs === null) throw new Error("A resume is in object storage, and none is set up");
+    return this.#blobs.get(key);
+  }
+
+  /** Take the resume off the profile, and delete its file. */
+  async deleteResume(id: string): Promise<boolean> {
+    const old = await this.#sql.transaction(async (tx) => {
+      const before = await this.#lockedKey(tx, id);
+      if (before === null) return null;
+      await tx.query(
+        `UPDATE candidate_accounts
+            SET resume_text = NULL, resume_file = NULL, resume_key = NULL, resume_name = NULL, resume_type = NULL, resume_sha256 = NULL, resume_at = NULL
+          WHERE id = $1`,
+        [id],
+      );
+      return before;
+    });
+    if (old?.key != null) await this.#blobs?.remove([old.key]);
+    return old !== null;
+  }
+
   /**
    * Erase an account: the row stays, so an application keeps its candidate id,
-   * but the address, the name and everything sealed go; sessions end, and the
-   * address's codes are deleted. False if it was erased already.
+   * but the address, the name and everything sealed go, the resume file too;
+   * sessions end, and the address's codes are deleted. False if it was erased
+   * already.
    */
   async erase(id: string, emailHash: string, now: Date): Promise<boolean> {
-    return this.#sql.transaction(async (tx) => {
-      const rows = await tx.query(
+    const erased = await this.#sql.transaction(async (tx) => {
+      const before = await this.#lockedKey(tx, id);
+      if (before === null) return null;
+      await tx.query(
         `UPDATE candidate_accounts
             SET email = '', name = NULL, phone = NULL, profile = NULL, resume_text = NULL, resume_file = NULL, resume_key = NULL,
                 resume_name = NULL, resume_type = NULL, resume_sha256 = NULL, resume_at = NULL, warned_at = NULL, erased_at = $2
-          WHERE id = $1 AND erased_at IS NULL RETURNING id`,
+          WHERE id = $1`,
         [id, now],
       );
-      if (rows.length === 0) return false;
       await tx.query(`UPDATE candidate_sessions SET revoked_at = $2 WHERE candidate_id = $1 AND revoked_at IS NULL`, [id, now]);
       await tx.query(`DELETE FROM candidate_codes WHERE email_hash = $1`, [emailHash]);
-      return true;
+      return before;
     });
+    if (erased === null) return false;
+    // The file goes after the row: if deleting it fails, what is left is sealed, and nothing points to it.
+    if (erased.key !== null) await this.#blobs?.remove([erased.key]);
+    return true;
   }
 
   // --- sessions -----------------------------------------------------------------

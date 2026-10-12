@@ -518,6 +518,22 @@ item there is ADOPTED unless listed under "Not adopted / changed" below. Builder
   `main.ts` gains the screen loop, the Hire/account sweeps and the digest check. → H2–H4.
 - F33 Credits read through `BillingStore.account`; `SIGNUP_SPEND_CAP_USD` also for operator-created orgs. → H2/H4.
 
+### Build decisions (B#) — taken while building, binding like the rest of §10
+- B1 (H1a) A candidate's scope reads nothing of an organisation's own tables: the nine tables whose policies let any
+  actor in (`attempts`, `audit_log`, `exam_lab`, `exam_ledger`, `exam_windows`, `exams`, `model_usage`,
+  `recheck_requests`, `result_releases`) carry a RESTRICTIVE `not_applicant` policy (0070). Found by a test.
+- B2 (H1a) Staff remove a candidate link through `candidate_unlink(org, application)` (SECURITY DEFINER,
+  `search_path = ''`): a DELETE cannot match rows its role may not SELECT, and S2 gives staff no SELECT.
+- B3 (H1a) Sessions: 12 hours for a tab; "keep me signed in" 14 days from each use. Sign-in codes: 10 minutes, 5 tries,
+  `sign_in` and `step_up` kept apart. Account mail goes to the mailer directly with a 10 s timeout.
+- B4 (H1a) Profile links are http(s) only (a `javascript:` URL is a valid URL to zod).
+- B5 (H1b) The resume file is sealed under the "candidates" record key and kept in object storage (`BlobStore`, as G0's
+  photos) when it is set up, else in the row; replacing, removing or erasing deletes the old object. The text is
+  sealed in the row. 2 MB, PDF and .docx only, told apart by bytes; read in a worker (256 MB heap, killed at 10 s); the
+  first 10 pages and 60,000 characters; a PDF with any encryption is refused; a .docx is inflated as a stream with the
+  real bytes counted (document.xml ≤ 5 MB, ≤ 200 entries), so a zip that lies about its sizes is stopped too. unpdf
+  1.8.1 (exact pin); its PDF.js build has no eval path, so S1's `isEvalSupported` has nothing to turn off.
+
 ### Not adopted / changed
 - None of the items are rejected. Conflicts resolved: integrity `high` follows S14 (not P8/P9); unverified employers get
   ≤100 applications per job (P18, stricter than S18's 300). Where an F# item and an S#/P# item disagree, the F# item

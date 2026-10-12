@@ -243,7 +243,7 @@ export function assemble(o: AssembleOptions): {
     now: () => Date.now(),
   });
   const library = new LibraryService({ library: new LibraryStore(o.sql), operator, exams: service });
-  const candidates = new Candidates({ store: new CandidateStore(o.sql, keys.records("candidates")), keys, mailer: o.mailer ?? null });
+  const candidates = new Candidates({ store: new CandidateStore(o.sql, keys.records("candidates"), { blobs: o.blobs ?? null }), keys, mailer: o.mailer ?? null });
   const onboarding = new Onboarding({
     identity,
     auth,

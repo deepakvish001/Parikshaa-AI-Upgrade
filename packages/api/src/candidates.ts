@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import type { BlindIndex, CandidateAccount, CandidateProfile, CandidateStore, CodePurpose, DataKeys } from "@parikshaa/store";
 import type { Mailer } from "./delivery.js";
+import { readResume } from "./resume.js";
 
 /**
  * Candidate accounts for Hire (docs/HIRE-V2.md §1, §10 S5, S19, F4, F22; H1a).
@@ -91,6 +92,14 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 export function normaliseEmail(value: string): string | null {
   const email = value.trim().toLowerCase();
   return email.length <= 200 && EMAIL.test(email) ? email : null;
+}
+
+/** A file's name as kept and sent back: no folders, no control characters, ending as its type does. */
+export function fileName(given: string, type: "pdf" | "docx"): string {
+  const base = given.split(/[\\/]/).pop() ?? "";
+  const clean = base.replace(/[\u0000-\u001f\u007f"<>|*?:]/g, "").replace(/\s+/g, " ").trim().slice(0, 100);
+  const name = clean === "" || clean.startsWith(".") ? "resume" : clean;
+  return name.toLowerCase().endsWith(`.${type}`) ? name : `${name.replace(/\.(pdf|docx?)$/i, "")}.${type}`;
 }
 
 export class Candidates {
@@ -304,6 +313,38 @@ export class Candidates {
     const text = [why, "", "Your profile, your resume and your sessions are gone. If you sign in again with this address, it starts a new, empty account."].join("\n");
     // Told after the fact, and best effort: the account is gone either way.
     await this.#mail(this.#mailer, { to: account.email, subject, text, html: text.split("\n\n").map((p) => `<p>${p}</p>`).join("\n") }).catch(() => undefined);
+  }
+
+  // --- the resume (H1b) -----------------------------------------------------------
+
+  /**
+   * Keep a resume (PDF or .docx, at most 2 MB) in place of the one before. Its
+   * text is read in a worker, and a file that cannot be read is refused with
+   * the reason (ResumeRefused).
+   */
+  async uploadResume(account: CandidateAccount, name: string, file: Uint8Array): Promise<CandidateProfile> {
+    const read = await readResume(file);
+    const saved = await this.#store.saveResume(account.id, {
+      text: read.text,
+      file,
+      name: fileName(name, read.type),
+      type: read.type,
+      sha256: createHash("sha256").update(file).digest("hex"),
+      at: this.#now(),
+    });
+    if (!saved) throw new CandidateRefused("not_found", "There is no such account");
+    return this.profile(account);
+  }
+
+  async resumeFile(account: CandidateAccount): Promise<{ readonly file: Buffer; readonly name: string; readonly type: "pdf" | "docx" }> {
+    const found = await this.#store.resumeFile(account.id);
+    if (found === null) throw new CandidateRefused("not_found", "There is no resume on your profile");
+    return found;
+  }
+
+  async deleteResume(account: CandidateAccount): Promise<CandidateProfile> {
+    await this.#store.deleteResume(account.id);
+    return this.profile(account);
   }
 
   // --- retention (F4, F22) --------------------------------------------------------

@@ -4,6 +4,7 @@ import { examId, orgId } from "@parikshaa/core";
 import { CandidateStore, MAX_CODE_ATTEMPTS, hireApplicant, hireScoped } from "./candidate-store.js";
 import { LedgerStore, staffScope } from "./ledger-store.js";
 import { migrate } from "./migrate.js";
+import { MemoryBlobs } from "./blobs.js";
 import { DataKeys } from "./sealing.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
 
@@ -247,5 +248,46 @@ describe("retention (F4, F22)", () => {
     await store.signIn("back@example.com", at(-20 * DAY));
     expect((await store.unused(at(-1095 * DAY), 10)).map((a) => a.email)).toEqual([]);
     expect((await store.warnedUnused(at(-30 * DAY), 10)).map((a) => a.id)).toEqual([old.id]);
+  });
+});
+
+describe("the resume (H1b)", () => {
+  const resume = (text: string, at = T0) => ({ text, file: Buffer.from(`%PDF-1.4 ${text}`), name: "Asha Rao.pdf", type: "pdf" as const, sha256: "abc", at });
+
+  it("keeps the text and the file sealed in the row when there is no object storage", async () => {
+    const { id } = await store.signIn("asha@example.com", T0);
+    expect(await store.saveResume(id, resume("Backend engineer"))).toBe(true);
+    expect(await store.resumeText(id)).toBe("Backend engineer");
+    expect(await store.resumeFile(id)).toEqual({ file: Buffer.from("%PDF-1.4 Backend engineer"), name: "Asha Rao.pdf", type: "pdf" });
+    expect((await store.profile(id))?.resume).toEqual({ name: "Asha Rao.pdf", type: "pdf", sha256: "abc", at: T0.toISOString() });
+    const raw = (await sql.query<{ resume_text: string; resume_file: Uint8Array }>(`SELECT resume_text, resume_file FROM candidate_accounts WHERE id = $1`, [id]))[0]!;
+    expect(raw.resume_text).not.toContain("Backend");
+    expect(Buffer.from(raw.resume_file).toString("latin1")).not.toContain("Backend");
+    expect(await store.deleteResume(id)).toBe(true);
+    expect(await store.resumeFile(id)).toBeNull();
+    expect((await store.profile(id))?.resume).toBeNull();
+  });
+
+  it("puts the file in object storage when there is some, replacing and erasing it there", async () => {
+    const blobs = new MemoryBlobs();
+    const stored = new CandidateStore(sql, new DataKeys(Buffer.alloc(32, 7)).records("candidates"), { newId: () => `x-${++ids}`, blobs });
+    const { id } = await stored.signIn("asha@example.com", T0);
+    await stored.saveResume(id, resume("First"));
+    expect([...blobs.objects.keys()]).toHaveLength(1);
+    const [first] = [...blobs.objects.keys()];
+    expect(blobs.objects.get(first!)!.toString("latin1")).not.toContain("First");
+    await stored.saveResume(id, resume("Second", at(MIN)));
+    expect([...blobs.objects.keys()]).not.toContain(first);
+    expect((await stored.resumeFile(id))?.file.toString()).toBe("%PDF-1.4 Second");
+    expect((await sql.query<{ resume_file: unknown }>(`SELECT resume_file FROM candidate_accounts WHERE id = $1`, [id]))[0]!.resume_file).toBeNull();
+    expect(await stored.erase(id, "h", at(HOUR))).toBe(true);
+    expect(blobs.objects.size).toBe(0);
+  });
+
+  it("is not kept for an erased account", async () => {
+    const { id } = await store.signIn("asha@example.com", T0);
+    await store.erase(id, "h", T0);
+    expect(await store.saveResume(id, resume("Late"))).toBe(false);
+    expect(await store.resumeText(id)).toBeNull();
   });
 });

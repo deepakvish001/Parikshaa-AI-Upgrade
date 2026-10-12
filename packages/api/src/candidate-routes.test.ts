@@ -2,7 +2,8 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { pgliteExecutor } from "@parikshaa/store";
+import { strToU8, zipSync } from "fflate";
+import { MemoryBlobs, pgliteExecutor } from "@parikshaa/store";
 import type { EmailMessage, Mailer } from "./delivery.js";
 import { bearer, freshDatabase, wire } from "./testing/harness.js";
 
@@ -166,5 +167,60 @@ describe("profile, export and delete", () => {
     expect(sent.at(-1)?.subject).toBe("Your Parikshaa account is deleted");
     // The address may start again, as a new account.
     expect((await signIn()).account.id).not.toBe(s.account.id);
+  });
+});
+
+describe("the resume (H1b)", () => {
+  const WORD = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  const word = (lines: readonly string[]) =>
+    Buffer.from(
+      zipSync({
+        "[Content_Types].xml": strToU8(`<Types><Override PartName="/word/document.xml" ContentType="${WORD}.main+xml"/></Types>`),
+        "word/document.xml": strToU8(`<w:document><w:body>${lines.map((l) => `<w:p><w:r><w:t>${l}</w:t></w:r></w:p>`).join("")}</w:body></w:document>`),
+      }),
+    );
+
+  it("is read, kept, given back as it was, replaced and taken off", async () => {
+    const s = await signIn();
+    const file = word(["Asha Rao", "Backend engineer"]);
+    const put = await call(s.token, "PUT", "/candidate/resume", { name: "C:\\Users\\asha\\Asha Rao CV.docx", file: file.toString("base64") });
+    expect(put.statusCode, put.payload).toBe(200);
+    expect(put.json().resume).toMatchObject({ name: "Asha Rao CV.docx", type: "docx", sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
+
+    const got = await call(s.token, "GET", "/candidate/resume");
+    expect(got.statusCode).toBe(200);
+    expect(got.headers["content-type"]).toBe(WORD);
+    expect(got.headers["content-disposition"]).toContain('filename="Asha Rao CV.docx"');
+    expect(got.headers["cache-control"]).toBe("private, no-store");
+    expect(Buffer.from(got.rawPayload).equals(file)).toBe(true);
+
+    const again = await call(s.token, "PUT", "/candidate/resume", { name: "new.docx", file: word(["Asha Rao", "Staff engineer"]).toString("base64") });
+    expect(again.json().resume.name).toBe("new.docx");
+    const taken = await call(s.token, "DELETE", "/candidate/resume");
+    expect(taken.json().resume).toBeNull();
+    expect((await call(s.token, "GET", "/candidate/resume")).statusCode).toBe(404);
+  });
+
+  it("refuses what is not a resume, and says why", async () => {
+    const s = await signIn();
+    const program = await call(s.token, "PUT", "/candidate/resume", { name: "resume.pdf", file: Buffer.from("MZ\x90\x00 a program").toString("base64") });
+    expect(program.statusCode).toBe(422);
+    expect(program.json().error).toBe("resume_unsupported");
+    const big = await call(s.token, "PUT", "/candidate/resume", { name: "big.pdf", file: Buffer.alloc(2 * 1024 * 1024 + 1, 0x25).toString("base64") });
+    expect(big.statusCode).toBe(413);
+    expect(big.json().error).toBe("resume_too_large");
+    expect((await call(null, "PUT", "/candidate/resume", { name: "x.docx", file: word(["x"]).toString("base64") })).statusCode).toBe(401);
+  });
+
+  it("goes to object storage, sealed, when there is some", async () => {
+    await app.close();
+    const blobs = new MemoryBlobs();
+    ({ app } = await wire(pgliteExecutor(db), { client: {} as unknown as Anthropic, mailer, now: () => clock, blobs }));
+    const s = await signIn();
+    const file = word(["Asha Rao", "Backend engineer"]);
+    expect((await call(s.token, "PUT", "/candidate/resume", { name: "cv.docx", file: file.toString("base64") })).statusCode).toBe(200);
+    expect(blobs.objects.size).toBe(1);
+    expect([...blobs.objects.values()][0]!.includes(file)).toBe(false);
+    expect(Buffer.from((await call(s.token, "GET", "/candidate/resume")).rawPayload).equals(file)).toBe(true);
   });
 });

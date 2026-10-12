@@ -11,6 +11,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import { z } from "zod";
 import type { CandidateAccount } from "@parikshaa/store";
 import { CandidateRefused, type Candidates } from "./candidates.js";
+import { MAX_RESUME_BYTES, ResumeRefused } from "./resume.js";
 import * as S from "./schemas.js";
 import type { LoginThrottle } from "./staff-auth.js";
 
@@ -25,7 +26,8 @@ type Routes = FastifyInstance<RawServerDefault, RawRequestDefaultExpression, Raw
 const APPLICANT = ["Applicant"];
 const SIGNED_IN = [{ candidateAuth: [] }];
 const OPEN: { candidateAuth: never[] }[] = [];
-const refusals = { 401: S.errorResponse, 404: S.errorResponse, 422: S.errorResponse, 429: S.errorResponse, 503: S.errorResponse } as const;
+const refusals = { 401: S.errorResponse, 404: S.errorResponse, 413: S.errorResponse, 422: S.errorResponse, 429: S.errorResponse, 503: S.errorResponse } as const;
+const CONTENT_TYPE = { pdf: "application/pdf", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" } as const;
 
 const REFUSED = Symbol("refused");
 
@@ -91,6 +93,17 @@ export function registerCandidateRoutes(
     } catch (error) {
       if (!(error instanceof CandidateRefused)) throw error;
       await reply.code(STATUS[error.code]).send({ error: error.code, message: error.message });
+      return REFUSED;
+    }
+  }
+
+  /** As `answer`, and a resume that cannot be taken is answered with why: 413 when too large, else 422. */
+  async function answerResume<T>(reply: FastifyReply, fn: () => Promise<T>): Promise<T | typeof REFUSED> {
+    try {
+      return await answer(reply, fn);
+    } catch (error) {
+      if (!(error instanceof ResumeRefused)) throw error;
+      await reply.code(error.code === "too_large" ? 413 : 422).send({ error: `resume_${error.code}`, message: error.message });
       return REFUSED;
     }
   }
@@ -238,6 +251,58 @@ export function registerCandidateRoutes(
       const data = await answer(reply, () => candidates.exportData(me));
       if (data === REFUSED) return;
       return reply.header("content-disposition", 'attachment; filename="parikshaa-account.json"').send({ ...data, account: view(data.account), profile: data.profile as z.infer<typeof profile> });
+    },
+  );
+
+  routes.put(
+    "/candidate/resume",
+    {
+      bodyLimit: 3_000_000,
+      schema: {
+        tags: APPLICANT,
+        summary: "Put my resume on my profile",
+        description:
+          "PDF or Word (.docx), at most 2 MB, as base64. The first ten pages are read for text; a file with a password, macros or no text is refused with the reason (`resume_unsupported`, `resume_encrypted`, `resume_unreadable`, `resume_timeout`; 413 `resume_too_large`). It replaces the one before. A company sees it only as it was when you applied.",
+        security: SIGNED_IN,
+        body: z.object({ name: z.string().max(200), file: z.string().max(Math.ceil((MAX_RESUME_BYTES * 4) / 3) + 4).describe("The file, base64.") }),
+        response: { 200: profile, ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const me = await signedIn(request, reply);
+      if (me === null) return;
+      const saved = await answerResume(reply, () => candidates.uploadResume(me, request.body.name, Buffer.from(request.body.file, "base64")));
+      if (saved === REFUSED) return;
+      return reply.send(saved as z.infer<typeof profile>);
+    },
+  );
+
+  routes.get(
+    "/candidate/resume",
+    { schema: { tags: APPLICANT, summary: "My resume, as I gave it", description: "The file itself, as a download.", security: SIGNED_IN } },
+    async (request, reply) => {
+      const me = await signedIn(request, reply);
+      if (me === null) return;
+      const found = await answer(reply, () => candidates.resumeFile(me));
+      if (found === REFUSED) return;
+      const ascii = found.name.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+      return reply
+        .type(CONTENT_TYPE[found.type])
+        .header("content-disposition", `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(found.name)}`)
+        .header("cache-control", "private, no-store")
+        .send(found.file);
+    },
+  );
+
+  routes.delete(
+    "/candidate/resume",
+    { schema: { tags: APPLICANT, summary: "Take my resume off my profile", security: SIGNED_IN, response: { 200: profile, ...refusals } } },
+    async (request, reply) => {
+      const me = await signedIn(request, reply);
+      if (me === null) return;
+      const left = await answer(reply, () => candidates.deleteResume(me));
+      if (left === REFUSED) return;
+      return reply.send(left as z.infer<typeof profile>);
     },
   );
 

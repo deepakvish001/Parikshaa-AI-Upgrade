@@ -460,7 +460,7 @@ export async function wire(
     operator,
     library: new LibraryService({ library: new LibraryStore(sql), operator, exams: service }),
     candidates: new Candidates({
-      store: new CandidateStore(sql, new DataKeys(DATA_KEY).records("candidates")),
+      store: new CandidateStore(sql, new DataKeys(DATA_KEY).records("candidates"), { blobs: options.blobs ?? null }),
       keys: new DataKeys(DATA_KEY),
       mailer: options.mailer ?? null,
       ...(options.now === undefined ? {} : { now: () => new Date(options.now!()) }),

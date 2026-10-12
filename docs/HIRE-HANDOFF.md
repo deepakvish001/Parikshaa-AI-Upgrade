@@ -91,7 +91,8 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 1. ✅ **(session 2)** **W3** (fit critique): `docs/hire/critique-fit.md` (F1–F33, `<!-- complete -->`) aur HIRE-V2.md §10
    "Fit (F#)". Bade slices toot gaye (critique-fit.md "Splits"): H1a/H1b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b.
 2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. **H1a poora ✅**.
-3. **H1b** (resume), neeche ki checklist. Phir H2a (critique-fit.md "Splits").
+3. ✅ **(session 2)** H1b (resume).
+4. **AB AGLA: H2a** (Jobs): critique-fit.md "Splits" ki H2a row se checklist neeche "Agle slice" wale dhaanche me likho, phir banao. Migration `0071_hire.sql` (F29: saare status values ek saath; F3 `verified_*`).
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
 W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
 snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
@@ -130,10 +131,36 @@ ek line ki kya baaki):
   kaam" me
 - [x] 7. `npm run check` EXIT 0 (API 756 tests); tracker row 111 🟡; §6 table + §10 Log; push
 
-**H1b checklist (Resume)**, AB YAHI AGLA KADAM: S1 worker (`unpdf` exact pin, `docxText` sirf `document.xml` caps ke saath F26,
-bytes se type pehchaan, 10 pages / 60 000 chars, 10 s par kill); upload/download routes `bodyLimit` ≈3 MB; tests: zip
-bomb, 5 000 page PDF, encrypted PDF, `.docm`, naam badli `.exe`. Resume file kahan rahe (DB `bytea` ya G0 ka
-`BlobStore`, sealed) ye H1b shuru karte waqt tay karo aur §10 me likho.
+**H1b checklist (Resume)** ✅ session 2:
+
+- [x] `api/src/resume.ts` + `resume-worker.ts`: bytes se type, worker (256 MB, 10 s par kill), PDF `unpdf@1.8.1` (pehle
+  10 pages, encrypted mana), DOCX stream me asli bytes gin kar; `resume.test.ts` (12: zip bomb, jhooth bolta header,
+  5 000 page PDF, password PDF, `.docm`, `.exe`, timeout, scan)
+- [x] Store: `saveResume`/`resumeFile`/`resumeText`/`deleteResume`, `BlobStore` ho to wahan (sealed), purani file
+  delete; erase par bhi (HIRE-V2 §10 B5)
+- [x] Routes: `PUT/GET/DELETE /candidate/resume` (bodyLimit 3 MB, 413 `resume_too_large`, 422 baaki); tests
+- [x] `npm run check`; tracker row 111; push
+
+**H2a checklist (Jobs)** (critique-fit.md "Splits" H2a; har kadam: code + tests → `WIP(H2a)` commit → push → `[x]`):
+
+- [ ] 1. Migration `0071_hire.sql` (F29: baad ke slices ke saare status ek saath): `organisations.verified_at/
+  verified_by/verification` (F3); roles `recruiter`, `hiring_manager` ke CHECK (P3); `hire_jobs`, `hire_rounds`,
+  `hire_applications` (status + `invited`, `not_claimed`, `joined`, `did_not_join`; `candidate_id` NULL + `email_hash`
+  S2; `reject_reason` P20), `hire_round_results` (+ `expired`, `abandoned`; `invitation_id` F9), `hire_screenings`,
+  `hire_integrity`, `hire_events` (append-only, `candidate_visible` CHECK S4), `hire_offers`; outbox kind `hire`;
+  model route `screen` (F28); policies: tenant + staff, applicant SELECT sirf applications/events(visible)/offers (S4);
+  `migrate.test.ts`
+- [ ] 2. `staff-auth.ts`: `hire:manage|review|decide|offer`; roles (owner/author sab; reviewer review+decide; viewer
+  review; recruiter P3; hiring_manager sirf review+decide F6); S7 (decide/offer sirf insaan; manage/offer
+  `UNTIL_VERIFIED`); `StaffRole` store + console labels; tests (role matrix, API key)
+- [ ] 3. `store/src/hire-store.ts` (`HireScope` candidate-store se): jobs CRUD, rounds config, publish/pause/close,
+  duplicate (P20), list + counts; store tests (do org alag)
+- [ ] 4. `api/src/hire.ts`: validation (≤10 screening questions; S23 protected-topic knockout mana), S18 (unverified:
+  ≤2 open jobs, fee/deposit wala JD operator ke liye hold, auto-screen band), P1 (`max_applicants`, `screen_daily_max`),
+  pehli publish par `public_code`, managers (staff ids) + tests
+- [ ] 5. `api/src/hire-routes.ts` staff `/hire/jobs*` (F7: `/jobs` nahi), tag `Hiring`, wiring + openapi, audit ACTIONS
+  ke shabd + route tests
+- [ ] 6. `npm run check`; tracker row 112 🟡; §6 + §10; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
@@ -143,7 +170,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 | Slice | Kya | Status | Commit / note |
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
-| H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | 🟡 | H1a (accounts) ✅ session 2; ab H1b (resume). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
+| H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ✅ | H1a + H1b ✅ session 2 (H1 ka baaki: delete par company ki copy H2d me, web pages H9 me). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
 | H2 | Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
@@ -216,6 +243,9 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (9, session 2): H1b poora (resume): `resume.ts` + `resume-worker.ts` (unpdf 1.8.1, fflate stream),
+  store me file sealed (bucket ho to wahan), `PUT/GET/DELETE /candidate/resume`. HIRE-V2 §10 me "Build decisions"
+  B1–B5. `npm run check` EXIT 0 (API 771). H2a ki checklist likhi.
 - 12 Oct 2026 (8, session 2): H1a poora. Migration 0070 (accounts, sessions, codes, links + 9 tables par
   `not_applicant`), `candidate-store.ts`, `candidates.ts`, `candidate-routes.ts` (`/candidate/*`), S24 scope guard,
   S20 blind index, S6 forged-XFF test. Do kamiyan test se pakdi aur theek ki: applicant scope + org_id se `exams`
