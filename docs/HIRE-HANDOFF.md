@@ -181,7 +181,7 @@ ek line ki kya baaki):
   knockout → rejected), `candidate_links` (S2), portal projection (S4: round ki haalat, koi score nahi; suspended →
   "paused"), withdraw. `hire-messages.ts`: applied / withdrawn mail, "never pay" line (S18), suspended org → `{later}`.
   Tests
-- [ ] 4. Routes: `/hire/public/jobs/{company}/{code}`, `/hire/public/careers/{company}` (tag `Jobs`, open list F25),
+- [x] 4. Routes: `/hire/public/jobs/{company}/{code}`, `/hire/public/careers/{company}` (tag `Jobs`, open list F25),
   `/candidate/applications` (GET, POST), `/candidate/applications/{id}` (GET), `/candidate/applications/{id}/withdraw`;
   wiring (server, assemble handler `hire`, harness, openapi); `npm run openapi`; route tests (suspended 404, apply_by
   ke baad mana, limits, duplicate)

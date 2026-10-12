@@ -25,7 +25,7 @@ type Routes = FastifyInstance<RawServerDefault, RawRequestDefaultExpression, Raw
 const HIRING = ["Hiring"];
 const SECURED = [{ staffAuth: [] }];
 /** A refusal, with what is wrong in words when a job cannot be saved as it is. */
-const hireRefusal = z.object({
+export const hireRefusal = z.object({
   error: z.string(),
   message: z.string().optional(),
   problems: z.array(z.string()).readonly().optional().describe("Each thing to change, in words."),
@@ -37,7 +37,7 @@ const text = (max: number) => z.string().trim().max(max);
 const skill = text(40).min(1);
 const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "A date as YYYY-MM-DD");
 
-const question = z
+export const screeningQuestion = z
   .object({
     id: z.string().min(1).max(40),
     text: text(300).min(1),
@@ -56,7 +56,7 @@ const question = z
   })
   .strict();
 
-const roundKind = z.enum(["screen", "assessment", "ai_interview", "interview", "review", "offer"]);
+export const roundKind = z.enum(["screen", "assessment", "ai_interview", "interview", "review", "offer"]);
 const round = z.object({
   id: z.string().min(1).max(80).optional().describe("Keep this round (and what applicants did in it): send its id back."),
   kind: roundKind,
@@ -81,7 +81,7 @@ const jobInput = z
     skillsMust: z.array(skill).max(30).default([]),
     skillsNice: z.array(skill).max(30).default([]),
     description: z.string().max(20000).default(""),
-    questions: z.array(question).max(10).default([]),
+    questions: z.array(screeningQuestion).max(10).default([]),
     noteToCandidates: text(2000).default(""),
     contactEmail: z.string().email().max(200).nullable().default(null),
     applyBy: day.nullable().default(null),
