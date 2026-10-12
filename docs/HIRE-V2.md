@@ -1,0 +1,308 @@
+# Parikshaa Hire v2 — job post to offer, end to end (design)
+
+Status and the next step to take: [docs/HIRE-HANDOFF.md](HIRE-HANDOFF.md). Maps of the code this builds on (what
+exists, file:line, conventions, gotchas): [docs/hire/code-map/](hire/code-map/). Tracker rows: plan 100–110 in
+[PREP-TRACKER.md](PREP-TRACKER.md).
+
+Owner's ask (12 Oct 2026, Hinglish, paraphrased): build the complete company hiring portal first and launch it;
+Learn (user platform), college TPO and scholarship come after. The flow:
+
+1. A company posts a job.
+2. People apply.
+3. AI filters (screens) applicants and shortlists them to a level.
+4. The shortlisted get an OA / interview link by email. The test is created for the job: its format, sections,
+   fresh questions picked from the company's PRIVATE question bank (and new questions), set up by the hiring manager.
+5. The candidate attempts the test; it is monitored; cheating is detected.
+6. Shortlist only good, GENUINE candidates (as many factors as possible).
+7. Further rounds are created on the portal; company and candidate both track on the same portal until the final offer.
+8. Candidate ("user"), admin (platform) and company pages manage all of it end to end.
+
+House rules that bind this design (from the repo; do not break them):
+- **AI suggests, a person decides.** No model output ever moves a candidate on its own. Bulk actions are allowed but
+  are a person's click, audited, with counts. Integrity signals are "signs to look at", never findings; nothing is
+  auto-rejected. A person who advances a candidate with a high-risk integrity level must write a reason (audited).
+- Tenancy: every org table has the RESTRICTIVE `tenant_isolation` policy + an actor policy + explicit GRANTs to
+  `parikshaa_app` (copy `packages/store/migrations/0064_classes.sql` / `0060_ai_interviews.sql`). Every store query
+  runs through `withScope(...)` and names `org_id` explicitly.
+- Personal data (resume, phone, profile, screening answers) is sealed with a `RecordSeal` (`keys.records("hire")`)
+  bound to an AAD of `hire/{org}/{applicationId}/{field}`. Email needs lookup: store `email_hash` (HMAC blind index)
+  next to the sealed/plain email, as needed.
+- Outbox drafts carry ids only; messages are written at delivery (copy `student-messages.ts`, `ai-interview.ts#deliver`).
+- Every staff mutation is audited via `exams.recordAudit(actor, "hire.<verb>", target, detail)` AND its words added to
+  `ACTIONS` in `packages/console/src/components/Home.tsx` (actions.test.ts enforces it).
+- Model calls go through `ExamService.authoring` (staff) or `modelCall(orgId, route)` (system), spend-capped, with
+  `zodOutputFormat`, untrusted text wrapped in tags. `fake-model.ts` gets a branch + script field per new prompt.
+- Wire every new service in **assemble.ts, testing/harness.ts and openapi.ts**; register routes in server.ts; run
+  `npm run openapi`. New console/web pages are lazy chunks with an entry in `bundle-budget.json`.
+- Hinglish tracker (`docs/PREP-TRACKER.md`) is updated in the same PR (plan rows 100–110, below).
+
+## 0. Why a new "Jobs" module instead of stretching drives
+
+Drives (`placement.ts`) are the college TPO's tool: tenant = college, key = roll number, eligibility = CGPA/backlogs,
+fixed 7-value stage enum, `company` is free text. A company's hiring needs: a person keyed by email with a resume,
+configurable rounds, AI screening, integrity, offers with letters, a candidate who sees all their applications.
+Stretching drives would tangle the TPO features (which the owner wants later) with Hire. So: new `hire_*` tables and
+services. Drives stay as they are. Reused as-is: exams + job-test + question bank + invitations (OA), proctoring,
+proxy, similarity, viva, ledger, results, candidate report v2, AI interviewer, live interviews + panel, outbox, pdf.
+
+## 1. Data model (migration `0066_hire.sql`, plus 0067 questions, 0068 operator)
+
+### Global candidate accounts (outside tenant RLS — like `learners`)
+- `candidate_accounts(id text PK, email text NOT NULL CHECK(email=lower(email)), name text, created_at, verified_at,
+  last_seen_at, erased_at)`; UNIQUE(lower(email)) WHERE erased_at IS NULL.
+  Profile (owned by the candidate, sealed with `keys.records("candidates")`, AAD `candidates/{id}/{field}`):
+  `phone`, `profile jsonb` (headline, location, experience_years, current_company, current_ctc_lpa, expected_ctc_lpa,
+  notice_days, links {linkedin, github, portfolio}, skills[]), `resume_text`, `resume_file bytea`, `resume_name`,
+  `resume_type` (pdf|docx), `resume_sha256`, `resume_at`.
+- `candidate_sessions(token_hash PK, candidate_id, created_at, expires_at, revoked_at)` — token `pc_…` (32 random
+  bytes base64url), only SHA-256 stored, 30 days.
+- `candidate_codes(id PK, email, code_hash, created_at, expires_at, attempts int, used_at)` — 6-digit email sign-in
+  code (10 min, 5 tries, at most 5 codes/hour per email and 20/hour per IP). The code is HMAC(secret, id) mod 10^6 so
+  nothing secret is stored; the mail is sent directly through the mailer (no org → no outbox), with a timeout.
+- `candidate_links(candidate_id, org_id, application_id, created_at)` PK(candidate_id, org_id, application_id):
+  the cross-org index the portal reads ("my applications everywhere"). Ids only, no PII. RLS: actor `applicant`
+  sees only `candidate_id = current_setting('parikshaa.candidate_id')`; staff of the org may INSERT/DELETE their org's.
+- New scope kind in `ledger-store.ts`: `{orgId, actor: "applicant", candidateId}` setting `parikshaa.candidate_id`
+  (and `withScope` passes it). Applicant policies on `hire_applications`, `hire_events` (visible rows only),
+  `hire_offers`, `hire_round_results` allow SELECT where `candidate_id` matches (and UPDATE only where noted).
+
+### Company side (per org, RLS: restrictive tenant + staff policy [+ applicant read policy where stated])
+- `hire_jobs(org_id, id, title, role_id NULL (roles.ts), department, location, work_mode CHECK(onsite|hybrid|remote),
+  employment CHECK(full_time|internship|contract), exp_min int, exp_max int, ctc_min_lpa numeric NULL,
+  ctc_max_lpa numeric NULL, show_ctc bool, openings int ≥1, skills_must text[], skills_nice text[], description text
+  (JD ≤ 20000), questions jsonb (screening questions), apply_by date NULL, status CHECK(draft|open|paused|closed),
+  public_code text UNIQUE per org NULL (set on first publish), auto_screen bool default true,
+  screen_threshold int default 60, managers text[] (staff user ids: hiring managers), weights jsonb
+  (overall-score weights), created_by, created_at, updated_at, published_at, closed_at)`.
+  Screening question: `{id, text, kind: yes_no|number|choice|text, options?, required, knockout?: {equals?: "yes"|"no",
+  min?: number, max?: number, oneOf?: string[]}}` (≤10 questions).
+- `hire_rounds(org_id, job_id, id, position, kind CHECK(screen|assessment|ai_interview|interview|review|offer),
+  title, config jsonb, created_at)`; default pipeline on job create: screen → assessment → ai_interview →
+  interview → review → offer (staff can remove/reorder/add; exactly one screen at most and it is first; offer last).
+  config per kind:
+  - screen: `{}` (uses job.screen_threshold)
+  - assessment: `{examId, daysToComplete (1–14, default 3), passPercent (default exam cutoff or 60), channels}`
+  - ai_interview: `{questions 2–8, minutes 10–90, seniority, passRating (1–5, default 3)}`
+  - interview: `{title, minutes, panel: staffIds[], passRating}`
+  - review: `{}` (hiring managers decide)
+  - offer: `{}`
+- `hire_applications(org_id, id, job_id, candidate_id, ref (stable per org+candidate, "A" + 8 base32 chars; used as
+  invitations.candidate_ref), name, email (plain, lower) , email_hash, phone (sealed), profile (sealed jsonb snapshot at
+  apply), resume_text (sealed), resume_file (sealed bytea), resume_name, resume_type, resume_sha256, answers (sealed
+  jsonb), source CHECK(link|careers|referral|manual|import), referrer text NULL, consent_version, consented_at,
+  round_id (current round), status CHECK(active|rejected|withdrawn|hired), status_reason text, created_at, updated_at)`;
+  UNIQUE(org_id, job_id, candidate_id). Applicant RLS: SELECT own; no UPDATE (withdraw goes through the service under
+  staff scope after the candidate's session is checked — keep the DB policy minimal).
+- `hire_round_results(org_id, application_id, round_id, status CHECK(pending|invited|in_progress|done|passed|failed|
+  skipped), score numeric NULL (0–100 normalised), detail jsonb (sections, rating…), exam_id, attempt_id,
+  ai_interview_id, interview_id, invited_at, completed_at, decided_by, decided_at)` PK(org_id, application_id, round_id).
+  Links to interviews/ai_interviews are plain text ids (those rows are swept by retention): the score is copied here
+  when it is known ("settle"), so history survives the sweep.
+- `hire_screenings(org_id, application_id, created_at, model, status CHECK(done|failed|skipped), reason, score int,
+  recommendation CHECK(advance|hold|reject), result jsonb)` PK(org_id, application_id) (latest wins; re-screen replaces).
+- `hire_integrity(org_id, application_id, computed_at, level CHECK(clear|review|high), score int, reasons jsonb,
+  reviewed_by, reviewed_at, verdict CHECK(genuine|not_genuine) NULL, note)`.
+- `hire_events(org_id, id, application_id, at, kind, round_id NULL, by text, detail jsonb, candidate_visible bool)`:
+  append-only timeline (GRANT SELECT, INSERT only). Kinds: applied, screened, moved, rejected, withdrawn, restored,
+  test_sent, test_done, ai_interview_sent, ai_interview_done, interview_scheduled, interview_done, integrity_reviewed,
+  override, note, offer_sent, offer_accepted, offer_declined, offer_withdrawn, hired, mail_sent.
+- `hire_offers(org_id, id, application_id, ctc_lpa numeric, fixed_lpa, variable_lpa, joining_date, location, expires_on,
+  note, status CHECK(sent|accepted|declined|withdrawn|expired), code_hash (HMAC of the email-link code; never the code),
+  created_by, created_at, responded_at)`; at most one offer in `sent|accepted` per application.
+- Outbox: new kinds `hire` (purposes: screen, mail_applied, mail_moved, mail_rejected, mail_offer, mail_withdrawn,
+  mail_manager) — drop/re-add `outbox_kind_check` (latest in 0052), TS union in `outbox-store.ts`, handler in
+  assemble.ts and harness.ts.
+- `model_usage.route` gains `screen` and `drafts` (drop/re-add the CHECK; latest in 0062), `schemas.ts`, viva `measure()`
+  route type, `ledger-store.ts` route list.
+- Retention: closed jobs' rejected/withdrawn applications are erased (PII columns nulled, files deleted, events kept
+  with `by` names) `HIRE_KEEP_DAYS` (default 180) days after the job closes; hired ones are kept. Add to the sweep.
+
+### Permissions (`staff-auth.ts`)
+New: `hire:manage` (jobs, pipeline config, publish/close), `hire:review` (see applicants, resumes, results),
+`hire:decide` (screen again, move, reject, send tests / AI interviews / interviews, integrity review, notes),
+`hire:offer` (make/withdraw offers, mark hired).
+owner: all four · author: all four · reviewer: review + decide · viewer: review · invigilator: none.
+Sending a test also needs `attempt:start`; an AI interview also `exam:write` (existing services check them).
+
+## 2. Candidate side (web) — `packages/web/src/hire/` lazy chunk, real paths
+
+`main.tsx` routes `/jobs/<orgId>.<code>`, `/careers/<orgId>` and `/my` (portal) to `HireApp` (one lazy chunk).
+Token `pc_` in localStorage (`parikshaa.candidate`), sign-out clears it.
+
+- **Job page** `/jobs/<code>`: company name + "Verified employer" badge (or "Not yet verified by Parikshaa"), title,
+  location/work mode/type, experience, CTC (if shown), openings, apply-by, must/nice skills, JD (Markdown-lite
+  rendering, escaped), pipeline preview ("How hiring works here: Screening → Online test → AI interview → Interview →
+  Offer" with what each means), privacy notice ("An AI reads your resume and answers to help the team; a person makes
+  every decision; kept N days"), "Report this job". Apply panel: sign in with email code (inline), profile fields
+  prefilled from the account, resume upload (PDF/DOCX ≤ 2 MB, or keep the one on file), screening questions, consent
+  checkbox → `Applied` with link to the portal.
+- **Careers** `/careers/<orgId>`: the org's open jobs (title, location, type, experience), each linking to its page.
+- **Portal** `/my`: sign in by email code. Tabs:
+  - *Applications*: each job with company, applied date, current step, status chip, "what's next".
+  - *Application detail*: the round timeline (each round: waiting / your turn / done / not moving forward), next action
+    with its link: **Take the test** (invite code from `InviteCodes.issue`, window shown), **Start the AI interview**
+    (`AiInterviewService.link`), **Join interview** (time in IST, calendar .ics, room link), **Offer** (CTC breakdown,
+    joining date, expiry, letter PDF, Accept / Decline once), **Withdraw application** (with confirm).
+    Never shows AI scores, integrity, or other candidates.
+  - *Profile*: name, phone, headline, location, experience, CTC, notice, links, skills, resume (replace / download).
+  - *Privacy*: what is kept and for how long; download my data (JSON); delete my account (withdraws open applications,
+    erases profile/resume and the PII copies in every org's applications; offers already accepted stay with the
+    company as a record minus contact details — say so).
+
+## 3. Company side (console) — new section "Hiring" (lazy chunk `Hiring-*.js`)
+
+Nav item "Hiring" (group assess, permission `hire:review`), first for `organisations.kind = 'company'`.
+- **Jobs** list: status, applicants per round (mini funnel), new in 24 h, openings filled, "Copy link", careers link.
+- **Job editor** (drawer): start from a role (roles.ts search) or paste a JD → "Read the JD" (existing JobReading via
+  `JobTestService` or a new `hire.readJob`) fills title/skills/seniority; fields above; screening-question builder with
+  knockout rules; pipeline builder (add/remove/reorder rounds, each round's config; assessment round: "Create the test
+  for this job" → job-test draft from JD/role with the **hiring preset** (proctoring: identity + snapshots 60 s +
+  browser events + screen share + audio; section timers; viva on code; cutoff), or pick an existing exam); hiring
+  managers (staff picker); weights; Publish / Pause / Close.
+- **Pipeline** (job page): round columns with counts (board) + a table: name, applied, AI screen score + recommendation,
+  test %, integrity level chip, interview ratings, overall score, current round, status. Filters: round, status,
+  recommendation, integrity, min test %, search. Sort: overall, screen, test, applied. Bulk: Move to next round,
+  Move to round…, Reject (with/without mail), Send test, Send AI interview, Schedule interview (one by one form),
+  Screen again, Compare (≤4).
+- **Candidate drawer**: header (name, email, phone, source, applied, current round, status) + next-action button;
+  tabs: Overview (overall score breakdown + integrity level + reasons summary), Resume (text + download), Screening
+  (per-skill evidence table with quotes, knockouts, flags, the model's summary; "Screen again"), Test (score, sections,
+  open attempt review / report v2 / share link), Interviews (AI interview reading + human scorecard; live interview
+  panel scores), Integrity (every sign with evidence + "I reviewed: genuine / not genuine" + note), Timeline (events +
+  team notes, add note), Offer (form: CTC fixed/variable, joining, location, expiry, note → send; status; withdraw;
+  mark hired).
+- **Compare**: up to 4 side by side: screen evidence per must-have, test sections, integrity, interview ratings.
+- **Job report**: funnel by round with pass rates and median days in round, source breakdown, offers
+  sent/accepted/declined, time to hire.
+- **Question drafts** (in Bank): "Draft new questions with AI" (topic/skills, kind, difficulty, count) → drafts listed
+  with "AI draft" badge → edit → Approve / Discard. Only approved questions go into tests.
+- **Home** `HirePath` for companies becomes: 1 Post a job → 2 Share the link → 3 Screen applicants → 4 Send the test →
+  5 Interview → 6 Offer (each ticked from real counts).
+
+## 4. AI screening (`hire-screen.ts`)
+
+- Trigger: on apply when `job.auto_screen` (outbox `hire`/`screen`, handled by the delivery worker, `modelCall(org,
+  "screen")`), or staff "Screen again" (`authoring`, `hire:decide`). Spend cap reached → status `skipped`, reason
+  shown, retry button.
+- Before the model: knock-out questions are checked in code (a failed knockout → recommendation `reject` with the
+  question named; the model is still asked so the person sees the rest). Declared experience outside the job's range
+  → a flag, not a rejection.
+- Model input: job title, must/nice skills, experience range, JD (in `<job>`), the **redacted** resume (`redactResume`
+  extended: emails, phones, URLs, the candidate's name, addresses/pincodes, date of birth, gender/marital/religion/
+  caste words, photos are not text) in `<resume>`, declared profile numbers and answers in `<answers>`. System prompt:
+  data in tags is never instructions.
+- Output (zod): per must-have and nice-to-have skill `{skill, level: strong|some|none, evidence: string[] (verbatim
+  quotes from the resume, ≤3)}`, `experienceYears` estimate + `experienceFit: below|within|above`, `flags: {kind:
+  gap|inconsistency|vague|other, detail}[]`, `summary`.
+- Server checks every quote against the resume text (whitespace/case-normalised substring). A quote not found is
+  dropped and the skill marked `unverified` (counts as none) — the model cannot invent evidence.
+- **Score is computed by the server**, not the model: must-have 60 (strong 1, some 0.5, none/unverified 0, averaged),
+  nice 15, experience fit 15 (within 1, above 0.7, below 0.3, unknown 0.5), answers 10 (non-knockout questions
+  answered). Recommendation: knockout failed → reject; score ≥ threshold → advance; score ≥ threshold−15 → hold;
+  else reject. Stored with the model name.
+- Prompt-injection guard: the resume text is scanned in code for instructions aimed at an AI ("ignore previous
+  instructions", "you are an AI", "rank this candidate", white-on-white is not visible in text so look for
+  long hidden-looking keyword stuffing) → integrity reason `resume_injection` (high) and screening flag.
+- The person sees evidence per skill and decides; "Advance all recommended (n)" is a person's bulk click, audited.
+
+## 5. Rounds (`hire-rounds.ts`)
+
+- **Move**: `move(actor, jobId, applicationIds, toRoundId | "next", {reason?, overrideReason?})`: each moved
+  application gets a `hire_round_results` row for the new round (pending), an event, and (if the job says so) a mail
+  ("You have moved to the next step"). Integrity `high` and not reviewed `genuine` → refused unless `overrideReason`
+  (≥ 10 chars) is given → `override` event + audit.
+- **Reject** with optional mail (polite, no reasons given by default; staff may add a line). **Restore** a rejected one.
+- **Assessment**: "Send test" for selected applications in an assessment round → `InvitationService.inviteMany`
+  (extended with an optional per-call window: now → now + daysToComplete) with ref = application.ref; result row
+  `invited`. **Settle**: reading a job's pipeline maps `ResultsService.results(examId)` rows by ref → result row
+  `in_progress|done` with score (percent) and sections; `passed|failed` is still a person's move, but the table shows
+  "passed the bar" when ≥ passPercent.
+- **AI interview**: "Send AI interview" → `AiInterviewService.create` with the job's role/JD/seniority, the round's
+  questions/minutes, the candidate's name/email/ref and the application's resume text → id stored; settle reads its
+  status/assessment/human scorecard → score = mean criterion score ×20.
+- **Interview**: "Schedule interview" per application (time, minutes, panel, title, optional problem) →
+  `InterviewService.schedule` (driveId null) → id stored; settle reads its combined scorecard → score.
+- **Review**: hiring managers see "Waiting for your review" in the console and decide move/reject (normal move).
+- **Offer** (`hire-offers.ts`): make offer (hire:offer) → `hire_offers` row, mail with a signed link (code =
+  random, only its HMAC stored) and the portal; letter PDF (`pdf.ts`); candidate accepts/declines once (portal or link);
+  expiry passes → `expired` on read; withdraw; "Mark hired" after acceptance → application `hired`, job's filled count;
+  when filled = openings the console offers "Close the job and tell the rest" (bulk reject with mail).
+
+## 6. Integrity — "Genuineness" (`hire-integrity.ts`)
+
+Per application, computed from its assessment attempt(s) and the application itself; stored in `hire_integrity`;
+recomputed by "Refresh" or when the pipeline is read and the attempt changed. Each reason `{code, severity
+(info|warn|high), title, detail, round}`; level = high if any high, review if any warn, else clear; score = 100 −
+Σ(high 30, warn 10), floor 0. Reasons (thresholds are constants in one place, tested):
+1. identity photo not captured / human review rejected (high) / model face check flagged (high)
+2. same selfie or ID photo used in another attempt in the org (high)
+3. same network + device as another applicant of this job during the test (high; network only → warn)
+4. tab switches > 5 (warn) > 15 (high); paste events > 3 (warn); full-screen exits > 3 (warn); screen share stopped
+   (warn), second screen (high); camera off (warn); sustained voice (warn)
+5. code similarity ≥ 0.7 with another applicant (high)
+6. viva: any `inconsistent` (high), `shallow` (warn), unanswered probe (warn)
+7. too fast: finished in < 30% of the median time with ≥ 80% marks (warn)
+8. duplicate person: same phone or same resume file hash under another application in this job (high)
+9. resume injection (high, from screening)
+10. claims vs shown: screening said `strong` for a must-have skill whose test section scored < 30% (warn)
+11. AI interview concerns (each concern → warn)
+12. email verified (info, positive) — accounts are email-verified by construction
+A person records "Reviewed: genuine / not genuine" with a note → event + audit. Never auto-reject.
+
+**Overall score** (computed on read): weighted mean over rounds that have a score: screen, assessment, AI interview,
+interview (default weights 20/40/20/20, job-editable). Integrity is shown beside it, not mixed into it.
+
+## 7. Fresh questions (`question-drafts.ts`, migration 0067)
+
+- `bank_questions` gains `status CHECK(approved|draft) default approved`, `source CHECK(manual|import|starter|ai)`,
+  `created_by`, `approved_by`, `approved_at`, `used_count int default 0`, `last_used_at`.
+- `POST /bank/drafts` (exam:write): {topic, skills[], kind mcq|numeric|code, difficulty, count ≤ 10} → the model writes
+  questions (zod); MCQ/numeric: stem, options, correct, explanation; code: statement, function signature (python),
+  reference solution, 8–15 test inputs → the server runs the reference on the runner (as `content-dsa`/editorial
+  check do) to compute expected outputs; a draft whose reference fails or times out is dropped and counted.
+  Near-duplicates (normalised stem hash vs the bank) dropped. Saved as `draft`, `source ai`.
+- Drafts are excluded from job-test drafting and "Add from bank" until a person approves (approve/edit/discard,
+  audited). Job-test drafting prefers the least-used approved questions; creating an exam from the bank bumps
+  `used_count` for the copied questions.
+- Fix: `QuestionBank.list` LIMIT 1000 silently cuts job-test drafts → page through or raise with explicit filter.
+- Recorded decision change (Faisle): owner asked for new questions; the model now drafts, a person approves.
+
+## 8. Platform operator — "Admin" (migration 0068, `operator.ts`)
+
+- `operators(id, email UNIQUE, name, password_hash, totp_secret (sealed), created_at, disabled_at)`,
+  `operator_sessions(token_hash, operator_id, created_at, expires_at, revoked_at)` — `pko_` tokens, 8 h; sign-in needs
+  password + TOTP always; created by `admin-cli operator add` (prints the TOTP URI once).
+- `organisations` gains `verified_at`, `verified_by`, `suspended_at`, `suspended_reason`.
+- `hire_job_reports(org_id, id, job_id, candidate_id NULL, reason CHECK(fake|scam_fee|misleading|offensive|other),
+  note, created_at, resolved_by, resolved_at, outcome CHECK(kept|taken_down))`.
+- Routes `/operator/*` (operatorAuth): orgs list with stats (kind, created, owner verified, staff, open jobs,
+  applications 30 d, attempts 30 d, credits, model spend this month, verified/suspended); org detail; verify /
+  unverify; suspend (reason) / restore; grant credits (reuses billing); job reports queue → keep / take down (job →
+  closed + public page 404); candidate lookup by email (applications count, account state) → erase on request;
+  platform figures per week (signups, jobs, applications, tests, offers, hires). Every action in `operator_audit` and
+  in the org's audit log as "Parikshaa operator <name>".
+- Effects: suspended org → staff sign-in refused ("This organisation is suspended: write to support"), job/careers
+  pages 404, apply refused. Unverified employer → job page says so (jobs still publish).
+- Console: `/console/?operator` → operator sign-in → `Operator` lazy chunk (Companies, Reports, Candidates, Figures).
+
+## 9. Slices (each one: code + tests + wiring; commit per slice)
+
+- H1 Candidate accounts + resume: 0066 (candidate tables), scope `applicant`, `candidates.ts` (code sign-in, sessions,
+  profile, resume upload + text extraction: PDF via `unpdf` (new dependency, pin exact), DOCX via existing docx
+  helpers), erase, data export; routes `/candidate/*` (candidateAuth); tests.
+- H2 Jobs + apply + pipeline core: rest of 0066; `hire.ts` (jobs CRUD, rounds config, publish/pause/close, public job
+  page, careers, apply (account required, consent, snapshot, ref, link, event, mail_applied, screen queued), pipeline
+  read, move/reject/restore/withdraw, notes, events, candidate portal views), permissions, `hire-messages.ts`
+  (outbox `hire` delivery), routes `hire-routes.ts` + `hire-public-routes.ts`; tests (two orgs isolation, applicant
+  RLS, knockouts, duplicates).
+- H3 AI screening (`hire-screen.ts`, fake model branch "You screen job applications"); tests (evidence check,
+  server score, injection, spend cap, knockout).
+- H4 Rounds + offers (`hire-rounds.ts`, `hire-offers.ts`): send test with window, settle, AI interview, interview,
+  review, offers + letter PDF + link + portal response + expiry + hired + close-and-tell; tests.
+- H5 Integrity + overall + compare + job report (`hire-integrity.ts`); tests per reason.
+- H6 Question drafts + exposure (0067, `question-drafts.ts`, fake model branch "You draft assessment questions");
+  tests (runner-checked code drafts, approval gate, job-test excludes drafts).
+- H7 Operator (0068, `operator.ts`, admin-cli, routes, suspend/verify effects) + console Operator chunk; tests.
+- H8 Console Hiring UI (Jobs, editor, pipeline, drawer, compare, report, drafts in Bank, HirePath) + tests + budget.
+- H9 Web candidate side (job page, careers, apply, portal) + tests + budget.
+- H10 e2e (whole flow in Playwright), screenshots, docs (SECURITY.md, SPEC.md: candidate + operator accounts), tracker.
