@@ -16,8 +16,9 @@ import type { SqlExecutor } from "./sql.js";
  * caller. A copy of these tables grants nobody access.
  */
 
-export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer";
-export type ApiKeyRole = Exclude<StaffRole, "owner">;
+export type StaffRole = "owner" | "author" | "invigilator" | "reviewer" | "viewer" | "recruiter" | "hiring_manager";
+/** An integration is never the owner, nor a job's hiring manager, which is a person. */
+export type ApiKeyRole = Exclude<StaffRole, "owner" | "hiring_manager">;
 
 /** What an organisation is: a college examining its students, or a company hiring. */
 export type OrganisationKind = "institution" | "company";

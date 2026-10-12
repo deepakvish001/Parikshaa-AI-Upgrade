@@ -1,5 +1,9 @@
 # Working in this repository
 
+## Work in progress: Hire v2 (read this first)
+
+The owner's current priority (12 Oct 2026) is Hire v2: the company hiring portal, from job post to offer. It is built across sessions and accounts. Before doing anything on it, read `docs/HANDOFF.md`. It names the work, its branch and PR, and its handoff file (now `docs/HIRE-HANDOFF.md`). Then follow section 1 of that handoff file, in order. That file is the only shared record across accounts: the branch and PR, the task list, interrupted workflows, the session log and the next step. Push after every slice, and update that file each time, so a new session can pick the work up from GitHub. Uncommitted work is also pushed on its own by the autosave hooks (`.claude/settings.json` → `scripts/autosave.sh`) to the branch `autosave/<branch>`. At the start of a session, check that branch as the handoff describes, and restore from it rather than rebuilding.
+
 ## Keep the prep tracker true
 
 `docs/PREP-TRACKER.md` tracks the Parikshaa Prep Blueprint: what is built, what is half built, what is left, and what is planned next. The owner relies on it to know where things stand, so every change that builds or plans something updates it:

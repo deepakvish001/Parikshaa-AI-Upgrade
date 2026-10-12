@@ -689,8 +689,8 @@ export const candidateProbeParams = z.object({ probeId: z.string().min(1) });
 
 // --- accounts and administration --------------------------------------------
 
-const staffRole = z.enum(["owner", "author", "invigilator", "reviewer", "viewer"]);
-const apiKeyRole = z.enum(["author", "invigilator", "reviewer", "viewer"]);
+const staffRole = z.enum(["owner", "author", "invigilator", "reviewer", "viewer", "recruiter", "hiring_manager"]);
+const apiKeyRole = z.enum(["author", "invigilator", "reviewer", "viewer", "recruiter"]);
 
 export const staffUser = z.object({
   id: z.string(),

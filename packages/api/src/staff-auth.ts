@@ -70,7 +70,12 @@ export type Permission =
   | "audit:read"
   | "staff:manage"
   | "apikey:manage"
-  | "org:manage";
+  | "org:manage"
+  // Hire (docs/HIRE-V2.md §1): jobs and their rounds; reading applicants; deciding on them; offers.
+  | "hire:manage"
+  | "hire:review"
+  | "hire:decide"
+  | "hire:offer";
 
 const EVERYTHING: readonly Permission[] = [
   "exam:read",
@@ -88,11 +93,17 @@ const EVERYTHING: readonly Permission[] = [
   "staff:manage",
   "apikey:manage",
   "org:manage",
+  "hire:manage",
+  "hire:review",
+  "hire:decide",
+  "hire:offer",
 ];
+
+const HIRE_ALL: readonly Permission[] = ["hire:manage", "hire:review", "hire:decide", "hire:offer"];
 
 const GRANTS: Record<StaffRole, ReadonlySet<Permission>> = {
   owner: new Set(EVERYTHING),
-  author: new Set(["exam:read", "exam:read_key", "exam:write", "attempt:start", "attempt:read"]),
+  author: new Set(["exam:read", "exam:read_key", "exam:write", "attempt:start", "attempt:read", ...HIRE_ALL]),
   invigilator: new Set(["exam:read", "attempt:start", "attempt:read", "attempt:extend"]),
   reviewer: new Set([
     "exam:read",
@@ -102,8 +113,15 @@ const GRANTS: Record<StaffRole, ReadonlySet<Permission>> = {
     "attempt:grade",
     "attempt:assess",
     "attempt:void",
+    "hire:review",
+    "hire:decide",
   ]),
-  viewer: new Set(["exam:read", "attempt:read", "attempt:review"]),
+  viewer: new Set(["exam:read", "attempt:read", "attempt:review", "hire:review"]),
+  // Runs hiring end to end, the tests it sends included (P3).
+  recruiter: new Set(["exam:read", "exam:write", "attempt:start", "attempt:read", "attempt:review", "attempt:extend", ...HIRE_ALL]),
+  // Reviews and decides on the jobs they manage, which Hire checks job by job;
+  // nothing of the organisation's exams, which no job could limit (F6).
+  hiring_manager: new Set(["hire:review", "hire:decide"]),
 };
 
 /**
@@ -115,8 +133,9 @@ const GRANTS: Record<StaffRole, ReadonlySet<Permission>> = {
  * time is held to the same rule, because the ledger records who granted it.
  */
 export function can(actor: Actor, permission: Permission): boolean {
-  // Granting time is recorded against a person for the same reason.
-  if ((permission === "attempt:void" || permission === "attempt:extend") && actor.kind !== "user") return false;
+  // Granting time is recorded against a person for the same reason; so are
+  // moving an applicant on and making an offer (S7).
+  if ((permission === "attempt:void" || permission === "attempt:extend" || permission === "hire:decide" || permission === "hire:offer") && actor.kind !== "user") return false;
   if (actor.kind === "user" && actor.emailUnverified === true && UNTIL_VERIFIED.has(permission)) return false;
   return GRANTS[actor.role].has(permission);
 }
@@ -124,9 +143,10 @@ export function can(actor: Actor, permission: Permission): boolean {
 /**
  * What waits for a new owner's address to be shown to be theirs: everything
  * that reaches other people or spends. Inviting candidates and starting
- * attempts are `attempt:start`; adding staff and issuing keys the others.
+ * attempts are `attempt:start`; adding staff and issuing keys the others;
+ * publishing a job and making an offer the Hire ones (S7).
  */
-export const UNTIL_VERIFIED: ReadonlySet<Permission> = new Set(["attempt:start", "staff:manage", "apikey:manage"]);
+export const UNTIL_VERIFIED: ReadonlySet<Permission> = new Set(["attempt:start", "staff:manage", "apikey:manage", "hire:manage", "hire:offer"]);
 
 /** Everything an actor may do, for a client deciding what to show. */
 export const permissionsOf = (actor: Actor): readonly Permission[] => EVERYTHING.filter((p) => can(actor, p));

@@ -114,7 +114,7 @@ async function main(): Promise<void> {
   const blobs = storageFromEnv(process.env);
   if (blobs !== null) await blobs.ensureBucket();
 
-  const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia, library } = assemble({
+  const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia, library, candidates } = assemble({
     blobs,
     // Parikshaa's own operators, by address: they see and open every organisation (docs/STAGING.md).
     operators: (process.env["PARIKSHAA_OPERATORS"] ?? "").split(","),
@@ -207,6 +207,8 @@ async function main(): Promise<void> {
         .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "tutor chats past 180 days deleted") : undefined))
         .then(() => sweepMedia())
         .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "erased attempts' photos deleted from storage") : undefined))
+        .then(() => candidates.sweep())
+        .then((swept) => (swept.warned + swept.erased > 0 ? app.log.info({ warned: swept.warned, erased: swept.erased }, "unused candidate accounts") : undefined))
         .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "retention sweep failed"));
     retaining = setInterval(sweep, 60 * 60 * 1000);
     setTimeout(sweep, 60_000).unref();

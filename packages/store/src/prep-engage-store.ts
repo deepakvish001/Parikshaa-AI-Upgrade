@@ -123,8 +123,9 @@ export class PrepEngageStore {
    * active plan with tasks left for today (or before) or cards due, and they
    * have not been sent one today. Each is marked sent, and its email queued,
    * in the same transaction, so a second run in the hour finds no one.
+   * `now` is the caller's clock: the email may go from then.
    */
-  async takeDue(orgId: OrgId, day: string, hour: number, newId: () => string = () => crypto.randomUUID()): Promise<readonly string[]> {
+  async takeDue(orgId: OrgId, day: string, hour: number, now: Date, newId: () => string = () => crypto.randomUUID()): Promise<readonly string[]> {
     return scoped(this.#sql, practiceStaff(orgId), async (tx) => {
       const rows = await tx.query<{ learner_id: string }>(
         `INSERT INTO prep_reminders_sent (org_id, learner_id, day)
@@ -143,7 +144,7 @@ export class PrepEngageStore {
       await enqueue(
         tx,
         orgId,
-        rows.map((r) => ({ kind: "learner_email" as const, subject: { learnerId: r.learner_id, day }, purpose: "reminder", id: `reminder:${orgId}:${r.learner_id}:${day}` })),
+        rows.map((r) => ({ kind: "learner_email" as const, subject: { learnerId: r.learner_id, day }, purpose: "reminder", id: `reminder:${orgId}:${r.learner_id}:${day}`, sendAfter: now })),
         newId,
       );
       return rows.map((r) => r.learner_id);
@@ -151,8 +152,8 @@ export class PrepEngageStore {
   }
 
   /** Queue the email that tells a learner their plan now ends after its deadline; one a day at most. */
-  async queueLate(orgId: OrgId, learnerId: string, finishOn: string, deadline: string, day: string, newId: () => string = () => crypto.randomUUID()): Promise<void> {
-    await enqueue(this.#sql, orgId, [{ kind: "learner_email", subject: { learnerId, finishOn, deadline }, purpose: "plan_late", id: `plan_late:${orgId}:${learnerId}:${day}` }], newId);
+  async queueLate(orgId: OrgId, learnerId: string, finishOn: string, deadline: string, day: string, now: Date, newId: () => string = () => crypto.randomUUID()): Promise<void> {
+    await enqueue(this.#sql, orgId, [{ kind: "learner_email", subject: { learnerId, finishOn, deadline }, purpose: "plan_late", id: `plan_late:${orgId}:${learnerId}:${day}`, sendAfter: now }], newId);
   }
 
   /** The window's numbers: `from` and `to` are IST days, inclusive; `asOf` is now, by the caller's clock. */

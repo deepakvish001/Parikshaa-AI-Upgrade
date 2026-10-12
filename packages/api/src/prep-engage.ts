@@ -135,7 +135,7 @@ export class PrepEngage {
     const now = this.#now();
     const day = istDay(now);
     let queued = 0;
-    for (const org of orgIds) queued += (await this.#store.takeDue(org as OrgId, day, istHour(now))).length;
+    for (const org of orgIds) queued += (await this.#store.takeDue(org as OrgId, day, istHour(now), new Date(now))).length;
     return queued;
   }
 
@@ -189,7 +189,8 @@ export class PrepEngage {
     if (this.#mailer === null) return;
     const prefs = await this.#store.reminder(practiceStaff(site.orgId), learner.id);
     if (!prefs.enabled) return;
-    await this.#store.queueLate(site.orgId, learner.id, plan.finishOn, plan.deadline, istDay(this.#now()));
+    const now = this.#now();
+    await this.#store.queueLate(site.orgId, learner.id, plan.finishOn, plan.deadline, istDay(now), new Date(now));
   }
 
   /** The outbox's handler for that email: when the plan now ends, and how to change it. */

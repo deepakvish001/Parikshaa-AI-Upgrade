@@ -22,11 +22,21 @@ const ROLE_HELP: Record<StaffRole, string> = {
   invigilator: "Starts attempts; never sees answer keys or evidence",
   reviewer: "Grades, reads follow-ups, and sets attempts aside",
   viewer: "Reads results",
+  recruiter: "Runs hiring: jobs, applicants, tests and offers",
+  hiring_manager: "Reviews and decides on the jobs they manage, and nothing else",
 };
-const ROLE_WORDS: Record<StaffRole, string> = { owner: "Owner", author: "Author", invigilator: "Invigilator", reviewer: "Reviewer", viewer: "Viewer" };
+const ROLE_WORDS: Record<StaffRole, string> = {
+  owner: "Owner",
+  author: "Author",
+  invigilator: "Invigilator",
+  reviewer: "Reviewer",
+  viewer: "Viewer",
+  recruiter: "Recruiter",
+  hiring_manager: "Hiring manager",
+};
 
 const ROLES = Object.keys(ROLE_HELP) as StaffRole[];
-const KEY_ROLES = ROLES.filter((r): r is ApiKeyRole => r !== "owner");
+const KEY_ROLES = ROLES.filter((r): r is ApiKeyRole => r !== "owner" && r !== "hiring_manager");
 
 const failure = (error: unknown): string | null =>
   error === null || error === undefined ? null : error instanceof ConsoleError ? (error.detail ?? error.message) : error instanceof Error ? error.message : "That did not work.";

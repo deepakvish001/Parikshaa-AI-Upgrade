@@ -1,6 +1,7 @@
 import type { PushSender } from "../push.js";
 import { OperatorService, Operators } from "../operator.js";
 import { LibraryService } from "../library.js";
+import { Candidates } from "../candidates.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -8,6 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { orgId, type OrgId, type Timestamp } from "@parikshaa/core";
 import {
   IdentityStore,
+  CandidateStore,
   InvigilationStore,
   InvitationStore,
   LedgerStore,
@@ -457,6 +459,12 @@ export async function wire(
     onboarding,
     operator,
     library: new LibraryService({ library: new LibraryStore(sql), operator, exams: service }),
+    candidates: new Candidates({
+      store: new CandidateStore(sql, new DataKeys(DATA_KEY).records("candidates"), { blobs: options.blobs ?? null }),
+      keys: new DataKeys(DATA_KEY),
+      mailer: options.mailer ?? null,
+      ...(options.now === undefined ? {} : { now: () => new Date(options.now!()) }),
+    }),
     identity,
     bank: new QuestionBank(sql),
     media: new QuestionMedia(sql),

@@ -30,6 +30,33 @@ export interface SqlExecutor {
 /** Transaction-local settings: names are fixed by the caller's code, values may come from input. */
 export type TransactionSettings = Readonly<Record<string, string>>;
 
+/**
+ * A step asked for another scope inside a transaction that already has one
+ * (docs/HIRE-V2.md §10, S24). Settings are transaction-local, so a nested
+ * transaction that changed `parikshaa.org_id` or `parikshaa.actor` would run,
+ * and leave the rest of the outer transaction, as someone else. Such a step
+ * needs a transaction of its own.
+ */
+export class ScopeConflict extends Error {
+  constructor(readonly setting: string) {
+    super(`A transaction in one scope cannot run a step in another (${setting}): give that step its own transaction`);
+    this.name = "ScopeConflict";
+  }
+}
+
+/** The settings in force in one transaction, shared by its savepoints. */
+interface InForce {
+  current: Readonly<Record<string, string>>;
+}
+
+/** A nested transaction may add a setting, never change one already in force. */
+function assertSameScope(inForce: InForce, settings: TransactionSettings): void {
+  for (const [name, value] of Object.entries(settings)) {
+    const now = inForce.current[name];
+    if (now !== undefined && now !== value) throw new ScopeConflict(name);
+  }
+}
+
 const settingsParams = (settings: TransactionSettings) => Object.entries(settings).flat();
 const settingsSql = (settings: TransactionSettings) =>
   `SELECT ${Object.keys(settings)
@@ -63,7 +90,7 @@ export function pgliteExecutor(db: PGliteRoot): SqlExecutor {
     transaction<T>(fn: (tx: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
       return db.transaction(async (tx) => {
         if (settings !== undefined) await tx.query(settingsSql(settings), settingsParams(settings));
-        return fn(pgliteTransactionExecutor(tx));
+        return fn(pgliteTransactionExecutor(tx, { current: { ...settings } }));
       });
     },
   };
@@ -76,7 +103,7 @@ export function pgliteExecutor(db: PGliteRoot): SqlExecutor {
  * so this issues the SQL directly — which keeps a store method that opens a
  * transaction correct when it is called from inside another one.
  */
-function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
+function pgliteTransactionExecutor(tx: PGliteQueryable, inForce: InForce): SqlExecutor {
   return {
     async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
       return (await tx.query<Row>(text, [...params])).rows;
@@ -85,15 +112,21 @@ function pgliteTransactionExecutor(tx: PGliteQueryable): SqlExecutor {
       await tx.exec(text);
     },
     async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
+      if (settings !== undefined) assertSameScope(inForce, settings);
+      const before = inForce.current;
       const name = `parikshaa_sp_${++savepointCounter}`;
       await tx.query(`SAVEPOINT ${name}`);
-      if (settings !== undefined) await tx.query(settingsSql(settings), settingsParams(settings));
       try {
-        const result = await fn(pgliteTransactionExecutor(tx));
+        if (settings !== undefined) {
+          await tx.query(settingsSql(settings), settingsParams(settings));
+          inForce.current = { ...before, ...settings };
+        }
+        const result = await fn(pgliteTransactionExecutor(tx, inForce));
         await tx.query(`RELEASE SAVEPOINT ${name}`);
         return result;
       } catch (error) {
         await tx.query(`ROLLBACK TO SAVEPOINT ${name}`);
+        inForce.current = before;
         throw error;
       }
     },
@@ -164,7 +197,7 @@ export function connect(
                 .map(([name, value]) => `set_config(${client.escapeLiteral(name)}, ${client.escapeLiteral(value)}, true)`)
                 .join(", ")}`,
         );
-        const result = await fn(pgTransactionExecutor(client));
+        const result = await fn(pgTransactionExecutor(client, { current: { ...settings } }));
         await client.query("COMMIT");
         return result;
       } catch (error) {
@@ -184,7 +217,7 @@ export function connect(
   };
 }
 
-function pgTransactionExecutor(client: pg.PoolClient): SqlExecutor {
+function pgTransactionExecutor(client: pg.PoolClient, inForce: InForce): SqlExecutor {
   return {
     async query<Row>(text: string, params: readonly unknown[] = []): Promise<Row[]> {
       return (await client.query(text, [...params])).rows as Row[];
@@ -193,15 +226,21 @@ function pgTransactionExecutor(client: pg.PoolClient): SqlExecutor {
       await client.query(text);
     },
     async transaction<T>(fn: (nested: SqlExecutor) => Promise<T>, settings?: TransactionSettings): Promise<T> {
+      if (settings !== undefined) assertSameScope(inForce, settings);
+      const before = inForce.current;
       const name = `parikshaa_sp_${++savepointCounter}`;
       await client.query(`SAVEPOINT ${name}`);
-      if (settings !== undefined) await client.query(settingsSql(settings), settingsParams(settings));
       try {
-        const result = await fn(pgTransactionExecutor(client));
+        if (settings !== undefined) {
+          await client.query(settingsSql(settings), settingsParams(settings));
+          inForce.current = { ...before, ...settings };
+        }
+        const result = await fn(pgTransactionExecutor(client, inForce));
         await client.query(`RELEASE SAVEPOINT ${name}`);
         return result;
       } catch (error) {
         await client.query(`ROLLBACK TO SAVEPOINT ${name}`);
+        inForce.current = before;
         throw error;
       }
     },

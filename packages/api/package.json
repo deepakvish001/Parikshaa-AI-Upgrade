@@ -43,8 +43,6 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.132.1",
     "@fastify/compress": "^9.2.0",
-    "@fastify/static": "^10.1.5",
-    "@fastify/swagger": "^9.9.0",
     "@fastify/static": "^10.1.4",
     "@fastify/swagger": "^9.9.1",
     "@node-rs/argon2": "^2.2.1",
@@ -58,6 +56,7 @@
     "jose": "^6.2.12",
     "nodemailer": "^10.0.16",
     "qrcode-generator": "^2.0.4",
+    "unpdf": "1.8.1",
     "web-push": "^3.6.7",
     "zod": "^4.0.0"
   },

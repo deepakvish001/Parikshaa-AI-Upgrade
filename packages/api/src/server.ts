@@ -4,6 +4,8 @@ import fastifyCompress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
 import { baseHeaders, pagePolicy } from "./page-headers.js";
 import type { OperatorService } from "./operator.js";
+import type { Candidates } from "./candidates.js";
+import { registerCandidateRoutes } from "./candidate-routes.js";
 import { registerOperatorRoutes } from "./operator-routes.js";
 import type { LibraryService } from "./library.js";
 import { registerLibraryRoutes } from "./library-routes.js";
@@ -178,6 +180,8 @@ export interface ServerOptions {
   readonly operator?: OperatorService;
   /** The Parikshaa Library (G2). Absent: none of its routes. */
   readonly library?: LibraryService;
+  /** Candidates' own accounts for Hire (H1a): code sign-in, profile, export, delete. Absent: none of their routes. */
+  readonly candidates?: Candidates;
   /**
    * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
    * opened a page of ours can reach into it. On unless set false, which only
@@ -316,6 +320,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
         { name: "Library", description: "The Parikshaa Library: Parikshaa's own questions, to browse and copy into the bank; and, for operators, to file and retire." },
         { name: "Operator", description: "Parikshaa's own operators: every organisation by its Company ID, opening one with its owner, pausing it, and giving credits." },
+        { name: "Applicant", description: "A candidate's own account for Hire, across every company they apply to: signing in with a mailed code, the profile, the data export and deleting the account." },
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
@@ -348,6 +353,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           },
           attemptToken: { type: "http", scheme: "bearer", description: "A candidate's attempt-scoped token." },
           learnerAuth: { type: "http", scheme: "bearer", description: "A practice learner's session token (`pl_…`), for one site." },
+          candidateAuth: { type: "http", scheme: "bearer", description: "A Hire candidate's session token (`pc_…`), from signing in with a mailed code." },
           greenhouseKey: {
             type: "http",
             scheme: "basic",
@@ -1408,6 +1414,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.library !== undefined) registerLibraryRoutes(routes, { library: options.library, staff });
     if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
     if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
+    if (options.candidates !== undefined) registerCandidateRoutes(routes, { candidates: options.candidates, bearer, throttle });
   });
 
   if (options.clients !== undefined) {

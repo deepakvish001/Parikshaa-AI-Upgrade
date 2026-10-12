@@ -73,7 +73,8 @@ describe("the OpenAPI document", () => {
     // (whose link is the proof) and their organisation's own sign-in provider.
     // And a scorecard's check, whose code — printed on the scorecard — is the proof;
     // likewise a candidate's admit card, by the code in their invitation link, and a
-    // hiring manager's shortlist, by the code in theirs.
+    // hiring manager's shortlist, by the code in theirs. And a Hire candidate asking
+    // for a sign-in code, and entering it: the code from their email is the proof.
     const open = new Set([
       "get /health",
       "get /openapi.json",
@@ -104,6 +105,8 @@ describe("the OpenAPI document", () => {
       "get /auth/sso/{orgId}/start",
       "get /auth/sso/callback",
       "get /scorecards/{code}",
+      "post /candidate/code",
+      "post /candidate/verify",
     ]);
 
     expect(all.length).toBeGreaterThanOrEqual(30);
@@ -134,6 +137,9 @@ describe("the OpenAPI document", () => {
     expect(tagged("Prep").length).toBeGreaterThan(10);
     expect(tagged("Prep").every((p) => p.startsWith("/practice/{site}/"))).toBe(true);
     expect(tagged("Prep (staff)").every((p) => p.startsWith("/practice-admin/"))).toBe(true);
+    // A Hire candidate's own account, under one root, never a page's path (F7).
+    expect(tagged("Applicant").length).toBeGreaterThan(5);
+    expect(tagged("Applicant").every((p) => p.startsWith("/candidate/"))).toBe(true);
   });
 
   it("puts no answer key anywhere in a candidate-facing or learner-facing response", () => {
