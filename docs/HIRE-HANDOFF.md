@@ -90,7 +90,8 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
    `npm run check`, push.
 1. ✅ **(session 2)** **W3** (fit critique): `docs/hire/critique-fit.md` (F1–F33, `<!-- complete -->`) aur HIRE-V2.md §10
    "Fit (F#)". Bade slices toot gaye (critique-fit.md "Splits"): H1a/H1b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b.
-2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. Ab **H1a**, kadam 2 se (kadam 2 chal raha hai).
+2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. **H1a poora ✅**.
+3. **H1b** (resume), neeche ki checklist. Phir H2a (critique-fit.md "Splits").
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
 W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
 snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
@@ -117,15 +118,19 @@ ek line ki kya baaki):
 - [x] 3. `store/src/candidate-store.ts`: `HireScope` + `hireScoped()` (F24), codes (`spendAttempt` ek UPDATE me, S5),
   accounts (`signIn` upsert), sealed profile, sessions, links, `erase`, `sweep`/`unused`/`warnedUnused` (F4) +
   `candidate-store.test.ts` (15 tests)
-- [ ] 4. `api/src/candidates.ts`: code mail seedha mailer se, 10 s timeout, mailer na ho to 503 `email_not_configured`
-  (F22); verify (dono haalat me ek jaisa jawab), sessions, profile, export, delete (step-up code) + tests
-- [ ] 5. Routes `/candidate/*`, `candidateAuth`, tag `Applicant` (F25); wiring `server.ts`, `assemble.ts`,
-  `testing/harness.ts`, `openapi.ts`; `main.ts` ke hourly loop me sweep (F4); `npm run openapi`
-- [ ] 6. S6 = forged-XFF test (F27); `TRUST_PROXY` boolean hi rahega; staging par Vercel → Caddy ki jaanch "Ruka hua
+- [x] 4. `api/src/candidates.ts` (`Candidates`): code mail seedha mailer se, 10 s timeout, mailer na ho to 503
+  `email_not_configured` (F22); verify (dono haalat me ek jaisa jawab), sessions (12 h / kept 14 din sliding),
+  profile, export, step-up code se delete, `sweep()` (3 saal unused → mail → 30 din baad erase; mail na jaaye to
+  erase nahi) + `candidates.test.ts` (13 tests)
+- [x] 5. `api/src/candidate-routes.ts`: `/candidate/code`, `verify`, `me`, `signout`, `signout-everywhere`,
+  `profile` (GET/PUT, links sirf http/https), `export`, `step-up`, `DELETE /candidate/me`; `candidateAuth`, tag
+  `Applicant` (F25); wiring `server.ts`, `assemble.ts`, `testing/harness.ts`, `openapi.ts`, `main.ts` (hourly sweep);
+  `openapi.test.ts` (open list + Applicant sirf `/candidate/*`); `npm run openapi` + `candidate-routes.test.ts` (9)
+- [x] 6. S6 = forged-XFF test (`candidate-routes.test.ts`); `TRUST_PROXY` boolean; staging jaanch tracker ke "Ruka hua
   kaam" me
-- [ ] 7. Poora `npm run check` green; tracker row 111 (🟡 H1a, Kahan); §6 table + §10 Log; push
+- [x] 7. `npm run check` EXIT 0 (API 756 tests); tracker row 111 🟡; §6 table + §10 Log; push
 
-**H1b checklist (Resume)**, H1a ke baad: S1 worker (`unpdf` exact pin, `docxText` sirf `document.xml` caps ke saath F26,
+**H1b checklist (Resume)**, AB YAHI AGLA KADAM: S1 worker (`unpdf` exact pin, `docxText` sirf `document.xml` caps ke saath F26,
 bytes se type pehchaan, 10 pages / 60 000 chars, 10 s par kill); upload/download routes `bodyLimit` ≈3 MB; tests: zip
 bomb, 5 000 page PDF, encrypted PDF, `.docm`, naam badli `.exe`. Resume file kahan rahe (DB `bytea` ya G0 ka
 `BlobStore`, sealed) ye H1b shuru karte waqt tay karo aur §10 me likho.
@@ -138,7 +143,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 | Slice | Kya | Status | Commit / note |
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
-| H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | 🟡 | H1a (accounts) chal raha, phir H1b (resume). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
+| H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | 🟡 | H1a (accounts) ✅ session 2; ab H1b (resume). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
 | H2 | Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
@@ -211,6 +216,10 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (8, session 2): H1a poora. Migration 0070 (accounts, sessions, codes, links + 9 tables par
+  `not_applicant`), `candidate-store.ts`, `candidates.ts`, `candidate-routes.ts` (`/candidate/*`), S24 scope guard,
+  S20 blind index, S6 forged-XFF test. Do kamiyan test se pakdi aur theek ki: applicant scope + org_id se `exams`
+  dikhna; profile link me `javascript:` URL. Staging par XFF jaanch tracker "Ruka hua kaam" me.
 - 12 Oct 2026 (7, session 2): W3 poora: `docs/hire/critique-fit.md` F1–F33, HIRE-V2.md §10 "Fit (F#)". Sabse bada:
   F1, H7 ka alag operator scope nahi, G1 ka staff-operator hi (sirf `hire_job_reports` operator-only). Slices toote
   (H1a/b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b). H1a shuru.
