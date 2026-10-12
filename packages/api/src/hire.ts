@@ -17,7 +17,8 @@ import { can, type Actor, type Permission } from "./staff-auth.js";
 
 export class HireRefused extends Error {
   constructor(
-    readonly code: "not_found" | "invalid" | "limit" | "conflict",
+    /** unavailable: this server is not set up for it (no grievance officer to name, H2b). */
+    readonly code: "not_found" | "invalid" | "limit" | "conflict" | "unavailable",
     message: string,
     readonly problems: readonly string[] = [],
   ) {

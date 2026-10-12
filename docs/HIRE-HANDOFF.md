@@ -175,7 +175,7 @@ ek line ki kya baaki):
   key, AAD `hire/{org}/{app}/{field}`; hashes S20; ref F5; pehle round ka result; `applied` event; outbox ek hi
   transaction me), ginti (job ki, candidate ki 24 h), duplicate/reapply padhna, candidate ki apni application, withdraw.
   Tests: applicant RLS (sirf apni), do org alag
-- [ ] 3. `api/src/hire-apply.ts` (`HireApplications`): public job + careers (suspended org/draft/held → 404, F2),
+- [x] 3. `api/src/hire-apply.ts` (`HireApplications`): public job + careers (suspended org/draft/held → 404, F2),
   S8 notice (English + Hindi, `notice_hash`, retention `privacy ?? 180` (F4), do grievance contacts), apply (job open,
   `apply_by` 23:59 IST, `max_applicants` + unverified 100, S17 20/din, duplicate, reapply, sawaalon ki jaanch,
   knockout → rejected), `candidate_links` (S2), portal projection (S4: round ki haalat, koi score nahi; suspended →
