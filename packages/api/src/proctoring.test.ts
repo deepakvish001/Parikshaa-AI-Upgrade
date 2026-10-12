@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { pgliteExecutor, type IdentityStore } from "@parikshaa/store";
+import { MemoryBlobs, pgliteExecutor, type IdentityStore } from "@parikshaa/store";
 import { fakeModel } from "./fake-model.js";
 import { InviteCodes } from "./invite-codes.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, signIn, TOKEN_SECRET, wire } from "./testing/harness.js";
@@ -22,6 +22,7 @@ let identity: IdentityStore;
 let clock: number;
 let owner: string;
 let invigilator: string;
+let blobs: MemoryBlobs;
 
 const POLICY = { identity: true, snapshotEverySeconds: 60, browserEvents: true };
 /** Secure mode alone: no camera at all, the screen shared and the room listened to. */
@@ -30,7 +31,8 @@ const SECURE = { identity: false, snapshotEverySeconds: null, browserEvents: tru
 beforeEach(async () => {
   clock = OPENS;
   db = await freshDatabase();
-  ({ app, identity } = await wire(pgliteExecutor(db), { client: fakeModel().client, now: () => clock }));
+  blobs = new MemoryBlobs();
+  ({ app, identity } = await wire(pgliteExecutor(db), { client: fakeModel().client, now: () => clock, blobs }));
   const org = await addOrganisation(identity, "org-a", "Acme");
   await addStaff(identity, org, "owner@acme.test", "owner");
   await addStaff(identity, org, "inv@acme.test", "invigilator", "Meera Nair");
@@ -107,6 +109,9 @@ describe("the identity check", () => {
     expect(photo.headers["content-type"]).toBe("image/jpeg");
     expect(photo.headers["cache-control"]).toBe("no-store");
     expect(photo.rawPayload.equals(selfie)).toBe(true);
+    // Kept in the bucket (migration 0066), sealed: the bucket never holds the photo as taken.
+    expect(blobs.objects.size).toBe(2);
+    for (const sealed of blobs.objects.values()) expect(sealed.includes(selfie.subarray(4, 100))).toBe(false);
   });
 
   it("refuses what is not a photo, and photos from the candidate's own token for staff routes", async () => {

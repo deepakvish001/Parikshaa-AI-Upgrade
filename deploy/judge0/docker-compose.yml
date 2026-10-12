@@ -1,0 +1,41 @@
+# Judge0 on its own VM (docs/F1-GO-LIVE-PLAN.md §5.2, G3); started by setup-judge0.sh.
+#
+# The image is Parikshaa's: Judge0 1.13.1 (the release with the 2024 sandbox
+# escapes fixed) with our own compilers (compilers/Dockerfile). Judge0 needs
+# privileged containers for isolate, which is why it never runs beside the
+# API, the database credentials or the model key.
+x-judge0: &judge0
+  image: ${JUDGE0_IMAGE:-ghcr.io/deepakvish001/parikshaa-judge0:latest}
+  env_file: [judge0.conf, /etc/parikshaa/judge0.secrets.conf]
+  privileged: true
+  restart: always
+  logging:
+    driver: json-file
+    options: { max-size: 20m, max-file: "5" }
+
+services:
+  server:
+    <<: *judge0
+    # Only on the VM's private address: the API VM is the one caller.
+    ports: ["${JUDGE0_BIND:-127.0.0.1}:2358:2358"]
+    depends_on: [db, redis]
+
+  workers:
+    <<: *judge0
+    command: ["./scripts/workers"]
+    depends_on: [db, redis]
+
+  db:
+    image: postgres:16.4
+    env_file: [judge0.conf, /etc/parikshaa/judge0.secrets.conf]
+    volumes: [judge0-db:/var/lib/postgresql/data]
+    restart: always
+
+  redis:
+    image: redis:7.4
+    command: ["sh", "-c", "exec redis-server --appendonly no --save '' --requirepass \"$$REDIS_PASSWORD\""]
+    env_file: [/etc/parikshaa/judge0.secrets.conf]
+    restart: always
+
+volumes:
+  judge0-db:

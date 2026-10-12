@@ -1,6 +1,8 @@
 import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   Bot,
+  BookOpenCheck,
+  Building,
   Building2,
   ChevronRight,
   ClipboardList,
@@ -26,7 +28,7 @@ import {
 } from "lucide-react";
 import { Avatar, Wordmark } from "@parikshaa/brand/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Exam } from "@parikshaa/core/browser";
+import type { Exam, Question } from "@parikshaa/core/browser";
 import { ConsoleClient, ConsoleError, type WhoAmI } from "./api.ts";
 import { AccountPanel, ApiKeysPanel, AuditPanel, StaffPanel, UsagePanel } from "./components/Admin.tsx";
 import { BankPanel } from "./components/Bank.tsx";
@@ -58,6 +60,8 @@ const ConsoleTour = lazy(() => import("./components/Tour.tsx"));
 const InsightsPanel = lazy(() => import("./components/Insights.tsx").then((m) => ({ default: m.InsightsPanel })));
 const PaperReview = lazy(() => import("./components/PaperReview.tsx").then((m) => ({ default: m.PaperReview })));
 const Arrangements = lazy(() => import("./components/Arrangements.tsx").then((m) => ({ default: m.Arrangements })));
+const LibraryPanel = lazy(() => import("./components/Library.tsx").then((m) => ({ default: m.LibraryPanel })));
+const OperatorPanel = lazy(() => import("./components/Operator.tsx").then((m) => ({ default: m.OperatorPanel })));
 const ClassesPanel = lazy(() => import("./components/Classes.tsx").then((m) => ({ default: m.ClassesPanel })));
 const AiInterviewsPanel = lazy(() => import("./components/AiInterviews.tsx").then((m) => ({ default: m.AiInterviewsPanel })));
 const InterviewsPanel = lazy(() => import("./components/Interviews.tsx").then((m) => ({ default: m.InterviewsPanel })));
@@ -92,6 +96,8 @@ type View =
   | { readonly name: "privacy" }
   | { readonly name: "billing" }
   | { readonly name: "signin" }
+  | { readonly name: "companies" }
+  | { readonly name: "library" }
   | { readonly name: "account" };
 
 /**
@@ -289,6 +295,12 @@ function Console({
     enabled: view.name === "review" && can("attempt:review"),
     retry: false,
   });
+  const reviewPlayback = useQuery({
+    queryKey: ["playback", view.name === "review" ? view.attemptId : null],
+    queryFn: () => client.playback((view as { attemptId: string }).attemptId),
+    enabled: view.name === "review" && can("attempt:read"),
+    retry: false,
+  });
 
   const saveExam = useMutation({
     mutationFn: (exam: Exam) => client.saveExam(exam),
@@ -435,6 +447,7 @@ function Console({
     readonly icon: LucideIcon;
   }[] = [
     { view: { name: "bank" }, label: "Question bank", permission: "exam:read_key", group: "assess", icon: Library },
+    { view: { name: "library" }, label: "Parikshaa Library", permission: "exam:read_key", group: "assess", icon: BookOpenCheck },
     { view: { name: "insights" }, label: "Insights", permission: "attempt:review", group: "assess", icon: TrendingUp },
     { view: { name: "placement" }, label: "Placement", permission: "attempt:review", group: "assess", icon: BriefcaseBusiness },
     { view: { name: "interviews" }, label: "Interviews", permission: "attempt:review", group: "assess", icon: Video },
@@ -519,7 +532,14 @@ function Console({
               <span className="org-badge" aria-hidden="true">
                 <Building2 />
               </span>
-              <span className="org-name">{me.data.organisation.name}</span>
+              <span className="org-text">
+                <span className="org-name">{me.data.organisation.name}</span>
+                {me.data.organisation.publicId === undefined || me.data.organisation.publicId === "" ? null : (
+                  <span className="org-id" title="Your Company ID: quote it when you write to Parikshaa">
+                    {me.data.organisation.publicId}
+                  </span>
+                )}
+              </span>
             </div>
           )}
           <nav className="side-nav account" aria-label="Account">
@@ -529,6 +549,12 @@ function Console({
             {visible.filter((tab) => tab.group === "assess").map((tab) => navItem(tab.view, tab.label, tab.icon))}
             {visible.some((tab) => tab.group === "org") ? <p className="nav-group">{t("Organisation")}</p> : null}
             {visible.filter((tab) => tab.group === "org").map((tab) => navItem(tab.view, tab.label, tab.icon))}
+            {me.data?.operator === true ? (
+              <>
+                <p className="nav-group">Parikshaa</p>
+                {navItem({ name: "companies" }, "Companies", Building)}
+              </>
+            ) : null}
             <div className="sidebar-foot">
               {me.data === undefined ? null : (
                 <div className="me">
@@ -749,6 +775,7 @@ function Console({
                 onDirtyChange={setEditorDirty}
                 {...(can("exam:read_key") ? { loadBank: (filter) => client.listBank(filter) } : {})}
                 {...(can("exam:write") ? { uploadImage: (file: File) => client.uploadImage(file) } : {})}
+                {...(can("exam:write") ? { checkReference: (q: Question, language: string, source: string) => client.checkReference(q, language, source) } : {})}
               />
             ) : null}
 
@@ -914,6 +941,7 @@ function Console({
                   can={{ grade: can("attempt:grade"), assess: can("attempt:assess"), void: can("attempt:void") }}
                   failure={actionFailure === undefined ? null : actionFailure.message}
                   answers={reviewAnswers.data}
+                  playback={reviewPlayback.data}
                 />
               )
             ) : null}
@@ -956,6 +984,16 @@ function Console({
             {view.name === "integrations" ? <IntegrationsPanel client={client} /> : null}
             {view.name === "privacy" ? <PrivacyPanel client={client} /> : null}
             {view.name === "billing" ? <BillingPanel client={client} /> : null}
+            {view.name === "library" ? (
+              <Suspense fallback={<SkeletonRows rows={6} columns={5} label="Loading the library…" />}>
+                <LibraryPanel client={client} canWrite={can("exam:write")} />
+              </Suspense>
+            ) : null}
+            {view.name === "companies" && me.data?.operator === true ? (
+              <Suspense fallback={<SkeletonRows rows={5} columns={6} label="Loading organisations…" />}>
+                <OperatorPanel client={client} />
+              </Suspense>
+            ) : null}
             {view.name === "signin" && me.data !== undefined ? (
               <div className="settings-page-groups">
                 <OrgSignInPanel client={client} orgId={me.data.organisation.id} />
@@ -1039,6 +1077,8 @@ const SECTION_OF: Record<View["name"], View["name"]> = {
   privacy: "privacy",
   billing: "billing",
   signin: "signin",
+  companies: "companies",
+  library: "library",
   account: "account",
 };
 
@@ -1091,6 +1131,10 @@ function pageTitle(view: View, examTitle: (id: string) => string): string {
       return "Privacy";
     case "billing":
       return "Billing";
+    case "companies":
+      return "Companies";
+    case "library":
+      return "Parikshaa Library";
     case "signin":
       return "Sign-in";
     case "account":
@@ -1130,6 +1174,8 @@ const PAGE_NOTE: Record<View["name"], string> = {
   integrations: "Webhooks and applicant-tracking systems that hear about results.",
   privacy: "The notice candidates agree to, how long their data is kept, and erasure.",
   billing: "Attempt credits, payments and GST invoices.",
+  library: "Questions written by Parikshaa — CS fundamentals, programming, DSA coding and SQL — to copy into your bank.",
+  companies: "Every company and college on Parikshaa by its Company ID: open one with its owner, pause it, give credits.",
   signin: "How your staff sign in: your institution's own provider, and two-step sign-in for owners.",
   account: "Your password and two-step sign-in.",
 };

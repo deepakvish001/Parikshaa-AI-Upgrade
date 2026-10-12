@@ -3,6 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
 import type { SubmitOutcome } from "../api.ts";
+import { useState } from "react";
+import { PreferencesProvider } from "../i18n.tsx";
+import type { TimelineOp } from "../code-timeline.ts";
+import { replay } from "../code-timeline.ts";
 import { CodeAnswer, readCodeAnswer } from "./CodeAnswer.tsx";
 
 const question = {
@@ -286,6 +290,63 @@ describe("the coding workspace", () => {
     render(<CodeAnswer question={question} value={answer("x")} disabled onChange={vi.fn()} onRun={vi.fn()} onSubmit={vi.fn()} />);
     expect(screen.queryByRole("button", { name: "Run" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Submit" })).toBeNull();
+  });
+
+  it("lists the candidate's submissions, refreshes after a Submit, and puts an old one back in the editor (G4)", async () => {
+    const older = { number: 1, at: Date.UTC(2026, 9, 3, 4, 30), language: "python", source: "print(0)", tested: true, accepted: false, passed: 1, total: 3 };
+    const newer = { ...older, number: 2, source: "print(5)", accepted: true, passed: 3, total: 3 };
+    const onHistory = vi.fn().mockResolvedValueOnce([older]).mockResolvedValue([newer, older]);
+    const onChange = vi.fn();
+    const submitted: SubmitOutcome = { tested: true, compiled: true, passed: 3, total: 3, cases: [] };
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    render(<CodeAnswer question={question} value={answer("print(5)")} disabled={false} onChange={onChange} onRun={vi.fn()} onSubmit={vi.fn().mockResolvedValue(submitted)} onHistory={onHistory} />);
+
+    await userEvent.click(screen.getByRole("tab", { name: "Submissions" }));
+    const list = await screen.findByRole("region", { name: "Submissions" });
+    expect(within(list).getByRole("button", { name: /Submission 1.*Not accepted.*1\/3 tests passed/ })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Submissions" }));
+    expect(await screen.findByRole("button", { name: /Submission 2.*Accepted/ })).toBeInTheDocument();
+    expect(onHistory).toHaveBeenCalledTimes(3);
+
+    await userEvent.click(screen.getByRole("button", { name: /Submission 1/ }));
+    expect(screen.getByLabelText("Submission 1")).toHaveTextContent("print(0)");
+    await userEvent.click(screen.getByRole("button", { name: "Put this code in the editor" }));
+    expect(onChange).toHaveBeenLastCalledWith(answer("print(0)"));
+  });
+
+  it("says when nothing has been submitted yet", async () => {
+    render(<CodeAnswer question={question} value="" disabled onChange={vi.fn()} onRun={vi.fn()} onHistory={vi.fn().mockResolvedValue([])} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Submissions" }));
+    expect(await screen.findByText(/Nothing submitted yet/)).toBeInTheDocument();
+  });
+
+  it("records each change for playback, a paste marked as one, and says so to the candidate (G4)", async () => {
+    localStorage.setItem("parikshaa.lite", "1");
+    const ops: TimelineOp[] = [];
+    function Stateful() {
+      const [value, setValue] = useState(answer("x = 1"));
+      return <CodeAnswer question={question} value={value} disabled={false} onChange={setValue} onRun={vi.fn()} onEdit={(op) => ops.push(op)} />;
+    }
+    render(
+      <PreferencesProvider>
+        <Stateful />
+      </PreferencesProvider>,
+    );
+    expect(screen.getByText(/How you write your code here is recorded/)).toBeInTheDocument();
+    const box = screen.getByRole("textbox", { name: "Code for question 1" });
+    await userEvent.click(box);
+    await userEvent.type(box, "2");
+    await userEvent.paste("\nprint(x)");
+    expect(ops[0]).toMatchObject({ at: 0, del: 0, ins: "x = 1", reset: true });
+    expect(ops.filter((o) => o.paste === true).map((o) => o.ins)).toEqual(["\nprint(x)"]);
+    expect(replay(ops)).toBe("x = 12\nprint(x)");
+
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
+    expect(ops.at(-1)).toMatchObject({ reset: true, ins: "# read two numbers\n" });
+    expect(replay(ops)).toBe("# read two numbers\n");
   });
 
   it("reads an answer from before languages could be chosen", () => {
