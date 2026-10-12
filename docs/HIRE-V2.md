@@ -533,6 +533,24 @@ item there is ADOPTED unless listed under "Not adopted / changed" below. Builder
   first 10 pages and 60,000 characters; a PDF with any encryption is refused; a .docx is inflated as a stream with the
   real bytes counted (document.xml ≤ 5 MB, ≤ 200 entries), so a zip that lies about its sizes is stopped too. unpdf
   1.8.1 (exact pin); its PDF.js build has no eval path, so S1's `isEvalSupported` has nothing to turn off.
+- B6 (H2b) A candidate may withdraw while their company is suspended: taking consent back is never paused. Refines F2's
+  "portal with no actions"; everything else there waits.
+- B7 (H2b) "I am 18 or older" is asked on every application (S8 put it at account creation, and H1a made accounts
+  without it); an application without it is refused.
+- B8 (H2b) The notice names the company's grievance officer from its privacy settings; a company without them is
+  reached through Parikshaa's officer, "who will pass it on". Parikshaa's officer comes from `HIRE_GRIEVANCE_NAME` and
+  `HIRE_GRIEVANCE_EMAIL`; without them the job pages and applying answer 503 (no notice, no applications). The days
+  printed are the privacy setting's `retentionDays`, else 180, until H2d adds `hire_keep_days`.
+- B9 (H2b, 0072) One live application per person per job. After a rejection or a joining that did not happen the person
+  waits the job's `reapply_after_days`; after withdrawing they may apply again at once. 0072 narrows 0071's unique index
+  to live applications. H2c's Restore must refuse when the person has a newer live application to the same job.
+- B10 (H2b) A missed knockout makes the application and ends it (`rejected`, reason `knockout`, `reject_reason`
+  `other`, its first round `failed`), so both sides see it and `reapply_after_days` applies. The mail says an answer
+  missed a requirement, not which.
+- B11 (H2b) The service writes applications in the organisation's staff scope. The portal reads the candidate's
+  applications and visible events in the candidate's own scope (so RLS keeps them to theirs), then the job, rounds and
+  round states for those ids alone. S17's daily limit counts the candidate's `candidate_links`.
+- Migration numbers moved on: H2b took 0072, so H4b's `no_show` and H5b's room signals take the next free numbers.
 
 ### Not adopted / changed
 - None of the items are rejected. Conflicts resolved: integrity `high` follows S14 (not P8/P9); unverified employers get

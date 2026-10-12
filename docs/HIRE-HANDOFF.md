@@ -93,7 +93,11 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. **H1a poora ✅**.
 3. ✅ **(session 2)** H1b (resume).
 4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
-5. **AB CHAL RAHA: H2b** (Apply + portal): checklist neeche likhi hai (session 2).
+5. ✅ **(session 2)** H2b (Apply + portal), neeche ki checklist. HIRE-V2 §10 me B6–B11.
+6. **AB AGLA: H2c** (Pipeline): critique-fit.md "Splits" ki H2c row se checklist likho, phir banao. H2c me: pipeline
+   table, move/reject/restore (override ke niyam ke saath; B9: Restore mana jab usi job par naya live application ho),
+   notes, events, bulk (ginti ke saath), `reject_reason`, P14 message thread + note to candidates + rejection mail 24 h
+   baad (Restore par cancel), reply-to/sender (F23: `EmailMessage.replyTo`, `fromName`), S21/S22 (viewer ko contact nahi).
    H2b me: `/hire/public/*` (F7), apply (account, consent S8, snapshot, ref F5, hashes, `candidate_links` S2,
    limits S17), suspension ka asar (F2), `hire-messages.ts` + outbox `{later}`, portal projection (S4), withdraw.
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
@@ -196,7 +200,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
 | H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ✅ | H1a + H1b ✅ session 2 (H1 ka baaki: delete par company ki copy H2d me, web pages H9 me). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
-| H2 | 🟡 H2a ✅ (jobs, rounds, publish, roles, 0071). Baaki H2b–d. Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
+| H2 | 🟡 H2a ✅ (jobs, rounds, publish, roles, 0071), H2b ✅ (apply, job/careers page, portal, withdraw, 0072). Baaki H2c–d. Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
 | H5 | Integrity: reasons + `not_checked`/coverage P2, auto face check P7, AI interview signals P8, duplicates P9, high sirf S14 wale; overall score, compare, job report | ⬜ | |
@@ -267,6 +271,13 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 | 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Chal raha. 14:58 UTC: limit `allowed_warning` (5 ghante wali window 15:20 UTC par reset). Agar yahin ruke: W3 dobara chalao (§4), phir H1 kadam 1 |
 
 ## 10. Log (naya upar)
+
+- 12 Oct 2026 (12, session 2): CI ke saare jobs GitHub billing ki wajah se shuru hi nahi hue (PR #66 aur `main` dono);
+  PR par comment aur tracker "Ruka hua kaam" me. H2b poora: 0072 (ek job par ek insaan ki ek live application),
+  outbox `{later}` + `defer` (F2), `hire-application-store.ts` (sealed copy, blind index, job lock ke saath apply),
+  `hire-apply.ts` (public job/careers, S8 notice English+Hindi, apply ki saari jaanch, portal projection, withdraw),
+  `hire-messages.ts`, routes `/hire/public/*` + `/candidate/applications*`. Faisle B6–B11 HIRE-V2 §10 me. Naya env:
+  `HIRE_GRIEVANCE_NAME`, `HIRE_GRIEVANCE_EMAIL` (owner se, tracker "Ruka hua kaam").
 
 - 12 Oct 2026 (11, session 2): Owner ne PR #65 `main` me merge kiya (`a861b2b`), usse pehle GitHub par `main` ko is
   branch me merge kiya (`9cef709`); us merge ne `package-lock.json` ko kharab JSON bana diya, isliye `main` par `npm ci`
