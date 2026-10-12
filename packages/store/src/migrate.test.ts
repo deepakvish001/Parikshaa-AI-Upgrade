@@ -162,6 +162,7 @@ describe("migrate", () => {
       "0067_company_ids.sql",
       "0068_library.sql",
       "0069_code_timeline.sql",
+      "0070_candidate_accounts.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -199,6 +200,10 @@ describe("migrate", () => {
         "exam_departments",
         "interview_scores",
         "accommodations",
+        "candidate_accounts",
+        "candidate_sessions",
+        "candidate_codes",
+        "candidate_links",
       ]),
     );
     // No function in public lets its caller choose where names resolve (0057).

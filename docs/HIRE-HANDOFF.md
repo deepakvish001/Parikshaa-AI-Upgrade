@@ -107,14 +107,16 @@ cloud session me chalta hai ya nahi, pakka nahi.)
 **H1a checklist (Accounts)** (har kadam: code + uske tests → `WIP(H1a)` commit → push → yahan `[x]`; aadha ho to `[~]` +
 ek line ki kya baaki):
 
-- [ ] 1. Migration `0070_candidate_accounts.sql`: candidate_accounts (+ `warned_at`, F22), candidate_sessions,
-  candidate_codes (S5: sirf `email_hash` + `code_hash`, attempts, IP ka hash), candidate_links (S2 policies);
-  `store/src/migrate.test.ts` ki list (F29)
+- [x] 1. Migration `0070_candidate_accounts.sql`: candidate_accounts (+ `warned_at`, resume `bytea` ya `resume_key`),
+  candidate_sessions (`kept`), candidate_codes (S5: `email_hash`, `code_hash`, `ip_hash`, purpose sign_in/step_up),
+  candidate_links (S2: applicant read/add; staff ke liye `candidate_unlink()` SECURITY DEFINER, kyunki bina SELECT
+  policy ke DELETE kuch nahi hataata). Saath me 9 "kisi bhi actor" wali tables par RESTRICTIVE `not_applicant` (test ne
+  pakda: applicant scope + org_id se `exams` dikh rahe the). `migrate.test.ts` list
 - [x] 2. S24: `sql.ts` me nested transaction doosra scope maange to `ScopeConflict` (`pooler.test.ts`);
   `DataKeys.blind(purpose)` → `BlindIndex.of(scope, value)` (S20, F26; `sealing.test.ts`)
-- [ ] 3. `store/src/candidate-store.ts`: `HireScope` = `practice-store.ts` ke `scoped()` ki nakal (F24; ledger-store me
-  naya scope kind NAHI); accounts, codes (atomic verify S5, limits), sessions (S19 server side), profile (sealed),
-  export, account-only delete, `sweep()` (codes 24 h, sessions, inactive accounts; F4) + store tests
+- [x] 3. `store/src/candidate-store.ts`: `HireScope` + `hireScoped()` (F24), codes (`spendAttempt` ek UPDATE me, S5),
+  accounts (`signIn` upsert), sealed profile, sessions, links, `erase`, `sweep`/`unused`/`warnedUnused` (F4) +
+  `candidate-store.test.ts` (15 tests)
 - [ ] 4. `api/src/candidates.ts`: code mail seedha mailer se, 10 s timeout, mailer na ho to 503 `email_not_configured`
   (F22); verify (dono haalat me ek jaisa jawab), sessions, profile, export, delete (step-up code) + tests
 - [ ] 5. Routes `/candidate/*`, `candidateAuth`, tag `Applicant` (F25); wiring `server.ts`, `assemble.ts`,
