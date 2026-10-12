@@ -63,6 +63,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | W1 | Maujooda code ka naksha (6 agents) | [hire/workflows/w1-understand.js](hire/workflows/w1-understand.js) | ✅ | `docs/hire/code-map/*.md` |
 | W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | 🟡 security ✅, product ✅, fit ❌ (limit) | `docs/hire/critique-*.md` |
 | W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ⬜ | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
+| W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | 🟡 chal raha (session 1) | `docs/hire/handoff-verify.md`, phir fixes |
 
 **Niyam (sab sessions ke liye):**
 - **Chalane se pehle:** workflow ki script `docs/hire/workflows/wN-<naam>.js` me save karo, upar table me row jodo
