@@ -20,7 +20,8 @@ badhao. Jo ho chuka hai use dobara mat banana. Ultracode (workflows) se hi kaam 
 
 1. Kaam kis branch par chal raha hai, ye khud pata karo. Default branch par mat maan lena:
      git fetch origin '+refs/heads/*:refs/remotes/origin/*'
-     git log --all -1 --format='%H %ci %D' -- docs/HANDOFF.md
+     git log --all --exclude='refs/remotes/origin/autosave/*' -1 --format='%H %ci' -- docs/HANDOFF.md
+     git branch -r --contains <commit>
    Us commit ki docs/HANDOFF.md padho (git show <commit>:docs/HANDOFF.md). Usme kaam, canonical
    branch, PR aur handoff file ka naam likha hai.
 2. Main tumhe saaf permission deta hoon ki HANDOFF.md me likhi canonical branch par kaam aur push
@@ -35,8 +36,9 @@ badhao. Jo ho chuka hai use dobara mat banana. Ultracode (workflows) se hi kaam 
    - koi workflow adhoora ho to use wahi se dobara chalao;
    - phir agla kadam uthao.
 4. Har kadam ke baad commit + push karo, aur handoff update karke push karo. Limit kabhi bhi
-   khatam ho sakti hai, isliye koi bhi kaam ya faisla sirf apne paas mat rakhna. Limit paas aaye
-   (hook batayega), to turant sab save karke mujhe bata do ki doosre account se shuru karun.
+   khatam ho sakti hai, isliye koi bhi kaam ya faisla sirf apne paas mat rakhna. Har kadam se
+   pehle apni limit dekho (handoff me tareeka: list_events rate_limit_event). 90% se upar ho to
+   turant sab save karke mujhe bata do ki doosre account se shuru karun.
 5. Repo ke niyam CLAUDE.md me hain. Mujhe Hinglish me chhote updates dete raho.
 ```
 

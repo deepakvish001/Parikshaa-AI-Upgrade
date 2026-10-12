@@ -54,6 +54,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | T2 | Design the Hire pipeline (jobs, apply, AI screen, OA, integrity, rounds, offer, portals, admin) | ✅ | `docs/HIRE-V2.md` + §10 (critique ke faisle) |
 | T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | ⬜ | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
 | T3 | Build Hire slices with tests | ⬜ | §6 ke slices, build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
+| T2b | Resume flow ki jaanch + fixes (W4) | ✅ | Zaroori fixes ho gaye; chhote baaki §5 me |
 | T4 | Review, e2e, tracker, PR | ⬜ | H10 + poora review + PR #65 ko ready |
 
 ## 4. Workflows (multi-agent kaam): sthiti aur dobara chalane ke niyam
@@ -61,9 +62,9 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | # | Workflow | Script | Status | Output |
 |---|---|---|---|---|
 | W1 | Maujooda code ka naksha (6 agents) | [hire/workflows/w1-understand.js](hire/workflows/w1-understand.js) | ✅ | `docs/hire/code-map/*.md` |
-| W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | 🟡 security ✅, product ✅, fit ❌ (limit) | `docs/hire/critique-*.md` |
+| W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | ✅ security, product; fit → W3 (W2 dobara mat chalao) | `docs/hire/critique-*.md` |
 | W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ⬜ | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
-| W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | 🟡 chal raha (session 1) | `docs/hire/handoff-verify.md`, phir fixes |
+| W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | ✅ chal chuka (dobara mat chalao) | `docs/hire/handoff-verify.md`; zaroori fixes ho gaye, baaki §5 me |
 
 **Niyam (sab sessions ke liye):**
 - **Chalane se pehle:** workflow ki script `docs/hire/workflows/wN-<naam>.js` me save karo, upar table me row jodo
@@ -81,7 +82,24 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 
 ## 5. Abhi chal raha (adhoora kaam)
 
-- Design ✅ poora (§10 ke saath). Build abhi shuru nahi hua. Agla kaam: **W3 (fit critique) + H1**.
+**AGLA KADAM (isi kram me, sirf ye):**
+0. **`main` merge karo** (`git merge origin/main`, merge commit; rebase/force nahi). 12 Oct ko `main` par G0–G9 aa gaye
+   (PR #47): migrations **0066–0069** aur tracker rows **100–109** le liye, G1 operator panel aur G2 Library bhi bane. Isliye
+   Hire ki migrations **0070+** se, tracker rows **110+** se: HIRE-V2.md §1/§9, ye file (§5, §6) aur PREP-TRACKER ki
+   numbering badlo. H7 (operator) G1 ko, aur H6 G2 Library ko dobara use kare, naya na banaye. `npm run openapi`,
+   `npm run check`, push.
+1. **W3** (fit critique): `docs/hire/workflows/w3-fit-critique.js`, main merge ke baad. Fit prompt me G1/G2/G5–G8 ka
+   overlap bhi jaanchna hai.
+2. W3 ke F# faisle H1 checklist me jodo, phir **H1 kadam 1**.
+W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
+W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
+snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
+
+**Limit kaise dekhein (pakka tareeka):** har kadam aur har workflow se pehle `get_session` (claude-code-remote) se session
+id lo, phir `list_events(session_id, kinds:["rate_limit_event"], limit:100)`. `unifiedWindows.five_hour.utilization` ya
+`seven_day.utilization` 0.90 se upar ho, to naya kaam mat shuru karo: commit, push, handoff update, push, owner ko
+batao. (Transcript wala `limit-watch.sh` session 1 me kabhi nahi chala. Ab ye statusline se padhta hai, par ye
+cloud session me chalta hai ya nahi, pakka nahi.)
 
 **H1 checklist** (har kadam: code + uske tests → `WIP(H1)` commit → push → yahan `[x]`; aadha ho to `[~]` + ek line
 ki kya baaki):
@@ -136,21 +154,24 @@ karta hai aur Claude ko kehta hai ki naya kaam rok kar handoff likhe, push kare,
 transcript me pehle se chetavni aaye tabhi kaam karta hai. Na aaye to bhi har 30 s ka autosave aur turn ke aakhir ka
 save chalta rehta hai (limit par turn tootne se `StopFailure` hook bhi save karta hai).
 
-Restore (har naye session ki shuruaat me):
+Restore (har naye session ki shuruaat me; tested in W4):
 
 ```bash
-git fetch origin 'refs/heads/autosave/*:refs/remotes/origin/autosave/*'
-git for-each-ref --sort=-committerdate --format='%(committerdate:iso) %(refname:short)' refs/remotes/origin/autosave
-git log -1 --format='%P%n%B' origin/autosave/claude/festive-maxwell-pb4k5v   # parent + badli files ki list
+B=<HANDOFF.md wali canonical branch>
+git fetch origin "+refs/heads/autosave/$B:refs/remotes/origin/autosave/$B"
+A=origin/autosave/$B                                      # sirf canonical branch ka; autosave/worktree-* kabhi nahi
+git show "$A":.claude/live/state.md                       # tasks + aakhri sandesh: sirf padho, kabhi commit nahi
+git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit ho chuka, kuch mat karo
 ```
 
-- Sabse naya autosave dekho (kisi bhi branch naam ka ho sakta hai, agar kisi session ne doosri branch par kaam kiya).
-  Agar uska parent canonical branch ka HEAD hai, ya HEAD ke peeche ka commit hai, aur usme aisi files hain jo branch me
-  nahi, to wo adhoora kaam hai. Lagao: `git cherry-pick --no-commit origin/autosave/<branch>`. Isme deletions bhi aate
-  hain. Conflict ho to `git checkout origin/autosave/<branch> -- <file>` file-by-file karo.
-- Phir `git status` / `git diff` dekho, §5 ki checklist se milao, tests chalao, `WIP(Hx): autosave se wapas` commit
-  karke push karo. **Kaam shuru se dobara mat banao.**
-- Agar autosave ka tree branch ke HEAD jaisa hi hai (sab commit ho chuka), to ise chhod do.
+- Parent == HEAD (`[ "$(git rev-parse "$A^")" = "$(git rev-parse HEAD)" ]`): `git cherry-pick --no-commit "$A" && git reset -q`.
+  `git reset -q` zaroori hai, warna `.claude/live/state.md` agle commit me chala jaata.
+- Parent HEAD ke peeche (branch aage badh chuki): cherry-pick MAT karo. `git diff --stat "$A^" "$A" -- . ':(exclude).claude/live'`
+  dekho, aur sirf wo files haath se lao jo baad ke kisi commit ne nahi chhui.
+- Conflict par `git checkout "$A" -- <file>` MAT karo, commit hua kaam mit jaata hai. Dono hisse milao.
+- Snapshot beech-edit ka ho sakta hai. Pehle typecheck + tests chalao; fail ho to state.md se samjho kya adhoora tha aur
+  poora karo. Restore se koi kadam `[x]` nahi hota, sirf tests pass hone par hota hai. Sessions row ke liye sirf
+  `git add docs/HIRE-HANDOFF.md`; `git add -A` kabhi nahi.
 
 **c. Handoff purana lage to git se khud pata lagao:**
 
@@ -172,10 +193,11 @@ git log -1 --format='%P%n%B' origin/autosave/claude/festive-maxwell-pb4k5v   # p
 
 | # | Tareekh | Session | Kya kiya | Status / kahan ruka |
 |---|---|---|---|---|
-| 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam (limit). Agla: W3 + H1 |
+| 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (5): W4 ke nateeje: autosave ke tested fixes (macOS timeout, staged secrets, CRLF, owner ka sandesh, worktrees nahi), statusline + limit-watch, sahi restore ka tareeka, `main` aage badh gaya (G0–G9) isliye pehle merge aur renumber. Limit `list_events` se dikhti hai.
 - 12 Oct 2026 (4): Prompt ab generic hai (koi branch/PR nahi): [HANDOFF.md](HANDOFF.md) entry point, `git log --all`
   se dhoondha jaata hai. Autosave snapshot me `.claude/live/state.md` (tasks, owner aur Claude ke aakhri sandesh).
   `scripts/limit-watch.sh`: limit paas aaye to turant save aur Claude ko chetavni. Naya kaam ultracode par.
