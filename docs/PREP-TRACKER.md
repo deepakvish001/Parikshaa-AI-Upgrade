@@ -973,6 +973,7 @@ Naya sabse upar.
 
 | Tareekh | PR | Kya bana |
 |---|---|---|
+| 12 Oct 2026 | [#65](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/65) | **Hire v2 shuru**: design ([HIRE-V2.md](HIRE-V2.md)), maujooda code ka naksha, handoff file, plan rows 100–110; daily reminder ke 4 tests ki time bomb theek (plan 100) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F2b class ka student hissa + lab record**: practice site par "Meri classes" (verified email par), lab record me teacher ka sign-off aur PDF, console me lab drawer (plan 96) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F2a Classes (staff ka hissa)**: class = cohort + course (track) + tests + contests, sessions aur haazri, har student ek line wala dashboard, console "Classes" page (plan 95) |
 | 3 Oct 2026 | [#46](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/46) | **F1g candidate report v2**: report me AI use, poori report ka PDF, hiring manager ke liye expiry wala share link aur uska web page, console me PDF/Share (plan 90) |

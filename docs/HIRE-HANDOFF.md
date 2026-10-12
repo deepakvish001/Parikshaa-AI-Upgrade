@@ -16,7 +16,7 @@ scholarship **iske baad**.
 
 ## Branch, PR, checks
 
-- Branch: `claude/festive-maxwell-pb4k5v` (yahi push karo). PR: draft, isi branch ka (link neeche "Log" me).
+- Branch: `claude/festive-maxwell-pb4k5v` (yahi push karo). PR: [#65](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/65) (draft).
 - Setup: `npm ci`. Tests PGlite par chalte hain (alag Postgres nahi chahiye).
 - Har slice ke baad: us package ke tests (`npx vitest run src/<file>.test.ts` package folder se) + typecheck;
   push se pehle poora `npm run check` (~12 min). Web/console badle to `npm run build:clients` aur `npm run budget`.
