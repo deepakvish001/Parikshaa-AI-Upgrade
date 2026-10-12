@@ -1,0 +1,10 @@
+# With the database on Supabase (docs/STAGING.md): the API no longer waits for
+# a database and migration on this machine, and neither is started. Used by
+# scripts/setup-server.sh when DATABASE_URL is set:
+#
+#   docker compose -f docker-compose.yml -f deploy/vm/external-db.yml up -d --build api runner
+#
+# Migrations run from the Migrate workflow (.github/workflows/migrate.yml).
+services:
+  api:
+    depends_on: !reset {}

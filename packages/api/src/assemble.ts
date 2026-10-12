@@ -5,7 +5,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -49,6 +49,8 @@ import { ExamService } from "./service.js";
 import { StaffAuth } from "./staff-auth.js";
 import { StaffSecrets } from "./staff-secrets.js";
 import { StaffSecurity } from "./staff-security.js";
+import { OperatorService, Operators } from "./operator.js";
+import { LibraryService } from "./library.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
 import { DailyPilotReport } from "./pilot-report.js";
 
@@ -95,6 +97,10 @@ export interface AssembleOptions {
   readonly signup?: SignupPolicy | null;
   /** The operator's address for the pilot report each morning. Absent: no report is sent. */
   readonly pilotReportTo?: string | null;
+  /** A bucket for proctoring photos (Supabase Storage). Absent: they stay in Postgres. */
+  readonly blobs?: BlobStore | null;
+  /** Parikshaa's operators by address (PARIKSHAA_OPERATORS): the operator panel is theirs alone. */
+  readonly operators?: readonly string[];
   readonly server?: Pick<ServerOptions, "clients" | "log" | "trustProxy" | "rateLimits" | "loginThrottle" | "attemptTtlSeconds" | "signupLimit" | "openerPolicy" | "androidApp">;
 }
 
@@ -108,9 +114,13 @@ export function assemble(o: AssembleOptions): {
   dailyReport: DailyPilotReport | null;
   /** Queues the hour's daily reminders. */
   prepEngage: PrepEngage;
+  /** Deletes from the bucket the photos of erased attempts, every organisation's. Returns how many. */
+  sweepMedia: () => Promise<number>;
+  /** The Parikshaa Library, to file its built-in questions at boot. */
+  library: LibraryService;
 } {
   const keys = new DataKeys(o.dataKey);
-  const proctorStore = new ProctorStore(o.sql, keys);
+  const proctorStore = new ProctorStore(o.sql, keys, { blobs: o.blobs ?? null });
   const store = new LedgerStore(o.sql, { keys });
   const identity = new IdentityStore(o.sql);
   // Metering needs the exam service for its audit, and the exam service meters: bound late.
@@ -221,6 +231,15 @@ export function assemble(o: AssembleOptions): {
   departments = new DepartmentService({ departments: new DepartmentStore(o.sql), identity, exams: service, invite: (email) => security.requestReset(email) });
 
   const bank = new QuestionBank(o.sql);
+  const operator = new OperatorService({
+    identity,
+    billing: billingStore,
+    reports: new ReportStore(o.sql),
+    exams: service,
+    operators: new Operators(o.operators ?? []),
+    now: () => Date.now(),
+  });
+  const library = new LibraryService({ library: new LibraryStore(o.sql), operator, exams: service });
   const onboarding = new Onboarding({
     identity,
     auth,
@@ -311,6 +330,8 @@ export function assemble(o: AssembleOptions): {
     auth,
     security,
     onboarding,
+    operator,
+    library,
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,
@@ -343,7 +364,7 @@ export function assemble(o: AssembleOptions): {
     recheck: (org, id) => rechecks.note(orgId(org), id),
     result: (org, invitation) => results.candidateResult(orgId(org), attemptId(invitation.attemptId!), examId(invitation.examId)),
     handlers: { ...integrations.handlers, staff_email: (item) =>
-      item.purpose === "password_reset"
+      item.purpose === "password_reset" || item.purpose === "staff_invite"
         ? security.resetMail(item)
         : item.purpose === "results_file"
           ? results.mail(item)
@@ -354,5 +375,11 @@ export function assemble(o: AssembleOptions): {
       student: (item) => studentMessages.deliver(item), interview: (item) => (item.purpose.startsWith("ai_") ? aiInterviews.deliver(item) : interviews.deliver(item)) },
   });
 
-  return { app, worker, privacy, billing, identity, dailyReport, prepEngage };
+  const sweepMedia = async () => {
+    let deleted = 0;
+    for (const org of await identity.organisationIds()) deleted += await proctorStore.emptyTrash(staffScope(org));
+    return deleted;
+  };
+
+  return { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia, library };
 }

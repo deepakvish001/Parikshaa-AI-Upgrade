@@ -33,6 +33,14 @@ export async function resetDatabase(hashPassword: (password: string) => Promise<
     await sql.exec(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public; GRANT USAGE ON SCHEMA public TO parikshaa_app;`);
     const executor = sql;
     await migrate(executor);
+    // Company IDs are drawn at random (migration 0067); here each follows from
+    // the organisation's id, so pages and their screenshots are the same every run.
+    await sql.exec(`
+      CREATE FUNCTION e2e_company_id() RETURNS trigger LANGUAGE plpgsql SET search_path = '' AS $$
+      BEGIN NEW.public_id := 'PKC-' || upper(substr(md5(NEW.id), 1, 6)); RETURN NEW; END $$;
+      CREATE TRIGGER e2e_company_id BEFORE INSERT ON public.organisations FOR EACH ROW EXECUTE FUNCTION e2e_company_id();
+      UPDATE public.organisations SET public_id = 'PKC-' || upper(substr(md5(id), 1, 6));
+    `);
     const identity = new IdentityStore(executor);
     await identity.createOrganisation(orgId(ORG), "E2E College");
     await identity.createUser({

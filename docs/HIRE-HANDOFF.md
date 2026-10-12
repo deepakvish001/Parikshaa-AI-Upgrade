@@ -52,7 +52,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 |---|---|---|---|
 | T1 | Map existing Hire code against job→offer flow | ✅ | Workflow W1; output `docs/hire/code-map/` |
 | T2 | Design the Hire pipeline (jobs, apply, AI screen, OA, integrity, rounds, offer, portals, admin) | ✅ | `docs/HIRE-V2.md` + §10 (critique ke faisle) |
-| T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | ⬜ | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
+| T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | 🟡 | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
 | T3 | Build Hire slices with tests | ⬜ | §6 ke slices, build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
 | T2b | Resume flow ki jaanch + fixes (W4) | ✅ | Zaroori fixes ho gaye; chhote baaki §5 me |
 | T4 | Review, e2e, tracker, PR | ⬜ | H10 + poora review + PR #65 ko ready |
@@ -63,7 +63,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 |---|---|---|---|---|
 | W1 | Maujooda code ka naksha (6 agents) | [hire/workflows/w1-understand.js](hire/workflows/w1-understand.js) | ✅ | `docs/hire/code-map/*.md` |
 | W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | ✅ security, product; fit → W3 (W2 dobara mat chalao) | `docs/hire/critique-*.md` |
-| W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ⬜ | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
+| W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | 🟡 session 2 me chal raha (Workflow tool nahi tha, isliye Agent tool se wahi prompt). `critique-fit.md` ke aakhir me `<!-- complete -->` na ho to dobara chalao: jo likha ja chuka hai wo bachega | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
 | W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | ✅ chal chuka (dobara mat chalao) | `docs/hire/handoff-verify.md`; zaroori fixes ho gaye, baaki §5 me |
 
 **Niyam (sab sessions ke liye):**
@@ -83,7 +83,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 ## 5. Abhi chal raha (adhoora kaam)
 
 **AGLA KADAM (isi kram me, sirf ye):**
-0. **`main` merge karo** (`git merge origin/main`, merge commit; rebase/force nahi). 12 Oct ko `main` par G0–G9 aa gaye
+0. ✅ **(session 2, ho gaya)** **`main` merge karo** (`git merge origin/main`, merge commit; rebase/force nahi). 12 Oct ko `main` par G0–G9 aa gaye
    (PR #47): migrations **0066–0069** aur tracker rows **100–109** le liye, G1 operator panel aur G2 Library bhi bane. Isliye
    Hire ki migrations **0070+** se, tracker rows **110+** se: HIRE-V2.md §1/§9, ye file (§5, §6) aur PREP-TRACKER ki
    numbering badlo. H7 (operator) G1 ko, aur H6 G2 Library ko dobara use kare, naya na banaye. `npm run openapi`,
@@ -96,7 +96,10 @@ W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, sessio
 snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
 
 **Limit kaise dekhein (pakka tareeka):** har kadam aur har workflow se pehle `get_session` (claude-code-remote) se session
-id lo, phir `list_events(session_id, kinds:["rate_limit_event"], limit:100)`. `unifiedWindows.five_hour.utilization` ya
+id lo, phir `list_events(session_id, kinds:["rate_limit_event"], limit:100)`. **Session 2 me `list_events` tool tha hi nahi.** Tab
+`get_session` (bina session_id) ka `external_metadata.rate_limit_info` dekho: `status` "allowed" ho to chalo; "allowed" ke
+alawa kuch bhi (warning/rejected) ho, ya `isUsingOverage: true`, to wahi save-push-batao wala kaam karo. Isme utilization
+ka number nahi aata, sirf status aur `resetsAt`. `unifiedWindows.five_hour.utilization` ya
 `seven_day.utilization` 0.90 se upar ho, to naya kaam mat shuru karo: commit, push, handoff update, push, owner ko
 batao. (Transcript wala `limit-watch.sh` session 1 me kabhi nahi chala. Ab ye statusline se padhta hai, par ye
 cloud session me chalta hai ya nahi, pakka nahi.)
@@ -104,7 +107,7 @@ cloud session me chalta hai ya nahi, pakka nahi.)
 **H1 checklist** (har kadam: code + uske tests → `WIP(H1)` commit → push → yahan `[x]`; aadha ho to `[~]` + ek line
 ki kya baaki):
 
-- [ ] 1. Migration `0066_candidate_accounts.sql`: candidate_accounts, candidate_sessions, candidate_codes,
+- [ ] 1. Migration `0070_candidate_accounts.sql`: candidate_accounts, candidate_sessions, candidate_codes,
   candidate_links (policies S2), outbox/model_usage CHECKs jo zaroori hon; `store/src/migrate.test.ts` ki list
 - [ ] 2. `withScope` nested guard (S24) + test; blind index helper (S20) + test
 - [ ] 3. `store/src/candidate-store.ts` (accounts, sessions, codes: atomic verify S5, limits, links) + store tests
@@ -115,23 +118,23 @@ ki kya baaki):
 - [ ] 6. Routes `/candidate/*` + `candidateAuth` security scheme; wiring `server.ts`, `assemble.ts`,
   `testing/harness.ts`, `openapi.ts`; `npm run openapi`
 - [ ] 7. trustProxy hop count / CIDR (S6) + forged XFF test; `deploy/aws` me ALB/env ka badlaav
-- [ ] 8. Poora `npm run check` green; tracker row 101 (status, Kahan); §6 table + §10 Log; push
+- [ ] 8. Poora `npm run check` green; tracker row 111 (status, Kahan); §6 table + §10 Log; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
 
-## 6. Slices (design: HIRE-V2.md §9 + §10; tracker rows 101–110)
+## 6. Slices (design: HIRE-V2.md §9 + §10; tracker rows 111–120)
 
 | Slice | Kya | Status | Commit / note |
 |---|---|---|---|
-| H0 | Design, code map, critique, tracker rows 100–110, ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
+| H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
 | H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ⬜ | |
 | H2 | Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
 | H5 | Integrity: reasons + `not_checked`/coverage P2, auto face check P7, AI interview signals P8, duplicates P9, high sirf S14 wale; overall score, compare, job report | ⬜ | |
-| H6 | AI se naye sawaal: sirf MCQ/numeric v1 me (P21), draft → insaan manzoor kare, exposure count, pool depth warning | ⬜ | Build order me H9 ke baad |
-| H7 | Platform operator (admin): login + TOTP, operator scope S11, companies, verify (P18), suspend S12, job reports S10, candidate erase + console | ⬜ | |
+| H6 | AI se naye sawaal: sirf MCQ/numeric v1 me (P21), draft → insaan manzoor kare, exposure count, pool depth warning. G2 Library (`library.ts`) aur reference run (`checkReference`) dobara use karo | ⬜ | Build order me H9 ke baad |
+| H7 | Platform operator (admin): **G1 ko badhao**, naya login nahi (staff + `PARIKSHAA_OPERATORS` + 2FA, `operator.ts`, console `Operator.tsx` pehle se hain). Jodna: verify (P18), suspend ka Hire par asar S12, job reports S10, candidate erase. S11 ko W3 me G1 se milao | ⬜ | |
 | H8 | Console "Hiring" UI (jobs, editor, pipeline table, candidate drawer, compare, report, identity queue, HirePath) | ⬜ | |
 | H9 | Web: job page (device needs P12, SSR meta P19), careers, apply, candidate portal `/my` | ⬜ | |
 | H10 | e2e = acceptance demo (critique-product item 22), screenshots, SECURITY.md/SPEC.md, tracker | ⬜ | |
@@ -198,6 +201,11 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (6, session 2): §5 kadam 0: `main` (G0–G4a, PR #47) is branch me merge (merge commit, force nahi).
+  Hire ki migrations ab 0070+ se, tracker rows 110–120 (Faisle me "(plan 110…117)"). HIRE-V2.md §1/§7/§8/§9 me likha
+  ki H7 G1 operator ko badhayega (naya login, `operators` table, `pko_` nahi) aur H6 G2 Library + `checkReference`
+  dobara use karega. Fit prompt me G1/G2/G4/G5–G8 ka overlap joda. Limit ka tareeka: `list_events` nahi mila, to
+  `get_session` ka `rate_limit_info` (§5).
 - 12 Oct 2026 (5): W4 ke nateeje: autosave ke tested fixes (macOS timeout, staged secrets, CRLF, owner ka sandesh, worktrees nahi), statusline + limit-watch, sahi restore ka tareeka, `main` aage badh gaya (G0–G9) isliye pehle merge aur renumber. Limit `list_events` se dikhti hai.
 - 12 Oct 2026 (4): Prompt ab generic hai (koi branch/PR nahi): [HANDOFF.md](HANDOFF.md) entry point, `git log --all`
   se dhoondha jaata hai. Autosave snapshot me `.claude/live/state.md` (tasks, owner aur Claude ke aakhri sandesh).

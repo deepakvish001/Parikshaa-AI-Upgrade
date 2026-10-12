@@ -13,3 +13,5 @@ packages/e2e/load-*.txt
 .claude/live/
 # Worktrees Claude Code makes for isolated agents.
 .claude/worktrees/
+# Vercel build output (npm run vercel-output) and project link
+.vercel/

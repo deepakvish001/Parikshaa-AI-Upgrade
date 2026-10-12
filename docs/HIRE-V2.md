@@ -1,7 +1,7 @@
 # Parikshaa Hire v2 — job post to offer, end to end (design)
 
 Status and the next step to take: [docs/HIRE-HANDOFF.md](HIRE-HANDOFF.md). Maps of the code this builds on (what
-exists, file:line, conventions, gotchas): [docs/hire/code-map/](hire/code-map/). Tracker rows: plan 100–110 in
+exists, file:line, conventions, gotchas): [docs/hire/code-map/](hire/code-map/). Tracker rows: plan 110–120 in
 [PREP-TRACKER.md](PREP-TRACKER.md).
 
 Owner's ask (12 Oct 2026, Hinglish, paraphrased): build the complete company hiring portal first and launch it;
@@ -34,7 +34,7 @@ House rules that bind this design (from the repo; do not break them):
   `zodOutputFormat`, untrusted text wrapped in tags. `fake-model.ts` gets a branch + script field per new prompt.
 - Wire every new service in **assemble.ts, testing/harness.ts and openapi.ts**; register routes in server.ts; run
   `npm run openapi`. New console/web pages are lazy chunks with an entry in `bundle-budget.json`.
-- Hinglish tracker (`docs/PREP-TRACKER.md`) is updated in the same PR (plan rows 100–110, below).
+- Hinglish tracker (`docs/PREP-TRACKER.md`) is updated in the same PR (plan rows 110–120, below).
 
 ## 0. Why a new "Jobs" module instead of stretching drives
 
@@ -45,7 +45,9 @@ Stretching drives would tangle the TPO features (which the owner wants later) wi
 services. Drives stay as they are. Reused as-is: exams + job-test + question bank + invitations (OA), proctoring,
 proxy, similarity, viva, ledger, results, candidate report v2, AI interviewer, live interviews + panel, outbox, pdf.
 
-## 1. Data model (migration `0066_hire.sql`, plus 0067 questions, 0068 operator)
+## 1. Data model (migrations from 0070: H1 `0070_candidate_accounts.sql`, H2 `0071_hire.sql`, then H7 operator, H6 questions)
+
+`main` took 0066–0069 for G0–G4 (PR #47). Each slice takes the next free number when it is built.
 
 ### Global candidate accounts (outside tenant RLS — like `learners`)
 - `candidate_accounts(id text PK, email text NOT NULL CHECK(email=lower(email)), name text, created_at, verified_at,
@@ -252,7 +254,11 @@ A person records "Reviewed: genuine / not genuine" with a note → event + audit
 **Overall score** (computed on read): weighted mean over rounds that have a score: screen, assessment, AI interview,
 interview (default weights 20/40/20/20, job-editable). Integrity is shown beside it, not mixed into it.
 
-## 7. Fresh questions (`question-drafts.ts`, migration 0067)
+## 7. Fresh questions (`question-drafts.ts`, H6 migration)
+
+Reuse what G2 and G4 built on `main` (PR #47): the Parikshaa Library (`api/src/library.ts`, `library-routes.ts`, migration
+0068: operators file questions, companies copy them into their bank) and the reference run (`ExamService.checkReference`,
+`POST /questions/code/check`), which checks a code draft's reference solution against its tests. Do not build either again.
 
 - `bank_questions` gains `status CHECK(approved|draft) default approved`, `source CHECK(manual|import|starter|ai)`,
   `created_by`, `approved_by`, `approved_at`, `used_count int default 0`, `last_used_at`.
@@ -267,12 +273,22 @@ interview (default weights 20/40/20/20, job-editable). Integrity is shown beside
 - Fix: `QuestionBank.list` LIMIT 1000 silently cuts job-test drafts → page through or raise with explicit filter.
 - Recorded decision change (Faisle): owner asked for new questions; the model now drafts, a person approves.
 
-## 8. Platform operator — "Admin" (migration 0068, `operator.ts`)
+## 8. Platform operator — "Admin" (H7: extends G1, `operator.ts`)
 
-- `operators(id, email UNIQUE, name, password_hash, totp_secret (sealed), created_at, disabled_at)`,
-  `operator_sessions(token_hash, operator_id, created_at, expires_at, revoked_at)` — `pko_` tokens, 8 h; sign-in needs
-  password + TOTP always; created by `admin-cli operator add` (prints the TOTP URI once).
-- `organisations` gains `verified_at`, `verified_by`, `suspended_at`, `suspended_reason`.
+**G1 built the operator on `main` (PR #47); H7 extends it, it does not make a second one.** Already there:
+an operator is a staff member whose address is in `PARIKSHAA_OPERATORS` and who must have a second factor
+(`api/src/operator.ts`, `operator-routes.ts`, console `components/Operator.tsx`); `/operator/companies` lists, shows,
+creates, suspends/resumes (staff sign-in and API keys refused), grants credits and re-invites; organisations have
+`public_id`, `suspended_at`, `suspended_reason` (migration 0067); every action is audited in the organisation and in the
+operator's own. So the `operators` / `operator_sessions` tables, `pko_` tokens and `admin-cli operator add` below are
+**dropped**. H7 adds only what Hire needs: `verified_at`/`verified_by`, `hire_job_reports` and its queue, candidate lookup
+and erase, and suspension's effects on Hire (job and careers pages 404, apply refused, hire mails held). S11 is
+re-checked against G1 in the fit critique (W3).
+
+Original design (kept for reference; struck where G1 already covers it):
+
+- ~~`operators(…)`, `operator_sessions(…)`, `pko_` tokens, `admin-cli operator add`~~ (G1: staff + `PARIKSHAA_OPERATORS` + 2FA).
+- `organisations` gains `verified_at`, `verified_by` (`suspended_at`, `suspended_reason` already exist from G1).
 - `hire_job_reports(org_id, id, job_id, candidate_id NULL, reason CHECK(fake|scam_fee|misleading|offensive|other),
   note, created_at, resolved_by, resolved_at, outcome CHECK(kept|taken_down))`.
 - Routes `/operator/*` (operatorAuth): orgs list with stats (kind, created, owner verified, staff, open jobs,
@@ -287,10 +303,10 @@ interview (default weights 20/40/20/20, job-editable). Integrity is shown beside
 
 ## 9. Slices (each one: code + tests + wiring; commit per slice)
 
-- H1 Candidate accounts + resume: 0066 (candidate tables), scope `applicant`, `candidates.ts` (code sign-in, sessions,
+- H1 Candidate accounts + resume: 0070 (candidate tables), scope `applicant`, `candidates.ts` (code sign-in, sessions,
   profile, resume upload + text extraction: PDF via `unpdf` (new dependency, pin exact), DOCX via existing docx
   helpers), erase, data export; routes `/candidate/*` (candidateAuth); tests.
-- H2 Jobs + apply + pipeline core: rest of 0066; `hire.ts` (jobs CRUD, rounds config, publish/pause/close, public job
+- H2 Jobs + apply + pipeline core: 0071 (hire tables); `hire.ts` (jobs CRUD, rounds config, publish/pause/close, public job
   page, careers, apply (account required, consent, snapshot, ref, link, event, mail_applied, screen queued), pipeline
   read, move/reject/restore/withdraw, notes, events, candidate portal views), permissions, `hire-messages.ts`
   (outbox `hire` delivery), routes `hire-routes.ts` + `hire-public-routes.ts`; tests (two orgs isolation, applicant
@@ -300,9 +316,10 @@ interview (default weights 20/40/20/20, job-editable). Integrity is shown beside
 - H4 Rounds + offers (`hire-rounds.ts`, `hire-offers.ts`): send test with window, settle, AI interview, interview,
   review, offers + letter PDF + link + portal response + expiry + hired + close-and-tell; tests.
 - H5 Integrity + overall + compare + job report (`hire-integrity.ts`); tests per reason.
-- H6 Question drafts + exposure (0067, `question-drafts.ts`, fake model branch "You draft assessment questions");
+- H6 Question drafts + exposure (next free migration, `question-drafts.ts`, on the G2 Library and reference run, fake model branch "You draft assessment questions");
   tests (runner-checked code drafts, approval gate, job-test excludes drafts).
-- H7 Operator (0068, `operator.ts`, admin-cli, routes, suspend/verify effects) + console Operator chunk; tests.
+- H7 Operator: extend G1 (next free migration for verify + job reports; `operator.ts`, `operator-routes.ts`, verify and
+  suspend effects on Hire) + extend the console `Operator.tsx`; tests.
 - H8 Console Hiring UI (Jobs, editor, pipeline, drawer, compare, report, drafts in Bank, HirePath) + tests + budget.
 - H9 Web candidate side (job page, careers, apply, portal) + tests + budget.
 - H10 e2e (whole flow in Playwright), screenshots, docs (SECURITY.md, SPEC.md: candidate + operator accounts), tracker.
@@ -436,7 +453,7 @@ records the decisions and resolves the conflicts between them.
   hiring preset warns when a section's pool is under 2× its pick; overall-score weights fixed (20/40/20/20) in v1;
   operator keeps companies, verify, suspend, reports and erase (figures/credits stay in the CLIs); pipeline ships as a
   table with round counts (no drag-and-drop board).
-- P22 The acceptance demo in critique-product.md item 22 is the "done" test for plan row 100, and the script for H10.
+- P22 The acceptance demo in critique-product.md item 22 is the "done" test for plan row 110, and the script for H10.
 
 ### Not adopted / changed
 - None of the items are rejected. Conflicts resolved: integrity `high` follows S14 (not P8/P9); unverified employers get
@@ -444,7 +461,7 @@ records the decisions and resolves the conflicts between them.
 - The third critique ("fit": does the design match the real code, service signatures, slice order) did not finish
   (session limit). Re-run it before or alongside H1 — see docs/HIRE-HANDOFF.md.
 
-### Build order (slice ids stay tied to tracker rows 101–110)
+### Build order (slice ids stay tied to tracker rows 111–120)
 H1 → H2 → H3 → H4 → H5 → H7 (operator) → H8 (console) → H9 (web) → H6 (question drafts) → H10 (e2e + docs).
 Where an item above belongs: S1, S5, S6, S19, S20, S24 → H1. S2–S4, S7–S10, S15-knockouts, S17, S18, S21–S23, P1, P3,
 P9-hashes, P11, P14, P19, P20 → H2. S15, S16, P16 → H3. P4–P6, P10, P13, P15, P17, S13 → H4. S14, P2, P7, P8, P9 → H5.

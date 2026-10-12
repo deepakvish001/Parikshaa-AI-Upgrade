@@ -5,6 +5,7 @@ import { TabPanel, Tabs, Tooltip } from "@parikshaa/brand/ui";
 import { BankPicker, KIND_NAME, type BankLoader } from "./Bank.tsx";
 import { EmptyState, PageActions, PageMeta, SettingsGroup } from "./kit.tsx";
 import { QuestionView, TryTest } from "./Preview.tsx";
+import type { ReferenceChecker } from "../api.ts";
 import { QuestionFields, blankQuestion, type ImageUploader } from "./QuestionFields.tsx";
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   readonly loadBank?: BankLoader;
   /** Uploads a picture for a question or passage. */
   readonly uploadImage?: ImageUploader;
+  /** Runs an author's reference program on a code question's tests (G4). */
+  readonly checkReference?: ReferenceChecker;
   /** Told whenever the exam differs from what was last saved, so leaving can warn. */
   readonly onDirtyChange?: (dirty: boolean) => void;
 }
@@ -56,7 +59,7 @@ const SETTINGS: readonly (readonly [string, string])[] = [
  * groups. "Try test" sits the paper as a candidate would, and records
  * nothing; a bar at the foot says when there is something to save.
  */
-export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, loadBank, uploadImage, onDirtyChange }: Props) {
+export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, loadBank, uploadImage, checkReference, onDirtyChange }: Props) {
   const [picking, setPicking] = useState<Picking>(null);
   const [tab, setTab] = useState<Tab>("questions");
   const [trying, setTrying] = useState(false);
@@ -433,6 +436,7 @@ export function ExamEditor({ initial, saving, serverProblems, onSave, onCancel, 
                       question={current}
                       onChange={(next) => patchQuestion(index, next)}
                       {...(uploadImage === undefined ? {} : { upload: uploadImage })}
+                      {...(checkReference === undefined ? {} : { checkReference })}
                       {...(exam.questions[index - 1]?.passage === undefined ? {} : { previousPassage: exam.questions[index - 1]!.passage! })}
                     />
                   </div>

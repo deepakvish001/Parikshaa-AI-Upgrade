@@ -11,6 +11,7 @@ import type { ZodTypeProvider } from "fastify-type-provider-zod";
 import type { IdentityStore } from "@parikshaa/store";
 import * as S from "./schemas.js";
 import type { ExamService } from "./service.js";
+import type { Operators } from "./operator.js";
 import { hashPassword, permissionsOf, type Actor, type LoginThrottle, type Permission, type StaffAuth } from "./staff-auth.js";
 
 type Routes = FastifyInstance<
@@ -28,6 +29,8 @@ export interface AccountRouteDeps {
   readonly throttle: LoginThrottle;
   readonly bearer: (request: FastifyRequest) => string | null;
   readonly staff: (request: FastifyRequest, reply: FastifyReply, permission: Permission | null) => Promise<Actor | null>;
+  /** Parikshaa's own operators (operator.ts), named in `/auth/me`. */
+  readonly operators?: Operators;
 }
 
 const ACCOUNT = ["Account"];
@@ -83,6 +86,9 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
         if (outcome.reason === "sso_required") {
           return reply.code(403).send({ error: "sso_required", message: "Your organisation signs its staff in through its own provider" });
         }
+        if (outcome.reason === "suspended") {
+          return reply.code(403).send({ error: "suspended", message: "This organisation's account is paused. Write to Parikshaa's support." });
+        }
         return reply.code(401).send({ error: "invalid_credentials" });
       }
       throttle.succeeded(request.ip, email);
@@ -132,7 +138,8 @@ export function registerAccountRoutes(routes: Routes, deps: AccountRouteDeps): v
         name: actor.name,
         email: actor.kind === "user" ? actor.email : null,
         role: actor.role,
-        organisation: { id: actor.orgId, name: org?.name ?? actor.orgId, kind: org?.kind ?? "institution" },
+        organisation: { id: actor.orgId, publicId: org?.publicId ?? "", name: org?.name ?? actor.orgId, kind: org?.kind ?? "institution" },
+        operator: deps.operators?.is(actor) ?? false,
         permissions: permissionsOf(actor),
         emailVerified: !(actor.kind === "user" && actor.emailUnverified === true),
         mustEnrol2fa: actor.kind === "user" && actor.mustEnrol2fa === true,

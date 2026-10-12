@@ -1,4 +1,6 @@
 import { useState } from "react";
+import type { ReferenceChecker } from "../api.ts";
+import { ReferenceRunner } from "./ReferenceRun.tsx";
 import {
   CODE_LANGUAGES,
   FUNCTION_LANGUAGES,
@@ -75,7 +77,7 @@ function without<K extends keyof CodeQuestion>(question: CodeQuestion, ...keys: 
  * decide the score and never leave the server; at least one is required,
  * because a candidate who has seen every test can simply print the answers.
  */
-export function CodeFields({ question, onChange }: { question: CodeQuestion; onChange: (next: CodeQuestion) => void }) {
+export function CodeFields({ question, onChange, check }: { question: CodeQuestion; onChange: (next: CodeQuestion) => void; check?: ReferenceChecker | undefined }) {
   const languages = question.languages ?? [question.language];
   const tests = question.tests ?? [];
   const signature = question.signature;
@@ -512,6 +514,7 @@ export function CodeFields({ question, onChange }: { question: CodeQuestion; onC
           </button>
         </div>
         <p className="notice">Scored by the share of test weight passed. With no tests, a code answer is graded against its rubric instead.</p>
+        {check === undefined ? null : <ReferenceRunner question={question} check={check} onChange={onChange} />}
       </div>
     </>
   );

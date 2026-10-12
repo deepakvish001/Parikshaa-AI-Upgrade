@@ -150,7 +150,7 @@
 **How a round should reference them**
 - Add `hire_rounds(org_id, job_id, seq, kind ∈ {ai_interview, live_interview, panel, oa, take_home, hm_review}, config jsonb)`.
 - Add `application_rounds(org_id, application_id, round_id, status, outcome, decided_by, decided_at)` with **typed nullable link columns**: `interview_id`, `ai_interview_id`, `attempt_id`, `shortlist_id`. Each gets a composite FK `(org_id, x_id)`; polymorphic FKs are not possible.
-- Alternatively, add `application_id`/`round_id` to `interviews` and `ai_interviews` in migration 0066+.
+- Alternatively, add `application_id`/`round_id` to `interviews` and `ai_interviews` in migration 0071+.
 - Create the artifact through the existing services (`InterviewService.schedule` with the extra id, `AiInterviewService.create` with `job` = the JD and `resume` = the applicant's resume).
 - Add an injected callback, the same way `enqueue` is injected, fired from `InterviewService.score` (on `done`) and `AiInterviewService.decide`, to advance the round.
 - For the candidate portal, show `InterviewService.link()` / `AiInterviewService.link()` (both public methods) on a status page.
@@ -167,7 +167,7 @@
 - **Migration:**
   - Copy `0060_ai_interviews.sql`: the DO-loop RLS block (RESTRICTIVE `tenant_isolation` plus `<table>_staff`), then GRANTs to `parikshaa_app`.
   - Add the file and table names to `store/src/migrate.test.ts:129-196`.
-  - Next free number is 0066.
+  - Next free number is 0070.
 - **Audit:** `exams.recordAudit(actor, "thing.verb", id, {...})`, for example `interviews.ts:217`.
 - **Outbox email:**
   - Inject `enqueue` and `mailer` (`assemble.ts:148-165`). Draft shape: `{kind, purpose, id (idempotent), subject, sendAfter}`. Add a `deliver(item)` that returns `"sent" | {skip}`.

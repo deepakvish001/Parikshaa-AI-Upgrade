@@ -104,7 +104,7 @@
   - Copy the learner methods and the `scoped()` helper in `practice-store.ts`.
   - Seal with `keys.records("<purpose>")` (`assemble.ts:145-157`) and bind the aad to the row (`placement-store.ts:113`).
 - **Migrations:**
-  - The next number is `0066_…`.
+  - The next number is `0070_…` (`main` took 0066–0069 for G0–G4).
   - Copy the RLS loop in `0060_ai_interviews.sql`.
   - To add an outbox kind, re-declare `outbox_kind_check`. The latest version is in `0052_interview_panel.sql`.
 - **Email:**

@@ -88,7 +88,7 @@
 
 **Migrations**
 - `store/src/migrate.ts`: files sorted lexically, each applied in one transaction, recorded by filename, with no down path.
-- **The last migration is `0065_class_lab.sql`; the next is `0066_*`.** Some numbers are already used twice (0024 and 0033-0038) but nothing breaks.
+- **The last migration on `main` is `0069_code_timeline.sql`; the next is `0070_*`.** Some numbers are already used twice (0024 and 0033-0038) but nothing breaks.
 
 ## How it maps to the target flow
 
@@ -109,7 +109,7 @@
 
 ## Extension points and conventions
 
-- **Migration.** Write `0066_hire_*.sql` by copying `0032_shortlists.sql` or `0064_classes.sql`:
+- **Migration.** Write `0071_hire_*.sql` by copying `0032_shortlists.sql` or `0064_classes.sql`:
   - composite PK `(org_id, id)`, `org_id REFERENCES organisations(id)`;
   - CHECKs on length;
   - `ENABLE ROW LEVEL SECURITY`, the restrictive `tenant_isolation`, an actor policy, `GRANT … TO parikshaa_app`.

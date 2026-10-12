@@ -384,11 +384,98 @@ describe("function questions, as on LeetCode", () => {
     expect(state.answers.map((a: { questionId: string }) => a.questionId)).toEqual(["two-sum"]);
   });
 
+  it("lists the candidate's submissions of a question, newest first, with their verdicts (G4)", async () => {
+    const { token } = await startIn("leetcode-round");
+    const wrong = TWO_SUM.replace("return [i, seen[target - n]]", "return [0, 1]");
+    await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: wrong });
+    await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: TWO_SUM });
+    const res = await call("GET", token, "/attempts/me/code/two-sum/submissions");
+    expect(res.statusCode, res.payload).toBe(200);
+    const list = res.json().submissions;
+    expect(list.map((s: { number: number; accepted: boolean | null; passed: number | null; total: number | null }) => [s.number, s.accepted, s.passed, s.total])).toEqual([
+      [2, true, 3, 3],
+      [1, false, 1, 3],
+    ]);
+    expect(list[1]).toMatchObject({ language: "python", source: wrong, tested: true });
+    expect(res.payload).not.toContain("31337");
+    expect((await call("GET", token, "/attempts/me/code/nope/submissions")).statusCode).toBe(409);
+  });
+
+  it("keeps the counts out of the history when the exam reports only visible tests, and lists an untested commit", async () => {
+    const { token } = await startIn("visible-only");
+    await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: TWO_SUM });
+    runnerDown = true;
+    await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "python", source: `${TWO_SUM}\n# again` });
+    const list = (await call("GET", token, "/attempts/me/code/two-sum/submissions")).json().submissions;
+    expect(list.map((s: { tested: boolean; accepted: boolean | null; passed: number | null }) => [s.tested, s.accepted, s.passed])).toEqual([
+      [false, null, null],
+      [true, null, null],
+    ]);
+  });
+
   it("refuses a language the question does not offer, before committing anything", async () => {
     const { token } = await startIn("leetcode-round");
     const res = await call("POST", token, "/attempts/me/code/submit", { questionId: "two-sum", language: "c", source: "int x;" });
     expect(res.statusCode).toBe(409);
     expect((await call("GET", token, "/attempts/me")).json().answers).toEqual([]);
+  });
+});
+
+describe("code playback (G4)", () => {
+  it("keeps the editor's changes while the attempt is open, and plays them back to staff with the pastes counted", async () => {
+    const { attemptId, token } = await start();
+    const send = (questionId: string, ops: object[]) => app.inject({ method: "POST", url: `/attempts/me/code/${questionId}/timeline`, headers: bearer(token), payload: { ops } });
+    expect((await send("sum", [{ t: 1000, at: 0, del: 0, ins: "# read two numbers\n", reset: true }, { t: 1500, at: 19, del: 0, ins: "a" }])).statusCode).toBe(202);
+    const pasted = "x".repeat(250);
+    expect((await send("sum", [{ t: 2000, at: 20, del: 0, ins: pasted, paste: true }, { t: 2500, at: 0, del: 2, ins: "ab", paste: true }])).statusCode).toBe(202);
+
+    // Not a code question, or not one at all; and nothing from the candidate's token for the staff view.
+    expect((await send("nope", [{ t: 1, at: 0, del: 0, ins: "x" }])).statusCode).toBe(409);
+    expect((await call("GET", token, `/attempts/${attemptId}/playback`)).statusCode).toBe(401);
+
+    const res = await call("GET", owner, `/attempts/${attemptId}/playback`);
+    expect(res.statusCode, res.payload).toBe(200);
+    const [played] = res.json().questions;
+    expect(played).toMatchObject({ questionId: "sum", largePastes: 1, pastes: [{ t: 2000, chars: 250 }, { t: 2500, chars: 2 }] });
+    expect(played.ops.map((o: { t: number }) => o.t)).toEqual([1000, 1500, 2000, 2500]);
+
+    await call("POST", token, "/attempts/me/submit");
+    expect((await send("sum", [{ t: 3000, at: 0, del: 0, ins: "late" }])).statusCode).toBe(409);
+  });
+});
+
+describe("an author's reference program (G4)", () => {
+  const draft = (tests: object[]) => {
+    const { id: _id, ...rest } = exam.questions[0] as unknown as Record<string, unknown>;
+    return { ...rest, tests };
+  };
+
+  it("runs on every test, hidden included, and returns what it printed, to take the expected outputs from", async () => {
+    const tests = [
+      { id: "a", input: "2 3\n", expected: "", hidden: false, weight: 1 },
+      { id: "b", input: "-7 2\n", expected: "", hidden: true, weight: 1 },
+    ];
+    const res = await call("POST", owner, "/questions/code/check", { question: draft(tests), language: "python", source: PYTHON_SUM });
+    expect(res.statusCode, res.payload).toBe(200);
+    expect(res.json().tests.map((t: { id: string; output: string }) => [t.id, t.output])).toEqual([
+      ["a", "5\n"],
+      ["b", "-5\n"],
+    ]);
+  });
+
+  it("returns a function's value for a function question, and the compiler's words for code that does not build", async () => {
+    const { id: _id, ...question } = functionQuestion;
+    const res = await call("POST", owner, "/questions/code/check", { question: { ...question, tests: question.tests.map((t) => ({ ...t, expected: "" })) }, language: "python", source: TWO_SUM });
+    expect(res.json().tests.map((t: { output: string }) => t.output)).toEqual(["[1,0]", "[2,1]", "[2,0]"]);
+    const broken = await call("POST", owner, "/questions/code/check", { question: draft([{ id: "a", input: "", expected: "", hidden: false, weight: 1 }]), language: "cpp", source: "int main( {" });
+    expect(broken.json()).toMatchObject({ compiled: false });
+  });
+
+  it("needs tests, a language the question offers, and someone who may write exams", async () => {
+    expect((await call("POST", owner, "/questions/code/check", { question: draft([]), language: "python", source: PYTHON_SUM })).statusCode).toBe(422);
+    expect((await call("POST", owner, "/questions/code/check", { question: draft([{ id: "a", input: "", expected: "", hidden: false, weight: 1 }]), language: "java", source: "x" })).statusCode).toBe(409);
+    const { token } = await start();
+    expect((await call("POST", token, "/questions/code/check", { question: draft([]), language: "python", source: PYTHON_SUM })).statusCode).toBe(401);
   });
 });
 
