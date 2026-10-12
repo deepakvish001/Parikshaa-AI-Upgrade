@@ -110,8 +110,8 @@ ek line ki kya baaki):
 - [ ] 1. Migration `0070_candidate_accounts.sql`: candidate_accounts (+ `warned_at`, F22), candidate_sessions,
   candidate_codes (S5: sirf `email_hash` + `code_hash`, attempts, IP ka hash), candidate_links (S2 policies);
   `store/src/migrate.test.ts` ki list (F29)
-- [~] 2. S24: `sql.ts` me nested transaction doosra scope maange to `ScopeConflict` (code likha, tests baaki);
-  `DataKeys.blind(purpose)` (S20, F26) + tests
+- [x] 2. S24: `sql.ts` me nested transaction doosra scope maange to `ScopeConflict` (`pooler.test.ts`);
+  `DataKeys.blind(purpose)` → `BlindIndex.of(scope, value)` (S20, F26; `sealing.test.ts`)
 - [ ] 3. `store/src/candidate-store.ts`: `HireScope` = `practice-store.ts` ke `scoped()` ki nakal (F24; ledger-store me
   naya scope kind NAHI); accounts, codes (atomic verify S5, limits), sessions (S19 server side), profile (sealed),
   export, account-only delete, `sweep()` (codes 24 h, sessions, inactive accounts; F4) + store tests

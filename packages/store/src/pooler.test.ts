@@ -1,9 +1,9 @@
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { examId, orgId } from "@parikshaa/core";
-import { LedgerStore, staffScope, withScope } from "./ledger-store.js";
+import { attemptId, examId, orgId } from "@parikshaa/core";
+import { LedgerStore, candidateScope, staffScope, withScope } from "./ledger-store.js";
 import { migrate } from "./migrate.js";
-import { pgliteExecutor, type SqlExecutor } from "./sql.js";
+import { pgliteExecutor, ScopeConflict, type SqlExecutor } from "./sql.js";
 
 /**
  * Safe behind Supabase's transaction pooler (docs/F1-GO-LIVE-PLAN.md §2.3).
@@ -65,5 +65,51 @@ describe("on a shared connection", () => {
     ).rejects.toThrow("gave up");
     expect(await setting("parikshaa.org_id")).toBe("");
     expect(await sql.query(`SELECT id FROM exams`)).toEqual([]);
+  });
+});
+
+/**
+ * Inside a transaction (docs/HIRE-V2.md §10, S24). Settings are
+ * transaction-local, so a step that took another scope would leave the rest
+ * of the transaction in it: such a step is refused, and needs a transaction of
+ * its own.
+ */
+describe("a step inside a transaction", () => {
+  const exams = async (tx: SqlExecutor) => (await tx.query<{ id: string }>(`SELECT id FROM exams`)).map((r) => r.id);
+
+  it("runs in the same scope", async () => {
+    expect(await withScope(sql, staffScope(A), (tx) => withScope(tx, staffScope(A), exams))).toEqual(["a-exam"]);
+  });
+
+  it("is refused in another organisation's scope, and the transaction stays in its own", async () => {
+    const seen = await withScope(sql, staffScope(A), async (tx) => {
+      await expect(withScope(tx, staffScope(B), exams)).rejects.toThrow(ScopeConflict);
+      return exams(tx);
+    });
+    expect(seen).toEqual(["a-exam"]);
+  });
+
+  it("is refused as a candidate inside a staff transaction", async () => {
+    await expect(withScope(sql, staffScope(A), (tx) => withScope(tx, candidateScope(A, attemptId("x")), exams))).rejects.toThrow(
+      "parikshaa.actor",
+    );
+  });
+
+  it("may give a transaction with no scope one, which it then keeps", async () => {
+    await sql.transaction(async (tx) => {
+      expect(await withScope(tx, staffScope(A), exams)).toEqual(["a-exam"]);
+      await expect(withScope(tx, staffScope(B), exams)).rejects.toThrow(ScopeConflict);
+    });
+  });
+
+  it("that failed gives its scope back", async () => {
+    await sql.transaction(async (tx) => {
+      await expect(
+        withScope(tx, staffScope(A), async () => {
+          throw new Error("gave up");
+        }),
+      ).rejects.toThrow("gave up");
+      expect(await withScope(tx, staffScope(B), exams)).toEqual(["b-exam"]);
+    });
   });
 });

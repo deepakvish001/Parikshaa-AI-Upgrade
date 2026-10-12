@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHmac, hkdfSync, randomBytes } from "node:crypto";
 import type { ExamEvent } from "@parikshaa/core";
 
 /**
@@ -78,6 +78,32 @@ export class DataKeys {
   /** A record sealer for one kind of record, its key derived from the key-encryption key (nothing stored). */
   records(purpose: string): RecordSeal {
     return new RecordSeal(Buffer.from(hkdfSync("sha256", this.#kek, "parikshaa-records", purpose, 32)));
+  }
+
+  /** A blind index for one kind of value, its key derived from the key-encryption key (nothing stored). */
+  blind(purpose: string): BlindIndex {
+    return new BlindIndex(Buffer.from(hkdfSync("sha256", this.#kek, "parikshaa-blind", purpose, 32)));
+  }
+}
+
+/**
+ * Blind indexes (docs/HIRE-V2.md §10, S20): a keyed hash of a value, so rows
+ * can be matched on an email address, a phone number or a file without the
+ * value standing in the column, and a copy of the database cannot be searched
+ * by hashing guesses. Each index is bound to a scope (an organisation's id, or
+ * "" for a global one), so the same address gives different indexes in two
+ * organisations and one cannot be joined to the other.
+ */
+export class BlindIndex {
+  readonly #key: Buffer;
+
+  constructor(key: Buffer) {
+    this.#key = key;
+  }
+
+  /** The index of `value` in `scope`. Callers normalise the value first: an address trimmed and in lower case. */
+  of(scope: string, value: string): string {
+    return createHmac("sha256", this.#key).update(scope).update("\u0000").update(value).digest("base64url");
   }
 }
 
