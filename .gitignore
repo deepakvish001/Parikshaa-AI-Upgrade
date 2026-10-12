@@ -8,3 +8,6 @@ packages/e2e/test-results/
 packages/e2e/playwright-report/
 packages/e2e/visual-report/
 packages/e2e/load-*.txt
+
+# Autosave writes this only into its snapshot (scripts/autosave.sh); never commit it.
+.claude/live/

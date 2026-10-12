@@ -11,6 +11,16 @@
             "timeout": 60
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|Agent|Workflow|Read|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/limit-watch.sh\"",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "Stop": [

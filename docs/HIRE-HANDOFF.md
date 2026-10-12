@@ -2,14 +2,15 @@
 
 **Ye file kyun hai:** owner (12 Oct 2026): Claude ki limit khatam ho to doosre account ka Claude GitHub se judkar
 **yahin se** kaam aage badhaye, poore context ke saath, aur koi kaam dobara na ho. Har account ka Claude isi file se
-shuru karta hai aur isi ko update karta hai, isliye sab accounts sync me rehte hain. Owner jo prompt paste karta hai,
-wo [RESUME-PROMPT.md](RESUME-PROMPT.md) me hai.
+shuru karta hai aur isi ko update karta hai, isliye sab accounts sync me rehte hain. Owner hamesha ek hi prompt paste
+karta hai ([RESUME-PROMPT.md](RESUME-PROMPT.md)). Wo [HANDOFF.md](HANDOFF.md) ke raaste yahan pahunchata hai.
+Branch ya PR badle to pehle HANDOFF.md ki table update karo.
 
 ## 1. Naya session (kisi bhi account se): pehle ye, isi kram me
 
-1. **Branch:** canonical branch `claude/festive-maxwell-pb4k5v` hai, PR
-   [#65](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/65). Owner ne permission di hai ki har session isi
-   branch par kaam aur push kare, chahe session ko koi aur branch mili ho.
+1. **Branch:** canonical branch aur PR [HANDOFF.md](HANDOFF.md) me likhe hain (abhi `claude/festive-maxwell-pb4k5v`,
+   PR [#65](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/65)). Owner ne permission di hai ki har session
+   usi branch par kaam aur push kare, chahe session ko koi aur branch mili ho.
    ```bash
    git fetch origin claude/festive-maxwell-pb4k5v && git checkout -B claude/festive-maxwell-pb4k5v origin/claude/festive-maxwell-pb4k5v
    ```
@@ -17,7 +18,9 @@ wo [RESUME-PROMPT.md](RESUME-PROMPT.md) me hai.
 2. **Doosra session to nahi chal raha?** Neeche §9 "Sessions" ki aakhri row dekho. Agar wo "chal raha" hai, aur branch
    ya `autosave/*` par 30 minute ke andar ka commit hai, to owner se poochho ki purana session band hai ya nahi. Ek
    waqt me ek hi session kaam kare.
-3. **Adhoora kaam wapas lao:** §7 ka autosave restore chalao. Commit na hua kaam wahan hota hai.
+3. **Adhoora kaam wapas lao:** §7 ka autosave restore chalao. Commit na hua kaam wahan hota hai. Saath me
+   `.claude/live/state.md` padho: pichhle session ki task list, owner ka aakhri sandesh, aur Claude ke aakhri sandesh,
+   jo ruke waqt chal rahe the. Uske hisaab se §3, §4, §5 theek karo agar wo purane hon.
 4. **Apni entry:** §9 me nayi row jodo (tareekh, "chal raha"), commit + push.
 5. **Padho:** `CLAUDE.md`, phir ye poori file, phir [HIRE-V2.md](HIRE-V2.md). HIRE-V2.md me **§10 "binding"** hai.
    Phir [hire/critique-security.md](hire/critique-security.md) aur [hire/critique-product.md](hire/critique-product.md)
@@ -122,6 +125,15 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 chalate hain: har edit/command ke baad (30 s me ek baar), aur har turn ya session ke aakhir me. Ye **commit na hua kaam
 bhi** branch `autosave/<branch>` par push karta hai, ek snapshot commit ke roop me jiska parent us waqt ka HEAD hai.
 Asli branch aur history ko ye nahi chhoota. `.env*`, `*.pem`, `*.key` aur 5 MB se badi files bahar rehti hain.
+Snapshot me `.claude/live/state.md` bhi hota hai (sirf snapshot me, git-ignored): us session ki task list, owner ka
+aakhri sandesh, aur Claude ke aakhri 4 sandesh. Padhne ke liye:
+`git show origin/autosave/<branch>:.claude/live/state.md`.
+
+**Limit watch:** `scripts/limit-watch.sh` (PostToolUse hook) transcript me rate-limit ki entry dekhta hai. Status
+"allowed" ke alawa kuch ho, ya 85% se zyada use ho chuka ho (aur reset ka samay abhi aage ho), to wo turant autosave
+karta hai aur Claude ko kehta hai ki naya kaam rok kar handoff likhe, push kare, aur owner ko bataye. Ye best effort hai:
+transcript me pehle se chetavni aaye tabhi kaam karta hai. Na aaye to bhi har 30 s ka autosave aur turn ke aakhir ka
+save chalta rehta hai (limit par turn tootne se `StopFailure` hook bhi save karta hai).
 
 Restore (har naye session ki shuruaat me):
 
@@ -163,6 +175,9 @@ git log -1 --format='%P%n%B' origin/autosave/claude/festive-maxwell-pb4k5v   # p
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (4): Prompt ab generic hai (koi branch/PR nahi): [HANDOFF.md](HANDOFF.md) entry point, `git log --all`
+  se dhoondha jaata hai. Autosave snapshot me `.claude/live/state.md` (tasks, owner aur Claude ke aakhri sandesh).
+  `scripts/limit-watch.sh`: limit paas aaye to turant save aur Claude ko chetavni. Naya kaam ultracode par.
 - 12 Oct 2026 (3): Sync ka dhaancha: tasks (§3), workflows ki sthiti aur scripts (§4, `docs/hire/workflows/`),
   sessions (§9), [RESUME-PROMPT.md](RESUME-PROMPT.md), autosave hooks (`4af00dd`).
 - 12 Oct 2026 (2): Critique (security 24 items, product 22) aur unke faisle HIRE-V2.md §10 me.

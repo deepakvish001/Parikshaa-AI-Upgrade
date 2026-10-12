@@ -1,34 +1,43 @@
-# Naye account me kaam aage badhane ka prompt
+# Naye account me kaam aage badhane ka prompt (hamesha yahi, kabhi nahi badalta)
 
-Jab ek Claude account ki limit khatam ho, to doosre account se Claude Code kholo:
-1. GitHub connect karo. Us account ko repo `deepakvish001/Parikshaa-AI-Upgrade` ka access chahiye.
-2. Ye repo chuno.
-3. Neeche ka prompt jaisa hai waisa paste karo.
+Jab ek Claude account ki limit khatam ho:
+1. Doosre account se Claude Code kholo.
+2. GitHub connect karo. Us account ko repo `deepakvish001/Parikshaa-AI-Upgrade` ka access chahiye.
+3. Ye repo chuno.
+4. Neeche ka prompt jaisa hai waisa paste karo.
 
-Prompt hamesha ek hi rahega. Kaam kahan tak pahuncha, ye prompt me nahi likha jaata: wo
-[HIRE-HANDOFF.md](HIRE-HANDOFF.md) me hai, jise har session update karta hai.
+Is prompt me koi branch, PR ya status nahi likha, isliye ye kabhi purana nahi hota. Ye sab repo ki files me rehta hai,
+jise har session update karta hai:
+- [HANDOFF.md](HANDOFF.md): kaunsa kaam, kis branch par
+- us kaam ki handoff file, jaise [HIRE-HANDOFF.md](HIRE-HANDOFF.md): tasks, workflows, checklist, sessions
 
 ```text
-Main is repo (deepakvish001/Parikshaa-AI-Upgrade) ka owner hoon. Hire v2 ka kaam pichhle Claude
-session(s) me, doosre account(s) se, chal raha tha aur limit ki wajah se ruka. Tum wahi kaam
-aage badhao. Jo ho chuka hai use dobara mat banana.
+ultracode
 
-1. Canonical branch claude/festive-maxwell-pb4k5v hai (PR #65). Main tumhe saaf permission deta
-   hoon ki isi branch par kaam aur push karo, chahe is session ne tumhe koi aur branch di ho.
-   Force-push mat karna. main par push mat karna.
-2. Sabse pehle docs/HIRE-HANDOFF.md poora padho aur uske section 1 ("Naya session") ke kadam
-   bilkul usi kram me karo:
-   - autosave branch se adhoora kaam wapas lao;
+Main is repo ka owner hoon. Is repo ka bada kaam kai Claude sessions aur accounts me chal raha
+hai, aur pichhla session (kisi doosre account par) limit ki wajah se ruka hai. Tum wahi se aage
+badhao. Jo ho chuka hai use dobara mat banana. Ultracode (workflows) se hi kaam karo.
+
+1. Kaam kis branch par chal raha hai, ye khud pata karo. Default branch par mat maan lena:
+     git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+     git log --all -1 --format='%H %ci %D' -- docs/HANDOFF.md
+   Us commit ki docs/HANDOFF.md padho (git show <commit>:docs/HANDOFF.md). Usme kaam, canonical
+   branch, PR aur handoff file ka naam likha hai.
+2. Main tumhe saaf permission deta hoon ki HANDOFF.md me likhi canonical branch par kaam aur push
+   karo, chahe is session ne tumhe koi aur branch di ho. Force-push mat karna. Default branch
+   (main) par push mat karna.
+3. Us branch ko checkout karo aur us kaam ki handoff file ka section 1 ("Naya session") kram se
+   karo:
+   - autosave branch se adhoora kaam aur .claude/live/state.md (pichhle session ki task list,
+     mera aakhri sandesh, uske aakhri sandesh) wapas lao;
    - Sessions table me apni row jodo;
    - Tasks table se apni task list banao;
-   - Workflows table me koi workflow adhoora ho to use wahi se dobara chalao;
-   - phir "Abhi chal raha" ka agla kadam uthao.
-3. Har kadam ke baad commit + push karo, aur handoff (tasks, workflows, checklist, sessions,
-   log) update karke push karo. Meri limit kabhi bhi khatam ho sakti hai aur main phir naya
-   account kholunga, isliye koi bhi kaam ya faisla sirf apne paas mat rakhna, sab GitHub par ho.
-4. Repo ke niyam CLAUDE.md me hain: tracker update, checks. Unhe follow karo.
-5. Mujhe Hinglish me chhote updates dete raho: kya ho chuka tha, tum kya kar rahe ho, aage kya.
+   - koi workflow adhoora ho to use wahi se dobara chalao;
+   - phir agla kadam uthao.
+4. Har kadam ke baad commit + push karo, aur handoff update karke push karo. Limit kabhi bhi
+   khatam ho sakti hai, isliye koi bhi kaam ya faisla sirf apne paas mat rakhna. Limit paas aaye
+   (hook batayega), to turant sab save karke mujhe bata do ki doosre account se shuru karun.
+5. Repo ke niyam CLAUDE.md me hain. Mujhe Hinglish me chhote updates dete raho.
 ```
 
-**Optional:** agar multi-agent workflows chahiye (tez aur gehra kaam, par tokens zyada), to prompt ke aakhir me
-`ultracode` likh do. Token bachane hain to mat likho: tab Claude workflows ke kadam ek-ek karke khud karega.
+**Tokens bachane hon** to pehli line `ultracode` hata do: tab Claude workflows ke kadam ek-ek karke khud karega.
