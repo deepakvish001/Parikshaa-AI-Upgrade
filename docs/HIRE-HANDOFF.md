@@ -20,9 +20,9 @@ kadam ke baad ye file update hoke push hoti hai.
      uske code-map padho
 3. `npm ci`. Tests PGlite par chalte hain (alag Postgres nahi chahiye).
 4. Neeche "Slices" table me pehla adhoora slice uthao (build order: H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 → H10).
-5. **Har slice ke baad (zaroori, taaki limit beech me khatam ho to kuch na khoye):** tests + typecheck → commit → push
-   → is file ka table aur "Log" + tracker ki row update → commit → push. Bada slice ho to beech me bhi chhote commits
-   push karo, aur "Abhi chal raha" me likho ki kya aadha hai.
+5. **Slice ke har kadam ke baad (zaroori, taaki limit beech me khatam ho to kuch na khoye):** kadam ke tests →
+   `WIP(Hx): …` commit → push → "Abhi chal raha" ki checklist me `[x]` → push. Slice poora hone par: poora check →
+   neeche table aur "Log" + tracker ki row → push. Neeche "Session beech me ruk jaaye to" padho.
 
 ## Owner ne kya maanga (12 Oct 2026)
 
@@ -40,9 +40,48 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
   Route/schema badle to `npm run openapi` (`docs/openapi.json` dobara banta hai; `openapi.test.ts` isse milata hai).
 - Commit ke aakhir me repo ki attribution lines (pichhle commits dekho).
 
+## Session beech me ruk jaaye to pata kaise chalega
+
+Do tareeke hain, aur dono saath chalte hain:
+
+**1. Har slice ki checklist, har kadam ke baad tick + push.** Jo slice chal raha hai, uski checklist "Abhi chal raha"
+me hoti hai. Har kadam poora hote hi: `[x]` lagao, us kadam ka code commit karo (message `WIP(H1): <kya hua>`), aur
+push karo. Isliye limit achanak khatam ho, to zyada se zyada ek kadam ka kaam jaata hai. Jo kadam aadha chhoota ho,
+uske aage likho kya aadha hai (`[~]` aur ek line: kaunsi file, kya baaki).
+
+**2. Handoff purana lage to git se khud pata lagao** (jaise session ne checklist update karne se pehle hi ruk gaya ho):
+
+1. `git log --oneline origin/claude/festive-maxwell-pb4k5v -20`. Neeche "Log" ki aakhri entry ke baad ke commits,
+   khaaskar `WIP(Hx):` wale, batate hain ki aakhri session ne kya kiya.
+2. `git show --stat <commit>`: har naye commit me kaunsi files bani ya badli.
+3. Slice ki checklist ke har kadam ke liye dekho ki file maujood hai ya nahi (jaise migration `packages/store/migrations/0066_*`,
+   `packages/api/src/candidates.ts`), aur uske tests chalao. Jo test pass ho, wo kadam `[x]`. Jo file ho par test fail
+   ho ya na ho, wo `[~]`.
+4. Ye nateeja checklist me likho, commit + push karo, phir pehle `[~]` ya `[ ]` kadam se kaam shuru karo.
+
+Jo push nahi hua (purane container me reh gaya), wo doosra account nahi dekh sakta. Isliye niyam: **kadam poora → turant push**.
+
 ## Abhi chal raha (adhoora kaam)
 
-- Kuch adhoora nahi. Design poora hai (§10 ke saath). Agla kaam: **H1**.
+- Design ✅ poora (§10 ke saath). Build abhi shuru nahi hua. Agla kaam: **H1**, neeche wali checklist se.
+
+**H1 checklist** (har kadam: code + uske tests → `WIP(H1)` commit → push → yahan `[x]`):
+
+- [ ] 1. Migration `0066_candidate_accounts.sql`: candidate_accounts, candidate_sessions, candidate_codes,
+  candidate_links (policies S2), outbox/model_usage CHECKs jo zaroori hon; `store/src/migrate.test.ts` ki list
+- [ ] 2. `withScope` nested guard (S24) + test; blind index helper (S20) + test
+- [ ] 3. `store/src/candidate-store.ts` (accounts, sessions, codes: atomic verify S5, limits, links) + store tests
+- [ ] 4. `api/src/resume.ts`: type sniffing, worker_threads me PDF (`unpdf`, exact version pin) aur DOCX (caps),
+  10 pages / 60 000 chars (S1) + tests (zip bomb, bahut bada PDF, rename ki hui .exe)
+- [ ] 5. `api/src/candidates.ts` service: code bhejna (mailer, seedha), verify, sessions (session/keep me signed in,
+  sign out everywhere S19), profile, resume upload, data export, account delete (step-up code) + tests
+- [ ] 6. Routes `/candidate/*` + `candidateAuth` security scheme; wiring `server.ts`, `assemble.ts`,
+  `testing/harness.ts`, `openapi.ts`; `npm run openapi`
+- [ ] 7. trustProxy hop count / CIDR (S6) + forged XFF test; `deploy/aws` me ALB/env ka badlaav
+- [ ] 8. Poora `npm run check` green; tracker row 101 (status, Kahan); is file ka table + Log; push
+
+Agle slices (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
+migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
 - Design ka teesra critique ("fit": design asli code se milta hai ya nahi, services ke signature, slice ka kram) session
   limit ki wajah se poora nahi hua. H1 shuru karte waqt ise saath me chala lo: prompt
   [hire/critique-fit-prompt.md](hire/critique-fit-prompt.md) me hai. Nateeje `docs/hire/critique-fit.md` me rakho,
