@@ -632,6 +632,24 @@ export const submitCodeResponse = z
   ])
   .describe("The answer is committed either way. What was found running it against the question's tests, as much as the exam tells.");
 
+export const codeSubmissionsResponse = z.object({
+  submissions: z
+    .array(
+      z.object({
+        number: z.number().describe("From 1, in the order they were committed."),
+        at: z.number(),
+        language: z.string(),
+        source: z.string(),
+        tested: z.boolean().describe("Run against the question's tests when it was committed."),
+        accepted: z.boolean().nullable().describe("Every test passed. Null when not tested, or when the exam reports only the visible tests."),
+        passed: z.number().nullable(),
+        total: z.number().nullable(),
+      }),
+    )
+    .readonly()
+    .describe("Newest first."),
+});
+
 export const replyBody = z
   .object({ reply: z.string().min(1) })
   .describe("The reply alone. Latency is measured on the server and is not accepted from a client.");
@@ -700,7 +718,13 @@ export const whoAmIResponse = z.object({
   name: z.string(),
   email: z.string().nullable(),
   role: staffRole,
-  organisation: z.object({ id: z.string(), name: z.string(), kind: z.enum(["institution", "company"]) }),
+  organisation: z.object({
+    id: z.string(),
+    publicId: z.string().describe("The organisation's ID as people use it: PKC- and six characters."),
+    name: z.string(),
+    kind: z.enum(["institution", "company"]),
+  }),
+  operator: z.boolean().describe("Parikshaa's own operator: may see and manage every organisation (GET /operator/companies)."),
   permissions: z.array(z.string()).readonly(),
   emailVerified: z.boolean().describe("False for an owner who signed their institution up and has not opened the link sent to their address: until then they cannot invite candidates, add staff or issue API keys."),
   mustEnrol2fa: z

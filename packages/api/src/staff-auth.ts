@@ -175,7 +175,7 @@ export interface LoginResult {
  */
 export type LoginOutcome =
   | ({ readonly ok: true } & LoginResult)
-  | { readonly ok: false; readonly reason: "invalid" | "second_factor_required" | "sso_required" };
+  | { readonly ok: false; readonly reason: "invalid" | "second_factor_required" | "sso_required" | "suspended" };
 
 export class StaffAuth {
   readonly #identity: IdentityStore;
@@ -201,6 +201,9 @@ export class StaffAuth {
 
     const ok = await argon2Verify(user.passwordHash, password).catch(() => false);
     if (!ok || user.disabled) return { ok: false, reason: "invalid" };
+
+    // Paused by Parikshaa's operator (G1): said only once the password was right.
+    if ((await this.#identity.getOrganisation(user.orgId))?.suspended != null) return { ok: false, reason: "suspended" };
 
     // An organisation that signs its staff in through its own provider keeps
     // passwords for owners only, so a broken provider cannot lock everyone out.

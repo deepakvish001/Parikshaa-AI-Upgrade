@@ -111,7 +111,7 @@ export const DEFAULT_LIMITS: Limits = { timeMs: 2000, memoryMb: 256 };
 export const MAX_LIMITS: Limits = { timeMs: 10_000, memoryMb: 1024 };
 
 const COMPILE_LIMITS: Limits = { timeMs: 30_000, memoryMb: 1024 };
-const CHECKER_LIMITS: Limits = { timeMs: 5_000, memoryMb: 512 };
+export const CHECKER_LIMITS: Limits = { timeMs: 5_000, memoryMb: 512 };
 /** Most a single stream may produce before the run is stopped. */
 const OUTPUT_CAP = 1024 * 1024;
 /** Most of a stream kept for the report. */
@@ -125,7 +125,7 @@ export const clampLimits = (limits: Partial<Limits> | undefined): Limits => ({
   memoryMb: Math.min(Math.max(limits?.memoryMb ?? DEFAULT_LIMITS.memoryMb, 32), MAX_LIMITS.memoryMb),
 });
 
-const truncate = (text: string, cap = REPORT_CAP): string =>
+export const truncate = (text: string, cap = REPORT_CAP): string =>
   text.length <= cap ? text : `${text.slice(0, cap)}\n… (${text.length - cap} more characters)`;
 
 interface Outcome {
@@ -277,7 +277,7 @@ function contained(
 }
 
 /** What each language says when it runs out of memory. */
-const OUT_OF_MEMORY = /MemoryError|std::bad_alloc|OutOfMemoryError|heap out of memory|Cannot allocate memory/;
+export const OUT_OF_MEMORY = /MemoryError|std::bad_alloc|OutOfMemoryError|heap out of memory|Cannot allocate memory/;
 
 /** How a run ended, before its output is judged; null when it ended normally. */
 function failure(outcome: Outcome, limits: Limits): TestStatus | null {

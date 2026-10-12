@@ -567,9 +567,17 @@ export class LedgerStore {
       // So is what they asked about their marks; a changed mark stays in the ledger.
       await tx.query(`DELETE FROM recheck_requests WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM mark_reviews WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
-      // Proctoring photos are unreadable once the key is gone; the rows go too.
+      // Proctoring photos are unreadable once the key is gone; the rows go too,
+      // and those kept in a bucket are queued for the sweep to delete there.
+      await tx.query(
+        `INSERT INTO media_trash (org_id, object_key)
+         SELECT org_id, object_key FROM proctor_media WHERE org_id = $1 AND attempt_id = $2 AND object_key IS NOT NULL
+         ON CONFLICT DO NOTHING`,
+        [scope.orgId, attemptId],
+      );
       await tx.query(`DELETE FROM proctor_media WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM proctor_events WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
+      await tx.query(`DELETE FROM code_timeline WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM attempt_origins WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(`DELETE FROM identity_checks WHERE org_id = $1 AND attempt_id = $2`, [scope.orgId, attemptId]);
       await tx.query(

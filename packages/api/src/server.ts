@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import fastifyCompress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
+import { baseHeaders, pagePolicy } from "./page-headers.js";
+import type { OperatorService } from "./operator.js";
+import { registerOperatorRoutes } from "./operator-routes.js";
+import type { LibraryService } from "./library.js";
+import { registerLibraryRoutes } from "./library-routes.js";
 import fastifySwagger from "@fastify/swagger";
 import Fastify, { LogController, type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import {
@@ -12,7 +17,7 @@ import {
   validatorCompiler,
   type ZodTypeProvider,
 } from "fastify-type-provider-zod";
-import { attemptId, candidateId, examId, questionId, vivaId, type Exam } from "@parikshaa/core";
+import { attemptId, candidateId, examId, questionId, vivaId, type CodeQuestion, type Exam } from "@parikshaa/core";
 import { RunnerUnavailable } from "@parikshaa/runner";
 import { JudgeBusy } from "./judge-queue.js";
 import { ExamFrozen, type FeedbackStore, type IdentityStore, type QuestionBank, type QuestionMedia } from "@parikshaa/store";
@@ -169,6 +174,10 @@ export interface ServerOptions {
   readonly loginThrottle?: LoginThrottle;
   /** Institutions signing themselves up, and the sample exam. Absent: neither's routes. */
   readonly onboarding?: Onboarding;
+  /** Parikshaa's operator panel: every organisation by its Company ID (G1). Absent: none of its routes. */
+  readonly operator?: OperatorService;
+  /** The Parikshaa Library (G2). Absent: none of its routes. */
+  readonly library?: LibraryService;
   /**
    * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
    * opened a page of ours can reach into it. On unless set false, which only
@@ -305,6 +314,8 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         { name: "Institution", description: "Authoring exams, issuing access codes, grading and review." },
         { name: "Candidate", description: "Sitting one attempt. Scoped entirely by the bearer token." },
         { name: "Account", description: "Signing in, staff accounts, API keys, spend and the audit log." },
+        { name: "Library", description: "The Parikshaa Library: Parikshaa's own questions, to browse and copy into the bank; and, for operators, to file and retire." },
+        { name: "Operator", description: "Parikshaa's own operators: every organisation by its Company ID, opening one with its owner, pausing it, and giving credits." },
         { name: "Question bank", description: "Reusable questions, filed by topic and difficulty, and imported from CSV." },
         { name: "Invitations", description: "Scheduling a sitting, inviting a cohort, and delivering each candidate's link." },
         { name: "Results", description: "Results, exports, cohort analytics and per-candidate reports." },
@@ -371,46 +382,14 @@ export function buildServer(options: ServerOptions): FastifyInstance {
 
   app.addHook("onRequest", async (request, reply) => {
     reply.header("x-request-id", request.id);
-    // ROADMAP §11. Every response: nothing sniffed into a script, never
-    // framed (a framed exam page is a clickjacking target), and no Referer —
-    // an invitation code or a reset link in the address must not follow a
-    // click to another site.
-    reply.header("x-content-type-options", "nosniff");
-    reply.header("x-frame-options", "DENY");
-    reply.header("referrer-policy", "no-referrer");
-    if (options.openerPolicy !== false) reply.header("cross-origin-opener-policy", "same-origin");
-    reply.header("permissions-policy", "camera=(self), microphone=(), geolocation=(), payment=(self)");
-    if (options.hsts === true) reply.header("strict-transport-security", "max-age=31536000; includeSubDomains");
+    // ROADMAP §11: the same headers the Vercel build serves (page-headers.ts).
+    for (const [name, value] of Object.entries(baseHeaders({ openerPolicy: options.openerPolicy !== false, hsts: options.hsts === true }))) reply.header(name, value);
   });
-  // The pages themselves: scripts only from this origin, so an injected
-  // <script> or inline handler does not run. The console alone may load
-  // Razorpay's Checkout, which the Billing page opens to buy credits.
+  // The pages themselves (page-headers.ts): scripts only from this origin.
   app.addHook("onSend", async (request, reply, payload) => {
     const type = reply.getHeader("content-type");
     if (typeof type !== "string" || !type.startsWith("text/html")) return payload;
-    const console = request.originalUrl.startsWith("/console");
-    // A practice site's learners buy Plus there, through the same Checkout.
-    const pays = console || request.originalUrl.startsWith("/practice/");
-    const razorpay = pays ? " https://*.razorpay.com" : "";
-    reply.header(
-      "content-security-policy",
-      [
-        "default-src 'self'",
-        `script-src 'self'${razorpay}`,
-        // React sets style attributes; no stylesheet is fetched from elsewhere.
-        "style-src 'self' 'unsafe-inline'",
-        `img-src 'self' data: blob:${razorpay}`,
-        "font-src 'self' data:",
-        `connect-src 'self'${razorpay}`,
-        `frame-src ${pays ? "https://*.razorpay.com" : "'none'"}`,
-        "media-src 'self' blob:",
-        "worker-src 'self' blob:",
-        "object-src 'none'",
-        "base-uri 'none'",
-        "form-action 'self'",
-        "frame-ancestors 'none'",
-      ].join("; "),
-    );
+    reply.header("content-security-policy", pagePolicy(request.originalUrl));
     return payload;
   });
   // The route *pattern*, never the URL: a URL can carry a token or an invitation code.
@@ -543,7 +522,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
           ? 404
           : error.code === "expired"
             ? 410
-            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring" || error.code === "invalid_integration"
+            : error.code === "reason_required" || error.code === "invalid_extension" || error.code === "invalid_privacy" || error.code === "invalid_billing" || error.code === "invalid_proctoring" || error.code === "invalid_integration" || error.code === "no_tests"
               ? 422
               : error.code === "too_many_runs"
                 ? 429
@@ -732,6 +711,49 @@ export function buildServer(options: ServerOptions): FastifyInstance {
         const actor = await staff(request, reply, "exam:read");
         if (actor === null) return;
         return reply.send({ exams: await service.listExams(actor) });
+      },
+    );
+
+    routes.post(
+      "/questions/code/check",
+      {
+        schema: {
+          tags: INSTITUTION,
+          summary: "Run a reference program on a code question being written",
+          description:
+            "Every test, hidden included, with what the program printed or returned: to take the expected outputs from a program known to be right, and to see a wrong test before a candidate meets it. Nothing is saved.",
+          security: [{ staffAuth: [] }],
+          body: z.object({ question: S.newQuestionSchema, language: z.string().min(1), source: z.string().min(1).max(256 * 1024) }),
+          response: {
+            200: z.union([
+              z.object({ compiled: z.literal(false), compileOutput: z.string() }),
+              z.object({
+                compiled: z.literal(true),
+                tests: z
+                  .array(
+                    z.object({
+                      id: z.string(),
+                      status: z.string(),
+                      output: z.string().describe("What it printed; for a function question, the value it returned (JSON)."),
+                      stderr: z.string(),
+                      timeMs: z.number(),
+                      memoryKb: z.number().nullable(),
+                    }),
+                  )
+                  .readonly(),
+              }),
+            ]),
+            ...errors,
+            422: S.errorResponse,
+          },
+        },
+      },
+      async (request, reply) => {
+        const actor = await staff(request, reply, "exam:write");
+        if (actor === null) return;
+        const { question, language, source } = request.body;
+        if (question.kind !== "code") return reply.code(422).send({ error: "not_code", message: "Only a code question has tests to run" });
+        return reply.send(await service.checkReference(actor, { ...question, id: questionId("draft") } as unknown as CodeQuestion, { language, source }));
       },
     );
 
@@ -1060,6 +1082,25 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       },
     );
 
+    routes.get(
+      "/attempts/me/code/:questionId/submissions",
+      {
+        schema: {
+          tags: CANDIDATE,
+          summary: "My submissions of a code question in this attempt",
+          description: "Each committed program, newest first, with what testing it found, as much as the exam tells. Only the candidate's own code; a hidden test's content never.",
+          security: [{ attemptToken: [] }],
+          params: S.draftParams,
+          response: { 200: S.codeSubmissionsResponse, ...errors },
+        },
+      },
+      async (request, reply) => {
+        const claims = await requireAttempt(request, reply);
+        if (claims === null) return;
+        return reply.send({ submissions: await service.codeSubmissions(claims, questionId(request.params.questionId)) });
+      },
+    );
+
     routes.put(
       "/attempts/me/drafts/:questionId",
       {
@@ -1361,7 +1402,10 @@ export function buildServer(options: ServerOptions): FastifyInstance {
       throttle,
       bearer,
       staff,
+      ...(options.operator === undefined ? {} : { operators: options.operator.operators }),
     });
+    if (options.operator !== undefined) registerOperatorRoutes(routes, { operator: options.operator, staff });
+    if (options.library !== undefined) registerLibraryRoutes(routes, { library: options.library, staff });
     if (options.security !== undefined) registerSecurityRoutes(routes, { service, security: options.security, throttle, staff });
     if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
   });

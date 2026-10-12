@@ -97,6 +97,8 @@ describe("serving the clients", () => {
     expect(candidate.headers["x-content-type-options"]).toBe("nosniff");
     // No other site that opened this page can reach into it.
     expect(candidate.headers["cross-origin-opener-policy"]).toBe("same-origin");
+    // Proctoring takes photos and listens for voices on this origin; nothing framed or elsewhere may.
+    expect(candidate.headers["permissions-policy"]).toBe("camera=(self), microphone=(self), geolocation=(), payment=(self)");
 
     // The console's Billing page opens Razorpay Checkout; the candidate's page never can.
     const staff = await app.inject({ method: "GET", url: "/console/", headers: html });

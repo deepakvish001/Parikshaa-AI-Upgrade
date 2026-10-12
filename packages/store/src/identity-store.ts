@@ -24,8 +24,12 @@ export type OrganisationKind = "institution" | "company";
 
 export interface Organisation {
   readonly id: OrgId;
+  /** The ID people use for it: PKC- and six characters (migration 0067). */
+  readonly publicId: string;
   readonly name: string;
   readonly kind: OrganisationKind;
+  /** Paused by Parikshaa's operator: its staff cannot sign in. Null while it runs. */
+  readonly suspended: { readonly at: string; readonly reason: string } | null;
   readonly monthlySpendCapMicroUsd: number | null;
   /** Owners must use a second factor (ROADMAP §1). */
   readonly requireOwner2fa: boolean;
@@ -105,6 +109,29 @@ const toUser = (row: UserRow): StaffUserWithSecret => ({
   passwordHash: row.password_hash,
 });
 
+interface OrganisationRow {
+  id: string;
+  public_id: string;
+  name: string;
+  kind: OrganisationKind;
+  suspended_at: string | Date | null;
+  suspended_reason: string | null;
+  monthly_spend_cap_micro_usd: number | string | null;
+  require_owner_2fa: boolean;
+}
+
+const ORGANISATION_COLUMNS = "id, public_id, name, kind, suspended_at, suspended_reason, monthly_spend_cap_micro_usd, require_owner_2fa";
+
+const toOrganisation = (row: OrganisationRow): Organisation => ({
+  id: row.id as OrgId,
+  publicId: row.public_id,
+  name: row.name,
+  kind: row.kind,
+  suspended: row.suspended_at === null ? null : { at: new Date(row.suspended_at).toISOString(), reason: row.suspended_reason ?? "" },
+  monthlySpendCapMicroUsd: row.monthly_spend_cap_micro_usd === null ? null : Number(row.monthly_spend_cap_micro_usd),
+  requireOwner2fa: row.require_owner_2fa === true,
+});
+
 const withoutSecret = ({ passwordHash: _, ...user }: StaffUserWithSecret): StaffUser => user;
 
 export class IdentityStore {
@@ -119,8 +146,50 @@ export class IdentityStore {
   // --- organisations --------------------------------------------------------
 
   async createOrganisation(id: OrgId, name: string, kind: OrganisationKind = "institution"): Promise<Organisation> {
-    await this.#sql.query(`INSERT INTO organisations (id, name, kind) VALUES ($1, $2, $3)`, [id, name, kind]);
-    return { id, name, kind, monthlySpendCapMicroUsd: null, requireOwner2fa: false };
+    // The public ID is drawn at random by the database; two alike, one in a
+    // billion, and the insert is simply tried again.
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const rows = await this.#sql.query<{ public_id: string }>(`INSERT INTO organisations (id, name, kind) VALUES ($1, $2, $3) RETURNING public_id`, [id, name, kind]);
+        return { id, publicId: rows[0]!.public_id, name, kind, suspended: null, monthlySpendCapMicroUsd: null, requireOwner2fa: false };
+      } catch (error) {
+        if (attempt >= 5 || !String((error as Error).message).includes("organisations_public_id")) throw error;
+      }
+    }
+  }
+
+  /** Every organisation, newest first: for Parikshaa's operator. */
+  async listOrganisations(): Promise<readonly (Organisation & { readonly createdAt: string })[]> {
+    const rows = await this.#sql.query<OrganisationRow & { created_at: string | Date }>(`SELECT ${ORGANISATION_COLUMNS}, created_at FROM organisations ORDER BY created_at DESC, id`);
+    return rows.map((row) => ({ ...toOrganisation(row), createdAt: new Date(row.created_at).toISOString() }));
+  }
+
+  /** An organisation by its public ID, as someone reads it out: case and spacing do not matter. */
+  async organisationByPublicId(publicId: string): Promise<Organisation | null> {
+    const rows = await this.#sql.query<OrganisationRow>(`SELECT ${ORGANISATION_COLUMNS} FROM organisations WHERE public_id = $1`, [publicId.trim().toUpperCase()]);
+    return rows[0] === undefined ? null : toOrganisation(rows[0]);
+  }
+
+  /**
+   * Pause an organisation (a reason given) or resume it (null). Pausing ends
+   * every session of its staff at once; their keys stop working while it lasts.
+   * False if there is no such organisation.
+   */
+  async setSuspended(id: OrgId, reason: string | null, now: Date): Promise<boolean> {
+    return this.#sql.transaction(async (tx) => {
+      const rows = await tx.query(
+        `UPDATE organisations SET suspended_at = $2, suspended_reason = $3 WHERE id = $1 RETURNING id`,
+        [id, reason === null ? null : now.toISOString(), reason],
+      );
+      if (rows.length === 0) return false;
+      if (reason !== null) {
+        await tx.query(
+          `UPDATE staff_sessions SET revoked_at = $2 WHERE revoked_at IS NULL AND user_id IN (SELECT id FROM staff_users WHERE org_id = $1)`,
+          [id, now.toISOString()],
+        );
+      }
+      return true;
+    });
   }
 
   /** Every organisation's id, for tooling that walks the whole database. */
@@ -130,23 +199,8 @@ export class IdentityStore {
   }
 
   async getOrganisation(id: OrgId): Promise<Organisation | null> {
-    const rows = await this.#sql.query<{
-      id: string;
-      name: string;
-      kind: OrganisationKind;
-      monthly_spend_cap_micro_usd: number | string | null;
-      require_owner_2fa: boolean;
-    }>(`SELECT id, name, kind, monthly_spend_cap_micro_usd, require_owner_2fa FROM organisations WHERE id = $1`, [id]);
-    const row = rows[0];
-    if (row === undefined) return null;
-    return {
-      id: row.id as OrgId,
-      name: row.name,
-      kind: row.kind,
-      monthlySpendCapMicroUsd:
-        row.monthly_spend_cap_micro_usd === null ? null : Number(row.monthly_spend_cap_micro_usd),
-      requireOwner2fa: row.require_owner_2fa === true,
-    };
+    const rows = await this.#sql.query<OrganisationRow>(`SELECT ${ORGANISATION_COLUMNS} FROM organisations WHERE id = $1`, [id]);
+    return rows[0] === undefined ? null : toOrganisation(rows[0]);
   }
 
   async setRequireOwner2fa(id: OrgId, required: boolean): Promise<void> {
@@ -266,7 +320,8 @@ export class IdentityStore {
         WHERE s.token_hash = $1
           AND s.revoked_at IS NULL
           AND s.expires_at > $2
-          AND u.disabled_at IS NULL`,
+          AND u.disabled_at IS NULL
+          AND o.suspended_at IS NULL`,
       [tokenHash, now.toISOString()],
     );
     const row = rows[0];
@@ -413,7 +468,12 @@ export class IdentityStore {
    * Record a reset and queue its email in one transaction, so a reset exists
    * exactly when its mail is on its way. The outbox row names the reset only.
    */
-  async requestPasswordReset(user: { readonly id: string; readonly orgId: OrgId }, now: Date, expiresAt: Date): Promise<string> {
+  async requestPasswordReset(
+    user: { readonly id: string; readonly orgId: OrgId },
+    now: Date,
+    expiresAt: Date,
+    purpose: "password_reset" | "staff_invite" = "password_reset",
+  ): Promise<string> {
     const id = this.#newId();
     await this.#sql.transaction(async (tx) => {
       await tx.query(`INSERT INTO password_resets (id, user_id, created_at, expires_at) VALUES ($1, $2, $3, $4)`, [
@@ -425,7 +485,7 @@ export class IdentityStore {
       await enqueue(
         tx,
         user.orgId,
-        [{ kind: "staff_email", subject: { resetId: id }, purpose: "password_reset", id: `reset:${id}`, sendAfter: now }],
+        [{ kind: "staff_email", subject: { resetId: id }, purpose, id: `reset:${id}`, sendAfter: now }],
         this.#newId,
       );
     });
@@ -560,6 +620,7 @@ export class IdentityStore {
     const rows = await this.#sql.query<ApiKeyRow>(
       `UPDATE api_keys SET last_used_at = now()
         WHERE key_hash = $1 AND revoked_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM organisations o WHERE o.id = api_keys.org_id AND o.suspended_at IS NOT NULL)
         RETURNING id, org_id, name, role, created_at, last_used_at, revoked_at`,
       [keyHash],
     );

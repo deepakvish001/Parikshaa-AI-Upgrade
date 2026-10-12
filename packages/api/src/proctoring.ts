@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { foldAttempt, type AttemptId, type ExamEvent, type ProctoringPolicy } from "@parikshaa/core";
+import { LARGE_PASTE, foldAttempt, type AttemptId, type ExamEvent, type ProctoringPolicy, type TimelineOp } from "@parikshaa/core";
 import {
   AppendRefused,
   NoDataKey,
@@ -83,6 +83,19 @@ export interface ProctoringView {
   readonly snapshots: readonly MediaRecord[];
   readonly events: readonly ProctorEvent[];
 }
+
+/** How one code answer was written, for a reviewer to play back. */
+export interface CodePlayback {
+  readonly questionId: string;
+  readonly ops: readonly TimelineOp[];
+  /** Every paste, by when and how long. */
+  readonly pastes: readonly { readonly t: number; readonly chars: number }[];
+  /** Pastes of {@link LARGE_PASTE} characters or more: a signal to look, never a finding. */
+  readonly largePastes: number;
+}
+
+/** Most an attempt may send of editor changes, all its code questions together. */
+export const MAX_TIMELINE_BYTES = 4 * 1024 * 1024;
 
 /** One row of the live view, for a proctored exam. */
 export interface LiveProctoring {
@@ -177,6 +190,30 @@ export class ProctorService {
     for (const kind of kinds) await this.#o.proctor.addEvent(scope, access.attemptId, kind as ProctorEventKind, at);
   }
 
+  /**
+   * A batch of a code question's editor changes (G4), for playback. Any exam
+   * with code, proctored or not; only while the attempt is open; capped per
+   * attempt so a client cannot fill the database.
+   */
+  async codeTimeline(access: CandidateAccess, questionId: string, ops: readonly TimelineOp[]): Promise<void> {
+    const state = await this.#o.exams.candidateState(access);
+    if (state.state !== "in_progress") throw new AttemptError("invalid_state", "The attempt has closed");
+    if (this.#o.now() > state.expiresAt) throw new AttemptError("expired", "The attempt is past its window");
+    const question = state.exam.questions.find((q) => q.id === questionId);
+    if (question === undefined || question.kind !== "code") throw new AttemptError("not_code", `Question ${questionId} is not a code question on this paper`);
+    const scope = candidateScope(access.orgId, access.attemptId);
+    const batch = JSON.stringify(ops);
+    if ((await this.#o.proctor.timelineBytes(scope, access.attemptId)) + Buffer.byteLength(batch, "utf8") > MAX_TIMELINE_BYTES) {
+      throw new AttemptError("too_many_runs", "This attempt has sent as much of its typing as is kept");
+    }
+    try {
+      await this.#o.proctor.addTimeline(scope, access.attemptId, questionId, batch, new Date(this.#o.now()));
+    } catch (error) {
+      if (error instanceof NoDataKey) throw new AttemptError("invalid_state", error.message);
+      throw error;
+    }
+  }
+
   // --- the invigilator's side -------------------------------------------------
 
   async view(actor: Actor, attemptId: AttemptId): Promise<ProctoringView> {
@@ -212,6 +249,28 @@ export class ProctorService {
       snapshots,
       events,
     };
+  }
+
+  /** How each code answer of an attempt was written, for playback (G4). */
+  async playback(actor: Actor, attemptId: AttemptId): Promise<readonly CodePlayback[]> {
+    if (!can(actor, "attempt:read")) throw new Forbidden("attempt:read");
+    let batches;
+    try {
+      batches = await this.#o.proctor.timeline(staffScope(actor.orgId), attemptId);
+    } catch (error) {
+      if (error instanceof NoDataKey) throw new AttemptError("not_found", "This attempt's typing has been erased");
+      throw error;
+    }
+    const byQuestion = new Map<string, TimelineOp[]>();
+    for (const { questionId, batch } of batches) {
+      const ops = byQuestion.get(questionId) ?? [];
+      ops.push(...(JSON.parse(batch) as TimelineOp[]));
+      byQuestion.set(questionId, ops);
+    }
+    return [...byQuestion].map(([questionId, ops]) => {
+      const pastes = ops.filter((o) => o.paste === true).map((o) => ({ t: o.t, chars: o.ins.length }));
+      return { questionId, ops, pastes, largePastes: pastes.filter((p) => p.chars >= LARGE_PASTE).length };
+    });
   }
 
   /** One photo, opened, with its hash checked against what was stored. */

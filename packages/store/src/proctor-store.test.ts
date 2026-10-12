@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { attemptId, candidateId, examId, orgId } from "@parikshaa/core";
 import { LedgerStore, candidateScope, staffScope } from "./ledger-store.js";
 import { migrate } from "./migrate.js";
+import { MemoryBlobs } from "./blobs.js";
 import { NoDataKey, ProctorStore } from "./proctor-store.js";
 import { DataKeys } from "./sealing.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
@@ -85,5 +86,92 @@ describe("proctoring photos", () => {
     expect(summary.get(A)).toEqual({ snapshots: 2, lastSnapshotAt: at.getTime() + 60_000, events: { tab_hidden: 2 } });
     expect(summary.get(B)).toEqual({ snapshots: 0, lastSnapshotAt: null, events: { paste: 1 } });
     expect(await proctor.countMedia(S, A, "snapshot")).toBe(2);
+  });
+});
+
+describe("code playback (migration 0069)", () => {
+  const batch = (ins: string) => JSON.stringify([{ t: 1, at: 0, del: 0, ins }]);
+
+  it("is sent by the candidate sealed, counted for the cap, and opened only by staff, in order", async () => {
+    const C = candidateScope(ORG, A);
+    await proctor.addTimeline(C, A, "q1", batch("def solve"), new Date());
+    await proctor.addTimeline(C, A, "q2", batch("SELECT 1"), new Date());
+    await proctor.addTimeline(C, A, "q1", batch("():"), new Date());
+    expect(await proctor.timelineBytes(C, A)).toBe(batch("def solve").length + batch("SELECT 1").length + batch("():").length);
+    expect(await proctor.timelineBytes(candidateScope(ORG, B), B)).toBe(0);
+
+    await db.exec(`RESET ROLE`);
+    const stored = (await db.query<{ sealed: Uint8Array }>(`SELECT sealed FROM code_timeline`)).rows.map((r) => Buffer.from(r.sealed));
+    await db.exec(`SET ROLE parikshaa_app`);
+    expect(stored.some((b) => b.includes(Buffer.from("def solve")))).toBe(false);
+
+    expect((await proctor.timeline(S, A)).map((r) => [r.questionId, JSON.parse(r.batch)[0].ins])).toEqual([
+      ["q1", "def solve"],
+      ["q2", "SELECT 1"],
+      ["q1", "():"],
+    ]);
+    await expect(proctor.addTimeline(C, B, "q1", batch("x"), new Date())).rejects.toThrow();
+  });
+
+  it("goes with the attempt's personal data", async () => {
+    await proctor.addTimeline(S, A, "q1", batch("x"), new Date());
+    await ledger.append(S, A, { type: "attempt_submitted", attemptId: A });
+    await ledger.erase(S, A, "request");
+    expect(await proctor.timeline(S, A)).toEqual([]);
+    await expect(proctor.addTimeline(S, A, "q1", batch("y"), new Date())).rejects.toBeInstanceOf(NoDataKey);
+  });
+});
+
+describe("photos kept in a bucket (migration 0066)", () => {
+  let blobs: MemoryBlobs;
+  let bucketed: ProctorStore;
+  beforeEach(() => {
+    blobs = new MemoryBlobs();
+    bucketed = new ProctorStore(sql, new DataKeys(KEK), { blobs });
+  });
+
+  it("go to the bucket sealed, with only the key in the row, and open as before", async () => {
+    const taken = await bucketed.addMedia(candidateScope(ORG, A), A, "selfie", PHOTO, new Date("2026-10-01T05:00:00Z"));
+    const key = `${ORG}/${A}/${taken.id}`;
+    expect([...blobs.objects.keys()]).toEqual([key]);
+    expect(blobs.objects.get(key)!.includes(Buffer.from("a jpeg"))).toBe(false);
+
+    await db.exec(`RESET ROLE`);
+    const row = (await db.query<{ sealed: Uint8Array | null; object_key: string | null }>(`SELECT sealed, object_key FROM proctor_media`)).rows[0]!;
+    await db.exec(`SET ROLE parikshaa_app`);
+    expect(row).toEqual({ sealed: null, object_key: key });
+
+    expect((await bucketed.open(S, A, taken.id))?.image.equals(PHOTO)).toBe(true);
+    // Moved to another attempt's path, the bytes do not open as its photo.
+    expect(await bucketed.open(S, B, taken.id)).toBeNull();
+  });
+
+  it("from before stay readable, and move over without changing", async () => {
+    const old = await proctor.addMedia(S, A, "id", PHOTO, new Date("2026-10-01T05:00:00Z"));
+    const older = await proctor.addMedia(S, B, "snapshot", PHOTO, new Date("2026-10-01T04:00:00Z"));
+    expect((await bucketed.open(S, A, old.id))?.image.equals(PHOTO)).toBe(true);
+
+    expect(await bucketed.moveToBlobs(S, 1)).toBe(1);
+    expect([...blobs.objects.keys()]).toEqual([`${ORG}/${B}/${older.id}`]);
+    expect(await bucketed.moveToBlobs(S)).toBe(1);
+    expect(await bucketed.moveToBlobs(S)).toBe(0);
+    expect((await bucketed.open(S, A, old.id))?.image.equals(PHOTO)).toBe(true);
+    expect((await bucketed.open(S, B, older.id))?.image.equals(PHOTO)).toBe(true);
+    // Without the bucket, a moved photo cannot be opened, and says why.
+    await expect(proctor.open(S, A, old.id)).rejects.toThrow(/no storage is configured/);
+  });
+
+  it("of an erased attempt are queued, and the sweep deletes them from the bucket", async () => {
+    const taken = await bucketed.addMedia(S, A, "snapshot", PHOTO, new Date());
+    await bucketed.addMedia(S, B, "snapshot", PHOTO, new Date());
+    await ledger.append(S, A, { type: "attempt_submitted", attemptId: A });
+    await ledger.erase(S, A, "request");
+    expect(blobs.objects.has(`${ORG}/${A}/${taken.id}`)).toBe(true);
+
+    expect(await bucketed.emptyTrash(S)).toBe(1);
+    expect([...blobs.objects.keys()].map((k) => k.split("/")[1])).toEqual([B]);
+    expect(await bucketed.emptyTrash(S)).toBe(0);
+    // Without a bucket there is nothing to empty.
+    expect(await proctor.emptyTrash(S)).toBe(0);
   });
 });
