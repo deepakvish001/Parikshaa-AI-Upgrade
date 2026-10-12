@@ -326,10 +326,10 @@ Original design (kept for reference; struck where G1 already covers it):
 
 ## 10. Changes after the critique (BINDING — where this section and §1–§9 disagree, this section wins)
 
-The full critiques are in [hire/critique-security.md](hire/critique-security.md) and
-[hire/critique-product.md](hire/critique-product.md). Every numbered item there is ADOPTED unless listed under
-"Not adopted / changed" below. Builders: read both files for the detail (file:line evidence, exact rules); this section
-records the decisions and resolves the conflicts between them.
+The full critiques are in [hire/critique-security.md](hire/critique-security.md),
+[hire/critique-product.md](hire/critique-product.md) and [hire/critique-fit.md](hire/critique-fit.md). Every numbered
+item there is ADOPTED unless listed under "Not adopted / changed" below. Builders: read the files for the detail
+(file:line evidence, exact rules); this section records the decisions and resolves the conflicts between them.
 
 ### Security (S#) — all adopted
 - S1 Resume extraction in a `worker_threads` worker (≈256 MB heap, 10 s wall clock, killed on timeout), pdf.js with
@@ -455,14 +455,84 @@ records the decisions and resolves the conflicts between them.
   table with round counts (no drag-and-drop board).
 - P22 The acceptance demo in critique-product.md item 22 is the "done" test for plan row 110, and the script for H10.
 
+### Fit (F#) — all adopted (checked against the code after the `main` merge; detail in hire/critique-fit.md)
+- F1 (blocker) Operator: keep G1's model (staff actor in `PARIKSHAA_OPERATORS` + second factor, `staffAuth`, 404 to
+  others, audit in `audit_log` twice). No operator scope, `operatorAuth`, `operator_audit` or `?operator` sign-in. S11
+  adds only `OPERATOR_ALLOW_CIDRS` and an audit of each candidate lookup; Hire counts go into `ReportStore`'s per-org
+  query. `hire_job_reports` is the exception: no tenant policy, actor `operator` only, filed by a SECURITY DEFINER
+  function, outcome kept on `hire_jobs`. Overrides S10/S11 and §8. → H7.
+- F2 G1 already refuses sign-in, sessions and API keys of a suspended org. Hire's suspension effects (public pages 404,
+  apply refused, portal "paused") move to H2. Outbox handlers get a third outcome `{later}` + `OutboxStore.defer`, so
+  `hire` (H2) and `interview` (H7) mails are held, not lost.
+- F3 `organisations.verified_at`, `verified_by`, `verification` go into H2's migration (S18/P1/P18 limits need them);
+  H7 keeps the verify actions. An operator-created company may start verified. → H2.
+- F4 Hire retention is its own sweep (`hire_keep_days ?? privacy retentionDays ?? 180`) in the hourly loop, since the
+  `RetainedRecords` hook runs only for orgs with privacy settings; codes, sessions and inactive accounts in a global
+  `CandidateAccounts.sweep()`. Refines S9. → H1/H2.
+- F5 `ref = "A" + base32(HMAC(k, orgId‖email_canonical_hash))[0..8]` (imported applications have no candidate id).
+  Overrides S20's ref formula. → H2.
+- F6 `hiring_manager` gets `hire:review` + `hire:decide` only (no `attempt:*`, which is org-wide); Hire serves the test
+  view and report PDF through its own routes. Overrides P3's grants. → H2.
+- F7 No API route under `/jobs`, `/careers` or `/my` (the API strips `/api`): public API `/hire/public/*`, candidate
+  `/candidate/*`, staff `/hire/*`; pages fall through to the shell. → H2/H9.
+- F8 Screening gets its own loop (`claimDue` filtered by kind/purpose, 2 at a time); the mail worker skips it; spend cap
+  → `skipped`. → H3.
+- F9 `inviteMany` gains an optional per-call window (exam window and its "closed" check then unused), de-duplicates,
+  returns invitation ids for invited and skipped refs; `hire_round_results.invitation_id`; new
+  `InvitationService.extend`. → H4.
+- F10 `DeliveryWorker` learns `reminder_closing` (skip once started); company wording for `kind = 'company'`. → H4.
+- F11 AI interview from Hire: JD cut to 12 000 chars (DB CHECK), resume to 20 000. → H4.
+- F12 `InterviewService.schedule` gets `includeScheduler`; scheduling also needs `attempt:review`; `no_show` needs H4's
+  own migration. → H4.
+- F13 AI interview list/view return no resume without `exam:write`; S22 notes that existing exam pages still show
+  emails to `attempt:review`. → H4.
+- F14 `ProxyService.checkAsSystem(orgId, attemptId)` via `modelCall(orgId, "assess")`, audited as system, for P7. → H5.
+- F15 Integrity reads stores per attempt (`ResultsService.attemptFacts`, `ProxyStore` origins/reused photos/checks,
+  `ProctorStore.timeline`), never the per-exam reports. → H5.
+- F16 H6 sits on G2: `source` adds `library`; job-test notes offer "Take n from the Library" before AI drafts; dedupe
+  against library stems; code drafts use `ExamService.checkReference`. → H6.
+- F17 No server-rendered meta on Vercel for now: client sets title and `noindex`; `og:*`/JSON-LD later. Overrides P19's
+  server rendering. → H9.
+- F18 Viva verdicts are `warn` ("AI"); a person may confirm any reason in the Integrity tab, and a confirmed reason
+  counts as `high`. Refines S14. → H5.
+- F19 Reason `code_large_paste` (`warn`) from G4's playback, using `LARGE_PASTE`. → H5.
+- F20 The hiring preset is the F1 plan's level "secure", not a Hire-only object; proctor event kinds map to reasons
+  through one table, ready for G5–G8. → H4/H5.
+- F21 The P15 listener joins the webhook fan-out listeners (late-bound, idempotent). → H4.
+- F22 Account mails (codes, warnings) are sent directly with a 10 s timeout; `candidate_accounts.warned_at`; no mailer →
+  503 `email_not_configured`. → H1.
+- F23 `EmailMessage` gains `replyTo` and `fromName`. → H2.
+- F24 `HireScope` copies `practice-store.ts`'s `scoped()`; §1's "new scope kind in `ledger-store.ts`" is struck; never
+  pass it to other stores. → H1/H2.
+- F25 OpenAPI: `candidateAuth`; tags `Applicant` (`/candidate/*`), `Jobs` (`/hire/public/*`), `Hiring` (`/hire/*`);
+  public routes added to the open list. → H1/H2.
+- F26 `docxText` with S1's caps (only `document.xml`); `DataKeys.blind(purpose)` for S20. → H1.
+- F27 S6 becomes a forged-XFF test plus a staging check through Vercel → Caddy; `TRUST_PROXY` stays boolean. → H1.
+- F28 New model routes touch the CHECK, four TS unions and the `authoring` / `modelCall` signatures. → H2/H5/H6.
+- F29 Each migration is added to `migrate.test.ts`; SECURITY DEFINER functions set `search_path`; 0071 carries every
+  status value later slices need. → all.
+- F30 Budget entries are added with their chunk; web chunk named `HireApp` (not two letters); Operator chunk stays
+  within budget. → H7/H8/H9.
+- F31 Console view `hiring`, deep link `?hire=<jobId>&application=<id>`; operator sections inside `OperatorPanel`. → H7/H8.
+- F32 Wiring per slice in `ServerOptions`, `assemble.ts`, `wire()` (incl. `Wiring.handlers`) and `openapi.ts`;
+  `main.ts` gains the screen loop, the Hire/account sweeps and the digest check. → H2–H4.
+- F33 Credits read through `BillingStore.account`; `SIGNUP_SPEND_CAP_USD` also for operator-created orgs. → H2/H4.
+
 ### Not adopted / changed
 - None of the items are rejected. Conflicts resolved: integrity `high` follows S14 (not P8/P9); unverified employers get
-  ≤100 applications per job (P18, stricter than S18's 300).
-- The third critique ("fit": does the design match the real code, service signatures, slice order) did not finish
-  (session limit). Re-run it before or alongside H1 — see docs/HIRE-HANDOFF.md.
+  ≤100 applications per job (P18, stricter than S18's 300). Where an F# item and an S#/P# item disagree, the F# item
+  wins (it was checked against the code): F1 over S10/S11, F5 over S20's ref, F6 over P3's grants, F17 over P19's
+  server rendering, F27 over S6.
+- The third critique ("fit") is done: [hire/critique-fit.md](hire/critique-fit.md) (12 Oct 2026, after the `main`
+  merge), adopted above as F1–F33.
 
 ### Build order (slice ids stay tied to tracker rows 111–120)
 H1 → H2 → H3 → H4 → H5 → H7 (operator) → H8 (console) → H9 (web) → H6 (question drafts) → H10 (e2e + docs).
-Where an item above belongs: S1, S5, S6, S19, S20, S24 → H1. S2–S4, S7–S10, S15-knockouts, S17, S18, S21–S23, P1, P3,
-P9-hashes, P11, P14, P19, P20 → H2. S15, S16, P16 → H3. P4–P6, P10, P13, P15, P17, S13 → H4. S14, P2, P7, P8, P9 → H5.
-S11, S12, S18-verification → H7. P12 and S19 UI → H8/H9.
+Each slice is split into parts of one session each (table in critique-fit.md, "Splits"):
+H1a → H1b → H2a → H2b → H2c → H2d → H3 → H4a → H4b → H4c → H5a → H5b → H7 → H8a → H8b → H9a → H9b → H6 → H10.
+Changes from the fit critique: H2 does not wait on H7 (F2, F3); H2 queues no screening, H3 adds it (F8); the
+question-drafts UI moves from H8 to H6; account delete is finished in H2d (`HireErasure`), which H7 reuses.
+Where an item above belongs: S1, S5, S6, S19, S20, S24 → H1. S2–S4, S7–S10, S12-Hire effects, S15-knockouts, S17,
+S18, S21–S23, P1, P3, P9-hashes, P11, P14, P19, P20 → H2. S15, S16, P16 → H3. P4–P6, P10, P13, P15, P17, S13 → H4.
+S14, P2, P7, P8, P9 → H5. S11, S12-mail hold for interviews, S18-verification actions → H7. P12 and S19 UI → H8/H9.
+F# items: see the slice named in each bullet above.

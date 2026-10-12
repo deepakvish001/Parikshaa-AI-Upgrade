@@ -52,7 +52,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 |---|---|---|---|
 | T1 | Map existing Hire code against job→offer flow | ✅ | Workflow W1; output `docs/hire/code-map/` |
 | T2 | Design the Hire pipeline (jobs, apply, AI screen, OA, integrity, rounds, offer, portals, admin) | ✅ | `docs/HIRE-V2.md` + §10 (critique ke faisle) |
-| T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | 🟡 | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
+| T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | ✅ | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
 | T3 | Build Hire slices with tests | ⬜ | §6 ke slices, build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
 | T2b | Resume flow ki jaanch + fixes (W4) | ✅ | Zaroori fixes ho gaye; chhote baaki §5 me |
 | T4 | Review, e2e, tracker, PR | ⬜ | H10 + poora review + PR #65 ko ready |
@@ -63,7 +63,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 |---|---|---|---|---|
 | W1 | Maujooda code ka naksha (6 agents) | [hire/workflows/w1-understand.js](hire/workflows/w1-understand.js) | ✅ | `docs/hire/code-map/*.md` |
 | W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | ✅ security, product; fit → W3 (W2 dobara mat chalao) | `docs/hire/critique-*.md` |
-| W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | 🟡 session 2 me chal raha (Workflow tool nahi tha, isliye Agent tool se wahi prompt). `critique-fit.md` ke aakhir me `<!-- complete -->` na ho to dobara chalao: jo likha ja chuka hai wo bachega | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
+| W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ✅ session 2 (Agent tool se; limit par ek baar ruka, wahin se poora). Dobara mat chalao | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
 | W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | ✅ chal chuka (dobara mat chalao) | `docs/hire/handoff-verify.md`; zaroori fixes ho gaye, baaki §5 me |
 
 **Niyam (sab sessions ke liye):**
@@ -88,9 +88,9 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
    Hire ki migrations **0070+** se, tracker rows **110+** se: HIRE-V2.md §1/§9, ye file (§5, §6) aur PREP-TRACKER ki
    numbering badlo. H7 (operator) G1 ko, aur H6 G2 Library ko dobara use kare, naya na banaye. `npm run openapi`,
    `npm run check`, push.
-1. **W3** (fit critique): `docs/hire/workflows/w3-fit-critique.js`, main merge ke baad. Fit prompt me G1/G2/G5–G8 ka
-   overlap bhi jaanchna hai.
-2. W3 ke F# faisle H1 checklist me jodo, phir **H1 kadam 1**.
+1. ✅ **(session 2)** **W3** (fit critique): `docs/hire/critique-fit.md` (F1–F33, `<!-- complete -->`) aur HIRE-V2.md §10
+   "Fit (F#)". Bade slices toot gaye (critique-fit.md "Splits"): H1a/H1b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b.
+2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. Ab **H1a**, kadam 2 se (kadam 2 chal raha hai).
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
 W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
 snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
@@ -104,21 +104,29 @@ ka number nahi aata, sirf status aur `resetsAt`. `unifiedWindows.five_hour.utili
 batao. (Transcript wala `limit-watch.sh` session 1 me kabhi nahi chala. Ab ye statusline se padhta hai, par ye
 cloud session me chalta hai ya nahi, pakka nahi.)
 
-**H1 checklist** (har kadam: code + uske tests → `WIP(H1)` commit → push → yahan `[x]`; aadha ho to `[~]` + ek line
-ki kya baaki):
+**H1a checklist (Accounts)** (har kadam: code + uske tests → `WIP(H1a)` commit → push → yahan `[x]`; aadha ho to `[~]` +
+ek line ki kya baaki):
 
-- [ ] 1. Migration `0070_candidate_accounts.sql`: candidate_accounts, candidate_sessions, candidate_codes,
-  candidate_links (policies S2), outbox/model_usage CHECKs jo zaroori hon; `store/src/migrate.test.ts` ki list
-- [ ] 2. `withScope` nested guard (S24) + test; blind index helper (S20) + test
-- [ ] 3. `store/src/candidate-store.ts` (accounts, sessions, codes: atomic verify S5, limits, links) + store tests
-- [ ] 4. `api/src/resume.ts`: type sniffing, worker_threads me PDF (`unpdf`, exact version pin) aur DOCX (caps),
-  10 pages / 60 000 chars (S1) + tests (zip bomb, bahut bada PDF, rename ki hui .exe)
-- [ ] 5. `api/src/candidates.ts` service: code bhejna (mailer, seedha), verify, sessions (session/keep me signed in,
-  sign out everywhere S19), profile, resume upload, data export, account delete (step-up code) + tests
-- [ ] 6. Routes `/candidate/*` + `candidateAuth` security scheme; wiring `server.ts`, `assemble.ts`,
-  `testing/harness.ts`, `openapi.ts`; `npm run openapi`
-- [ ] 7. trustProxy hop count / CIDR (S6) + forged XFF test; `deploy/aws` me ALB/env ka badlaav
-- [ ] 8. Poora `npm run check` green; tracker row 111 (status, Kahan); §6 table + §10 Log; push
+- [ ] 1. Migration `0070_candidate_accounts.sql`: candidate_accounts (+ `warned_at`, F22), candidate_sessions,
+  candidate_codes (S5: sirf `email_hash` + `code_hash`, attempts, IP ka hash), candidate_links (S2 policies);
+  `store/src/migrate.test.ts` ki list (F29)
+- [~] 2. S24: `sql.ts` me nested transaction doosra scope maange to `ScopeConflict` (code likha, tests baaki);
+  `DataKeys.blind(purpose)` (S20, F26) + tests
+- [ ] 3. `store/src/candidate-store.ts`: `HireScope` = `practice-store.ts` ke `scoped()` ki nakal (F24; ledger-store me
+  naya scope kind NAHI); accounts, codes (atomic verify S5, limits), sessions (S19 server side), profile (sealed),
+  export, account-only delete, `sweep()` (codes 24 h, sessions, inactive accounts; F4) + store tests
+- [ ] 4. `api/src/candidates.ts`: code mail seedha mailer se, 10 s timeout, mailer na ho to 503 `email_not_configured`
+  (F22); verify (dono haalat me ek jaisa jawab), sessions, profile, export, delete (step-up code) + tests
+- [ ] 5. Routes `/candidate/*`, `candidateAuth`, tag `Applicant` (F25); wiring `server.ts`, `assemble.ts`,
+  `testing/harness.ts`, `openapi.ts`; `main.ts` ke hourly loop me sweep (F4); `npm run openapi`
+- [ ] 6. S6 = forged-XFF test (F27); `TRUST_PROXY` boolean hi rahega; staging par Vercel → Caddy ki jaanch "Ruka hua
+  kaam" me
+- [ ] 7. Poora `npm run check` green; tracker row 111 (🟡 H1a, Kahan); §6 table + §10 Log; push
+
+**H1b checklist (Resume)**, H1a ke baad: S1 worker (`unpdf` exact pin, `docxText` sirf `document.xml` caps ke saath F26,
+bytes se type pehchaan, 10 pages / 60 000 chars, 10 s par kill); upload/download routes `bodyLimit` ≈3 MB; tests: zip
+bomb, 5 000 page PDF, encrypted PDF, `.docm`, naam badli `.exe`. Resume file kahan rahe (DB `bytea` ya G0 ka
+`BlobStore`, sealed) ye H1b shuru karte waqt tay karo aur §10 me likho.
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
@@ -128,7 +136,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 | Slice | Kya | Status | Commit / note |
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
-| H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ⬜ | |
+| H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | 🟡 | H1a (accounts) chal raha, phir H1b (resume). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
 | H2 | Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
@@ -201,6 +209,9 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 
 ## 10. Log (naya upar)
 
+- 12 Oct 2026 (7, session 2): W3 poora: `docs/hire/critique-fit.md` F1–F33, HIRE-V2.md §10 "Fit (F#)". Sabse bada:
+  F1, H7 ka alag operator scope nahi, G1 ka staff-operator hi (sirf `hire_job_reports` operator-only). Slices toote
+  (H1a/b, H2a–d, H4a–c, H5a/b, H8a/b, H9a/b). H1a shuru.
 - 12 Oct 2026 (6, session 2, `5536252`): §5 kadam 0: `main` (G0–G4a, PR #47) is branch me merge (merge commit, force nahi).
   Hire ki migrations ab 0070+ se, tracker rows 110–120 (Faisle me "(plan 110…117)"). HIRE-V2.md §1/§7/§8/§9 me likha
   ki H7 G1 operator ko badhayega (naya login, `operators` table, `pko_` nahi) aur H6 G2 Library + `checkReference`
