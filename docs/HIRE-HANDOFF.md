@@ -197,11 +197,11 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 | # | Tareekh | Session | Kya kiya | Status / kahan ruka |
 |---|---|---|---|---|
 | 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
-| 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha), §5 step 0 (main merge + renumber) → W3 → H1 | Chal raha |
+| 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Chal raha. 14:58 UTC: limit `allowed_warning` (5 ghante wali window 15:20 UTC par reset). Agar yahin ruke: W3 dobara chalao (§4), phir H1 kadam 1 |
 
 ## 10. Log (naya upar)
 
-- 12 Oct 2026 (6, session 2): §5 kadam 0: `main` (G0–G4a, PR #47) is branch me merge (merge commit, force nahi).
+- 12 Oct 2026 (6, session 2, `5536252`): §5 kadam 0: `main` (G0–G4a, PR #47) is branch me merge (merge commit, force nahi).
   Hire ki migrations ab 0070+ se, tracker rows 110–120 (Faisle me "(plan 110…117)"). HIRE-V2.md §1/§7/§8/§9 me likha
   ki H7 G1 operator ko badhayega (naya login, `operators` table, `pko_` nahi) aur H6 G2 Library + `checkReference`
   dobara use karega. Fit prompt me G1/G2/G4/G5–G8 ka overlap joda. Limit ka tareeka: `list_events` nahi mila, to
