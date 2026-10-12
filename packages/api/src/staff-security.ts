@@ -193,6 +193,25 @@ export class StaffSecurity {
     const org = await this.#identity.getOrganisation(reset.orgId);
     const link = `${this.#publicUrl}/console/?reset=${encodeURIComponent(this.#secrets.resetToken(reset.id))}`;
     const name = reset.name.trim() === "" ? "Hello," : `Hello ${reset.name},`;
+    if (item.purpose === "staff_invite") {
+      // An account Parikshaa opened for them (operator.ts): a first password, not a reset.
+      const where = org === null ? reset.orgId : `${org.name} (${org.publicId})`;
+      const invite = [
+        name,
+        "",
+        `Parikshaa has opened a console account for ${where}, with you as its owner.`,
+        "Choose your password here, within seven days:",
+        link,
+        "",
+        "Then sign in at the same address, add your team, and send your first test. Your Company ID is the code in brackets above: quote it when you write to us.",
+      ].join("\n");
+      const inviteHtml = `<p>${escape(name)}</p>
+<p>Parikshaa has opened a console account for ${escape(where)}, with you as its owner.</p>
+<p><a href="${escape(link)}">Choose your password</a> — within seven days; the link works once.</p>
+<p>Then sign in, add your team, and send your first test. Quote your Company ID (in brackets above) when you write to us.</p>`;
+      await this.#mailer.send({ to: reset.email, subject: `Your Parikshaa account for ${org?.name ?? reset.orgId}`, text: invite, html: inviteHtml });
+      return "sent";
+    }
     const text = [
       name,
       "",
@@ -316,6 +335,9 @@ export class StaffSecurity {
     const user = await this.#identity.findUserByEmail(claims.email);
     if (user === null || user.orgId !== orgId || user.disabled) {
       throw new SecurityError("not_staff", "That address is not a member of staff here. Ask an owner to add you.");
+    }
+    if ((await this.#identity.getOrganisation(orgId))?.suspended != null) {
+      throw new SecurityError("not_staff", "This organisation's account is paused. Write to Parikshaa's support.");
     }
     const { passwordHash: _, ...safe } = user;
     return this.#auth.startSession(safe);

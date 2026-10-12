@@ -1,0 +1,63 @@
+name: Judge0 image
+
+# Parikshaa's Judge0 image (deploy/judge0/compilers, docs/F1-GO-LIVE-PLAN.md §5.2):
+# Judge0 1.13.1 with our compilers, pushed to GHCR as
+# ghcr.io/<owner>/parikshaa-judge0:<commit> and :latest. The Judge0 VM takes
+# it with `JUDGE0_IMAGE=… setup-judge0.sh`.
+#
+# Needs the repository variable PYTHON_SHA256: the SHA-256 of Python's .tgz,
+# from the release's page on python.org. Until it is set this does nothing and
+# says so. GCC is built from source: the first build takes about an hour.
+
+on:
+  push:
+    branches: [main]
+    paths: ["deploy/judge0/compilers/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: judge0-image
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      PYTHON_SHA256: ${{ vars.PYTHON_SHA256 }}
+    steps:
+      - name: Settings
+        id: settings
+        run: |
+          if [ -z "$PYTHON_SHA256" ]; then
+            echo "::notice::Set the repository variable PYTHON_SHA256 to build the Judge0 image."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.settings.outputs.ready == 'true'
+      - uses: docker/setup-buildx-action@v3
+        if: steps.settings.outputs.ready == 'true'
+      - name: Sign in to GHCR
+        if: steps.settings.outputs.ready == 'true'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Name
+        if: steps.settings.outputs.ready == 'true'
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/parikshaa-judge0" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@v7
+        if: steps.settings.outputs.ready == 'true'
+        with:
+          context: deploy/judge0/compilers
+          push: true
+          build-args: PYTHON_SHA256=${{ env.PYTHON_SHA256 }}
+          tags: |
+            ${{ steps.name.outputs.image }}:${{ github.sha }}
+            ${{ steps.name.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

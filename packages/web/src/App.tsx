@@ -6,6 +6,7 @@ import { ApiError, ParikshaaClient, type Announcement, type CandidatePart, type 
 import { inline } from "@parikshaa/brand/markdown";
 import { AnswerInput } from "./components/AnswerInput.tsx";
 import { splitStem } from "./components/code-meta.ts";
+import { TimelineSender } from "./code-timeline.ts";
 import { ProbePanel } from "./components/ProbePanel.tsx";
 import { Receipt } from "./components/Receipt.tsx";
 import { ScorecardCheck } from "./components/ScorecardCheck.tsx";
@@ -589,8 +590,17 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
     return outcome;
   };
 
+  // Code playback (G4): the editor's changes, sent every few seconds and before the attempt closes.
+  const timeline = useMemo(() => new TimelineSender((questionId, ops) => client.sendTimeline(questionId, ops)), [client]);
+  useEffect(() => {
+    if (!inProgress) return;
+    const id = setInterval(() => void timeline.flush(), 10_000);
+    return () => clearInterval(id);
+  }, [inProgress, timeline]);
+
   /** Send anything still waiting on the debounce, so the server commits it. */
   const flushPending = async () => {
+    await timeline.flush();
     for (const [questionId, timer] of timers.current) {
       clearTimeout(timer);
       timers.current.delete(questionId);
@@ -1129,6 +1139,8 @@ function Attempt({ client, onExpired }: { client: ParikshaaClient; onExpired?: (
           onChange={(text) => edit(q.id, text)}
           onRun={(lang, source, input) => client.runCode(q.id, lang, source, input)}
           onSubmit={(lang, source) => submitCode(q.id, lang, source)}
+          onHistory={() => client.codeSubmissions(q.id)}
+          onEdit={(op) => timeline.record(q.id, op)}
           submitLabel={exam.allowRevision ? t("code.submit") : t("code.submitFinal")}
           number={index + 1}
           completion={exam.codeCompletion ?? false}

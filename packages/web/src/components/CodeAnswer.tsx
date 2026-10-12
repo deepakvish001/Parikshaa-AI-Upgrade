@@ -1,10 +1,11 @@
 import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from "react";
 import { CircleCheck, CircleX, Lock, Maximize2, Minimize2, Minus, Moon, Play, Plus, RotateCcw, Send } from "lucide-react";
 import type { CandidateCodeQuestion } from "@parikshaa/core/browser";
-import { ApiError, type RunOutcome, type SubmitOutcome } from "../api.ts";
+import { ApiError, type CodeSubmission, type RunOutcome, type SubmitOutcome } from "../api.ts";
 import { usePreferences, type MessageKey } from "../i18n.tsx";
 import { argumentsOf, LANGUAGE_NAMES, memory, readCodeAnswer, starterIn } from "./code-meta.ts";
 import { SqlResult } from "./SqlTables.tsx";
+import { diffOp, type TimelineOp } from "../code-timeline.ts";
 import { ArgumentList, ProblemStatement } from "./ProblemStatement.tsx";
 import { SplitPane } from "./SplitPane.tsx";
 
@@ -45,6 +46,10 @@ interface Props {
   readonly rail?: ReactNode;
   /** An AI-fluency question's assistant, as a third tab beside the testcase and the result. */
   readonly assistant?: ReactNode;
+  /** The candidate's own submissions of this question, newest first: a Submissions tab. */
+  readonly onHistory?: () => Promise<readonly CodeSubmission[]>;
+  /** Each change to the code, for playback (G4); the candidate is told it is recorded. */
+  readonly onEdit?: (op: TimelineOp) => void;
 }
 
 // --- editor preferences --------------------------------------------------------
@@ -91,7 +96,7 @@ type Shown = { readonly kind: "run"; readonly outcome: RunOutcome; readonly cust
  * reporting as much as the exam allows. It sits in the question's card, and
  * opens full screen with the problem beside the editor.
  */
-export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked, startFull = false, rail, assistant }: Props) {
+export function CodeAnswer({ question, number = 1, value, disabled, onChange, onRun, onSubmit, submitLabel, completion = false, aside, blocked, startFull = false, rail, assistant, onHistory, onEdit }: Props) {
   const { t, lite } = usePreferences();
   const { language, source } = readCodeAnswer(value, question);
   const functionMode = question.function !== null && question.function !== undefined;
@@ -102,7 +107,9 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   // On a phone the full-screen workspace shows one pane at a time, by tab.
   const [phoneTab, setPhoneTab] = useState<"problem" | "code" | "result">("code");
   const [top, setTop] = useState(0);
-  const [tab, setTab] = useState<"testcase" | "result" | "assistant">(assistant === undefined ? "testcase" : "assistant");
+  const [tab, setTab] = useState<"testcase" | "result" | "assistant" | "submissions">(assistant === undefined ? "testcase" : "assistant");
+  const [history, setHistory] = useState<readonly CodeSubmission[] | null>(null);
+  const [historyFailed, setHistoryFailed] = useState(false);
   const [picked, setPicked] = useState<number | "custom">(question.samples.length > 0 ? 0 : "custom");
   const [customStdin, setCustomStdin] = useState(question.samples[0]?.input ?? "");
   const [customArgs, setCustomArgs] = useState<string[]>(() => params.map((_p, i) => argumentsOf(question.samples[0]?.input ?? "")[i] ?? ""));
@@ -112,7 +119,37 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   const toggle = useRef<HTMLButtonElement>(null);
   const headingId = `ws-${question.id}-title`;
 
-  const write = (next: { language: string; source: string }) => onChange(JSON.stringify(next));
+  // Playback: the text as last recorded, and when a paste last happened in the editor.
+  const recorded = useRef<string | null>(null);
+  const pastedAt = useRef(0);
+  const write = (next: { language: string; source: string }, whole = false) => {
+    if (onEdit !== undefined) {
+      const now = Date.now();
+      // The first change, or the text changed from outside (a draft restored): record where it starts from.
+      if (recorded.current !== source) {
+        onEdit({ t: now, at: 0, del: 0, ins: source, reset: true });
+        recorded.current = source;
+      }
+      const op = whole ? { t: now, at: 0, del: 0, ins: next.source, reset: true } : diffOp(source, next.source, now);
+      if (op !== null) onEdit(now - pastedAt.current < 300 && !whole ? { ...op, paste: true } : op);
+      recorded.current = next.source;
+    }
+    onChange(JSON.stringify(next));
+  };
+
+  const loadHistory = async () => {
+    if (onHistory === undefined) return;
+    try {
+      setHistory(await onHistory());
+      setHistoryFailed(false);
+    } catch {
+      setHistoryFailed(true);
+    }
+  };
+  const openTab = (name: typeof tab) => {
+    setTab(name);
+    if (name === "submissions") void loadHistory();
+  };
   const customInput = functionMode ? customArgs.join("\n") : customStdin;
   const canAct = !disabled && busy === null && source.trim() !== "";
 
@@ -139,6 +176,8 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
     setTab("result");
     try {
       setShown({ kind: "submit", outcome: await onSubmit(language, source) });
+      // The list, if it was looked at, gains this submission.
+      if (history !== null) void loadHistory();
     } catch (error) {
       setShown(null);
       // Kept on the device for later (practice, offline): say that, not that it failed.
@@ -152,11 +191,11 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   const switchLanguage = (next: string) => {
     // Untouched starter code follows the language; anything the candidate wrote stays.
     const untouched = source.trim() === "" || source === starterIn(question, language);
-    write({ language: next, source: untouched ? starterIn(question, next) : source });
+    write({ language: next, source: untouched ? starterIn(question, next) : source }, true);
   };
 
   const reset = () => {
-    if (window.confirm(t("code.resetConfirm"))) write({ language, source: starterIn(question, language) });
+    if (window.confirm(t("code.resetConfirm"))) write({ language, source: starterIn(question, language) }, true);
   };
 
   // Full screen: below the page's top bar, so the clock stays in sight; the page behind does not scroll.
@@ -190,7 +229,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   );
 
   const editor = (
-    <div className="ws-editor">
+    <div className="ws-editor" onPasteCapture={() => (pastedAt.current = Date.now())}>
       {/* Low-bandwidth mode never downloads the editor: the plain text area answers just as well. */}
       {lite ? (
         plain
@@ -299,7 +338,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
   const console_ = (
     <div className="ws-console">
       <div className="ws-tabs" role="tablist" aria-label={t("code.result")}>
-        {(assistant === undefined ? (["testcase", "result"] as const) : (["assistant", "testcase", "result"] as const)).map((name) => (
+        {[...(assistant === undefined ? [] : (["assistant"] as const)), "testcase" as const, "result" as const, ...(onHistory === undefined ? [] : (["submissions"] as const))].map((name) => (
           <button
             key={name}
             type="button"
@@ -308,15 +347,24 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
             aria-selected={tab === name}
             aria-controls={`${question.id}-panel-${name}`}
             className={tab === name ? "on" : ""}
-            onClick={() => setTab(name)}
+            onClick={() => openTab(name)}
           >
-            {name === "testcase" ? t("code.testcase") : name === "assistant" ? t("assist.tab") : t("code.result")}
+            {name === "testcase" ? t("code.testcase") : name === "assistant" ? t("assist.tab") : name === "submissions" ? t("code.submissions") : t("code.result")}
           </button>
         ))}
       </div>
       <div className="ws-panel" role="tabpanel" id={`${question.id}-panel-${tab}`} aria-labelledby={`${question.id}-tab-${tab}`}>
         {tab === "assistant" ? (
           assistant
+        ) : tab === "submissions" ? (
+          <SubmissionList
+            history={history}
+            failed={historyFailed}
+            disabled={disabled}
+            onRestore={(s) => {
+              if (window.confirm(t("code.restoreConfirm"))) write({ language: s.language, source: s.source }, true);
+            }}
+          />
         ) : tab === "testcase" ? (
           <>
             <div className="case-chips">
@@ -358,6 +406,7 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
               </label>
             )}
             {disabled ? null : <p className="notice run-note">{t("code.runNote")}</p>}
+            {disabled || onEdit === undefined ? null : <p className="notice run-note">{t("code.recorded")}</p>}
           </>
         ) : failed !== null ? (
           <p className="error">{failed}</p>
@@ -447,6 +496,64 @@ export function CodeAnswer({ question, number = 1, value, disabled, onChange, on
       {actions}
       {console_}
     </div>
+  );
+}
+
+// --- submissions -------------------------------------------------------------------
+
+/** The candidate's own submissions of this question, newest first, each with its code (G4). */
+function SubmissionList({
+  history,
+  failed,
+  disabled,
+  onRestore,
+}: {
+  readonly history: readonly CodeSubmission[] | null;
+  readonly failed: boolean;
+  readonly disabled: boolean;
+  readonly onRestore: (submission: CodeSubmission) => void;
+}) {
+  const { t } = usePreferences();
+  const [open, setOpen] = useState<number | null>(null);
+  if (failed) return <p className="error">{t("code.runFailed")}</p>;
+  if (history === null) return <p className="notice">{t("code.loadingSubmissions")}</p>;
+  if (history.length === 0) return <p className="notice">{t("code.noSubmissions")}</p>;
+  const picked = history.find((s) => s.number === open) ?? null;
+  const verdict = (s: CodeSubmission) =>
+    !s.tested ? t("code.untested") : s.accepted === null ? t("code.submitted") : s.accepted ? t("code.accepted") : t("code.notAccepted");
+  return (
+    <section className="submissions" aria-label={t("code.submissions")}>
+      <ol className="submission-list">
+        {history.map((s) => (
+          <li key={s.number}>
+            <button type="button" className="submission-row" aria-pressed={open === s.number} data-accepted={s.accepted === null ? undefined : String(s.accepted)} onClick={() => setOpen(open === s.number ? null : s.number)}>
+              {s.accepted === true ? <CircleCheck aria-hidden="true" className="ok" /> : s.accepted === false ? <CircleX aria-hidden="true" className="bad" /> : null}
+              <strong>{t("code.submissionN", { n: s.number })}</strong>
+              <span>{verdict(s)}</span>
+              {s.passed === null || s.total === null ? null : <span className="notice">{t("code.passedOf", { passed: s.passed, total: s.total })}</span>}
+              <span className="notice">{LANGUAGE_NAMES[s.language] ?? s.language}</span>
+              <span className="spacer" />
+              <time className="notice" dateTime={new Date(s.at).toISOString()}>
+                {new Date(s.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </time>
+            </button>
+          </li>
+        ))}
+      </ol>
+      {picked === null ? null : (
+        <div className="run-block">
+          <pre className="submission-code" aria-label={t("code.submissionN", { n: picked.number })}>
+            {picked.source}
+          </pre>
+          {disabled ? null : (
+            <button type="button" className="secondary" onClick={() => onRestore(picked)}>
+              <RotateCcw aria-hidden="true" />
+              {t("code.restore")}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 

@@ -1,4 +1,4 @@
-import type { Exam, ExamProblem, Question } from "@parikshaa/core/browser";
+import type { Exam, ExamProblem, Question, TimelineOp } from "@parikshaa/core/browser";
 
 export interface ExamSummary {
   readonly id: string;
@@ -76,12 +76,41 @@ export interface WhoAmI {
   readonly name: string;
   readonly email: string | null;
   readonly role: StaffRole;
-  readonly organisation: { readonly id: string; readonly name: string };
+  readonly organisation: { readonly id: string; readonly name: string; readonly publicId?: string };
+  /** Parikshaa's own operator: may see and open every organisation. Absent from an older server. */
+  readonly operator?: boolean;
   readonly permissions: readonly string[];
   /** The organisation requires owners to use a second factor and this one has none yet. */
   readonly mustEnrol2fa: boolean;
   /** False for an owner who signed up and has not opened the link sent to their address. Absent from an older server. */
   readonly emailVerified?: boolean;
+}
+
+/** An organisation as Parikshaa's operator sees it (G1). */
+export interface OperatorOrg {
+  readonly id: string;
+  readonly publicId: string;
+  readonly name: string;
+  readonly kind: "institution" | "company";
+  readonly createdAt: string;
+  readonly suspended: { readonly at: string; readonly reason: string } | null;
+  readonly owner: { readonly name: string; readonly email: string; readonly verified: boolean } | null;
+  readonly staff: number;
+  readonly exams: number;
+  readonly invited: number;
+  readonly started: number;
+  readonly credits: number | null;
+  readonly lastActivity: string | null;
+}
+
+export interface NewOrg {
+  readonly name: string;
+  readonly kind: "institution" | "company";
+  readonly ownerName: string;
+  readonly ownerEmail: string;
+  readonly pricePerAttemptRupees: number;
+  readonly invoiced: boolean;
+  readonly credits: number;
 }
 
 export interface TwoFactorStatus {
@@ -155,6 +184,49 @@ export interface BankEntry {
   readonly tags: readonly string[];
   readonly updatedAt: string;
   readonly archived: boolean;
+}
+
+/** The Parikshaa Library (G2). */
+export type LibrarySection = "aptitude" | "cs" | "programming" | "dsa" | "sql" | "frontend";
+
+export interface LibraryEntry {
+  readonly id: string;
+  readonly version: number;
+  readonly section: LibrarySection;
+  readonly topic: string;
+  readonly difficulty: Difficulty;
+  readonly tags: readonly string[];
+  readonly question: Question;
+  readonly explanation: string;
+  readonly tier: "open" | "hire";
+  readonly source: string;
+  /** How many organisations took it: for Parikshaa's operators only, null for everyone else. */
+  readonly exposure: number | null;
+  readonly updatedAt: string;
+  readonly retired: boolean;
+  readonly adopted: { readonly bankQuestionId: string; readonly version: number } | null;
+  readonly newerVersion: boolean;
+}
+
+export interface LibraryFacets {
+  readonly total: number;
+  readonly sections: readonly { readonly section: LibrarySection; readonly count: number; readonly topics: readonly { readonly topic: string; readonly count: number }[] }[];
+}
+
+/** Unset, or undefined, means no filter on it. */
+export interface LibraryFilter {
+  readonly section?: LibrarySection | undefined;
+  readonly topic?: string | undefined;
+  readonly difficulty?: Difficulty | undefined;
+  readonly kind?: Question["kind"] | undefined;
+  readonly q?: string | undefined;
+  readonly notTaken?: boolean | undefined;
+}
+
+export interface LibraryTaken {
+  readonly added: number;
+  readonly already: number;
+  readonly bankQuestionIds: readonly string[];
 }
 
 export interface BankDraft {
@@ -864,6 +936,25 @@ export interface ProctoringMedia {
   readonly sha256: string;
 }
 
+/** What an author's reference program did on each test of a question being written (G4). */
+export type ReferenceRun =
+  | { readonly compiled: false; readonly compileOutput: string }
+  | {
+      readonly compiled: true;
+      readonly tests: readonly { readonly id: string; readonly status: string; readonly output: string; readonly stderr: string; readonly timeMs: number; readonly memoryKb: number | null }[];
+    };
+
+/** Runs a reference program on a draft code question's tests. */
+export type ReferenceChecker = (question: Question, language: string, source: string) => Promise<ReferenceRun>;
+
+/** How one code answer was written (G4), to play back. */
+export interface CodePlayback {
+  readonly questionId: string;
+  readonly ops: readonly TimelineOp[];
+  readonly pastes: readonly { readonly t: number; readonly chars: number }[];
+  readonly largePastes: number;
+}
+
 export interface ProctoringView {
   readonly policy: {
     readonly identity: boolean;
@@ -1190,6 +1281,34 @@ export class ConsoleClient {
     return this.#request(`/bank${query === "" ? "" : `?${query}`}`);
   }
 
+  // --- the Parikshaa Library (G2) ---------------------------------------------------------
+
+  library(filter: LibraryFilter = {}, offset = 0): Promise<{ readonly items: readonly LibraryEntry[]; readonly total: number; readonly facets: LibraryFacets }> {
+    const params = new URLSearchParams({ offset: String(offset) });
+    for (const [key, value] of Object.entries(filter)) {
+      if (value === true) params.set(key, "true");
+      else if (typeof value === "string" && value !== "") params.set(key, value);
+    }
+    const query = params.toString();
+    return this.#request(`/library?${query}`);
+  }
+
+  takeFromLibrary(ids: readonly string[]): Promise<LibraryTaken> {
+    return this.#request("/library/take", { method: "POST", body: JSON.stringify({ ids }) });
+  }
+
+  pickFromLibrary(filter: Omit<LibraryFilter, "notTaken">, count: number): Promise<LibraryTaken> {
+    return this.#request("/library/pick", { method: "POST", body: JSON.stringify({ ...filter, count }) });
+  }
+
+  refreshFromLibrary(id: string): Promise<{ readonly bankQuestionId: string; readonly version: number }> {
+    return this.#request(`/library/${encodeURIComponent(id)}/refresh`, { method: "POST" });
+  }
+
+  seedLibrary(): Promise<{ readonly added: number; readonly updated: number; readonly unchanged: number }> {
+    return this.#request("/operator/library/seed", { method: "POST" });
+  }
+
   fileQuestion(draft: BankDraft): Promise<BankEntry> {
     return this.#request("/bank", { method: "POST", body: JSON.stringify(draft) });
   }
@@ -1368,6 +1487,32 @@ export class ConsoleClient {
 
   async plusOrders(): Promise<readonly PlusOrder[]> {
     return (await this.#request<{ orders: PlusOrder[] }>("/practice-admin/plus/orders")).orders;
+  }
+
+  // --- the operator panel (G1) ---------------------------------------------------------
+
+  async operatorOrgs(): Promise<readonly OperatorOrg[]> {
+    return (await this.#request<{ companies: OperatorOrg[] }>("/operator/companies")).companies;
+  }
+
+  createOrg(draft: NewOrg): Promise<OperatorOrg> {
+    return this.#request("/operator/companies", { method: "POST", body: JSON.stringify(draft) });
+  }
+
+  suspendOrg(publicId: string, reason: string): Promise<OperatorOrg> {
+    return this.#request(`/operator/companies/${encodeURIComponent(publicId)}/suspend`, { method: "POST", body: JSON.stringify({ reason }) });
+  }
+
+  resumeOrg(publicId: string): Promise<OperatorOrg> {
+    return this.#request(`/operator/companies/${encodeURIComponent(publicId)}/resume`, { method: "POST" });
+  }
+
+  grantOrgCredits(publicId: string, credits: number, note: string): Promise<OperatorOrg> {
+    return this.#request(`/operator/companies/${encodeURIComponent(publicId)}/credits`, { method: "POST", body: JSON.stringify({ credits, note }) });
+  }
+
+  async reinviteOwner(publicId: string): Promise<void> {
+    await this.#request(`/operator/companies/${encodeURIComponent(publicId)}/invite`, { method: "POST" });
   }
 
   // --- classes (plan row 95) ---------------------------------------------------------
@@ -2124,6 +2269,17 @@ export class ConsoleClient {
   }
 
   /** More time for an open attempt, with a reason that goes into its ledger. */
+  /** Run a reference program on every test of a code question being written; nothing is saved (G4). */
+  checkReference(question: Question, language: string, source: string): Promise<ReferenceRun> {
+    const { id: _id, ...draft } = question;
+    return this.#request("/questions/code/check", { method: "POST", body: JSON.stringify({ question: draft, language, source }) });
+  }
+
+  /** How each code answer of an attempt was written, to play back (G4). */
+  async playback(attemptId: string): Promise<readonly CodePlayback[]> {
+    return (await this.#request<{ questions: CodePlayback[] }>(`/attempts/${encodeURIComponent(attemptId)}/playback`)).questions;
+  }
+
   proctoring(attemptId: string): Promise<ProctoringView> {
     return this.#request(`/attempts/${encodeURIComponent(attemptId)}/proctoring`);
   }

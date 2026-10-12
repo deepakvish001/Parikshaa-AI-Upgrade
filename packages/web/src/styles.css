@@ -1616,6 +1616,57 @@ pre.case-input {
   color: var(--text-muted);
 }
 
+/* The candidate's own submissions of a question (G4). */
+.submission-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.submission-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text);
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.submission-row[aria-pressed="true"] {
+  background: var(--surface-sunken);
+}
+.submission-row svg {
+  width: 1rem;
+  height: 1rem;
+}
+.submission-row svg.ok {
+  color: var(--success);
+}
+.submission-row svg.bad {
+  color: var(--danger);
+}
+.submission-row .spacer {
+  flex: 1;
+}
+.submissions .submission-code {
+  max-height: 20rem;
+  margin: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: pre;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 /* Full screen: the problem beside the editor, below the top bar so the clock stays in sight. */
 body.workspace-open {
   overflow: hidden;

@@ -9,6 +9,7 @@ import {
   type QuestionTranslation,
   type RubricCriterion,
 } from "@parikshaa/core/browser";
+import type { ReferenceChecker } from "../api.ts";
 import { CodeFields } from "./CodeFields.tsx";
 import { DropZone } from "./kit.tsx";
 
@@ -79,10 +80,13 @@ export function QuestionFields({
   onChange,
   upload,
   previousPassage,
+  checkReference,
 }: {
   question: Question;
   onChange: (next: Question) => void;
   upload?: ImageUploader;
+  /** Runs an author's reference program on a code question's tests (G4). */
+  checkReference?: ReferenceChecker | undefined;
   /** The passage of the question before this one, offered for reuse. */
   previousPassage?: Passage;
 }) {
@@ -257,7 +261,7 @@ export function QuestionFields({
         </div>
       ) : null}
 
-      {question.kind === "code" ? <CodeFields question={question} onChange={onChange} /> : null}
+      {question.kind === "code" ? <CodeFields question={question} onChange={onChange} check={checkReference} /> : null}
 
       {question.kind === "short" ? (
         <label className="field inline">

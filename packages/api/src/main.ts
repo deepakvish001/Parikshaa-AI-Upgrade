@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
-import { HttpCodeRunner } from "@parikshaa/runner";
+import { runnerFromEnv } from "@parikshaa/runner";
 import { connect } from "@parikshaa/store";
 import { assemble } from "./assemble.js";
 import { CloudWhatsApp, Msg91Sender, SmtpMailer } from "./delivery.js";
@@ -9,6 +9,7 @@ import { bankFromEnv, supplierFromEnv } from "./gst.js";
 import { webPushSender } from "./push.js";
 import { androidAppFromEnv } from "./android-app.js";
 import { RazorpayGateway } from "./razorpay.js";
+import { storageFromEnv } from "./storage.js";
 
 /** Read a required environment variable, or fail at boot rather than at 10:00am. */
 function required(name: string): string {
@@ -35,11 +36,12 @@ async function main(): Promise<void> {
     onError: (error) => connectionLost(error),
   });
 
-  // Code questions need the runner service; without it they can be answered
-  // but not run, and grading them waits until it is configured.
-  const runnerUrl = process.env["RUNNER_URL"];
-  const runner =
-    runnerUrl === undefined || runnerUrl === "" ? undefined : new HttpCodeRunner(runnerUrl, required("RUNNER_TOKEN"));
+  // Code questions need a runner: the in-house one (RUNNER_URL), or Judge0
+  // (RUNNER_BACKEND=judge0) with the in-house one behind it. Without either
+  // they can be answered but not run, and grading them waits until one is set.
+  // A fall back to the in-house runner is logged once the server is up.
+  let fellBack: (error: Error) => void = () => undefined;
+  const runner = runnerFromEnv(process.env, (error) => fellBack(error));
   // Practice's programs queue for it: so many at once (match the runner's
   // workers), contests first, and a learner told the judge is busy rather
   // than left waiting past JUDGE_WAIT_MS.
@@ -105,7 +107,17 @@ async function main(): Promise<void> {
   // The pilot report each morning goes where new sign-ups are announced; PILOT_REPORT=off keeps it quiet.
   const pilotReportTo = process.env["PILOT_REPORT"] === "off" ? null : process.env["SIGNUP_NOTIFY_EMAIL"] || null;
 
-  const { app, worker, privacy, billing, identity, dailyReport, prepEngage } = assemble({
+  // Proctoring photos in Supabase Storage (docs/F1-GO-LIVE-PLAN.md §8.2):
+  // SUPABASE_URL and SUPABASE_SECRET_KEY, and MEDIA_BUCKET ("proctor-media"
+  // unless set). The bucket is made, private, if it is not there. Without
+  // them, photos stay in Postgres as before.
+  const blobs = storageFromEnv(process.env);
+  if (blobs !== null) await blobs.ensureBucket();
+
+  const { app, worker, privacy, billing, identity, dailyReport, prepEngage, sweepMedia, library } = assemble({
+    blobs,
+    // Parikshaa's own operators, by address: they see and open every organisation (docs/STAGING.md).
+    operators: (process.env["PARIKSHAA_OPERATORS"] ?? "").split(","),
     signup,
     pilotReportTo,
     sql,
@@ -155,8 +167,17 @@ async function main(): Promise<void> {
     },
   });
 
+  // The Parikshaa Library (G2): its built-in questions are filed at every
+  // start, so a new database has them and an updated release versions them.
+  // Several instances doing this at once is safe; LIBRARY_SEED=off skips it.
+  if (process.env["LIBRARY_SEED"] !== "off") {
+    const filed = await library.seedAtBoot();
+    if (filed.added + filed.updated > 0) app.log.info(filed, "library questions filed");
+  }
+
   connectionLost = (error) =>
     app.log.warn({ err: { type: error.name, code: (error as { code?: unknown }).code } }, "database connection lost");
+  fellBack = (error) => app.log.warn({ err: { type: error.name, message: error.message } }, "Judge0 unavailable; running code on the in-house runner");
 
   // Every instance runs a worker; the outbox's SKIP LOCKED claims keep them
   // from sending anything twice. Set DELIVERY_WORKER=off to run API-only nodes.
@@ -184,6 +205,8 @@ async function main(): Promise<void> {
         .then((erased) => (erased > 0 ? app.log.info({ erased }, "retention sweep") : undefined))
         .then(() => privacy.sweepTutor())
         .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "tutor chats past 180 days deleted") : undefined))
+        .then(() => sweepMedia())
+        .then((deleted) => (deleted > 0 ? app.log.info({ deleted }, "erased attempts' photos deleted from storage") : undefined))
         .catch((error: unknown) => app.log.error({ err: { type: error instanceof Error ? error.name : typeof error } }, "retention sweep failed"));
     retaining = setInterval(sweep, 60 * 60 * 1000);
     setTimeout(sweep, 60_000).unref();

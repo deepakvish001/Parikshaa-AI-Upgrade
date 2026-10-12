@@ -1,0 +1,104 @@
+name: Deploy API (VM)
+
+# The API's machine (docs/STAGING.md): migrations on the environment's
+# Supabase database first, then the machine updated to this commit with
+# scripts/setup-server.sh, which rebuilds and restarts the API and the runner
+# and keeps every setting and secret it already has, then the server check.
+#
+#   push to main  → staging
+#   run by hand   → staging or production (production asks for approval
+#                   when its environment is set to require it)
+#
+# Each GitHub environment (staging, production) holds:
+#   secret   MIGRATE_DATABASE_URL  the database as its owner (postgres), session pooler
+#   secret   VM_SSH_KEY            a key allowed to log in to the machine
+#   variable VM_HOST               the machine's address
+#   variable VM_USER               who logs in (sudo without a password), e.g. ubuntu
+#   variable VM_KNOWN_HOSTS        the machine's line from `ssh-keyscan <host>`
+#   variable APP_URL               the site on Vercel, e.g. https://staging.example.in, for
+#                                  the server check (the machine answers only through Vercel)
+# The repository is cloned at ~/parikshaa on the machine, and setup-server.sh
+# was run there once by hand (it asks for what only you know). Until these are
+# set this does nothing and says so.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-api-${{ github.event_name == 'workflow_dispatch' && inputs.target || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'staging' }}
+    env:
+      MIGRATE_DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
+      VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+      VM_HOST: ${{ vars.VM_HOST }}
+      VM_USER: ${{ vars.VM_USER }}
+      VM_KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
+      APP_URL: ${{ vars.APP_URL }}
+    steps:
+      - name: Settings
+        id: settings
+        run: |
+          missing=""
+          for name in MIGRATE_DATABASE_URL VM_SSH_KEY VM_HOST VM_USER VM_KNOWN_HOSTS; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Not deployed: set$missing in this environment (docs/STAGING.md)."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.settings.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v7
+        if: steps.settings.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      # Before the new code: every migration only adds, so the running API is
+      # unharmed by a schema a step ahead of it.
+      - name: Migrate
+        if: steps.settings.outputs.ready == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATE_DATABASE_URL }}
+        run: |
+          npm ci
+          npm run build
+          node packages/store/dist/migrate-cli.js
+
+      - name: Update the machine
+        if: steps.settings.outputs.ready == 'true'
+        env:
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" >~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$VM_KNOWN_HOSTS" >~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_deploy -o BatchMode=yes "$VM_USER@$VM_HOST" \
+            "set -e; cd ~/parikshaa; git fetch --quiet origin '$SHA'; git checkout --quiet --detach '$SHA'; sudo ./scripts/setup-server.sh"
+
+      - name: The server check
+        if: steps.settings.outputs.ready == 'true' && env.APP_URL != ''
+        run: node scripts/smoke.mjs "$APP_URL"

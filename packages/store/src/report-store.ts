@@ -60,6 +60,13 @@ export class ReportStore {
     return facts;
   }
 
+  /** One organisation's facts, or null if there is none by that id. */
+  async organisation(id: OrgId, now: Date): Promise<OrganisationFacts | null> {
+    const rows = await this.#sql.query<{ id: string; name: string; created_at: string | Date }>(`SELECT id, name, created_at FROM organisations WHERE id = $1`, [id]);
+    const org = rows[0];
+    return org === undefined ? null : this.#organisation(id, org.name, new Date(org.created_at).toISOString(), now);
+  }
+
   async #organisation(id: OrgId, name: string, createdAt: string, now: Date): Promise<OrganisationFacts> {
     return withScope(this.#sql, staffScope(id), async (tx) => {
       const [row] = await tx.query<{

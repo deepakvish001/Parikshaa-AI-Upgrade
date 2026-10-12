@@ -1,0 +1,104 @@
+name: Deploy pages (Vercel)
+
+# The candidate's app and the console on Vercel (docs/STAGING.md), laid out by
+# `npm run vercel-output` with /api passed on to the API's machine:
+#
+#   push to main      → the staging site
+#   a pull request    → a preview of it, on the staging project, using staging's API
+#   run by hand       → staging or production (production asks for approval
+#                       when its environment is set to require it)
+#
+# Each GitHub environment (staging, production) holds:
+#   secret   VERCEL_TOKEN        a Vercel access token
+#   variable VERCEL_ORG_ID       the team's id
+#   variable VERCEL_PROJECT_ID   that environment's Vercel project
+#   variable API_ORIGIN          the API's machine, e.g. https://api.staging.example.in
+# and the Vercel project itself holds PARIKSHAA_EDGE_SECRET (the value
+# setup-server.sh wrote on that machine). Until they are set this does nothing
+# and says so.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to deploy
+        type: choice
+        options: [staging, production]
+        default: staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-web-${{ github.event_name == 'workflow_dispatch' && inputs.target || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    # A fork's pull request gets no secrets, and no preview.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'staging' }}
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      API_ORIGIN: ${{ vars.API_ORIGIN }}
+    steps:
+      - name: Settings
+        id: settings
+        run: |
+          missing=""
+          for name in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID API_ORIGIN; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::notice::Not deployed: set$missing in this environment (docs/STAGING.md)."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.settings.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v7
+        if: steps.settings.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build
+        if: steps.settings.outputs.ready == 'true'
+        run: |
+          npm ci
+          npm run build
+          npm run build:clients
+          npm run vercel-output -w @parikshaa/api
+
+      - name: Deploy
+        id: deploy
+        if: steps.settings.outputs.ready == 'true'
+        env:
+          PRODUCTION: ${{ github.event_name != 'pull_request' }}
+        run: |
+          set -euo pipefail
+          flags=(--prebuilt --yes --token "$VERCEL_TOKEN")
+          [ "$PRODUCTION" = "true" ] && flags+=(--prod)
+          url="$(npx --yes vercel@62 deploy "${flags[@]}")"
+          echo "url=$url" >>"$GITHUB_OUTPUT"
+          echo "Deployed: $url" >>"$GITHUB_STEP_SUMMARY"
+
+      # A preview sits behind Vercel's login (Deployment Protection), so only staging and production are checked.
+      - name: It answers
+        if: steps.settings.outputs.ready == 'true' && github.event_name != 'pull_request'
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          curl -fsS "$URL/" -o /dev/null
+          # Through Vercel to the API: the edge secret and the proxy both work.
+          curl -fsS "$URL/api/health" || { echo "::warning::$URL/api/health did not answer: is the API's machine up, and PARIKSHAA_EDGE_SECRET the same on both sides?"; exit 1; }

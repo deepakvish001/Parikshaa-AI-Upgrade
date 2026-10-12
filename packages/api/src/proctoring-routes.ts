@@ -101,6 +101,70 @@ export function registerProctoringRoutes(routes: Routes, deps: ProctoringRouteDe
     },
   );
 
+  const op = z.object({
+    t: z.number().describe("The browser's clock, ms since 1970."),
+    at: z.number().int().min(0),
+    del: z.number().int().min(0),
+    ins: z.string().max(256 * 1024),
+    paste: z.boolean().optional(),
+    reset: z.boolean().optional().describe("The whole text became `ins`."),
+  });
+
+  routes.post(
+    "/attempts/me/code/:questionId/timeline",
+    {
+      bodyLimit: 600_000,
+      schema: {
+        tags: CANDIDATE,
+        summary: "How a code answer is being written: the editor's changes, for playback",
+        description: "Sent in batches while the candidate types. Sealed under the attempt's key; staff can play it back after. Capped per attempt.",
+        security: [{ attemptToken: [] }],
+        params: z.object({ questionId: z.string().min(1).max(200) }),
+        body: z.object({ ops: z.array(op).min(1).max(1000) }),
+        response: { 202: z.object({ ok: z.literal(true) }), ...refusals },
+      },
+    },
+    async (request, reply) => {
+      const claims = await candidate(request, reply);
+      if (claims === null) return;
+      await proctor.codeTimeline(claims, request.params.questionId, request.body.ops);
+      return reply.code(202).send({ ok: true });
+    },
+  );
+
+  routes.get(
+    "/attempts/:attemptId/playback",
+    {
+      schema: {
+        tags: TAG,
+        summary: "How each code answer of an attempt was written, to play back",
+        description: "The editor's changes in order, with every paste and how many were large. Signals for a person to weigh; none of it decides anything.",
+        security: SECURED,
+        params: S.attemptParams,
+        response: {
+          200: z.object({
+            questions: z
+              .array(
+                z.object({
+                  questionId: z.string(),
+                  ops: z.array(op).readonly(),
+                  pastes: z.array(z.object({ t: z.number(), chars: z.number() })).readonly(),
+                  largePastes: z.number().describe("Pastes of 200 characters or more."),
+                }),
+              )
+              .readonly(),
+          }),
+          ...refusals,
+        },
+      },
+    },
+    async (request, reply) => {
+      const actor = await staff(request, reply, "attempt:read");
+      if (actor === null) return;
+      return reply.send({ questions: await proctor.playback(actor, attemptId(request.params.attemptId)) });
+    },
+  );
+
   routes.get(
     "/attempts/:attemptId/proctoring",
     {
