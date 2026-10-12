@@ -189,7 +189,7 @@ ek line ki kya baaki):
   `/candidate/applications` (GET, POST), `/candidate/applications/{id}` (GET), `/candidate/applications/{id}/withdraw`;
   wiring (server, assemble handler `hire`, harness, openapi); `npm run openapi`; route tests (suspended 404, apply_by
   ke baad mana, limits, duplicate)
-- [ ] 5. `npm run check` EXIT 0; tracker row 112; §6, §10; push
+- [x] 5. `npm run check` EXIT 0 (API 816 tests); tracker row 112; §6, §10; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
