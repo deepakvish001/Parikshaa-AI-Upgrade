@@ -9,7 +9,7 @@ Branch ya PR badle to pehle HANDOFF.md ki table update karo.
 ## 1. Naya session (kisi bhi account se): pehle ye, isi kram me
 
 1. **Branch:** canonical branch aur PR [HANDOFF.md](HANDOFF.md) me likhe hain (abhi `claude/festive-maxwell-pb4k5v`,
-   PR [#65](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/65)). Owner ne permission di hai ki har session
+   PR [#66](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/66); #65 merge ho chuka). Owner ne permission di hai ki har session
    usi branch par kaam aur push kare, chahe session ko koi aur branch mili ho.
    ```bash
    git fetch origin claude/festive-maxwell-pb4k5v && git checkout -B claude/festive-maxwell-pb4k5v origin/claude/festive-maxwell-pb4k5v
@@ -93,7 +93,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 2. ✅ **(session 2)** F# faisle neeche H1a/H1b checklist me jud gaye. **H1a poora ✅**.
 3. ✅ **(session 2)** H1b (resume).
 4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
-5. **AB AGLA: H2b** (Apply + portal): critique-fit.md "Splits" ki H2b row se checklist likho, phir banao.
+5. **AB CHAL RAHA: H2b** (Apply + portal): checklist neeche likhi hai (session 2).
    H2b me: `/hire/public/*` (F7), apply (account, consent S8, snapshot, ref F5, hashes, `candidate_links` S2,
    limits S17), suspension ka asar (F2), `hire-messages.ts` + outbox `{later}`, portal projection (S4), withdraw.
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
@@ -164,6 +164,28 @@ ek line ki kya baaki):
 - [x] 5. `api/src/hire-routes.ts` staff `/hire/jobs*` (F7: `/jobs` nahi), tag `Hiring`, wiring + openapi, audit ACTIONS
   ke shabd + route tests
 - [x] 6. `npm run check` EXIT 0 (API 791), `build:clients` + `budget` theek; tracker row 112 🟡; push
+
+**H2b checklist (Apply + portal)** (critique-fit.md "Splits" H2b; har kadam: code + tests → `WIP(H2b)` commit → push → `[x]`):
+
+- [ ] 1. Migration `0072_hire_apply.sql` (0071 `main` par hai, use mat badlo): ek job par ek insaan ki ek hi *chalti*
+  application (rejected/withdrawn/did_not_join ke baad dobara apply ho sake, `reapply_after_days` service jaanche).
+  Outbox: `OutboxItem.kind` me `hire`; handler ka teesra nateeja `{ later: Date }` + `OutboxStore.defer` (F2: attempts
+  nahi gine jaate). `migrate.test.ts`, `outbox-store` aur `delivery` tests
+- [ ] 2. `hire-store.ts`: public job/careers padhna (draft/held kabhi nahi), application likhna (sealed snapshot "hire"
+  key, AAD `hire/{org}/{app}/{field}`; hashes S20; ref F5; pehle round ka result; `applied` event; outbox ek hi
+  transaction me), ginti (job ki, candidate ki 24 h), duplicate/reapply padhna, candidate ki apni application, withdraw.
+  Tests: applicant RLS (sirf apni), do org alag
+- [ ] 3. `api/src/hire-apply.ts` (`HireApplications`): public job + careers (suspended org/draft/held → 404, F2),
+  S8 notice (English + Hindi, `notice_hash`, retention `privacy ?? 180` (F4), do grievance contacts), apply (job open,
+  `apply_by` 23:59 IST, `max_applicants` + unverified 100, S17 20/din, duplicate, reapply, sawaalon ki jaanch,
+  knockout → rejected), `candidate_links` (S2), portal projection (S4: round ki haalat, koi score nahi; suspended →
+  "paused"), withdraw. `hire-messages.ts`: applied / withdrawn mail, "never pay" line (S18), suspended org → `{later}`.
+  Tests
+- [ ] 4. Routes: `/hire/public/jobs/{company}/{code}`, `/hire/public/careers/{company}` (tag `Jobs`, open list F25),
+  `/candidate/applications` (GET, POST), `/candidate/applications/{id}` (GET), `/candidate/applications/{id}/withdraw`;
+  wiring (server, assemble handler `hire`, harness, openapi); `npm run openapi`; route tests (suspended 404, apply_by
+  ke baad mana, limits, duplicate)
+- [ ] 5. `npm run check` EXIT 0; tracker row 112; §6, §10; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
