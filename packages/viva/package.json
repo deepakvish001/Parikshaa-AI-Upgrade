@@ -14,12 +14,12 @@
   },
   "dependencies": {
     "@parikshaa/core": "*",
-    "@anthropic-ai/sdk": "^0.128.0",
+    "@anthropic-ai/sdk": "^0.132.1",
     "zod": "^4.0.0"
   },
   "devDependencies": {
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2",
-    "@types/node": "^26.6.2"
+    "vitest": "^5.0.3",
+    "@types/node": "^26.6.4"
   }
 }
