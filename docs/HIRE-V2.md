@@ -306,3 +306,146 @@ interview (default weights 20/40/20/20, job-editable). Integrity is shown beside
 - H8 Console Hiring UI (Jobs, editor, pipeline, drawer, compare, report, drafts in Bank, HirePath) + tests + budget.
 - H9 Web candidate side (job page, careers, apply, portal) + tests + budget.
 - H10 e2e (whole flow in Playwright), screenshots, docs (SECURITY.md, SPEC.md: candidate + operator accounts), tracker.
+
+## 10. Changes after the critique (BINDING — where this section and §1–§9 disagree, this section wins)
+
+The full critiques are in [hire/critique-security.md](hire/critique-security.md) and
+[hire/critique-product.md](hire/critique-product.md). Every numbered item there is ADOPTED unless listed under
+"Not adopted / changed" below. Builders: read both files for the detail (file:line evidence, exact rules); this section
+records the decisions and resolves the conflicts between them.
+
+### Security (S#) — all adopted
+- S1 Resume extraction in a `worker_threads` worker (≈256 MB heap, 10 s wall clock, killed on timeout), pdf.js with
+  `isEvalSupported:false`, ≤10 pages, ≤60 000 chars, encrypted PDFs refused; type sniffed from bytes (`%PDF-` or a DOCX
+  whose `[Content_Types].xml` declares wordprocessingml; .docm refused); docx unzip caps (document.xml ≤5 MB inflated,
+  ≤200 entries, ≤20 MB total); upload route `bodyLimit` ≈3 MB, candidate session only. Tests: zip bomb, 5 000-page PDF,
+  renamed .exe refused.
+- S2 `candidate_links`: no tenant policy; applicant SELECT/INSERT only for its own `candidate_id`; staff DELETE only
+  for its own org; no staff SELECT/INSERT. Manual/import applications have `candidate_id NULL` + blind `email_hash`;
+  they join a portal only when the signed-in candidate claims them (consent recorded then). No email→account oracle.
+- S3 One `HireErasure.eraseApplication(orgId, appId, reason)` used by account delete, operator erase and retention
+  (null PII columns, screening `result` NULL, integrity reasons → codes, `hire_events.detail` blanked via a column grant
+  or SECURITY DEFINER function, offer note NULL, unredeemed invitations by ref blanked, closed attempts erased through a
+  system path, open ones queued, interview/AI-interview per-record erase, links deleted, report candidate NULL; each org
+  its own top-level transaction). Hire audit `detail` = ids and counts only. Test: full-DB text search finds nothing.
+- S4 `HireScope` lives in `hire-store.ts` (ledger `Scope` unchanged). `candidate_id` denormalised onto `hire_events`
+  and `hire_offers`. NO applicant policy on `hire_round_results`, `hire_screenings`, `hire_integrity` (the portal gets a
+  service projection: round kind + waiting / your turn / done / not moving forward). Candidate writes (withdraw, offer
+  answer) go through the service with explicit ownership checks; offer answer only `sent→accepted|declined`. CHECK:
+  `candidate_visible` false for note/override/integrity_reviewed/screened.
+- S5 Sign-in code: random 6 digits, stored only as `code_hash = HMAC(k, id‖code)` with `email_hash`; a new code
+  invalidates earlier ones; verify = one atomic `UPDATE … attempts=attempts+1 WHERE … attempts<5 … RETURNING`,
+  constant-time compare; DB-durable limits 5/hour and 10/day per email, 3 failed codes/day → 24 h lock, global
+  codes/hour circuit breaker; account row created only after verify; identical responses either way; rows purged 24 h.
+- S6 `trustProxy` becomes a hop count / CIDR (env), ALB XFF handling fixed in `deploy/aws`; test that a forged XFF does
+  not change `request.ip`. Email-keyed limits are primary, IP limits secondary.
+- S7 `hire:decide` and `hire:offer` are human-only in `can()` (API keys refused); `hire:manage` (publish) and
+  `hire:offer` join `UNTIL_VERIFIED`.
+- S8 Apply notice (English + Hindi): what is collected, the org decides, AI screening (not used for training), the model
+  provider and that data leaves India, the org's retention days, two grievance contacts; `notice_hash` stored;
+  checkbox "Have a person read my application without AI" (`ai_opt_out` → screening skipped); account creation needs
+  "I am 18 or older"; withdrawing = withdrawing consent → erasure within 30 days; separate platform notice for accounts.
+- S9 Retention per org (`hire_keep_days`, default the org's `retentionDays`, printed in the notice): rejected/withdrawn
+  erased that many days after the decision; jobs auto-close at `apply_by` + 90 days; accounts inactive 3 years erased
+  (mail first); codes purged 24 h, sessions 7 days after expiry; all registered as `RetainedRecords`.
+- S10 `hire_job_reports` has no staff policy (operator only); the org sees only the outcome.
+- S11 Operator: own `actor='operator'` scope whose policies allow only organisations, jobs, job reports and SECURITY
+  DEFINER count functions (zero applicant rows); `totp_last_step`, sign-in throttle, `OPERATOR_ALLOW_CIDRS`, token in
+  sessionStorage, `operator_audit` append-only (trigger) and records reads too.
+- S12 Suspension refuses sessions and API keys, holds the org's hire/interview mails, and 404s its public pages.
+- S13 The offer mail links into `/my` (session required); accept/decline are POST with confirmation; the letter PDF is
+  served only to that session; a GET never changes anything.
+- S14 **Only deterministic or human signals may be `high`**: identical photo hash; same phone / resume / canonical email
+  hash in the org; a person's identity review "rejected"; a person-confirmed viva `inconsistent`; an interviewer saying
+  "not the same person". Everything model-derived or heuristic (face check, injection pattern, network/device,
+  similarity, paste/tab counts, AI-interview signals) is capped at `warn`, shows its evidence and is labelled "AI" or
+  "pattern". (This overrides the `high` levels in §6 and in product items P8/P9.)
+- S15 Screening fairness: redact answers and profile text too (+ pincodes, DOB/age, gendered words); verify quotes
+  against the exact redacted text sent; no `gap` flag; recommendation `reject` is renamed `low_match`; a bulk reject
+  filtered on the AI recommendation needs a typed reason (audit records filter + count); an offline counterfactual eval
+  script (paired resumes differing only in gender/religion/caste markers) — its run waits on the API key.
+- S16 Escape `<`/`>` in all untrusted text sent to a model (also the resume passed to the AI interviewer); summary ≤600
+  chars labelled "AI summary — may be wrong"; `strong` needs quotes from ≥2 distinct places; a skill term >3% of tokens
+  → `warn` (keyword stuffing).
+- S17 ≤20 applications per candidate per day; ≤5 accounts verified per /24 per day; auto-screen ≤ `screen_daily_max`
+  per job per day; disposable-mail domain list; `email_canonical_hash` (plus-tag and Gmail dots removed) for the
+  per-job UNIQUE and duplicate signal.
+- S18 + P18 Unverified employer: ≤2 open jobs, ≤100 applications per job, no auto-screen, no resume download/export,
+  pages `noindex`, no staff free text in mails; a JD with fee/deposit wording is held for the operator; every job page
+  and hire mail carries "Parikshaa and real employers never ask you to pay — report this". Operator verification stores
+  `verification jsonb` (work-email domain vs website, GSTIN or CIN, LinkedIn, checked_by), audited.
+- S19 Portal token in sessionStorage by default; "Keep me signed in on this device" → localStorage, 14-day sliding;
+  "Sign out everywhere"; fresh email code (step-up) for account delete and offer accept/decline; sessions revoked on erasure.
+- S20 Blind indexes: `HMAC(HKDF(kek,"parikshaa-blind","hire"), orgId‖value)` for email/phone/resume hashes; application
+  email stored sealed beside its hash; `ref = "A"+base32(HMAC(k, orgId‖candidateId))[0..8]`.
+- S21 Links https only (zod), rendered `rel="noopener noreferrer nofollow ugc"`; resumes served as attachments with a
+  sanitised filename and the sniffed type; extracted text shown by default; `hire.resume_downloaded` audited.
+- S22 Phone, email and resume download need `hire:decide`, job-manager membership or the interview panel; a viewer sees
+  names, round state and scores only.
+- S23 Knockout questions on protected topics (age, gender, marital status, pregnancy, religion, caste, disability) are
+  refused by the server; knockouts are shown to the candidate before applying.
+- S24 `withScope` inside a transaction throws when the requested scope differs from the current one; test it.
+
+### Product (P#) — all adopted, with these decisions
+- P1 Company signups get a default monthly model spend cap (`SIGNUP_SPEND_CAP_USD`); `max_applicants`,
+  `screen_daily_max` (default 200); `auto_screen` off until verified AND until the screening eval passes (P16) —
+  labelled "AI screening (beta)"; apply refused after `apply_by` 23:59 IST or at `max_applicants`; Jobs page shows
+  AI usage this month. Ruka hua kaam: owner sets prices per screened applicant and per AI interview.
+- P2 Integrity level gains `not_checked`; `coverage jsonb` per check (passed / flagged / not_run); `clear` only with a
+  proctored attempt (identity + snapshots + browser events) plus a face check or a person's identity review; editor warns
+  on an exam below the hiring preset ("unproctored"); drawer/compare/report show a "Checks passed" list.
+- P3 New staff roles `recruiter` (all hire:*, exam:read/write, attempt:start/read/review/extend) and `hiring_manager`
+  (hire:review + hire:decide + attempt:read/review, only for jobs whose `managers` include them). Role CHECKs (0003),
+  `StaffRole`, `GRANTS`, tenancy tests change.
+- P4 "Send test" checks credits (credits − unstarted live invites) first; owner mails at 80% / 100%; a candidate blocked
+  by `out_of_credits` → `test_blocked` event + pipeline banner; after buying, "Extend these n windows".
+- P5 Same exam across jobs: per-application outcome "Took this test on <date> for <job>" → Reuse the result / Choose
+  another test. Retake: `candidate_ref = ref + "~" + n`, reason ≥10 chars, audited `hire.retake`, info reason.
+- P6 Invitation purpose `reminder_closing` (24 h and 3 h before close, skipped if started); round statuses `expired`,
+  `abandoned`; filter "Not started", bulk Nudge (resend) and "Extend window by n days".
+- P7 On submit of a hire-linked attempt with identity on: queue an automatic face check (`checkAsSystem`, spend-capped);
+  per-job Identity queue (selfie, ID, 3 snapshots, Verify/Reject); interviewer scorecard "Same person as the test photo?"
+- P8 AI interview room records pastes, pasted chars and hidden ms per answer (`ai_interview_signals`, outside the hash
+  chain); server computes typing speed; reasons `ai_paste`, `ai_away`, `ai_fast` (all `warn`, per S14).
+- P9 Duplicates org-wide over 180 days (`phone_hash`, resume hash, reused photo, canonical email); `reapply_after_days`
+  (default 90); drawer "Other applications at this company"; disposable domains → warn.
+- P10 `InterviewService.reschedule` (same UID, SEQUENCE+1); staff offer 2–5 slots, candidate picks in the portal
+  (reminder after 48 h); "Ask for another time"; status `no_show`; interview round `criteria[]` shared by the panel.
+- P11 Import (CSV, dry run) and "Add one" → applications `invited` with `candidate_id NULL`, mail "Complete your
+  application"; claim on sign-in with the same email (consent + resume, then screening); `not_claimed` after 14 days.
+- P12 Job page "What you'll need" (laptop with Chrome/Edge, webcam, mic, minutes); apply asks "Laptop with webcam
+  available for the test?" (not a knockout); portal on a phone shows "Open on a computer", "Email me the link", "Check
+  my computer"; round config `allowPhone`; acceptance includes Android Chrome at 360 px.
+- P13 Daily 09:00 IST digest to managers and the job creator; `review_sla_days` (default 2); instant mail on offer
+  accepted/declined; pipeline "In this step n days", "Past SLA" filter, "Needs you: n"; per-user unsubscribe.
+- P14 `EmailMessage.replyTo`, job `contact_email`, sender "<Company> via Parikshaa"; "Message candidate" thread (sealed,
+  visible in the portal); per-job "Note to candidates"; rejection mails sent 24 h later (cancelled on Restore).
+- P15 Settling is event-driven: a Hire listener on `attempt.started/submitted/graded/voided` (the webhooks path) updates
+  `hire_round_results` and recomputes that application's integrity; similarity per job is a queued job;
+  `AiInterviewService` finish/decide and `InterviewService.score` call an injected `onSettled`. Reading the pipeline is
+  a plain table read: 1 000 applications in under 1 s.
+- P16 H3 counts as done only with a recorded eval (≥30 consented anonymised resumes × 3 JDs, two human labels; ship
+  auto-screen on only if ≥95% quotes verify, ≥80% agreement, name/college swap moves the score ≤5). Waits on the key.
+- P17 Status `joined` and `did_not_join` (reason) after the joining date; staff reminder on joining date +1; candidate
+  mail 7 days before joining; `did_not_join` frees the opening and shows backup candidates; report shows offer→join rate.
+- P19 `?src=` source tag, link variants (LinkedIn, Naukri, WhatsApp, Referral), `?ref=` referrer; server-rendered
+  `<title>`, `og:*` and `JobPosting` JSON-LD for verified orgs' job/careers pages.
+- P20 Duplicate a job; round `sendOnMove`; `reject_reason` enum (skills, experience, ctc, notice, location, integrity,
+  no_show, candidate_declined, filled, other); "Consider for another job".
+- P21 Scope cuts: question drafts (H6) move to after the UI and are MCQ/numeric only in v1 (code drafts later); the
+  hiring preset warns when a section's pool is under 2× its pick; overall-score weights fixed (20/40/20/20) in v1;
+  operator keeps companies, verify, suspend, reports and erase (figures/credits stay in the CLIs); pipeline ships as a
+  table with round counts (no drag-and-drop board).
+- P22 The acceptance demo in critique-product.md item 22 is the "done" test for plan row 100, and the script for H10.
+
+### Not adopted / changed
+- None of the items are rejected. Conflicts resolved: integrity `high` follows S14 (not P8/P9); unverified employers get
+  ≤100 applications per job (P18, stricter than S18's 300).
+- The third critique ("fit": does the design match the real code, service signatures, slice order) did not finish
+  (session limit). Re-run it before or alongside H1 — see docs/HIRE-HANDOFF.md.
+
+### Build order (slice ids stay tied to tracker rows 101–110)
+H1 → H2 → H3 → H4 → H5 → H7 (operator) → H8 (console) → H9 (web) → H6 (question drafts) → H10 (e2e + docs).
+Where an item above belongs: S1, S5, S6, S19, S20, S24 → H1. S2–S4, S7–S10, S15-knockouts, S17, S18, S21–S23, P1, P3,
+P9-hashes, P11, P14, P19, P20 → H2. S15, S16, P16 → H3. P4–P6, P10, P13, P15, P17, S13 → H4. S14, P2, P7, P8, P9 → H5.
+S11, S12, S18-verification → H7. P12 and S19 UI → H8/H9.
