@@ -171,7 +171,7 @@ ek line ki kya baaki):
   application (rejected/withdrawn/did_not_join ke baad dobara apply ho sake, `reapply_after_days` service jaanche).
   Outbox: `OutboxItem.kind` me `hire`; handler ka teesra nateeja `{ later: Date }` + `OutboxStore.defer` (F2: attempts
   nahi gine jaate). `migrate.test.ts`, `outbox-store` aur `delivery` tests
-- [ ] 2. `hire-store.ts`: public job/careers padhna (draft/held kabhi nahi), application likhna (sealed snapshot "hire"
+- [x] 2. `hire-store.ts` + naya `hire-application-store.ts`: public job/careers padhna (draft/held kabhi nahi), application likhna (sealed snapshot "hire"
   key, AAD `hire/{org}/{app}/{field}`; hashes S20; ref F5; pehle round ka result; `applied` event; outbox ek hi
   transaction me), ginti (job ki, candidate ki 24 h), duplicate/reapply padhna, candidate ki apni application, withdraw.
   Tests: applicant RLS (sirf apni), do org alag

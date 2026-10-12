@@ -436,6 +436,28 @@ export class HireStore {
     });
   }
 
+  /**
+   * A job as its public page shows it, by the address it was given: one that
+   * was published (open, paused or closed). A draft or a held job has no page.
+   */
+  async publishedJob(orgId: OrgId, publicCode: string): Promise<Job | null> {
+    return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
+      const rows = await tx.query<{ id: string }>(
+        `SELECT id FROM hire_jobs WHERE org_id = $1 AND public_code = $2 AND status IN ('open', 'paused', 'closed')`,
+        [orgId, publicCode],
+      );
+      return rows[0] === undefined ? null : this.#job(tx, orgId, rows[0].id);
+    });
+  }
+
+  /** The jobs taking applications now, for the careers page: newest first. */
+  async openJobList(orgId: OrgId): Promise<readonly Job[]> {
+    return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
+      const rows = await tx.query<JobRow>(`SELECT ${JOB_COLUMNS} FROM hire_jobs WHERE org_id = $1 AND status = 'open' ORDER BY published_at DESC, id LIMIT 200`, [orgId]);
+      return rows.map((r) => toJob(r, []));
+    });
+  }
+
   /** Remove a draft that never took an application. False if it is not a draft or has applications. */
   async deleteDraft(orgId: OrgId, id: string): Promise<boolean> {
     return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
