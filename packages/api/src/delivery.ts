@@ -211,8 +211,13 @@ export interface RecheckNote {
   readonly reply: string;
 }
 
-/** Handles the outbox kinds this module does not: webhooks, integrations (§7). */
-export type ItemHandler = (item: OutboxItem) => Promise<"sent" | { readonly skip: string }>;
+/**
+ * Handles the outbox kinds this module does not: webhooks, integrations (§7).
+ * `later`: not now, try again then, the try not counted (a suspended
+ * company's Hire mail is held this way, F2).
+ */
+export type ItemOutcome = "sent" | { readonly skip: string } | { readonly later: Date };
+export type ItemHandler = (item: OutboxItem) => Promise<ItemOutcome>;
 
 export interface DeliveryWorkerOptions {
   readonly outbox: OutboxStore;
@@ -268,6 +273,7 @@ export class DeliveryWorker {
     try {
       const outcome = await this.#deliver(item);
       if (outcome === "sent") await outbox.sent(item.id, new Date(this.#now()));
+      else if ("later" in outcome) await outbox.defer(item.id, outcome.later);
       else await outbox.skipped(item.id, outcome.skip);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -278,7 +284,7 @@ export class DeliveryWorker {
     }
   }
 
-  async #deliver(item: OutboxItem): Promise<"sent" | { readonly skip: string }> {
+  async #deliver(item: OutboxItem): Promise<ItemOutcome> {
     if (item.kind !== "email" && item.kind !== "sms" && item.kind !== "whatsapp") {
       const handler = this.#o.handlers?.[item.kind];
       return handler === undefined ? { skip: `No handler for ${item.kind}` } : handler(item);

@@ -167,7 +167,7 @@ ek line ki kya baaki):
 
 **H2b checklist (Apply + portal)** (critique-fit.md "Splits" H2b; har kadam: code + tests → `WIP(H2b)` commit → push → `[x]`):
 
-- [ ] 1. Migration `0072_hire_apply.sql` (0071 `main` par hai, use mat badlo): ek job par ek insaan ki ek hi *chalti*
+- [x] 1. Migration `0072_hire_apply.sql` (0071 `main` par hai, use mat badlo): ek job par ek insaan ki ek hi *chalti*
   application (rejected/withdrawn/did_not_join ke baad dobara apply ho sake, `reapply_after_days` service jaanche).
   Outbox: `OutboxItem.kind` me `hire`; handler ka teesra nateeja `{ later: Date }` + `OutboxStore.defer` (F2: attempts
   nahi gine jaate). `migrate.test.ts`, `outbox-store` aur `delivery` tests

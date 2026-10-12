@@ -4,7 +4,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor } from "@parikshaa/store";
+import { enqueue, IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor } from "@parikshaa/store";
 import { DeliveryWorker, Msg91Sender, OutboxLog, PermanentFailure, ist, type EmailMessage, type Mailer, type SmsMessage } from "./delivery.js";
 import { InviteCodes } from "./invite-codes.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, PUBLIC_URL, signIn, TOKEN_SECRET, wire } from "./testing/harness.js";
@@ -364,6 +364,46 @@ describe("when sending fails", () => {
     await worker.tick();
 
     expect(log.sent).toHaveLength(0);
+  });
+});
+
+describe("a handler that says not yet", () => {
+  it("holds the item until then, without counting the try (F2)", async () => {
+    const sql = pgliteExecutor(db);
+    await sql.transaction((tx) => enqueue(tx, "org-a", [{ kind: "hire", subject: { applicationId: "a1" }, purpose: "mail_applied", id: "held-1", sendAfter: new Date(clock) }], () => "x"), {
+      "parikshaa.org_id": "org-a",
+      "parikshaa.actor": "staff",
+    });
+    let suspended = true;
+    const seen: string[] = [];
+    const held = new DeliveryWorker({
+      outbox: new OutboxStore(sql),
+      invitations: new InvitationStore(sql),
+      store: new LedgerStore(sql),
+      identity: new IdentityStore(sql),
+      link: () => PUBLIC_URL,
+      mailer: null,
+      sms: null,
+      handlers: {
+        hire: async (item) => {
+          seen.push(item.id);
+          return suspended ? { later: new Date(clock + HOUR) } : "sent";
+        },
+      },
+      now: () => clock,
+    });
+    const item = async () => (await new OutboxStore(sql).recent("org-a")).find((q) => q.id === "held-1");
+
+    for (let i = 0; i < 10; i++) {
+      await held.tick();
+      clock += HOUR;
+    }
+    expect(await item()).toMatchObject({ status: "pending", attempts: 0 });
+    expect(seen).toHaveLength(10);
+
+    suspended = false;
+    await held.tick();
+    expect(await item()).toMatchObject({ status: "sent" });
   });
 });
 

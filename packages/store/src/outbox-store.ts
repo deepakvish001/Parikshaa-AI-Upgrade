@@ -11,7 +11,7 @@ import type { SqlExecutor } from "./sql.js";
 export interface OutboxItem {
   readonly id: string;
   readonly orgId: string;
-  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti" | "student" | "interview";
+  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti" | "student" | "interview" | "hire";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly attempts: number;
@@ -19,7 +19,7 @@ export interface OutboxItem {
 
 /** Something to send later, written with the change that caused it. */
 export interface OutboxDraft {
-  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti" | "student" | "interview";
+  readonly kind: "email" | "sms" | "whatsapp" | "webhook" | "greenhouse" | "staff_email" | "learner_email" | "ats" | "lti" | "student" | "interview" | "hire";
   readonly subject: Record<string, unknown>;
   readonly purpose: string;
   readonly sendAfter?: Date;
@@ -100,6 +100,17 @@ export class OutboxStore {
   /** Nothing to send after all — the candidate already started, the invitation was revoked. */
   async skipped(id: string, reason: string): Promise<void> {
     await this.#sql.query(`UPDATE outbox SET status = 'skipped', last_error = $2, locked_until = NULL WHERE id = $1`, [id, reason]);
+  }
+
+  /**
+   * Not yet: put it back to be tried at `until`, without counting this try. A
+   * suspended company's Hire mail waits this way rather than being lost (F2).
+   */
+  async defer(id: string, until: Date): Promise<void> {
+    await this.#sql.query(
+      `UPDATE outbox SET status = 'pending', send_after = $2, attempts = greatest(attempts - 1, 0), locked_until = NULL WHERE id = $1`,
+      [id, until.toISOString()],
+    );
   }
 
   /** Retry at `retryAt`, or give up if it is null. */
