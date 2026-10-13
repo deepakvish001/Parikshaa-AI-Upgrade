@@ -203,7 +203,7 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   "is kadam me n din", P13/P15) aur H2b ka `apply()` ise `now` se likhe. `migrate.test.ts` me 0073. Outbox, events
   ke CHECK pehle se kaafi hain (`message`, `note`, `override`, `restored`; `candidate_visible` CHECK S4)
   → ✅ `e07a0bf` (session 4): 0073 + `apply()` me `round_since`; `migrate.test.ts` (purani row ka `round_since` = `created_at`), store tests 18/18
-- [ ] 2. Store `packages/store/src/hire-pipeline-store.ts` (`HirePipelineStore`, `hireScoped` + `hireStaff`, H2b jaisa
+- [x] 2. Store `packages/store/src/hire-pipeline-store.ts` (`HirePipelineStore`, `hireScoped` + `hireStaff`, H2b jaisa
   sealing; `index.ts` export): `pipeline(orgId, jobId, filter)` ek hi query (P15: application + current round ka
   result + har round ka status/score + screening score/recommendation + integrity level, `null` → `not_checked`;
   round aur status ki ginti; filters round, status, naam search, recommendation, integrity, past SLA);
@@ -222,6 +222,7 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   `hire-pipeline-store.test.ts`: do org alag, har move par event, override event, reject → outbox +24 h, restore par
   mail `skipped`, B9 refusal, applicant scope `message` dekhe par `note`/`override` nahi (RLS), 1 000 applications ka
   pipeline read < 1 s (P15)
+  → ✅ `f1c062a` (session 4): `hire-pipeline-store.test.ts` 13 tests (1 000 rows ≈0.3–0.45 s PGlite me, best of 3); extra outcome `same_round`, `move` jawab `{roundFound, results}`; `thread()` (applicant scope), `messageText()`, `resumeFile()`, `jobOf()`; `by` = staff user id (naam service dega); type `ScreenRecommendation` (`Recommendation` interview-store me pehle se)
 - [ ] 3. Service `packages/api/src/hire-pipeline.ts` (`HirePipeline`): permission + manager niyam (upar); S22
   projection: email, phone, answers, profile, resume text/download sirf `hire:decide` wale ko (manager apni job par),
   viewer ko naam, ref, round, status, scores bas; resume download attachment, saaf filename, sniffed type, audit
