@@ -140,6 +140,7 @@ describe("applying", () => {
     const [raw] = await sql.transaction((tx) => tx.query<Record<string, unknown>>(`SELECT * FROM hire_applications WHERE id = $1`, [id]), staff);
     expect(JSON.stringify(raw)).not.toMatch(/c1@example\.com|9876543210|Go developer|Kafka/);
     expect(raw).toMatchObject({ round_id: job.rounds[0]!.id, consent_version: "hire-1", notice_hash: "n1", source_tag: "linkedin", device_ready: true });
+    expect(new Date(raw!["round_since"] as string).toISOString()).toBe(T0.toISOString());
 
     const results = await sql.transaction((tx) => tx.query(`SELECT round_id, status FROM hire_round_results`), staff);
     expect(results).toEqual([{ round_id: job.rounds[0]!.id, status: "pending" }]);

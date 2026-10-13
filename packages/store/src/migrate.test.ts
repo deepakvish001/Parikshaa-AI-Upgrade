@@ -1,9 +1,9 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { copyFile, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { migrate, pendingMigrations } from "./migrate.js";
+import { MIGRATIONS_DIR, migrate, pendingMigrations } from "./migrate.js";
 import { pgliteExecutor, type SqlExecutor } from "./sql.js";
 
 let db: PGlite;
@@ -165,6 +165,7 @@ describe("migrate", () => {
       "0070_candidate_accounts.sql",
       "0071_hire.sql",
       "0072_hire_apply.sql",
+      "0073_hire_pipeline.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -224,6 +225,25 @@ describe("migrate", () => {
     expect(loose).toEqual([]);
     // Removed with the tech-only focus (0055).
     for (const gone of ["answer_scripts", "answer_script_pages", "exam_outcomes"]) expect(tables.map((t) => t.tablename)).not.toContain(gone);
+  });
+
+  it("counts an application's time in its round from when it was made, for those made before 0073 (H2c)", async () => {
+    const all = (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith(".sql")).sort();
+    for (const f of all.filter((f) => f < "0073")) await copyFile(join(MIGRATIONS_DIR, f), join(dir, f));
+    await migrate(sql, dir);
+    await sql.exec(`
+      INSERT INTO organisations (id, name) VALUES ('org-a', 'A');
+      INSERT INTO hire_jobs (org_id, id, title) VALUES ('org-a', 'job-1', 'Backend engineer');
+      INSERT INTO hire_applications (org_id, id, job_id, ref, name, email, email_hash, email_canonical_hash, source, status, created_at)
+        VALUES ('org-a', 'app-1', 'job-1', 'A1', 'Asha', 's', 'e', 'e', 'link', 'active', '2026-09-01T10:00:00Z');
+    `);
+    for (const f of all.filter((f) => f >= "0073")) await copyFile(join(MIGRATIONS_DIR, f), join(dir, f));
+    await migrate(sql, dir);
+    const [row] = await sql.query<{ round_since: Date; rejection_line: string }>(
+      `SELECT a.round_since, j.rejection_line FROM hire_applications a JOIN hire_jobs j ON j.org_id = a.org_id AND j.id = a.job_id`,
+    );
+    expect(new Date(row!.round_since).toISOString()).toBe("2026-09-01T10:00:00.000Z");
+    expect(row!.rejection_line).toBe("");
   });
 
   it("leaves Supabase's API roles, the secret key's included, no privilege on any table, then or later", async () => {

@@ -177,9 +177,9 @@ export class HireApplicationStore {
              (org_id, id, job_id, candidate_id, ref, name, email, phone, profile, answers, resume_text, resume_file, resume_key,
               resume_name, resume_type, email_hash, email_canonical_hash, phone_hash, resume_hash, source, source_tag, referrer,
               consent_version, notice_hash, consented_at, ai_opt_out, device_ready, round_id, status, status_reason,
-              reject_reason, decided_at, created_at, updated_at)
+              reject_reason, decided_at, round_since, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23,
-                   $24, $25, $26, $27, $28, $29, $30, $31, $32, $25, $25)`,
+                   $24, $25, $26, $27, $28, $29, $30, $31, $32, $25, $25, $25)`,
           [
             orgId,
             a.id,
