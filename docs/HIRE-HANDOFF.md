@@ -197,11 +197,12 @@ S21, S22, P14, P15, P20, F23, B9; har kadam: code + tests → `WIP(H2c)` commit 
 line ki kya baaki). Pipeline ke saare kaam `hire:decide` maangte hain (padhna `hire:review`), API key ke liye decide
 mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit `detail` me sirf ids aur ginti (S3).
 
-- [ ] 1. Migration `0073_hire_pipeline.sql` (0071/0072 mat chhedo; critique-fit "Splits" me H5b ke aage 0073 likha
+- [x] 1. Migration `0073_hire_pipeline.sql` (0071/0072 mat chhedo; critique-fit "Splits" me H5b ke aage 0073 likha
   hai, wo ab 0074+ lega, HIRE-V2 §10 pehle se "next free numbers" kehta hai): `hire_jobs.rejection_line` (P14: har job ki ek editable line, `NOT NULL DEFAULT ''`, ≤500);
   `hire_applications.round_since timestamptz NOT NULL DEFAULT now()` (purani rows `created_at` se bharo; pipeline ka
   "is kadam me n din", P13/P15) aur H2b ka `apply()` ise `now` se likhe. `migrate.test.ts` me 0073. Outbox, events
   ke CHECK pehle se kaafi hain (`message`, `note`, `override`, `restored`; `candidate_visible` CHECK S4)
+  → ✅ `e07a0bf` (session 4): 0073 + `apply()` me `round_since`; `migrate.test.ts` (purani row ka `round_since` = `created_at`), store tests 18/18
 - [ ] 2. Store `packages/store/src/hire-pipeline-store.ts` (`HirePipelineStore`, `hireScoped` + `hireStaff`, H2b jaisa
   sealing; `index.ts` export): `pipeline(orgId, jobId, filter)` ek hi query (P15: application + current round ka
   result + har round ka status/score + screening score/recommendation + integrity level, `null` → `not_checked`;
