@@ -5,6 +5,7 @@ import { Candidates } from "../candidates.js";
 import { HireService } from "../hire.js";
 import { HireApplications, type HireContact } from "../hire-apply.js";
 import { HireMessages } from "../hire-messages.js";
+import { HirePipeline } from "../hire-pipeline.js";
 import { Onboarding, type SignupPolicy } from "../onboarding.js";
 import type Anthropic from "@anthropic-ai/sdk";
 import { PGlite } from "@electric-sql/pglite";
@@ -14,6 +15,7 @@ import {
   IdentityStore,
   CandidateStore,
   HireApplicationStore,
+  HirePipelineStore,
   HireStore,
   InvigilationStore,
   InvitationStore,
@@ -495,6 +497,13 @@ export async function wire(
       keys: new DataKeys(DATA_KEY),
       mailer: options.mailer ?? null,
       ...(options.now === undefined ? {} : { now: () => new Date(options.now!()) }),
+    }),
+    hirePipeline: new HirePipeline({
+      jobs: hireStore,
+      pipeline: new HirePipelineStore(sql, new DataKeys(DATA_KEY).records("hire"), { blobs: options.blobs ?? null }),
+      identity,
+      recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail),
+      ...(options.now === undefined ? {} : { now: options.now }),
     }),
     hireApplications: new HireApplications({
       jobs: hireStore,

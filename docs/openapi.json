@@ -140283,6 +140283,3754 @@
         }
       }
     },
+    "/hire/jobs/{jobId}/applications": {
+      "get": {
+        "summary": "A job's pipeline",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "Each application with its round, every round's result, the AI screening's reading and the integrity level, filtered; and counts over the whole job. A thousand rows at most per page.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "query",
+            "name": "round",
+            "required": false,
+            "description": "Only those whose current round is this one."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "invited",
+                "not_claimed",
+                "active",
+                "rejected",
+                "withdrawn",
+                "hired",
+                "joined",
+                "did_not_join"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "description": "Part of the name, or the ref."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "advance",
+                "hold",
+                "low_match"
+              ]
+            },
+            "in": "query",
+            "name": "recommendation",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "not_checked",
+                "clear",
+                "review",
+                "high"
+              ]
+            },
+            "in": "query",
+            "name": "integrity",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "pastSla",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000000
+            },
+            "in": "query",
+            "name": "offset",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "jobId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "job": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "held",
+                            "open",
+                            "paused",
+                            "closed"
+                          ]
+                        },
+                        "reviewSlaDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "rounds": {
+                          "readOnly": true,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "screen",
+                                  "assessment",
+                                  "ai_interview",
+                                  "interview",
+                                  "review",
+                                  "offer"
+                                ]
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "kind",
+                              "title",
+                              "position"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "status",
+                        "reviewSlaDays",
+                        "rounds"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "rows": {
+                      "readOnly": true,
+                      "description": "In the order they applied. No contact details: open one for those.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "ref": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "invited",
+                              "not_claimed",
+                              "active",
+                              "rejected",
+                              "withdrawn",
+                              "hired",
+                              "joined",
+                              "did_not_join"
+                            ]
+                          },
+                          "rejectReason": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "skills",
+                                  "experience",
+                                  "ctc",
+                                  "notice",
+                                  "location",
+                                  "integrity",
+                                  "no_show",
+                                  "candidate_declined",
+                                  "filled",
+                                  "other"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "roundId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "roundSince": {
+                            "type": "string",
+                            "description": "Since when it has been in its current round."
+                          },
+                          "pastSla": {
+                            "type": "boolean",
+                            "description": "Active, and in its round longer than the job's review days."
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "link",
+                              "careers",
+                              "referral",
+                              "manual",
+                              "import"
+                            ]
+                          },
+                          "sourceTag": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "current": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "pending",
+                                      "invited",
+                                      "in_progress",
+                                      "done",
+                                      "passed",
+                                      "failed",
+                                      "skipped",
+                                      "expired",
+                                      "abandoned"
+                                    ]
+                                  },
+                                  "score": {
+                                    "description": "0–100, when known.",
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Its result in the current round."
+                          },
+                          "rounds": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "pending",
+                                    "invited",
+                                    "in_progress",
+                                    "done",
+                                    "passed",
+                                    "failed",
+                                    "skipped",
+                                    "expired",
+                                    "abandoned"
+                                  ]
+                                },
+                                "score": {
+                                  "description": "0–100, when known.",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "score"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Its result in each round it has reached, by round id."
+                          },
+                          "screening": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "done",
+                                      "failed",
+                                      "skipped"
+                                    ]
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "recommendation": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "advance",
+                                          "hold",
+                                          "low_match"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "status",
+                                  "score",
+                                  "recommendation"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "The AI screening's reading (AI: may be wrong). Null until it has run."
+                          },
+                          "integrity": {
+                            "type": "object",
+                            "properties": {
+                              "level": {
+                                "type": "string",
+                                "enum": [
+                                  "not_checked",
+                                  "clear",
+                                  "review",
+                                  "high"
+                                ],
+                                "description": "not_checked until a check has run."
+                              },
+                              "verdict": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "genuine",
+                                      "not_genuine"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "A person's verdict."
+                              }
+                            },
+                            "required": [
+                              "level",
+                              "verdict"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "ref",
+                          "name",
+                          "status",
+                          "rejectReason",
+                          "roundId",
+                          "roundSince",
+                          "pastSla",
+                          "createdAt",
+                          "decidedAt",
+                          "source",
+                          "sourceTag",
+                          "current",
+                          "rounds",
+                          "screening",
+                          "integrity"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "How many match the filter in all."
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "byRound": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Active applications in each round, by round id."
+                        },
+                        "byStatus": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "pastSla": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "byRound",
+                        "byStatus",
+                        "pastSla"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "job",
+                    "rows",
+                    "total",
+                    "counts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/jobs/{jobId}/applications/move": {
+      "post": {
+        "summary": "Move applications to another round",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "Up to 200 at a time. The round left is marked passed, any jumped over skipped. One whose integrity is high, and not found genuine by a person, moves only with `overrideReason`. A round with `sendOnMove` mails the candidate.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "to": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80,
+                    "description": "A round of the job, or \"next\": each to the round after its own."
+                  },
+                  "overrideReason": {
+                    "description": "Why an application whose integrity is high, and not found genuine, moves on anyway: ten characters or more. Kept privately and audited.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "ids",
+                  "to"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "jobId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "done": {
+                      "readOnly": true,
+                      "description": "The applications changed.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "refused": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "description": "not_found, not_active, same_round, last_round or override_needs_reason."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "done",
+                    "refused"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/jobs/{jobId}/applications/reject": {
+      "post": {
+        "summary": "Turn applications down",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "Up to 200 at a time. The reason is the company's; the candidate's mail, if sent, gives none and goes a day later.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "rejectReason": {
+                    "type": "string",
+                    "enum": [
+                      "skills",
+                      "experience",
+                      "ctc",
+                      "notice",
+                      "location",
+                      "integrity",
+                      "no_show",
+                      "candidate_declined",
+                      "filled",
+                      "other"
+                    ],
+                    "description": "Kept for the company; never told to the candidate."
+                  },
+                  "mail": {
+                    "default": true,
+                    "description": "Send the polite rejection mail, a day later: a Restore before then stops it.",
+                    "type": "boolean"
+                  },
+                  "filter": {
+                    "description": "The filter the list was chosen with. On the AI's recommendation, `reason` is needed.",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "recommendation": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "advance",
+                                  "hold",
+                                  "low_match"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "reason": {
+                    "description": "Why, in ten characters or more, when the list came from the AI's recommendation. Kept as a note on each.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "ids",
+                  "rejectReason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "jobId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "done": {
+                      "readOnly": true,
+                      "description": "The applications changed.",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "refused": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "description": "not_found, not_active, same_round, last_round or override_needs_reason."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "reason"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "done",
+                    "refused"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/applications/{applicationId}": {
+      "get": {
+        "summary": "One application: what the candidate gave, each round, the timeline",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "Contact details, answers, the profile and the resume only for those who may decide on it; others see the name, round states and scores.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "description": "The candidate's reference in this company: the same for every job."
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "invited",
+                        "not_claimed",
+                        "active",
+                        "rejected",
+                        "withdrawn",
+                        "hired",
+                        "joined",
+                        "did_not_join"
+                      ]
+                    },
+                    "rejectReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "skills",
+                            "experience",
+                            "ctc",
+                            "notice",
+                            "location",
+                            "integrity",
+                            "no_show",
+                            "candidate_declined",
+                            "filled",
+                            "other"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "roundId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "roundSince": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "link",
+                        "careers",
+                        "referral",
+                        "manual",
+                        "import"
+                      ]
+                    },
+                    "sourceTag": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "aiOptOut": {
+                      "type": "boolean",
+                      "description": "The candidate asked for a person to read the application without AI."
+                    },
+                    "deviceReady": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "results": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roundId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "invited",
+                              "in_progress",
+                              "done",
+                              "passed",
+                              "failed",
+                              "skipped",
+                              "expired",
+                              "abandoned"
+                            ]
+                          },
+                          "score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "detail": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {}
+                          },
+                          "invitedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedBy": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "roundId",
+                          "status",
+                          "score",
+                          "detail",
+                          "invitedAt",
+                          "completedAt",
+                          "decidedBy",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "screening": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "done",
+                                "failed",
+                                "skipped"
+                              ]
+                            },
+                            "score": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "recommendation": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "advance",
+                                    "hold",
+                                    "low_match"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "score",
+                            "recommendation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The AI screening's reading (AI: may be wrong). Null until it has run."
+                    },
+                    "integrity": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "not_checked",
+                            "clear",
+                            "review",
+                            "high"
+                          ],
+                          "description": "not_checked until a check has run."
+                        },
+                        "verdict": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "genuine",
+                                "not_genuine"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "A person's verdict."
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "verdict"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "timeline": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "roundId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "by": {
+                            "type": "string",
+                            "description": "A member of staff by name, or candidate, or system."
+                          },
+                          "text": {
+                            "description": "A note's, a message's or an override's words: only for those who may decide.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "candidateVisible": {
+                            "type": "boolean",
+                            "description": "The candidate sees this step in their portal (never its detail)."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "at",
+                          "kind",
+                          "roundId",
+                          "by",
+                          "text",
+                          "candidateVisible"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "contact": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "referrer": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "profile": {},
+                            "answers": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": [
+                                  "string",
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "resume": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "pdf",
+                                        "docx"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "description": "Read from the file; shown first."
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "resumeDownload": {
+                              "type": "boolean",
+                              "description": "The file may be downloaded: not until Parikshaa verifies the company."
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "phone",
+                            "referrer",
+                            "profile",
+                            "answers",
+                            "resume",
+                            "resumeDownload"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "What the candidate gave: only for those who may decide on the application (hire:decide)."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "jobId",
+                    "ref",
+                    "name",
+                    "status",
+                    "rejectReason",
+                    "roundId",
+                    "roundSince",
+                    "createdAt",
+                    "decidedAt",
+                    "source",
+                    "sourceTag",
+                    "aiOptOut",
+                    "deviceReady",
+                    "results",
+                    "screening",
+                    "integrity",
+                    "timeline",
+                    "contact"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/applications/{applicationId}/resume": {
+      "get": {
+        "summary": "The candidate's resume file, as a download",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "For those who may decide on the application, once Parikshaa has verified the company. Each download is recorded.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "application/pdf, or a Word document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "application/pdf, or a Word document"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/applications/{applicationId}/restore": {
+      "post": {
+        "summary": "Bring back a rejected application",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "To the round it was in. Never a withdrawn one, nor one whose person has applied to the job again since. A rejection mail still waiting is not sent.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "description": "The candidate's reference in this company: the same for every job."
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "invited",
+                        "not_claimed",
+                        "active",
+                        "rejected",
+                        "withdrawn",
+                        "hired",
+                        "joined",
+                        "did_not_join"
+                      ]
+                    },
+                    "rejectReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "skills",
+                            "experience",
+                            "ctc",
+                            "notice",
+                            "location",
+                            "integrity",
+                            "no_show",
+                            "candidate_declined",
+                            "filled",
+                            "other"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "roundId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "roundSince": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "link",
+                        "careers",
+                        "referral",
+                        "manual",
+                        "import"
+                      ]
+                    },
+                    "sourceTag": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "aiOptOut": {
+                      "type": "boolean",
+                      "description": "The candidate asked for a person to read the application without AI."
+                    },
+                    "deviceReady": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "results": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roundId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "invited",
+                              "in_progress",
+                              "done",
+                              "passed",
+                              "failed",
+                              "skipped",
+                              "expired",
+                              "abandoned"
+                            ]
+                          },
+                          "score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "detail": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {}
+                          },
+                          "invitedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedBy": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "roundId",
+                          "status",
+                          "score",
+                          "detail",
+                          "invitedAt",
+                          "completedAt",
+                          "decidedBy",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "screening": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "done",
+                                "failed",
+                                "skipped"
+                              ]
+                            },
+                            "score": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "recommendation": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "advance",
+                                    "hold",
+                                    "low_match"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "score",
+                            "recommendation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The AI screening's reading (AI: may be wrong). Null until it has run."
+                    },
+                    "integrity": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "not_checked",
+                            "clear",
+                            "review",
+                            "high"
+                          ],
+                          "description": "not_checked until a check has run."
+                        },
+                        "verdict": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "genuine",
+                                "not_genuine"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "A person's verdict."
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "verdict"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "timeline": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "roundId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "by": {
+                            "type": "string",
+                            "description": "A member of staff by name, or candidate, or system."
+                          },
+                          "text": {
+                            "description": "A note's, a message's or an override's words: only for those who may decide.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "candidateVisible": {
+                            "type": "boolean",
+                            "description": "The candidate sees this step in their portal (never its detail)."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "at",
+                          "kind",
+                          "roundId",
+                          "by",
+                          "text",
+                          "candidateVisible"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "contact": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "referrer": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "profile": {},
+                            "answers": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": [
+                                  "string",
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "resume": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "pdf",
+                                        "docx"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "description": "Read from the file; shown first."
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "resumeDownload": {
+                              "type": "boolean",
+                              "description": "The file may be downloaded: not until Parikshaa verifies the company."
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "phone",
+                            "referrer",
+                            "profile",
+                            "answers",
+                            "resume",
+                            "resumeDownload"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "What the candidate gave: only for those who may decide on the application (hire:decide)."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "jobId",
+                    "ref",
+                    "name",
+                    "status",
+                    "rejectReason",
+                    "roundId",
+                    "roundSince",
+                    "createdAt",
+                    "decidedAt",
+                    "source",
+                    "sourceTag",
+                    "aiOptOut",
+                    "deviceReady",
+                    "results",
+                    "screening",
+                    "integrity",
+                    "timeline",
+                    "contact"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/applications/{applicationId}/notes": {
+      "post": {
+        "summary": "Write a note on an application",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "For the team: the candidate never sees it.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "description": "The candidate's reference in this company: the same for every job."
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "invited",
+                        "not_claimed",
+                        "active",
+                        "rejected",
+                        "withdrawn",
+                        "hired",
+                        "joined",
+                        "did_not_join"
+                      ]
+                    },
+                    "rejectReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "skills",
+                            "experience",
+                            "ctc",
+                            "notice",
+                            "location",
+                            "integrity",
+                            "no_show",
+                            "candidate_declined",
+                            "filled",
+                            "other"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "roundId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "roundSince": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "link",
+                        "careers",
+                        "referral",
+                        "manual",
+                        "import"
+                      ]
+                    },
+                    "sourceTag": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "aiOptOut": {
+                      "type": "boolean",
+                      "description": "The candidate asked for a person to read the application without AI."
+                    },
+                    "deviceReady": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "results": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roundId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "invited",
+                              "in_progress",
+                              "done",
+                              "passed",
+                              "failed",
+                              "skipped",
+                              "expired",
+                              "abandoned"
+                            ]
+                          },
+                          "score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "detail": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {}
+                          },
+                          "invitedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedBy": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "roundId",
+                          "status",
+                          "score",
+                          "detail",
+                          "invitedAt",
+                          "completedAt",
+                          "decidedBy",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "screening": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "done",
+                                "failed",
+                                "skipped"
+                              ]
+                            },
+                            "score": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "recommendation": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "advance",
+                                    "hold",
+                                    "low_match"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "score",
+                            "recommendation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The AI screening's reading (AI: may be wrong). Null until it has run."
+                    },
+                    "integrity": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "not_checked",
+                            "clear",
+                            "review",
+                            "high"
+                          ],
+                          "description": "not_checked until a check has run."
+                        },
+                        "verdict": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "genuine",
+                                "not_genuine"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "A person's verdict."
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "verdict"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "timeline": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "roundId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "by": {
+                            "type": "string",
+                            "description": "A member of staff by name, or candidate, or system."
+                          },
+                          "text": {
+                            "description": "A note's, a message's or an override's words: only for those who may decide.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "candidateVisible": {
+                            "type": "boolean",
+                            "description": "The candidate sees this step in their portal (never its detail)."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "at",
+                          "kind",
+                          "roundId",
+                          "by",
+                          "text",
+                          "candidateVisible"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "contact": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "referrer": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "profile": {},
+                            "answers": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": [
+                                  "string",
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "resume": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "pdf",
+                                        "docx"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "description": "Read from the file; shown first."
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "resumeDownload": {
+                              "type": "boolean",
+                              "description": "The file may be downloaded: not until Parikshaa verifies the company."
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "phone",
+                            "referrer",
+                            "profile",
+                            "answers",
+                            "resume",
+                            "resumeDownload"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "What the candidate gave: only for those who may decide on the application (hire:decide)."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "jobId",
+                    "ref",
+                    "name",
+                    "status",
+                    "rejectReason",
+                    "roundId",
+                    "roundSince",
+                    "createdAt",
+                    "decidedAt",
+                    "source",
+                    "sourceTag",
+                    "aiOptOut",
+                    "deviceReady",
+                    "results",
+                    "screening",
+                    "integrity",
+                    "timeline",
+                    "contact"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hire/applications/{applicationId}/messages": {
+      "post": {
+        "summary": "Send the candidate a message",
+        "tags": [
+          "Hiring"
+        ],
+        "description": "Shown in their portal and mailed from \"<Company> via Parikshaa\", replies going to the job's contact address. Until Parikshaa verifies the company, the mail only says a message is waiting.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "text"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          }
+        ],
+        "security": [
+          {
+            "staffAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "description": "The candidate's reference in this company: the same for every job."
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "invited",
+                        "not_claimed",
+                        "active",
+                        "rejected",
+                        "withdrawn",
+                        "hired",
+                        "joined",
+                        "did_not_join"
+                      ]
+                    },
+                    "rejectReason": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "skills",
+                            "experience",
+                            "ctc",
+                            "notice",
+                            "location",
+                            "integrity",
+                            "no_show",
+                            "candidate_declined",
+                            "filled",
+                            "other"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "roundId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "roundSince": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "decidedAt": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "link",
+                        "careers",
+                        "referral",
+                        "manual",
+                        "import"
+                      ]
+                    },
+                    "sourceTag": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "aiOptOut": {
+                      "type": "boolean",
+                      "description": "The candidate asked for a person to read the application without AI."
+                    },
+                    "deviceReady": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "results": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "roundId": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "invited",
+                              "in_progress",
+                              "done",
+                              "passed",
+                              "failed",
+                              "skipped",
+                              "expired",
+                              "abandoned"
+                            ]
+                          },
+                          "score": {
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "detail": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {}
+                          },
+                          "invitedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedBy": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "roundId",
+                          "status",
+                          "score",
+                          "detail",
+                          "invitedAt",
+                          "completedAt",
+                          "decidedBy",
+                          "decidedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "screening": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "done",
+                                "failed",
+                                "skipped"
+                              ]
+                            },
+                            "score": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "recommendation": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "advance",
+                                    "hold",
+                                    "low_match"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "score",
+                            "recommendation"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The AI screening's reading (AI: may be wrong). Null until it has run."
+                    },
+                    "integrity": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "not_checked",
+                            "clear",
+                            "review",
+                            "high"
+                          ],
+                          "description": "not_checked until a check has run."
+                        },
+                        "verdict": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "genuine",
+                                "not_genuine"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "A person's verdict."
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "verdict"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "timeline": {
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "at": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string"
+                          },
+                          "roundId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "by": {
+                            "type": "string",
+                            "description": "A member of staff by name, or candidate, or system."
+                          },
+                          "text": {
+                            "description": "A note's, a message's or an override's words: only for those who may decide.",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "candidateVisible": {
+                            "type": "boolean",
+                            "description": "The candidate sees this step in their portal (never its detail)."
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "at",
+                          "kind",
+                          "roundId",
+                          "by",
+                          "text",
+                          "candidateVisible"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "contact": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string"
+                            },
+                            "phone": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "referrer": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "profile": {},
+                            "answers": {
+                              "type": "object",
+                              "propertyNames": {
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": [
+                                  "string",
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "resume": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "pdf",
+                                        "docx"
+                                      ]
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "description": "Read from the file; shown first."
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "type",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "resumeDownload": {
+                              "type": "boolean",
+                              "description": "The file may be downloaded: not until Parikshaa verifies the company."
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "phone",
+                            "referrer",
+                            "profile",
+                            "answers",
+                            "resume",
+                            "resumeDownload"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "What the candidate gave: only for those who may decide on the application (hire:decide)."
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "jobId",
+                    "ref",
+                    "name",
+                    "status",
+                    "rejectReason",
+                    "roundId",
+                    "roundSince",
+                    "createdAt",
+                    "decidedAt",
+                    "source",
+                    "sourceTag",
+                    "aiOptOut",
+                    "deviceReady",
+                    "results",
+                    "screening",
+                    "integrity",
+                    "timeline",
+                    "contact"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "A failed request. `error` is a stable code; `message` is for people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A failed request. `error` is a stable code; `message` is for people."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "problems": {
+                      "description": "Each thing to change, in words.",
+                      "readOnly": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "required": [
+                    "error"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/hire/public/jobs/{company}/{code}": {
       "get": {
         "summary": "A job's page",
@@ -141310,6 +145058,31 @@
                               "additionalProperties": false
                             }
                           },
+                          "noteToCandidates": {
+                            "type": "string",
+                            "description": "What the company wrote to every applicant of the job."
+                          },
+                          "messages": {
+                            "readOnly": true,
+                            "description": "The company's messages about this application, oldest first. Reply to the mail they came with.",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "at": {
+                                  "type": "string"
+                                },
+                                "text": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "at",
+                                "text"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
                           "canWithdraw": {
                             "type": "boolean"
                           }
@@ -141323,6 +145096,8 @@
                           "decidedAt",
                           "steps",
                           "timeline",
+                          "noteToCandidates",
+                          "messages",
                           "canWithdraw"
                         ],
                         "additionalProperties": false
@@ -141971,6 +145746,31 @@
                         "additionalProperties": false
                       }
                     },
+                    "noteToCandidates": {
+                      "type": "string",
+                      "description": "What the company wrote to every applicant of the job."
+                    },
+                    "messages": {
+                      "readOnly": true,
+                      "description": "The company's messages about this application, oldest first. Reply to the mail they came with.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canWithdraw": {
                       "type": "boolean"
                     }
@@ -141984,6 +145784,8 @@
                     "decidedAt",
                     "steps",
                     "timeline",
+                    "noteToCandidates",
+                    "messages",
                     "canWithdraw"
                   ],
                   "additionalProperties": false
@@ -142318,6 +146120,31 @@
                         "additionalProperties": false
                       }
                     },
+                    "noteToCandidates": {
+                      "type": "string",
+                      "description": "What the company wrote to every applicant of the job."
+                    },
+                    "messages": {
+                      "readOnly": true,
+                      "description": "The company's messages about this application, oldest first. Reply to the mail they came with.",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "canWithdraw": {
                       "type": "boolean"
                     }
@@ -142331,6 +146158,8 @@
                     "decidedAt",
                     "steps",
                     "timeline",
+                    "noteToCandidates",
+                    "messages",
                     "canWithdraw"
                   ],
                   "additionalProperties": false

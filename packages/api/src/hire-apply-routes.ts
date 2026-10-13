@@ -125,6 +125,8 @@ const myApplication = z.object({
   decidedAt: z.string().nullable(),
   steps: z.array(z.object({ kind: roundKind, title: z.string(), state: stepState, current: z.boolean() })).readonly(),
   timeline: z.array(z.object({ at: z.string(), kind: z.string() })).readonly(),
+  noteToCandidates: z.string().describe("What the company wrote to every applicant of the job."),
+  messages: z.array(z.object({ at: z.string(), text: z.string() })).readonly().describe("The company's messages about this application, oldest first. Reply to the mail they came with."),
   canWithdraw: z.boolean(),
 });
 const applicationParams = z.object({ applicationId: z.string().min(1).max(80) });

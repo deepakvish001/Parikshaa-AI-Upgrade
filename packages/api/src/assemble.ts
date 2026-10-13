@@ -5,7 +5,7 @@ import type { CodeRunner } from "@parikshaa/runner";
 import type { JudgeOptions } from "./judge-queue.js";
 import { attemptId, examId, orgId, type OrgId } from "@parikshaa/core";
 import { BillingStore, DataKeys, IdentityStore, ProctorStore, InvigilationStore, InvitationStore, LedgerStore, OutboxStore, PracticeStore, PrepCampusStore, ClassStore, PrepCommunityStore, PrepEngageStore, PrepPlusStore, PrepStore, PrivacyStore, QuestionBank, QuestionMedia, ReportStore, FeedbackStore, LabStore, RecheckStore, MarkingStore, PlacementStore, SeatStore, ShortlistStore, InterviewStore, AiInterviewStore,
-  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, HireStore, HireApplicationStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
+  AccommodationStore, ProxyStore, ReviewStore, DepartmentStore, staffScope, LibraryStore, CandidateStore, HireStore, HireApplicationStore, HirePipelineStore, type BlobStore, type SqlExecutor } from "@parikshaa/store";
 import { LabService } from "./lab.js";
 import { RecheckService } from "./rechecks.js";
 import { MarkingService } from "./marking.js";
@@ -55,6 +55,7 @@ import { Candidates } from "./candidates.js";
 import { HireService } from "./hire.js";
 import { HireApplications, type HireContact } from "./hire-apply.js";
 import { HireMessages } from "./hire-messages.js";
+import { HirePipeline } from "./hire-pipeline.js";
 import { Onboarding, type SignupPolicy } from "./onboarding.js";
 import { DailyPilotReport } from "./pilot-report.js";
 
@@ -262,6 +263,13 @@ export function assemble(o: AssembleOptions): {
     keys,
     grievance: o.hireGrievance ?? null,
   });
+  const hirePipelineStore = new HirePipelineStore(o.sql, keys.records("hire"), { blobs: o.blobs ?? null });
+  const hirePipeline = new HirePipeline({
+    jobs: hireStore,
+    pipeline: hirePipelineStore,
+    identity,
+    recordAudit: (actor, action, target, detail) => service.recordAudit(actor, action, target, detail),
+  });
   const hireMessages = new HireMessages({ applications: hireApplicationStore, identity, mailer: o.mailer ?? null, publicUrl: o.publicUrl });
   const onboarding = new Onboarding({
     identity,
@@ -358,6 +366,7 @@ export function assemble(o: AssembleOptions): {
     candidates,
     hire,
     hireApplications,
+    hirePipeline,
     hsts: o.publicUrl.startsWith("https://"),
     identity,
     bank,

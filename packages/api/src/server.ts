@@ -9,6 +9,8 @@ import type { HireService } from "./hire.js";
 import { registerHireRoutes } from "./hire-routes.js";
 import type { HireApplications } from "./hire-apply.js";
 import { registerHireApplyRoutes } from "./hire-apply-routes.js";
+import type { HirePipeline } from "./hire-pipeline.js";
+import { registerHirePipelineRoutes } from "./hire-pipeline-routes.js";
 import { registerCandidateRoutes } from "./candidate-routes.js";
 import { registerOperatorRoutes } from "./operator-routes.js";
 import type { LibraryService } from "./library.js";
@@ -190,6 +192,8 @@ export interface ServerOptions {
   readonly hire?: HireService;
   /** Applying to a job, its public pages and the candidate's portal (H2b). Needs `candidates`. Absent: none of their routes. */
   readonly hireApplications?: HireApplications;
+  /** A job's pipeline for the company: moving, rejecting, restoring, notes and messages (H2c). Absent: none of its routes. */
+  readonly hirePipeline?: HirePipeline;
   /**
    * Send Cross-Origin-Opener-Policy: same-origin, so no other site that
    * opened a page of ours can reach into it. On unless set false, which only
@@ -1426,6 +1430,7 @@ export function buildServer(options: ServerOptions): FastifyInstance {
     if (options.onboarding !== undefined) registerOnboardingRoutes(routes, { onboarding: options.onboarding, staff, ...(options.signupLimit === undefined ? {} : { limit: options.signupLimit }) });
     if (options.candidates !== undefined) registerCandidateRoutes(routes, { candidates: options.candidates, bearer, throttle });
     if (options.hire !== undefined) registerHireRoutes(routes, { hire: options.hire, staff });
+    if (options.hirePipeline !== undefined) registerHirePipelineRoutes(routes, { pipeline: options.hirePipeline, staff });
     if (options.hireApplications !== undefined && options.candidates !== undefined) {
       registerHireApplyRoutes(routes, { applications: options.hireApplications, candidates: options.candidates, bearer });
     }

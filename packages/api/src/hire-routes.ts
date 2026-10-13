@@ -32,6 +32,8 @@ export const hireRefusal = z.object({
 });
 const refusals = { 401: S.errorResponse, 403: S.errorResponse, 404: S.errorResponse, 409: hireRefusal, 422: hireRefusal } as const;
 const STATUS = { not_found: 404, invalid: 422, limit: 409, conflict: 409, unavailable: 503 } as const;
+/** For the other staff routes of Hire (H2c on): the same refusals, answered with the same codes. */
+export { refusals as hireRefusals, STATUS as hireStatus };
 
 const text = (max: number) => z.string().trim().max(max);
 const skill = text(40).min(1);
