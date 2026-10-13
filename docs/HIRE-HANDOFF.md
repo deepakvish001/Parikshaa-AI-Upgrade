@@ -53,7 +53,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | T1 | Map existing Hire code against job→offer flow | ✅ | Workflow W1; output `docs/hire/code-map/` |
 | T2 | Design the Hire pipeline (jobs, apply, AI screen, OA, integrity, rounds, offer, portals, admin) | ✅ | `docs/HIRE-V2.md` + §10 (critique ke faisle) |
 | T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | ✅ | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
-| T3 | Build Hire slices with tests | 🟡 | H1, H2a, H2b ✅; H2c W5 me chal raha | §6 ke slices, build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
+| T3 | Build Hire slices with tests | 🟡 | H1, H2a, H2b ✅; H2c kadam 6 baaki (§5); phir H2d. Build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
 | T2b | Resume flow ki jaanch + fixes (W4) | ✅ | Zaroori fixes ho gaye; chhote baaki §5 me |
 | T4 | Review, e2e, tracker, PR | ⬜ | H10 + poora review + PR #65 ko ready |
 
@@ -65,7 +65,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | ✅ security, product; fit → W3 (W2 dobara mat chalao) | `docs/hire/critique-*.md` |
 | W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ✅ session 2 (Agent tool se; limit par ek baar ruka, wahin se poora). Dobara mat chalao | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
 | W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | ✅ chal chuka (dobara mat chalao) | `docs/hire/handoff-verify.md`; zaroori fixes ho gaye, baaki §5 me |
-| W5 | Autosave overwrite fix + H2c (pipeline) build, review, check | [hire/workflows/w5-h2c-pipeline.js](hire/workflows/w5-h2c-pipeline.js) | 🟡 chal raha (session 3). Ruke to wahi script dobara chalao: har agent §5 ki H2c checklist se aage badhta hai | H2c code + `docs/hire/h2c-review.md` |
+| W5 | Autosave overwrite fix + H2c (pipeline) build, review, check | [hire/workflows/w5-h2c-pipeline.js](hire/workflows/w5-h2c-pipeline.js) | 🟡 H2c kadam 1–5 + review fixes ✅ (`h2c-review.md`); kadam 6 [~] (limit). Script dobara chalao: autosave fix, plan, build, review chhoot jaayenge; sirf Final check chalega | H2c code + `docs/hire/h2c-review.md` |
 
 **Niyam (sab sessions ke liye):**
 - **Chalane se pehle:** workflow ki script `docs/hire/workflows/wN-<naam>.js` me save karo, upar table me row jodo
@@ -366,10 +366,11 @@ for r in $(snaps); do echo "== $r"; git show "$r":.claude/live/state.md; done   
 |---|---|---|---|---|
 | 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
 | 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Khatam (aakhri commit 22:21 UTC `12970ab` H2b; uska aakhri autosave `d58667d` me koi adhoora code nahi tha) |
-| 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Chal raha |
+| 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Khatam: 5 ghante ki limit 92% (owner ne bataya). Autosave fix ✅, H2c kadam 1–5 + review ✅. Agla: H2c kadam 6 (`npm run check`, `npm run openapi`, `build:clients` + `budget`, §6/§10, AB AGLA H2d), phir H2d |
 
 ## 10. Log (naya upar)
 
+- 13 Oct 2026 (session 3): W5: autosave ab har session ka apna ref (`autosave/<branch>--<id>`) aur purane HEAD par push nahi (STALE_GUARD). H2c kadam 1–5 + do reviewers ke sudhaar (`docs/hire/h2c-review.md`), faisle B12–B17. Kadam 6 (poora check) 5 ghante ki limit par ruka.
 - 13 Oct 2026 (13, session 3): Autosave ka data-loss bug theek (W5 ka pehla hissa). 13 Oct ko purane container (HEAD
   bahut peeche) ke pehle tool call par hook ne `autosave/<branch>` force-push karke session 2 ka naya snapshot mita
   diya tha (sirf reflog se bacha). Ab: har session ki apni ref `autosave/<branch>--<session id ke 8 akshar>`
