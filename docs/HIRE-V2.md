@@ -554,6 +554,28 @@ item there is ADOPTED unless listed under "Not adopted / changed" below. Builder
   the application in progress (no decision date, no Withdraw) until `decided_at` + 24 h, and the timeline leaves out a
   rejection and the Restore that undid it within that day. A knockout (B10) or a withdrawal shows at once. Restore puts
   back the round's status from before the rejection (kept in the `rejected` event's detail).
+- B13 (H2c, 0073) Each job has its own rejection line (`hire_jobs.rejection_line`, at most 500 characters), the one
+  company sentence a rejection mail carries; the mail never gives a reason. It waits 24 h (P14) and, when it is sent,
+  is skipped unless the application is still `rejected` with the same `decided_at` its outbox row was written with, so
+  a Restore (or a later rejection) stops it even in flight; Restore also marks the waiting row `skipped` in its own
+  transaction. A `moved` mail is skipped once the application has left that round; a message mail once it is withdrawn.
+- B14 (H2c, 0073) `hire_applications.round_since` says since when an application has been in its current round (rows
+  made before 0073 count from `created_at`); the pipeline's "n days in this step" and "past SLA" read it. `hire_events`
+  gain `seq`, so a timeline keeps the order events were written in when they share a moment.
+- B15 (H2c) Move and reject take up to 200 ids and answer `{done, refused: [{id, reason}]}`; a move's reasons are
+  `not_active`, `last_round`, `same_round`, `stale` (the caller's `from` round is no longer the current one, so a
+  retried "next" does not move twice), `integrity_high` and `not_found`. Moving past an integrity `high` not reviewed
+  as genuine needs a reason of 10 characters or more (`override_needs_reason`), kept sealed in its own private
+  `override` event and audited as `hire.override`. The `moved` event names no reason, score or staff member.
+- B16 (H2c) S15: a bulk rejection over a list chosen by the AI's recommendation needs a typed reason (10 characters or
+  more); it is written as a private note on each rejected application in the rejection's transaction, and the audit
+  keeps only the filter and the count (S3).
+- B17 (H2c) Every Hire mail comes from "<Company> via Parikshaa" with replies to the job's contact address (F23:
+  `EmailMessage.fromName`, `replyTo`); a message mail asks for a reply only when the job has one. Until Parikshaa
+  verifies the company, no words its staff wrote go out by mail (S18): a message mail only says one waits in the
+  portal, the rejection line and the note to candidates are left out, a round is named by its kind, and the money
+  check (`asksForMoney`) reads round titles too. A viewer's drawer has names, refs, rounds, statuses and scores, and no
+  timeline text (S22).
 - Migration numbers moved on: H2b took 0072, so H4b's `no_show` and H5b's room signals take the next free numbers.
 
 ### Not adopted / changed

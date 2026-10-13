@@ -265,10 +265,15 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   title (unverified ko kind ka naam, `asksForMoney` round titles bhi padhe), message mail me "Reply" sirf `contactEmail`
   ho to, S15 note reject ke transaction me, Restore purana round status wapas, move `from` → `stale`, `total` page ke
   paar, portal me company rejection 24 h tak "in progress" (HIRE-V2 §10 B12 likh diya; step 6 ke naye faisle B13+)
-- [ ] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
+- [~] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
   `budget`; naye faisle HIRE-V2 §10 me B12+ (jaise rejection line per job, `round_since`, restore par mail cancel);
   tracker row 112 me H2c (kya bana, Kahan: 0073, `hire-pipeline-store.ts`, `hire-pipeline.ts`,
   `hire-pipeline-routes.ts`, `hire-messages.ts`; baaki H2d, H8, H9); §6 table; §10 Log; §5 me "AB AGLA: H2d"; push
+  → [~] session 3 (13 Oct ~05:35 UTC, 5 ghante ki limit 91% par ruka): ho gaya: HIRE-V2 §10 B13–B17, tracker row 112 me
+  H2c + Build log line (#66). Baaki: `npm run check` dobara chalao (typecheck EXIT 0 tha, API tests ka nateeja aane se
+  pehle ruka; koi fail ho to theek karo), `npm run openapi` (badle to commit), `build:clients` + `budget` (ACTIONS badle
+  the), §6 H2 row, §10 Log, §5 me "AB AGLA: H2d" (critique-fit "Splits" H2d: `HireErasure` S3, account delete hook,
+  `HireRetention` F4, P11 import + "Add one" + sign-in par claim + `not_claimed`), phir commit "H2c: the pipeline (check passes)"
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
