@@ -1,5 +1,5 @@
 import { orgId as toOrgId } from "@parikshaa/core";
-import type { HireApplicationStore, IdentityStore, OutboxItem } from "@parikshaa/store";
+import type { HireApplicationStore, IdentityStore, OutboxItem, RoundKind } from "@parikshaa/store";
 import type { ItemOutcome, Mailer } from "./delivery.js";
 import { HELD_FOR_MS } from "./hire-apply.js";
 
@@ -12,11 +12,22 @@ import { HELD_FOR_MS } from "./hire-apply.js";
  * (F2). Every message comes from "<Company> via Parikshaa", replies go to the
  * job's contact address, and it says that Parikshaa and real employers never
  * ask for money (S18). Until Parikshaa verifies the company its mails carry
- * no words its staff wrote (S18): not a message, the job's note to candidates
- * or its rejection line; the candidate reads a message in the portal.
+ * no words its staff wrote (S18): not a message, a round's title, the job's
+ * note to candidates or its rejection line; the candidate reads a message in
+ * the portal. A round is then named by its kind.
  */
 
 const NEVER_PAY = "Parikshaa and real employers never ask you to pay to apply or to be hired. If anyone does, report the job from its page.";
+
+/** What a round is called in an unverified company's mail, in place of the title its staff wrote (S18). */
+const ROUND_KIND_NAMES: Readonly<Record<RoundKind, string>> = {
+  screen: "Screening",
+  assessment: "Online test",
+  ai_interview: "AI interview",
+  interview: "Interview",
+  review: "Review",
+  offer: "Offer",
+};
 
 const escape = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
@@ -84,11 +95,12 @@ export class HireMessages {
       case "mail_moved": {
         if (facts.status !== "active") return { skip: "The application is not going any more" };
         if (facts.round === null || facts.round.id !== item.subject["roundId"]) return { skip: "The application has moved on since" };
-        subject = `Next step: ${facts.round.title}, ${job} at ${org.name}`;
+        const step = verified ? facts.round.title : ROUND_KIND_NAMES[facts.round.kind];
+        subject = `Next step: ${step}, ${job} at ${org.name}`;
         lines = [
           `Hello ${facts.name},`,
           "",
-          `Your application to ${org.name} for ${job} has moved to the next step: ${facts.round.title}.`,
+          `Your application to ${org.name} for ${job} has moved to the next step: ${step}.`,
           ...(verified && facts.job.noteToCandidates !== "" ? ["", facts.job.noteToCandidates] : []),
           "",
           `See what comes next at ${portal}. Sign in there with this email address.`,
@@ -113,7 +125,18 @@ export class HireMessages {
         if (facts.status === "withdrawn") return { skip: "The candidate withdrew" };
         subject = `A message from ${org.name} about ${job}`;
         lines = verified
-          ? [`Hello ${facts.name},`, "", `${org.name} wrote to you about your application for ${job}:`, "", ...facts.message.split(/\r?\n/), "", `Reply to this mail, or see the conversation at ${portal}.`]
+          ? [
+              `Hello ${facts.name},`,
+              "",
+              `${org.name} wrote to you about your application for ${job}:`,
+              "",
+              ...facts.message.split(/\r?\n/),
+              "",
+              // Without the job's contact address a reply would reach no one at the company (P14).
+              facts.job.contactEmail === null
+                ? `See the conversation at ${portal}. Replies to this mail do not reach ${org.name}.`
+                : `Reply to this mail, or see the conversation at ${portal}.`,
+            ]
           : [`Hello ${facts.name},`, "", `${org.name} sent you a message about your application for ${job}.`, `Read it at ${portal}. Sign in there with this email address.`];
         break;
       default:

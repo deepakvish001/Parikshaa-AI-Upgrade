@@ -109,7 +109,7 @@ export interface ApplicationMailFacts {
   /** When it was rejected or withdrawn: a rejection mail goes only for the rejection it was written for (H2c). */
   readonly decidedAt: string | null;
   /** The round it is in now. */
-  readonly round: { readonly id: string; readonly title: string } | null;
+  readonly round: { readonly id: string; readonly kind: RoundKind; readonly title: string } | null;
   readonly job: {
     readonly title: string;
     readonly publicCode: string | null;
@@ -401,6 +401,7 @@ export class HireApplicationStore {
         status_reason: string | null;
         decided_at: string | Date | null;
         round_id: string | null;
+        round_kind: RoundKind | null;
         round_title: string | null;
         title: string;
         public_code: string | null;
@@ -408,7 +409,7 @@ export class HireApplicationStore {
         note_to_candidates: string;
         rejection_line: string;
       }>(
-        `SELECT a.id, a.name, a.email, a.status, a.status_reason, a.decided_at, r.id AS round_id, r.title AS round_title,
+        `SELECT a.id, a.name, a.email, a.status, a.status_reason, a.decided_at, r.id AS round_id, r.kind AS round_kind, r.title AS round_title,
                 j.title, j.public_code, j.contact_email, j.note_to_candidates, j.rejection_line
            FROM hire_applications a
            JOIN hire_jobs j ON j.org_id = a.org_id AND j.id = a.job_id
@@ -432,7 +433,7 @@ export class HireApplicationStore {
         status: r.status,
         statusReason: r.status_reason,
         decidedAt: isoOrNull(r.decided_at),
-        round: r.round_id === null ? null : { id: r.round_id, title: r.round_title! },
+        round: r.round_id === null ? null : { id: r.round_id, kind: r.round_kind!, title: r.round_title! },
         job: { title: r.title, publicCode: r.public_code, contactEmail: r.contact_email, noteToCandidates: r.note_to_candidates, rejectionLine: r.rejection_line },
         message: message[0] === undefined ? null : this.#messageText(orgId, r.id, message[0].id, message[0].detail),
       };

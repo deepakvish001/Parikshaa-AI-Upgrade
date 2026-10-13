@@ -267,9 +267,10 @@ export class HireService {
   }
 }
 
-/** Whether a job's own words ask applicants for money (S18). */
-export const asksForMoney = (job: Pick<JobFields, "title" | "description" | "noteToCandidates">): boolean =>
-  ASKS_FOR_MONEY.test(`${job.title}\n${job.description}\n${job.noteToCandidates}`);
+/** Whether a job's own words, its rounds' titles among them, ask applicants for money (S18). */
+export const asksForMoney = (
+  job: Pick<JobFields, "title" | "description" | "noteToCandidates"> & { readonly rounds?: readonly { readonly title: string }[] },
+): boolean => ASKS_FOR_MONEY.test([job.title, job.description, job.noteToCandidates, ...(job.rounds ?? []).map((r) => r.title)].join("\n"));
 
 /** What is wrong with a job's screening questions, in words. */
 export function questionProblems(questions: readonly ScreeningQuestion[]): string[] {

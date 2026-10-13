@@ -58,6 +58,8 @@ export interface MoveInput {
   readonly to: string;
   /** Needed to move an application whose integrity is `high` and not found genuine (≥10 characters). */
   readonly overrideReason?: string | null | undefined;
+  /** The round the mover saw them in: one that has left it since is not moved (`stale`), so a retry moves no one twice. */
+  readonly from?: string | null | undefined;
 }
 
 export interface RejectInput {
@@ -287,7 +289,10 @@ export class HirePipeline {
     if (reason !== "" && reason.length < MIN_REASON) {
       throw new HireRefused("invalid", `Say why in at least ${MIN_REASON} characters`, ["override_needs_reason"]);
     }
-    const out = await this.#o.pipeline.move(actor.orgId, jobId, ids, input.to, actor.id, new Date(this.#now()), reason === "" ? {} : { overrideReason: reason });
+    const out = await this.#o.pipeline.move(actor.orgId, jobId, ids, input.to, actor.id, new Date(this.#now()), {
+      ...(reason === "" ? {} : { overrideReason: reason }),
+      ...(input.from == null ? {} : { from: input.from }),
+    });
     if (!out.roundFound) throw new HireRefused("invalid", "That round is not one of this job's", ["no_such_round"]);
     const done = out.results.filter((r) => r.outcome === "moved").map((r) => r.id);
     const refused = out.results
@@ -316,11 +321,10 @@ export class HirePipeline {
     }
     if (reason.length > MAX_TEXT) throw new HireRefused("invalid", `Keep the reason under ${MAX_TEXT} characters`, ["too_long"]);
     const now = new Date(this.#now());
-    const out = await this.#o.pipeline.reject(actor.orgId, jobId, ids, input.rejectReason, actor.id, now, { mail: input.mail });
+    // The typed reason is written with each rejection, in the same change: never one without the other.
+    const note = onAi === null ? {} : { note: `Rejected with others chosen by the AI's reading (${onAi}): ${reason}` };
+    const out = await this.#o.pipeline.reject(actor.orgId, jobId, ids, input.rejectReason, actor.id, now, { mail: input.mail, ...note });
     const done = out.filter((r) => r.outcome === "rejected").map((r) => r.id);
-    if (onAi !== null) {
-      for (const id of done) await this.#o.pipeline.note(actor.orgId, id, `Rejected with others chosen by the AI's reading (${onAi}): ${reason}`, actor.id, now);
-    }
     if (done.length > 0) {
       await this.#o.recordAudit(actor, "hire.rejected", jobId, {
         count: done.length,

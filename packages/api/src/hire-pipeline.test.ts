@@ -1,6 +1,6 @@
 import type { PGlite } from "@electric-sql/pglite";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { orgId, type OrgId } from "@parikshaa/core";
+import type { OrgId } from "@parikshaa/core";
 import {
   CandidateStore,
   DataKeys,
@@ -354,10 +354,9 @@ describe("the resume", () => {
   });
 });
 
-describe("a job's rejection line and rounds that tell the candidate", () => {
-  it("are kept with the job (P14, P20)", async () => {
+describe("a job's rejection line", () => {
+  it("is kept with the job (P14)", async () => {
     const saved = await jobs.updateJob(A, "job-1", { ...FIELDS, rejectionLine: "We will keep your profile for future roles." }, (await jobs.job(A, "job-1"))!.rounds, new Date(clock));
     expect(saved?.rejectionLine).toBe("We will keep your profile for future roles.");
-    expect(orgId("org-a")).toBe(A);
   });
 });

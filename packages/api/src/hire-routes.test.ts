@@ -232,6 +232,9 @@ describe("the rules, on their own", () => {
     expect(asksForMoney(job("Pay a registration fee of ₹999 to confirm your slot."))).toBe(true);
     expect(asksForMoney(job("A refundable training fee applies."))).toBe(true);
     expect(asksForMoney(job("We pay a joining bonus, and cover relocation fees for you."))).toBe(false);
+    // A round's title goes into the mail that moves an applicant to it (S18): it is read too.
+    expect(asksForMoney({ ...job("Selling."), rounds: [{ title: "Interview" }, { title: "Pay ₹999 registration fee to book a slot" }] })).toBe(true);
+    expect(asksForMoney({ ...job("Selling."), rounds: [{ title: "Interview" }] })).toBe(false);
   });
 
   it("check knockouts fit their questions", () => {

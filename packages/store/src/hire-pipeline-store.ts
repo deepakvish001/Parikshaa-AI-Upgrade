@@ -142,7 +142,8 @@ export interface ApplicationDetail {
   readonly events: readonly TimelineEvent[];
 }
 
-export type MoveOutcome = "moved" | "not_active" | "same_round" | "last_round" | "integrity_high" | "not_found";
+/** `stale`: it is no longer in the round the mover saw (`from`), so a retried move does not move it twice. */
+export type MoveOutcome = "moved" | "not_active" | "stale" | "same_round" | "last_round" | "integrity_high" | "not_found";
 /** `override`: it moved past a `high` integrity level on a person's reason. */
 export interface MoveResult {
   readonly id: string;
@@ -261,16 +262,17 @@ export class HirePipelineStore {
               AND ($6::text = '' OR a.name ILIKE '%' || $6 || '%' OR a.ref = upper($6))
               AND ($7::text IS NULL OR s.recommendation = $7)
               AND ($8::text IS NULL OR coalesce(i.level, 'not_checked') = $8)
+         ), shown AS (
+           SELECT m.* FROM matching m WHERE NOT $9::boolean OR m.past_sla
          ), page AS (
-           SELECT m.*, count(*) OVER ()::int AS total FROM matching m
-            WHERE NOT $9::boolean OR m.past_sla
-            ORDER BY m.created_at, m.id
-            LIMIT $10 OFFSET $11
+           SELECT s.* FROM shown s ORDER BY s.created_at, s.id LIMIT $10 OFFSET $11
          )
-         SELECT p.*,
+         -- The total comes on a row of its own when the page is past the end (no page rows).
+         SELECT t.total, p.*,
                 coalesce((SELECT jsonb_object_agg(r.round_id, jsonb_build_object('status', r.status, 'score', r.score))
                             FROM hire_round_results r WHERE r.org_id = p.org_id AND r.application_id = p.id), '{}'::jsonb) AS results
-           FROM page p ORDER BY p.created_at, p.id`,
+           FROM (SELECT count(*)::int AS total FROM shown) t LEFT JOIN page p ON true
+          ORDER BY p.created_at, p.id`,
         [
           orgId,
           jobId,
@@ -304,7 +306,7 @@ export class HirePipelineStore {
       return {
         total: rows[0]?.total ?? 0,
         counts: { byRound, byStatus, pastSla },
-        rows: rows.map((r) => {
+        rows: rows.filter((r) => r.id !== null).map((r) => {
           const results = Object.fromEntries(Object.entries(json(r.results)).map(([round, x]) => [round, { status: x.status, score: num(x.score) }]));
           return {
             id: r.id,
@@ -520,7 +522,9 @@ export class HirePipelineStore {
    * application whose integrity is `high` and not found genuine by a person
    * moves only with `overrideReason`, which is kept as its own private
    * event. A round set to tell the candidate (`sendOnMove`, P20) writes the
-   * mail. Each id gets its own outcome.
+   * mail. With `from`, the round the mover saw them in, one that has left it
+   * since is not moved (`stale`): a retried "next" moves nobody twice. Each
+   * id gets its own outcome.
    */
   async move(
     orgId: OrgId,
@@ -529,7 +533,7 @@ export class HirePipelineStore {
     to: string | "next",
     by: string,
     now: Date,
-    options: { readonly overrideReason?: string | undefined } = {},
+    options: { readonly overrideReason?: string | undefined; readonly from?: string | undefined } = {},
   ): Promise<{ readonly roundFound: boolean; readonly results: readonly MoveResult[] }> {
     return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
       const { rounds, apps } = await this.#lock(tx, orgId, jobId, ids);
@@ -543,6 +547,10 @@ export class HirePipelineStore {
         }
         if (a.status !== "active") {
           results.push({ id, outcome: "not_active" });
+          continue;
+        }
+        if (options.from !== undefined && a.round_id !== options.from) {
+          results.push({ id, outcome: "stale" });
           continue;
         }
         const from = rounds.findIndex((r) => r.id === a.round_id);
@@ -596,6 +604,9 @@ export class HirePipelineStore {
    * Reject applications of a job that are still going: the reason is kept for
    * the company (P20), the current round is `failed`, and with `mail` a polite
    * mail waits a day before it goes (P14), so a Restore can still stop it.
+   * The round's status before is kept in the `rejected` event, for Restore to
+   * put back. `note`: a private note on each, written with it (S15's typed
+   * reason), so a rejection is never kept without its reason.
    */
   async reject(
     orgId: OrgId,
@@ -604,7 +615,7 @@ export class HirePipelineStore {
     rejectReason: RejectReason,
     by: string,
     now: Date,
-    options: { readonly mail: boolean },
+    options: { readonly mail: boolean; readonly note?: string | undefined },
   ): Promise<readonly { readonly id: string; readonly outcome: RejectOutcome }[]> {
     return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
       const { apps } = await this.#lock(tx, orgId, jobId, ids);
@@ -620,8 +631,28 @@ export class HirePipelineStore {
             WHERE org_id = $1 AND id = $2`,
           [orgId, id, rejectReason, now],
         );
-        if (a.round_id !== null) await this.#result(tx, orgId, id, a.round_id, "failed", { by, at: now });
-        await this.#event(tx, orgId, { applicationId: id, candidateId: a.candidate_id, kind: "rejected", roundId: a.round_id, by, visible: true, at: now });
+        let before: RoundResultStatus | null = null;
+        if (a.round_id !== null) {
+          const was = await tx.query<{ status: RoundResultStatus }>(
+            `SELECT status FROM hire_round_results WHERE org_id = $1 AND application_id = $2 AND round_id = $3`,
+            [orgId, id, a.round_id],
+          );
+          before = was[0]?.status ?? null;
+          await this.#result(tx, orgId, id, a.round_id, "failed", { by, at: now });
+        }
+        await this.#event(tx, orgId, {
+          applicationId: id,
+          candidateId: a.candidate_id,
+          kind: "rejected",
+          roundId: a.round_id,
+          by,
+          detail: before === null ? {} : { roundStatus: before },
+          visible: true,
+          at: now,
+        });
+        if (options.note !== undefined) {
+          await this.#event(tx, orgId, { applicationId: id, candidateId: a.candidate_id, kind: "note", roundId: a.round_id, by, text: options.note, visible: false, at: now });
+        }
         if (options.mail) {
           const mail: OutboxDraft = {
             kind: "hire",
@@ -639,10 +670,11 @@ export class HirePipelineStore {
   }
 
   /**
-   * Bring a rejected application back to the round it was in. Never a
-   * withdrawn one: the candidate took their consent back. Refused when the
-   * same person has applied to the job again since (B9). A rejection mail
-   * still waiting is not sent.
+   * Bring a rejected application back to the round it was in, as it stood
+   * there before the rejection (its status kept in the `rejected` event;
+   * `pending` if none was). Never a withdrawn one: the candidate took their
+   * consent back. Refused when the same person has applied to the job again
+   * since (B9). A rejection mail still waiting is not sent.
    */
   async restore(orgId: OrgId, applicationId: string, by: string, now: Date): Promise<RestoreOutcome> {
     try {
@@ -668,7 +700,15 @@ export class HirePipelineStore {
             WHERE org_id = $1 AND id = $2`,
           [orgId, applicationId, now],
         );
-        if (a.round_id !== null) await this.#result(tx, orgId, applicationId, a.round_id, "pending", null);
+        if (a.round_id !== null) {
+          const last = await tx.query<{ detail: Record<string, unknown> | string }>(
+            `SELECT detail FROM hire_events WHERE org_id = $1 AND application_id = $2 AND kind = 'rejected' AND round_id = $3 ORDER BY at DESC, seq DESC LIMIT 1`,
+            [orgId, applicationId, a.round_id],
+          );
+          const before = last[0] === undefined ? undefined : json(last[0].detail)["roundStatus"];
+          const status = typeof before === "string" && before !== "failed" ? (before as RoundResultStatus) : "pending";
+          await this.#result(tx, orgId, applicationId, a.round_id, status, null);
+        }
         await this.#event(tx, orgId, { applicationId, candidateId: a.candidate_id, kind: "restored", roundId: a.round_id, by, visible: true, at: now });
         await tx.query(
           `UPDATE outbox SET status = 'skipped', last_error = 'Restored before it was sent', locked_until = NULL

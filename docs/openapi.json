@@ -140993,6 +140993,19 @@
                         "type": "null"
                       }
                     ]
+                  },
+                  "from": {
+                    "description": "The round the mover saw them in. One that has left it since is not moved (`stale`): send it with \"next\", so a retry moves no one twice.",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -141048,7 +141061,7 @@
                           },
                           "reason": {
                             "type": "string",
-                            "description": "not_found, not_active, same_round, last_round or override_needs_reason."
+                            "description": "not_found, not_active, stale, same_round, last_round or override_needs_reason."
                           }
                         },
                         "required": [
@@ -141340,7 +141353,7 @@
                           },
                           "reason": {
                             "type": "string",
-                            "description": "not_found, not_active, same_round, last_round or override_needs_reason."
+                            "description": "not_found, not_active, stale, same_round, last_round or override_needs_reason."
                           }
                         },
                         "required": [

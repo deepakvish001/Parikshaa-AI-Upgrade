@@ -138,7 +138,7 @@ const applicationView = z.object({
 const bulkOutcome = z.object({
   done: z.array(z.string()).readonly().describe("The applications changed."),
   refused: z
-    .array(z.object({ id: z.string(), reason: z.string().describe("not_found, not_active, same_round, last_round or override_needs_reason.") }))
+    .array(z.object({ id: z.string(), reason: z.string().describe("not_found, not_active, stale, same_round, last_round or override_needs_reason.") }))
     .readonly(),
 });
 
@@ -153,6 +153,13 @@ const moveBody = z
       .nullable()
       .optional()
       .describe("Why an application whose integrity is high, and not found genuine, moves on anyway: ten characters or more. Kept privately and audited."),
+    from: z
+      .string()
+      .min(1)
+      .max(80)
+      .nullable()
+      .optional()
+      .describe('The round the mover saw them in. One that has left it since is not moved (`stale`): send it with "next", so a retry moves no one twice.'),
   })
   .strict();
 const rejectBody = z

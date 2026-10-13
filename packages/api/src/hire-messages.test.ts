@@ -151,12 +151,11 @@ afterEach(async () => {
 
 describe("every Hire mail", () => {
   it("comes from the company via Parikshaa, with replies going to the job's contact address (F23, P14)", async () => {
-    const asha = await apply("Asha");
+    await apply("Asha");
     expect(await deliver("mail_applied")).toBe("sent");
     expect(sent[0]).toMatchObject({ to: "asha@example.com", fromName: "Acme Fintech via Parikshaa", replyTo: "jobs@acme.test" });
 
     await jobs.updateJob(A, "job-1", { ...FIELDS, contactEmail: null }, job.rounds, new Date(clock));
-    expect(asha).toBe("app-1");
     const ravi = await apply("Ravi");
     await messages.deliver({ id: "o", orgId: A, kind: "hire", subject: { applicationId: ravi }, purpose: "mail_applied", attempts: 1 });
     expect(sent[1]!.fromName).toBe("Acme Fintech via Parikshaa");
@@ -173,16 +172,20 @@ describe("every Hire mail", () => {
 });
 
 describe("moving on", () => {
-  it("tells the candidate the round they reached, with the job's note once the company is verified", async () => {
+  it("tells the candidate the round they reached, in the company's words only once it is verified (S18)", async () => {
     const asha = await apply("Asha");
+    // A round's title is the company's own words: before verification the round is named by its kind.
+    const rounds = job.rounds.map((r, i) => (i === 1 ? { ...r, title: "Pay Rs 999 deposit to hr@upi to continue" } : r));
+    await jobs.updateJob(A, "job-1", FIELDS, rounds, new Date(clock));
     await pipeline.move(A, "job-1", [asha], "next", "staff-1", new Date(clock));
     expect(await deliver("mail_moved")).toBe("sent");
-    expect(sent[0]!.subject).toBe("Next step: Technical interview, Backend engineer at Acme Fintech");
-    expect(sent[0]!.text).toMatch(/moved to the next step: Technical interview/);
-    expect(sent[0]!.text).not.toContain("Bring a laptop");
+    expect(sent[0]!.subject).toBe("Next step: Interview, Backend engineer at Acme Fintech");
+    expect(sent[0]!.text).toMatch(/moved to the next step: Interview\./);
+    expect(sent[0]!.text).not.toMatch(/Pay Rs|deposit|Bring a laptop/);
 
     await verify();
     expect(await deliver("mail_moved")).toBe("sent");
+    expect(sent[1]!.subject).toBe("Next step: Pay Rs 999 deposit to hr@upi to continue, Backend engineer at Acme Fintech");
     expect(sent[1]!.text).toContain("Bring a laptop to the interview.");
   });
 
@@ -193,7 +196,7 @@ describe("moving on", () => {
     await pipeline.move(A, "job-1", [asha], "next", "staff-1", new Date(clock));
     expect(await deliver("mail_moved", 0)).toEqual({ skip: "The application has moved on since" });
     expect(await deliver("mail_moved", 1)).toBe("sent");
-    expect(sent[0]!.subject).toMatch(/^Next step: Manager review/);
+    expect(sent[0]!.subject).toMatch(/^Next step: Review,/);
   });
 });
 
@@ -234,6 +237,15 @@ describe("a message", () => {
     expect(sent[1]!.text).toContain("Could you share your notice period?\nThanks, Ravi");
     expect(sent[1]!.html).toContain("<p>Could you share your notice period?</p><p>Thanks, Ravi</p>");
     expect(sent[1]!.replyTo).toBe("jobs@acme.test");
+
+    expect(sent[1]!.text).toMatch(/Reply to this mail/);
+
+    // Without the job's contact address a reply would go nowhere: the mail does not ask for one (P14).
+    await jobs.updateJob(A, "job-1", { ...FIELDS, contactEmail: null }, job.rounds, new Date(clock));
+    expect(await deliver("mail_message")).toBe("sent");
+    expect("replyTo" in sent[2]!).toBe(false);
+    expect(sent[2]!.text).not.toMatch(/Reply to this mail/);
+    expect(sent[2]!.text).toContain("Replies to this mail do not reach Acme Fintech.");
 
     await sql.transaction((tx) => tx.query(`UPDATE hire_applications SET status = 'withdrawn' WHERE id = $1`, [asha]), staffScope());
     expect(await deliver("mail_message")).toEqual({ skip: "The candidate withdrew" });

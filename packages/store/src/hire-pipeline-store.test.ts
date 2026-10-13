@@ -173,6 +173,18 @@ describe("moving", () => {
     expect(await store.move(A, "job-1", [asha], "no-such-round", "staff-1", T1)).toEqual({ roundFound: false, results: [] });
   });
 
+  it("moves no one twice when a \"next\" is sent again: with the round the mover saw, one that has left it is stale", async () => {
+    const job = await openJob();
+    const [screen, test] = job.rounds;
+    const asha = await apply("c1");
+    expect((await store.move(A, "job-1", [asha], "next", "staff-1", T1, { from: screen!.id })).results).toEqual([{ id: asha, outcome: "moved" }]);
+    // The answer was lost and the mover clicks again: Asha stays in the online test, and no second event is written.
+    expect((await store.move(A, "job-1", [asha], "next", "staff-1", T1, { from: screen!.id })).results).toEqual([{ id: asha, outcome: "stale" }]);
+    expect((await store.application(A, asha))!.roundId).toBe(test!.id);
+    expect((await events(asha)).filter((e) => e.kind === "moved")).toHaveLength(1);
+    expect((await results(asha)).map((r) => r.status)).toEqual(["passed", "pending"]);
+  });
+
   it("holds back an application whose integrity is high until a person overrides it, with the reason kept privately", async () => {
     await openJob();
     const asha = await apply("c1");
@@ -209,7 +221,8 @@ describe("rejecting and restoring", () => {
     const detail = (await store.application(A, asha))!;
     expect(detail).toMatchObject({ status: "rejected", rejectReason: "experience", decidedAt: T1.toISOString() });
     expect(await results(asha)).toEqual([{ round_id: job.rounds[0]!.id, status: "failed", decided_by: "staff-1" }]);
-    expect((await events(asha)).find((e) => e.kind === "rejected")).toEqual({ kind: "rejected", by: "staff-1", candidate_visible: true, detail: {} });
+    // The round's status before is kept, for Restore; nothing of why.
+    expect((await events(asha)).find((e) => e.kind === "rejected")).toEqual({ kind: "rejected", by: "staff-1", candidate_visible: true, detail: { roundStatus: "pending" } });
     const mails = await outbox();
     expect(mails.map((m) => [m.purpose, m.status, new Date(m.send_after).getTime(), m.subject])).toEqual([
       ["mail_rejected", "pending", T1.getTime() + REJECTION_MAIL_DELAY_MS, { applicationId: asha, decidedAt: T1.toISOString() }],
@@ -234,6 +247,41 @@ describe("rejecting and restoring", () => {
     ]);
     expect(await store.restore(A, asha, "staff-2", later)).toBe("not_rejected");
     expect(await store.restore(B, ravi, "staff-2", later)).toBe("not_found");
+  });
+
+  it("restores the round as it stood before the rejection, not always to waiting", async () => {
+    const job = await openJob();
+    const test = job.rounds[1]!;
+    const asha = await apply("c1");
+    await store.move(A, "job-1", [asha], test.id, "staff-1", T1);
+    // The online test was taken (as H4 will write it), then the rejection was a mistake.
+    await sql.transaction((tx) => tx.query(`UPDATE hire_round_results SET status = 'done', score = 72 WHERE application_id = $1 AND round_id = $2`, [asha, test.id]), staff());
+    await store.reject(A, "job-1", [asha], "skills", "staff-1", T1, { mail: false });
+    expect((await results(asha)).at(-1)).toEqual({ round_id: test.id, status: "failed", decided_by: "staff-1" });
+    expect(await store.restore(A, asha, "staff-1", T1)).toBe("restored");
+    expect((await results(asha)).at(-1)).toEqual({ round_id: test.id, status: "done", decided_by: null });
+    expect((await store.pipeline(A, "job-1", {}, T1)).rows[0]!.current).toEqual({ status: "done", score: 72 });
+  });
+
+  it("writes the typed reason with the rejection, as a private note on each, in the same change (S15)", async () => {
+    await openJob();
+    const [asha, ravi] = [await apply("c1"), await apply("c2")];
+    await store.reject(A, "job-1", [asha, ravi], "skills", "staff-1", T1, { mail: true, note: "Chosen by the AI's reading: no Go in five years" });
+    for (const id of [asha, ravi]) {
+      const note = (await store.application(A, id))!.events.find((e) => e.kind === "note");
+      expect(note).toMatchObject({ text: "Chosen by the AI's reading: no Go in five years", candidateVisible: false, by: "staff-1" });
+    }
+    // A failure part-way leaves nothing: no rejection without its note.
+    const broken = Object.assign(Object.create(SEAL) as typeof SEAL, {
+      text: () => {
+        throw new Error("seal failed");
+      },
+    });
+    const failing = new HirePipelineStore(sql, broken, { newId: () => `f-${++ids}` });
+    const sona = await apply("c3");
+    await expect(failing.reject(A, "job-1", [sona], "skills", "staff-1", T1, { mail: true, note: "Chosen by the AI's reading" })).rejects.toThrow("seal failed");
+    expect(await store.application(A, sona)).toMatchObject({ status: "active", decidedAt: null });
+    expect((await outbox()).filter((o) => (o.subject as { applicationId: string }).applicationId === sona)).toEqual([]);
   });
 
   it("never restores a withdrawn application, nor one whose person has applied to the job again since (B9)", async () => {
@@ -349,6 +397,9 @@ describe("reading the pipeline", () => {
     expect(await ids({ pastSla: true }, later)).toEqual([ravi]);
     expect((await store.pipeline(A, "job-1", {}, later)).counts.pastSla).toBe(1);
     expect((await store.pipeline(A, "job-1", { limit: 1, offset: 1 }, T1)).rows.map((r) => r.id)).toEqual([ravi]);
+    // A page past the end is empty, and still says how many match.
+    expect(await store.pipeline(A, "job-1", { offset: 10 }, T1)).toMatchObject({ rows: [], total: 3 });
+    expect(await store.pipeline(A, "job-1", { offset: 10, pastSla: true }, later)).toMatchObject({ rows: [], total: 1 });
   });
 
   it("keeps each organisation's pipeline to itself", async () => {

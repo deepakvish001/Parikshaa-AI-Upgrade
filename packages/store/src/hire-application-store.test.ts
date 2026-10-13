@@ -261,7 +261,7 @@ describe("mail", () => {
       status: "active",
       statusReason: null,
       decidedAt: null,
-      round: { id: job.rounds[0]!.id, title: "Screening" },
+      round: { id: job.rounds[0]!.id, kind: job.rounds[0]!.kind, title: "Screening" },
       job: { title: "Backend engineer", publicCode: "CODE-job-1", contactEmail: null, noteToCandidates: "", rejectionLine: "" },
       message: null,
     });
