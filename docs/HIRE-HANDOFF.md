@@ -223,7 +223,7 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   mail `skipped`, B9 refusal, applicant scope `message` dekhe par `note`/`override` nahi (RLS), 1 000 applications ka
   pipeline read < 1 s (P15)
   → ✅ `f1c062a` (session 4): `hire-pipeline-store.test.ts` 13 tests (1 000 rows ≈0.3–0.45 s PGlite me, best of 3); extra outcome `same_round`, `move` jawab `{roundFound, results}`; `thread()` (applicant scope), `messageText()`, `resumeFile()`, `jobOf()`; `by` = staff user id (naam service dega); type `ScreenRecommendation` (`Recommendation` interview-store me pehle se)
-- [ ] 3. Service `packages/api/src/hire-pipeline.ts` (`HirePipeline`): permission + manager niyam (upar); S22
+- [x] 3. Service `packages/api/src/hire-pipeline.ts` (`HirePipeline`): permission + manager niyam (upar); S22
   projection: email, phone, answers, profile, resume text/download sirf `hire:decide` wale ko (manager apni job par),
   viewer ko naam, ref, round, status, scores bas; resume download attachment, saaf filename, sniffed type, audit
   `hire.resume_downloaded` (S21), unverified company ko mana (S18); override: integrity `high` aur verdict `genuine`
@@ -235,6 +235,11 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   `hire.override`, `hire.note_added`, `hire.messaged`, `hire.resume_downloaded` → console `Home.tsx` ACTIONS. Tests
   `hire-pipeline.test.ts`: role matrix (viewer ko contact nahi, manager doosri job par 404, API key decide par 403),
   override bina reason refuse + reason ke saath `override` event + audit, bulk ginti, B9, portal me message hai note nahi
+  → ✅ `fa9251a` (session 4): `hire-pipeline.test.ts` 10 tests; bulk jawab `{done: ids[], refused: [{id, reason}]}`; S15 ka typed
+  reason har rejected par private note (audit me sirf filter + ginti, S3); viewer ko timeline ka text bhi nahi; `rejectionLine`
+  (JobFields, routes zod, openapi) aur `sendOnMove` boolean (`roundProblems`) yahi aa gaye; portal `MyApplication` me
+  `messages` + `noteToCandidates` (route schema step 4 me); 0073 me `hire_events.seq` (same pal ke events ka kram; H2b ka
+  flaky portal test bhi theek). ACTIONS ke 7 shabd console me
 - [ ] 4. Routes `packages/api/src/hire-pipeline-routes.ts` (tag `Hiring`, `/hire/*` F7, refusals H2a jaise):
   `GET /hire/jobs/{jobId}/applications` (filters), `POST /hire/jobs/{jobId}/applications/move` aur `.../reject`
   (bulk), `GET /hire/applications/{applicationId}`, `GET .../resume` (attachment), `POST .../restore`, `.../notes`,
