@@ -249,7 +249,7 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   → ✅ `dc354f0` (session 4): `hire-pipeline-routes.test.ts` 6 tests (viewer/API key 403, beta 404, override 422, S15 422,
   restore par mail `skipped`, portal me `messages` + `noteToCandidates`, resume headers + audit); `hireRefusals`/`hireStatus`
   `hire-routes.ts` se share; `openapi.json` naya
-- [ ] 5. Mails (F23, P14, S18): `delivery.ts` `EmailMessage.replyTo?` + `fromName?`; `SmtpMailer` naam `from` me daale
+- [x] 5. Mails (F23, P14, S18): `delivery.ts` `EmailMessage.replyTo?` + `fromName?`; `SmtpMailer` naam `from` me daale
   (nodemailer address object, CR/LF hata kar) aur `replyTo` bheje, `fromName` ko `...rest` se bahar rakhe; `OutboxLog`
   dono rakhe; `delivery.test.ts`. `hire-messages.ts`: har Hire mail "<Company> via Parikshaa" + reply-to job ka
   `contact_email` (H2b ki applied/withdrawn mails bhi); naye purpose `mail_moved` (round ka naam + note to
@@ -258,6 +258,9 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   liye sandesh hai, /my par padhein", S18: unverified ki mail me staff ka koi free text nahi, note/rejection line bhi
   nahi); `mailFacts` me jo chahiye (`decidedAt`, verified, round, note, rejection line, message). Tests
   `hire-messages.test.ts`: restore ke baad mail skip, reply-to/sender, unverified me free text nahi, suspended → `{later}`
+  → ✅ `fa6e90f` (session 4): `hire-messages.test.ts` 6 tests, `delivery.test.ts` +3 (`smtpOptions`); `mail_moved` bhi skip jab
+  application us round se aage/peeche ja chuki ho; `mail_message` withdrawn par skip; `mailFacts(org, app, {messageId})`
+  (pipeline store ka `messageText` hata diya). Agla: step 6 (poora check, tracker, §6, §10, B12+)
 - [ ] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
   `budget`; naye faisle HIRE-V2 §10 me B12+ (jaise rejection line per job, `round_since`, restore par mail cancel);
   tracker row 112 me H2c (kya bana, Kahan: 0073, `hire-pipeline-store.ts`, `hire-pipeline.ts`,
