@@ -354,6 +354,40 @@ describe("the resume", () => {
   });
 });
 
+describe("the candidate's portal after a rejection", () => {
+  it("shows a company's rejection only once its mail's day has passed, and never one undone within the day (P14, B12)", async () => {
+    const accounts = new CandidateStore(sql, KEYS.records("candidates"));
+    const portal = new HireApplications({ jobs, applications, accounts, identity, privacy: new PrivacyStore(sql), keys: KEYS, grievance: { name: "G", email: "g@parikshaa.test" }, now: () => clock });
+    const asha = await accounts.signIn("asha@example.com", new Date(clock));
+    await accounts.saveProfile(asha.id, { name: "Asha Rao", phone: null, details: {} });
+    await accounts.saveResume(asha.id, { text: "Go", file: new Uint8Array([37, 80, 68, 70, 45]), name: "cv.pdf", type: "pdf", sha256: "s", at: new Date(clock) });
+    const company = (await identity.getOrganisation(A))!.publicId;
+    const page = await portal.publicJob(company, "CJOB1");
+    const made = await portal.apply(asha, { company, code: "CJOB1", answers: {}, noticeHash: page.notice.hash, adult: true, aiOptOut: false, deviceReady: null, source: "link", sourceTag: null, referrer: null });
+
+    // Rejected by mistake, and restored ten minutes later: the candidate never sees it.
+    clock += 60_000;
+    await service.reject(staff["recruiter"]!, "job-1", { ids: [made.id], rejectReason: "skills", mail: true });
+    const meanwhile = await portal.one(asha, made.id);
+    expect(meanwhile).toMatchObject({ status: "in_progress", decidedAt: null });
+    expect(meanwhile.timeline.map((e) => e.kind)).toEqual(["applied"]);
+    expect(meanwhile.steps[0]).toMatchObject({ state: "waiting", current: true });
+    clock += 10 * 60_000;
+    await service.restore(staff["recruiter"]!, made.id);
+    expect((await portal.one(asha, made.id)).timeline.map((e) => e.kind)).toEqual(["applied"]);
+
+    // Rejected for good: shown once the day is over, when the mail goes.
+    clock += 60_000;
+    await service.reject(staff["recruiter"]!, "job-1", { ids: [made.id], rejectReason: "skills", mail: true });
+    const decided = new Date(clock).toISOString();
+    clock += 24 * 3_600_000;
+    const later = await portal.one(asha, made.id);
+    expect(later).toMatchObject({ status: "not_moving_forward", decidedAt: decided });
+    expect(later.timeline.map((e) => e.kind)).toEqual(["applied", "rejected"]);
+    expect(later.steps[0]).toMatchObject({ state: "not_moving_forward" });
+  });
+});
+
 describe("a job's rejection line", () => {
   it("is kept with the job (P14)", async () => {
     const saved = await jobs.updateJob(A, "job-1", { ...FIELDS, rejectionLine: "We will keep your profile for future roles." }, (await jobs.job(A, "job-1"))!.rounds, new Date(clock));

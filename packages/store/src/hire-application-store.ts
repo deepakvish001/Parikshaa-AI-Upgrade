@@ -90,6 +90,8 @@ export interface PortalApplication {
   readonly orgId: string;
   readonly jobId: string;
   readonly status: ApplicationStatus;
+  /** Whose decision ended it: `company`, `knockout` (B10) or `candidate`. */
+  readonly statusReason: string | null;
   readonly roundId: string | null;
   readonly createdAt: string;
   readonly decidedAt: string | null;
@@ -297,11 +299,12 @@ export class HireApplicationStore {
         id: string;
         job_id: string;
         status: ApplicationStatus;
+        status_reason: string | null;
         round_id: string | null;
         created_at: string | Date;
         decided_at: string | Date | null;
       }>(
-        `SELECT id, job_id, status, round_id, created_at, decided_at FROM hire_applications
+        `SELECT id, job_id, status, status_reason, round_id, created_at, decided_at FROM hire_applications
           WHERE org_id = $1 AND id = ANY($2) AND candidate_id = $3 AND erased_at IS NULL ORDER BY created_at DESC`,
         [orgId, [...applicationIds], candidateId],
       ),
@@ -334,6 +337,7 @@ export class HireApplicationStore {
         orgId,
         jobId: a.job_id,
         status: a.status,
+        statusReason: a.status_reason,
         roundId: a.round_id,
         createdAt: iso(a.created_at),
         decidedAt: isoOrNull(a.decided_at),

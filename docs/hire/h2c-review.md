@@ -1,7 +1,7 @@
 # H2c review: kya mila, kya kiya
 
 Do reviewers ne H2c ke commits (`12970ab..f26652f`) padhe. Har finding code se jaanchi gayi. Fixes `WIP(H2c): review fixes`
-(`254cf50`) me hain, har behaviour fix ke saath ek test jo fix se pehle fail hota.
+(`254cf50`, portal hold alag commit me) me hain, har behaviour fix ke saath ek test jo fix se pehle fail hota.
 
 - **S18: unverified company ki "moved" mail me round ka title** (R1 #1, R2 #1) → **fixed**. Unverified ho to mail round
   ko uske kind se bulati hai ("Interview", "Online test", …; `mailFacts` ab round `kind` deta hai); `asksForMoney` ab round
@@ -14,8 +14,11 @@ Do reviewers ne H2c ke commits (`12970ab..f26652f`) padhe. Har finding code se j
   ab `note` leta hai aur har `rejected` event ke turant baad private `note` event usi transaction me likhta hai; service
   ka per-id `note()` loop hata. Audit commit ke baad akela kadam (house pattern). Test: beech me fail ho to na rejection
   bachta hai na mail.
-- **24 h ki rejection mail delay candidate se rejection nahi chhupati** (R1 #3, R2 #7) → **chal raha** (B12): portal
-  company ki rejection 24 h tak "in progress" dikhaye, aur us window ke `rejected`/`restored` events na dikhaye.
+- **24 h ki rejection mail delay candidate se rejection nahi chhupati** (R1 #3, R2 #7) → **fixed**, HIRE-V2 §10 **B12**.
+  Portal company ki rejection `decided_at` + 24 h tak "in progress" dikhata hai (decision date nahi; Withdraw us din nahi
+  milta, ye ek chhota sanket hai), aur us din ke andar undo hui rejection ka `rejected` + `restored` timeline me nahi.
+  Knockout (B10) aur withdrawal turant. `PortalApplication` me `statusReason`. Test: `hire-pipeline.test.ts` (reject →
+  portal "in progress" → restore → kuch nahi dikha; dobara reject → 24 h baad "not moving forward").
 - **Restore round ka pehle wala status kho deta tha** (R1 #4) → **fixed**. Reject current round ka status `rejected`
   event ke detail (`roundStatus`) me rakhta hai; Restore wahi wapas likhta hai (`failed` ya kuch na ho to `pending`).
   Test: `done` (score 72) → reject → restore → phir `done`, score bacha.
@@ -27,3 +30,5 @@ Do reviewers ne H2c ke commits (`12970ab..f26652f`) padhe. Har finding code se j
   `messageText()` kahan gaye ye likha.
 - **Filler assertions aur badhkar bolta test title** (R2 #6) → **fixed**. `orgId` import aur `expect(asha)` hata;
   test ab "a job's rejection line / is kept with the job" (`sendOnMove` ki jaanch `hire-routes.test.ts` me pehle se).
+
+<!-- complete -->

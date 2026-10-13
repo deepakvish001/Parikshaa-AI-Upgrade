@@ -14,6 +14,7 @@ import {
   type Organisation,
   type PortalApplication,
   type PrivacyStore,
+  REJECTION_MAIL_DELAY_MS,
   type RoundKind,
   type ScreeningQuestion,
 } from "@parikshaa/store";
@@ -469,29 +470,47 @@ export class HireApplications {
     return this.one(account, applicationId);
   }
 
+  /**
+   * The portal's view of one application. A company's rejection is not shown
+   * for the day its mail waits (P14, §10 B12): until then the application
+   * reads as in progress, so a rejection undone within the day is never seen,
+   * and the timeline leaves out a rejection and the Restore that undid it
+   * within the day. A knockout (B10) or a withdrawal shows at once.
+   */
   #project(org: Organisation, a: PortalApplication): MyApplication {
-    const ended = a.status !== "active";
+    const now = this.#now();
+    const held = a.status === "rejected" && a.statusReason === "company" && a.decidedAt !== null && now - Date.parse(a.decidedAt) < REJECTION_MAIL_DELAY_MS;
+    const unseen = new Set<number>();
+    a.events.forEach((e, i) => {
+      if (e.kind !== "rejected") return;
+      const back = a.events.findIndex((x, j) => j > i && x.kind === "restored");
+      if (back >= 0 && Date.parse(a.events[back]!.at) - Date.parse(e.at) < REJECTION_MAIL_DELAY_MS) unseen.add(i).add(back);
+      else if (back < 0 && held) unseen.add(i);
+    });
+    const ended = a.status !== "active" && !held;
     const currentIndex = a.rounds.findIndex((r) => r.id === a.roundId);
     const steps = a.rounds.map((r, i) => {
       const current = r.id === a.roundId && !ended;
       let state: StepState;
-      if (r.status === "failed" || r.status === "expired" || r.status === "abandoned") state = "not_moving_forward";
+      if (held && r.id === a.roundId) state = "waiting";
+      else if (r.status === "failed" || r.status === "expired" || r.status === "abandoned") state = "not_moving_forward";
       else if (r.status === "done" || r.status === "passed" || r.status === "skipped" || (currentIndex >= 0 && i < currentIndex)) state = "done";
       else if (current && (r.status === "invited" || r.status === "in_progress")) state = "your_turn";
       else if (ended && a.status === "rejected" && r.id === a.roundId) state = "not_moving_forward";
       else state = "waiting";
       return { kind: r.kind, title: r.title, state, current };
     });
-    const status: MyApplication["status"] = a.status === "active" || a.status === "invited" || a.status === "not_claimed" ? "in_progress" : a.status === "rejected" ? "not_moving_forward" : a.status;
+    const status: MyApplication["status"] =
+      held || a.status === "active" || a.status === "invited" || a.status === "not_claimed" ? "in_progress" : a.status === "rejected" ? "not_moving_forward" : a.status;
     return {
       id: a.id,
       company: { name: org.name, publicId: org.publicId, paused: org.suspended !== null },
       job: { title: a.job.title, code: a.job.publicCode, location: a.job.location, closed: a.job.status === "closed" },
       appliedAt: a.createdAt,
       status,
-      decidedAt: a.decidedAt,
+      decidedAt: held ? null : a.decidedAt,
       steps,
-      timeline: a.events.map((e) => ({ at: e.at, kind: e.kind })),
+      timeline: a.events.filter((_, i) => !unseen.has(i)).map((e) => ({ at: e.at, kind: e.kind })),
       noteToCandidates: a.job.noteToCandidates,
       messages: a.events.filter((e) => e.kind === "message").map((e) => ({ at: e.at, text: e.text ?? "" })),
       canWithdraw: a.status === "active",

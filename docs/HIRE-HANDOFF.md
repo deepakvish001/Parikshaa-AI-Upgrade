@@ -261,10 +261,10 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   → ✅ `fa6e90f` (session 3): `hire-messages.test.ts` 6 tests, `delivery.test.ts` +3 (`smtpOptions`); `mail_moved` bhi skip jab
   application us round se aage/peeche ja chuki ho; `mail_message` withdrawn par skip; `mailFacts(org, app, {messageId})`
   (pipeline store ka `messageText` hata diya). Agla: step 6 (poora check, tracker, §6, §10, B12+)
-- [~] 5b. Review fixes (do reviewers, `docs/hire/h2c-review.md`): `254cf50` (session 3): S18 round title (unverified ko
-  kind ka naam, `asksForMoney` round titles bhi padhe), message mail me "Reply" sirf `contactEmail` ho to, S15 note reject
-  ke transaction me, Restore purana round status wapas, move `from` → `stale`, `total` page ke paar. Baaki: portal me
-  company rejection 24 h tak "in progress" (B12) — chal raha
+- [x] 5b. Review fixes (do reviewers, `docs/hire/h2c-review.md`): `254cf50` + portal hold commit (session 3): S18 round
+  title (unverified ko kind ka naam, `asksForMoney` round titles bhi padhe), message mail me "Reply" sirf `contactEmail`
+  ho to, S15 note reject ke transaction me, Restore purana round status wapas, move `from` → `stale`, `total` page ke
+  paar, portal me company rejection 24 h tak "in progress" (HIRE-V2 §10 B12 likh diya; step 6 ke naye faisle B13+)
 - [ ] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
   `budget`; naye faisle HIRE-V2 §10 me B12+ (jaise rejection line per job, `round_since`, restore par mail cancel);
   tracker row 112 me H2c (kya bana, Kahan: 0073, `hire-pipeline-store.ts`, `hire-pipeline.ts`,

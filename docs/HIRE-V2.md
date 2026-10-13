@@ -550,6 +550,10 @@ item there is ADOPTED unless listed under "Not adopted / changed" below. Builder
 - B11 (H2b) The service writes applications in the organisation's staff scope. The portal reads the candidate's
   applications and visible events in the candidate's own scope (so RLS keeps them to theirs), then the job, rounds and
   round states for those ids alone. S17's daily limit counts the candidate's `candidate_links`.
+- B12 (H2c review) A company's rejection is held from the candidate for the day its mail waits (P14): the portal shows
+  the application in progress (no decision date, no Withdraw) until `decided_at` + 24 h, and the timeline leaves out a
+  rejection and the Restore that undid it within that day. A knockout (B10) or a withdrawal shows at once. Restore puts
+  back the round's status from before the rejection (kept in the `rejected` event's detail).
 - Migration numbers moved on: H2b took 0072, so H4b's `no_show` and H5b's room signals take the next free numbers.
 
 ### Not adopted / changed
