@@ -102,8 +102,8 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
    H2b me: `/hire/public/*` (F7), apply (account, consent S8, snapshot, ref F5, hashes, `candidate_links` S2,
    limits S17), suspension ka asar (F2), `hire-messages.ts` + outbox `{later}`, portal projection (S4), withdraw.
 W2 aur W4 **dobara mat chalao** (unke nateeje `docs/hire/critique-*.md` aur `docs/hire/handoff-verify.md` me hain).
-W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, session-wise autosave ref, workflow journals
-snapshot me, bootstrap PR to main. Ye chhote hain, kabhi bhi kar lena.
+W4 ke baaki sudhaar jo abhi nahi hue (`handoff-verify.md` me): redaction, workflow journals snapshot me, bootstrap PR
+to main. Ye chhote hain, kabhi bhi kar lena. (Session-wise autosave ref aur stale guard 13 Oct ko ho gaye, §7.)
 
 **Limit kaise dekhein (pakka tareeka):** har kadam aur har workflow se pehle `get_session` (claude-code-remote) se session
 id lo, phir `list_events(session_id, kinds:["rate_limit_event"], limit:100)`. **Session 2 me `list_events` tool tha hi nahi.** Tab
@@ -217,11 +217,18 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 
 **b. Autosave (apne aap, owner ki manzoori se, 12 Oct 2026).** `.claude/settings.json` ke hooks `scripts/autosave.sh`
 chalate hain: har edit/command ke baad (30 s me ek baar), aur har turn ya session ke aakhir me. Ye **commit na hua kaam
-bhi** branch `autosave/<branch>` par push karta hai, ek snapshot commit ke roop me jiska parent us waqt ka HEAD hai.
+bhi** branch `autosave/<branch>--<session id ke pehle 8 akshar>` par push karta hai (har session ki apni ref, taaki do
+session ek doosre ka snapshot na mitaayein), ek snapshot commit ke roop me jiska parent us waqt ka HEAD hai.
 Asli branch aur history ko ye nahi chhoota. `.env*`, `*.pem`, `*.key` aur 5 MB se badi files bahar rehti hain.
 Snapshot me `.claude/live/state.md` bhi hota hai (sirf snapshot me, git-ignored): us session ki task list, owner ka
-aakhri sandesh, aur Claude ke aakhri 4 sandesh. Padhne ke liye:
-`git show origin/autosave/<branch>:.claude/live/state.md`.
+aakhri sandesh, aur Claude ke aakhri 4 sandesh. Padhne ke liye neeche restore ke commands.
+
+**Stale guard (13 Oct 2026):** push se pehle script `origin/<branch>` fetch karta hai (15 s ki seema). HEAD usse peeche
+ho (purana container, jo doosre session ke push ke baad jaaga), to kuch push nahi hota. Aakhri koshish ka nateeja
+`.git/autosave-status` me: `ok <epoch> <commit>`, `fail <epoch>` ya `stale <epoch>`. `stale` ya `fail` dikhe to
+pehle `git pull --rebase origin <branch>` (ya remote theek karo); tab tak autosave tumhara kaam nahi bacha raha. Test:
+`scripts/test/autosave.test.sh` (local bare remote par; asli origin ko nahi chhoota; CI me bhi). Purani shared ref
+`autosave/<branch>` (bina `--`) ab koi nahi likhta: restore me use mat lo.
 
 **Limit watch:** `scripts/limit-watch.sh` (PostToolUse hook) transcript me rate-limit ki entry dekhta hai. Status
 "allowed" ke alawa kuch ho, ya 85% se zyada use ho chuka ho (aur reset ka samay abhi aage ho), to wo turant autosave
@@ -233,16 +240,22 @@ Restore (har naye session ki shuruaat me; tested in W4):
 
 ```bash
 B=<HANDOFF.md wali canonical branch>
-git fetch origin "+refs/heads/autosave/$B:refs/remotes/origin/autosave/$B"
-A=origin/autosave/$B                                      # sirf canonical branch ka; autosave/worktree-* kabhi nahi
-git show "$A":.claude/live/state.md                       # tasks + aakhri sandesh: sirf padho, kabhi commit nahi
-git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit ho chuka, kuch mat karo
+git fetch origin '+refs/heads/autosave/*:refs/remotes/origin/autosave/*'
+snaps() { git for-each-ref --sort=-committerdate --format='%(refname:short)' "refs/remotes/origin/autosave/$B--*"; }
+git for-each-ref --sort=-committerdate --format='%(committerdate:iso) %(objectname:short) %(refname:short)' \
+  "refs/remotes/origin/autosave/$B--*"                    # sirf canonical branch ke, naya upar; autosave/worktree-* kabhi nahi
+A=$(for r in $(snaps); do [ "$(git rev-parse "$r^")" = "$(git rev-parse HEAD)" ] && { echo "$r"; break; }; done)
+echo "A=$A"                                               # sabse naya snapshot jiska parent == HEAD; khaali = koi nahi
+for r in $(snaps); do echo "== $r"; git show "$r":.claude/live/state.md; done           # sab: tasks + aakhri sandesh, sirf padho
+[ -n "$A" ] && git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit ho chuka, kuch mat karo
 ```
 
-- Parent == HEAD (`[ "$(git rev-parse "$A^")" = "$(git rev-parse HEAD)" ]`): `git cherry-pick --no-commit "$A" && git reset -q`.
-  `git reset -q` zaroori hai, warna `.claude/live/state.md` agle commit me chala jaata.
-- Parent HEAD ke peeche (branch aage badh chuki): cherry-pick MAT karo. `git diff --stat "$A^" "$A" -- . ':(exclude).claude/live'`
-  dekho, aur sirf wo files haath se lao jo baad ke kisi commit ne nahi chhui.
+- `A` mila (parent == HEAD): `git cherry-pick --no-commit "$A" && git reset -q`.
+  `git reset -q` zaroori hai, warna `.claude/live/state.md` agle commit me chala jaata. Baaki snapshots se sirf unka
+  `state.md` padho (kaunsa session kya kar raha tha), unka code mat lagao.
+- `A` khaali (har snapshot ka parent HEAD ke peeche, branch aage badh chuki): cherry-pick MAT karo. Sabse naye
+  snapshot `S` ke liye `git diff --stat "$S^" "$S" -- . ':(exclude).claude/live'` dekho, aur sirf wo files haath se
+  lao jo baad ke kisi commit ne nahi chhui (`git diff --name-only "$S^" HEAD` me na hon).
 - Conflict par `git checkout "$A" -- <file>` MAT karo, commit hua kaam mit jaata hai. Dono hisse milao.
 - Snapshot beech-edit ka ho sakta hai. Pehle typecheck + tests chalao; fail ho to state.md se samjho kya adhoora tha aur
   poora karo. Restore se koi kadam `[x]` nahi hota, sirf tests pass hone par hota hai. Sessions row ke liye sirf
@@ -273,6 +286,14 @@ git diff --stat HEAD "$A" -- . ':(exclude).claude/live'   # khaali = sab commit 
 | 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Chal raha |
 
 ## 10. Log (naya upar)
+
+- 13 Oct 2026 (13, session 3): Autosave ka data-loss bug theek (W5 ka pehla hissa). 13 Oct ko purane container (HEAD
+  bahut peeche) ke pehle tool call par hook ne `autosave/<branch>` force-push karke session 2 ka naya snapshot mita
+  diya tha (sirf reflog se bacha). Ab: har session ki apni ref `autosave/<branch>--<session id ke 8 akshar>`
+  (failure-modes #9), STALE_GUARD (HEAD `origin/<branch>` se peeche ho to push nahi, `stale`), aur
+  `.git/autosave-status` (`ok`/`fail`/`stale`). §7 ke restore commands naye: saare `autosave/*` fetch, `$B--*` date se,
+  parent == HEAD wala sabse naya lagao, baaki ka sirf `state.md` padho. Test `scripts/test/autosave.test.sh` (20 jaanch,
+  local bare remote; purani script par 14 fail) CI me bhi.
 
 - 12 Oct 2026 (12, session 2): CI ke saare jobs GitHub billing ki wajah se shuru hi nahi hue (PR #66 aur `main` dono);
   PR par comment aur tracker "Ruka hua kaam" me. H2b poora: 0072 (ek job par ek insaan ki ek live application),

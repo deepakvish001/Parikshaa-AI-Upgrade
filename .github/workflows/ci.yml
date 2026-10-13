@@ -160,6 +160,12 @@ jobs:
           shellcheck -x scripts/setup-server.sh scripts/test/setup-server.test.sh
           scripts/test/setup-server.test.sh
 
+      # The sessions' autosave hook (docs/HIRE-HANDOFF.md §7), against a scratch remote.
+      - name: Autosave script
+        run: |
+          shellcheck -x scripts/autosave.sh scripts/test/autosave.test.sh
+          scripts/test/autosave.test.sh
+
       # The Judge0 VM (G3): cgroup v1, secrets, the purge, the check.
       - name: Judge0 setup script
         run: |
