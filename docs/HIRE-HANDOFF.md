@@ -367,6 +367,7 @@ for r in $(snaps); do echo "== $r"; git show "$r":.claude/live/state.md; done   
 | 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
 | 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Khatam (aakhri commit 22:21 UTC `12970ab` H2b; uska aakhri autosave `d58667d` me koi adhoora code nahi tha) |
 | 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Khatam: 5 ghante ki limit 92% (owner ne bataya). Autosave fix ✅, H2c kadam 1–5 + review ✅. Agla: H2c kadam 6 (`npm run check`, `npm run openapi`, `build:clients` + `budget`, §6/§10, AB AGLA H2d), phir H2d |
+| 4 | 13 Oct 2026 | account 2 (session 2 dobara), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 12:35 UTC: branch `b295801` par fast-forward; autosave ke dono snapshots (`--4a0a2180`, `--9ae3c313`) me koi adhoora code nahi. Limit: 7 din ki window `allowed_warning` (utilization ka number nahi milta), isliye sirf H2c kadam 6 | Chal raha |
 
 ## 10. Log (naya upar)
 
