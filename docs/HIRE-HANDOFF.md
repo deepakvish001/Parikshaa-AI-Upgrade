@@ -240,12 +240,15 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   (JobFields, routes zod, openapi) aur `sendOnMove` boolean (`roundProblems`) yahi aa gaye; portal `MyApplication` me
   `messages` + `noteToCandidates` (route schema step 4 me); 0073 me `hire_events.seq` (same pal ke events ka kram; H2b ka
   flaky portal test bhi theek). ACTIONS ke 7 shabd console me
-- [ ] 4. Routes `packages/api/src/hire-pipeline-routes.ts` (tag `Hiring`, `/hire/*` F7, refusals H2a jaise):
+- [x] 4. Routes `packages/api/src/hire-pipeline-routes.ts` (tag `Hiring`, `/hire/*` F7, refusals H2a jaise):
   `GET /hire/jobs/{jobId}/applications` (filters), `POST /hire/jobs/{jobId}/applications/move` aur `.../reject`
   (bulk), `GET /hire/applications/{applicationId}`, `GET .../resume` (attachment), `POST .../restore`, `.../notes`,
   `.../messages`; `hire-routes.ts` job schema me `rejectionLine`; wiring `server.ts` (`hirePipeline?`), `assemble.ts`,
   `testing/harness.ts`, `openapi.ts`; `npm run openapi`; `hire-pipeline-routes.test.ts` (viewer ke jawab me
   email/phone nahi, resume download ke headers, doosri org 404, override 422, bulk ginti)
+  → ✅ `dc354f0` (session 4): `hire-pipeline-routes.test.ts` 6 tests (viewer/API key 403, beta 404, override 422, S15 422,
+  restore par mail `skipped`, portal me `messages` + `noteToCandidates`, resume headers + audit); `hireRefusals`/`hireStatus`
+  `hire-routes.ts` se share; `openapi.json` naya
 - [ ] 5. Mails (F23, P14, S18): `delivery.ts` `EmailMessage.replyTo?` + `fromName?`; `SmtpMailer` naam `from` me daale
   (nodemailer address object, CR/LF hata kar) aur `replyTo` bheje, `fromName` ko `...rest` se bahar rakhe; `OutboxLog`
   dono rakhe; `delivery.test.ts`. `hire-messages.ts`: har Hire mail "<Company> via Parikshaa" + reply-to job ka
