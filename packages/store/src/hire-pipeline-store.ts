@@ -488,19 +488,6 @@ export class HirePipelineStore {
     return { file: this.#seal.openBytes(Buffer.from(sealed), HireApplicationStore.aad(orgId, applicationId, "resume_file")), name: row.resume_name, type: row.resume_type };
   }
 
-  /** What a mail about a message needs: its text, opened. Null if the event is not a message of this application. */
-  async messageText(orgId: OrgId, applicationId: string, eventId: string): Promise<string | null> {
-    const rows = await hireScoped(this.#sql, hireStaff(orgId), (tx) =>
-      tx.query<{ detail: Record<string, unknown> | string }>(`SELECT detail FROM hire_events WHERE org_id = $1 AND application_id = $2 AND id = $3 AND kind = 'message'`, [
-        orgId,
-        applicationId,
-        eventId,
-      ]),
-    );
-    const text = rows[0] === undefined ? undefined : json(rows[0].detail)["text"];
-    return typeof text === "string" ? this.#seal.open(text, this.#aad(orgId, applicationId, eventId)) : null;
-  }
-
   // --- changing -----------------------------------------------------------------
 
   /** The job's rounds in order, and the applications asked for, locked. */

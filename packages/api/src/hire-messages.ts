@@ -5,10 +5,15 @@ import { HELD_FOR_MS } from "./hire-apply.js";
 
 /**
  * Hire's mail to applicants (docs/HIRE-V2.md §1 outbox kind `hire`, §10 F2,
- * S18; H2b). Each message is built when it is sent, from the application as it
- * then stands. While the company is suspended its mail waits, an hour at a
- * time, rather than being dropped (F2). Every message says that Parikshaa and
- * real employers never ask for money (S18).
+ * F23, P14, S18; H2b, H2c). Each message is built when it is sent, from the
+ * application as it then stands: a mail about a step the application has
+ * left since (moved on, rejected, restored) is skipped. While the company is
+ * suspended its mail waits, an hour at a time, rather than being dropped
+ * (F2). Every message comes from "<Company> via Parikshaa", replies go to the
+ * job's contact address, and it says that Parikshaa and real employers never
+ * ask for money (S18). Until Parikshaa verifies the company its mails carry
+ * no words its staff wrote (S18): not a message, the job's note to candidates
+ * or its rejection line; the candidate reads a message in the portal.
  */
 
 const NEVER_PAY = "Parikshaa and real employers never ask you to pay to apply or to be hired. If anyone does, report the job from its page.";
@@ -38,10 +43,13 @@ export class HireMessages {
     if (org === null) return { skip: "The organisation is gone" };
     if (org.suspended !== null) return { later: new Date(this.#now() + HELD_FOR_MS) };
     if (this.#o.mailer === null) return { skip: "This server does not send email" };
-    const facts = await this.#o.applications.mailFacts(org.id, String(item.subject["applicationId"] ?? ""));
+    const messageId = item.purpose === "mail_message" ? String(item.subject["eventId"] ?? "") : undefined;
+    const facts = await this.#o.applications.mailFacts(org.id, String(item.subject["applicationId"] ?? ""), { messageId });
     if (facts === null) return { skip: "The application is gone" };
     const portal = `${this.#o.publicUrl}/my`;
     const job = facts.job.title;
+    // Words the company's staff wrote go out only once Parikshaa has verified the company (S18).
+    const verified = org.verified !== null;
     let subject: string;
     let lines: string[];
     switch (item.purpose) {
@@ -73,6 +81,41 @@ export class HireMessages {
           `If this was not you, sign in at ${portal} and sign out everywhere.`,
         ];
         break;
+      case "mail_moved": {
+        if (facts.status !== "active") return { skip: "The application is not going any more" };
+        if (facts.round === null || facts.round.id !== item.subject["roundId"]) return { skip: "The application has moved on since" };
+        subject = `Next step: ${facts.round.title}, ${job} at ${org.name}`;
+        lines = [
+          `Hello ${facts.name},`,
+          "",
+          `Your application to ${org.name} for ${job} has moved to the next step: ${facts.round.title}.`,
+          ...(verified && facts.job.noteToCandidates !== "" ? ["", facts.job.noteToCandidates] : []),
+          "",
+          `See what comes next at ${portal}. Sign in there with this email address.`,
+        ];
+        break;
+      }
+      case "mail_rejected":
+        // Restored, or rejected again later (which writes its own mail): this one is not sent.
+        if (facts.status !== "rejected" || facts.decidedAt !== item.subject["decidedAt"]) return { skip: "The application was restored" };
+        subject = `Your application to ${org.name}: ${job}`;
+        lines = [
+          `Hello ${facts.name},`,
+          "",
+          `Thank you for applying to ${org.name} for ${job}, and for the time you gave it. They have decided not to take your application further.`,
+          ...(verified && facts.job.rejectionLine !== "" ? ["", facts.job.rejectionLine] : []),
+          "",
+          `Your other applications, and new jobs, are at ${portal}.`,
+        ];
+        break;
+      case "mail_message":
+        if (facts.message === null) return { skip: "The message is gone" };
+        if (facts.status === "withdrawn") return { skip: "The candidate withdrew" };
+        subject = `A message from ${org.name} about ${job}`;
+        lines = verified
+          ? [`Hello ${facts.name},`, "", `${org.name} wrote to you about your application for ${job}:`, "", ...facts.message.split(/\r?\n/), "", `Reply to this mail, or see the conversation at ${portal}.`]
+          : [`Hello ${facts.name},`, "", `${org.name} sent you a message about your application for ${job}.`, `Read it at ${portal}. Sign in there with this email address.`];
+        break;
       default:
         return { skip: `No message for ${item.purpose}` };
     }
@@ -82,6 +125,8 @@ export class HireMessages {
       subject,
       text: lines.join("\n"),
       html: lines.map((l) => (l === "" ? "" : `<p>${escape(l)}</p>`)).join(""),
+      fromName: `${org.name} via Parikshaa`,
+      ...(facts.job.contactEmail === null ? {} : { replyTo: facts.job.contactEmail }),
     });
     return "sent";
   }

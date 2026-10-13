@@ -271,8 +271,9 @@ describe("notes and messages", () => {
       ["note", "Strong on Kafka; ask about on-call", false, "staff-1"],
       ["message", "Could you share your notice period?", true, "staff-1"],
     ]);
-    expect(await store.messageText(A, asha, eventId)).toBe("Could you share your notice period?");
-    expect(await store.messageText(A, asha, note!)).toBeNull();
+    expect((await applications.mailFacts(A, asha, { messageId: eventId }))?.message).toBe("Could you share your notice period?");
+    expect((await applications.mailFacts(A, asha, { messageId: note! }))?.message).toBeNull();
+    expect((await applications.mailFacts(B, asha, { messageId: eventId }))?.message).toBeUndefined();
     expect(await store.note(B, asha, "x", "staff-1", T1)).toBeNull();
   });
 

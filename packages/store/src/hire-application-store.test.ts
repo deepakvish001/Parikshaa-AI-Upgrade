@@ -253,13 +253,17 @@ describe("mail", () => {
   it("reads what a message needs, in the organisation only", async () => {
     await openJob();
     const made = (await store.apply(A, application("c1"), RULES)) as { id: string };
+    const job = (await jobs.job(A, "job-1"))!;
     expect(await store.mailFacts(A, made.id)).toEqual({
       id: made.id,
       name: "Asha Rao",
       email: "c1@example.com",
       status: "active",
       statusReason: null,
-      job: { title: "Backend engineer", publicCode: "CODE-job-1", contactEmail: null },
+      decidedAt: null,
+      round: { id: job.rounds[0]!.id, title: "Screening" },
+      job: { title: "Backend engineer", publicCode: "CODE-job-1", contactEmail: null, noteToCandidates: "", rejectionLine: "" },
+      message: null,
     });
     expect(await store.mailFacts(B, made.id)).toBeNull();
   });

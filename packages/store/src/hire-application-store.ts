@@ -106,7 +106,19 @@ export interface ApplicationMailFacts {
   readonly email: string;
   readonly status: ApplicationStatus;
   readonly statusReason: string | null;
-  readonly job: { readonly title: string; readonly publicCode: string | null; readonly contactEmail: string | null };
+  /** When it was rejected or withdrawn: a rejection mail goes only for the rejection it was written for (H2c). */
+  readonly decidedAt: string | null;
+  /** The round it is in now. */
+  readonly round: { readonly id: string; readonly title: string } | null;
+  readonly job: {
+    readonly title: string;
+    readonly publicCode: string | null;
+    readonly contactEmail: string | null;
+    readonly noteToCandidates: string;
+    readonly rejectionLine: string;
+  };
+  /** The words of the message asked for (`messageId`), opened; null if none was asked for or it is not this application's. */
+  readonly message: string | null;
 }
 
 const iso = (d: string | Date) => new Date(d).toISOString();
@@ -379,7 +391,7 @@ export class HireApplicationStore {
   }
 
   /** What a mail about the application needs, opened. Null if it is gone or erased. */
-  async mailFacts(orgId: OrgId, applicationId: string): Promise<ApplicationMailFacts | null> {
+  async mailFacts(orgId: OrgId, applicationId: string, options: { readonly messageId?: string | undefined } = {}): Promise<ApplicationMailFacts | null> {
     return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
       const rows = await tx.query<{
         id: string;
@@ -387,24 +399,42 @@ export class HireApplicationStore {
         email: string;
         status: ApplicationStatus;
         status_reason: string | null;
+        decided_at: string | Date | null;
+        round_id: string | null;
+        round_title: string | null;
         title: string;
         public_code: string | null;
         contact_email: string | null;
+        note_to_candidates: string;
+        rejection_line: string;
       }>(
-        `SELECT a.id, a.name, a.email, a.status, a.status_reason, j.title, j.public_code, j.contact_email
-           FROM hire_applications a JOIN hire_jobs j ON j.org_id = a.org_id AND j.id = a.job_id
+        `SELECT a.id, a.name, a.email, a.status, a.status_reason, a.decided_at, r.id AS round_id, r.title AS round_title,
+                j.title, j.public_code, j.contact_email, j.note_to_candidates, j.rejection_line
+           FROM hire_applications a
+           JOIN hire_jobs j ON j.org_id = a.org_id AND j.id = a.job_id
+           LEFT JOIN hire_rounds r ON r.org_id = a.org_id AND r.id = a.round_id
           WHERE a.org_id = $1 AND a.id = $2 AND a.erased_at IS NULL`,
         [orgId, applicationId],
       );
       const r = rows[0];
       if (r === undefined) return null;
+      const message =
+        options.messageId === undefined
+          ? []
+          : await tx.query<{ id: string; detail: Record<string, unknown> | string }>(
+              `SELECT id, detail FROM hire_events WHERE org_id = $1 AND application_id = $2 AND id = $3 AND kind = 'message'`,
+              [orgId, applicationId, options.messageId],
+            );
       return {
         id: r.id,
         name: r.name,
         email: this.#seal.open(r.email, HireApplicationStore.aad(orgId, r.id, "email")),
         status: r.status,
         statusReason: r.status_reason,
-        job: { title: r.title, publicCode: r.public_code, contactEmail: r.contact_email },
+        decidedAt: isoOrNull(r.decided_at),
+        round: r.round_id === null ? null : { id: r.round_id, title: r.round_title! },
+        job: { title: r.title, publicCode: r.public_code, contactEmail: r.contact_email, noteToCandidates: r.note_to_candidates, rejectionLine: r.rejection_line },
+        message: message[0] === undefined ? null : this.#messageText(orgId, r.id, message[0].id, message[0].detail),
       };
     });
   }

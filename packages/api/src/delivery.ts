@@ -1,4 +1,4 @@
-import nodemailer, { type Transporter } from "nodemailer";
+import nodemailer, { type SendMailOptions, type Transporter } from "nodemailer";
 import { examId, orgId as toOrgId, type Exam, type ProctoringPolicy } from "@parikshaa/core";
 import {
   staffScope,
@@ -28,6 +28,10 @@ export interface EmailMessage {
   readonly html: string;
   /** Files sent with it: the results workbook a member of staff asked for. */
   readonly attachments?: readonly { readonly filename: string; readonly content: Uint8Array; readonly contentType: string }[];
+  /** Where replies go: a Hire job's contact address (F23, P14). */
+  readonly replyTo?: string | undefined;
+  /** The sender's name, beside the server's own address: "<Company> via Parikshaa" (F23, P14). */
+  readonly fromName?: string | undefined;
 }
 
 export interface SmsMessage {
@@ -68,6 +72,27 @@ export interface WhatsAppSender {
   send(message: WhatsAppMessage): Promise<void>;
 }
 
+/** A header value on one line: no control characters, so nothing can be added after it. */
+const oneLine = (value: string, max: number) => value.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
+
+/**
+ * What nodemailer is given for a message. The sender's name, when there is
+ * one, goes beside the server's own address (never another address: the
+ * company is named, Parikshaa sends); replies go where the message says.
+ */
+export function smtpOptions(from: string, message: EmailMessage): SendMailOptions {
+  const { attachments, replyTo, fromName, ...rest } = message;
+  const address = /<([^<>]+)>\s*$/.exec(from)?.[1]?.trim() ?? from.trim();
+  const name = fromName === undefined ? "" : oneLine(fromName, 120);
+  const reply = replyTo === undefined ? "" : oneLine(replyTo, 254);
+  return {
+    from: name === "" ? from : { name, address },
+    ...rest,
+    ...(reply === "" ? {} : { replyTo: reply }),
+    ...(attachments === undefined ? {} : { attachments: attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content), contentType: a.contentType })) }),
+  };
+}
+
 /**
  * Email over SMTP, which every provider serving India offers — Amazon SES in
  * Mumbai, Zoho, Netcore, Pepipost — so none of them is baked in.
@@ -83,12 +108,7 @@ export class SmtpMailer implements Mailer {
 
   async send(message: EmailMessage): Promise<void> {
     try {
-      const { attachments, ...rest } = message;
-      await this.#transport.sendMail({
-        from: this.#from,
-        ...rest,
-        ...(attachments === undefined ? {} : { attachments: attachments.map((a) => ({ filename: a.filename, content: Buffer.from(a.content), contentType: a.contentType })) }),
-      });
+      await this.#transport.sendMail(smtpOptions(this.#from, message));
     } catch (error) {
       const code = (error as { responseCode?: number }).responseCode;
       // 5xx is the server saying no for good: no such mailbox, policy refusal.

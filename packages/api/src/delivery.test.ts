@@ -5,7 +5,7 @@ import type { PGlite } from "@electric-sql/pglite";
 import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { enqueue, IdentityStore, InvitationStore, LedgerStore, OutboxStore, pgliteExecutor } from "@parikshaa/store";
-import { DeliveryWorker, Msg91Sender, OutboxLog, PermanentFailure, ist, type EmailMessage, type Mailer, type SmsMessage } from "./delivery.js";
+import { DeliveryWorker, Msg91Sender, OutboxLog, PermanentFailure, ist, smtpOptions, type EmailMessage, type Mailer, type SmsMessage } from "./delivery.js";
 import { InviteCodes } from "./invite-codes.js";
 import { addOrganisation, addStaff, bearer, freshDatabase, PUBLIC_URL, signIn, TOKEN_SECRET, wire } from "./testing/harness.js";
 
@@ -445,5 +445,35 @@ describe("MSG91", () => {
       else await expect(sent).rejects.not.toBeInstanceOf(PermanentFailure);
       server.close();
     }
+  });
+});
+
+describe("mail over SMTP", () => {
+  const message: EmailMessage = { to: "asha@example.com", subject: "Applied", text: "Hello", html: "<p>Hello</p>" };
+
+  it("names the company beside the server's own address, and sends replies where the message says (F23, P14)", () => {
+    expect(smtpOptions("Parikshaa <no-reply@parikshaa.in>", { ...message, fromName: "Acme Fintech via Parikshaa", replyTo: "jobs@acme.test" })).toEqual({
+      from: { name: "Acme Fintech via Parikshaa", address: "no-reply@parikshaa.in" },
+      to: "asha@example.com",
+      subject: "Applied",
+      text: "Hello",
+      html: "<p>Hello</p>",
+      replyTo: "jobs@acme.test",
+    });
+    expect(smtpOptions("no-reply@parikshaa.in", { ...message, fromName: "Acme" }).from).toEqual({ name: "Acme", address: "no-reply@parikshaa.in" });
+  });
+
+  it("keeps a name or reply address to one line, and leaves the rest as it was", () => {
+    const options = smtpOptions("Parikshaa <no-reply@parikshaa.in>", { ...message, fromName: "Acme\r\nBcc: victim@example.com", replyTo: "jobs@acme.test\r\nX-Evil: 1" });
+    expect(options.from).toEqual({ name: "Acme Bcc: victim@example.com", address: "no-reply@parikshaa.in" });
+    expect(options.replyTo).toBe("jobs@acme.test X-Evil: 1");
+    expect(smtpOptions("Parikshaa <no-reply@parikshaa.in>", message)).toEqual({ from: "Parikshaa <no-reply@parikshaa.in>", ...message });
+    expect("fromName" in smtpOptions("x@y.z", { ...message, fromName: "A" })).toBe(false);
+  });
+
+  it("is kept whole by the development log", async () => {
+    const kept = new OutboxLog();
+    await kept.send({ ...message, fromName: "Acme via Parikshaa", replyTo: "jobs@acme.test" });
+    expect(kept.sent).toEqual([{ ...message, fromName: "Acme via Parikshaa", replyTo: "jobs@acme.test" }]);
   });
 });
