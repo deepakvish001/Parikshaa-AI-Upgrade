@@ -53,7 +53,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | T1 | Map existing Hire code against job→offer flow | ✅ | Workflow W1; output `docs/hire/code-map/` |
 | T2 | Design the Hire pipeline (jobs, apply, AI screen, OA, integrity, rounds, offer, portals, admin) | ✅ | `docs/HIRE-V2.md` + §10 (critique ke faisle) |
 | T2a | Design ka "fit" critique (design asli code se mel khata hai ya nahi) | ✅ | Workflow W3; W2 me ye hissa limit par ruka tha. H1 ke saath chalao |
-| T3 | Build Hire slices with tests | 🟡 | H1, H2a, H2b ✅; H2c kadam 6 baaki (§5); phir H2d. Build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
+| T3 | Build Hire slices with tests | 🟡 | H1, H2a, H2b, H2c ✅; agla H2d (§5). Build order H1 → H2 → H3 → H4 → H5 → H7 → H8 → H9 → H6 |
 | T2b | Resume flow ki jaanch + fixes (W4) | ✅ | Zaroori fixes ho gaye; chhote baaki §5 me |
 | T4 | Review, e2e, tracker, PR | ⬜ | H10 + poora review + PR #65 ko ready |
 
@@ -65,7 +65,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 | W2 | Design critique (security, product, fit) | [hire/workflows/w2-design-critique.js](hire/workflows/w2-design-critique.js) | ✅ security, product; fit → W3 (W2 dobara mat chalao) | `docs/hire/critique-*.md` |
 | W3 | Sirf "fit" critique (W2 ka bacha hissa) | [hire/workflows/w3-fit-critique.js](hire/workflows/w3-fit-critique.js) | ✅ session 2 (Agent tool se; limit par ek baar ruka, wahin se poora). Dobara mat chalao | `docs/hire/critique-fit.md` + HIRE-V2.md §10 "Fit (F#)" |
 | W4 | Resume flow ki jaanch (naya account ban kar, autosave test, kamiyan) | [hire/workflows/w4-handoff-verify.js](hire/workflows/w4-handoff-verify.js) | ✅ chal chuka (dobara mat chalao) | `docs/hire/handoff-verify.md`; zaroori fixes ho gaye, baaki §5 me |
-| W5 | Autosave overwrite fix + H2c (pipeline) build, review, check | [hire/workflows/w5-h2c-pipeline.js](hire/workflows/w5-h2c-pipeline.js) | 🟡 H2c kadam 1–5 + review fixes ✅ (`h2c-review.md`); kadam 6 [~] (limit). Script dobara chalao: autosave fix, plan, build, review chhoot jaayenge; sirf Final check chalega | H2c code + `docs/hire/h2c-review.md` |
+| W5 | Autosave overwrite fix + H2c (pipeline) build, review, check | [hire/workflows/w5-h2c-pipeline.js](hire/workflows/w5-h2c-pipeline.js) | ✅ session 3 + 4 (Final check session 4 ne khud chalaya, token bachane ke liye; §4 ka niyam). Dobara mat chalao | H2c code + `docs/hire/h2c-review.md` |
 
 **Niyam (sab sessions ke liye):**
 - **Chalane se pehle:** workflow ki script `docs/hire/workflows/wN-<naam>.js` me save karo, upar table me row jodo
@@ -95,7 +95,16 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 3. ✅ **(session 2)** H1b (resume).
 4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
 5. ✅ **(session 2)** H2b (Apply + portal), neeche ki checklist. HIRE-V2 §10 me B6–B11.
-6. **AB AGLA: H2c** (Pipeline): checklist neeche likh di (session 3, W5), ab use kram se banao. H2c me: pipeline
+6. ✅ **(session 3 + 4)** H2c (Pipeline), neeche ki checklist. HIRE-V2 §10 me B12–B17.
+7. **AB AGLA: H2d** (Privacy + import): critique-fit.md "Splits" ki H2d row se checklist likho, phir banao. H2d me:
+   `HireErasure.eraseApplication(orgId, appId, reason)` (S3: PII columns NULL, files delete, screening `result` NULL,
+   integrity reasons → codes, `hire_events.detail` blank (column grant ya SECURITY DEFINER), offer note NULL, links
+   delete; har org ka apna transaction; full-DB text search me kuch na mile), candidate account delete ka hook (H1a
+   ka `deleteAccount` har org ki application mitaaye; accepted offer company ke paas bina contact ke), `HireRetention.sweep()`
+   (F4: `hire_keep_days ?? privacy retentionDays ?? 180`, privacy settings na ho tab bhi; withdrawn 30 din (S8);
+   `main.ts` ka hourly loop + harness), P11 import (CSV, dry run) aur "Add one" → `invited` + `candidate_id NULL`, mail
+   "Complete your application", sign-in par usi email se claim (consent + resume, `claimed` event), 14 din baad
+   `not_claimed`. Pehle H2c ka purana text (neeche) sirf sandarbh ke liye: H2c me: pipeline
    table, move/reject/restore (override ke niyam ke saath; B9: Restore mana jab usi job par naya live application ho),
    notes, events, bulk (ginti ke saath), `reject_reason`, P14 message thread + note to candidates + rejection mail 24 h
    baad (Restore par cancel), reply-to/sender (F23: `EmailMessage.replyTo`, `fromName`), S21/S22 (viewer ko contact nahi).
@@ -265,7 +274,7 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   title (unverified ko kind ka naam, `asksForMoney` round titles bhi padhe), message mail me "Reply" sirf `contactEmail`
   ho to, S15 note reject ke transaction me, Restore purana round status wapas, move `from` → `stale`, `total` page ke
   paar, portal me company rejection 24 h tak "in progress" (HIRE-V2 §10 B12 likh diya; step 6 ke naye faisle B13+)
-- [~] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
+- [x] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
   `budget`; naye faisle HIRE-V2 §10 me B12+ (jaise rejection line per job, `round_since`, restore par mail cancel);
   tracker row 112 me H2c (kya bana, Kahan: 0073, `hire-pipeline-store.ts`, `hire-pipeline.ts`,
   `hire-pipeline-routes.ts`, `hire-messages.ts`; baaki H2d, H8, H9); §6 table; §10 Log; §5 me "AB AGLA: H2d"; push
@@ -274,6 +283,8 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   pehle ruka; koi fail ho to theek karo), `npm run openapi` (badle to commit), `build:clients` + `budget` (ACTIONS badle
   the), §6 H2 row, §10 Log, §5 me "AB AGLA: H2d" (critique-fit "Splits" H2d: `HireErasure` S3, account delete hook,
   `HireRetention` F4, P11 import + "Add one" + sign-in par claim + `not_claimed`), phir commit "H2c: the pipeline (check passes)"
+  → ✅ session 4 (13 Oct): `npm run check` EXIT 0 (API 843 tests; baaki packages bhi pass), `npm run openapi` (koi badlav nahi),
+  `build:clients` + `budget` EXIT 0
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
@@ -284,7 +295,7 @@ migration → store + tests → service + tests → routes + wiring + openapi �
 |---|---|---|---|
 | H0 | Design, code map, critique, tracker rows 110–120 (pehle 100–110; main merge par badle), ye file, autosave | ✅ | `e387e4f` critique; §10 decisions; `4af00dd` autosave |
 | H1 | Candidate accounts (email code sign-in S5, sessions S19, profile, resume PDF/DOCX → text worker me S1), blind index S20, `withScope` guard S24, trustProxy S6, `/candidate/*` | ✅ | H1a + H1b ✅ session 2 (H1 ka baaki: delete par company ki copy H2d me, web pages H9 me). W3 ke baad: H2a–d, H4a–c, H5a/b, H8a/b, H9a/b (critique-fit.md "Splits") |
-| H2 | 🟡 H2a ✅ (jobs, rounds, publish, roles, 0071), H2b ✅ (apply, job/careers page, portal, withdraw, 0072). Baaki H2c–d. Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
+| H2 | 🟡 H2a ✅ (jobs, rounds, publish, roles, 0071), H2b ✅ (apply, job/careers page, portal, withdraw, 0072), H2c ✅ (pipeline, move/reject/restore, notes, messages, mails, 0073). Baaki H2d. Jobs + rounds config + publish + job/careers page + apply (consent S8, limits S17, unverified S18) + import/claim P11 + pipeline core + timeline + mails P14 + roles recruiter/hiring_manager P3 + erasure S3 + retention S9 | ⬜ | |
 | H3 | AI screening (evidence quotes server par jaanche, score server ka, knockouts, fairness S15, injection S16, eval script P16) | ⬜ | |
 | H4 | Rounds: test (credits P4, reuse/retake P5, reminders P6), settle event-driven P15, AI interview, live interview (slots/reschedule P10), review, digest P13; offers S13, joined P17 | ⬜ | |
 | H5 | Integrity: reasons + `not_checked`/coverage P2, auto face check P7, AI interview signals P8, duplicates P9, high sirf S14 wale; overall score, compare, job report | ⬜ | |
@@ -367,9 +378,13 @@ for r in $(snaps); do echo "== $r"; git show "$r":.claude/live/state.md; done   
 | 1 | 12 Oct 2026 | account 1, `session_01B56n3byNkp5ns8fAHpGtC6` | W1, design (HIRE-V2.md + §10), W2 (fit chhoota), tracker rows 100–110, handoff, autosave, reminder tests ki time bomb | Khatam: hafte ki limit 98%. Agla: main merge → W3 → H1 (§5) |
 | 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Khatam (aakhri commit 22:21 UTC `12970ab` H2b; uska aakhri autosave `d58667d` me koi adhoora code nahi tha) |
 | 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Khatam: 5 ghante ki limit 92% (owner ne bataya). Autosave fix ✅, H2c kadam 1–5 + review ✅. Agla: H2c kadam 6 (`npm run check`, `npm run openapi`, `build:clients` + `budget`, §6/§10, AB AGLA H2d), phir H2d |
-| 4 | 13 Oct 2026 | account 2 (session 2 dobara), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 12:35 UTC: branch `b295801` par fast-forward; autosave ke dono snapshots (`--4a0a2180`, `--9ae3c313`) me koi adhoora code nahi. Limit: 7 din ki window `allowed_warning` (utilization ka number nahi milta), isliye sirf H2c kadam 6 | Chal raha |
+| 4 | 13 Oct 2026 | account 2 (session 2 dobara), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 12:35 UTC: branch `b295801` par fast-forward; autosave ke dono snapshots (`--4a0a2180`, `--9ae3c313`) me koi adhoora code nahi. Limit: 7 din ki window `allowed_warning` (utilization ka number nahi milta), isliye sirf H2c kadam 6 | Khatam: H2c ✅ (check EXIT 0, API 843). H2d shuru nahi kiya (7 din ki limit chetavni par). Agla: H2d (§5 kadam 7) |
 
 ## 10. Log (naya upar)
+
+- 13 Oct 2026 (session 4): H2c poora. Session 3 ka kadam 6 yahan khatam: `npm run check` EXIT 0 (API 843), openapi me badlav
+  nahi, `build:clients` + `budget` theek. W5 ✅. Limit: 7 din ki window `allowed_warning`, isliye H2d shuru nahi kiya; agla
+  session H2d ki checklist likhe (§5 kadam 7).
 
 - 13 Oct 2026 (session 3): W5: autosave ab har session ka apna ref (`autosave/<branch>--<id>`) aur purane HEAD par push nahi (STALE_GUARD). H2c kadam 1–5 + do reviewers ke sudhaar (`docs/hire/h2c-review.md`), faisle B12–B17. Kadam 6 (poora check) 5 ghante ki limit par ruka.
 - 13 Oct 2026 (13, session 3): Autosave ka data-loss bug theek (W5 ka pehla hissa). 13 Oct ko purane container (HEAD
