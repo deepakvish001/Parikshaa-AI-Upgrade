@@ -34,6 +34,7 @@ const FIELDS: JobFields = {
   description: "Build the payments API.",
   questions: [{ id: "q1", text: "Can you join within 30 days?", kind: "yes_no", required: true, knockout: { equals: "yes" } }],
   noteToCandidates: "",
+  rejectionLine: "",
   contactEmail: null,
   applyBy: "2026-11-30",
   autoScreen: false,

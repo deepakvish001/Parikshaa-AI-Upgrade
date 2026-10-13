@@ -133,6 +133,10 @@ export interface MyApplication {
   readonly decidedAt: string | null;
   readonly steps: readonly { readonly kind: RoundKind; readonly title: string; readonly state: StepState; readonly current: boolean }[];
   readonly timeline: readonly { readonly at: string; readonly kind: string }[];
+  /** What the company wrote to every applicant of the job (P14). */
+  readonly noteToCandidates: string;
+  /** The company's messages to the candidate about this application (P14), oldest first. Never a note (S4). */
+  readonly messages: readonly { readonly at: string; readonly text: string }[];
   readonly canWithdraw: boolean;
 }
 
@@ -488,6 +492,8 @@ export class HireApplications {
       decidedAt: a.decidedAt,
       steps,
       timeline: a.events.map((e) => ({ at: e.at, kind: e.kind })),
+      noteToCandidates: a.job.noteToCandidates,
+      messages: a.events.filter((e) => e.kind === "message").map((e) => ({ at: e.at, text: e.text ?? "" })),
       canWithdraw: a.status === "active",
     };
   }

@@ -61,6 +61,7 @@ const FIELDS: JobFields = {
     { id: "years", text: "Years with Go", kind: "number", required: false },
   ],
   noteToCandidates: "",
+  rejectionLine: "",
   contactEmail: null,
   applyBy: "2026-10-20",
   autoScreen: false,
@@ -352,7 +353,7 @@ describe("the portal", () => {
     );
     [mine] = await service.mine(asha);
     expect(mine!.steps.map((s) => s.state)).toEqual(["done", "your_turn", "waiting"]);
-    expect(JSON.stringify(mine)).not.toMatch(/87\.5|strong Go|note/);
+    expect(JSON.stringify(mine)).not.toMatch(/87\.5|strong Go|"note"/);
     expect(await service.one(asha, made.id)).toEqual(mine);
   });
 

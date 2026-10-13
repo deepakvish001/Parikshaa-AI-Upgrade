@@ -40,6 +40,7 @@ const FIELDS: JobFields = {
   description: "Build the payments API.",
   questions: [],
   noteToCandidates: "",
+  rejectionLine: "",
   contactEmail: null,
   applyBy: null,
   autoScreen: false,

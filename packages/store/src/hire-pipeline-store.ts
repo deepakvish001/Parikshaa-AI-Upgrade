@@ -1,6 +1,6 @@
 import type { OrgId } from "@parikshaa/core";
 import type { BlobStore } from "./blobs.js";
-import { hireApplicant, hireScoped, hireStaff } from "./candidate-store.js";
+import { hireScoped, hireStaff } from "./candidate-store.js";
 import { HireApplicationStore, type ApplicationSource, type ApplicationStatus, type RoundResultStatus } from "./hire-application-store.js";
 import { enqueue, type OutboxDraft } from "./outbox-store.js";
 import { NO_SEAL, type RecordSeal } from "./sealing.js";
@@ -143,6 +143,12 @@ export interface ApplicationDetail {
 }
 
 export type MoveOutcome = "moved" | "not_active" | "same_round" | "last_round" | "integrity_high" | "not_found";
+/** `override`: it moved past a `high` integrity level on a person's reason. */
+export interface MoveResult {
+  readonly id: string;
+  readonly outcome: MoveOutcome;
+  readonly override?: true;
+}
 export type RejectOutcome = "rejected" | "not_active" | "not_found";
 export type RestoreOutcome = "restored" | "not_rejected" | "newer_application" | "not_found";
 
@@ -401,7 +407,7 @@ export class HirePipelineStore {
         by: string;
         detail: Record<string, unknown> | string;
         candidate_visible: boolean;
-      }>(`SELECT id, at, kind, round_id, by, detail, candidate_visible FROM hire_events WHERE org_id = $1 AND application_id = $2 ORDER BY at, id`, [
+      }>(`SELECT id, at, kind, round_id, by, detail, candidate_visible FROM hire_events WHERE org_id = $1 AND application_id = $2 ORDER BY at, seq`, [
         orgId,
         applicationId,
       ]);
@@ -482,24 +488,6 @@ export class HirePipelineStore {
     return { file: this.#seal.openBytes(Buffer.from(sealed), HireApplicationStore.aad(orgId, applicationId, "resume_file")), name: row.resume_name, type: row.resume_type };
   }
 
-  /**
-   * The messages the company sent the candidate about one of their
-   * applications, read in the candidate's own scope: the database gives them
-   * only events marked for them, so never a note or an override (S4).
-   */
-  async thread(orgId: OrgId, candidateId: string, applicationId: string): Promise<readonly { readonly id: string; readonly at: string; readonly text: string }[]> {
-    const rows = await hireScoped(this.#sql, hireApplicant(candidateId, orgId), (tx) =>
-      tx.query<{ id: string; at: string | Date; detail: Record<string, unknown> | string }>(
-        `SELECT id, at, detail FROM hire_events WHERE org_id = $1 AND application_id = $2 AND kind = 'message' ORDER BY at, id`,
-        [orgId, applicationId],
-      ),
-    );
-    return rows.map((r) => {
-      const text = json(r.detail)["text"];
-      return { id: r.id, at: iso(r.at), text: typeof text === "string" ? this.#seal.open(text, this.#aad(orgId, applicationId, r.id)) : "" };
-    });
-  }
-
   /** What a mail about a message needs: its text, opened. Null if the event is not a message of this application. */
   async messageText(orgId: OrgId, applicationId: string, eventId: string): Promise<string | null> {
     const rows = await hireScoped(this.#sql, hireStaff(orgId), (tx) =>
@@ -555,11 +543,11 @@ export class HirePipelineStore {
     by: string,
     now: Date,
     options: { readonly overrideReason?: string | undefined } = {},
-  ): Promise<{ readonly roundFound: boolean; readonly results: readonly { readonly id: string; readonly outcome: MoveOutcome }[] }> {
+  ): Promise<{ readonly roundFound: boolean; readonly results: readonly MoveResult[] }> {
     return hireScoped(this.#sql, hireStaff(orgId), async (tx) => {
       const { rounds, apps } = await this.#lock(tx, orgId, jobId, ids);
       if (to !== "next" && !rounds.some((r) => r.id === to)) return { roundFound: false, results: [] };
-      const results: { id: string; outcome: MoveOutcome }[] = [];
+      const results: MoveResult[] = [];
       for (const id of ids) {
         const a = apps.get(id);
         if (a === undefined) {
@@ -611,7 +599,7 @@ export class HirePipelineStore {
         if (json(target.config)["sendOnMove"] === true) {
           await enqueue(tx, orgId, [{ kind: "hire", subject: { applicationId: id, roundId: target.id }, purpose: "mail_moved", id: `hire:${id}:moved:${target.id}:${now.getTime()}`, sendAfter: now }], this.#newId);
         }
-        results.push({ id, outcome: "moved" });
+        results.push(high ? { id, outcome: "moved", override: true } : { id, outcome: "moved" });
       }
       return { roundFound: true, results };
     });

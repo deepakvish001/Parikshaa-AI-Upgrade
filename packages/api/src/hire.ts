@@ -45,6 +45,7 @@ export const DEFAULT_ROUNDS: readonly RoundFields[] = [
 export const UNVERIFIED_LIMITS = { openJobs: 2, applicants: 100 } as const;
 const MAX_QUESTIONS = 10;
 const MAX_ROUNDS = 10;
+const MAX_REJECTION_LINE = 500;
 
 /**
  * Knockouts that would turn people away for who they are (S23). A job may
@@ -130,6 +131,7 @@ export class HireService {
     if (input.expMax !== null && input.expMax < input.expMin) problems.push("The most experience is less than the least.");
     if (input.ctcMinLpa !== null && input.ctcMaxLpa !== null && input.ctcMaxLpa < input.ctcMinLpa) problems.push("The highest CTC is less than the lowest.");
     if (input.questions.length > MAX_QUESTIONS) problems.push(`At most ${MAX_QUESTIONS} screening questions.`);
+    if (input.rejectionLine.length > MAX_REJECTION_LINE) problems.push(`Keep the line for rejection mails under ${MAX_REJECTION_LINE} characters.`);
     problems.push(...questionProblems(input.questions));
     problems.push(...roundProblems(rounds));
     const staff = new Map((await this.#identity.listUsers(orgId)).map((u) => [u.id, u]));
@@ -305,6 +307,8 @@ export function roundProblems(rounds: readonly { readonly kind: RoundKind; reado
   if (rounds.filter((r) => r.kind === "offer").length !== 1 || rounds.at(-1)!.kind !== "offer") problems.push("The offer is the last round, and there is one.");
   for (const [n, r] of rounds.entries()) {
     const c = r.config;
+    // Tell the candidate by mail when they reach this round (P20).
+    if (c["sendOnMove"] !== undefined && typeof c["sendOnMove"] !== "boolean") problems.push(`Round ${n + 1}: sendOnMove is true or false.`);
     const number = (key: string, min: number, max: number) => {
       const v = c[key];
       if (v !== undefined && (typeof v !== "number" || !Number.isFinite(v) || v < min || v > max)) problems.push(`Round ${n + 1}: ${key} must be between ${min} and ${max}.`);

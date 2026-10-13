@@ -72,8 +72,16 @@ describe("writing a job", () => {
     expect(job.rounds.map((r: { kind: string }) => r.kind)).toEqual(["screen", "assessment", "ai_interview", "interview", "review", "offer"]);
 
     const [screen, , , interview, , offer] = job.rounds;
-    const changed = await call(as("recruiter"), "PUT", `/hire/jobs/${job.id}`, { ...JOB, title: "Senior backend engineer", rounds: [screen, interview, offer] });
+    expect(job.rejectionLine).toBe("");
+    const changed = await call(as("recruiter"), "PUT", `/hire/jobs/${job.id}`, {
+      ...JOB,
+      title: "Senior backend engineer",
+      rejectionLine: "We keep your profile for future roles.",
+      rounds: [screen, { ...interview, config: { ...interview.config, sendOnMove: true } }, offer],
+    });
     expect(changed.statusCode, changed.payload).toBe(200);
+    expect(changed.json()).toMatchObject({ rejectionLine: "We keep your profile for future roles.", rounds: [{}, { config: { sendOnMove: true } }, {}] });
+    expect((await call(as("recruiter"), "PUT", `/hire/jobs/${job.id}`, { ...JOB, rejectionLine: "x".repeat(501) })).statusCode).toBe(400);
     expect(changed.json().rounds.map((r: { id: string }) => r.id)).toEqual([screen.id, interview.id, offer.id]);
     expect((await call(as("viewer"), "GET", `/hire/jobs/${job.id}`)).json().title).toBe("Senior backend engineer");
   });
@@ -234,5 +242,10 @@ describe("the rules, on their own", () => {
       "Question 1 is answered in words, which cannot turn anyone away.",
     );
     expect(roundProblems([{ kind: "offer", config: {} }])).toEqual([]);
+  });
+
+  it("let any round tell the candidate when they reach it, as true or false (P20)", () => {
+    expect(roundProblems([{ kind: "interview", config: { sendOnMove: true } }, { kind: "offer", config: { sendOnMove: false } }])).toEqual([]);
+    expect(roundProblems([{ kind: "interview", config: { sendOnMove: "yes" } }, { kind: "offer", config: {} }])).toEqual(["Round 1: sendOnMove is true or false."]);
   });
 });

@@ -51,6 +51,8 @@ export interface JobFields {
   readonly description: string;
   readonly questions: readonly ScreeningQuestion[];
   readonly noteToCandidates: string;
+  /** A line added to this job's rejection mails (P14): polite, never a reason. Empty: none. */
+  readonly rejectionLine: string;
   readonly contactEmail: string | null;
   /** YYYY-MM-DD: applying closes at the end of this day, India time. */
   readonly applyBy: string | null;
@@ -132,6 +134,7 @@ interface JobRow {
   description: string;
   questions: ScreeningQuestion[] | string;
   note_to_candidates: string;
+  rejection_line: string;
   contact_email: string | null;
   apply_by: string | null;
   status: JobStatus;
@@ -153,7 +156,7 @@ interface JobRow {
 
 const JOB_COLUMNS = `id, title, role_id, department, location, work_mode, employment, exp_min, exp_max,
   ctc_min_lpa::float8 AS ctc_min_lpa, ctc_max_lpa::float8 AS ctc_max_lpa, show_ctc, openings, skills_must, skills_nice,
-  description, questions, note_to_candidates, contact_email, to_char(apply_by, 'YYYY-MM-DD') AS apply_by, status,
+  description, questions, note_to_candidates, rejection_line, contact_email, to_char(apply_by, 'YYYY-MM-DD') AS apply_by, status,
   held_reason, public_code, auto_screen, screen_threshold, screen_daily_max, max_applicants, reapply_after_days,
   review_sla_days, managers, created_by, created_at, updated_at, published_at, closed_at`;
 
@@ -182,6 +185,7 @@ function toJob(r: JobRow, rounds: readonly Round[]): Job {
     description: r.description,
     questions: json(r.questions),
     noteToCandidates: r.note_to_candidates,
+    rejectionLine: r.rejection_line,
     contactEmail: r.contact_email,
     applyBy: r.apply_by,
     status: r.status,
@@ -222,6 +226,7 @@ const FIELD_COLUMNS = [
   "description",
   "questions",
   "note_to_candidates",
+  "rejection_line",
   "contact_email",
   "apply_by",
   "auto_screen",
@@ -251,6 +256,7 @@ const fieldValues = (f: JobFields): unknown[] => [
   f.description,
   JSON.stringify(f.questions),
   f.noteToCandidates,
+  f.rejectionLine,
   f.contactEmail,
   f.applyBy,
   f.autoScreen,

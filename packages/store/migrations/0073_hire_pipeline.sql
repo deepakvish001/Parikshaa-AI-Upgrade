@@ -2,7 +2,7 @@
 --
 -- A company moves applications from round to round, rejects and restores
 -- them, and writes to the candidates. The statuses, event kinds and outbox
--- kind it needs came with 0071 (F29); this adds two columns.
+-- kind it needs came with 0071 (F29); this adds three columns.
 
 -- One line the company adds to its rejection mails for this job (P14): polite,
 -- never a reason. Empty: the mail goes without it.
@@ -15,3 +15,8 @@ ALTER TABLE hire_applications ADD COLUMN round_since timestamptz;
 UPDATE hire_applications SET round_since = created_at;
 ALTER TABLE hire_applications ALTER COLUMN round_since SET DEFAULT now();
 ALTER TABLE hire_applications ALTER COLUMN round_since SET NOT NULL;
+
+-- The order things were written in, for events at the same moment: a move and
+-- its override, a bulk rejection and its notes, an application and its
+-- knockout. Timelines are read by `at`, then this.
+ALTER TABLE hire_events ADD COLUMN seq bigint GENERATED ALWAYS AS IDENTITY;

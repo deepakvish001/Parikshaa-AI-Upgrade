@@ -133749,6 +133749,12 @@
                     "type": "string",
                     "maxLength": 2000
                   },
+                  "rejectionLine": {
+                    "default": "",
+                    "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                    "type": "string",
+                    "maxLength": 500
+                  },
                   "contactEmail": {
                     "default": null,
                     "anyOf": [
@@ -133858,6 +133864,7 @@
                         },
                         "config": {
                           "default": {},
+                          "description": "Per kind (docs/HIRE-V2.md §1). Any round may say `sendOnMove: true` to mail the candidate when they reach it.",
                           "type": "object",
                           "propertyNames": {
                             "type": "string"
@@ -134098,6 +134105,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -134290,6 +134303,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -134683,6 +134697,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -134875,6 +134895,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -135249,6 +135270,12 @@
                     "type": "string",
                     "maxLength": 2000
                   },
+                  "rejectionLine": {
+                    "default": "",
+                    "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                    "type": "string",
+                    "maxLength": 500
+                  },
                   "contactEmail": {
                     "default": null,
                     "anyOf": [
@@ -135358,6 +135385,7 @@
                         },
                         "config": {
                           "default": {},
+                          "description": "Per kind (docs/HIRE-V2.md §1). Any round may say `sendOnMove: true` to mail the candidate when they reach it.",
                           "type": "object",
                           "propertyNames": {
                             "type": "string"
@@ -135610,6 +135638,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -135802,6 +135836,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -136369,6 +136404,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -136561,6 +136602,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -136798,6 +136840,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -136990,6 +137038,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -137384,6 +137433,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -137576,6 +137631,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -137813,6 +137869,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -138005,6 +138067,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -138399,6 +138462,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -138591,6 +138660,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -138828,6 +138898,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -139020,6 +139096,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -139414,6 +139491,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -139606,6 +139689,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",
@@ -139843,6 +139927,12 @@
                       "type": "string",
                       "maxLength": 2000
                     },
+                    "rejectionLine": {
+                      "default": "",
+                      "description": "A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company.",
+                      "type": "string",
+                      "maxLength": 500
+                    },
                     "contactEmail": {
                       "default": null,
                       "anyOf": [
@@ -140035,6 +140125,7 @@
                     "description",
                     "questions",
                     "noteToCandidates",
+                    "rejectionLine",
                     "contactEmail",
                     "applyBy",
                     "autoScreen",

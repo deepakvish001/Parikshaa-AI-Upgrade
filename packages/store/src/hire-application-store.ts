@@ -93,10 +93,10 @@ export interface PortalApplication {
   readonly roundId: string | null;
   readonly createdAt: string;
   readonly decidedAt: string | null;
-  readonly job: { readonly title: string; readonly publicCode: string | null; readonly location: string; readonly status: string };
+  readonly job: { readonly title: string; readonly publicCode: string | null; readonly location: string; readonly status: string; readonly noteToCandidates: string };
   readonly rounds: readonly { readonly id: string; readonly kind: RoundKind; readonly title: string; readonly position: number; readonly status: RoundResultStatus | null }[];
-  /** The timeline as the candidate may see it: only events written for them. */
-  readonly events: readonly { readonly at: string; readonly kind: string; readonly roundId: string | null }[];
+  /** The timeline as the candidate may see it: only events written for them. `text`: a message's, opened (P14). */
+  readonly events: readonly { readonly at: string; readonly kind: string; readonly roundId: string | null; readonly text: string | null }[];
 }
 
 /** What a mail about an application needs, read when it is sent. */
@@ -293,8 +293,8 @@ export class HireApplicationStore {
           WHERE org_id = $1 AND id = ANY($2) AND candidate_id = $3 AND erased_at IS NULL ORDER BY created_at DESC`,
         [orgId, [...applicationIds], candidateId],
       ),
-      events: await tx.query<{ application_id: string; at: string | Date; kind: string; round_id: string | null }>(
-        `SELECT application_id, at, kind, round_id FROM hire_events WHERE org_id = $1 AND application_id = ANY($2) ORDER BY at, id`,
+      events: await tx.query<{ id: string; application_id: string; at: string | Date; kind: string; round_id: string | null; detail: Record<string, unknown> | string }>(
+        `SELECT id, application_id, at, kind, round_id, detail FROM hire_events WHERE org_id = $1 AND application_id = ANY($2) ORDER BY at, seq`,
         [orgId, [...applicationIds]],
       ),
     }));
@@ -302,8 +302,8 @@ export class HireApplicationStore {
     const ids = own.applications.map((a) => a.id);
     const jobIds = [...new Set(own.applications.map((a) => a.job_id))];
     const theirs = await hireScoped(this.#sql, hireStaff(orgId), async (tx) => ({
-      jobs: await tx.query<{ id: string; title: string; public_code: string | null; location: string; status: string }>(
-        `SELECT id, title, public_code, location, status FROM hire_jobs WHERE org_id = $1 AND id = ANY($2)`,
+      jobs: await tx.query<{ id: string; title: string; public_code: string | null; location: string; status: string; note_to_candidates: string }>(
+        `SELECT id, title, public_code, location, status, note_to_candidates FROM hire_jobs WHERE org_id = $1 AND id = ANY($2)`,
         [orgId, jobIds],
       ),
       rounds: await tx.query<{ id: string; job_id: string; kind: RoundKind; title: string; position: number }>(
@@ -325,7 +325,7 @@ export class HireApplicationStore {
         roundId: a.round_id,
         createdAt: iso(a.created_at),
         decidedAt: isoOrNull(a.decided_at),
-        job: { title: job.title, publicCode: job.public_code, location: job.location, status: job.status },
+        job: { title: job.title, publicCode: job.public_code, location: job.location, status: job.status, noteToCandidates: job.note_to_candidates },
         rounds: theirs.rounds
           .filter((r) => r.job_id === a.job_id)
           .map((r) => ({
@@ -335,9 +335,17 @@ export class HireApplicationStore {
             position: r.position,
             status: theirs.results.find((x) => x.application_id === a.id && x.round_id === r.id)?.status ?? null,
           })),
-        events: own.events.filter((e) => e.application_id === a.id).map((e) => ({ at: iso(e.at), kind: e.kind, roundId: e.round_id })),
+        events: own.events
+          .filter((e) => e.application_id === a.id)
+          .map((e) => ({ at: iso(e.at), kind: e.kind, roundId: e.round_id, text: e.kind === "message" ? this.#messageText(orgId, a.id, e.id, e.detail) : null })),
       };
     });
+  }
+
+  /** A message's text (H2c), sealed per event: `hire/{org}/{application}/event:{event}`. */
+  #messageText(orgId: string, applicationId: string, eventId: string, detail: Record<string, unknown> | string): string {
+    const text = (typeof detail === "string" ? (JSON.parse(detail) as Record<string, unknown>) : detail)["text"];
+    return typeof text === "string" ? this.#seal.open(text, HireApplicationStore.aad(orgId, applicationId, `event:${eventId}`)) : "";
   }
 
   /**

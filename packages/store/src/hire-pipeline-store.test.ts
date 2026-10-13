@@ -44,6 +44,7 @@ const FIELDS: JobFields = {
   description: "Build the payments API.",
   questions: [],
   noteToCandidates: "",
+  rejectionLine: "",
   contactEmail: null,
   applyBy: null,
   autoScreen: false,
@@ -180,7 +181,7 @@ describe("moving", () => {
     expect((await events(asha)).map((e) => e.kind)).toEqual(["applied"]);
 
     const out = await store.move(A, "job-1", [asha], "next", "staff-1", T1, { overrideReason: "Spoke to them on video: same person" });
-    expect(out.results).toEqual([{ id: asha, outcome: "moved" }]);
+    expect(out.results).toEqual([{ id: asha, outcome: "moved", override: true }]);
     const override = (await events(asha)).find((e) => e.kind === "override")!;
     expect(override).toMatchObject({ by: "staff-1", candidate_visible: false, detail: { level: "high" } });
     expect(JSON.stringify(override)).not.toContain("same person");
@@ -281,12 +282,18 @@ describe("notes and messages", () => {
     await sql.transaction((tx) => tx.query(`INSERT INTO hire_integrity (org_id, application_id, level) VALUES ($1, $2, 'high')`, [A, asha]), staff());
     await store.move(A, "job-1", [asha], "next", "staff-1", T1, { overrideReason: "Checked their ID in person" });
     await store.note(A, asha, "Private note", "staff-1", T1);
-    await store.message(A, asha, "Hello Asha", "staff-1", T1);
+    await store.message(A, asha, "Hello Asha", "staff-1", new Date(T1.getTime() + 60_000));
 
     const seen = await sql.transaction((tx) => tx.query<{ kind: string }>(`SELECT kind FROM hire_events WHERE application_id = $1 ORDER BY kind`, [asha]), as("c1"));
     expect(seen.map((e) => e.kind)).toEqual(["applied", "message", "moved"]);
-    expect(await store.thread(A, "c1", asha)).toEqual([{ id: expect.any(String), at: T1.toISOString(), text: "Hello Asha" }]);
-    expect(await store.thread(A, "c2", asha)).toEqual([]);
+    // The portal's read, in the candidate's scope: the message opened, nothing private.
+    const [portal] = await applications.forCandidate(A, "c1", [asha]);
+    expect(portal!.events.map((e) => [e.kind, e.text])).toEqual([
+      ["applied", null],
+      ["moved", null],
+      ["message", "Hello Asha"],
+    ]);
+    expect(await applications.forCandidate(A, "c2", [asha])).toEqual([]);
   });
 
   it("does not message someone who withdrew", async () => {

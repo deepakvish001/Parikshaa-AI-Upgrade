@@ -61,7 +61,7 @@ const round = z.object({
   id: z.string().min(1).max(80).optional().describe("Keep this round (and what applicants did in it): send its id back."),
   kind: roundKind,
   title: text(120).min(1),
-  config: z.record(z.string(), z.unknown()).default({}),
+  config: z.record(z.string(), z.unknown()).default({}).describe("Per kind (docs/HIRE-V2.md §1). Any round may say `sendOnMove: true` to mail the candidate when they reach it."),
 });
 
 const jobInput = z
@@ -83,6 +83,7 @@ const jobInput = z
     description: z.string().max(20000).default(""),
     questions: z.array(screeningQuestion).max(10).default([]),
     noteToCandidates: text(2000).default(""),
+    rejectionLine: text(500).default("").describe("A line added to this job's rejection mails: polite, never a reason. Not sent until Parikshaa verifies the company."),
     contactEmail: z.string().email().max(200).nullable().default(null),
     applyBy: day.nullable().default(null),
     autoScreen: z.boolean().default(false),
