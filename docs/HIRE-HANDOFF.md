@@ -95,7 +95,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 3. ✅ **(session 2)** H1b (resume).
 4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
 5. ✅ **(session 2)** H2b (Apply + portal), neeche ki checklist. HIRE-V2 §10 me B6–B11.
-6. **AB AGLA: H2c** (Pipeline): critique-fit.md "Splits" ki H2c row se checklist likho, phir banao. H2c me: pipeline
+6. **AB AGLA: H2c** (Pipeline): checklist neeche likh di (session 3, W5), ab use kram se banao. H2c me: pipeline
    table, move/reject/restore (override ke niyam ke saath; B9: Restore mana jab usi job par naya live application ho),
    notes, events, bulk (ginti ke saath), `reject_reason`, P14 message thread + note to candidates + rejection mail 24 h
    baad (Restore par cancel), reply-to/sender (F23: `EmailMessage.replyTo`, `fromName`), S21/S22 (viewer ko contact nahi).
@@ -191,6 +191,67 @@ ek line ki kya baaki):
   wiring (server, assemble handler `hire`, harness, openapi); `npm run openapi`; route tests (suspended 404, apply_by
   ke baad mana, limits, duplicate)
 - [x] 5. `npm run check` EXIT 0 (API 816 tests); tracker row 112; §6, §10; push
+
+**H2c checklist (Pipeline)** (critique-fit.md "Splits" H2c; HIRE-V2 §5 Move/Reject/Restore + §10 S4, S7, S15, S18,
+S21, S22, P14, P15, P20, F23, B9; har kadam: code + tests → `WIP(H2c)` commit → push → `[x]`; aadha ho to `[~]` + ek
+line ki kya baaki). Pipeline ke saare kaam `hire:decide` maangte hain (padhna `hire:review`), API key ke liye decide
+mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit `detail` me sirf ids aur ginti (S3).
+
+- [ ] 1. Migration `0073_hire_pipeline.sql` (0071/0072 mat chhedo; critique-fit "Splits" me H5b ke aage 0073 likha
+  hai, wo ab 0074+ lega, HIRE-V2 §10 pehle se "next free numbers" kehta hai): `hire_jobs.rejection_line` (P14: har job ki ek editable line, `NOT NULL DEFAULT ''`, ≤500);
+  `hire_applications.round_since timestamptz NOT NULL DEFAULT now()` (purani rows `created_at` se bharo; pipeline ka
+  "is kadam me n din", P13/P15) aur H2b ka `apply()` ise `now` se likhe. `migrate.test.ts` me 0073. Outbox, events
+  ke CHECK pehle se kaafi hain (`message`, `note`, `override`, `restored`; `candidate_visible` CHECK S4)
+- [ ] 2. Store `packages/store/src/hire-pipeline-store.ts` (`HirePipelineStore`, `hireScoped` + `hireStaff`, H2b jaisa
+  sealing; `index.ts` export): `pipeline(orgId, jobId, filter)` ek hi query (P15: application + current round ka
+  result + har round ka status/score + screening score/recommendation + integrity level, `null` → `not_checked`;
+  round aur status ki ginti; filters round, status, naam search, recommendation, integrity, past SLA);
+  `application(orgId, id)` (drawer: snapshot, round results, events + `by`); `move(orgId, ids, to | "next", by, now,
+  {overrideReason})` har item ka nateeja (`moved` / `not_active` / `last_round` / `integrity_high` / `not_found`),
+  row `FOR UPDATE`, purane round ka result `passed` (aage) aur naye ka `pending`, `round_since`, `moved` event
+  (candidate_visible, detail me koi reason/score/staff naam nahi), override hua to alag `override` event (private),
+  round config `sendOnMove` (P20) ho to outbox `mail_moved`; `reject(orgId, ids, rejectReason, by, now, {mail})`:
+  `rejected` + `reject_reason` (P20 enum) + `decided_at`, current round `failed`, `rejected` event, mail ho to outbox
+  `mail_rejected` `sendAfter = now + 24 h`, subject `{applicationId, decidedAt}` (sirf ids, P14); `restore(orgId, id,
+  by, now)`: sirf `rejected` (withdrawn kabhi nahi, consent), B9: usi job par usi insaan (`email_canonical_hash`) ki
+  nayi live application ho to `newer_application` (unique index ka 23505 bhi yahi), round result wapas `pending`,
+  `reject_reason`/`decided_at` NULL, `restored` event, aur usi transaction me pending `mail_rejected` outbox row
+  `skipped`; `note(...)` (event `note`, private) aur `message(...)` (event `message`, visible, outbox `mail_message`
+  `{applicationId, eventId}`): text ≤2000, `detail` me sealed, AAD `hire/{org}/{app}/event:{eventId}`. Tests
+  `hire-pipeline-store.test.ts`: do org alag, har move par event, override event, reject → outbox +24 h, restore par
+  mail `skipped`, B9 refusal, applicant scope `message` dekhe par `note`/`override` nahi (RLS), 1 000 applications ka
+  pipeline read < 1 s (P15)
+- [ ] 3. Service `packages/api/src/hire-pipeline.ts` (`HirePipeline`): permission + manager niyam (upar); S22
+  projection: email, phone, answers, profile, resume text/download sirf `hire:decide` wale ko (manager apni job par),
+  viewer ko naam, ref, round, status, scores bas; resume download attachment, saaf filename, sniffed type, audit
+  `hire.resume_downloaded` (S21), unverified company ko mana (S18); override: integrity `high` aur verdict `genuine`
+  nahi → bina `overrideReason` (≥10 akshar) ke refuse (`override_needs_reason`); `reject_reason` zaroori (P20); bulk
+  ≤200 ids, jawab `{done, refused: [{id, reason}]}`; S15: bulk reject AI recommendation ke filter par ho to typed
+  reason (≥10) zaroori, audit me filter + ginti; job/round input me `rejectionLine` aur round config `sendOnMove`
+  (`roundProblems` jaanche). Portal (`hire-apply.ts`): application detail me message thread (khula text) aur job ka
+  `noteToCandidates`; note/override kabhi nahi (S4). Audit shabd `hire.moved`, `hire.rejected`, `hire.restored`,
+  `hire.override`, `hire.note_added`, `hire.messaged`, `hire.resume_downloaded` → console `Home.tsx` ACTIONS. Tests
+  `hire-pipeline.test.ts`: role matrix (viewer ko contact nahi, manager doosri job par 404, API key decide par 403),
+  override bina reason refuse + reason ke saath `override` event + audit, bulk ginti, B9, portal me message hai note nahi
+- [ ] 4. Routes `packages/api/src/hire-pipeline-routes.ts` (tag `Hiring`, `/hire/*` F7, refusals H2a jaise):
+  `GET /hire/jobs/{jobId}/applications` (filters), `POST /hire/jobs/{jobId}/applications/move` aur `.../reject`
+  (bulk), `GET /hire/applications/{applicationId}`, `GET .../resume` (attachment), `POST .../restore`, `.../notes`,
+  `.../messages`; `hire-routes.ts` job schema me `rejectionLine`; wiring `server.ts` (`hirePipeline?`), `assemble.ts`,
+  `testing/harness.ts`, `openapi.ts`; `npm run openapi`; `hire-pipeline-routes.test.ts` (viewer ke jawab me
+  email/phone nahi, resume download ke headers, doosri org 404, override 422, bulk ginti)
+- [ ] 5. Mails (F23, P14, S18): `delivery.ts` `EmailMessage.replyTo?` + `fromName?`; `SmtpMailer` naam `from` me daale
+  (nodemailer address object, CR/LF hata kar) aur `replyTo` bheje, `fromName` ko `...rest` se bahar rakhe; `OutboxLog`
+  dono rakhe; `delivery.test.ts`. `hire-messages.ts`: har Hire mail "<Company> via Parikshaa" + reply-to job ka
+  `contact_email` (H2b ki applied/withdrawn mails bhi); naye purpose `mail_moved` (round ka naam + note to
+  candidates), `mail_rejected` (vinamra, koi reason nahi, job ki `rejection_line`; bhejte waqt application `rejected`
+  na ho ya `decided_at` subject se alag ho → skip), `mail_message` (verified company: text; unverified: sirf "aapke
+  liye sandesh hai, /my par padhein", S18: unverified ki mail me staff ka koi free text nahi, note/rejection line bhi
+  nahi); `mailFacts` me jo chahiye (`decidedAt`, verified, round, note, rejection line, message). Tests
+  `hire-messages.test.ts`: restore ke baad mail skip, reply-to/sender, unverified me free text nahi, suspended → `{later}`
+- [ ] 6. `npm run check` EXIT 0 (API test ginti likho); `npm run openapi`; console badla (ACTIONS) to `build:clients` +
+  `budget`; naye faisle HIRE-V2 §10 me B12+ (jaise rejection line per job, `round_since`, restore par mail cancel);
+  tracker row 112 me H2c (kya bana, Kahan: 0073, `hire-pipeline-store.ts`, `hire-pipeline.ts`,
+  `hire-pipeline-routes.ts`, `hire-messages.ts`; baaki H2d, H8, H9); §6 table; §10 Log; §5 me "AB AGLA: H2d"; push
 
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
