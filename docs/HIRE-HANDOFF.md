@@ -261,7 +261,7 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   → ✅ `fa6e90f` (session 3): `hire-messages.test.ts` 6 tests, `delivery.test.ts` +3 (`smtpOptions`); `mail_moved` bhi skip jab
   application us round se aage/peeche ja chuki ho; `mail_message` withdrawn par skip; `mailFacts(org, app, {messageId})`
   (pipeline store ka `messageText` hata diya). Agla: step 6 (poora check, tracker, §6, §10, B12+)
-- [x] 5b. Review fixes (do reviewers, `docs/hire/h2c-review.md`): `254cf50` + portal hold commit (session 3): S18 round
+- [x] 5b. Review fixes (do reviewers, `docs/hire/h2c-review.md`): `254cf50` + `a487f72` (session 3): S18 round
   title (unverified ko kind ka naam, `asksForMoney` round titles bhi padhe), message mail me "Reply" sirf `contactEmail`
   ho to, S15 note reject ke transaction me, Restore purana round status wapas, move `from` → `stale`, `total` page ke
   paar, portal me company rejection 24 h tak "in progress" (HIRE-V2 §10 B12 likh diya; step 6 ke naye faisle B13+)

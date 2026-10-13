@@ -1,7 +1,7 @@
 # H2c review: kya mila, kya kiya
 
 Do reviewers ne H2c ke commits (`12970ab..f26652f`) padhe. Har finding code se jaanchi gayi. Fixes `WIP(H2c): review fixes`
-(`254cf50`, portal hold alag commit me) me hain, har behaviour fix ke saath ek test jo fix se pehle fail hota.
+(`254cf50`, portal hold `a487f72`) me hain, har behaviour fix ke saath ek test jo fix se pehle fail hota.
 
 - **S18: unverified company ki "moved" mail me round ka title** (R1 #1, R2 #1) → **fixed**. Unverified ho to mail round
   ko uske kind se bulati hai ("Interview", "Online test", …; `mailFacts` ab round `kind` deta hai); `asksForMoney` ab round
