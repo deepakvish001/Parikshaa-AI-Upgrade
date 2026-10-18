@@ -96,7 +96,7 @@ saare factor lagao ki final bachcha achha hi ho." Learn (user platform), college
 4. ✅ **(session 2)** H2a (Jobs), neeche ki checklist.
 5. ✅ **(session 2)** H2b (Apply + portal), neeche ki checklist. HIRE-V2 §10 me B6–B11.
 6. ✅ **(session 3 + 4)** H2c (Pipeline), neeche ki checklist. HIRE-V2 §10 me B12–B17.
-7. **AB AGLA: H2d** (Privacy + import): critique-fit.md "Splits" ki H2d row se checklist likho, phir banao. H2d me:
+7. **AB CHAL RAHA: H2d** (Privacy + import): checklist neeche (session 5, 18 Oct). Detail: H2d me:
    `HireErasure.eraseApplication(orgId, appId, reason)` (S3: PII columns NULL, files delete, screening `result` NULL,
    integrity reasons → codes, `hire_events.detail` blank (column grant ya SECURITY DEFINER), offer note NULL, links
    delete; har org ka apna transaction; full-DB text search me kuch na mile), candidate account delete ka hook (H1a
@@ -286,6 +286,36 @@ mana (S7), hiring manager sirf apni jobs (F6, `hire.ts` ka "sees" niyam). Audit 
   → ✅ session 4 (13 Oct): `npm run check` EXIT 0 (API 843 tests; baaki packages bhi pass), `npm run openapi` (koi badlav nahi),
   `build:clients` + `budget` EXIT 0
 
+**H2d checklist (Privacy + import)** (critique-fit.md "Splits" H2d; HIRE-V2 §10 S2, S3, S8, S9, S17, S18, F4, P11, B8;
+har kadam: code + tests → `WIP(H2d)` commit → push → `[x]`; aadha ho to `[~]` + ek line):
+
+- [ ] 1. Migration `0074_hire_privacy.sql` (0071–0073 mat chhedo): `organisations.hire_keep_days` (NULL, 30–3650, F4);
+  `hire_applications.erased_reason` (`account_deleted|retention|operator`); `hire_applications.claim_hash` (S2: global
+  blind index `hire-claim` of the canonical email, sirf `invited`, `candidate_id NULL` ke liye; partial index);
+  SECURITY DEFINER `hire_erase_events(org, app)` (events append-only hain: sirf staff, apni org, `detail` → `{}`,
+  `search_path = ''`) aur `hire_claimable(claim_hash)` (sirf applicant actor; ids lautaye, koi PII nahi). `migrate.test.ts`
+- [ ] 2. Store `hire-privacy-store.ts`: `erase(org, app, {reason, keepRecord, now})` ek staff transaction me (S3): PII
+  columns NULL/placeholder, hashes + ref → `erased:<id>` (duplicate/reapply se bahar), resume file (row ya bucket),
+  screening `result`/`reason` NULL, integrity reasons → sirf codes, note NULL, offer note NULL, `hire_erase_events`,
+  `candidate_unlink`; `keepRecord` (hired/joined, accepted offer): naam + offer rahe, contact/resume/answers jaayein.
+  Retention ke liye `due(org, cutoffs)`. Test: erase ke baad poore DB ki text search me naam/email/phone/resume ka
+  koi shabd nahi; do org alag; bucket ki file bhi gayi
+- [ ] 3. Service `hire-privacy.ts`: `HireErasure` (`eraseApplication`, `eraseCandidate`: account delete par har link,
+  chalti application pehle withdrawn, hired/joined `keepRecord`), H1a ka `deleteAccount` iska hook chalaye (account
+  mitne se pehle); `HireRetention.sweep()` (F4: `hire_keep_days ?? privacy retentionDays ?? 180`, privacy settings na
+  ho tab bhi; withdrawn 30 din (S8); `not_claimed` bhi; jobs `apply_by + 90` din par auto-close); notice ka "kitne din"
+  bhi isi niyam se (B8 ka 180 ab `hire_keep_days` padhe); `main.ts` hourly loop + harness. Audit me sirf ginti (S3).
+  Tests
+- [ ] 4. P11 import + "Add one": `POST /hire/jobs/{jobId}/applications/import` (CSV name,email,phone; dry run; ginti
+  aur galat rows) aur `POST /hire/jobs/{jobId}/applications` (ek): `invited`, `candidate_id NULL`, source
+  `import|manual`, hashes + ref + `claim_hash`, duplicate (S17) aur unverified 100 (S18) ki jaanch; outbox
+  `mail_invited` ("Complete your application", S18 wording). Routes + openapi + tests
+- [ ] 5. Claim: signed-in candidate ko `hire_claimable` se uske naam ki invitations (portal list me "Complete your
+  application"); `POST /candidate/invitations/{applicationId}/claim` (notice hash, 18+, answers, resume: apply jaisi
+  jaanch) → `candidate_id`, `active`, snapshot, link, `claimed` event, pehla round; 14 din baad sweep `not_claimed`.
+  Tests: claim flow, doosre email se claim mana, `not_claimed`
+- [ ] 6. `npm run check` EXIT 0; `npm run openapi`; tracker row 112 (H2 ✅ jab sab ho), §6, §10, §5 "AB AGLA: H3"; push
+
 Agle slice (H2…) ki checklist usi slice ko shuru karte waqt yahan likho, isi shakal me:
 migration → store + tests → service + tests → routes + wiring + openapi → UI + budget (agar ho) → check → tracker + handoff → push.
 
@@ -379,6 +409,7 @@ for r in $(snaps); do echo "== $r"; git show "$r":.claude/live/state.md; done   
 | 2 | 12 Oct 2026 | account 2 (jisne PR #47 G0–G4a banaya), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 14:40 UTC: autosave restore (kuch adhoora nahi tha). §5 kadam 0 ✅ (`5536252`, check EXIT 0). W3 shuru (Agent tool) | Khatam (aakhri commit 22:21 UTC `12970ab` H2b; uska aakhri autosave `d58667d` me koi adhoora code nahi tha) |
 | 3 | 13 Oct 2026 | account 1 (session 1 dobara, hafte ki limit reset ke baad), `session_01B56n3byNkp5ns8fAHpGtC6` | Shuru 04:21 UTC. Purane container ke HEAD (`63f9919`) se autosave hook ne session 2 ka snapshot overwrite kiya (reflog se `d58667d` mila; usme kuch adhoora nahi tha). W5 shuru: autosave fix, phir H2c | Khatam: 5 ghante ki limit 92% (owner ne bataya). Autosave fix ✅, H2c kadam 1–5 + review ✅. Agla: H2c kadam 6 (`npm run check`, `npm run openapi`, `build:clients` + `budget`, §6/§10, AB AGLA H2d), phir H2d |
 | 4 | 13 Oct 2026 | account 2 (session 2 dobara), `session_018vRviyFgDfdAVh2GzLcBn3` | Shuru 12:35 UTC: branch `b295801` par fast-forward; autosave ke dono snapshots (`--4a0a2180`, `--9ae3c313`) me koi adhoora code nahi. Limit: 7 din ki window `allowed_warning` (utilization ka number nahi milta), isliye sirf H2c kadam 6 | Khatam: H2c ✅ (check EXIT 0, API 843). H2d shuru nahi kiya (7 din ki limit chetavni par). Agla: H2d (§5 kadam 7) |
+| 5 | 18 Oct 2026 | account 2 (wahi `session_018vRviyFgDfdAVh2GzLcBn3`, naya container) | Owner ke kehne par Learn vs takeUforward ka plan (`docs/LEARN-TUF-GAP.md`, tracker row 121; build baad me). REA setup auto mode ne roka (self-modification); TUF par REA nahi chalega (copyright). Phir H2d shuru | Chal raha |
 
 ## 10. Log (naya upar)
 
