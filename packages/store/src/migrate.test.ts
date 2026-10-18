@@ -166,6 +166,7 @@ describe("migrate", () => {
       "0071_hire.sql",
       "0072_hire_apply.sql",
       "0073_hire_pipeline.sql",
+      "0074_hire_privacy.sql",
     ]);
     const tables = await sql.query<{ tablename: string }>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`,
@@ -244,6 +245,31 @@ describe("migrate", () => {
     );
     expect(new Date(row!.round_since).toISOString()).toBe("2026-09-01T10:00:00.000Z");
     expect(row!.rejection_line).toBe("");
+  });
+
+  it("lets only a company's own staff blank its events, and only a signed-in candidate look up invitations (H2d)", async () => {
+    await migrate(sql);
+    await sql.exec(`
+      INSERT INTO organisations (id, name) VALUES ('org-a', 'A'), ('org-b', 'B');
+      INSERT INTO hire_jobs (org_id, id, title) VALUES ('org-a', 'job-1', 'Backend engineer');
+      INSERT INTO hire_applications (org_id, id, job_id, ref, name, email, email_hash, email_canonical_hash, source, status, claim_hash)
+        VALUES ('org-a', 'app-1', 'job-1', 'A1', 'Asha', 's', 'e', 'e', 'import', 'invited', 'claim-1');
+      INSERT INTO hire_events (org_id, id, application_id, kind, by, detail) VALUES ('org-a', 'e1', 'app-1', 'note', 'u1', '{"text": "sealed"}');
+      SET ROLE parikshaa_app;
+    `);
+    const as = (settings: Record<string, string>, query: string) => sql.transaction((tx) => tx.query(query), settings);
+    const staff = (org: string) => ({ "parikshaa.org_id": org, "parikshaa.actor": "staff" });
+    const applicant = { "parikshaa.org_id": "", "parikshaa.actor": "applicant", "parikshaa.candidate_id": "c1" };
+    await expect(as(staff("org-b"), `SELECT hire_erase_events('org-a', 'app-1')`)).rejects.toThrow(/only staff/);
+    await expect(as(applicant, `SELECT hire_erase_events('org-a', 'app-1')`)).rejects.toThrow(/only staff/);
+    expect(await as(staff("org-a"), `SELECT hire_erase_events('org-a', 'app-1') AS n`)).toEqual([{ n: 1 }]);
+    expect(await as(staff("org-a"), `SELECT detail FROM hire_events`)).toEqual([{ detail: {} }]);
+    await expect(as(staff("org-a"), `SELECT * FROM hire_claimable('claim-1')`)).rejects.toThrow(/signed-in candidate/);
+    expect(await as(applicant, `SELECT * FROM hire_claimable('claim-1')`)).toEqual([{ org_id: "org-a", application_id: "app-1" }]);
+    expect(await as(applicant, `SELECT * FROM hire_claimable('other')`)).toEqual([]);
+    // A claimed invitation keeps no claim hash, and an erased application says why.
+    await expect(as(staff("org-a"), `UPDATE hire_applications SET status = 'active' WHERE id = 'app-1'`)).rejects.toThrow(/claim_hash/);
+    await expect(as(staff("org-a"), `UPDATE hire_applications SET erased_at = now() WHERE id = 'app-1'`)).rejects.toThrow(/erased_reason/);
   });
 
   it("leaves Supabase's API roles, the secret key's included, no privilege on any table, then or later", async () => {
