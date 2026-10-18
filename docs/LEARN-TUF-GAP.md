@@ -103,7 +103,59 @@ samjho, pakke aankde nahi. Har idea ke saath likha hai ki hamare code me uski ne
 **Kya nahi karenge:** company ke "asli sawaal" ka daava bina saboot ke (banaya hua data students ko gumraah karta hai,
 tracker ka purana faisla); TUF/LeetCode ke statements, videos ya kram ki copy.
 
-## 4. Plan (slices; build Hire ke baad, ya owner jab kahe)
+## 4. Agle 10 saal: future-proof kya (research, 18 Oct 2026)
+
+Koi 2036 ka pakka andaaza nahi laga sakta. Isliye yahan wo daav hain jo **har haalat me kaam aayenge**, chahe AI jitna
+bhi badle ("no-regret"). Saboot zyaadatar 2026 ke surveys, research aur blogs se hain; blog wale aankde kamzor hain.
+
+### 4a. Jo badal raha hai (saboot)
+
+1. **Fresher ki naukriyan kam aur chuninda.** Bade tech me new-grad hiring 2019 se ~65% kam (SignalFire, June 2026), aur
+   22–25 saal walon ka AI se jude kaam me rozgaar trend se ~19% neeche (Stanford) ([Hatchworks](https://hatchworks.com/blog/gen-ai/software-engineer-shortage/),
+   [Second Talent](https://www.secondtalent.com/resources/the-future-of-software-engineering-jobs-in-2026-what-hiring-managers-need-to-know/)).
+   LinkedIn ise poori tarah AI ka asar nahi maanta ([Humanize AI](https://humanizeai.com/blog/ai-impact-on-software-developer-jobs-2026/)).
+2. **AI ke saath kaam karna ab buniyaadi hai**, aur sabse keemti cheez hai AI ka likha code jaanch paane ki samajh.
+   Saath me shipped projects aur specialisation bhi maayne rakhte hain ([Articuler](https://www.articuler.ai/resources/learn/software-engineer-job-market/),
+   [Full Scale](https://fullscale.io/blog/developer-shortage/)).
+3. **Interview badal rahe hain, par ek jaise nahi.** Meta ke kuch rounds me AI chalta hai, aur wahan dekha jaata hai ki
+   candidate AI ko kaise chalata aur jaanchta hai. Amazon jaise kuch abhi bhi mana karte hain
+   ([techinterview.org](https://www.techinterview.org/post/3233475398/live-coding-interview-ai-allowed-2026/),
+   [PracHub](https://prachub.com/resources/ai-coding-interview-guide)). Isliye dono ki taiyaari chahiye.
+4. **AI tutor se kaam ho jaata hai, samajh nahi aati.** TUM ke 275 students ke study me AI se task performance badhi,
+   par concept ki samajh me koi fark nahi ([TUM](https://www.edtech.tum.de/?p=3520)). Insaan + AI ka mel sabse achha
+   dikhta hai ([arXiv](https://arxiv.org/html/2512.11882v1)). Hamara Sahayak jawab nahi deta, aur micro-viva samajh
+   naapta hai: ye sahi disha hai.
+5. **Certificate ab standard aur verify hone wale.** Open Badges 3.0 W3C Verifiable Credential hai (badge apne signature
+   se khud pakka hota hai), CLR 2.0 kai badges ko ek transcript me baandhta hai, aur DigiLocker me verifiable credential
+   bheje ja sakte hain ([Anonyome](https://anonyome.com/resources/blog/open-badges-3-explained/),
+   [Protean](https://proteantech.in/articles/certificate-issuance-digital-identity/)).
+
+### 4b. Kya jodein (har haalat me kaam aayega)
+
+| # | Kya | Kyun 10 saal tak tikega | Hamari neev |
+|---|---|---|---|
+| F1 | **"AI ke saath code" track**: AI se code likhwana, use jaanchna, AI ki galti pakadna, tests aur spec likhna. Grade isse ki AI ko kaise chalaya aur jaancha, sirf "code chala" se nahi. Do mode saaf label ke saath: AI-allowed aur AI-free | Interview aur naukri dono isi taraf (4a-2, 4a-3) | Runner + hidden tests ✅, Sahayak ✅, code playback (kaun sa code AI ka) ✅ |
+| F2 | **Code padhna aur review**: AI ke bane PR me bug, security chhed, galat edge case dhoondo | Junior ka kaam likhna kam, jaanchna zyaada (4a-2) | Runner, tests, editorial engine ✅ |
+| F3 | **Samajh ka saboot, sirf solve nahi**: micro-viva, "apna code samjhao" (likh kar, phir awaaz), Pramaan isi par | AI se solve aasan hoga; samajh ka saboot hi keemti rahega (4a-4) | Viva engine (exam) ✅, AI interviewer (Hire) ✅ |
+| F4 | **Pramaan = Open Badges 3.0 / W3C VC**, CLR 2.0 transcript, DigiLocker me bhejna, student ka apna (export, revoke) | Standard platform se zyaada jeete hain; koi bhi company bina hamare verify kar sake (4a-5) | Scorecard + verify QR ✅, ledger ka saboot ✅ |
+| F5 | **Learner ka mastery model**: har concept par kitni pakad (solve, viva, revision, galtiyon se), "solved count" nahi | Ye data hamari asli poonji hai; koi bhi path, koi bhi interview format ho, kaam aayega | Revision (SM-2) ✅, patterns tagged ✅, submissions ✅ |
+| F6 | **Badalte sawaal**: har problem ke variants (inputs, kahani, constraints badal kar) taaki ratta aur AI se copy na chale | Leak aur AI-cheating har saal badhenge | Reference run + tests (G4a-3) ✅, H6 drafts |
+| F7 | **AI layer kisi ek model se bandha nahi**: model routes, har prompt ka eval gate, kharch ki seema; aage sasta/chhota model hint ke liye | 10 saal me model aur daam kai baar badlenge | Model routes ✅, Sahayak evals ✅, spend cap ✅ |
+| F8 | **Projects jo ship hon**: chhote real projects (API, full-stack, data), sandbox me deploy, portfolio par verified | Freshers me "shipped work" dekha ja raha hai (4a-2) | Runner/Judge0; Classes (full-stack, AIML) ✅ |
+| F9 | **Specialisation tracks**: AI/ML engineering, data, cloud, security, DevOps, DSA ke baad | Generalist fresher ki maang kam (4a-1) | Track engine ✅, Classes ✅ |
+| F10 | **Awaaz aur apni bhasha**: Hindi aur dusri Indian bhashaon me bolkar sawaal/viva, kam data par chale (PWA, offline) | Agla crore student phone-first aur apni bhasha me aayega | 11 bhasha UI ✅, PWA offline ✅, Sahayak Hindi ✅ |
+| F11 | **Insaan bhi**: mentors, alumni, peer review, AI ke saath | Research: insaan + AI sabse achha (4a-4) | Community, experiences ✅ |
+| F12 | **Zindagi bhar**: naukri ke baad bhi upskilling (AI ke saath badalte kaam), alumni wapas aayein | 10 saal me har developer ko kai baar naya seekhna padega | Ek Parikshaa ID ✅ (Learn + Campus + Hire) |
+
+### 4c. Architecture ke niyam (taaki 10 saal me dobara na banana pade)
+
+- Content = data, version ke saath (pehle se: tracks, lessons, problems DB me). Har AI ka banaya content insaan se
+  manzoor, aur kaun sa model, kab, ye record (H6/G2 jaisa).
+- Har AI feature ke peeche eval aur "AI ne kaha" ka label; koi faisla bina insaan ke nahi (Hire ka niyam Learn me bhi).
+- Student ka data uska: export (DPDP), mitana, credential portable (F4).
+- Bhasha, model, judge (apna runner / Judge0) sab badle ja sakein; koi vendor lock-in nahi.
+
+## 5. Plan (slices; build Hire ke baad, ya owner jab kahe)
 
 | Slice | Kya | Done kab |
 |---|---|---|
@@ -121,13 +173,23 @@ tracker ka purana faisla); TUF/LeetCode ke statements, videos ya kram ki copy.
 | L12 Wapsi + study circle (3a) | Chhoote dino ke baad chhota plan; 3–5 dost ka circle, WhatsApp reminder | Wapsi plan test; circle ka hafta |
 | L13 Pattern drill + templates + galti ki diary (3c) | 30-second pattern MCQ; apne templates; galat submits ki wajah aur unpar revision | 100 drill sawaal; diary har submit par |
 | L14 Hinglish toggle (3b-4) | Editorial/hint ka Hinglish, L2 pipeline me AI anuvaad + insaan ki jaanch | DSA 40 ka Hinglish |
+| L15 AI ke saath code + code review (F1, F2) | Do mode (AI-allowed / AI-free); AI ke code ki jaanch aur PR review ke sawaal; grade "kaise chalaya, kaise jaancha" | 30 sawaal, dono mode |
+| L16 Mastery model (F5) | Concept-wise pakad (solve, viva, revision, galtiyan), dashboard aur planner isi se | Har learner ke liye concept map |
+| L17 Verifiable Pramaan (F4) | Open Badges 3.0 / W3C VC, CLR 2.0 transcript, verify page, DigiLocker (jaanch ke baad) | Ek badge bahar ke verifier se pakka |
+| L18 Problem variants (F6) | Har problem ke 3–5 variants, reference run se tests | DSA 40 ke variants |
+| L19 Projects + specialisation (F8, F9) | Ship hone wale chhote projects, sandbox deploy; AI/ML, data, cloud, security tracks | Pehla project track + ek specialisation |
+| L20 Awaaz + bhasha (F10) | Hindi me bolkar viva/sawaal; doosri Indian bhashaein | Hindi voice viva |
+
+**10 saal wale (L15–L20) kab:** L11 (micro-viva) ke saath L16 (mastery) aur L17 (verifiable Pramaan) chalein, kyunki
+teeno ek hi data par hain. L15 (AI ke saath code) jaldi, kyunki interview badal rahe hain. L18–L20 content bharne ke saath.
 
 **Sujhaya kram (asar ÷ mehnat):** L9 aur L5 (aptitude) pehle (sabse bada bazaar, engine taiyaar), phir L11 (hamari
 alag pehchaan), L1–L3 (content, lamba kaam, saath-saath), L10, L13, L12, L14, L8, L4, L6, L7.
 
-## 5. Owner se kya chahiye
+## 6. Owner se kya chahiye
 
 1. **Content kaun banayega:** AI draft + insaan review (L2) ki haan, aur review kaun karega (content team ya owner).
 2. **Video:** kaun banayega, kis bhasha me, host kahan (tracker "Ruka hua kaam" me pehle se).
 3. **Kram:** upar ka sujhaya kram (L9 + aptitude pehle) theek hai, ya L1 (DSA content) pehle.
 4. **Mass-recruiter mocks:** company ka naam ("TCS NQT jaisa") likhna theek hai ya sirf "IT services format"; ye legal/brand ka faisla hai.
+5. **10 saal wale daav:** L15–L20 me se kaunse pehle (mera sujhaav: L15, L16, L17).
