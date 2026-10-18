@@ -177,7 +177,7 @@ bhi badle ("no-regret"). Saboot zyaadatar 2026 ke surveys, research aur blogs se
 | L16 Mastery model (F5) | Concept-wise pakad (solve, viva, revision, galtiyan), dashboard aur planner isi se | Har learner ke liye concept map |
 | L17 Verifiable Pramaan (F4) | Open Badges 3.0 / W3C VC, CLR 2.0 transcript, verify page, DigiLocker (jaanch ke baad) | Ek badge bahar ke verifier se pakka |
 | L18 Problem variants (F6) | Har problem ke 3–5 variants, reference run se tests | DSA 40 ke variants |
-| L19 Projects + specialisation (F8, F9) | Ship hone wale chhote projects, sandbox deploy; AI/ML, data, cloud, security tracks | Pehla project track + ek specialisation |
+| L19 Projects + specialisation (F8, F9) | Ship hone wale projects, live environment, specialisation tracks: poora plan [LEARN-BUILD-LABS.md](LEARN-BUILD-LABS.md) (tracker row 122) | Wahan ke P0 |
 | L20 Awaaz + bhasha (F10) | Hindi me bolkar viva/sawaal; doosri Indian bhashaein | Hindi voice viva |
 
 **10 saal wale (L15–L20) kab:** L11 (micro-viva) ke saath L16 (mastery) aur L17 (verifiable Pramaan) chalein, kyunki
