@@ -36,6 +36,8 @@ usage window. Example: H2b ek slice tha, H2c ek.
 
 ### 2a. Ek baar (shuru me, ~10–15 ghante)
 
+Har cheez ka poora tareeka (kya karein, kahan click, kaunsa secret kahan): [OWNER-SETUP.md](OWNER-SETUP.md).
+
 | # | Kaam | Kyun | Abhi haalat |
 |---|---|---|---|
 | 1 | **GitHub billing theek** | Iske bina CI ka koi job nahi chalta | Ruka hua (tracker) |
