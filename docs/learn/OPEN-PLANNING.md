@@ -21,6 +21,8 @@ kaam ke kram me.
 | Hands-on labs (environments) | [../LEARN-BUILD-LABS.md](../LEARN-BUILD-LABS.md) |
 | TUF se tulna, 10 saal | [../LEARN-TUF-GAP.md](../LEARN-TUF-GAP.md) |
 | Owner ke accounts aur secrets | [../OWNER-SETUP.md](../OWNER-SETUP.md) |
+| All-in-one: 25 nayi cheezein, launch kharch, $200 plan par samay | [ALL-IN-ONE.md](ALL-IN-ONE.md) |
+| Har page ka UX, UX ka naap | [UX-BLUEPRINT.md](UX-BLUEPRINT.md) |
 
 ## 2. Jo baaki hai (kram me)
 

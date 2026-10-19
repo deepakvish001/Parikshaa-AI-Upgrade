@@ -170,6 +170,16 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 - [ ] LV-C16 Basics 500: owner ke series batches v1 → v2 upgrade (PROBLEM-STANDARD §6), phir naye
 - [ ] LV-C15 "Kaise padhein" free course + kitaab ke 7 problems (owner ki kitaab, [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) §8)
 
+**N: All-in-one ki nayi cheezein** ([learn/ALL-IN-ONE.md](learn/ALL-IN-ONE.md) §3, UX: [learn/UX-BLUEPRINT.md](learn/UX-BLUEPRINT.md))
+- Phase A (launch ke saath): [ ] LV-N1 phone-first (Parsons, output predict, code keyboard, offline packs) ·
+  [ ] LV-N6 proctored certificates · [ ] LV-N7a resume builder · [ ] LV-N7b portfolio site · [ ] LV-N10 gamification v2
+  (XP, quests, weekly league) · [ ] LV-N11 skill graph (basic) · [ ] LV-N12 AI ke do mode · [ ] LV-N18 college lab mode ·
+  [ ] LV-N20 Daily 10 · [ ] LV-N23 wellbeing · [ ] LV-N24 AI ka khula hisaab
+- Phase B (3 mahine): [ ] LV-N2 code-casts · [ ] LV-N3 project briefs + Ship it · [ ] LV-N5 mentors · [ ] LV-N8 peer mocks ·
+  [ ] LV-N9 cohorts · [ ] LV-N15 doubt forum · [ ] LV-N16 college chapters · [ ] LV-N19 GitHub jod
+- Phase C (baad me): [ ] LV-N4 hackathons · [ ] LV-N13 open source season · [ ] LV-N14 data challenges ·
+  [ ] LV-N17 live events · [ ] LV-N21 sponsor-a-learner · [ ] LV-N22 perks · [ ] LV-N25 parent view
+
 ## 5. Abhi chal raha / agla kadam
 
 **AB AGLA:** LV-F3 (problem package format), phir LV-F5 (visual renderer v1), phir LV-S0 (samples,
@@ -184,6 +194,7 @@ baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 ## 7. Log (naya upar)
 
+- 19 Oct 2026: all-in-one platform ka plan (research, 7 stambh, 25 nayi cheezein N1–N25, owner ki list, launch kharch, $200 plan par samay) aur har page ka UX (`learn/ALL-IN-ONE.md`, `learn/UX-BLUEPRINT.md`); slices LV-N.
 - 19 Oct 2026: Code Studio (browser IDE), guided labs, 13 arenas (JS se HLD tak), ~65 courses ka catalog, articles ka plan, aur "baaki planning" ki list (`learn/CODE-STUDIO.md`, `learn/CONTENT-CATALOG.md`, `learn/OPEN-PLANNING.md`).
 - 19 Oct 2026: owner ke problem JSON (SQL + series 25/26/28/29) ka audit aur problem standard v2 (`learn/PROBLEM-STANDARD.md`); Basics track 500.
 - 19 Oct 2026: owner ke faisle: kitaab unki apni (text bhi use hoga), Plus chat history jab tak account, fair use 200/din. Reference images se sketch visual style; poora build spec `docs/learn/` (USER-FLOWS, ARCHITECTURE, ADMIN-PANEL, VISUAL-STYLE).
