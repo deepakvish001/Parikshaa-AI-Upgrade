@@ -5,6 +5,9 @@ Owner ne mock v1 ([mock/README.md](mock/README.md)) pasand nahi kiya aur TUF ke 
 kya seekha, aur mock v2 kaise banega. **Niyam:** pattern seekhna theek, TUF ka logo, mascot, naam, copy ya hubahu
 layout nahi ([../LEARN-LAUNCH-PLAN.md](../LEARN-LAUNCH-PLAN.md) §11).
 
+**Aage:** platform-features ke 3 clips se har feature ka flow, har component aur poora plan:
+[DESIGN-PLAN-V2.md](DESIGN-PLAN-V2.md) (20 Oct).
+
 ## 1. TUF ke screens: kya dikha
 
 | Screen | Layout | Kaam ka logic |

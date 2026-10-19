@@ -23,7 +23,9 @@ design, icons) · [learn/ARCHITECTURE.md](learn/ARCHITECTURE.md) (database, API,
 [learn/OPEN-PLANNING.md](learn/OPEN-PLANNING.md) (aur kya plan karna baaki hai) ·
 [learn/ALL-IN-ONE.md](learn/ALL-IN-ONE.md) (all-in-one platform: 7 stambh, 25 nayi cheezein, launch kharch, $200 plan par samay) ·
 [learn/UX-BLUEPRINT.md](learn/UX-BLUEPRINT.md) (har page ka UX, phone-first, UX ka naap) ·
-[learn/mock/README.md](learn/mock/README.md) (clickable UI mock, 46 screens).
+[learn/mock/README.md](learn/mock/README.md) (clickable UI mock v1, 46 screens; owner ne nakaara) ·
+[learn/DESIGN-STUDY.md](learn/DESIGN-STUDY.md) (v1 kyun kamzor) · [learn/DESIGN-PLAN-V2.md](learn/DESIGN-PLAN-V2.md) (TUF ke clips se
+har feature ka flow, 47 components, hamara look, mock v2 ka kram).
 
 Saath ki docs: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) (judge, servers, AI model ka kharch, TUF video ka map),
 [LEARN-TUF-GAP.md](LEARN-TUF-GAP.md) (tulna, 10 saal), [LEARN-BUILD-LABS.md](LEARN-BUILD-LABS.md) (labs),
