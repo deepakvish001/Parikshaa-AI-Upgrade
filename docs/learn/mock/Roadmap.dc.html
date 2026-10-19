@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Roadmap: SDE fresher</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="roadmap" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: flex-end; margin-bottom: 20px">
+        <div>
+          <div style="font-size: 14px; color: #5f687c"><a href="Explore.dc.html">Roadmaps</a> / Role</div>
+          <h1 style="margin: 4px 0 6px; font-size: 28px">SDE (fresher) roadmap</h1>
+          <div style="display: flex; gap: 16px; flex-wrap: wrap; color: #4f586c; font-size: 14px"><span>18 / 64 nodes</span><span>~4 mahine, roz 1 ghanta</span><span>Har node par lesson, problems, quiz</span></div>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <a href="Sahayak.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 10px; border: 1px solid #cdd3df; background: #ffffff; color: #131a2e; font-weight: 600; text-decoration: none">AI se apna roadmap banao</a>
+          <a href="Roadmap.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 16px; border-radius: 10px; border: 1px solid #cdd3df; background: #ffffff; color: #131a2e; font-weight: 600; text-decoration: none">Copy karke badlo</a>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: #4f586c; margin-bottom: 16px">
+        <span style="display: inline-flex; gap: 6px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 4px; background: #117a57"></span>Ho gaya</span>
+        <span style="display: inline-flex; gap: 6px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 4px; background: #f28c28"></span>Abhi</span>
+        <span style="display: inline-flex; gap: 6px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 4px; background: #ffffff; border: 2px solid #cdd3df; box-sizing: border-box"></span>Baaki</span>
+        <span style="display: inline-flex; gap: 6px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 4px; background: #ffffff; border: 2px dashed #9aa3b5; box-sizing: border-box"></span>Optional</span>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <div style="flex: 2 1 520px; min-width: 0; padding: 28px; border-radius: 20px; background: #fefefe; border: 1px solid #e2e6ef">
+          <sc-for list="{{sections}}" as="sec" hint-placeholder-count="8">
+            <div style="display: flex; flex-direction: column; align-items: center">
+              <div style="padding: 10px 22px; border-radius: 12px; border: 2.5px solid #111111; background: {{sec.bg}}; font-family: 'Kalam', cursive; font-size: 22px; font-weight: 700; color: #111111; transform: rotate({{sec.tilt}})">{{sec.title}}</div>
+              <div style="width: 2px; height: 18px; background: #111111"></div>
+              <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 640px">
+                <sc-for list="{{sec.nodes}}" as="n" hint-placeholder-count="4">
+                  <button type="button" onClick="{{n.pick}}" aria-pressed="{{n.on}}" style="min-height: 44px; padding: 0 14px; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; {{n.style}}">{{n.label}}</button>
+                </sc-for>
+              </div>
+              <div style="width: 2px; height: 28px; background: repeating-linear-gradient(#111111 0 4px, transparent 4px 8px); {{sec.tail}}"></div>
+            </div>
+          </sc-for>
+        </div>
+
+        <aside aria-live="polite" style="flex: 1 1 300px; min-width: 0; padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; display: inline-block; {{sel.chip}}">{{sel.state}}</div>
+          <h2 style="margin: 10px 0 6px; font-size: 22px">{{sel.label}}</h2>
+          <p style="margin: 0 0 16px; color: #4f586c">{{sel.about}}</p>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <a href="Lesson.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; text-decoration: none; color: #131a2e"><span style="font-weight: 600">Lesson</span><span style="color: #5f687c">{{sel.lesson}}</span></a>
+            <a href="Sheet.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; text-decoration: none; color: #131a2e"><span style="font-weight: 600">Problems</span><span style="color: #5f687c">{{sel.problems}}</span></a>
+            <a href="PhoneDaily.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; text-decoration: none; color: #131a2e"><span style="font-weight: 600">Quiz</span><span style="color: #5f687c">10 sawaal</span></a>
+            <a href="Studio.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; text-decoration: none; color: #131a2e"><span style="font-weight: 600">Lab / project</span><span style="color: #5f687c">{{sel.lab}}</span></a>
+            <a href="Pramaan.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; text-decoration: none; color: #131a2e"><span style="font-weight: 600">Pramaan check</span><span style="color: #5f687c">2 min viva</span></a>
+          </div>
+          <a href="Lesson.dc.html" style="display: flex; justify-content: center; align-items: center; min-height: 48px; margin-top: 18px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Is node ko shuru karo</a>
+          <p style="margin: 14px 0 0; font-size: 13px; color: #5f687c">Node "ho gaya" tab hota hai jab lesson padha, 70% problems hue aur quiz pass hua.</p>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 'two' };
+  }
+  renderVals() {
+    const S = {
+      done: 'background: #117a57; color: #ffffff; border: 2px solid #117a57',
+      now: 'background: #f28c28; color: #131a2e; border: 2px solid #f28c28',
+      todo: 'background: #ffffff; color: #131a2e; border: 2px solid #cdd3df',
+      opt: 'background: #ffffff; color: #373f52; border: 2px dashed #9aa3b5'
+    };
+    const ring = '; box-shadow: 0 0 0 3px #3346c4';
+    const data = [
+      { title: 'Programming basics', bg: '#e7f6ef', tilt: '-1deg', nodes: [['vars','Variables, input/output','done'],['loops','Loops','done'],['fn','Functions','done'],['rec','Recursion basics','done']] },
+      { title: 'Arrays aur hashing', bg: '#F6A496', tilt: '1deg', nodes: [['prefix','Prefix sum','done'],['two','Two pointers','now'],['win','Sliding window','todo'],['hash','Hashing','todo'],['bit','Bit tricks','opt']] },
+      { title: 'Linked list, stack, queue', bg: '#ffffff', tilt: '-0.5deg', nodes: [['ll','Linked list','todo'],['st','Stack','todo'],['q','Queue, deque','todo'],['mono','Monotonic stack','opt']] },
+      { title: 'Trees aur graphs', bg: '#ffffff', tilt: '0.8deg', nodes: [['tree','Binary tree','todo'],['bst','BST','todo'],['bfs','BFS / DFS','todo'],['sp','Shortest path','todo']] },
+      { title: 'Dynamic programming', bg: '#ffffff', tilt: '-1deg', nodes: [['dp1','1D DP','todo'],['dp2','Grid DP','todo'],['knap','Knapsack','todo'],['lis','LIS, LCS','opt']] },
+      { title: 'CS core', bg: '#ffffff', tilt: '0.5deg', nodes: [['dbms','DBMS + SQL','todo'],['os','OS','todo'],['cn','Networks','todo'],['oops','OOPs','todo']] },
+      { title: 'Aptitude', bg: '#ffffff', tilt: '-0.8deg', nodes: [['quant','Quant','todo'],['lr','Reasoning','todo'],['verbal','Verbal','todo']] },
+      { title: 'Projects aur interview', bg: '#ffffff', tilt: '1deg', nodes: [['p1','Project 1 ship karo','todo'],['p2','Project 2','todo'],['resume','Resume','todo'],['mock','3 mock interviews','todo']] }
+    ];
+    const info = {
+      two: { about: 'Sorted array me do index aage-peeche chala kar O(n) me jawab. Pair sum, triplets, container with most water.', lesson: '12 min', problems: '6 of 14', lab: 'Nahi' },
+      prefix: { about: 'Range ka jod O(1) me. Subarray sum, equilibrium index.', lesson: '10 min', problems: '14 of 14', lab: 'Nahi' },
+      win: { about: 'Lagaataar hisse par khidki khiskao. Longest substring, max sum window.', lesson: '14 min', problems: '0 of 16', lab: 'Nahi' },
+      p1: { about: 'Ek chhota app jo live ho: design brief, tests, Ship it.', lesson: '—', problems: '—', lab: 'Hisaab app (React)' }
+    };
+    let selNode = null;
+    const sections = data.map((sec, si) => ({
+      title: sec.title, bg: sec.bg, tilt: sec.tilt,
+      tail: si === data.length - 1 ? 'display: none' : '',
+      nodes: sec.nodes.map(([id, label, st]) => {
+        const on = this.state.sel === id;
+        if (on) selNode = { id, label, st };
+        return { label, on, style: S[st] + (on ? ring : ''), pick: () => this.setState({ sel: id }) };
+      })
+    }));
+    const names = { done: 'Ho gaya', now: 'Abhi chal raha', todo: 'Baaki', opt: 'Optional' };
+    const chips = { done: 'background: #e7f6ef; color: #117a57', now: 'background: #fdebd4; color: #a35200', todo: 'background: #eef0f6; color: #373f52', opt: 'background: #eef0f6; color: #373f52' };
+    const i = info[selNode.id] || { about: 'Is node ka lesson, problems aur quiz yahan dikhenge.', lesson: '10–15 min', problems: '0 of 12', lab: 'Ho sakta hai' };
+    return {
+      sections,
+      sel: { label: selNode.label, state: names[selNode.st], chip: chips[selNode.st], ...i }
+    };
+  }
+}
+</script>
+</body>
+</html>

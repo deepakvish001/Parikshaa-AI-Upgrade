@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Explore: courses</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="explore" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <h1 style="margin: 0 0 6px; font-size: 28px">Courses</h1>
+      <p style="margin: 0 0 20px; color: #4f586c">Har course me lessons, quiz, problems aur labs. Har ek ke aakhir me ek chhota project.</p>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 24px">
+        <label style="flex: 1 1 280px; max-width: 420px; display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 12px; border: 1px solid #cdd3df; border-radius: 10px; background: #ffffff; color: #5f687c">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Course dhoondho</span>
+          <input type="search" placeholder="React, DBMS, Python, Graphs…" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; color: #131a2e; outline: none">
+        </label>
+        <sc-for list="{{chips}}" as="c" hint-placeholder-count="8">
+          <button type="button" onClick="{{c.pick}}" aria-pressed="{{c.on}}" style="min-height: 40px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; {{c.style}}">{{c.label}}</button>
+        </sc-for>
+      </div>
+
+      <section aria-labelledby="foryou" style="margin-bottom: 32px">
+        <h2 id="foryou" style="margin: 0 0 12px; font-size: 20px">Aapke goal ke liye: SDE placement</h2>
+        <div style="display: flex; flex-wrap: wrap; gap: 14px">
+          <a href="Roadmap.dc.html" style="flex: 1 1 300px; padding: 20px; border-radius: 18px; background: #141b4d; color: #ffffff; text-decoration: none">
+            <div style="font-size: 13px; font-weight: 700; color: #c9cffa; text-transform: uppercase; letter-spacing: 0.06em">Roadmap</div>
+            <div style="font-size: 19px; font-weight: 700; margin: 6px 0">SDE (fresher) roadmap</div>
+            <div style="color: #c9cffa; font-size: 14px">DSA, CS core, aptitude, projects. 64 nodes, aap 18 par.</div>
+          </a>
+          <a href="Course.dc.html" style="flex: 1 1 300px; padding: 20px; border-radius: 18px; background: #ffffff; border: 2px solid #3346c4; color: #131a2e; text-decoration: none">
+            <div style="font-size: 13px; font-weight: 700; color: #3346c4; text-transform: uppercase; letter-spacing: 0.06em">Jaari</div>
+            <div style="font-size: 19px; font-weight: 700; margin: 6px 0">DSA A2Z: Arrays se Graphs</div>
+            <div style="color: #4f586c; font-size: 14px">34% · agla: Two pointers</div>
+          </a>
+          <a href="Aptitude.dc.html" style="flex: 1 1 300px; padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef; color: #131a2e; text-decoration: none">
+            <div style="font-size: 13px; font-weight: 700; color: #117a57; text-transform: uppercase; letter-spacing: 0.06em">Sujhav</div>
+            <div style="font-size: 19px; font-weight: 700; margin: 6px 0">Aptitude: service companies ke liye</div>
+            <div style="color: #4f586c; font-size: 14px">Quant, reasoning, verbal · 12 mocks</div>
+          </a>
+        </div>
+      </section>
+
+      <section aria-labelledby="all">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px">
+          <h2 id="all" style="margin: 0; font-size: 20px">{{heading}}</h2>
+          <span style="color: #5f687c; font-size: 14px">{{count}}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px">
+          <sc-for list="{{courses}}" as="c" hint-placeholder-count="9">
+            <a href="Course.dc.html" style="display: flex; flex-direction: column; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e; overflow: hidden">
+              <div style="height: 96px; background: {{c.bg}}; display: flex; align-items: flex-end; padding: 14px 16px; box-sizing: border-box; font-family: 'Kalam', cursive; font-size: 24px; font-weight: 700; color: #111111">{{c.sketch}}</div>
+              <div style="padding: 16px; display: flex; flex-direction: column; gap: 6px; flex: 1">
+                <div style="display: flex; gap: 6px; flex-wrap: wrap">
+                  <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #eef0f6; color: #373f52">{{c.level}}</span>
+                  <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{c.planStyle}}">{{c.plan}}</span>
+                </div>
+                <div style="font-weight: 700; font-size: 17px">{{c.title}}</div>
+                <div style="color: #4f586c; font-size: 14px; flex: 1">{{c.build}}</div>
+                <div style="display: flex; justify-content: space-between; font-size: 13px; color: #5f687c; margin-top: 6px"><span>{{c.hours}}</span><span>{{c.parts}}</span></div>
+              </div>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { cat: 'all' };
+  }
+  renderVals() {
+    const cats = [
+      { id: 'all', label: 'Sab' }, { id: 'dsa', label: 'DSA aur CP' }, { id: 'cs', label: 'CS core' },
+      { id: 'lang', label: 'Languages' }, { id: 'web', label: 'Web' }, { id: 'data', label: 'Data aur AI' },
+      { id: 'ops', label: 'DevOps' }, { id: 'design', label: 'System design' }
+    ];
+    const free = 'background: #e7f6ef; color: #117a57';
+    const plus = 'background: #fdebd4; color: #a35200';
+    const all = [
+      { cat: 'dsa', title: 'DSA A2Z: Arrays se Graphs', build: 'Banega: 520 problems, har ek ka dry run', level: 'Shuruaat se', hours: '120 ghante', parts: '64 lessons · 520 problems', plan: 'Free', sketch: '[ 1 | 3 | 4 ]', bg: '#fdebd4' },
+      { cat: 'dsa', title: 'Competitive programming', build: 'Banega: Codeforces 1600+ ki taiyaari', level: 'Aage', hours: '90 ghante', parts: '40 lessons · 600 problems', plan: 'Plus', sketch: 'O(n log n)', bg: '#f1ebff' },
+      { cat: 'dsa', title: 'CP ke liye math', build: 'Banega: modular, combinatorics, number theory', level: 'Beech', hours: '30 ghante', parts: '18 lessons · 150 problems', plan: 'Plus', sketch: 'a^b mod m', bg: '#eaf2fc' },
+      { cat: 'cs', title: 'DBMS', build: 'Banega: library ka schema + 40 SQL queries', level: 'Shuruaat se', hours: '24 ghante', parts: '22 lessons · 300 MCQ', plan: 'Free', sketch: 'users ⋈ orders', bg: '#e7f6ef' },
+      { cat: 'cs', title: 'Operating systems', build: 'Banega: chhota scheduler simulator', level: 'Beech', hours: '22 ghante', parts: '20 lessons · 250 MCQ', plan: 'Free', sketch: 'P1 → P2 → P3', bg: '#f1f3fe' },
+      { cat: 'cs', title: 'Computer networks', build: 'Banega: packet ka safar, sketch me', level: 'Beech', hours: '20 ghante', parts: '18 lessons · 220 MCQ', plan: 'Free', sketch: 'A ⇄ router ⇄ B', bg: '#fdebd4' },
+      { cat: 'lang', title: 'C++ zero se STL tak', build: 'Banega: 60 chhote programs', level: 'Shuruaat se', hours: '28 ghante', parts: '30 lessons · 120 problems', plan: 'Free', sketch: 'std::vector', bg: '#eaf2fc' },
+      { cat: 'lang', title: 'Python for everyone', build: 'Banega: CLI expense tracker', level: 'Shuruaat se', hours: '20 ghante', parts: '24 lessons · 6 labs', plan: 'Free', sketch: 'def main():', bg: '#e7f6ef' },
+      { cat: 'web', title: 'React: pehle app se production tak', build: 'Banega: Hisaab app, live link ke saath', level: 'Beech', hours: '36 ghante', parts: '28 lessons · 12 labs', plan: 'Plus', sketch: '<App />', bg: '#f1f3fe' },
+      { cat: 'web', title: 'Node.js aur APIs', build: 'Banega: auth wala REST API + tests', level: 'Beech', hours: '30 ghante', parts: '24 lessons · 10 labs', plan: 'Plus', sketch: 'GET /api', bg: '#fdebd4' },
+      { cat: 'data', title: 'SQL 300', build: 'Banega: asli jaise datasets par 300 queries', level: 'Shuruaat se', hours: '26 ghante', parts: '12 lessons · 300 problems', plan: 'Free', sketch: 'SELECT …', bg: '#e7f6ef' },
+      { cat: 'data', title: 'Machine learning basics', build: 'Banega: house price model, metric ke saath', level: 'Beech', hours: '40 ghante', parts: '30 lessons · 14 labs', plan: 'Plus', sketch: 'y = wx + b', bg: '#f1ebff' },
+      { cat: 'data', title: 'GenAI apps', build: 'Banega: RAG chatbot apne notes par', level: 'Aage', hours: '24 ghante', parts: '18 lessons · 8 labs', plan: 'Plus', sketch: 'embed → search', bg: '#eaf2fc' },
+      { cat: 'ops', title: 'Linux, Git, Docker', build: 'Banega: apna app container me', level: 'Shuruaat se', hours: '22 ghante', parts: '20 lessons · 10 labs', plan: 'Free', sketch: '$ git push', bg: '#f1f3fe' },
+      { cat: 'design', title: 'LLD aur design patterns', build: 'Banega: parking lot, BookMyShow ka LLD', level: 'Aage', hours: '30 ghante', parts: '26 lessons · 20 problems', plan: 'Plus', sketch: 'class Slot', bg: '#fdebd4' },
+      { cat: 'design', title: 'HLD: Indian apps ka design', build: 'Banega: UPI, Zomato, IRCTC ka design + simulator', level: 'Aage', hours: '34 ghante', parts: '24 lessons · 16 designs', plan: 'Plus', sketch: 'LB → API → DB', bg: '#f1ebff' }
+    ];
+    const cat = this.state.cat;
+    const list = cat === 'all' ? all : all.filter((c) => c.cat === cat);
+    const label = cats.find((c) => c.id === cat).label;
+    return {
+      chips: cats.map((c) => ({
+        ...c,
+        on: c.id === cat,
+        style: c.id === cat ? 'background: #3346c4; color: #ffffff; border: 1px solid #3346c4' : 'background: #ffffff; color: #373f52; border: 1px solid #cdd3df',
+        pick: () => this.setState({ cat: c.id })
+      })),
+      heading: cat === 'all' ? 'Saare courses' : label,
+      count: list.length + ' courses dikh rahe (kul ~65 banenge)',
+      courses: list.map((c) => ({ ...c, planStyle: c.plan === 'Free' ? free : plus }))
+    };
+  }
+}
+</script>
+</body>
+</html>
