@@ -57,11 +57,11 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 **F: Neev**
 - [ ] LV-F1 Design tokens v2 (glow, glass, motion) + Learn shell v2 (top bar, left nav, Ctrl+K, phone tab bar)
 - [ ] LV-F2 Landing, pricing, legal pages (Terms, Privacy, Refund, Contact), help; prerender
-- [ ] LV-F3 Problem package format: schema + migration (validator, generators, tests S3 par, checker, interactor, solutions, galat solutions, TL), import/export
+- [ ] LV-F3 Problem package format ([learn/PROBLEM-STANDARD.md](learn/PROBLEM-STANDARD.md) §3, v1 JSON ka import): schema + migration (validator, generators, tests S3 par, checker, interactor, solutions, galat solutions, TL), import/export
 - [ ] LV-F4 Content CMS v2 + review workflow (draft → machine checks → review → publish, diff, versions, rollback)
 - [ ] LV-F5 Visual renderer v1: spec (JSON) → sketch SVG (rough style, Kalam font); array, pointers, window, LL, stack/queue, tree, graph, DP table, recursion tree; step slider; trace se frames
 - [ ] LV-F6 Visual renderer v2: aptitude (Venn, DI, clock, dice, seating, family tree), OS/CN (Gantt, handshake, OSI), Mermaid/D2 theme (UML, ER, architecture)
-- [ ] LV-F7 Factory: DSA pipeline (draft → package → runner jaanch → doosra model → duplicate → editorial + visual → style critic → review queue)
+- [ ] LV-F7 Factory: DSA pipeline (draft → package → runner jaanch → doosra model → duplicate → editorial + visual → style critic → review queue); 10 machine gates + mutation score (PROBLEM-STANDARD §5)
 - [ ] LV-F8 Factory: aptitude pipeline (sawaal + Python solver + galat options ki wajah)
 - [ ] LV-F9 Factory: lessons + Q&A + MCQ pipeline
 - [ ] LV-F10 Judge queue API se bahar (`judge_jobs`, SKIP LOCKED) + alag worker service
@@ -140,6 +140,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 - [ ] LV-C7 DBMS/OS/CN/OOPs · [ ] LV-C8 SQL 300 · [ ] LV-C9 LLD + patterns · [ ] LV-C10 HLD
 - [ ] LV-C11 Languages (C, C++, Java, Python, JS/TS, Go) · [ ] LV-C12 CP math · [ ] LV-C13 Hinglish editions
 - [ ] LV-C14 Purane 1,260 problems: import + jaanch + originality (plan 91)
+- [ ] LV-C16 Basics 500: owner ke series batches v1 → v2 upgrade (PROBLEM-STANDARD §6), phir naye
 - [ ] LV-C15 "Kaise padhein" free course + kitaab ke 7 problems (owner ki kitaab, [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) §8)
 
 ## 5. Abhi chal raha / agla kadam
@@ -156,6 +157,7 @@ baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 ## 7. Log (naya upar)
 
+- 19 Oct 2026: owner ke problem JSON (SQL + series 25/26/28/29) ka audit aur problem standard v2 (`learn/PROBLEM-STANDARD.md`); Basics track 500.
 - 19 Oct 2026: owner ke faisle: kitaab unki apni (text bhi use hoga), Plus chat history jab tak account, fair use 200/din. Reference images se sketch visual style; poora build spec `docs/learn/` (USER-FLOWS, ARCHITECTURE, ADMIN-PANEL, VISUAL-STYLE).
 - 19 Oct 2026: owner ki editorial file ("Decode Your Coding Interview") se style guide; roadmap.sh ke features (apne content se; unka licence content ki ijaazat nahi deta).
 - 19 Oct 2026: Learn v2 shuru. Design docs aur handoff. Hire ruka (agla H2d kadam 2, [HIRE-HANDOFF.md](HIRE-HANDOFF.md)).

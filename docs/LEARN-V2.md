@@ -89,6 +89,7 @@ Home (aaj ka plan, streak, revision due, contest)
 | ↳ DSA A2Z path | 520 | 520 | Upar + **100% insaan review** |
 | ↳ Interview bank (LeetCode level; Easy 30% · Medium 50% · Hard 20%) | 2,480 | 980 | Upar + 10% insaan |
 | ↳ CP bank (Codeforces level, rating 800–2600) | 2,000 | 0 | Upar + validator + wrong solutions fail hon |
+| **Basics** (owner ke series batches + naye; TCS NQT jaise coding rounds) | **500** (5,000 ke upar) | 200 | Upgrade v1 → v2 ([learn/PROBLEM-STANDARD.md](learn/PROBLEM-STANDARD.md) §6) |
 | **Aptitude** | **5,000** | 2,000 | Har sawaal ka Python solver = sahi option |
 | ↳ Quant | 2,200 | 900 | |
 | ↳ Logical reasoning | 1,500 | 600 | Puzzles brute force se |
@@ -123,7 +124,9 @@ Home (aaj ka plan, streak, revision due, contest)
 Topic: number theory, combinatorics, constructive, greedy, DP (bitmask, digit, tree, DP+DS), graphs (DSU, shortest
 path, MST, SCC, flows basic), data structures, strings (KMP, Z, hashing, suffix array), geometry, games, **interactive**.
 
-**Har problem ka package** (Codeforces Polygon jaisa, apna format):
+**Har problem ka package aur test ka niyam:** [learn/PROBLEM-STANDARD.md](learn/PROBLEM-STANDARD.md) (owner ke format par
+v2, test groups, "minor se minor" edge checklist, mutation score ≥ 95%, 10 machine gates; owner ke 40 problems ka audit).
+Saar (Codeforces Polygon jaisa, apna format):
 
 | Hissa | Kya |
 |---|---|

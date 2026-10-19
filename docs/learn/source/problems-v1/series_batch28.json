@@ -1,0 +1,989 @@
+[
+  {
+    "slug": "file-bucket-digit-sum",
+    "title": "File Bucket by Digit Sum",
+    "difficulty": "easy",
+    "topics": [
+      "Array",
+      "Digits"
+    ],
+    "description": "Each file is stored in a bucket whose ID is the sum of the digits of the file size. Read the array of file sizes and print the bucket ID (digit sum) for each.\n\nInput format: the first line contains N; the second line contains N integers.\nOutput format: print the bucket IDs on one line, space-separated.",
+    "examples": [
+      {
+        "input": "[43, 345, 20, 987]",
+        "output": "7 12 2 24",
+        "explanation": "4+3=7, 3+4+5=12, 2+0=2, 9+8+7=24."
+      },
+      {
+        "input": "[12, 13, 14, 15, 16]",
+        "output": "3 4 5 6 7",
+        "explanation": "Each digit sum is 3, 4, 5, 6, 7."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 1000",
+      "File sizes are non-negative."
+    ],
+    "hints": [
+      "For each file size, add up its digits.",
+      "That sum is the bucket ID.",
+      "Print all bucket IDs in order."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nvoid buckets(int* a, int n, char* out) {\n    /* TODO: return the digit sum of each element, space-separated; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    int* a = (int*)malloc((n > 0 ? n : 1) * sizeof(int));\n    for (int i = 0; i < n; i++) scanf(\"%d\", &a[i]);\n    char* out = (char*)malloc(100005);\n    buckets(a, n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring buckets(vector<int>& a) {\n    // TODO: return the digit sum of each element, space-separated\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    vector<int> a(n);\n    for (auto& x : a) cin >> x;\n    cout << buckets(a) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String fileBucketDigitSum(int[] a) {\n        // TODO: return the digit sum of each element, space-separated\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        System.out.println(fileBucketDigitSum(a));\n    }\n}\n",
+      "python3": "def buckets(a):\n    # TODO: return the digit sum of each element, space-separated\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split()\n    n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(buckets(a))\n",
+      "javascript": "function buckets(a) {\n  // TODO: return the digit sum of each element, space-separated\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = d[0];\nconst a = d.slice(1, 1 + n);\nconsole.log(buckets(a));\n",
+      "typescript": "function buckets(a: number[]): string {\n  // TODO: return the digit sum of each element, space-separated\n  return '';\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n: number = d[0];\nconst a: number[] = d.slice(1, 1 + n);\nconsole.log(buckets(a));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc fileBucketDigitSum(a []int) string {\n    // TODO: return the digit sum of each element, space-separated\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    a := make([]int, n)\n    for i := 0; i < n; i++ {\n        fmt.Fscan(reader, &a[i])\n    }\n    fmt.Println(fileBucketDigitSum(a))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef buckets(a):\n    return \" \".join(str(sum(int(c) for c in str(x))) for x in a)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(buckets(a))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "4\n43 345 20 987",
+        "expected": "7 12 2 24"
+      },
+      {
+        "input": "5\n12 13 14 15 16",
+        "expected": "3 4 5 6 7"
+      },
+      {
+        "input": "3\n100 200 300",
+        "expected": "1 2 3"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1\n9",
+        "expected": "9"
+      },
+      {
+        "input": "2\n99 100",
+        "expected": "18 1"
+      },
+      {
+        "input": "3\n5 55 555",
+        "expected": "5 10 15"
+      },
+      {
+        "input": "4\n1 12 123 1234",
+        "expected": "1 3 6 10"
+      },
+      {
+        "input": "1\n1000000",
+        "expected": "1"
+      },
+      {
+        "input": "5\n10 20 30 40 50",
+        "expected": "1 2 3 4 5"
+      },
+      {
+        "input": "2\n999 111",
+        "expected": "27 3"
+      },
+      {
+        "input": "3\n0 0 0",
+        "expected": "0 0 0"
+      },
+      {
+        "input": "4\n11 22 33 44",
+        "expected": "2 4 6 8"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "decimal-to-octal",
+    "title": "Decimal to Octal",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "Read a decimal number and print its octal (base 8) representation.\n\nInput format: a decimal value.\nOutput format: print the octal number.",
+    "examples": [
+      {
+        "input": "16",
+        "output": "20",
+        "explanation": "16 in base 8 is 20."
+      },
+      {
+        "input": "10",
+        "output": "12",
+        "explanation": "10 in base 8 is 12."
+      }
+    ],
+    "constraints": [
+      "0 <= n <= 1000000000"
+    ],
+    "hints": [
+      "Repeatedly divide by 8 and collect the remainders.",
+      "The remainders, read in reverse, form the octal number.",
+      "0 stays 0."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid to_octal(int n, char* out) {\n    /* TODO: return the octal representation of n as a string; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[100005];\n    to_octal(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring to_octal(int n) {\n    // TODO: return the octal representation of n as a string\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << to_octal(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String decimalToOctal(int n) {\n        // TODO: return the octal representation of n as a string\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(decimalToOctal(n));\n    }\n}\n",
+      "python3": "def to_octal(n):\n    # TODO: return the octal representation of n as a string\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(to_octal(n))\n",
+      "javascript": "function to_octal(n) {\n  // TODO: return the octal representation of n as a string\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(to_octal(n));\n",
+      "typescript": "function to_octal(n: number): string {\n  // TODO: return the octal representation of n as a string\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(to_octal(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc decimalToOctal(n int) string {\n    // TODO: return the octal representation of n as a string\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(decimalToOctal(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef to_octal(n):\n    if n == 0: return \"0\"\n    return oct(n)[2:]\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(to_octal(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "16",
+        "expected": "20"
+      },
+      {
+        "input": "10",
+        "expected": "12"
+      },
+      {
+        "input": "0",
+        "expected": "0"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1",
+        "expected": "1"
+      },
+      {
+        "input": "7",
+        "expected": "7"
+      },
+      {
+        "input": "8",
+        "expected": "10"
+      },
+      {
+        "input": "64",
+        "expected": "100"
+      },
+      {
+        "input": "255",
+        "expected": "377"
+      },
+      {
+        "input": "100",
+        "expected": "144"
+      },
+      {
+        "input": "512",
+        "expected": "1000"
+      },
+      {
+        "input": "9",
+        "expected": "11"
+      },
+      {
+        "input": "1000",
+        "expected": "1750"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "array-cumulative-sum",
+    "title": "Cumulative Sum of Array",
+    "difficulty": "easy",
+    "topics": [
+      "Array"
+    ],
+    "description": "Read an array and produce a new array where each position holds the running total of all elements up to and including that position.\n\nInput format: the first line contains N; the second line contains N integers.\nOutput format: print the cumulative sums on one line, space-separated.",
+    "examples": [
+      {
+        "input": "[1, 2, 3]",
+        "output": "1 3 6",
+        "explanation": "1, then 1+2=3, then 1+2+3=6."
+      },
+      {
+        "input": "[1, 0, 1, 4]",
+        "output": "1 1 2 6",
+        "explanation": "1, 1+0=1, 1+0+1=2, 1+0+1+4=6."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 1000"
+    ],
+    "hints": [
+      "Keep a running total as you move through the array.",
+      "At each element, add it to the total.",
+      "Output the total at each step."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nvoid prefix_sum(int* a, int n, char* out) {\n    /* TODO: return the running total at each position, space-separated; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    int* a = (int*)malloc((n > 0 ? n : 1) * sizeof(int));\n    for (int i = 0; i < n; i++) scanf(\"%d\", &a[i]);\n    char* out = (char*)malloc(100005);\n    prefix_sum(a, n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring prefix_sum(vector<int>& a) {\n    // TODO: return the running total at each position, space-separated\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    vector<int> a(n);\n    for (auto& x : a) cin >> x;\n    cout << prefix_sum(a) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String arrayCumulativeSum(int[] a) {\n        // TODO: return the running total at each position, space-separated\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        System.out.println(arrayCumulativeSum(a));\n    }\n}\n",
+      "python3": "def prefix_sum(a):\n    # TODO: return the running total at each position, space-separated\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split()\n    n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(prefix_sum(a))\n",
+      "javascript": "function prefix_sum(a) {\n  // TODO: return the running total at each position, space-separated\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = d[0];\nconst a = d.slice(1, 1 + n);\nconsole.log(prefix_sum(a));\n",
+      "typescript": "function prefix_sum(a: number[]): string {\n  // TODO: return the running total at each position, space-separated\n  return '';\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n: number = d[0];\nconst a: number[] = d.slice(1, 1 + n);\nconsole.log(prefix_sum(a));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc arrayCumulativeSum(a []int) string {\n    // TODO: return the running total at each position, space-separated\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    a := make([]int, n)\n    for i := 0; i < n; i++ {\n        fmt.Fscan(reader, &a[i])\n    }\n    fmt.Println(arrayCumulativeSum(a))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef prefix_sum(a):\n    res = []; s = 0\n    for x in a:\n        s += x; res.append(s)\n    return \" \".join(map(str, res))\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(prefix_sum(a))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "3\n1 2 3",
+        "expected": "1 3 6"
+      },
+      {
+        "input": "4\n1 0 1 4",
+        "expected": "1 1 2 6"
+      },
+      {
+        "input": "5\n1 1 1 1 1",
+        "expected": "1 2 3 4 5"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1\n5",
+        "expected": "5"
+      },
+      {
+        "input": "3\n0 0 0",
+        "expected": "0 0 0"
+      },
+      {
+        "input": "4\n2 4 6 8",
+        "expected": "2 6 12 20"
+      },
+      {
+        "input": "2\n10 20",
+        "expected": "10 30"
+      },
+      {
+        "input": "5\n5 4 3 2 1",
+        "expected": "5 9 12 14 15"
+      },
+      {
+        "input": "3\n-1 -2 -3",
+        "expected": "-1 -3 -6"
+      },
+      {
+        "input": "6\n1 2 3 4 5 6",
+        "expected": "1 3 6 10 15 21"
+      },
+      {
+        "input": "4\n100 100 100 100",
+        "expected": "100 200 300 400"
+      },
+      {
+        "input": "2\n0 5",
+        "expected": "0 5"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "vaccination-stage-dob",
+    "title": "Vaccination Stage from Date of Birth",
+    "difficulty": "easy",
+    "topics": [
+      "Conditionals",
+      "Strings"
+    ],
+    "description": "A vaccination drive has three stages by age: stage 1 for people above 60, stage 2 for ages 18 to 60 (inclusive), and stage 3 for people below 18. Read a date of birth in dd/mm/yyyy format and print the stage. Compute the age as of 1 January 2022.\n\nInput format: a date of birth as dd/mm/yyyy.\nOutput format: print 1, 2, or 3.",
+    "examples": [
+      {
+        "input": "13/05/1952",
+        "output": "1",
+        "explanation": "As of 1 Jan 2022 the person is 69, which is above 60."
+      },
+      {
+        "input": "03/12/1972",
+        "output": "2",
+        "explanation": "As of 1 Jan 2022 the person is 49, which is between 18 and 60."
+      }
+    ],
+    "constraints": [
+      "The date is a valid date in dd/mm/yyyy format.",
+      "Age is computed as of 1 January 2022."
+    ],
+    "hints": [
+      "Split the date into day, month and year.",
+      "Compute the completed age as of 1 January 2022.",
+      "Above 60 is stage 1, 18 to 60 is stage 2, below 18 is stage 3."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid stage(const char* s, char* out) {\n    /* TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    char s[100005];\n    scanf(\"%100000s\", s);\n    char out[100005];\n    stage(s, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring stage(string s) {\n    // TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date\n    return \"\";\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << stage(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String vaccinationStageDob(String s) {\n        // TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = sc.next();\n        System.out.println(vaccinationStageDob(s));\n    }\n}\n",
+      "python3": "def stage(s):\n    # TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().strip()\n    print(stage(s))\n",
+      "javascript": "function stage(s) {\n  // TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date\n  return '';\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(stage(s));\n",
+      "typescript": "function stage(s: string): string {\n  // TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date\n  return '';\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(stage(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc vaccinationStageDob(s string) string {\n    // TODO: return \\\"1\\\", \\\"2\\\", or \\\"3\\\" based on age as of 2022-01-01 from a dd/mm/yyyy date\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s string\n    fmt.Fscan(reader, &s)\n    fmt.Println(vaccinationStageDob(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef stage(dob):\n    d, m, y = map(int, dob.split(\"/\"))\n    ry, rm, rd = 2022, 1, 1\n    age = ry - y - (0 if (m, d) <= (rm, rd) else 1)\n    if age > 60: return \"1\"\n    if age >= 18: return \"2\"\n    return \"3\"\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().strip()\n    print(stage(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "13/05/1952",
+        "expected": "1"
+      },
+      {
+        "input": "03/12/1972",
+        "expected": "2"
+      },
+      {
+        "input": "01/01/2010",
+        "expected": "3"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "01/01/1960",
+        "expected": "1"
+      },
+      {
+        "input": "01/01/2005",
+        "expected": "3"
+      },
+      {
+        "input": "01/01/2004",
+        "expected": "2"
+      },
+      {
+        "input": "15/08/1990",
+        "expected": "2"
+      },
+      {
+        "input": "20/03/1950",
+        "expected": "1"
+      },
+      {
+        "input": "10/10/2010",
+        "expected": "3"
+      },
+      {
+        "input": "01/01/1962",
+        "expected": "2"
+      },
+      {
+        "input": "05/05/2003",
+        "expected": "2"
+      },
+      {
+        "input": "25/12/1955",
+        "expected": "1"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "circle-area-radius",
+    "title": "Area of a Circle",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "Read the radius of a circle and print its area, using pi = 3.14, rounded to two decimal places.\n\nInput format: the radius value (an integer).\nOutput format: print the area of the circle, rounded to two decimal places.",
+    "examples": [
+      {
+        "input": "1",
+        "output": "3.14",
+        "explanation": "3.14 * 1 * 1 = 3.14."
+      },
+      {
+        "input": "2",
+        "output": "12.56",
+        "explanation": "3.14 * 2 * 2 = 12.56."
+      },
+      {
+        "input": "10",
+        "output": "314.00",
+        "explanation": "3.14 * 10 * 10 = 314.00."
+      }
+    ],
+    "constraints": [
+      "1 <= radius <= 100000",
+      "Use pi = 3.14."
+    ],
+    "hints": [
+      "The area of a circle is pi times the radius squared.",
+      "Use pi = 3.14.",
+      "Format the result to two decimal places."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid area(int n, char* out) {\n    /* TODO: return the circle area (3.14 * r * r) formatted to two decimal places; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[100005];\n    area(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring area(int n) {\n    // TODO: return the circle area (3.14 * r * r) formatted to two decimal places\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << area(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String circleAreaRadius(int n) {\n        // TODO: return the circle area (3.14 * r * r) formatted to two decimal places\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(circleAreaRadius(n));\n    }\n}\n",
+      "python3": "def area(n):\n    # TODO: return the circle area (3.14 * r * r) formatted to two decimal places\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(area(n))\n",
+      "javascript": "function area(n) {\n  // TODO: return the circle area (3.14 * r * r) formatted to two decimal places\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(area(n));\n",
+      "typescript": "function area(n: number): string {\n  // TODO: return the circle area (3.14 * r * r) formatted to two decimal places\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(area(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc circleAreaRadius(n int) string {\n    // TODO: return the circle area (3.14 * r * r) formatted to two decimal places\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(circleAreaRadius(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef area(r):\n    return \"%.2f\" % (3.14 * r * r)\nif __name__ == \"__main__\":\n    r = int(sys.stdin.readline())\n    print(area(r))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "1",
+        "expected": "3.14"
+      },
+      {
+        "input": "2",
+        "expected": "12.56"
+      },
+      {
+        "input": "10",
+        "expected": "314.00"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "3",
+        "expected": "28.26"
+      },
+      {
+        "input": "5",
+        "expected": "78.50"
+      },
+      {
+        "input": "7",
+        "expected": "153.86"
+      },
+      {
+        "input": "15",
+        "expected": "706.50"
+      },
+      {
+        "input": "20",
+        "expected": "1256.00"
+      },
+      {
+        "input": "100",
+        "expected": "31400.00"
+      },
+      {
+        "input": "4",
+        "expected": "50.24"
+      },
+      {
+        "input": "6",
+        "expected": "113.04"
+      },
+      {
+        "input": "8",
+        "expected": "200.96"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "divisible-by-5-or-7",
+    "title": "Divisible by 5 or 7",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "Read a number N and print all integers from 1 to N (inclusive) that are divisible by 5 or by 7.\n\nInput format: a number N.\nOutput format: print the qualifying integers on one line, space-separated.",
+    "examples": [
+      {
+        "input": "10",
+        "output": "5 7 10",
+        "explanation": "5 and 10 are divisible by 5; 7 is divisible by 7."
+      },
+      {
+        "input": "15",
+        "output": "5 7 10 14 15",
+        "explanation": "Adds 14 (divisible by 7) and 15 (divisible by 5)."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 100000"
+    ],
+    "hints": [
+      "Go through every number from 1 to N.",
+      "Keep the ones divisible by 5 or by 7.",
+      "Print them in order."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid div57(int n, char* out) {\n    /* TODO: return all integers in 1..n divisible by 5 or 7, space-separated; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[100005];\n    div57(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring div57(int n) {\n    // TODO: return all integers in 1..n divisible by 5 or 7, space-separated\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << div57(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String divisibleBy5Or7(int n) {\n        // TODO: return all integers in 1..n divisible by 5 or 7, space-separated\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(divisibleBy5Or7(n));\n    }\n}\n",
+      "python3": "def div57(n):\n    # TODO: return all integers in 1..n divisible by 5 or 7, space-separated\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(div57(n))\n",
+      "javascript": "function div57(n) {\n  // TODO: return all integers in 1..n divisible by 5 or 7, space-separated\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(div57(n));\n",
+      "typescript": "function div57(n: number): string {\n  // TODO: return all integers in 1..n divisible by 5 or 7, space-separated\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(div57(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc divisibleBy5Or7(n int) string {\n    // TODO: return all integers in 1..n divisible by 5 or 7, space-separated\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(divisibleBy5Or7(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef div57(n):\n    return \" \".join(str(x) for x in range(1, n+1) if x % 5 == 0 or x % 7 == 0)\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(div57(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "10",
+        "expected": "5 7 10"
+      },
+      {
+        "input": "15",
+        "expected": "5 7 10 14 15"
+      },
+      {
+        "input": "20",
+        "expected": "5 7 10 14 15 20"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1",
+        "expected": ""
+      },
+      {
+        "input": "5",
+        "expected": "5"
+      },
+      {
+        "input": "7",
+        "expected": "5 7"
+      },
+      {
+        "input": "4",
+        "expected": ""
+      },
+      {
+        "input": "21",
+        "expected": "5 7 10 14 15 20 21"
+      },
+      {
+        "input": "35",
+        "expected": "5 7 10 14 15 20 21 25 28 30 35"
+      },
+      {
+        "input": "6",
+        "expected": "5"
+      },
+      {
+        "input": "30",
+        "expected": "5 7 10 14 15 20 21 25 28 30"
+      },
+      {
+        "input": "14",
+        "expected": "5 7 10 14"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "numbers-ending-with-3",
+    "title": "Numbers Ending With 3 in Range",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "Read two numbers n1 and n2 and print all integers from n1 to n2 (inclusive) whose last digit is 3.\n\nInput format: two integers n1 and n2.\nOutput format: print the qualifying integers on one line, space-separated.",
+    "examples": [
+      {
+        "input": "10 15",
+        "output": "13",
+        "explanation": "Only 13 ends with 3 in this range."
+      },
+      {
+        "input": "1 30",
+        "output": "3 13 23",
+        "explanation": "3, 13 and 23 end with 3."
+      }
+    ],
+    "constraints": [
+      "n1 <= n2",
+      "0 <= n1, n2 <= 100000"
+    ],
+    "hints": [
+      "Go through every number from n1 to n2.",
+      "A number ends with 3 when it mod 10 equals 3.",
+      "Print those numbers in order."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nvoid end3(int a, int b, char* out) {\n    /* TODO: return all integers in [a, b] whose last digit is 3, space-separated; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    char* out = (char*)malloc(1000005);\n    end3(a, b, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring end3(int a, int b) {\n    // TODO: return all integers in [a, b] whose last digit is 3, space-separated\n    return \"\";\n}\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << end3(a, b) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String numbersEndingWith3(int a, int b) {\n        // TODO: return all integers in [a, b] whose last digit is 3, space-separated\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        System.out.println(numbersEndingWith3(a, b));\n    }\n}\n",
+      "python3": "def end3(a, b):\n    # TODO: return all integers in [a, b] whose last digit is 3, space-separated\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split(); a = int(d[0]); b = int(d[1])\n    print(end3(a, b))\n",
+      "javascript": "function end3(a, b) {\n  // TODO: return all integers in [a, b] whose last digit is 3, space-separated\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst a = d[0];\nconst b = d[1];\nconsole.log(end3(a, b));\n",
+      "typescript": "function end3(a: number, b: number): string {\n  // TODO: return all integers in [a, b] whose last digit is 3, space-separated\n  return '';\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst a: number = d[0];\nconst b: number = d[1];\nconsole.log(end3(a, b));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc numbersEndingWith3(a int, b int) string {\n    // TODO: return all integers in [a, b] whose last digit is 3, space-separated\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var a, b int\n    fmt.Fscan(reader, &a, &b)\n    fmt.Println(numbersEndingWith3(a, b))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef end3(a, b):\n    return \" \".join(str(x) for x in range(a, b+1) if x % 10 == 3)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); a = int(d[0]); b = int(d[1])\n    print(end3(a, b))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "10 15",
+        "expected": "13"
+      },
+      {
+        "input": "1 30",
+        "expected": "3 13 23"
+      },
+      {
+        "input": "1 3",
+        "expected": "3"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1 10",
+        "expected": "3"
+      },
+      {
+        "input": "20 40",
+        "expected": "23 33"
+      },
+      {
+        "input": "3 3",
+        "expected": "3"
+      },
+      {
+        "input": "1 100",
+        "expected": "3 13 23 33 43 53 63 73 83 93"
+      },
+      {
+        "input": "50 60",
+        "expected": "53"
+      },
+      {
+        "input": "13 13",
+        "expected": "13"
+      },
+      {
+        "input": "1 2",
+        "expected": ""
+      },
+      {
+        "input": "100 130",
+        "expected": "103 113 123"
+      },
+      {
+        "input": "33 43",
+        "expected": "33 43"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "max-min-digit-sum-diff",
+    "title": "Max and Min Digit Sum Difference",
+    "difficulty": "easy",
+    "topics": [
+      "Digits",
+      "Math"
+    ],
+    "description": "Read three integers. For each, find its largest digit and its smallest digit. Print the absolute difference between the sum of the three largest digits and the sum of the three smallest digits.\n\nInput format: three integers n1, n2 and n3.\nOutput format: print the absolute difference.",
+    "examples": [
+      {
+        "input": "5213, 5698, 2153",
+        "output": "12",
+        "explanation": "Max digits 5+9+5=19, min digits 1+5+1=7, difference 12."
+      },
+      {
+        "input": "1212, 1234, 5678",
+        "output": "7",
+        "explanation": "Max digits 2+4+8=14, min digits 1+1+5=7, difference 7."
+      }
+    ],
+    "constraints": [
+      "The three numbers are non-negative integers."
+    ],
+    "hints": [
+      "For each number, find its maximum and minimum digit.",
+      "Sum the three maximums and the three minimums separately.",
+      "Print the absolute difference of the two sums."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nint abs_diff(int n1, int n2, int n3) {\n    /* TODO: return |sum of max digits - sum of min digits| across the three numbers */\n    return 0;\n}\n\nint main() {\n    int n1, n2, n3;\n    scanf(\"%d %d %d\", &n1, &n2, &n3);\n    printf(\"%d\\n\", abs_diff(n1, n2, n3));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint abs_diff(int n1, int n2, int n3) {\n    // TODO: return |sum of max digits - sum of min digits| across the three numbers\n    return 0;\n}\n\nint main() {\n    int n1, n2, n3;\n    cin >> n1 >> n2 >> n3;\n    cout << abs_diff(n1, n2, n3) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int maxMinDigitSumDiff(int n1, int n2, int n3) {\n        // TODO: return |sum of max digits - sum of min digits| across the three numbers\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n1 = sc.nextInt();\n        int n2 = sc.nextInt();\n        int n3 = sc.nextInt();\n        System.out.println(maxMinDigitSumDiff(n1, n2, n3));\n    }\n}\n",
+      "python3": "def abs_diff(n1, n2, n3):\n    # TODO: return |sum of max digits - sum of min digits| across the three numbers\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split(); n1 = int(d[0]); n2 = int(d[1]); n3 = int(d[2])\n    print(abs_diff(n1, n2, n3))\n",
+      "javascript": "function abs_diff(n1, n2, n3) {\n  // TODO: return |sum of max digits - sum of min digits| across the three numbers\n  return 0;\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n1 = d[0];\nconst n2 = d[1];\nconst n3 = d[2];\nconsole.log(abs_diff(n1, n2, n3));\n",
+      "typescript": "function abs_diff(n1: number, n2: number, n3: number): number {\n  // TODO: return |sum of max digits - sum of min digits| across the three numbers\n  return 0;\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n1: number = d[0];\nconst n2: number = d[1];\nconst n3: number = d[2];\nconsole.log(abs_diff(n1, n2, n3));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc maxMinDigitSumDiff(n1 int, n2 int, n3 int) int {\n    // TODO: return |sum of max digits - sum of min digits| across the three numbers\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n1, n2, n3 int\n    fmt.Fscan(reader, &n1, &n2, &n3)\n    fmt.Println(maxMinDigitSumDiff(n1, n2, n3))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef abs_diff(n1, n2, n3):\n    nums = [n1, n2, n3]\n    max_sum = sum(max(int(c) for c in str(n)) for n in nums)\n    min_sum = sum(min(int(c) for c in str(n)) for n in nums)\n    return abs(max_sum - min_sum)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n1 = int(d[0]); n2 = int(d[1]); n3 = int(d[2])\n    print(abs_diff(n1, n2, n3))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "5213\n5698\n2153",
+        "expected": "12"
+      },
+      {
+        "input": "1212\n1234\n5678",
+        "expected": "7"
+      },
+      {
+        "input": "111\n222\n333",
+        "expected": "0"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "9\n9\n9",
+        "expected": "0"
+      },
+      {
+        "input": "12\n34\n56",
+        "expected": "3"
+      },
+      {
+        "input": "100\n200\n300",
+        "expected": "6"
+      },
+      {
+        "input": "5\n5\n5",
+        "expected": "0"
+      },
+      {
+        "input": "91\n82\n73",
+        "expected": "18"
+      },
+      {
+        "input": "1000\n2000\n3000",
+        "expected": "6"
+      },
+      {
+        "input": "54321\n12345\n99999",
+        "expected": "8"
+      },
+      {
+        "input": "10\n10\n10",
+        "expected": "3"
+      },
+      {
+        "input": "7\n8\n9",
+        "expected": "0"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "lucky-string-ascii-even",
+    "title": "Lucky String by ASCII Sum",
+    "difficulty": "easy",
+    "topics": [
+      "Strings"
+    ],
+    "description": "A string is lucky if the sum of the ASCII values of its characters is even. Read a string and print \"true\" if it is lucky, otherwise \"false\".\n\nInput format: a non-empty string.\nOutput format: print \"true\" or \"false\".",
+    "examples": [
+      {
+        "input": "abc",
+        "output": "true",
+        "explanation": "97+98+99=294, which is even."
+      },
+      {
+        "input": "anitha",
+        "output": "false",
+        "explanation": "The ASCII sum is 629, which is odd."
+      },
+      {
+        "input": "technology",
+        "output": "true",
+        "explanation": "The ASCII sum is even."
+      }
+    ],
+    "constraints": [
+      "The string is non-empty and has no spaces."
+    ],
+    "hints": [
+      "Add up the ASCII value of each character.",
+      "Check whether that total is even.",
+      "Even means lucky."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid is_lucky(const char* s, char* out) {\n    /* TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    char s[100005];\n    scanf(\"%100000s\", s);\n    char out[100005];\n    is_lucky(s, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring is_lucky(string s) {\n    // TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"\n    return \"\";\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << is_lucky(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String luckyStringAsciiEven(String s) {\n        // TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = sc.next();\n        System.out.println(luckyStringAsciiEven(s));\n    }\n}\n",
+      "python3": "def is_lucky(s):\n    # TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().strip()\n    print(is_lucky(s))\n",
+      "javascript": "function is_lucky(s) {\n  // TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"\n  return '';\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(is_lucky(s));\n",
+      "typescript": "function is_lucky(s: string): string {\n  // TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"\n  return '';\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(is_lucky(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc luckyStringAsciiEven(s string) string {\n    // TODO: return \\\"true\\\" if the sum of ASCII values of the characters is even, else \\\"false\\\"\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s string\n    fmt.Fscan(reader, &s)\n    fmt.Println(luckyStringAsciiEven(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef is_lucky(s):\n    return \"true\" if sum(ord(c) for c in s) % 2 == 0 else \"false\"\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().strip()\n    print(is_lucky(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "abc",
+        "expected": "true"
+      },
+      {
+        "input": "anitha",
+        "expected": "false"
+      },
+      {
+        "input": "technology",
+        "expected": "true"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "a",
+        "expected": "false"
+      },
+      {
+        "input": "aa",
+        "expected": "true"
+      },
+      {
+        "input": "hello",
+        "expected": "true"
+      },
+      {
+        "input": "z",
+        "expected": "true"
+      },
+      {
+        "input": "ab",
+        "expected": "false"
+      },
+      {
+        "input": "xyz",
+        "expected": "false"
+      },
+      {
+        "input": "code",
+        "expected": "false"
+      },
+      {
+        "input": "python",
+        "expected": "true"
+      },
+      {
+        "input": "test",
+        "expected": "true"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "sum-of-last-three-digits",
+    "title": "Sum of Last Three Digits",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "Read a number and print the sum of its last three digits.\n\nInput format: an integer value.\nOutput format: print the sum of the last three digits.",
+    "examples": [
+      {
+        "input": "2345",
+        "output": "12",
+        "explanation": "The last three digits are 3, 4, 5 and 3+4+5=12."
+      },
+      {
+        "input": "1234",
+        "output": "9",
+        "explanation": "The last three digits are 2, 3, 4 and 2+3+4=9."
+      }
+    ],
+    "constraints": [
+      "The number has at least three digits."
+    ],
+    "hints": [
+      "Look at the last three digits of the number.",
+      "You can take the number modulo 1000, or use the last three characters.",
+      "Add those digits together."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint sum_last3(int n) {\n    /* TODO: return the sum of the last three digits of n */\n    return 0;\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    printf(\"%d\\n\", sum_last3(n));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint sum_last3(int n) {\n    // TODO: return the sum of the last three digits of n\n    return 0;\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << sum_last3(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int sumOfLastThreeDigits(int n) {\n        // TODO: return the sum of the last three digits of n\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(sumOfLastThreeDigits(n));\n    }\n}\n",
+      "python3": "def sum_last3(n):\n    # TODO: return the sum of the last three digits of n\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(sum_last3(n))\n",
+      "javascript": "function sum_last3(n) {\n  // TODO: return the sum of the last three digits of n\n  return 0;\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(sum_last3(n));\n",
+      "typescript": "function sum_last3(n: number): number {\n  // TODO: return the sum of the last three digits of n\n  return 0;\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(sum_last3(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc sumOfLastThreeDigits(n int) int {\n    // TODO: return the sum of the last three digits of n\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(sumOfLastThreeDigits(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef sum_last3(n):\n    s = str(n)[-3:]\n    return sum(int(c) for c in s)\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(sum_last3(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "2345",
+        "expected": "12"
+      },
+      {
+        "input": "1234",
+        "expected": "9"
+      },
+      {
+        "input": "999",
+        "expected": "27"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "123",
+        "expected": "6"
+      },
+      {
+        "input": "100",
+        "expected": "1"
+      },
+      {
+        "input": "1000",
+        "expected": "0"
+      },
+      {
+        "input": "555",
+        "expected": "15"
+      },
+      {
+        "input": "12345",
+        "expected": "12"
+      },
+      {
+        "input": "908",
+        "expected": "17"
+      },
+      {
+        "input": "111",
+        "expected": "3"
+      },
+      {
+        "input": "1200",
+        "expected": "2"
+      },
+      {
+        "input": "789",
+        "expected": "24"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  }
+]
