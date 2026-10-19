@@ -3,6 +3,8 @@
 **Owner ne kya maanga (18 Oct 2026):** Learn section ko takeUforward (TUF) jaisa banana. Abhi sirf plan; build baad me
 (owner ka faisla: Hire v2 pehle chalta rahe, H2d se aage). Ye file wo plan hai. Tracker me plan row 121.
 
+**Launch ka plan (19 Oct 2026):** judge, server aur AI model ka kharch, brand/UI, aur 8–10 hafte ki timeline: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md).
+
 ## 0. Niyam: "TUF jaisa" ka matlab
 
 - **Features TUF ke barabar ya usse behtar, code aur content hamara apna.** TUF ki website ka code reverse engineer
