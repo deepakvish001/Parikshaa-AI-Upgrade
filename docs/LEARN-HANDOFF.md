@@ -182,7 +182,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 5. Abhi chal raha / agla kadam
 
-**UI mock:** [learn/mock/README.md](learn/mock/README.md) (46 screens, owner ki manzoori ke liye). Har UI slice isi screen se shuru.
+**UI mock:** v1 ([learn/mock/README.md](learn/mock/README.md)) owner ko pasand nahi aaya (20 Oct). Kyun aur v2 kaise: [learn/DESIGN-STUDY.md](learn/DESIGN-STUDY.md). Mock v2: pehle 5 screens, dark-first, asli React code + Playwright screenshots; owner ke jawab (DESIGN-STUDY §5) ka intezaar.
 
 **AB AGLA:** LV-F3 (problem package format), phir LV-F5 (visual renderer v1), phir LV-S0 (samples,
 [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) ki style me). Bulk content (C-slices) LV-S0 ki manzoori aur API key ke
@@ -196,6 +196,7 @@ baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 ## 7. Log (naya upar)
 
+- 20 Oct 2026: owner ne mock v1 nakaara; TUF ke screenshots + Planly video ka design study (`learn/DESIGN-STUDY.md`): unki design DNA, v1 ki kamiyan, v2 ka tareeka, owner se kya chahiye.
 - 19 Oct 2026: poore Learn ka clickable UI mock, 46 screens (learner, phone, admin), design canvas par; files `docs/learn/mock/` (README me link aur screen list). Code ke UI slices isi se match karenge.
 - 19 Oct 2026: all-in-one platform ka plan (research, 7 stambh, 25 nayi cheezein N1–N25, owner ki list, launch kharch, $200 plan par samay) aur har page ka UX (`learn/ALL-IN-ONE.md`, `learn/UX-BLUEPRINT.md`); slices LV-N.
 - 19 Oct 2026: Code Studio (browser IDE), guided labs, 13 arenas (JS se HLD tak), ~65 courses ka catalog, articles ka plan, aur "baaki planning" ki list (`learn/CODE-STUDIO.md`, `learn/CONTENT-CATALOG.md`, `learn/OPEN-PLANNING.md`).
