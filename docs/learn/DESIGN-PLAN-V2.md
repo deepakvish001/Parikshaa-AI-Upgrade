@@ -2,7 +2,7 @@
 
 Owner ne TUF ke platform-features page ki 3 recordings bheji aur kaha: "pura flow aur design samjho, har choti badi
 cheez dekho, sare features working in detail, aur pura better plan banao". Ye doc wahi hai. Pehle ka saar:
-[DESIGN-STUDY.md](DESIGN-STUDY.md) (kyun mock v1 kamzor tha). Purana mock: [mock/README.md](mock/README.md).
+[DESIGN-STUDY.md](DESIGN-STUDY.md) (kyun mock v1 kamzor tha). Purana mock: [mock/README.md](mock/README.md). **Is plan se bana mock v2: [mock-v2/README.md](mock-v2/README.md).**
 
 **Kaise dekha:** teeno clip (lagbhag 3 + 3 + 1.7 min, 1728×1080) se har 2 second par ek frame (231 frames), 60 frames
 ko zoom karke ek-ek padha, aur 40 jagah se pixel ke rang naape. Har feature ke liye: TUF me kya dikha → kaam ka logic

@@ -182,7 +182,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 5. Abhi chal raha / agla kadam
 
-**UI mock:** v1 ([learn/mock/README.md](learn/mock/README.md)) owner ko pasand nahi aaya (20 Oct). Kyun aur v2 kaise: [learn/DESIGN-STUDY.md](learn/DESIGN-STUDY.md). Poora design plan (3 clips se har feature, 47 components, tokens, mascot, IA, screens ka kram D0–D5): [learn/DESIGN-PLAN-V2.md](learn/DESIGN-PLAN-V2.md). Mock v2: pehle 5 screens, dark-first, asli React code + Playwright screenshots; owner ke jawab (DESIGN-PLAN-V2 §10) ka intezaar.
+**UI mock:** v1 ([learn/mock/README.md](learn/mock/README.md)) owner ko pasand nahi aaya (20 Oct). Kyun aur v2 kaise: [learn/DESIGN-STUDY.md](learn/DESIGN-STUDY.md). Poora design plan (3 clips se har feature, 47 components, tokens, mascot, IA, screens ka kram D0–D5): [learn/DESIGN-PLAN-V2.md](learn/DESIGN-PLAN-V2.md). **Mock v2 bana (20 Oct):** 41 screens + naksha, dark-first, React app (`learn/mock-v2/app`), 3 bhasha, dark/light, phone layout; link https://claude.ai/artifact/NsPXqTVifNbLEQB4rsYYmg; screens aur kaise dekhein: [learn/mock-v2/README.md](learn/mock-v2/README.md). **Owner ki raay ka intezaar** (kya pasand, kya badle) aur DESIGN-PLAN-V2 §10 ke jawab; haan milne par tokens + kit product me (D0–D1).
 
 **AB AGLA:** LV-F3 (problem package format), phir LV-F5 (visual renderer v1), phir LV-S0 (samples,
 [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) ki style me). Bulk content (C-slices) LV-S0 ki manzoori aur API key ke
@@ -192,10 +192,11 @@ baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 | # | Tareekh | Account / session | Kya kiya | Kahan ruka |
 |---|---|---|---|---|
-| 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8) | Design poora; agla LV-F3 |
+| 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8). 20 Oct: design study, DESIGN-PLAN-V2, mock v2 (41 screens, `learn/mock-v2/`) | Mock v2 owner ke saamne; raay ka intezaar. Code me agla LV-F3 |
 
 ## 7. Log (naya upar)
 
+- 20 Oct 2026: mock v2 bana: 41 screens + naksha (landing → onboarding → aaj → plan → problem/editorial (dry-run) → aptitude mock → contest → company → build → Pramaan → profile → Sahayak ...), Vite + React + lucide, ek HTML file; 63 screenshots `learn/mock-v2/screens/`; link https://claude.ai/artifact/NsPXqTVifNbLEQB4rsYYmg. Owner ki raay baaki.
 - 20 Oct 2026: owner ne mock v1 nakaara; TUF ke screenshots + Planly video ka design study (`learn/DESIGN-STUDY.md`): unki design DNA, v1 ki kamiyan, v2 ka tareeka, owner se kya chahiye.
 - 20 Oct 2026: TUF platform-features ke 3 clips (231 frames, 60 zoom, 40 rang naape) se `learn/DESIGN-PLAN-V2.md`: landing ka dhaancha, 9 feature ke flow (planner, curriculum, editorial, AI, company, aptitude, practice/POTD/contest, workspace, profile/certificate), 47 components ki haalatein, TUF ki kamiyan, hamare tokens/font/mascot/naam, IA, mock v2 ke 4 batch, kram D0–D5. Plugins abhi enable nahi (owner kare).
 - 19 Oct 2026: poore Learn ka clickable UI mock, 46 screens (learner, phone, admin), design canvas par; files `docs/learn/mock/` (README me link aur screen list). Code ke UI slices isi se match karenge.

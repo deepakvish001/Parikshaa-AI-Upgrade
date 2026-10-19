@@ -23,7 +23,7 @@ for (const w of widthsArg.split(",").map(Number)) {
     await page.waitForTimeout(1600);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     const name = `${outDir}/${route}-${w}-${theme}${lang === "en" ? "" : `-${lang}`}.jpg`;
-    await page.screenshot({ path: name, fullPage: full === "full", type: "jpeg", quality: 82 });
+    await page.screenshot({ path: name, fullPage: full === "full", type: "jpeg", quality: Number(process.env.Q || 82) });
     console.log(`${name}${overflow > 0 ? `  OVERFLOW ${overflow}px` : ""}`);
   }
   if (errors.length) console.log("ERRORS:", errors.join("\n"));

@@ -1,5 +1,7 @@
 # Learn v2: clickable UI mock (19 Oct 2026)
 
+> **Purana (v1), owner ne nakaara (20 Oct).** Naya mock v2: [../mock-v2/README.md](../mock-v2/README.md).
+
 Owner ne maanga: "pura learn platform ko only mock complete UI de sakte ho with flow, phir code karenge baad me".
 Ye wahi hai: **46 screens**, har screen ek file, links se juda flow. Data nakli hai, koi product code nahi.
 
