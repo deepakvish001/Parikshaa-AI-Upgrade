@@ -18,8 +18,10 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    se poochho.
 3. **Adhoora kaam:** autosave restore, [HIRE-HANDOFF.md](HIRE-HANDOFF.md) §7 wala tareeka (`autosave/claude/learn-v2`).
 4. **Apni row** §6 me jodo, commit + push.
-5. **Padho:** `CLAUDE.md`, ye file, [LEARN-V2.md](LEARN-V2.md) (poora), aur jis slice par kaam ho uske liye
-   [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) ka hissa.
+5. **Padho:** `CLAUDE.md`, ye file, [LEARN-V2.md](LEARN-V2.md) (poora), aur build spec `docs/learn/`:
+   [USER-FLOWS.md](learn/USER-FLOWS.md), [ARCHITECTURE.md](learn/ARCHITECTURE.md) (database, AI, judge),
+   [ADMIN-PANEL.md](learn/ADMIN-PANEL.md), [VISUAL-STYLE.md](learn/VISUAL-STYLE.md),
+   [EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md). Kharch/judge: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md).
 6. **Task list:** §3 se.
 7. `npm ci`, phir §5 ka pehla `[ ]` kadam.
 8. **Har kadam ke baad:** tests → `WIP(LV-…): …` commit → push → §3/§4/§5 me status → push. Limit 90% se upar ho to sab
@@ -138,6 +140,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 - [ ] LV-C7 DBMS/OS/CN/OOPs · [ ] LV-C8 SQL 300 · [ ] LV-C9 LLD + patterns · [ ] LV-C10 HLD
 - [ ] LV-C11 Languages (C, C++, Java, Python, JS/TS, Go) · [ ] LV-C12 CP math · [ ] LV-C13 Hinglish editions
 - [ ] LV-C14 Purane 1,260 problems: import + jaanch + originality (plan 91)
+- [ ] LV-C15 "Kaise padhein" free course + kitaab ke 7 problems (owner ki kitaab, [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) §8)
 
 ## 5. Abhi chal raha / agla kadam
 
@@ -153,5 +156,6 @@ baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 ## 7. Log (naya upar)
 
+- 19 Oct 2026: owner ke faisle: kitaab unki apni (text bhi use hoga), Plus chat history jab tak account, fair use 200/din. Reference images se sketch visual style; poora build spec `docs/learn/` (USER-FLOWS, ARCHITECTURE, ADMIN-PANEL, VISUAL-STYLE).
 - 19 Oct 2026: owner ki editorial file ("Decode Your Coding Interview") se style guide; roadmap.sh ke features (apne content se; unka licence content ki ijaazat nahi deta).
 - 19 Oct 2026: Learn v2 shuru. Design docs aur handoff. Hire ruka (agla H2d kadam 2, [HIRE-HANDOFF.md](HIRE-HANDOFF.md)).

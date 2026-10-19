@@ -1,15 +1,14 @@
 # Parikshaa editorial style (owner ki file se, 19 Oct 2026)
 
 **Source:** owner ne 19 Oct 2026 ko "Introduction to Decode Your Coding Interview" di (Notion export, Markdown, 4,020
-line; images file me nahi aayin). Usme: seekhne ka vigyan, interview ka process, Polya ke 4 kadam, 7 problems poore
+line; images file me nahi aayin). Repo me: [source/decode-your-coding-interview.md](source/decode-your-coding-interview.md). Usme: seekhne ka vigyan, interview ka process, Polya ke 4 kadam, 7 problems poore
 hal ke saath (Two Sum, Missing Numbers, Obstacle Grid, Rotate List, No Repeating Characters, Point To Next, Jump Game),
 system design ka tareeka (Twitter app), aur practice ka hafte-war plan. Har problem ka editorial **~2,000–3,450 shabd**
 ka hai.
 
-**Is file ka kaam:** us **style** ko Parikshaa ke 5,000 editorials ka niyam banana. Uska **text copy nahi hoga** (agar
-wo kisi aur ki kitaab hai to copyright; agar aapki apni hai to bata dein, phir intro aur practice-plan wale hisse
-seedhe "Kaise padhein" course me aa sakte hain, §8). Factory ka generator aur style critic dono isi file ko padhte
-hain.
+**Ye kitaab owner ki apni hai** (owner, 19 Oct 2026). Isliye: (1) iski **style** Parikshaa ke 5,000 editorials ka
+niyam hai; (2) iska **text** (intro, seekhne ka vigyan, practice plan, 7 problems, system design) seedhe Parikshaa par
+aa sakta hai, edit karke (§8). Factory ka generator aur style critic dono isi file ko padhte hain.
 
 ---
 
@@ -107,8 +106,8 @@ Learner pehle sirf kadam 1 khol sakta hai, phir 2 ka pehla hissa, aur aage. Saha
   Hinglish me: "Chalo index 0 se shuru karte hain."
 - **Chhote paragraph**, bold me key insight, aur `> **Note:**` callouts seekhne ki tip ke liye (har editorial me 3–6).
 - Kabhi-kabhi **"Science of learning"** tidbit (spaced repetition, galti se seekhna, likh kar yaad rakhna).
-- **Imaandari:** source me ek niji kissa hai ("isse maine Google ka hiring committee paar kiya"). **Hum aise kisse nahi
-  banayenge**; tip seedhi likhenge.
+- **Imaandari:** kitaab me owner ka apna kissa hai ("isse maine Google ka hiring committee paar kiya"); owner ke likhe
+  content me wo rahega. **AI se bane content me koi niji kissa nahi banega**; tip seedhi likhenge.
 - **Bahar ke problem links nahi:** source me ~120 LeetCode links hain; hamare editorial sirf **apne bank** ke problems
   se judte hain.
 - **Lambai:** Easy ~1,800–2,500 shabd, Medium ~2,500–3,500, Hard ~3,500–5,000 (source: 2,000–3,450).
@@ -161,8 +160,11 @@ Pehle 10 editorial isi style me (§1–§6), aapki manzoori ke liye ([LEARN-V2.m
 problems ke **idea** (Two Sum jaise classic) hamare apne statement, example aur kahani ke saath bana sakte hain, taaki
 aap seedhe milan kar sakein.
 
-## 8. "Kaise padhein" course (agar file aapki hai)
+## 8. "Kaise padhein" course (owner ki kitaab se, free)
 
-File ka shuru ka hissa (seekhne ka vigyan, interview ka process, terminology kaise seekhein, Polya, deliberate practice,
-hafte-war plan, topic-war checklists) Learn me ek free course ban sakta hai: "Interview ki taiyaari kaise karein".
-Agar file aapki apni hai to usi text ko edit karke; warna inhi ideas par apna likha hua.
+Kitaab ka shuru ka hissa (seekhne ka vigyan, interview ka process, terminology kaise seekhein, Polya ke 4 kadam,
+deliberate practice, hafte-war plan, topic-war checklists) Learn me **pehla free course** banega: "Interview ki taiyaari
+kaise karein", owner ke naam ke saath. Kitaab ke 7 problems (Two Sum, Missing Numbers, Obstacle Grid, Rotate List, No
+Repeating Characters, Point To Next, Jump Game) unhi editorials ke saath A2Z me, hamare tests aur dry-run sliders ke
+saath. System design wala hissa HLD track ka shuruaati lesson. Kaam: slice LV-C15. Kitaab ke LeetCode links hatenge,
+apne problems se judenge. Images (export me nahi aayin) sketch renderer se dobara banengi.

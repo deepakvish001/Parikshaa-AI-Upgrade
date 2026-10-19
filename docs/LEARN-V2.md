@@ -13,6 +13,11 @@ priority hai. Kaam kaise aage badhega: [LEARN-HANDOFF.md](LEARN-HANDOFF.md).
 - platform pehle **text-based**; video doosre phase me (record, edit, upload hoti rahengi), **DRM** ke saath: download
   na ho, screenshot/recording na ho sake.
 
+**Poora build spec (har choti-badi baat):** [learn/USER-FLOWS.md](learn/USER-FLOWS.md) (learner ke har screen ka flow,
+design, icons) · [learn/ARCHITECTURE.md](learn/ARCHITECTURE.md) (database, API, AI, judge, factory, suraksha) ·
+[learn/ADMIN-PANEL.md](learn/ADMIN-PANEL.md) (roles, har admin screen) · [learn/VISUAL-STYLE.md](learn/VISUAL-STYLE.md)
+(sketch visuals, dry-run sliders) · [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) (owner ki kitaab wali style).
+
 Saath ki docs: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) (judge, servers, AI model ka kharch, TUF video ka map),
 [LEARN-TUF-GAP.md](LEARN-TUF-GAP.md) (tulna, 10 saal), [LEARN-BUILD-LABS.md](LEARN-BUILD-LABS.md) (labs),
 [ROADMAP-END-TO-END.md](ROADMAP-END-TO-END.md) (content factory), [OWNER-SETUP.md](OWNER-SETUP.md).
@@ -162,6 +167,10 @@ galat-fehmiyan, interview sawaal (chhota + gehra jawab), 5 MCQ ka quiz, revision
 
 ### 3d. Visuals: insaan ke banaye jaise
 
+**Owner ke reference images (19 Oct 2026)** ki style: safed kaagaz, kaali haath jaisi lakeer, ek coral highlight,
+tirchhi chhaaya, haath ki likhawat. **Har DSA problem ka dry run isi style ke slider me.** Poora niyam:
+[learn/VISUAL-STYLE.md](learn/VISUAL-STYLE.md).
+
 Haath se 5,000 images banana mumkin nahi, aur AI se bani images me galti hoti hai. Isliye **visuals code se
 banenge**:
 
@@ -285,7 +294,7 @@ official guides) dena theek hai.
 | **AI courses aur guides** | Kisi bhi topic par: modules → lessons (maangne par banta hai), quiz, revision card; ek jaisa topic do log maangein to ek hi course (sasta, aur review ho sakta hai). Label: "AI ka banaya" ya "Expert ne jaancha" | 2/mahina | **Unlimited (fair use)** |
 | **Quizzes** | Kisi bhi lesson, roadmap node ya topic par; hamare bank (5,000 aptitude + MCQ) se, ya AI se jo do model se jaanche gaye | Roz ki seema | **Unlimited** |
 | **Expert-written premium content** | Insaan ke jaanche A2Z editorials ke gehre hisse, LLD/HLD case studies, company-pattern mocks | Bada hissa free (TUF jaisa) | Sab |
-| **Chat history** | Sahayak ki baatein | 180 din (abhi ka niyam ✅) | **Jab tak aap rakhna chahein** (aapki marzi, export/delete) |
+| **Chat history** | Sahayak ki baatein | 180 din (abhi ka niyam ✅) | **Jab tak account hai** (owner, 19 Oct 2026); export/delete kabhi bhi |
 | **Naye features pehle** | Feature flags me "Plus beta" group | — | Haan |
 | **Projects** | Har roadmap ke projects **Build Labs** me: live environment, apne aap jaanch ([LEARN-BUILD-LABS.md](LEARN-BUILD-LABS.md)) | Kuch | Sab |
 
@@ -514,7 +523,7 @@ par ₹6.6–12 lakh) + video bandwidth (phase 2).
 
 | # | Kya | Kab |
 |---|---|---|
-| 1 | Editorial style ✅ mil gayi. Bas batayein: "Decode Your Coding Interview" aapki apni hai ya kisi kitaab ki? (apni ho to uska text bhi course me) | Abhi |
+| 1 | ✅ Editorial style mili; kitaab owner ki apni (19 Oct): text bhi platform par ("Kaise padhein" course + 7 problems) | — |
 | 2 | 10 sample editorials + 10 aptitude + 2 lessons ki manzoori (§3g) | Hafta 1 |
 | 3 | Bade pages ke mockups ki manzoori | Hafta 1–2 |
 | 4 | [OWNER-SETUP.md](OWNER-SETUP.md): GitHub billing, domain, Vercel/Supabase Pro, AWS, **Anthropic API key** (factory ke liye), Razorpay | Hafta 0–1 |
@@ -523,8 +532,8 @@ par ₹6.6–12 lakh) + video bandwidth (phase 2).
 | 7 | Plus ka daam aur free ki seema | Hafta 6 |
 | 8 | Beta ke 1–2 college | Hafta 6 |
 | 9 | Phase 2: DRM provider account (KYC), Apple/Google developer accounts, video recording ka schedule | Hafta 10 |
-| 10 | Plus me chat history "jab tak aap chahein" (abhi niyam: 180 din me delete, DPDP ke liye). Sujhav: default 180 din, Plus user khud "hamesha rakho" chun sake, export/delete ke saath | Hafta 4 |
-| 11 | "Unlimited" AI ka fair-use: roz kitne message tak poori speed (sujhav ~200) | Hafta 4 |
+| 10 | ✅ Plus me chat history jab tak account hai (19 Oct); privacy notice me likhna | — |
+| 11 | ✅ Fair use: 200 message/din poori speed (19 Oct) | — |
 
 ---
 
