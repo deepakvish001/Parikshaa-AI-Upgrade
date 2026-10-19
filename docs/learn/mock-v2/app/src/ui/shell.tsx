@@ -164,13 +164,13 @@ export function TopBar({ onSearch, onSahayak }: { onSearch: () => void; onSahaya
 
 function SideNav({ screen }: { screen: ScreenDef }) {
   const t = useT();
-  const section = SECTIONS.find((s) => s.id === screen.section);
-  if (!section) return null;
-  const items = SCREENS.filter((s) => s.section === section.id && s.layout === "shell" && !s.hidden);
+  const isMine = screen.section === "mera";
+  const section = SECTIONS.find((s) => s.id === screen.section) ?? { id: "mera", name: ["Mine", "Mera", "मेरा"] as [string, string, string], home: "lists" };
+  const items = isMine ? [] : SCREENS.filter((s) => s.section === section.id && (s.nav || (s.layout === "shell" && !s.hidden)));
   return (
     <nav className="sidenav" aria-label={t(...section.name)}>
       <h2>{t(...section.name)}</h2>
-      <div className="group">
+      <div className="group" hidden={isMine}>
         {items.map((s) => {
           const Icon = s.icon;
           return (
@@ -183,7 +183,7 @@ function SideNav({ screen }: { screen: ScreenDef }) {
         })}
       </div>
       <div className="group">
-        <span className="eyebrow">{t("Mine", "Mera", "मेरा")}</span>
+        {!isMine && <span className="eyebrow">{t("Mine", "Mera", "मेरा")}</span>}
         {SCREENS.filter((s) => s.section === "mera" && !s.hidden).map((s) => {
           const Icon = s.icon;
           return (
@@ -224,7 +224,7 @@ function SideFoot() {
 
 function SubnavStrip({ screen }: { screen: ScreenDef }) {
   const t = useT();
-  const items = SCREENS.filter((s) => s.section === screen.section && s.layout === "shell" && !s.hidden);
+  const items = SCREENS.filter((s) => s.section === screen.section && (s.nav || (s.layout === "shell" && !s.hidden)));
   return (
     <nav className="subnav-strip" aria-label="Section">
       {items.map((s) => (

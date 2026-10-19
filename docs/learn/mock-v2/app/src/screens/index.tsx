@@ -16,6 +16,12 @@ import { SqlScreen } from "./sql";
 import { AptitudeBody, AptSetBody, AptMockScreen, AptResultBody } from "./aptitude";
 import { PotdBody } from "./potd";
 import { ContestsBody, ContestBriefBody, ContestLiveScreen, ContestResultBody } from "./contests";
+import { SeekhoBody, RoadmapBody, CourseBody, LessonBody } from "./seekho";
+import { CompaniesBody, CompanyBody, ExperiencesBody } from "./companies";
+import { BuildBody, StudioScreen, ProjectBody } from "./banao";
+import { PramaanBody, CertificateBody, ProfileBody, JobsBody } from "./career";
+import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mera";
+import { RevisionBody, DailyBody } from "./aaj2";
 
 type View = { Body: ComponentType; Rail?: ComponentType };
 
@@ -56,6 +62,28 @@ const views: Record<string, View> = {
   "contest-brief": { Body: ContestBriefBody },
   "contest-live": { Body: ContestLiveScreen },
   "contest-result": { Body: ContestResultBody },
+  seekho: { Body: SeekhoBody },
+  roadmap: { Body: RoadmapBody },
+  course: { Body: CourseBody },
+  lesson: { Body: LessonBody },
+  companies: { Body: CompaniesBody },
+  company: { Body: CompanyBody },
+  experiences: { Body: ExperiencesBody },
+  build: { Body: BuildBody },
+  studio: { Body: StudioScreen },
+  project: { Body: ProjectBody },
+  pramaan: { Body: PramaanBody },
+  certificate: { Body: CertificateBody },
+  profile: { Body: ProfileBody },
+  jobs: { Body: JobsBody },
+  lists: { Body: ListsBody },
+  notes: { Body: NotesBody },
+  sahayak: { Body: SahayakPageBody },
+  community: { Body: CommunityBody },
+  plus: { Body: PlusBody },
+  settings: { Body: SettingsBody },
+  revision: { Body: RevisionBody },
+  daily: { Body: DailyBody },
 };
 
 export const SCREEN_VIEWS: Record<string, View> = Object.fromEntries(

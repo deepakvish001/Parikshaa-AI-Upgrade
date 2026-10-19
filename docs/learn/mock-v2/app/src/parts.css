@@ -134,6 +134,7 @@
 .heatmap {
   display: grid;
   gap: 3px;
+  max-width: 560px;
 }
 .heat-col {
   display: grid;
