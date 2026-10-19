@@ -1,0 +1,70 @@
+/* ---------- map extras ---------- */
+.map-tips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 22px;
+  color: var(--text-3);
+  font-size: var(--fs-12);
+}
+.map-tips span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.map-diya {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 200px;
+  padding: 22px 18px;
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: radial-gradient(120% 90% at 50% 10%, var(--plus-soft), transparent 70%), var(--panel);
+}
+.map-lang .lang-switch {
+  display: inline-flex !important;
+}
+
+/* ---------- shared bits ---------- */
+.hover-card {
+  color: var(--text);
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+}
+.hover-card:hover {
+  text-decoration: none;
+  border-color: var(--line-strong);
+  transform: translateY(-2px);
+}
+.streak-week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+  font-size: var(--fs-11);
+  color: var(--text-3);
+  font-weight: 700;
+}
+.streak-week span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.streak-week i {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--raised-2);
+  color: var(--text-3);
+}
+.streak-week i.lit {
+  background: var(--plus-soft);
+  color: var(--plus);
+}
+.streak-week i.now {
+  box-shadow: 0 0 0 2px var(--plus);
+}

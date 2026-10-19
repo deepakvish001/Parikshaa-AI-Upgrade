@@ -1,0 +1,33 @@
+import type { ComponentType } from "react";
+import { Hammer } from "lucide-react";
+import { useT, Link } from "../lib/core";
+import { SCREENS } from "./registry";
+import { MapScreen } from "./map";
+import { AajBody, AajRail } from "./aaj";
+
+type View = { Body: ComponentType; Rail?: ComponentType };
+
+function Soon() {
+  const t = useT();
+  const id = window.location.hash.replace("#", "");
+  const s = SCREENS.find((x) => x.id === id);
+  return (
+    <div className="page narrow" style={{ paddingTop: 40 }}>
+      <div className="panel pad-lg stack" style={{ alignItems: "flex-start" }}>
+        <Hammer size={22} className="faint" />
+        <h1 style={{ fontSize: "var(--fs-22)" }}>{s ? t(...s.title) : id}</h1>
+        <p className="muted">{t("This screen is being built in the next batch.", "Ye screen agle batch me ban rahi hai.", "यह स्क्रीन अगले बैच में बन रही है।")}</p>
+        <Link to="map" className="btn secondary sm">{t("All screens", "Saari screens", "सभी स्क्रीन")}</Link>
+      </div>
+    </div>
+  );
+}
+
+const views: Record<string, View> = {
+  map: { Body: MapScreen },
+  aaj: { Body: AajBody, Rail: AajRail },
+};
+
+export const SCREEN_VIEWS: Record<string, View> = Object.fromEntries(
+  SCREENS.map((s) => [s.id, views[s.id] ?? { Body: Soon }]),
+);
