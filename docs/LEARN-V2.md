@@ -16,7 +16,11 @@ priority hai. Kaam kaise aage badhega: [LEARN-HANDOFF.md](LEARN-HANDOFF.md).
 **Poora build spec (har choti-badi baat):** [learn/USER-FLOWS.md](learn/USER-FLOWS.md) (learner ke har screen ka flow,
 design, icons) · [learn/ARCHITECTURE.md](learn/ARCHITECTURE.md) (database, API, AI, judge, factory, suraksha) ·
 [learn/ADMIN-PANEL.md](learn/ADMIN-PANEL.md) (roles, har admin screen) · [learn/VISUAL-STYLE.md](learn/VISUAL-STYLE.md)
-(sketch visuals, dry-run sliders) · [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) (owner ki kitaab wali style).
+(sketch visuals, dry-run sliders) · [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) (owner ki kitaab wali style) ·
+[learn/PROBLEM-STANDARD.md](learn/PROBLEM-STANDARD.md) (problem package v2, tests) · [learn/CODE-STUDIO.md](learn/CODE-STUDIO.md)
+(browser me VS Code jaisa IDE, guided labs, har technology ka "LeetCode", LLD/HLD practice) ·
+[learn/CONTENT-CATALOG.md](learn/CONTENT-CATALOG.md) (~65 courses, ~2,200 lessons, ~320 labs, articles, cheat sheets) ·
+[learn/OPEN-PLANNING.md](learn/OPEN-PLANNING.md) (aur kya plan karna baaki hai).
 
 Saath ki docs: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) (judge, servers, AI model ka kharch, TUF video ka map),
 [LEARN-TUF-GAP.md](LEARN-TUF-GAP.md) (tulna, 10 saal), [LEARN-BUILD-LABS.md](LEARN-BUILD-LABS.md) (labs),

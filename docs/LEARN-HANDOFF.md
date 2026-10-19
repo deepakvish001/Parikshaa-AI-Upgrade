@@ -126,6 +126,33 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 - [ ] LV-R5 Pen test fixes + readiness report
 - [ ] LV-R6 DPDP: age gate/consent, privacy flows
 
+**K: Code Studio aur graders** ([learn/CODE-STUDIO.md](learn/CODE-STUDIO.md) §9)
+- [ ] LV-K1 Studio core (E0): CodeMirror editor, files/tabs, E0 shell (xterm.js), tests panel, checkpoints, autosave, command palette
+- [ ] LV-K2 Web preview: esbuild-wasm, npm mirror (Verdaccio), alag-domain sandboxed iframe; graders `dom` (Playwright), `a11y`, `visual`
+- [ ] LV-K3 Python/DS notebook (Pyodide) + graders `dataframe`, `notebook`
+- [ ] LV-K4 SQL in Studio (sql.js + PGlite) + `sql` grader v2 (kai datasets)
+- [ ] LV-K5 Guided lab engine (package, steps, checks, hints, explain, solution patch) + author mode ("starter fail, solution pass")
+- [ ] LV-K6 `http` grader (Node/Java/Go servers) + FerretDB
+- [ ] LV-K7 Arenas UI (har arena ki list, contests ✅ reuse)
+- [ ] LV-K8 ML `metric` grader + datasets manager (licence field)
+- [ ] LV-K9 LLD graders (change request, code metrics) + AI review (sirf salah)
+- [ ] LV-K10 HLD: estimation drills, component katas, design canvas + simulator, AI interviewer
+- [ ] LV-K11 microVM (E2) + `script` grader (DevOps, Spring, MERN)
+- [ ] LV-K12 GenAI labs (mock LLM)
+
+**X: Arenas ka content** ([learn/CODE-STUDIO.md](learn/CODE-STUDIO.md) §3)
+- [ ] LV-X1 JavaScript 300 + output-predict 300 · [ ] LV-X2 Frontend/React 250 · [ ] LV-X3 Backend/Node 200
+- [ ] LV-X4 Python 300 · [ ] LV-X5 Data Science 250 · [ ] LV-X6 ML 200 · [ ] LV-X7 DL/GenAI 150
+- [ ] LV-X8 Java 200 + Spring 30 labs · [ ] LV-X9 Go 150 · [ ] LV-X10 DevOps 150 labs
+- [ ] LV-X11 LLD 120 · [ ] LV-X12 HLD 150 + estimation 300 + concept 500
+
+**W: Courses, articles** ([learn/CONTENT-CATALOG.md](learn/CONTENT-CATALOG.md))
+- [ ] LV-W1 Course page + syllabus + lesson template v2 (owner ki kitaab ki soch)
+- [ ] LV-W2 Launch ke ~20 courses (§6 "Launch")
+- [ ] LV-W3 Articles/blog engine (SEO: schema, sitemap, prerender) + pehle 30 articles
+- [ ] LV-W4 Cheat sheets (PDF, watermark)
+- [ ] LV-W5 Phase 3 aur 4 ke courses
+
 **V: Video + DRM (phase 2)**
 - [ ] LV-V1 Video upload + transcode (admin), `VideoProvider` adapter
 - [ ] LV-V2 DRM player (Shaka + FairPlay) + license token + device/stream limit
@@ -157,6 +184,7 @@ baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 ## 7. Log (naya upar)
 
+- 19 Oct 2026: Code Studio (browser IDE), guided labs, 13 arenas (JS se HLD tak), ~65 courses ka catalog, articles ka plan, aur "baaki planning" ki list (`learn/CODE-STUDIO.md`, `learn/CONTENT-CATALOG.md`, `learn/OPEN-PLANNING.md`).
 - 19 Oct 2026: owner ke problem JSON (SQL + series 25/26/28/29) ka audit aur problem standard v2 (`learn/PROBLEM-STANDARD.md`); Basics track 500.
 - 19 Oct 2026: owner ke faisle: kitaab unki apni (text bhi use hoga), Plus chat history jab tak account, fair use 200/din. Reference images se sketch visual style; poora build spec `docs/learn/` (USER-FLOWS, ARCHITECTURE, ADMIN-PANEL, VISUAL-STYLE).
 - 19 Oct 2026: owner ki editorial file ("Decode Your Coding Interview") se style guide; roadmap.sh ke features (apne content se; unka licence content ki ijaazat nahi deta).
