@@ -7,6 +7,7 @@ import "./app.css";
 import "./parts.css";
 import "./screens.css";
 import "./work.css";
+import "./more.css";
 import { LangProvider, ThemeProvider, ToastProvider, navigate, useRoute, useT } from "./lib/core";
 import { SCREENS } from "./screens/registry";
 import { SCREEN_VIEWS } from "./screens";

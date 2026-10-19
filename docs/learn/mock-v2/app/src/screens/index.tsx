@@ -13,6 +13,9 @@ import { SheetBody, SheetRail } from "./sheet";
 import { EditorialBody } from "./editorial";
 import { AbhyasBody } from "./abhyas";
 import { SqlScreen } from "./sql";
+import { AptitudeBody, AptSetBody, AptMockScreen, AptResultBody } from "./aptitude";
+import { PotdBody } from "./potd";
+import { ContestsBody, ContestBriefBody, ContestLiveScreen, ContestResultBody } from "./contests";
 
 type View = { Body: ComponentType; Rail?: ComponentType };
 
@@ -44,6 +47,15 @@ const views: Record<string, View> = {
   editorial: { Body: EditorialBody },
   abhyas: { Body: AbhyasBody },
   sql: { Body: SqlScreen },
+  aptitude: { Body: AptitudeBody },
+  "apt-set": { Body: AptSetBody },
+  "apt-mock": { Body: AptMockScreen },
+  "apt-result": { Body: AptResultBody },
+  potd: { Body: PotdBody },
+  contests: { Body: ContestsBody },
+  "contest-brief": { Body: ContestBriefBody },
+  "contest-live": { Body: ContestLiveScreen },
+  "contest-result": { Body: ContestResultBody },
 };
 
 export const SCREEN_VIEWS: Record<string, View> = Object.fromEntries(
