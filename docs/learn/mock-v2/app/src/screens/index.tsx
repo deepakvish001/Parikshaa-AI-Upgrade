@@ -8,6 +8,11 @@ import { LandingScreen } from "./landing";
 import { LoginScreen } from "./login";
 import { OnboardingScreen } from "./onboarding";
 import { PlanBody } from "./plan";
+import { ProblemScreen } from "./problem";
+import { SheetBody, SheetRail } from "./sheet";
+import { EditorialBody } from "./editorial";
+import { AbhyasBody } from "./abhyas";
+import { SqlScreen } from "./sql";
 
 type View = { Body: ComponentType; Rail?: ComponentType };
 
@@ -34,6 +39,11 @@ const views: Record<string, View> = {
   login: { Body: LoginScreen },
   onboarding: { Body: OnboardingScreen },
   plan: { Body: PlanBody },
+  problem: { Body: ProblemScreen },
+  sheet: { Body: SheetBody, Rail: SheetRail },
+  editorial: { Body: EditorialBody },
+  abhyas: { Body: AbhyasBody },
+  sql: { Body: SqlScreen },
 };
 
 export const SCREEN_VIEWS: Record<string, View> = Object.fromEntries(

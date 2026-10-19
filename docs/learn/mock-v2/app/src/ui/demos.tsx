@@ -56,7 +56,7 @@ export function DemoVerdict() {
         <span className="eyebrow">{t("Smallest test you fail", "Sabse chhota galat test", "सबसे छोटा गलत टेस्ट")}</span>
         <dl>
           <dt>{t("Input", "Input", "इनपुट")}</dt>
-          <dd className="mono">n=2 · a=[1e9, 1e9] · target=2e9</dd>
+          <dd className="mono">n=2 · a=[2³⁰, 2³⁰] · target=2³¹</dd>
           <dt>{t("Yours", "Aapka", "आपका")}</dt>
           <dd className="mono bad">-1</dd>
           <dt>{t("Expected", "Sahi", "सही")}</dt>

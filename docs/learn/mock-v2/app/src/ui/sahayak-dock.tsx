@@ -49,9 +49,9 @@ export function SahayakChat({ compact }: { compact?: boolean }) {
     "24 में से 23 टेस्ट पास हैं, यानी तरीका सही है। गलती एक इनपुट में है, तरीके में नहीं।",
   );
   const buildIntro = t(
-    "Line 6 adds two values up to 10⁹ in an int. The sum overflows past 2,147,483,647. Use long long for the sum.",
-    "Line 6 me do value (10⁹ tak) int me jud rahi hain. Sum 2,147,483,647 se upar overflow hota hai. Sum ke liye long long lo.",
-    "पंक्ति 6 में दो मान (10⁹ तक) int में जुड़ रहे हैं। योग 2,147,483,647 से ऊपर ओवरफ़्लो होता है। योग के लिए long long लें।",
+    "Line 4 adds two values up to 1.5 × 10⁹ in an int. Their sum can pass 2,147,483,647 and wrap to a negative number. Keep the sum in a long long.",
+    "Line 4 me do value (1.5 × 10⁹ tak) int me jud rahi hain. Sum 2,147,483,647 se upar jaakar negative ho jaata hai. Sum long long me rakho.",
+    "पंक्ति 4 में दो मान (1.5 × 10⁹ तक) int में जुड़ रहे हैं। योग 2,147,483,647 से ऊपर जाकर ऋणात्मक हो जाता है। योग long long में रखें।",
   );
   const intro = useStream(mode === "learn" ? learnIntro : buildIntro, true);
 
@@ -113,9 +113,9 @@ export function SahayakChat({ compact }: { compact?: boolean }) {
               </>
             ) : (
               <pre className="mini-diff">
-                <span className="del">- int sum = a[i] + a[j];</span>
+                <span className="del">- int sum = a[L] + a[R];</span>
                 {"\n"}
-                <span className="add">+ long long sum = (long long)a[i] + a[j];</span>
+                <span className="add">+ long long sum = (long long)a[L] + a[R];</span>
               </pre>
             )}
             <div className="ai-foot">
@@ -134,9 +134,9 @@ export function SahayakChat({ compact }: { compact?: boolean }) {
               <div className="ai-card">
                 <p>
                   {t(
-                    "Right. And 10⁹ + 10⁹ = 2 × 10⁹, which is bigger. So which type should hold the sum?",
-                    "Sahi. Aur 10⁹ + 10⁹ = 2 × 10⁹, jo usse bada hai. To sum kis type me rakhoge?",
-                    "सही। और 10⁹ + 10⁹ = 2 × 10⁹, जो उससे बड़ा है। तो योग किस टाइप में रखोगे?",
+                    "Right. The failing test adds 2³⁰ + 2³⁰ = 2,147,483,648, one more than that. So which type should hold the sum?",
+                    "Sahi. Galat test me 2³⁰ + 2³⁰ = 2,147,483,648, usse ek zyada. To sum kis type me rakhoge?",
+                    "सही। गलत टेस्ट में 2³⁰ + 2³⁰ = 2,147,483,648, उससे एक ज़्यादा। तो योग किस टाइप में रखोगे?",
                   )}
                 </p>
               </div>
