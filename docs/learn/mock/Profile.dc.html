@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Public profile</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="background: #fdebd4; border-bottom: 1px solid #f3d59f">
+    <div style="max-width: 1120px; margin: 0 auto; padding: 10px 24px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 14px">
+      <span style="font-weight: 600">Aap apna profile us tarah dekh rahe ho jaise doosre dekhenge.</span>
+      <div role="group" aria-label="Kaun dekh sakta hai" style="display: flex; gap: 4px; margin-left: auto">
+        <sc-for list="{{privacy}}" as="p" hint-placeholder-count="3">
+          <button type="button" onClick="{{p.pick}}" aria-pressed="{{p.on}}" style="min-height: 36px; padding: 0 12px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; {{p.style}}">{{p.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <main style="max-width: 1120px; margin: 0 auto; padding: 28px 24px 56px">
+    <section style="display: flex; flex-wrap: wrap; gap: 20px; align-items: center; padding: 24px; border-radius: 22px; background: #ffffff; border: 1px solid #e2e6ef; margin-bottom: 18px">
+      <div aria-hidden="true" style="width: 88px; height: 88px; border-radius: 50%; background: #fdebd4; color: #a35200; display: grid; place-items: center; font-size: 36px; font-weight: 800">A</div>
+      <div style="flex: 1 1 320px">
+        <h1 style="margin: 0; font-size: 28px">Aarav Sharma</h1>
+        <div style="color: #373f52">B.Tech CSE 2027 · [COLLEGE NAAM] · Indore</div>
+        <div style="color: #4f586c; font-size: 14px; margin-top: 4px">SDE internship ki talaash me · React, C++, SQL</div>
+        <div style="display: flex; gap: 14px; margin-top: 8px; font-size: 14px; font-weight: 600"><a href="Profile.dc.html">GitHub</a><a href="Profile.dc.html">LinkedIn</a><a href="Career.dc.html">Resume PDF</a></div>
+      </div>
+      <div style="display: flex; gap: 10px; flex-wrap: wrap">
+        <span style="padding: 10px 16px; border-radius: 12px; background: #e7f6ef; color: #0d5c42; font-weight: 700; font-size: 14px">Internship ke liye khula</span>
+      </div>
+    </section>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px">
+      <div style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">DSA problems</div><div style="font-size: 26px; font-weight: 800">142</div></div>
+      <div style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Contest rating</div><div style="font-size: 26px; font-weight: 800">1384</div></div>
+      <div style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Projects live</div><div style="font-size: 26px; font-weight: 800">2</div></div>
+      <div style="padding: 16px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Pramaan</div><div style="font-size: 26px; font-weight: 800">2</div></div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <div style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+        <section aria-labelledby="proj" style="padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="proj" style="margin: 0 0 12px; font-size: 18px">Projects</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px">
+            <a href="Project.dc.html" style="display: block; border-radius: 14px; border: 1px solid #e2e6ef; overflow: hidden; text-decoration: none; color: #131a2e"><div style="height: 100px; background: #fdebd4; display: grid; place-items: center; font-family: 'Kalam', cursive; font-size: 24px; color: #111111">Hisaab</div><div style="padding: 12px"><b>Hisaab: kharcha tracker</b><div style="font-size: 13px; color: #5f687c">React · 24/24 tests · live</div></div></a>
+            <a href="Project.dc.html" style="display: block; border-radius: 14px; border: 1px solid #e2e6ef; overflow: hidden; text-decoration: none; color: #131a2e"><div style="height: 100px; background: #eaf2fc; display: grid; place-items: center; font-family: 'Kalam', cursive; font-size: 24px; color: #111111">GET /books</div><div style="padding: 12px"><b>Library API</b><div style="font-size: 13px; color: #5f687c">Node + Postgres · 31 HTTP tests</div></div></a>
+          </div>
+        </section>
+        <section aria-labelledby="act" style="padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 12px"><h2 id="act" style="margin: 0; font-size: 18px">Saal bhar ki mehnat</h2><span style="font-size: 13px; color: #5f687c">186 active din</span></div>
+          <div role="img" aria-label="Pichhle 26 hafton ki activity" style="display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 12px); grid-template-columns: repeat(26, minmax(0, 1fr)); gap: 3px; overflow-x: auto">
+            <sc-for list="{{heat}}" as="h" hint-placeholder-count="182">
+              <span style="border-radius: 2px; background: {{h.c}}"></span>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+
+      <div style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+        <section aria-labelledby="skills" style="padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="skills" style="margin: 0 0 6px; font-size: 18px">Skills (jaanch se, likhe hue se nahi)</h2>
+          <svg role="img" aria-label="Skills: DSA 72, CS core 45, Web 60, SQL 70, Aptitude 55, System design 30 pratishat" viewBox="0 0 300 300" style="width: 100%; max-width: 320px; display: block; margin: 0 auto">
+            <polygon points="150,40 245.3,95 245.3,205 150,260 54.7,205 54.7,95" fill="none" stroke="#e2e6ef" stroke-width="1.5"/>
+            <polygon points="150,95 197.6,122.5 197.6,177.5 150,205 102.4,177.5 102.4,122.5" fill="none" stroke="#e2e6ef" stroke-width="1.5"/>
+            <polygon points="150,70.8 192.9,125.3 207.2,183 150,227 97.6,180.3 121.4,133.5" fill="rgba(51,70,196,0.18)" stroke="#3346c4" stroke-width="2.5" stroke-linejoin="round"/>
+            <text x="150" y="28" text-anchor="middle" font-size="13" font-weight="700" fill="#131a2e" font-family="Noto Sans, sans-serif">DSA</text>
+            <text x="252" y="88" font-size="13" font-weight="700" fill="#131a2e" font-family="Noto Sans, sans-serif">CS core</text>
+            <text x="252" y="220" font-size="13" font-weight="700" fill="#131a2e" font-family="Noto Sans, sans-serif">Web</text>
+            <text x="150" y="282" text-anchor="middle" font-size="13" font-weight="700" fill="#131a2e" font-family="Noto Sans, sans-serif">SQL</text>
+            <text x="48" y="220" text-anchor="end" font-size="13" font-weight="700" fill="#131a2e" font-family="Noto Sans, sans-serif">Aptitude</text>
+            <text x="48" y="88" text-anchor="end" font-size="13" font-weight="700" fill="#131a2e" font-family="Noto Sans, sans-serif">Design</text>
+          </svg>
+        </section>
+        <section aria-labelledby="pram" style="padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="pram" style="margin: 0 0 10px; font-size: 18px">Pramaan</h2>
+          <a href="Pramaan.dc.html" style="display: flex; justify-content: space-between; padding: 12px; border-radius: 12px; background: #f1ebff; color: #131a2e; text-decoration: none; margin-bottom: 8px"><b>DSA Foundations</b><span style="color: #6b3fd4; font-weight: 700">Verify</span></a>
+          <a href="Pramaan.dc.html" style="display: flex; justify-content: space-between; padding: 12px; border-radius: 12px; background: #f1ebff; color: #131a2e; text-decoration: none"><b>SQL Level 1</b><span style="color: #6b3fd4; font-weight: 700">Verify</span></a>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { vis: 'recruiters' };
+  }
+  renderVals() {
+    const privacy = [['public', 'Sab ke liye'], ['link', 'Sirf link se'], ['recruiters', 'Sirf recruiters']].map(([id, label]) => ({
+      label, on: this.state.vis === id,
+      style: this.state.vis === id ? 'border: 1px solid #141b4d; background: #141b4d; color: #ffffff' : 'border: 1px solid #cdd3df; background: #ffffff; color: #373f52',
+      pick: () => this.setState({ vis: id })
+    }));
+    const shades = ['#eef0f6', '#c9cffa', '#7482ee', '#3346c4'];
+    const heat = [];
+    for (let i = 0; i < 182; i++) {
+      const v = ((i * 13 + (i % 7) * 5) % 9) % 4;
+      heat.push({ c: shades[i < 30 ? Math.min(v, 1) : v] });
+    }
+    return { privacy, heat };
+  }
+}
+</script>
+</body>
+</html>

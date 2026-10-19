@@ -2,7 +2,7 @@
 
 Flows aur screens ki list: [USER-FLOWS.md](USER-FLOWS.md). Ye doc batata hai **kaise** har page best bane: niyam,
 har bade page ka dhaancha (desktop + phone), chhoti-chhoti baatein, aur UX ko naapne ka tareeka. Sab cheezein
-[ALL-IN-ONE.md](ALL-IN-ONE.md) ke 7 stambh par.
+[ALL-IN-ONE.md](ALL-IN-ONE.md) ke 7 stambh par. Clickable mock (46 screens): [mock/README.md](mock/README.md).
 
 ---
 

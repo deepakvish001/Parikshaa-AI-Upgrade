@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Plus</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="plus" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 32px 32px 56px; box-sizing: border-box">
+      <div style="text-align: center; max-width: 720px; margin: 0 auto 24px">
+        <h1 style="margin: 0 0 8px; font-size: 34px">Plus: jitna chaho seekho</h1>
+        <p style="margin: 0 0 18px; color: #4f586c; font-size: 17px">Free hamesha free rahega. Plus un ke liye jo roz aur gehraai se padhte hain.</p>
+        <div role="group" aria-label="Billing" style="display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: #eef0f6">
+          <button type="button" onClick="{{monthly}}" aria-pressed="{{isMonth}}" style="min-height: 40px; padding: 0 18px; border: 0; border-radius: 9px; font: inherit; font-weight: 700; cursor: pointer; {{mBtn}}">Mahina</button>
+          <button type="button" onClick="{{yearly}}" aria-pressed="{{isYear}}" style="min-height: 40px; padding: 0 18px; border: 0; border-radius: 9px; font: inherit; font-weight: 700; cursor: pointer; {{yBtn}}">Saal <span style="font-size: 12px; color: #117a57">[X]% bachat</span></button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; max-width: 1080px; margin: 0 auto">
+        <section aria-labelledby="free" style="padding: 26px; border-radius: 22px; background: #ffffff; border: 1px solid #e2e6ef; display: flex; flex-direction: column">
+          <h2 id="free" style="margin: 0; font-size: 22px">Free</h2>
+          <div style="font-size: 34px; font-weight: 800; margin: 8px 0 2px">₹0</div>
+          <div style="color: #5f687c; font-size: 14px; margin-bottom: 16px">Hamesha</div>
+          <ul style="margin: 0 0 20px; padding-left: 20px; line-height: 1.8; color: #373f52; flex: 1">
+            <li>DSA A2Z sheet + editorials ke pehle 2 kadam</li>
+            <li>Har course ke pehle module</li>
+            <li>Sahayak: roz 10 message</li>
+            <li>Contests, rating, community</li>
+            <li>3 custom roadmaps</li>
+          </ul>
+          <span style="display: flex; justify-content: center; align-items: center; min-height: 48px; border-radius: 12px; border: 1px solid #cdd3df; font-weight: 700">Aapka abhi ka plan</span>
+        </section>
+
+        <section aria-labelledby="plus" style="padding: 26px; border-radius: 22px; background: #141b4d; color: #ffffff; display: flex; flex-direction: column; box-shadow: 0 0 0 3px #f28c28">
+          <div style="display: flex; justify-content: space-between; align-items: center"><h2 id="plus" style="margin: 0; font-size: 22px">Plus</h2><span style="font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #f28c28; color: #131a2e">Sabse zyada chuna</span></div>
+          <div style="font-size: 34px; font-weight: 800; margin: 8px 0 2px">{{price}}</div>
+          <div style="color: #c9cffa; font-size: 14px; margin-bottom: 16px">{{priceNote}}</div>
+          <ul style="margin: 0 0 20px; padding-left: 20px; line-height: 1.8; color: #e3e7fd; flex: 1">
+            <li>Saare editorials, dry runs, premium courses</li>
+            <li>Sahayak: fair use roz 200, chat history</li>
+            <li>AI courses, guides, unlimited quiz</li>
+            <li>100 custom roadmaps</li>
+            <li>Code Studio labs, arenas ke saare problems</li>
+            <li>2 Pramaan attempts saal me</li>
+            <li>Naye features sabse pehle</li>
+          </ul>
+          <a href="Home.dc.html" style="display: flex; justify-content: center; align-items: center; min-height: 48px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">UPI se Plus lo</a>
+        </section>
+
+        <section aria-labelledby="campus" style="padding: 26px; border-radius: 22px; background: #ffffff; border: 1px solid #e2e6ef; display: flex; flex-direction: column">
+          <h2 id="campus" style="margin: 0; font-size: 22px">Campus</h2>
+          <div style="font-size: 34px; font-weight: 800; margin: 8px 0 2px">[CAMPUS PRICE]</div>
+          <div style="color: #5f687c; font-size: 14px; margin-bottom: 16px">per student per saal, college ke liye</div>
+          <ul style="margin: 0 0 20px; padding-left: 20px; line-height: 1.8; color: #373f52; flex: 1">
+            <li>Har student ko Plus</li>
+            <li>TPO dashboard, batch readiness</li>
+            <li>College contests, lab mode</li>
+            <li>Placement drives (Parikshaa Campus)</li>
+          </ul>
+          <a href="Main.dc.html" style="display: flex; justify-content: center; align-items: center; min-height: 48px; border-radius: 12px; border: 1px solid #3346c4; color: #3346c4; font-weight: 700; text-decoration: none">College ke liye baat karein</a>
+        </section>
+      </div>
+
+      <div style="max-width: 1080px; margin: 18px auto 0; display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; font-size: 14px; color: #373f52">
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #e2e6ef">Kabhi bhi cancel, ek click me</span>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #e2e6ef">7 din me poora paisa wapas</span>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #e2e6ef">Scholarship: aay ke hisaab se free Plus</span>
+        <span style="padding: 8px 14px; border-radius: 999px; background: #ffffff; border: 1px solid #e2e6ef">GST invoice</span>
+      </div>
+
+      <section aria-labelledby="faq" style="max-width: 760px; margin: 36px auto 0">
+        <h2 id="faq" style="font-size: 22px; margin: 0 0 12px">Sawaal</h2>
+        <details style="padding: 14px 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e6ef; margin-bottom: 8px"><summary style="cursor: pointer; font-weight: 600">"Fair use 200" ka matlab?</summary><p style="margin: 8px 0 0; color: #4f586c">Roz 200 message tak bina rok. Usse zyada par agle din tak dheere jawab, band nahi. Meter Sahayak page par dikhta hai.</p></details>
+        <details style="padding: 14px 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e6ef; margin-bottom: 8px"><summary style="cursor: pointer; font-weight: 600">Plus chhodne par mera data?</summary><p style="margin: 8px 0 0; color: #4f586c">Progress, code, certificates sab rehta hai. Sirf Plus wala content lock ho jaata hai.</p></details>
+        <details style="padding: 14px 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e6ef"><summary style="cursor: pointer; font-weight: 600">Paisa nahi hai, phir bhi seekhna hai?</summary><p style="margin: 8px 0 0; color: #4f586c">Scholarship ke liye apply karo. Companies aur alumni ki madad se free Plus.</p></details>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1500}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { yearly: true };
+  }
+  renderVals() {
+    const y = this.state.yearly;
+    const on = 'background: #ffffff; color: #131a2e; box-shadow: 0 1px 2px rgba(19,26,46,0.12)';
+    const off = 'background: transparent; color: #4f586c';
+    return {
+      isMonth: !y, isYear: y,
+      mBtn: y ? off : on, yBtn: y ? on : off,
+      monthly: () => this.setState({ yearly: false }),
+      yearly: () => this.setState({ yearly: true }),
+      price: y ? '[SAAL PRICE]' : '[MAHINA PRICE]',
+      priceNote: y ? 'saal bhar, ek baar · UPI, card, net banking' : 'har mahina · UPI autopay'
+    };
+  }
+}
+</script>
+</body>
+</html>

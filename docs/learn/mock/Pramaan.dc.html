@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Pramaan: certificate exam</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="pramaan" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <h1 style="margin: 0 0 6px; font-size: 28px">Pramaan</h1>
+      <p style="margin: 0 0 20px; color: #4f586c; max-width: 720px">Certificate jo sach me kuch kehta hai: proctored exam, phir 5 minute ka viva jisme aap apna code samjhaate ho. Company verify link se jaanch sakti hai.</p>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section aria-labelledby="exam" style="flex: 2 1 520px; min-width: 0; padding: 24px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px">
+            <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #f1ebff; color: #6b3fd4">Level 1</span>
+            <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e7f6ef; color: #117a57">Aap taiyaar ho: 86% readiness</span>
+          </div>
+          <h2 id="exam" style="margin: 0 0 10px; font-size: 24px">DSA Foundations</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 18px">
+            <div style="padding: 12px; border-radius: 12px; background: #f6f7fb"><div style="font-size: 12px; color: #5f687c">Samay</div><b>75 min</b></div>
+            <div style="padding: 12px; border-radius: 12px; background: #f6f7fb"><div style="font-size: 12px; color: #5f687c">Coding</div><b>2 problems</b></div>
+            <div style="padding: 12px; border-radius: 12px; background: #f6f7fb"><div style="font-size: 12px; color: #5f687c">MCQ</div><b>20 sawaal</b></div>
+            <div style="padding: 12px; border-radius: 12px; background: #f6f7fb"><div style="font-size: 12px; color: #5f687c">Viva</div><b>5 min, awaaz</b></div>
+          </div>
+
+          <h3 style="margin: 0 0 10px; font-size: 16px">System check</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px">
+            <sc-for list="{{checks}}" as="c" hint-placeholder-count="4">
+              <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid #e2e6ef">
+                <span style="flex: 0 0 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; {{c.dot}}">{{c.mark}}</span>
+                <span style="flex: 1; font-weight: 600">{{c.label}}</span>
+                <span style="font-size: 13px; color: #5f687c">{{c.note}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <button type="button" onClick="{{runCheck}}" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid #3346c4; background: #ffffff; color: #3346c4; font: inherit; font-weight: 700; cursor: pointer">System check chalao</button>
+
+          <div style="margin-top: 18px; padding: 14px 16px; border-radius: 12px; background: #eaf2fc; color: #173f75; font-size: 14px; line-height: 1.6">
+            <b>Proctoring kaise hoti hai:</b> camera se har kuch der me photo, screen share, aur tab badalna note hota hai. Koi insaan live nahi dekhta; shak hone par hi review. Data 90 din me mit jaata hai.
+          </div>
+          <label style="display: flex; gap: 10px; align-items: flex-start; margin-top: 14px; font-size: 14px"><input type="checkbox" style="width: 18px; height: 18px; margin-top: 2px">Main akela dunga, koi AI tool ya doosra insaan madad nahi karega.</label>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 18px">
+            <a href="Problem.dc.html" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 24px; border-radius: 12px; font-weight: 700; text-decoration: none; {{startStyle}}">Exam shuru karo</a>
+            <span style="align-self: center; font-size: 13px; color: #5f687c">Fail par 14 din baad dobara. Fees: [PRAMAAN FEE] (Plus me 2 free).</span>
+          </div>
+        </section>
+
+        <aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <figure aria-label="Certificate ka namuna" style="margin: 0; padding: 22px; border-radius: 18px; background: #fefefe; border: 2px solid #141b4d; position: relative">
+            <div style="display: flex; justify-content: space-between; align-items: center">
+              <span style="width: 34px; height: 34px; border-radius: 10px; background: #3346c4; color: #ffffff; display: grid; place-items: center; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 700">प</span>
+              <span style="font-size: 12px; font-weight: 700; color: #6b3fd4; letter-spacing: 0.08em">PRAMAAN</span>
+            </div>
+            <div style="margin-top: 16px; font-size: 13px; color: #5f687c">Ye pramaanit karta hai ki</div>
+            <div style="font-size: 24px; font-weight: 800">Aarav Sharma</div>
+            <div style="font-size: 14px; color: #373f52; margin-top: 4px">ne <b>DSA Foundations</b> paas kiya: coding 2/2, MCQ 17/20, viva "saaf samjhaaya".</div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 18px">
+              <div style="font-size: 12px; color: #5f687c">ID PRM-24-0097<br>parikshaa.in/v/PRM-24-0097</div>
+              <div aria-label="Verify QR" role="img" style="width: 64px; height: 64px; background: repeating-linear-gradient(90deg, #131a2e 0 4px, #ffffff 4px 8px), repeating-linear-gradient(0deg, #131a2e 0 4px, #ffffff 4px 8px); background-blend-mode: multiply; border: 4px solid #ffffff; outline: 1px solid #cdd3df"></div>
+            </div>
+            <figcaption style="margin-top: 12px; font-size: 12px; color: #5f687c">Namuna. Open Badges 3.0 format me bhi milega.</figcaption>
+          </figure>
+          <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="font-weight: 700; margin-bottom: 8px">Aur Pramaan</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+              <div style="display: flex; justify-content: space-between"><span>SQL Level 1</span><span style="color: #117a57; font-weight: 700">Mila</span></div>
+              <div style="display: flex; justify-content: space-between"><span>React Builder</span><span style="color: #5f687c">Project chahiye</span></div>
+              <div style="display: flex; justify-content: space-between"><span>Aptitude (placement)</span><span style="color: #5f687c">Taiyaari 54%</span></div>
+              <div style="display: flex; justify-content: space-between"><span>CS Core</span><span style="color: #5f687c">Taiyaari 31%</span></div>
+            </div>
+          </div>
+          <a href="Profile.dc.html" style="display: block; padding: 16px; border-radius: 16px; background: #141b4d; color: #ffffff; text-decoration: none; font-weight: 700">Profile par Pramaan dekho</a>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { ok: false };
+  }
+  renderVals() {
+    const ok = this.state.ok;
+    const pass = 'background: #117a57; color: #ffffff';
+    const wait = 'background: #eef0f6; color: #5f687c';
+    const checks = [
+      ['Camera', 'chehra saaf dikh raha'], ['Microphone', 'viva ke liye'], ['Screen share', 'poori screen'], ['Internet', '12 Mbps, theek']
+    ].map(([label, note]) => ({ label, note: ok ? note : 'abhi jaancha nahi', dot: ok ? pass : wait, mark: ok ? '✓' : '?' }));
+    return {
+      checks,
+      runCheck: () => this.setState({ ok: true }),
+      startStyle: ok ? 'background: #f28c28; color: #131a2e' : 'background: #eef0f6; color: #5f687c; pointer-events: none'
+    };
+  }
+}
+</script>
+</body>
+</html>

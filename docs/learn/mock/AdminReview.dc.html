@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin: review queue</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="AdminNav" active="review" hint-size="240px,980px"></dc-import>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+    <h1 style="margin: 0 0 4px; font-size: 26px">Review queue</h1>
+    <p style="margin: 0 0 16px; color: #4f586c">Har cheez do alag log manzoor karte hain. Jisne banaya ya pehle manzoor kiya, wo doosri manzoori nahi de sakta.</p>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+      <section aria-label="Queue" style="flex: 1 1 300px; max-width: 360px; display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; font-size: 13px">
+          <span style="padding: 6px 10px; border-radius: 999px; background: #141b4d; color: #ffffff; font-weight: 600">Mere naam (9)</span>
+          <span style="padding: 6px 10px; border-radius: 999px; background: #ffffff; border: 1px solid #cdd3df; font-weight: 600">Sab (38)</span>
+          <span style="padding: 6px 10px; border-radius: 999px; background: #ffffff; border: 1px solid #cdd3df; font-weight: 600">Learner reports (2)</span>
+        </div>
+        <sc-for list="{{queue}}" as="q" hint-placeholder-count="6">
+          <button type="button" onClick="{{q.pick}}" aria-pressed="{{q.on}}" style="text-align: left; padding: 12px 14px; border-radius: 12px; font: inherit; cursor: pointer; color: #131a2e; {{q.style}}">
+            <div style="display: flex; gap: 6px; margin-bottom: 4px; flex-wrap: wrap"><span style="font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{q.kindStyle}}">{{q.kind}}</span><span style="font-size: 11px; color: #5f687c">{{q.batch}} · {{q.age}}</span></div>
+            <div style="font-weight: 700; font-size: 14px">{{q.title}}</div>
+            <div style="font-size: 12px; color: #5f687c">{{q.state}}</div>
+          </button>
+        </sc-for>
+      </section>
+
+      <section aria-label="Review" style="flex: 2.4 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+        <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center">
+            <div><div style="font-size: 13px; color: #5f687c">{{cur.kind}} · {{cur.batch}}</div><h2 style="margin: 2px 0 0; font-size: 20px">{{cur.title}}</h2></div>
+            <span style="font-size: 13px; font-weight: 700; padding: 4px 12px; border-radius: 999px; {{approvalStyle}}">{{approvals}}</span>
+          </div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; font-weight: 700">
+            <span style="padding: 3px 10px; border-radius: 999px; background: #e7f6ef; color: #117a57">Machine gates 9/10</span>
+            <span style="padding: 3px 10px; border-radius: 999px; background: #e7f6ef; color: #117a57">Originality 0.41</span>
+            <span style="padding: 3px 10px; border-radius: 999px; background: #eaf2fc; color: #1f63b8">AI draft · Sonnet ne jaancha</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start">
+          <article aria-label="Learner ko kaisa dikhega" style="flex: 1.4 1 360px; min-width: 0; padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 15px; line-height: 1.65">
+            <div style="font-size: 12px; font-weight: 700; color: #5f687c; letter-spacing: 0.06em; margin-bottom: 8px">LEARNER VIEW</div>
+            <h3 style="margin: 0 0 6px; font-size: 17px">Kadam 2: raasta dhoondho</h3>
+            <p style="margin: 0 0 10px">Sabse chhota aur sabse bada jodo. Agar jod K se bada hai, to sabse bada number kisi ke saath kaam nahi aayega…</p>
+            <p style="margin: 0 0 10px; background: #fff5e3; border-radius: 6px; padding: 4px 6px"><span style="font-weight: 700; color: #7a4600">Flag:</span> "Jab main pehli baar interview me baitha tha…" — AI ki banayi kahaani. Niyam: sirf owner ki asli kahaniyan.</p>
+            <div style="display: flex; gap: 6px; justify-content: center; font-family: 'Kalam', cursive; font-size: 20px; color: #111111; margin-top: 12px">
+              <span style="width: 38px; height: 38px; border: 2px solid #111111; border-radius: 5px; display: grid; place-items: center; background: #F6A496">1</span><span style="width: 38px; height: 38px; border: 2px solid #111111; border-radius: 5px; display: grid; place-items: center">3</span><span style="width: 38px; height: 38px; border: 2px solid #111111; border-radius: 5px; display: grid; place-items: center">4</span><span style="width: 38px; height: 38px; border: 2px solid #111111; border-radius: 5px; display: grid; place-items: center">6</span><span style="width: 38px; height: 38px; border: 2px solid #111111; border-radius: 5px; display: grid; place-items: center">8</span><span style="width: 38px; height: 38px; border: 2px solid #111111; border-radius: 5px; display: grid; place-items: center; background: #F6A496">11</span>
+            </div>
+            <div style="text-align: center; font-size: 12px; color: #5f687c; margin-top: 4px">Visual frame 1 / 5 (code se bana)</div>
+          </article>
+
+          <aside style="flex: 1 1 260px; min-width: 0; padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="font-weight: 700; margin-bottom: 10px">Checklist (style guide)</div>
+            <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+              <sc-for list="{{checks}}" as="c" hint-placeholder-count="6">
+                <button type="button" onClick="{{c.toggle}}" aria-pressed="{{c.on}}" style="display: flex; gap: 10px; align-items: flex-start; text-align: left; padding: 8px; border-radius: 10px; border: 1px solid #e2e6ef; background: #ffffff; font: inherit; cursor: pointer; color: #131a2e">
+                  <span style="flex: 0 0 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font-size: 13px; font-weight: 800; {{c.box}}">{{c.mark}}</span>{{c.text}}
+                </button>
+              </sc-for>
+            </div>
+          </aside>
+        </div>
+
+        <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+          <label for="note" style="font-weight: 700; font-size: 14px">Note (likhne wale ko jaayega)</label>
+          <textarea id="note" rows="3" style="width: 100%; box-sizing: border-box; margin-top: 6px; padding: 10px; border: 1px solid #cdd3df; border-radius: 10px; font: inherit">Kadam 2 se banayi hui kahaani hatao. Baaki theek.</textarea>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px">
+            <button type="button" onClick="{{approve}}" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: #117a57; color: #ffffff; font: inherit; font-weight: 700; cursor: pointer">Manzoor</button>
+            <button type="button" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid #f3d59f; background: #fff5e3; color: #7a4600; font: inherit; font-weight: 700; cursor: pointer">Badlaav maango</button>
+            <button type="button" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid #f3c5bf; background: #fdeeec; color: #9c2d21; font: inherit; font-weight: 700; cursor: pointer">Reject</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 0, approved: false, checks: [true, true, true, false, true, true] };
+  }
+  renderVals() {
+    const kinds = {
+      Editorial: 'background: #f1f3fe; color: #26338f', Problem: 'background: #e7f6ef; color: #117a57', Aptitude: 'background: #fdebd4; color: #a35200', Report: 'background: #fdeeec; color: #9c2d21'
+    };
+    const data = [
+      { kind: 'Editorial', title: 'Pair with sum K: editorial v3', batch: 'C-04', age: '2 ghante', state: 'Pehli manzoori baaki' },
+      { kind: 'Problem', title: 'Three numbers ka jod zero (v2)', batch: 'C-06', age: '5 ghante', state: '1/2 · kunal ne manzoor kiya' },
+      { kind: 'Report', title: '"Galat test": Longest substring', batch: 'learner', age: '1 din', state: '3 learners ne report kiya' },
+      { kind: 'Aptitude', title: 'Percentages: 20 sawaal', batch: 'C-07', age: '1 din', state: 'Pehli manzoori baaki' },
+      { kind: 'Editorial', title: 'Sliding window: max sum', batch: 'C-04', age: '2 din', state: 'Badlaav maange gaye' },
+      { kind: 'Problem', title: 'K size window ka max', batch: 'C-06', age: '3 din', state: 'Pehli manzoori baaki' }
+    ];
+    const queue = data.map((q, i) => ({
+      ...q, kindStyle: kinds[q.kind], on: this.state.sel === i,
+      style: this.state.sel === i ? 'background: #ffffff; border: 2px solid #3346c4' : 'background: #ffffff; border: 1px solid #e2e6ef',
+      pick: () => this.setState({ sel: i, approved: false })
+    }));
+    const texts = ['Chaaron kadam maujood', 'Code = reference solution', 'Visual frames sahi aur saaf', 'Koi banayi hui kahaani nahi', 'Hinglish natural hai', 'Kadam 4 me test table'];
+    const checks = texts.map((text, i) => {
+      const on = this.state.checks[i];
+      return {
+        text, on, mark: on ? '✓' : '',
+        box: on ? 'background: #117a57; color: #ffffff' : 'background: #ffffff; border: 2px solid #cdd3df',
+        toggle: () => { const c = this.state.checks.slice(); c[i] = !c[i]; this.setState({ checks: c }); }
+      };
+    });
+    const a = this.state.approved;
+    return {
+      queue, cur: data[this.state.sel], checks,
+      approvals: a ? 'Manzoori 1/2 · ab doosra reviewer' : 'Manzoori 0/2',
+      approvalStyle: a ? 'background: #e7f6ef; color: #117a57' : 'background: #eef0f6; color: #373f52',
+      approve: () => this.setState({ approved: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

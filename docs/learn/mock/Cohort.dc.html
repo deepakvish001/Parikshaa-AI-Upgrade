@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Cohort: 30 din DSA</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="cohort" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <section style="padding: 26px; border-radius: 22px; background: #141b4d; color: #ffffff; display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin-bottom: 20px">
+        <div style="flex: 1 1 380px">
+          <div style="font-size: 13px; font-weight: 700; color: #c9cffa; letter-spacing: 0.06em">COHORT · 1–30 NOV</div>
+          <h1 style="margin: 6px 0; font-size: 30px">30 din DSA: arrays se graphs</h1>
+          <div style="color: #c9cffa">214 log · roz 1 ghanta · mentor: [MENTOR NAAM] · har Ravivaar text doubt session</div>
+        </div>
+        <button type="button" onClick="{{toggle}}" style="min-height: 50px; padding: 0 24px; border-radius: 12px; font: inherit; font-weight: 700; cursor: pointer; {{joinStyle}}">{{joinLabel}}</button>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 2 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+          <section aria-labelledby="days" style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px"><h2 id="days" style="margin: 0; font-size: 18px">30 din</h2><span style="font-size: 14px; color: #5f687c">Din 9 · aap 8/8 par</span></div>
+            <div style="display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px">
+              <sc-for list="{{days}}" as="d" hint-placeholder-count="30">
+                <div style="height: 44px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; font-size: 14px; {{d.style}}">{{d.n}}</div>
+              </sc-for>
+            </div>
+          </section>
+          <section aria-labelledby="today" style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+            <h2 id="today" style="margin: 0 0 4px; font-size: 18px">Din 9: Two pointers</h2>
+            <p style="margin: 0 0 12px; color: #4f586c; font-size: 14px">Aaj ka kaam, ~60 min</p>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <a href="Lesson.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; color: #131a2e; text-decoration: none"><span style="font-weight: 600">Lesson: Two pointers</span><span style="color: #117a57; font-weight: 700">Ho gaya</span></a>
+              <a href="Problem.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; color: #131a2e; text-decoration: none"><span style="font-weight: 600">Pair with sum K</span><span style="color: #a35200; font-weight: 700">Chal raha</span></a>
+              <a href="Problem.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; color: #131a2e; text-decoration: none"><span style="font-weight: 600">Three numbers ka jod zero</span><span style="color: #5f687c">Baaki</span></a>
+              <a href="Community.dc.html" style="display: flex; justify-content: space-between; padding: 12px 14px; border-radius: 12px; background: #f6f7fb; color: #131a2e; text-decoration: none"><span style="font-weight: 600">Pod me ek doubt ka jawab do</span><span style="color: #5f687c">Baaki</span></a>
+            </div>
+          </section>
+        </div>
+
+        <aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <section aria-labelledby="pod" style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+            <h2 id="pod" style="margin: 0 0 4px; font-size: 16px">Mera pod (5 log)</h2>
+            <p style="margin: 0 0 12px; font-size: 13px; color: #5f687c">Ek jaisa level aur samay. Sirf wahi dikhta hai jo sabne share karna chuna.</p>
+            <sc-for list="{{pod}}" as="p" hint-placeholder-count="5">
+              <div style="display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #eef0f6">
+                <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: {{p.bg}}">{{p.init}}</span>
+                <span style="flex: 1; font-weight: 600">{{p.name}}</span>
+                <span style="font-size: 13px; color: #4f586c">{{p.days}}</span>
+              </div>
+            </sc-for>
+          </section>
+          <section style="padding: 20px; border-radius: 18px; background: #fdebd4">
+            <div style="font-weight: 700">Ravivaar doubt session</div>
+            <div style="font-size: 14px; color: #373f52; margin-top: 4px">Ravivaar 7 PM · text me, mentor ke saath · pehle se sawaal daalo</div>
+            <a href="Community.dc.html" style="display: inline-block; margin-top: 8px; font-weight: 700; color: #a35200">Sawaal daalo</a>
+          </section>
+          <section style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 6px">Poora karne par</div>
+            <div style="color: #4f586c">Cohort badge, 500 coins, aur DSA Foundations Pramaan ka ek free attempt.</div>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { joined: true };
+  }
+  renderVals() {
+    const j = this.state.joined;
+    const days = [];
+    for (let i = 1; i <= 30; i++) {
+      let style = 'background: #f6f7fb; color: #5f687c';
+      if (i < 9) style = 'background: #117a57; color: #ffffff';
+      if (i === 9) style = 'background: #f28c28; color: #131a2e';
+      days.push({ n: i, style });
+    }
+    const pod = [
+      ['A', 'Aarav (aap)', '8/8 din', '#fdebd4'], ['R', 'Rahul', '8/8 din', '#eaf2fc'], ['S', 'Sana', '7/8 din', '#e7f6ef'], ['M', 'Meera', '6/8 din', '#f1ebff'], ['K', 'Kunal', 'chhupa hua', '#eef0f6']
+    ].map(([init, name, d, bg]) => ({ init, name, days: d, bg }));
+    return {
+      days, pod,
+      joinLabel: j ? 'Jud gaye · chhodna?' : 'Cohort me judo',
+      joinStyle: j ? 'border: 1px solid #c9cffa; background: transparent; color: #ffffff' : 'border: 0; background: #f28c28; color: #131a2e',
+      toggle: () => this.setState({ joined: !j })
+    };
+  }
+}
+</script>
+</body>
+</html>

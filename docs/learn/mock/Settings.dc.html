@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="settings" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <h1 style="margin: 0 0 18px; font-size: 28px">Settings</h1>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <nav aria-label="Settings ke hisse" style="flex: 1 1 200px; max-width: 240px; display: flex; flex-direction: column; gap: 4px">
+          <sc-for list="{{secs}}" as="s" hint-placeholder-count="6">
+            <button type="button" onClick="{{s.pick}}" aria-pressed="{{s.on}}" style="text-align: left; min-height: 44px; padding: 0 14px; border: 0; border-radius: 10px; font: inherit; cursor: pointer; {{s.style}}">{{s.label}}</button>
+          </sc-for>
+        </nav>
+
+        <section style="flex: 3 1 480px; min-width: 0; padding: 24px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+          <sc-if value="{{isLook}}" hint-placeholder-val="{{ true }}">
+            <h2 style="margin: 0 0 16px; font-size: 20px">Bhasha aur dikhna</h2>
+            <div style="display: flex; flex-direction: column; gap: 18px">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Padhne ki bhasha
+                <select style="height: 44px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 10px; font: inherit; font-weight: 400; max-width: 320px"><option>Hinglish</option><option>English</option><option>हिंदी</option><option>தமிழ் (UI)</option><option>తెలుగు (UI)</option><option>বাংলা (UI)</option><option>मराठी (UI)</option></select>
+              </label>
+              <div>
+                <div style="font-weight: 600; margin-bottom: 8px">Theme</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                  <sc-for list="{{themes}}" as="t" hint-placeholder-count="3">
+                    <button type="button" onClick="{{t.pick}}" aria-pressed="{{t.on}}" style="min-height: 44px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; {{t.style}}">{{t.label}}</button>
+                  </sc-for>
+                </div>
+              </div>
+              <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Text ka size
+                <input type="range" min="14" max="22" value="17" style="max-width: 320px">
+              </label>
+              <label style="display: flex; justify-content: space-between; align-items: center; max-width: 480px">Dyslexia ke liye aasaan font<input type="checkbox" style="width: 22px; height: 22px"></label>
+              <label style="display: flex; justify-content: space-between; align-items: center; max-width: 480px">Animation kam karo<input type="checkbox" style="width: 22px; height: 22px"></label>
+              <label style="display: flex; justify-content: space-between; align-items: center; max-width: 480px">Kam data mode (images chhoti)<input type="checkbox" checked style="width: 22px; height: 22px"></label>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isNotif}}" hint-placeholder-val="{{ false }}">
+            <h2 style="margin: 0 0 6px; font-size: 20px">Notifications</h2>
+            <p style="margin: 0 0 16px; color: #4f586c; font-size: 14px">Kaam ki baat, spam nahi. Raat 10 se subah 8 tak kuch nahi aata.</p>
+            <div style="display: grid; grid-template-columns: minmax(0, 2fr) repeat(3, 80px); gap: 0; font-size: 14px; max-width: 560px">
+              <span style="padding: 8px 0; color: #5f687c; font-weight: 700">Kya</span><span style="padding: 8px 0; color: #5f687c; font-weight: 700; text-align: center">App</span><span style="padding: 8px 0; color: #5f687c; font-weight: 700; text-align: center">Email</span><span style="padding: 8px 0; color: #5f687c; font-weight: 700; text-align: center">WhatsApp</span>
+              <span style="padding: 10px 0; border-top: 1px solid #eef0f6">Roz ka plan (subah 1 baar)</span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Roz ka plan app"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Roz ka plan email"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Roz ka plan WhatsApp"></span>
+              <span style="padding: 10px 0; border-top: 1px solid #eef0f6">Contest yaad dilana</span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Contest app"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Contest email"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Contest WhatsApp"></span>
+              <span style="padding: 10px 0; border-top: 1px solid #eef0f6">Forum par jawab</span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Forum app"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Forum email"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Forum WhatsApp"></span>
+              <span style="padding: 10px 0; border-top: 1px solid #eef0f6">Job application ki khabar</span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Job app"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Job email"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" checked aria-label="Job WhatsApp"></span>
+              <span style="padding: 10px 0; border-top: 1px solid #eef0f6">Streak tootne wali hai</span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Streak app"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Streak email"></span><span style="padding: 10px 0; border-top: 1px solid #eef0f6; text-align: center"><input type="checkbox" aria-label="Streak WhatsApp"></span>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isPrivacy}}" hint-placeholder-val="{{ false }}">
+            <h2 style="margin: 0 0 16px; font-size: 20px">Privacy aur data</h2>
+            <div style="display: flex; flex-direction: column; gap: 16px; max-width: 560px">
+              <fieldset style="margin: 0; padding: 14px 16px; border-radius: 12px; border: 1px solid #e2e6ef">
+                <legend style="font-weight: 700; padding: 0 6px">Sahayak ki chat history</legend>
+                <label style="display: flex; gap: 10px; padding: 6px 0"><input type="radio" name="hist" checked>Jab tak account hai, rakho (Plus)</label>
+                <label style="display: flex; gap: 10px; padding: 6px 0"><input type="radio" name="hist">180 din baad mita do</label>
+                <label style="display: flex; gap: 10px; padding: 6px 0"><input type="radio" name="hist">Mat rakho</label>
+              </fieldset>
+              <label style="display: flex; justify-content: space-between; align-items: center">Mera code AI ko behtar banane me use na ho<input type="checkbox" checked style="width: 22px; height: 22px"></label>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap">
+                <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #cdd3df; background: #ffffff; font: inherit; font-weight: 600; cursor: pointer">Mera saara data download karo</button>
+                <button type="button" style="min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid #f3c5bf; background: #fdeeec; color: #9c2d21; font: inherit; font-weight: 700; cursor: pointer">Account delete karo</button>
+              </div>
+              <p style="margin: 0; font-size: 13px; color: #5f687c">Delete par 14 din ka samay, phir sab mit jaata hai. Certificates ka verify link band ho jaata hai.</p>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isWell}}" hint-placeholder-val="{{ false }}">
+            <h2 style="margin: 0 0 16px; font-size: 20px">Wellbeing</h2>
+            <div style="display: flex; flex-direction: column; gap: 16px; max-width: 560px">
+              <label style="display: flex; justify-content: space-between; align-items: center">90 min lagaataar ke baad "break lo"<input type="checkbox" checked style="width: 22px; height: 22px"></label>
+              <label style="display: flex; justify-content: space-between; align-items: center">Streak freeze apne aap (hafte me 1)<input type="checkbox" checked style="width: 22px; height: 22px"></label>
+              <label style="display: flex; justify-content: space-between; align-items: center">League chhupao (sirf apni progress dekhni hai)<input type="checkbox" style="width: 22px; height: 22px"></label>
+              <div style="padding: 14px 16px; border-radius: 12px; background: #eaf2fc; color: #173f75; font-size: 14px">Exam ka dabaav zyada lag raha hai? Hamari madad ki list aur helpline numbers yahan hain. Aap akele nahi ho.</div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{isAccount}}" hint-placeholder-val="{{ false }}">
+            <h2 style="margin: 0 0 16px; font-size: 20px">Account aur Plus</h2>
+            <div style="display: flex; flex-direction: column; gap: 10px; max-width: 560px; font-size: 15px">
+              <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eef0f6"><span>Email</span><b>aarav@example.com</b></div>
+              <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eef0f6"><span>Login</span><b>Google + password</b></div>
+              <div style="display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eef0f6"><span>Plan</span><b>Plus (saal) · 12 Oct 2027 tak</b></div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px"><a href="Plus.dc.html" style="font-weight: 700">Plan badlo</a><a href="Plus.dc.html" style="font-weight: 700">Invoices</a><a href="Plus.dc.html" style="font-weight: 700; color: #9c2d21">Plus cancel karo</a></div>
+            </div>
+          </sc-if>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sec: 'look', theme: 'system' };
+  }
+  renderVals() {
+    const sec = this.state.sec;
+    const secs = [['account', 'Account aur Plus'], ['look', 'Bhasha aur dikhna'], ['notif', 'Notifications'], ['privacy', 'Privacy aur data'], ['well', 'Wellbeing']].map(([id, label]) => ({
+      label, on: sec === id,
+      style: sec === id ? 'background: #f1f3fe; color: #26338f; font-weight: 700' : 'background: transparent; color: #373f52; font-weight: 500',
+      pick: () => this.setState({ sec: id })
+    }));
+    const themes = [['light', 'Light'], ['dark', 'Dark'], ['system', 'Phone jaisa']].map(([id, label]) => ({
+      label, on: this.state.theme === id,
+      style: this.state.theme === id ? 'border: 2px solid #3346c4; background: #f1f3fe; color: #131a2e' : 'border: 2px solid #e2e6ef; background: #ffffff; color: #131a2e',
+      pick: () => this.setState({ theme: id })
+    }));
+    return {
+      secs, themes,
+      isLook: sec === 'look', isNotif: sec === 'notif', isPrivacy: sec === 'privacy', isWell: sec === 'well', isAccount: sec === 'account'
+    };
+  }
+}
+</script>
+</body>
+</html>

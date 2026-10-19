@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin: problem package</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="AdminNav" active="package" hint-size="240px,980px"></dc-import>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+    <div style="font-size: 14px; color: #5f687c"><a href="AdminHome.dc.html">Problems</a> / pair-with-sum-k</div>
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: center; margin: 6px 0 16px">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap">
+        <h1 style="margin: 0; font-size: 26px">Pair with sum K</h1>
+        <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e7f6ef; color: #117a57">Live · v3</span>
+        <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #eef0f6; color: #373f52">L2 · Two pointers</span>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <button type="button" style="min-height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid #cdd3df; background: #ffffff; font: inherit; font-weight: 600; cursor: pointer">Saare gates dobara chalao</button>
+        <a href="AdminReview.dc.html" style="display: inline-flex; align-items: center; min-height: 42px; padding: 0 16px; border-radius: 10px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">v4 review ko bhejo</a>
+      </div>
+    </div>
+
+    <div role="tablist" aria-label="Package" style="display: flex; gap: 4px; border-bottom: 1px solid #e2e6ef; margin-bottom: 18px; flex-wrap: wrap">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="5">
+        <button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="padding: 10px 16px; border: 0; background: transparent; font: inherit; cursor: pointer; {{t.style}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{isTests}}" hint-placeholder-val="{{ true }}">
+      <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+        <section aria-label="Test groups" style="flex: 2 1 520px; min-width: 0; padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; overflow-x: auto">
+          <div role="table" aria-label="Test groups" style="min-width: 600px; font-size: 14px">
+            <div role="row" style="display: grid; grid-template-columns: minmax(0, 1.2fr) 60px minmax(0, 2.2fr) 70px; color: #5f687c; font-size: 13px; font-weight: 700; padding-bottom: 8px">
+              <span role="columnheader">Group</span><span role="columnheader">Tests</span><span role="columnheader">Kaise bane</span><span role="columnheader">Points</span>
+            </div>
+            <sc-for list="{{groups}}" as="g" hint-placeholder-count="8">
+              <div role="row" style="display: grid; grid-template-columns: minmax(0, 1.2fr) 60px minmax(0, 2.2fr) 70px; padding: 10px 0; border-top: 1px solid #eef0f6; align-items: center">
+                <span role="cell" style="font-weight: 600">{{g.name}}</span>
+                <span role="cell">{{g.n}}</span>
+                <span role="cell" style="font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #373f52">{{g.how}}</span>
+                <span role="cell">{{g.pts}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="margin-top: 12px; font-size: 13px; color: #4f586c">Kul 52 tests · sabse bada input 3.4 MB · har test validator se pass</div>
+        </section>
+        <aside style="flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+          <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 8px">Time limit (har bhasha)</div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0"><span>C++</span><b>1 s</b></div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0"><span>Java</span><b>2 s</b></div>
+            <div style="display: flex; justify-content: space-between; padding: 4px 0"><span>Python / PyPy</span><b>3 s / 2 s</b></div>
+            <div style="font-size: 12px; color: #5f687c; margin-top: 6px">Reference ka sabse dheema test × 3 se tay</div>
+          </div>
+          <div style="padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 6px">Checker</div>
+            <div>Koi bhi sahi jodi (testlib checker) · -1 -1 sirf jab jodi na ho</div>
+          </div>
+        </aside>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isSol}}" hint-placeholder-val="{{ false }}">
+      <section style="padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+          <sc-for list="{{sols}}" as="s" hint-placeholder-count="6">
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px; border-radius: 12px; background: #f6f7fb">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; flex: 1 1 220px">{{s.file}}</span>
+              <span style="flex: 1 1 160px; color: #373f52">{{s.kind}}</span>
+              <span style="font-size: 12px; color: #5f687c">chahiye: <b>{{s.expect}}</b></span>
+              <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{s.okStyle}}">mila: {{s.got}}</span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isGates}}" hint-placeholder-val="{{ false }}">
+      <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px">
+        <sc-for list="{{gates}}" as="g" hint-placeholder-count="10">
+          <div style="padding: 14px; border-radius: 14px; background: #ffffff; {{g.border}}">
+            <div style="display: flex; justify-content: space-between; align-items: center"><b>{{g.n}}. {{g.name}}</b><span style="font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px; {{g.tagStyle}}">{{g.res}}</span></div>
+            <div style="font-size: 13px; color: #4f586c; margin-top: 4px">{{g.detail}}</div>
+          </div>
+        </sc-for>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isStatement}}" hint-placeholder-val="{{ false }}">
+      <section style="padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; display: flex; flex-direction: column; gap: 12px; font-size: 14px; max-width: 820px">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Statement (Hinglish)<textarea rows="5" style="border: 1px solid #cdd3df; border-radius: 10px; padding: 10px; font: inherit; font-weight: 400">Aapko n numbers ka ek array a diya hai jo badhte kram me hai, aur ek number K…</textarea></label>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Constraints (structured)<textarea rows="3" style="border: 1px solid #cdd3df; border-radius: 10px; padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px">n: int [2, 200000]
+a[i]: int [0, 1e9], non-decreasing
+K: int [0, 2e9]</textarea></label>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap"><span style="padding: 6px 10px; border-radius: 8px; background: #e7f6ef">English ✓</span><span style="padding: 6px 10px; border-radius: 8px; background: #e7f6ef">Hinglish ✓</span><span style="padding: 6px 10px; border-radius: 8px; background: #fff5e3">हिंदी: review baaki</span></div>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{isVer}}" hint-placeholder-val="{{ false }}">
+      <section style="padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+        <div style="padding: 10px 0; border-bottom: 1px solid #eef0f6"><b>v4 (draft)</b> · kunal · 12 anti-tests jode · review baaki</div>
+        <div style="padding: 10px 0; border-bottom: 1px solid #eef0f6"><b>v3 (live)</b> · meera + kunal ne manzoor kiya · 12 Oct</div>
+        <div style="padding: 10px 0; border-bottom: 1px solid #eef0f6"><b>v2</b> · overflow test group joda · 2 Oct</div>
+        <div style="padding: 10px 0"><b>v1</b> · owner ke series batch se import · 28 Sep</div>
+        <p style="margin: 10px 0 0; color: #5f687c">Tests badalne par purane AC submissions dobara chalte hain (rejudge), learners ko batate hain.</p>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'tests' };
+  }
+  renderVals() {
+    const tab = this.state.tab;
+    const tabs = [['statement', 'Statement'], ['tests', 'Tests'], ['sol', 'Solutions'], ['gates', 'Gates (10)'], ['ver', 'Versions']].map(([id, label]) => ({
+      label, on: tab === id,
+      style: tab === id ? 'font-weight: 700; color: #26338f; border-bottom: 2px solid #3346c4' : 'color: #4f586c; border-bottom: 2px solid transparent',
+      pick: () => this.setState({ tab: id })
+    }));
+    const groups = [
+      ['samples', 2, 'statement se', '0'], ['minimal', 8, 'gen_min --n 2..4', '10'], ['boundary', 5, 'gen_max --a 1e9 --k 2e9', '15'],
+      ['edge', 6, 'haath se: no pair, sab barabar, zero', '15'], ['random_small', 10, 'gen_rand --n 10..100 --seed 1..10', '15'],
+      ['random_large', 10, 'gen_rand --n 2e5 --seed 11..20', '20'], ['anti', 6, 'anti_int_overflow, anti_while_le', '20'], ['output_edge', 5, 'jodi pehle/aakhri index par', '5']
+    ].map(([name, n, how, pts]) => ({ name, n, how, pts }));
+    const ok = 'background: #e7f6ef; color: #117a57';
+    const bad = 'background: #fdeeec; color: #9c2d21';
+    const sols = [
+      ['ref.cpp', 'Reference (C++)', 'AC', 'AC'], ['ref.py', 'Reference (Python)', 'AC', 'AC'], ['brute.cpp', 'Brute O(n²), chhote tests ke liye', 'AC (small) / TLE', 'AC / TLE'],
+      ['wrong_int.cpp', 'Galat: int me jod', 'WA', 'WA (boundary)'], ['wrong_le.cpp', 'Galat: while (l <= r)', 'WA', 'WA (minimal)'], ['slow_n2.py', 'Galat: O(n²) Python', 'TLE', 'TLE']
+    ].map(([file, kind, expect, got]) => ({ file, kind, expect, got, okStyle: got.indexOf(expect.split(' ')[0]) === 0 ? ok : bad }));
+    const gates = [
+      ['Validator', 'Har test constraints ke andar', 'Pass'], ['Reference sahmat', 'C++ aur Python ke jawab ek jaise', 'Pass'],
+      ['Brute sahmat', 'Chhote tests par brute = reference', 'Pass'], ['Galat solutions pakde', '3/3 galat solution fail hue', 'Pass'],
+      ['Mutation score', '96% mutants mare (95% chahiye)', 'Pass'], ['Time limit', 'Ref ka max 0.21 s; TL 1 s', 'Pass'],
+      ['Statement-sample', 'Samples statement se mel', 'Pass'], ['Originality', 'Sabse milta: 0.41 (0.85 se kam)', 'Pass'],
+      ['Editorial jaanch', 'Code editorial me = reference', 'Pass'], ['Bhasha jaanch', 'Hindi version review baaki', 'Baaki']
+    ].map(([name, detail, res], i) => ({
+      n: i + 1, name, detail, res,
+      tagStyle: res === 'Pass' ? ok : 'background: #fff5e3; color: #7a4600',
+      border: res === 'Pass' ? 'border: 1px solid #b9e2cf' : 'border: 1px solid #f3d59f'
+    }));
+    return {
+      tabs, groups, sols, gates,
+      isTests: tab === 'tests', isSol: tab === 'sol', isGates: tab === 'gates', isStatement: tab === 'statement', isVer: tab === 'ver'
+    };
+  }
+}
+</script>
+</body>
+</html>
