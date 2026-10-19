@@ -4,6 +4,10 @@ import { useT, Link } from "../lib/core";
 import { SCREENS } from "./registry";
 import { MapScreen } from "./map";
 import { AajBody, AajRail } from "./aaj";
+import { LandingScreen } from "./landing";
+import { LoginScreen } from "./login";
+import { OnboardingScreen } from "./onboarding";
+import { PlanBody } from "./plan";
 
 type View = { Body: ComponentType; Rail?: ComponentType };
 
@@ -26,6 +30,10 @@ function Soon() {
 const views: Record<string, View> = {
   map: { Body: MapScreen },
   aaj: { Body: AajBody, Rail: AajRail },
+  landing: { Body: LandingScreen },
+  login: { Body: LoginScreen },
+  onboarding: { Body: OnboardingScreen },
+  plan: { Body: PlanBody },
 };
 
 export const SCREEN_VIEWS: Record<string, View> = Object.fromEntries(

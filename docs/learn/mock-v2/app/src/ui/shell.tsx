@@ -211,12 +211,12 @@ function SideFoot() {
       </div>
       <b>{t("Linked lists, stacks & queues", "Linked lists, stacks aur queues", "लिंक्ड लिस्ट, स्टैक और क्यू")}</b>
       <div className="week-dots" aria-label="4 of 7 days done">
-        {[1, 1, 1, 1, 2, 0, 0].map((d, i) => (
+        {[1, 1, 0, 1, 1, 2, 0].map((d, i) => (
           <i key={i} className={d === 1 ? "done" : d === 2 ? "today" : ""} />
         ))}
       </div>
       <span className="faint" style={{ fontSize: "var(--fs-12)" }}>
-        {t("Day 5 of 7 · 2h 10m planned today", "Din 5/7 · aaj 2h 10m", "दिन 5/7 · आज 2 घंटे 10 मिनट")}
+        {t("Day 6 of 7 · 2h 10m planned today", "Din 6/7 · aaj 2h 10m", "दिन 6/7 · आज 2 घंटे 10 मिनट")}
       </span>
     </Link>
   );

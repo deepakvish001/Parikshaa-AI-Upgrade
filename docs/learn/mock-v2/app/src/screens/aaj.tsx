@@ -131,15 +131,18 @@ export function AajBody() {
           </div>
           <div className="panel-body stack">
             <div className="days7">
-              {[1, 2, 3, 4, 5, 6, 7].map((d) => (
-                <div key={d} className={`day ${d < 5 ? "done" : d === 5 ? "today" : d === 6 ? "off" : ""}`}>
-                  <i>{d < 5 ? <CircleCheck size={16} /> : d}</i>
-                  {d === 5 ? t("Today", "Aaj", "आज") : d === 6 ? t("Off", "Chhutti", "छुट्टी") : `${t("Day", "Din", "दिन")} ${d}`}
-                </div>
-              ))}
+              {[1, 2, 3, 4, 5, 6, 7].map((d) => {
+                const st = d === 3 ? "off" : d < 6 ? "done" : d === 6 ? "today" : "";
+                return (
+                  <div key={d} className={`day ${st}`}>
+                    <i>{st === "done" ? <CircleCheck size={16} /> : d}</i>
+                    {st === "today" ? t("Today", "Aaj", "आज") : st === "off" ? t("Rest", "Chhutti", "छुट्टी") : `${t("Day", "Din", "दिन")} ${d}`}
+                  </div>
+                );
+              })}
             </div>
             <div className="row between wrap" style={{ fontSize: "var(--fs-12)" }}>
-              <span className="muted">{t("4 of 6 study days done · Saturday is your day off", "6 me se 4 din hue · Shanivaar chhutti", "6 में से 4 दिन पूरे · शनिवार छुट्टी")}</span>
+              <span className="muted">{t("4 of 6 study days done · Saturday was your rest day", "6 me se 4 din hue · Shanivaar chhutti thi", "6 में से 4 दिन पूरे · शनिवार छुट्टी")}</span>
               <span className="tag plus">
                 <Sparkles size={11} /> {t("Wrap-up unlocks on day 7", "Din 7 par wrap-up", "दिन 7 पर सार")}
               </span>
