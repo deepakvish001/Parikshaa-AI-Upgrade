@@ -1,0 +1,145 @@
+# Learn v2: kaam kahan tak pahuncha (handoff)
+
+**Ye file kyun hai:** owner (19 Oct 2026): "Learn pehle karo." Learn v2 kai sessions aur accounts me banega. Har
+account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. Owner hamesha ek hi prompt paste karta hai
+([RESUME-PROMPT.md](RESUME-PROMPT.md)), jo [HANDOFF.md](HANDOFF.md) ke raaste yahan laata hai. Design:
+[LEARN-V2.md](LEARN-V2.md). Kharch, judge aur AI model: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md).
+
+## 1. Naya session (kisi bhi account se): isi kram me
+
+1. **Branch:** Learn ka kaam `claude/learn-v2` par. Ye `claude/festive-maxwell-pb4k5v` (Hire, PR #66) se nikli hai.
+   ```bash
+   git fetch origin claude/learn-v2 && git checkout -B claude/learn-v2 origin/claude/learn-v2
+   ```
+   Force-push kabhi nahi. `main` par push kabhi nahi. Push se pehle `git pull --rebase origin claude/learn-v2`.
+   **PR:** abhi nahi khuli. Pehla code slice push karne wala session PR khole (base `claude/festive-maxwell-pb4k5v`
+   jab tak #66 merge na ho, phir `main`), aur [HANDOFF.md](HANDOFF.md) ki table me likhe.
+2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
+   se poochho.
+3. **Adhoora kaam:** autosave restore, [HIRE-HANDOFF.md](HIRE-HANDOFF.md) §7 wala tareeka (`autosave/claude/learn-v2`).
+4. **Apni row** §6 me jodo, commit + push.
+5. **Padho:** `CLAUDE.md`, ye file, [LEARN-V2.md](LEARN-V2.md) (poora), aur jis slice par kaam ho uske liye
+   [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) ka hissa.
+6. **Task list:** §3 se.
+7. `npm ci`, phir §5 ka pehla `[ ]` kadam.
+8. **Har kadam ke baad:** tests → `WIP(LV-…): …` commit → push → §3/§4/§5 me status → push. Limit 90% se upar ho to sab
+   save karke owner ko batao.
+9. **Niyam:** `npm run check` EXIT 0 se pehle push nahi (web/console par `build:clients` + `budget`; API/schema par
+   `npm run openapi`). Tracker (`PREP-TRACKER.md`) har slice me update. Content me LeetCode/Codeforces/TUF ka koi text
+   ya test nahi.
+
+## 2. Owner ne kya maanga (19 Oct 2026)
+
+Learn ka poora platform aur content: 5,000 coding problems (LeetCode/Codeforces level, apne), lambe editorials (owner
+ki PDF wali style, visuals, insaan jaise), 5,000 aptitude, DBMS/CN/OS/OOPs/LLD/HLD/design patterns, har language, CP
+math, SQL; compiler, saare features, poora UI, poora admin panel, security, scalable architecture, contests; LeetCode
+aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saath. Poora: [LEARN-V2.md](LEARN-V2.md).
+
+## 3. Tasks
+
+| # | Task | Status | Note |
+|---|---|---|---|
+| T1 | Design: LEARN-V2.md, launch plan, handoff | ✅ | 19 Oct 2026 |
+| T2 | Owner se: editorial PDF, OWNER-SETUP list, reviewers | ⬜ | Ruka hua kaam (tracker) |
+| T3 | Phase 1: neev (factory, judge, design v2) | ⬜ | §4 F-slices |
+| T4 | Sample-first: 10 + 10 + 2 samples, owner ki manzoori | ⬜ | LEARN-V2 §3g; isse pehle bulk generation nahi |
+| T5 | Phase 2: MVP features + launch content | ⬜ | §4 E, B1–B4, A1–A4 |
+| T6 | Readiness + private beta + public launch | ⬜ | §4 S-slices |
+| T7 | Phase 3: poora content + baaki features + Android app | ⬜ | |
+| T8 | Phase 4: video + DRM | ⬜ | §4 V-slices |
+
+## 4. Slices (har ek: migration → store → service → routes → UI → tests → docs)
+
+`[ ]` baaki · `[~]` chal raha · `[x]` poora (commit ke saath)
+
+**F: Neev**
+- [ ] LV-F1 Design tokens v2 (glow, glass, motion) + Learn shell v2 (top bar, left nav, Ctrl+K, phone tab bar)
+- [ ] LV-F2 Landing, pricing, legal pages (Terms, Privacy, Refund, Contact), help; prerender
+- [ ] LV-F3 Problem package format: schema + migration (validator, generators, tests S3 par, checker, interactor, solutions, galat solutions, TL), import/export
+- [ ] LV-F4 Content CMS v2 + review workflow (draft → machine checks → review → publish, diff, versions, rollback)
+- [ ] LV-F5 Visual renderer v1: spec (JSON) → sketch SVG (rough style, Kalam font); array, pointers, window, LL, stack/queue, tree, graph, DP table, recursion tree; step slider; trace se frames
+- [ ] LV-F6 Visual renderer v2: aptitude (Venn, DI, clock, dice, seating, family tree), OS/CN (Gantt, handshake, OSI), Mermaid/D2 theme (UML, ER, architecture)
+- [ ] LV-F7 Factory: DSA pipeline (draft → package → runner jaanch → doosra model → duplicate → editorial + visual → style critic → review queue)
+- [ ] LV-F8 Factory: aptitude pipeline (sawaal + Python solver + galat options ki wajah)
+- [ ] LV-F9 Factory: lessons + Q&A + MCQ pipeline
+- [ ] LV-F10 Judge queue API se bahar (`judge_jobs`, SKIP LOCKED) + alag worker service
+- [ ] LV-F11 Judge: package se tests (S3, cache), `testlib.h`, PyPy, Go/Kotlin/Rust, compile cache, C++ PCH
+- [ ] LV-F12 Interactive judge
+- [ ] LV-F13 Autoscale + contest se pehle scheduled scaling + staging load test (p95 < 5 s)
+
+**S0: Samples (gate)**
+- [ ] LV-S0 10 coding (E3, M4, H2, CP1) + 10 aptitude + 2 lessons, poore editorial aur visuals ke saath → owner review
+
+**E: Learner experience**
+- [ ] LV-E1 Onboarding → roadmap v2 ("roadmap ready" card, adjust/break)
+- [ ] LV-E2 Home v2 (aaj ka plan, revision due, streak, contest)
+- [ ] LV-E3 Subjects, sheets, problems bank (filters: topic, pattern, mushkil, rating)
+- [ ] LV-E4 Problem workspace v2 (tabs, test cases, submissions, Sahayak panel)
+- [ ] LV-E5 Editorial v2 (template ke sections, approach tabs, 4 bhasha, visual player, revision card, Hinglish)
+- [ ] LV-E6 Aptitude: topic lesson + practice set palette
+- [ ] LV-E7 Aptitude: timed mocks, analysis, company-pattern mocks
+- [ ] LV-E8 Lesson reader v2 (CS core, design, languages, CP math) + quizzes
+- [ ] LV-E9 SQL v2 (schema viewer, result diff)
+- [ ] LV-E10 Workspace page (code, lists, notes, mistake notebook, PDF downloads watermark ke saath)
+- [ ] LV-E11 Profile/portfolio v2 + certificate verify
+- [ ] LV-E12 Contests v2 (virtual, upsolve plan, rating graph, fresh problem pool)
+- [ ] LV-E13 Search (Ctrl+K, FTS + pgvector)
+- [ ] LV-E14 Hinglish/Hindi content toggle
+
+**B: LeetCode/TUF se behtar** (LEARN-V2 §4)
+- [ ] LV-B1 Chhota galat test (counterexample finder)
+- [ ] LV-B2 Complexity jaanch (scaled inputs)
+- [ ] LV-B3 Mistake notebook + drills
+- [ ] LV-B4 Pattern pehchaan drills
+- [ ] LV-B5 Micro-viva / Pramaan (verify hone wala)
+- [ ] LV-B6 Dry run "agla kadam batao"
+- [ ] LV-B7 Readiness score v2
+- [ ] LV-B8 Teach-back
+- [ ] LV-B9 AI mock interviewer (Learn)
+- [ ] LV-B10 College groups aur leaderboard
+
+**A: Admin**
+- [ ] LV-A1 Roles v2 + admin 2FA zaroori + IP allowlist
+- [ ] LV-A2 Users, support, "galti batao" reports, DPDP export/delete
+- [ ] LV-A3 Content analytics (acceptance, "kaam aaya?", drop-off, khaali search)
+- [ ] LV-A4 Factory control room (batches, kharch, failures, dobara chalao)
+- [ ] LV-A5 Notifications/campaigns
+- [ ] LV-A6 System health + feature flags
+
+**R: Readiness aur launch**
+- [ ] LV-R1 Rate limits, Turnstile, anti-scraping
+- [ ] LV-R2 CSP/headers, WAF
+- [ ] LV-R3 SEO prerender (problem, lesson pages), sitemap, OG images
+- [ ] LV-R4 Perf budgets + 20k DAU load test
+- [ ] LV-R5 Pen test fixes + readiness report
+- [ ] LV-R6 DPDP: age gate/consent, privacy flows
+
+**V: Video + DRM (phase 2)**
+- [ ] LV-V1 Video upload + transcode (admin), `VideoProvider` adapter
+- [ ] LV-V2 DRM player (Shaka + FairPlay) + license token + device/stream limit
+- [ ] LV-V3 Chalta watermark + leak trace
+- [ ] LV-V4 Android app (Capacitor + native player, `FLAG_SECURE`)
+- [ ] LV-V5 iPhone: recording pakad kar blur
+- [ ] LV-V6 Text ki suraksha (watermark overlay, scraping rok)
+
+**C: Content batches** (factory se, raat ko; review ke saath)
+- [ ] LV-C1 A2Z 520 · [ ] LV-C2 bank 980 · [ ] LV-C3 bank 2,480 tak · [ ] LV-C4 CP 2,000
+- [ ] LV-C5 aptitude 2,000 · [ ] LV-C6 aptitude 5,000 + 50 mocks
+- [ ] LV-C7 DBMS/OS/CN/OOPs · [ ] LV-C8 SQL 300 · [ ] LV-C9 LLD + patterns · [ ] LV-C10 HLD
+- [ ] LV-C11 Languages (C, C++, Java, Python, JS/TS, Go) · [ ] LV-C12 CP math · [ ] LV-C13 Hinglish editions
+- [ ] LV-C14 Purane 1,260 problems: import + jaanch + originality (plan 91)
+
+## 5. Abhi chal raha / agla kadam
+
+**AB AGLA:** LV-F3 (problem package format), phir LV-F5 (visual renderer v1), phir LV-S0 (samples). Saath me owner se
+PDF (T2). Bulk content (C-slices) LV-S0 ki manzoori aur API key ke baad hi.
+
+## 6. Sessions (har session shuru me row jode, jaate waqt "kahan ruka" bhare)
+
+| # | Tareekh | Account / session | Kya kiya | Kahan ruka |
+|---|---|---|---|---|
+| 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2` | Design poora; agla LV-F3 |
+
+## 7. Log (naya upar)
+
+- 19 Oct 2026: Learn v2 shuru. Design docs aur handoff. Hire ruka (agla H2d kadam 2, [HIRE-HANDOFF.md](HIRE-HANDOFF.md)).
