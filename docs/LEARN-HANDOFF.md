@@ -40,7 +40,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 | # | Task | Status | Note |
 |---|---|---|---|
 | T1 | Design: LEARN-V2.md, launch plan, handoff | ✅ | 19 Oct 2026 |
-| T2 | Owner se: editorial PDF, OWNER-SETUP list, reviewers | ⬜ | Ruka hua kaam (tracker) |
+| T2 | Owner se: editorial style, OWNER-SETUP list, reviewers | 🟡 | Style ✅ (owner ki file, 19 Oct → [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md)); baaki Ruka hua kaam |
 | T3 | Phase 1: neev (factory, judge, design v2) | ⬜ | §4 F-slices |
 | T4 | Sample-first: 10 + 10 + 2 samples, owner ki manzoori | ⬜ | LEARN-V2 §3g; isse pehle bulk generation nahi |
 | T5 | Phase 2: MVP features + launch content | ⬜ | §4 E, B1–B4, A1–A4 |
@@ -98,6 +98,16 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 - [ ] LV-B9 AI mock interviewer (Learn)
 - [ ] LV-B10 College groups aur leaderboard
 
+**M: Roadmaps aur AI** (LEARN-V2 §4b; roadmap.sh ka content nahi, sirf features)
+- [ ] LV-M1 Roadmap graph: schema (nodes, edges, node ↔ lesson/problem/quiz/lab), interactive SVG view + phone par list view, progress (done/seekh raha/skip)
+- [ ] LV-M2 Apne roadmaps: 15 role + 20 skill (content factory se, insaan review)
+- [ ] LV-M3 Custom roadmap editor (drag-drop, share link; Campus/Hire me assign); free 3, Plus 100
+- [ ] LV-M4 AI roadmap (goal + samay + level → roadmap, hamare content se juda)
+- [ ] LV-M5 AI courses aur guides (outline → lesson maangne par; dedupe; "AI ka banaya" / "Expert ne jaancha"; review queue)
+- [ ] LV-M6 Unlimited quizzes (bank + AI, do model se jaanch)
+- [ ] LV-M7 Plus v2: fair-use metering (Sahayak, AI course, quiz), chat history ki marzi (export/delete), "Plus beta" feature flags, pricing page
+- [ ] LV-M8 Node ka Pramaan (quiz/viva se), profile par
+
 **A: Admin**
 - [ ] LV-A1 Roles v2 + admin 2FA zaroori + IP allowlist
 - [ ] LV-A2 Users, support, "galti batao" reports, DPDP export/delete
@@ -131,15 +141,17 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 5. Abhi chal raha / agla kadam
 
-**AB AGLA:** LV-F3 (problem package format), phir LV-F5 (visual renderer v1), phir LV-S0 (samples). Saath me owner se
-PDF (T2). Bulk content (C-slices) LV-S0 ki manzoori aur API key ke baad hi.
+**AB AGLA:** LV-F3 (problem package format), phir LV-F5 (visual renderer v1), phir LV-S0 (samples,
+[learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) ki style me). Bulk content (C-slices) LV-S0 ki manzoori aur API key ke
+baad hi. Roadmaps + AI (M-slices) LV-E5 ke baad.
 
 ## 6. Sessions (har session shuru me row jode, jaate waqt "kahan ruka" bhare)
 
 | # | Tareekh | Account / session | Kya kiya | Kahan ruka |
 |---|---|---|---|---|
-| 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2` | Design poora; agla LV-F3 |
+| 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8) | Design poora; agla LV-F3 |
 
 ## 7. Log (naya upar)
 
+- 19 Oct 2026: owner ki editorial file ("Decode Your Coding Interview") se style guide; roadmap.sh ke features (apne content se; unka licence content ki ijaazat nahi deta).
 - 19 Oct 2026: Learn v2 shuru. Design docs aur handoff. Hire ruka (agla H2d kadam 2, [HIRE-HANDOFF.md](HIRE-HANDOFF.md)).

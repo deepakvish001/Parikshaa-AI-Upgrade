@@ -21,9 +21,11 @@ Saath ki docs: [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) (judge, servers, AI 
 
 ## 0. Pehle teen imaandar baatein
 
-1. **Editorial wali PDF is session me nahi mili.** Yahan sirf TUF ka video aur purani screenshots ki zip hai. §3c me
-   ek poora editorial template hai; PDF chat me upload karein, main template ko usi ke hisaab se badal dunga. **5,000
-   ke liye generation tab tak shuru nahi hoga** jab tak aap 10 sample editorials manzoor na kar dein (§3g).
+1. **Editorial ki style owner ki file se** ("Decode Your Coding Interview", Markdown, 19 Oct 2026): har problem 4 kadam
+   me (Understand → Coming Up With The Solution → Writing → Testing/Reflection), sawaal-jawab se input samajhna, "index
+   0 se shuru karo", complexity se hal sudhaarna, galat raasta bhi dikhana. Poora niyam:
+   [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md). **5,000 ka generation tab tak nahi** jab tak aap 10 sample
+   editorials manzoor na kar dein (§3g).
 2. **"LeetCode/Codeforces level" ka matlab mushkil ka level, unke sawaal nahi.** Unke statements, tests ya editorials
    copy karna copyright aur unki terms ke khilaaf hai. Classic idea (jaise "do number jinka jod target ho") kisi ka
    nahi; statement, kahani, tests aur editorial hamare apne honge.
@@ -52,6 +54,8 @@ se le kar product companies tak.
 ```
 Home (aaj ka plan, streak, revision due, contest)
 ├─ Roadmap (onboarding → goal → sprints, adjust/break)
+├─ Roadmaps (role aur skill ke interactive roadmaps, apne banao ya AI se banwao; §4b)
+├─ AI courses aur guides (kisi bhi topic par, Sahayak ke saath; §4b)
 ├─ DSA A2Z (520 problems, 18 step, apna kram)
 ├─ Sheets (Placement 150, Aakhri 30 din, Company-style, Topic sheets)
 ├─ Problems (5,000 ka bank: filter topic, mushkil, pattern, rating)
@@ -128,24 +132,24 @@ path, MST, SCC, flows basic), data structures, strings (KMP, Z, hashing, suffix 
 | Time limit | Sabse dheeme sahi solution ka 2–3× (bhasha ke hisaab se multiplier) |
 | Metadata | Topic, pattern, rating/mushkil, prerequisites, related, "kahan aata hai" (sirf sach) |
 
-### 3c. Editorial ka template (PDF milne tak; PDF ke hisaab se badlega)
+### 3c. Editorial ka dhaancha (owner ki file wali style)
 
-Har problem ka editorial, lagbhag 2,000–3,500 shabd (A2Z), 1,200–2,000 (bank):
+Poora niyam [learn/EDITORIAL-STYLE.md](learn/EDITORIAL-STYLE.md) me. Saar:
 
-1. **Upar:** naam, mushkil, pattern tags, padhne ka samay, prerequisites ke link.
-2. **Samasya apne shabdon me** (2–3 line) + "kya poocha hai" + constraints ka matlab (n ≤ 10⁵ → O(n log n) chalega).
-3. **Udaharan** visual ke saath, kadam-kadam.
-4. **Pehle khud socho:** 3 hint, ek-ek karke khulte hain.
-5. **Approach 1: Brute force:** idea (asli zindagi ki misaal), algorithm ke kadam, **dry run (visual frames)**, code
-   (C++, Java, Python, JS tabs), complexity (kaise nikli), "ye kyun kaafi nahi" (constraints se).
-6. **Approach 2: Better:** wahi dhaancha, "kya badla aur kyun".
-7. **Approach 3: Optimal:** wahi + **kyun sahi hai** (invariant ya proof ka saar).
-8. **Edge cases** ki list (har ek ka test).
-9. **Aam galtiyan** (shuru me analysis se, baad me asli WA data se).
-10. **Pattern pehchano:** ye pattern kab lagta hai + 3–5 related problems (aasan → mushkil).
-11. **Interview follow-ups:** variants (stream, memory kam, constraints badle) chhote jawab ke saath.
-12. **Revision card:** 3 line + complexity (revision aur PDF notes me jaata hai).
-13. **Hinglish/Hindi** toggle (A2Z me launch par).
+1. **Problem + example** (bold statement, code block, grid/tree ho to visual).
+2. **Understand The Problem / Samasya samjho:** key hisse bold, function ka dhaancha, input aur output ki jaanch
+   sawaal-jawab me (khaali? sorted? duplicate? negative? overflow? kai jawab?), zaroorat ho to data structure khud chunna.
+3. **Coming Up With The Solution / Hal tak pahuncho:** 3–4 examples "Kyun ye example?" ke saath, ek chuna hua example,
+   observations, "index 0 se shuru" se brute force, complexity ke dabbe (`O(N log N)` → sort/heap, `O(N)` → set/hash,
+   `O(log N)` → binary search), har idea aazmana, **galat raasta aur uski seekh**, recap, pseudocode. Brute → Better →
+   Optimal isi safar se nikalte hain; upar ke tabs inhi hisson par le jaate hain.
+4. **Writing The Solution / Code likho:** sanity checks, final code 4 bhasha ke tabs me (runner par pass).
+5. **Testing / Reflection / Jaancho aur seekho:** dry run (frames), time/space, 3–5 observations, related problems
+   (apne bank se), revision card, edge cases, aam galtiyan, follow-ups.
+
+Lambai: Easy ~1,800–2,500 shabd, Medium ~2,500–3,500, Hard ~3,500–5,000 (owner ki file me 2,000–3,450). Ye 4 headings
+hi hint ki seedhi hain. Mentor ki awaaz, `Note` callouts, banaye hue niji kisse nahi, bahar ke problem sites ke link
+nahi.
 
 **CP editorial me aur:** observations ki chain (Observation 1, 2, 3…), proof, constraints ka math, doosre solution,
 implementation tricks.
@@ -202,7 +206,7 @@ Topic plan (kram, ginti) ─▶ Draft (Opus 5.5, Batch API) ─▶ Package: stat
 ### 3g. Sample-first (zaroori gate)
 
 1. Main 10 problems (Easy 3, Medium 4, Hard 2, CP 1) + 10 aptitude + 2 lessons poore banata hoon, visuals ke saath.
-2. Aap dekhte hain (PDF ki style se milate hain), badlaav batate hain.
+2. Aap dekhte hain (apni file "Decode Your Coding Interview" ki style se milate hain), badlaav batate hain.
 3. Template aur style guide pakke → tab hi 5,000 ka generation.
 
 ### 3h. Content ka kharch aur samay
@@ -248,6 +252,58 @@ Har feature ka "kyun" aur kaise naapenge. ✅ = code me pehle se.
 LeetCode/TUF ke barabar wale (ye bhi honge): editorial 3 approach, kai bhasha, company tags (sirf sach), discussions,
 interview experiences ✅, contests + rating ✅, POTD ✅, lists ✅, notes ✅, streak/coins ✅, AI hint/review ✅,
 roadmap ✅, profile ✅.
+
+### 4b. Roadmaps, AI tutor aur AI courses (roadmap.sh jaisa, apne content se)
+
+**Owner ne kya diya (19 Oct 2026):** roadmap.sh ke Pro plan ki list (unlimited AI tutor messages; unlimited AI
+courses, guides aur roadmaps; unlimited quizzes; expert-written premium content; poori chat history; 100 tak custom
+roadmaps; naye features pehle) aur repo `github.com/nilbuild/developer-roadmap`.
+
+**Wo repo kya hai:** roadmap.sh ka content repo. ~88 roadmaps (Frontend, Backend, DevOps, AI Engineer, Data Analyst,
+Android, Cyber Security, System Design, DSA, React, Python, Java, Docker, Kubernetes, AWS, SQL, Git…). Har roadmap
+topics ka graph hai; har topic ek Markdown file (`roadmaps/<roadmap>/content/<topic>@<node-id>.md`) jisme samjhaana aur
+bahar ke free links hain. Site par: topic par click → padho, progress (done / seekh raha / skip), best-practice guides,
+question sets, project ideas; Pro me AI tutor, AI courses, AI roadmaps, quizzes, personal coach. Pro ka daam ~$10/mahina
+(unke premium page par; pakka nahi).
+
+**Licence (zaroori):** repo ki `license` file kehti hai ki content sirf **niji istemaal** ke liye hai; images, project
+files ya content ko kisi bhi roop me chhapna mana hai, sirf link share kar sakte hain, aur baaki ke liye pehle se
+ijaazat chahiye. **Isliye unke roadmaps, text ya images Parikshaa par nahi aayenge.** Hum wahi **features** banayenge,
+apne roadmaps aur apne content ke saath (jaise TUF ke saath kiya). Bahar ke docs ke **link** (MDN, Python docs,
+official guides) dena theek hai.
+
+**Kya banayenge:**
+
+| Feature | Parikshaa me | Free | Plus |
+|---|---|---|---|
+| **Role roadmaps** | Bharat ke career raaste: SDE (product), SDE (service companies: TCS/Infosys jaisi), Frontend, Backend (Node / Java Spring / Python), Full-stack (MERN, Java), Data Analyst, Data Engineer, ML Engineer, AI Engineer (LLM apps), DevOps/Cloud, Android, Cyber Security, QA/SDET | Sab | Sab |
+| **Skill roadmaps** | DSA, CP, System design, DBMS/OS/CN, SQL, Git, Linux, Docker, Kubernetes, AWS, har language, React, Node, Spring Boot, prompt engineering | Sab | Sab |
+| **Har topic (node) par** | Hamara lesson + problems + quiz + Build Lab project (jahan ho) + bahar ke free links; progress (done / seekh raha / skip); **node ka Pramaan** (quiz/viva pass karke) | Haan | Haan |
+| **Custom roadmap** | Drag-drop editor se apna roadmap; share link; teacher class ko de (Campus); company job ke liye "taiyaari ka roadmap" de (Hire) | 3 | **100** |
+| **AI roadmap** | Goal + samay + abhi ka level → AI roadmap banata hai, hamare content se jud kar; phir aap badal sakte hain | 1/mahina | 100 tak (custom ke andar) |
+| **AI tutor (Sahayak)** | Har topic, problem, lesson par: doubt, hint, review; hamare content se jawab, sources ke saath | Roz ki seema | **Unlimited (fair use)** |
+| **AI courses aur guides** | Kisi bhi topic par: modules → lessons (maangne par banta hai), quiz, revision card; ek jaisa topic do log maangein to ek hi course (sasta, aur review ho sakta hai). Label: "AI ka banaya" ya "Expert ne jaancha" | 2/mahina | **Unlimited (fair use)** |
+| **Quizzes** | Kisi bhi lesson, roadmap node ya topic par; hamare bank (5,000 aptitude + MCQ) se, ya AI se jo do model se jaanche gaye | Roz ki seema | **Unlimited** |
+| **Expert-written premium content** | Insaan ke jaanche A2Z editorials ke gehre hisse, LLD/HLD case studies, company-pattern mocks | Bada hissa free (TUF jaisa) | Sab |
+| **Chat history** | Sahayak ki baatein | 180 din (abhi ka niyam ✅) | **Jab tak aap rakhna chahein** (aapki marzi, export/delete) |
+| **Naye features pehle** | Feature flags me "Plus beta" group | — | Haan |
+| **Projects** | Har roadmap ke projects **Build Labs** me: live environment, apne aap jaanch ([LEARN-BUILD-LABS.md](LEARN-BUILD-LABS.md)) | Kuch | Sab |
+
+**roadmap.sh se behtar kya:** (1) roadmap sirf padhne ki list nahi: har node par **practice, judge aur labs** jo
+apne aap jaanchte hain; (2) **node ka Pramaan**, jo recruiter verify kar sake; (3) Hindi/Hinglish; (4) Bharat ke career
+raaste (service vs product companies, campus placement); (5) college aur company roadmap assign kar sakte hain;
+(6) roadmap seedha Hire ki job tak.
+
+**"Unlimited" ka imaandar matlab:** AI har message par paisa leta hai. Plus me **fair use**: roz ~200 Sahayak messages
+tak poori speed, uske baad bhi chalega par sasta model ya thoda dheema; ye pricing page par saaf likha. Kharch: ek bhaari
+Plus user (100 message/din × ~₹0.04) ≈ ₹120/mahina; Plus ka daam ₹199–399 isse upar.
+
+**AI course ka tareeka:** topic → outline (Opus/Sonnet, ek baar) → lesson tab bane jab koi khole (Haiku 5.5, cache) →
+hamare content aur official docs se jod (galat tathya kam) → quiz (do model se jaancha) → bahut log padhein to
+reviewer ki queue → "Expert ne jaancha" label. Har AI course par "galti batao".
+
+**Admin me:** roadmap editor (graph, nodes, content se jod), AI courses ki queue (popular → review), fair-use ki seema,
+abuse dekhna.
 
 ---
 
@@ -422,7 +478,7 @@ slices + content batches).
 
 | Hafta | Phase | Kya |
 |---|---|---|
-| 0–1 | **0: Neev** | Aapka [OWNER-SETUP.md](OWNER-SETUP.md); PDF; mockups ki manzoori; sample-first (§3g) |
+| 0–1 | **0: Neev** | Aapka [OWNER-SETUP.md](OWNER-SETUP.md); mockups ki manzoori; sample-first (§3g) |
 | 1–4 | **1: Factory aur judge** | Problem package, CMS + review, visual renderer, factory (DSA, aptitude, lessons), judge queue/workers/testlib/PyPy, design v2, Learn shell, landing |
 | 3–9 | **2: MVP** | Onboarding/roadmap, home, workspace + editorial v2, aptitude module, lessons reader, SQL v2, profile, workspace page, contests v2, search; behtar features 1–4; admin modules; content raat ko |
 | **8** | **Private beta** | Text-only, launch wala content (§3a) |
@@ -458,7 +514,7 @@ par ₹6.6–12 lakh) + video bandwidth (phase 2).
 
 | # | Kya | Kab |
 |---|---|---|
-| 1 | **Editorial wali PDF** chat me upload | Abhi |
+| 1 | Editorial style ✅ mil gayi. Bas batayein: "Decode Your Coding Interview" aapki apni hai ya kisi kitaab ki? (apni ho to uska text bhi course me) | Abhi |
 | 2 | 10 sample editorials + 10 aptitude + 2 lessons ki manzoori (§3g) | Hafta 1 |
 | 3 | Bade pages ke mockups ki manzoori | Hafta 1–2 |
 | 4 | [OWNER-SETUP.md](OWNER-SETUP.md): GitHub billing, domain, Vercel/Supabase Pro, AWS, **Anthropic API key** (factory ke liye), Razorpay | Hafta 0–1 |
@@ -467,6 +523,8 @@ par ₹6.6–12 lakh) + video bandwidth (phase 2).
 | 7 | Plus ka daam aur free ki seema | Hafta 6 |
 | 8 | Beta ke 1–2 college | Hafta 6 |
 | 9 | Phase 2: DRM provider account (KYC), Apple/Google developer accounts, video recording ka schedule | Hafta 10 |
+| 10 | Plus me chat history "jab tak aap chahein" (abhi niyam: 180 din me delete, DPDP ke liye). Sujhav: default 180 din, Plus user khud "hamesha rakho" chun sake, export/delete ke saath | Hafta 4 |
+| 11 | "Unlimited" AI ka fair-use: roz kitne message tak poori speed (sujhav ~200) | Hafta 4 |
 
 ---
 
@@ -490,4 +548,5 @@ par ₹6.6–12 lakh) + video bandwidth (phase 2).
 - [Axinom: DRM protection and screen recording](https://102.docs.axinom.com/services/drm/technical-articles/drm-protection-and-screen-recording/)
 - [Gumlet: screen recording protection compared](https://www.gumlet.com/learn/video-hosting-screen-recording-protection-compared/)
 - [VdoCipher pricing (blog)](https://www.vdocipher.com/blog/tag/vdocipher-pricing), [GetApp: VdoCipher](https://www.getapp.com/all-software/a/vdocipher)
+- [roadmap.sh premium](https://roadmap.sh/premium), [developer-roadmap repo](https://github.com/nilbuild/developer-roadmap) aur uski `license` file (19 Oct 2026)
 - Baaki (judge, GPU, model, server): [LEARN-LAUNCH-PLAN.md](LEARN-LAUNCH-PLAN.md) §12.
