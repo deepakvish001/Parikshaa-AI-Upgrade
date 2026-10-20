@@ -7,40 +7,27 @@ import {
   Play,
   CircleCheck,
   Circle,
-  CircleX,
   Clock,
   BadgeCheck,
-  FolderTree,
-  FileCode2,
-  Folder,
-  ChevronDown,
   GitBranch,
   TestTube2,
-  SquareTerminal,
   Sparkles,
-  Eye,
-  RotateCw,
-  Send,
   ListChecks,
   Server,
   Smartphone,
   BrainCircuit,
   Cloud,
   Layers,
-  ExternalLink,
   Check,
-  Plus,
   BookOpen,
   MessageSquare,
 } from "lucide-react";
-import { Link, useT, useToast } from "../lib/core";
-import { Badge, Level, Ring, Seg, Tabs, Code, PenNote, Card } from "../ui/kit";
-import { FocusBar, Panes, PaneHead, PaneToggles, usePanes } from "../ui/focus";
-import { SahayakPanel } from "../ui/sahayak";
+import { Link, useT } from "../lib/core";
+import { Badge, Level, Ring, Seg, Tabs, Card } from "../ui/kit";
 
 /* ---------------- mini app previews (pure CSS, not screenshots) ---------------- */
 
-function SplitApp({ big, settled }: { big?: boolean; settled?: boolean }) {
+export function SplitApp({ big, settled }: { big?: boolean; settled?: boolean }) {
   return (
     <div className={`mini-app split ${big ? "big" : ""}`}>
       <div className="ma-top">
@@ -645,272 +632,3 @@ export function ProjectRail() {
     </>
   );
 }
-
-/* ---------------- studio (focus) ---------------- */
-
-const SETTLE = `import { Balance, Transfer } from "../types";
-
-// Return the fewest transfers that settle every balance.
-export function settle(balances: Balance[]): Transfer[] {
-  const out: Transfer[] = [];
-  const owes = balances.filter((b) => b.amount < 0);
-  const gets = balances.filter((b) => b.amount > 0);
-  for (const o of owes) {
-    for (const g of gets) {
-      const pay = Math.min(-o.amount, g.amount);
-      out.push({ from: o.name, to: g.name, amount: pay });
-      o.amount += pay;
-      g.amount -= pay;
-    }
-  }
-  return out;
-}`;
-
-const TREE: [string, number, "dir" | "file", boolean?][] = [
-  ["hostel-split", 0, "dir"],
-  ["src", 1, "dir"],
-  ["api", 2, "dir"],
-  ["expenses.ts", 3, "file"],
-  ["settle.ts", 3, "file", true],
-  ["ui", 2, "dir"],
-  ["RoomPage.tsx", 3, "file"],
-  ["types.ts", 2, "file"],
-  ["tests", 1, "dir"],
-  ["settle.test.ts", 2, "file"],
-  ["package.json", 1, "file"],
-  ["README.md", 1, "file"],
-];
-
-const TESTS: [string, boolean, string?][] = [
-  ["returns [] when everyone is even", true],
-  ["one debtor, one creditor", true],
-  ["amounts are whole rupees", true],
-  ["never pays more than owed", true],
-  ["handles 10 members", true],
-  ["ignores zero balances", true],
-  ["total paid equals total owed", true],
-  ["is stable for the same input", true],
-  ["uses the fewest transfers (4 members)", false, "expected 3 transfers, got 4"],
-  ["skips ₹0 transfers", false, "got Kabir → Ishita ₹0"],
-  ["uses the fewest transfers (5 members)", false, "expected 4 transfers, got 6"],
-  ["largest debtor pays first", false, "first transfer was Kabir, expected Zoya"],
-];
-
-export function StudioScreen() {
-  const t = useT();
-  const toast = useToast();
-  const { open, toggle } = usePanes({ files: true, code: true, prev: true, ai: false });
-  const [phoneTab, setPhoneTab] = useState("code");
-  const [bottom, setBottom] = useState("tests");
-  const [running, setRunning] = useState(false);
-  const defs = [
-    { id: "files", label: t("Files", "Files", "फ़ाइलें"), icon: <FolderTree /> },
-    { id: "code", label: t("Editor", "Editor", "संपादक"), icon: <FileCode2 /> },
-    { id: "prev", label: t("Preview", "Preview", "प्रीव्यू"), icon: <Eye /> },
-    { id: "ai", label: "Sahayak", icon: <Sparkles />, tone: "ai" as const },
-  ];
-  const check = () => {
-    setRunning(true);
-    setBottom("tests");
-    window.setTimeout(() => {
-      setRunning(false);
-      toast(t("8 of 12 tests pass · 4 to go", "12 me se 8 pass · 4 baaki", "12 में से 8 पास"));
-    }, document.documentElement.classList.contains("shots") ? 0 : 1100);
-  };
-  return (
-    <>
-      <FocusBar
-        back="project"
-        title="hostel-split"
-        sub={t("Milestone 3 · Settle up", "Milestone 3 · Settle up", "माइलस्टोन 3")}
-        center={
-          <span className="ms-pill">
-            <TestTube2 style={{ width: 14, height: 14 }} />
-            <span className="num">8 / 12</span>
-            <span className="tiny faint hide-narrow">{t("tests", "tests", "टेस्ट")}</span>
-          </span>
-        }
-        right={
-          <>
-            <span className="hide-phone">
-              <PaneToggles panes={defs} open={open} toggle={toggle} />
-            </span>
-            <button className="btn sm" onClick={check} disabled={running}>
-              {running ? <span className="spinner" /> : <Play />}
-              <span className="hide-narrow">{t("Check my work", "Kaam jaancho", "जाँचें")}</span>
-            </button>
-            <button className="btn sm pri" onClick={() => toast(t("Milestone opens when all 12 tests pass", "12 tests pass hone par milestone submit", "सभी टेस्ट पास होने पर"))}>
-              <Send />
-              <span className="hide-narrow">{t("Submit M3", "M3 submit", "M3 जमा")}</span>
-            </button>
-          </>
-        }
-      />
-      <Panes
-        open={open}
-        toggle={toggle}
-        phoneTab={phoneTab}
-        setPhoneTab={setPhoneTab}
-        panes={[
-          {
-            ...defs[0],
-            weight: 0.18,
-            min: 230,
-            content: (
-              <>
-                <PaneHead onClose={() => toggle("files")}>
-                  <span className="h3" style={{ paddingLeft: 6 }}>
-                    {t("Explorer", "Explorer", "एक्सप्लोरर")}
-                  </span>
-                  <span className="grow" />
-                  <button className="icon-btn sm" aria-label="New file">
-                    <Plus />
-                  </button>
-                </PaneHead>
-                <div className="pane-body">
-                  <div className="tree">
-                    {TREE.map(([n, d, k, on]) => (
-                      <div key={n} className={`tr ${on ? "on" : ""}`} style={{ paddingLeft: 10 + d * 14 }}>
-                        {k === "dir" ? <ChevronDown className="tr-chev" /> : <span style={{ width: 13 }} />}
-                        {k === "dir" ? <Folder className="tr-ic dir" /> : <FileCode2 className="tr-ic" />}
-                        <span className="ellipsis">{n}</span>
-                        {n === "settle.ts" && <span className="tr-dot" />}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="guide">
-                    <span className="eyebrow">{t("Steps for M3", "M3 ke kadam", "M3 के कदम")}</span>
-                    {[
-                      ["Write settle() that pays debts", true],
-                      ["Pair the biggest debtor with the biggest creditor", false],
-                      ["Skip zero-rupee transfers", false],
-                      ["Show the plan on RoomPage", false],
-                    ].map(([s, d], i) => (
-                      <div key={i} className={`g-step ${d ? "done" : i === 1 ? "now" : ""}`}>
-                        {d ? <CircleCheck /> : <Circle />}
-                        <span>{s as string}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            ),
-          },
-          {
-            ...defs[1],
-            weight: 0.44,
-            min: 380,
-            content: (
-              <>
-                <PaneHead onClose={() => toggle("code")}>
-                  <div className="file-tabs">
-                    <span className="file-tab on">
-                      <FileCode2 />
-                      settle.ts
-                    </span>
-                    <span className="file-tab">RoomPage.tsx</span>
-                    <span className="file-tab">settle.test.ts</span>
-                  </div>
-                </PaneHead>
-                <div className="editor">
-                  <Code code={SETTLE} hl={[8, 9]} bad={[11]} caret={11} className="ed-code" />
-                  <div className="ed-note" style={{ top: "calc(12px + 11 * 1.7em + 4px)", left: "min(300px, 60%)" }}>
-                    <PenNote>{t("↖ pushes a ₹0 transfer too", "↖ ₹0 ka transfer bhi jodta hai", "↖ ₹0 भी जोड़ता है")}</PenNote>
-                  </div>
-                </div>
-                <div className="bottom-panel">
-                  <div className="bp-tabs">
-                    {[
-                      ["tests", t("Tests", "Tests", "टेस्ट"), <TestTube2 key="a" />, "8/12"],
-                      ["term", t("Terminal", "Terminal", "टर्मिनल"), <SquareTerminal key="b" />, ""],
-                      ["prob", t("Problems", "Problems", "समस्याएँ"), <CircleX key="c" />, "1"],
-                    ].map(([id, l, ic, c]) => (
-                      <button key={id as string} className={bottom === id ? "on" : ""} onClick={() => setBottom(id as string)}>
-                        {ic}
-                        {l}
-                        {c && <span className="count">{c}</span>}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="bp-body">
-                    {running ? (
-                      <div className="row g8 small muted" style={{ padding: 12 }}>
-                        <span className="spinner" />
-                        {t("Running 12 tests…", "12 tests chal rahe…", "12 टेस्ट चल रहे…")}
-                      </div>
-                    ) : bottom === "tests" ? (
-                      <ul className="tests">
-                        {TESTS.map(([n, ok, msg]) => (
-                          <li key={n} className={ok ? "ok" : "bad"}>
-                            {ok ? <CircleCheck /> : <CircleX />}
-                            <span className="grow">{n}</span>
-                            {msg && <span className="mono tiny t-red">{msg}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : bottom === "term" ? (
-                      <pre className="term mono">
-                        <span className="faint">~/hostel-split$</span> npm run dev{"\n"}
-                        <span className="t-tick">✓</span> ready on http://localhost:5173{"\n"}
-                        <span className="faint">[api]</span> GET /rooms/214 200 12ms{"\n"}
-                        <span className="faint">[api]</span> POST /settle 200 4ms{"\n"}
-                        <span className="faint">~/hostel-split$</span> <span className="type-caret" />
-                      </pre>
-                    ) : (
-                      <ul className="tests">
-                        <li className="bad">
-                          <CircleX />
-                          <span className="grow">settle.ts:11 · {t("Transfer of 0 is pushed when pay is 0", "pay 0 hone par bhi transfer jud raha", "0 का ट्रांसफ़र")}</span>
-                        </li>
-                      </ul>
-                    )}
-                  </div>
-                </div>
-                <div className="statusbar">
-                  <span className="row g4">
-                    <GitBranch />
-                    m3-settle
-                  </span>
-                  <span className="faint hide-narrow">Node 22 · TypeScript</span>
-                  <span className="grow" />
-                  <span className="faint">Ln 9, Col 18</span>
-                  <span className="t-tick">{t("Saved", "Saved", "सहेजा")}</span>
-                </div>
-              </>
-            ),
-          },
-          {
-            ...defs[2],
-            weight: 0.38,
-            min: 300,
-            content: (
-              <>
-                <PaneHead onClose={() => toggle("prev")}>
-                  <span className="h3" style={{ paddingLeft: 6 }}>
-                    {t("Preview", "Preview", "प्रीव्यू")}
-                  </span>
-                  <span className="live-dot">{t("live", "live", "लाइव")}</span>
-                  <span className="grow" />
-                  <button className="icon-btn sm" aria-label="Reload preview">
-                    <RotateCw />
-                  </button>
-                  <button className="icon-btn sm" aria-label="Open in new tab">
-                    <ExternalLink />
-                  </button>
-                </PaneHead>
-                <div className="pane-body prev-body">
-                  <BrowserFrame url="localhost:5173/rooms/214">
-                    <SplitApp big settled={false} />
-                  </BrowserFrame>
-                  <PenNote className="prev-note">{t("4 transfers, one of ₹0. Should be 3.", "4 transfers, ek ₹0 ka. 3 hone chahiye.", "4 ट्रांसफ़र, 3 होने चाहिए।")}</PenNote>
-                </div>
-              </>
-            ),
-          },
-          { ...defs[3], weight: 0.32, min: 320, content: <SahayakPanel context="studio" onClose={() => toggle("ai")} onMinimize={() => toggle("ai")} /> },
-        ]}
-      />
-    </>
-  );
-}
-

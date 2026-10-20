@@ -17,6 +17,7 @@ import "./styles/practice.css";
 import "./styles/learn.css";
 import "./styles/build.css";
 import "./styles/career.css";
+import "./styles/studio.css";
 import { LangProvider, ThemeProvider, ToastProvider, Link, useRoute, useT } from "./lib/core";
 import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";
