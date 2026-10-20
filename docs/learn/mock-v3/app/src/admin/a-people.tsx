@@ -26,27 +26,67 @@ import {
 } from "lucide-react";
 import { Link, navigate, useT, useToast } from "../lib/core";
 import { Badge, Tabs, Card, Avatar, Spark, Heatmap, Menu, Seg } from "../ui/kit";
-import { AdmHead, Gate, Toolbar, Pager, Masked, FourEyes, RowMenu } from "./akit";
+import { AdmHead, Gate, Toolbar, Pager, Masked, FourEyes, RowMenu, useFirstLoad, SkelRows } from "./akit";
 
 /* ---------------- learners ---------------- */
 
-const LEARNERS = [
+const LEARNERS: [string, string, string, "Free" | "Plus" | "Campus", number, number, string, "" | "report" | "inactive" | "risk"][] = [
   ["Aarav Sharma", "aarav", "Indore Institute of Technology", "Free", 12, 212, "2 min ago", ""],
   ["Ishita Rao", "ishita_r", "Pune College of Engineering", "Plus", 48, 540, "1 h ago", ""],
   ["Kabir Shah", "kabirs", "Campus · Lucknow Tech", "Campus", 3, 88, "yesterday", "report"],
   ["Zoya Khan", "zoya.k", "Bhopal Engineering College", "Plus", 21, 301, "3 h ago", ""],
   ["Rahul Verma", "rv_2027", "Jaipur Tech University", "Free", 0, 14, "12 days ago", "inactive"],
+  ["Neha Gill", "nehag", "Campus · Ludhiana Institute", "Campus", 6, 133, "20 min ago", ""],
+  ["Arjun Menon", "arjun.m", "Kochi School of Engineering", "Free", 1, 41, "4 days ago", "risk"],
+  ["Sneha Patil", "sneha_p", "Nagpur Tech", "Plus", 33, 412, "5 h ago", ""],
+  ["Imran Qureshi", "imranq", "Aligarh Engineering College", "Free", 9, 97, "yesterday", ""],
+  ["Tanvi Joshi", "tanvij", "Campus · Nashik College", "Campus", 2, 60, "6 days ago", "risk"],
 ];
 
 export function AdmLearners() {
   const t = useT();
+  const loading = useFirstLoad();
+  const [view, setView] = useState("all");
+  const rows = LEARNERS.filter((r) =>
+    view === "all" ? true : view === "plus" ? r[3] === "Plus" : view === "campus" ? r[3] === "Campus" : view === "risk" ? r[7] === "risk" || r[7] === "inactive" : r[7] === "report",
+  );
   return (
     <div className="col g16">
-      <AdmHead title={t("Learners", "Learners", "शिक्षार्थी")} sub={t("4,82,310 accounts · 38,410 active today", "4,82,310 accounts · aaj 38,410 active", "4,82,310 खाते")} />
+      <AdmHead
+        title={t("Learners", "Learners", "शिक्षार्थी")}
+        sub={t("4,82,310 accounts · 38,410 active today · data is masked until you give a reason", "4,82,310 accounts · aaj 38,410 active · data wajah dene tak masked", "4,82,310 खाते")}
+      />
+      <div className="stat-strip" style={{ ["--n" as string]: 4 }}>
+        {[
+          [t("New this week", "Is hafte naye", "इस सप्ताह नए"), "9,412", "+6.2%"],
+          [t("Active 7 days", "7 din active", "7 दिन सक्रिय"), "1,21,880", "25%"],
+          [t("At risk (no plan 5+ days)", "Risk me (5+ din plan nahi)", "जोखिम में"), "14,206", t("nudge sent to 9,100", "9,100 ko nudge", "9,100 को")],
+          [t("Open reports", "Khuli reports", "खुली रिपोर्ट"), "37", t("11 older than 24 h", "11 purani 24 h se", "11 पुरानी")],
+        ].map(([k, v, d]) => (
+          <div key={k} className="stat">
+            <span className="k">{k}</span>
+            <span className="v">{v}</span>
+            <span className="d">{d}</span>
+          </div>
+        ))}
+      </div>
       <section className="card">
+        <div style={{ padding: "0 12px" }}>
+          <Tabs
+            value={view}
+            onChange={setView}
+            items={[
+              { id: "all", label: t("All", "Sab", "सभी") },
+              { id: "plus", label: "Plus", count: LEARNERS.filter((r) => r[3] === "Plus").length },
+              { id: "campus", label: t("Campus licence", "Campus licence", "कैंपस"), count: LEARNERS.filter((r) => r[3] === "Campus").length },
+              { id: "risk", label: t("At risk", "Risk me", "जोखिम"), count: LEARNERS.filter((r) => r[7] === "risk" || r[7] === "inactive").length },
+              { id: "reported", label: t("Reported", "Reported", "रिपोर्टेड"), count: 1 },
+            ]}
+          />
+        </div>
         <Toolbar
           placeholder={t("Email, phone, handle or ID", "Email, phone, handle ya ID", "ईमेल, फ़ोन, हैंडल")}
-          filters={[{ label: t("Plan: Plus", "Plan: Plus", "प्लस") }, { label: t("College", "College", "कॉलेज") }, { label: t("Inactive 7 days", "7 din inactive", "7 दिन निष्क्रिय") }, { label: t("Has reports", "Reports", "रिपोर्ट") }]}
+          filters={[{ label: t("College", "College", "कॉलेज") }, { label: t("Goal", "Goal", "लक्ष्य") }, { label: t("Year", "Year", "वर्ष") }, { label: t("Joined", "Joined", "जुड़े") }]}
           right={
             <Gate mod="learners" need="full" className="btn sm">
               <Download />
@@ -68,33 +108,45 @@ export function AdmLearners() {
               </tr>
             </thead>
             <tbody>
-              {LEARNERS.map(([n, h, c, p, st, so, ls, f]) => (
-                <tr key={h as string} onClick={() => navigate("adm-learner")} style={{ cursor: "pointer" }}>
-                  <td>
-                    <span className="row g10">
-                      <Avatar name={n as string} size={30} />
-                      <span>
-                        <b className="small">{n}</b>
-                        <span className="tiny faint" style={{ display: "block" }}>
-                          @{h}
+              {loading ? (
+                <SkelRows cols={7} rows={8} />
+              ) : (
+                rows.map(([n, h, c, p, st, so, ls, f], i) => (
+                  <tr key={h} onClick={() => navigate("adm-learner")} style={{ cursor: "pointer" }}>
+                    <td>
+                      <span className="row g10">
+                        <Avatar name={n} size={30} tone={i} />
+                        <span>
+                          <b className="small">{n}</b>
+                          <span className="tiny faint" style={{ display: "block" }}>
+                            @{h}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                  </td>
-                  <td className="small muted">{c}</td>
-                  <td>
-                    <Badge tone={p === "Plus" ? "solid" : p === "Campus" ? "pen" : ""}>{p}</Badge>
-                  </td>
-                  <td className="r num">{st}</td>
-                  <td className="r num">{so}</td>
-                  <td className="small faint">{ls}</td>
-                  <td>{f === "report" ? <Badge tone="red">1 report</Badge> : f === "inactive" ? <Badge>{t("inactive", "inactive", "निष्क्रिय")}</Badge> : null}</td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="small muted">{c}</td>
+                    <td>
+                      <Badge tone={p === "Plus" ? "solid" : p === "Campus" ? "pen" : ""}>{p}</Badge>
+                    </td>
+                    <td className="r num">{st}</td>
+                    <td className="r num">{so}</td>
+                    <td className="small faint">{ls}</td>
+                    <td>
+                      {f === "report" ? (
+                        <Badge tone="red">1 report</Badge>
+                      ) : f === "inactive" ? (
+                        <Badge>{t("inactive", "inactive", "निष्क्रिय")}</Badge>
+                      ) : f === "risk" ? (
+                        <Badge tone="coin">{t("at risk", "risk me", "जोखिम")}</Badge>
+                      ) : null}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-        <Pager total="4,82,310" shown="1–5" />
+        <Pager total="4,82,310" shown={`1–${rows.length}`} />
       </section>
     </div>
   );
@@ -395,68 +447,186 @@ export function AdmCommunity() {
   const t = useT();
   const toast = useToast();
   const [ban, setBan] = useState(false);
+  const [tab, setTab] = useState("flags");
   return (
     <div className="col g16">
-      <AdmHead title={t("Community", "Community", "समुदाय")} sub={t("Flags first, then experiences waiting for approval", "Pehle flags, phir approval wale experiences", "पहले फ़्लैग")} />
-      <div className="col g10">
+      <AdmHead
+        title={t("Community", "Community", "समुदाय")}
+        sub={t("Flags first, then experiences waiting for approval. House rules are public; every action tells the person why.", "Pehle flags, phir approval wale experiences. Niyam public hain; har action ki wajah insaan ko batayi jaati hai.", "पहले फ़्लैग")}
+      />
+      <div className="stat-strip" style={{ ["--n" as string]: 4 }}>
         {[
-          { w: "Kabir Shah", r: t("Full solution without a spoiler", "Bina spoiler poora hal", "स्पॉइलर बिना हल"), n: 4, txt: "Here is my AC code for Weekly 12 C: …" },
-          { w: "@spam_bot_22", r: t("Spam · links", "Spam · links", "स्पैम"), n: 11, txt: "Buy cheap course bundles at …" },
-        ].map((f) => (
-          <section key={f.w} className="card flag-card">
-            <div className="row g10">
-              <ShieldAlert style={{ width: 20, height: 20, color: "var(--red-text)" }} />
-              <b className="small grow">
-                {f.r} · {f.n} {t("flags", "flags", "फ़्लैग")}
-              </b>
-              <span className="tiny faint">{f.w}</span>
-            </div>
-            <div className="spoiler">
-              <EyeOff />
-              <span className="small">{f.txt}</span>
-            </div>
-            <div className="row wrap g8">
-              <Gate mod="community" className="btn sm" onClick={() => toast(t("Kept · flaggers told", "Rakha · flag walon ko bataya", "रखा"))}>
-                <Check />
-                {t("Keep", "Rakho", "रखें")}
-              </Gate>
-              <Gate mod="community" className="btn sm" onClick={() => toast(t("Hidden behind spoiler", "Spoiler me chhupaya", "छिपाया"))}>
-                <EyeOff />
-                {t("Hide as spoiler", "Spoiler me", "स्पॉइलर")}
-              </Gate>
-              <Gate mod="community" className="btn sm">
-                <VolumeX />
-                {t("Mute 7 days", "7 din mute", "7 दिन म्यूट")}
-              </Gate>
-              <Gate mod="community" need="full" className="btn sm dang" onClick={() => setBan(true)}>
-                <Ban />
-                {t("Ban", "Ban", "प्रतिबंध")}
-              </Gate>
-            </div>
-          </section>
+          [t("Open flags", "Khule flags", "खुले फ़्लैग"), "2", t("oldest 3 h", "sabse purana 3 h", "3 घंटे")],
+          [t("Posts today", "Aaj ke posts", "आज के पोस्ट"), "1,204", "+8%"],
+          [t("Experiences waiting", "Experiences baaki", "अनुभव बाकी"), "2", t("1 with proof", "1 proof ke saath", "1 प्रमाण")],
+          [t("Active bans", "Active bans", "सक्रिय प्रतिबंध"), "2", t("1 appeal open", "1 appeal khuli", "1 अपील")],
+        ].map(([k, v, d]) => (
+          <div key={k} className="stat">
+            <span className="k">{k}</span>
+            <span className="v">{v}</span>
+            <span className="d">{d}</span>
+          </div>
         ))}
       </div>
-      <Card title={t("Experiences waiting", "Experiences baaki", "अनुभव बाकी")} pad={false}>
-        <div className="list">
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "flags", label: t("Flags", "Flags", "फ़्लैग"), count: 2 },
+          { id: "exp", label: t("Experiences", "Experiences", "अनुभव"), count: 2 },
+          { id: "posts", label: t("All posts", "Saare posts", "सभी पोस्ट") },
+          { id: "bans", label: t("Mutes & bans", "Mute aur ban", "प्रतिबंध"), count: 2 },
+        ]}
+      />
+      {tab === "flags" && (
+        <div className="col g10">
           {[
-            ["Nimbu Labs · SDE 1 · Sep 2026", t("offer letter attached", "offer letter laga", "ऑफ़र पत्र"), true],
-            ["Kesar Cloud · Backend · Aug 2026", t("no proof", "proof nahi", "प्रमाण नहीं"), false],
-          ].map(([n, p, ok]) => (
-            <div key={n as string} className="li">
-              <span className="grow">
-                <b className="small">{n as string}</b>
-                <span className={`tiny ${ok ? "t-tick" : "faint"}`} style={{ display: "block" }}>
-                  {ok ? <CircleCheck style={{ width: 12, height: 12, verticalAlign: -2 }} /> : null} {p as string}
+            { w: "Kabir Shah", r: t("Full solution without a spoiler", "Bina spoiler poora hal", "स्पॉइलर बिना हल"), n: 4, txt: "Here is my AC code for Weekly 12 C: …", where: "Discussions · Weekly Round 12", age: "3 h" },
+            { w: "@spam_bot_22", r: t("Spam · links", "Spam · links", "स्पैम"), n: 11, txt: "Buy cheap course bundles at …", where: "Study group · DSA 2027", age: "40 min" },
+          ].map((f) => (
+            <section key={f.w} className="card flag-card">
+              <div className="row g10">
+                <ShieldAlert style={{ width: 20, height: 20, color: "var(--red-text)" }} />
+                <b className="small grow">
+                  {f.r} · {f.n} {t("flags", "flags", "फ़्लैग")}
+                </b>
+                <span className="tiny faint">
+                  {f.w} · {f.where} · {f.age}
                 </span>
-              </span>
-              <Gate mod="community" className="btn sm">
-                {ok ? t("Approve as verified", "Verified approve", "सत्यापित") : t("Approve as unverified", "Unverified approve", "असत्यापित")}
-              </Gate>
-              <RowMenu items={[{ label: t("Reject with reason", "Wajah ke saath reject", "अस्वीकार"), danger: true }]} />
-            </div>
+              </div>
+              <div className="spoiler">
+                <EyeOff />
+                <span className="small">{f.txt}</span>
+              </div>
+              <div className="row wrap g8">
+                <Gate mod="community" className="btn sm" onClick={() => toast(t("Kept · flaggers told", "Rakha · flag walon ko bataya", "रखा"))}>
+                  <Check />
+                  {t("Keep", "Rakho", "रखें")}
+                </Gate>
+                <Gate mod="community" className="btn sm" onClick={() => toast(t("Hidden behind spoiler", "Spoiler me chhupaya", "छिपाया"))}>
+                  <EyeOff />
+                  {t("Hide as spoiler", "Spoiler me", "स्पॉइलर")}
+                </Gate>
+                <Gate mod="community" className="btn sm" onClick={() => toast(t("Muted for 7 days · they were told why", "7 din mute · wajah batayi", "म्यूट"))}>
+                  <VolumeX />
+                  {t("Mute 7 days", "7 din mute", "7 दिन म्यूट")}
+                </Gate>
+                <Gate mod="community" need="full" className="btn sm dang" onClick={() => setBan(true)}>
+                  <Ban />
+                  {t("Ban", "Ban", "प्रतिबंध")}
+                </Gate>
+              </div>
+            </section>
           ))}
         </div>
-      </Card>
+      )}
+      {tab === "exp" && (
+        <Card title={t("Experiences waiting", "Experiences baaki", "अनुभव बाकी")} pad={false}>
+          <div className="list">
+            {[
+              ["Nimbu Labs · SDE 1 · Sep 2026", t("offer letter attached · 3 rounds described", "offer letter laga · 3 rounds", "ऑफ़र पत्र"), true],
+              ["Kesar Cloud · Backend · Aug 2026", t("no proof · names an interviewer (will be removed)", "proof nahi · interviewer ka naam (hatega)", "प्रमाण नहीं"), false],
+            ].map(([n, p, ok]) => (
+              <div key={n as string} className="li">
+                <span className="grow">
+                  <b className="small">{n as string}</b>
+                  <span className={`tiny ${ok ? "t-tick" : "faint"}`} style={{ display: "block" }}>
+                    {ok ? <CircleCheck style={{ width: 12, height: 12, verticalAlign: -2 }} /> : null} {p as string}
+                  </span>
+                </span>
+                <Gate mod="community" className="btn sm">
+                  {ok ? t("Approve as verified", "Verified approve", "सत्यापित") : t("Approve as unverified", "Unverified approve", "असत्यापित")}
+                </Gate>
+                <RowMenu items={[{ label: t("Edit before approving", "Approve se pehle edit", "संपादित") }, { label: t("Reject with reason", "Wajah ke saath reject", "अस्वीकार"), danger: true }]} />
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+      {tab === "posts" && (
+        <section className="card">
+          <Toolbar placeholder={t("Search posts or people", "Posts ya log khojo", "पोस्ट खोजें")} filters={[{ label: t("Has spoiler", "Spoiler", "स्पॉइलर") }, { label: t("Answered", "Answered", "उत्तरित") }, { label: t("Reported once", "Ek report", "एक रिपोर्ट") }]} />
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Post", "Post", "पोस्ट")}</th>
+                  <th>{t("Where", "Kahan", "कहाँ")}</th>
+                  <th className="r">{t("Votes", "Votes", "वोट")}</th>
+                  <th className="r">{t("Replies", "Replies", "जवाब")}</th>
+                  <th>{t("State", "Haalat", "स्थिति")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["Is it okay to use long long everywhere in C++?", "Discussions", 34, 12, "live"],
+                  ["Weekly Round 12, problem C: my greedy idea", "Contest", 21, 8, "review"],
+                  ["How I revised OS in 5 days before Tech 2", "Experiences", 57, 19, "live"],
+                  ["Study partner for DP, evenings IST", "Study groups", 6, 3, "live"],
+                ].map(([p, w, v, r, st]) => (
+                  <tr key={p as string}>
+                    <td className="small">{p}</td>
+                    <td>
+                      <Badge>{w}</Badge>
+                    </td>
+                    <td className="r num">{v}</td>
+                    <td className="r num">{r}</td>
+                    <td>{st === "live" ? <span className="small t-tick">{t("Visible", "Dikh raha", "दिख रहा")}</span> : <span className="small t-coin">{t("Behind spoiler", "Spoiler me", "स्पॉइलर")}</span>}</td>
+                    <td>
+                      <RowMenu items={[{ label: t("Open", "Kholo", "खोलें") }, { label: t("Pin to top", "Upar pin", "पिन") }, { label: t("Hide", "Chhupao", "छिपाएँ"), danger: true }]} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+      {tab === "bans" && (
+        <section className="card">
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Account", "Account", "खाता")}</th>
+                  <th>{t("Action", "Action", "कार्य")}</th>
+                  <th>{t("Reason", "Wajah", "कारण")}</th>
+                  <th>{t("Until", "Kab tak", "कब तक")}</th>
+                  <th>{t("By", "Kisne", "किसने")}</th>
+                  <th>{t("Appeal", "Appeal", "अपील")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="mono small">@spam_bot_22</td>
+                  <td>
+                    <Badge tone="red">Ban</Badge>
+                  </td>
+                  <td className="small">Spam links ×34 in 2 days</td>
+                  <td className="small">{t("Permanent", "Hamesha", "स्थायी")}</td>
+                  <td className="small muted">Sana Q. + Meera I.</td>
+                  <td className="small faint">—</td>
+                </tr>
+                <tr>
+                  <td className="mono small">@zz_top</td>
+                  <td>
+                    <Badge tone="coin">Mute</Badge>
+                  </td>
+                  <td className="small">Rude replies ×3</td>
+                  <td className="small">27 Oct</td>
+                  <td className="small muted">Sana Q.</td>
+                  <td>
+                    <Gate mod="community" className="btn sm">
+                      {t("Review appeal", "Appeal dekho", "अपील देखें")}
+                    </Gate>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       <FourEyes open={ban} onClose={() => setBan(false)} title={t("Ban this account from the community", "Community se ban", "प्रतिबंध")} what="@spam_bot_22 · 11 flags · 34 posts in 2 days" needs="Super admin" />
     </div>
   );

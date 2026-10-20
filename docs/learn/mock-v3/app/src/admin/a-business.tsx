@@ -224,11 +224,58 @@ export function AdmContests() {
         value={tab}
         onChange={setTab}
         items={[
+          { id: "all", label: t("All contests", "Saare contests", "सभी"), count: 6 },
           { id: "live", label: t("Live monitor", "Live monitor", "लाइव निगरानी") },
           { id: "setup", label: t("Setup", "Setup", "सेटअप") },
           { id: "plag", label: t("Copy check", "Copy check", "नकल जाँच"), count: 6 },
         ]}
       />
+      {tab === "all" && (
+        <section className="card">
+          <Toolbar placeholder={t("Search contests", "Contests khojo", "खोजें")} filters={[{ label: t("Rated", "Rated", "रेटेड") }, { label: t("Campus", "Campus", "कैंपस") }, { label: t("Needs problems", "Problems chahiye", "प्रश्न चाहिए") }]} />
+          <div className="tbl-wrap">
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>{t("Contest", "Contest", "प्रतियोगिता")}</th>
+                  <th>{t("When", "Kab", "कब")}</th>
+                  <th className="r">{t("Registered", "Registered", "पंजीकृत")}</th>
+                  <th>{t("Problems", "Problems", "प्रश्न")}</th>
+                  <th>{t("State", "Haalat", "स्थिति")}</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["Weekly Round 13", "Sun 25 Oct · 8:00 pm", "4,210", "4/4", "live", t("Live", "Live", "लाइव")],
+                  ["Campus Cup · Round 2", "Wed 28 Oct · 4:00 pm", "312", "5/5", "info", t("Scheduled", "Scheduled", "निर्धारित")],
+                  ["Biweekly 7", "Sat 31 Oct · 8:00 pm", "1,890", "2/4", "review", t("Needs problems", "Problems chahiye", "प्रश्न चाहिए")],
+                  ["Diwali sprint (unrated)", "Sun 8 Nov · 7:00 pm", "—", "0/3", "draft", t("Draft", "Draft", "मसौदा")],
+                  ["Weekly Round 12", "Sun 18 Oct · 8:00 pm", "3,980", "4/4", "live", t("Ratings published", "Rating publish", "प्रकाशित")],
+                  ["Weekly Round 11", "Sun 11 Oct · 8:00 pm", "3,640", "4/4", "live", t("Ratings published", "Rating publish", "प्रकाशित")],
+                ].map(([n, w, r, p, s, l]) => (
+                  <tr key={n}>
+                    <td className="small">
+                      <b>{n}</b>
+                    </td>
+                    <td className="small muted">{w}</td>
+                    <td className="r num">{r}</td>
+                    <td className="num small">{p}</td>
+                    <td>
+                      <Status s={s as "live"}>{l}</Status>
+                    </td>
+                    <td>
+                      <button className="btn sm" onClick={() => setTab(s === "draft" || s === "review" ? "setup" : "live")}>
+                        {t("Open", "Kholo", "खोलें")}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
       {tab === "live" && (
         <>
           <div className="stat-strip" style={{ ["--n" as string]: 5 }}>

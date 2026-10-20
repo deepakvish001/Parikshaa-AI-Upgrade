@@ -958,3 +958,63 @@ button.perm:not(:disabled):hover {
     scroll-snap-align: start;
   }
 }
+
+/* aptitude mock pattern builder */
+.mock-builder {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: start;
+}
+.mock-builder .li.on {
+  background: var(--pen-soft);
+  box-shadow: inset 2px 0 0 var(--pen);
+}
+@media (max-width: 1100px) {
+  .mock-builder {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* problem editor: dry-run frames */
+.frames {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.frame {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel-2);
+}
+.fr-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 3px;
+  min-height: 74px;
+  justify-content: flex-start;
+  padding: 4px;
+  border: 1.5px solid var(--line-2);
+  border-top: 0;
+  border-radius: 0 0 6px 6px;
+}
+.fr-stack > span:not(.tiny) {
+  display: grid;
+  place-items: center;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--pen-soft);
+  border: 1px solid var(--pen-line);
+  color: var(--pen-text);
+  font-family: var(--f-mono);
+  font-size: 12px;
+  font-weight: 700;
+}
+.split-ed .list .li.on {
+  background: var(--pen-soft);
+  box-shadow: inset 2px 0 0 var(--pen);
+}

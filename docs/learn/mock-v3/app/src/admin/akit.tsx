@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Lock, MoreHorizontal, Search, ChevronLeft, ChevronRight, ShieldAlert, Filter, X } from "lucide-react";
 import { useT, useToast } from "../lib/core";
 import { useRole, ROLES, MATRIX, type Access } from "../lib/state";
-import { Menu, Modal, Check } from "../ui/kit";
+import { Menu, Modal, Check, Skel } from "../ui/kit";
 import { useTri } from "../ui/shell";
 
 export function AdmHead({ title, sub, actions, children }: { title: ReactNode; sub?: ReactNode; actions?: ReactNode; children?: ReactNode }) {
@@ -220,5 +220,32 @@ export function Masked({ value, masked }: { value: string; masked: string }) {
         {show ? t("Hide", "Chhupao", "छिपाएँ") : t("Reveal", "Dikhao", "दिखाएँ")}
       </button>
     </span>
+  );
+}
+
+/** Lists show a short skeleton on first open, the way the real panel waits for data (skipped for screenshots). */
+export function useFirstLoad(ms = 650) {
+  const [loading, setLoading] = useState(() => !document.documentElement.classList.contains("shots"));
+  useEffect(() => {
+    if (!loading) return;
+    const id = window.setTimeout(() => setLoading(false), ms);
+    return () => window.clearTimeout(id);
+  }, [loading, ms]);
+  return loading;
+}
+
+export function SkelRows({ rows = 6, cols }: { rows?: number; cols: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, r) => (
+        <tr key={r} aria-hidden="true">
+          {Array.from({ length: cols }, (_, c) => (
+            <td key={c}>
+              <Skel w={c === 0 ? "70%" : `${40 + ((r * 7 + c * 13) % 40)}%`} h={12} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }
