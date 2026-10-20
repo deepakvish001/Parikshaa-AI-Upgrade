@@ -5,7 +5,7 @@ har feature aur component ko soch samajh kar design karo; Build ke 3 screens bil
 features, saara data admin se manage ho, saare roles, secure; Sahayak khole to usi screen me teesra pane (statement, code,
 Sahayak) jise hata sakein; landing/home hamari website ke hisaab se; logo behtar, branded; professional, end to end."
 
-Ye file v3 ka design faisla hai. Mock: `docs/learn/mock-v3/` (README wahan). Purane: v1 [mock/](mock/README.md),
+Ye file v3 ka design faisla hai. Mock: [mock-v3/README.md](mock-v3/README.md) (68 screens, link, screenshots). Purane: v1 [mock/](mock/README.md),
 v2 [mock-v2/](mock-v2/README.md), plan [DESIGN-PLAN-V2.md](DESIGN-PLAN-V2.md) (features aur flows abhi bhi wahi; sirf look
 aur dhaancha badla).
 
@@ -18,7 +18,7 @@ aur dhaancha badla).
 | Headings aam sans me, sab ek jaisa | Serif display (Instrument Serif) bade title par, Geist UI, Geist Mono number/code |
 | Sahayak drawer (upar se dhakta tha) | Sahayak **teesra pane**: page ko dhakta nahi, side me khulta hai; har pane band / chhota / bada ho sakta hai |
 | Build ke screens: aam cards | Project gallery asli preview ke saath, milestone wala spec, poora IDE (files, editor, live preview, tests, terminal) |
-| Admin tha hi nahi | 24 admin screens, 8 roles, "role badal kar dekho", 2FA, 4-eyes, audit |
+| Admin tha hi nahi | 25 admin screens, 8 roles, "role badal kar dekho", 2FA, 4-eyes, audit |
 | Logo: sirf प ka akshar | प jiska andar ka hissa **tick (✓)** hai: "pariksha" + "pass"; wordmark aur favicon |
 
 ## 2. Concept
@@ -155,9 +155,10 @@ Spec: [ADMIN-PANEL.md](ADMIN-PANEL.md). Mock me:
 - **Security:** login par SSO/email + TOTP 2FA (zaroori), naya device ka email, IP allowlist, 30 min idle logout,
   4-eyes (content delete, ₹5,000+ refund, AI kill switch hatana, role badalna), audit log (kaun, kya, kab, pehle/baad),
   learner ka data sirf wajah likh kar, DPDP export/delete requests, API keys.
-- **Screens (24):** login, dashboard, problems list, problem editor (8 tabs), aptitude & quiz, lessons, roadmaps,
+- **Screens (25):** login, dashboard, problems list, problem editor (8 tabs), aptitude & quiz, lessons, roadmaps,
   companies data, review queue, factory, learners, learner, support/reports, commerce, community, contests, AI, analytics,
-  notifications, roles & permissions, staff, approvals (4-eyes), audit log, system (health, flags, settings).
+  notifications, roles & permissions, staff, approvals (4-eyes), audit log, security settings, system (health, flags,
+  settings).
 
 ## 13. Imaandari
 

@@ -1,4 +1,4 @@
-// Screenshots of the built mock: node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
+// Screenshots of the built mock: [ROLE=finance] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -9,11 +9,12 @@ mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || "/opt/pw-browsers/chromium" });
 for (const w of widthsArg.split(",").map(Number)) {
   const ctx = await browser.newContext({ viewport: { width: w, height: w < 600 ? 844 : 900 }, deviceScaleFactor: w < 600 ? 2 : 1, colorScheme: theme });
-  await ctx.addInitScript(([th, lg]) => {
+  await ctx.addInitScript(([th, lg, rl]) => {
     localStorage.setItem("pk3-theme", th);
     localStorage.setItem("pk3-lang", lg);
     localStorage.setItem("pk-mock-shots", "1");
-  }, [theme, lang]);
+    if (rl) localStorage.setItem("pk3-role", rl);
+  }, [theme, lang, process.env.ROLE || ""]);
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));

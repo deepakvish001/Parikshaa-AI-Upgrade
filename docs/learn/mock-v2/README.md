@@ -1,5 +1,8 @@
 # Learn v2: clickable mock v2 (20 Oct 2026)
 
+> **Purana.** Owner ne v2 bhi nakaara ("TUF jaisa, alag aur behtar chahiye"). Naya: [mock v3](../mock-v3/README.md)
+> ([DESIGN-V3](../DESIGN-V3.md)).
+
 Owner ne maanga: "best design mockup banao, saare pages, features, flow, design, icons, animations, sab kuch poora mock
 ready karo; pasand aayega to usi ko code karke build karenge". Ye wahi hai: **41 screens + ek naksha (map)**, sab ek
 React app me, links aur buttons se jude. Mock v1 ([../mock/README.md](../mock/README.md)) owner ne nakaara tha; v2

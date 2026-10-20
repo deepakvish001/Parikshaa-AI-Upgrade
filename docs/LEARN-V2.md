@@ -23,7 +23,7 @@ design, icons) · [learn/ARCHITECTURE.md](learn/ARCHITECTURE.md) (database, API,
 [learn/OPEN-PLANNING.md](learn/OPEN-PLANNING.md) (aur kya plan karna baaki hai) ·
 [learn/ALL-IN-ONE.md](learn/ALL-IN-ONE.md) (all-in-one platform: 7 stambh, 25 nayi cheezein, launch kharch, $200 plan par samay) ·
 [learn/UX-BLUEPRINT.md](learn/UX-BLUEPRINT.md) (har page ka UX, phone-first, UX ka naap) ·
-[learn/mock-v2/README.md](learn/mock-v2/README.md) (**clickable mock v2, 41 screens, owner ki raay baaki**) · [learn/mock/README.md](learn/mock/README.md) (mock v1, 46 screens; owner ne nakaara) ·
+[learn/mock-v3/README.md](learn/mock-v3/README.md) (**clickable mock v3 "Kaagaz aur Blackboard", 68 screens incl. 25 admin, owner ki raay baaki**; faisla [learn/DESIGN-V3.md](learn/DESIGN-V3.md)) · [learn/mock-v2/README.md](learn/mock-v2/README.md) (mock v2, 41 screens; owner ne nakaara: "TUF jaisa") · [learn/mock/README.md](learn/mock/README.md) (mock v1, 46 screens; owner ne nakaara) ·
 [learn/DESIGN-STUDY.md](learn/DESIGN-STUDY.md) (v1 kyun kamzor) · [learn/DESIGN-PLAN-V2.md](learn/DESIGN-PLAN-V2.md) (TUF ke clips se
 har feature ka flow, 47 components, hamara look, mock v2 ka kram).
 

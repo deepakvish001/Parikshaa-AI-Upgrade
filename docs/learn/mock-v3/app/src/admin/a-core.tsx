@@ -27,9 +27,9 @@ import {
   X,
 } from "lucide-react";
 import { Link, navigate, useT, useToast } from "../lib/core";
-import { useRole } from "../lib/state";
+import { useRole, ROLES } from "../lib/state";
 import { Logo, Badge, Spark, LineChart, Bars, Card, Tabs, Avatar, Level, Check as CheckBox, Modal } from "../ui/kit";
-import { LangButton, ThemeButton } from "../ui/shell";
+import { LangButton, ThemeButton, useTri } from "../ui/shell";
 import { AdmHead, Gate, Status } from "./akit";
 
 /* ---------------- staff sign-in ---------------- */
@@ -154,6 +154,7 @@ const KPI: { k: [string, string, string]; v: string; d: string; up?: boolean; ba
 export function AdminDashboard() {
   const t = useT();
   const { can, role } = useRole();
+  const tri = useTri();
   const days = Array.from({ length: 30 }, (_, i) => `${i + 1}`);
   return (
     <div className="col g20">
@@ -188,7 +189,7 @@ export function AdminDashboard() {
           <div className="kpi locked">
             <span className="tiny faint">{t("Hidden for your role", "Aapke role ke liye chhupe", "आपकी भूमिका हेतु छिपे")}</span>
             <b className="num">{KPI.filter((k) => !can(k.mod)).length}</b>
-            <span className="tiny faint">{role}</span>
+            <span className="tiny faint">{tri(ROLES.find((r) => r.id === role)!.name)}</span>
           </div>
         )}
       </div>
@@ -196,12 +197,15 @@ export function AdminDashboard() {
         <Card title={t("Needs you", "Aapka dhyan chahiye", "ध्यान दें")} icon={<TriangleAlert className="ic" style={{ color: "var(--red-text)" }} />} pad={false}>
           <div className="list">
             {[
-              [<Factory key="a" />, t("Factory batch 14: 12 items failed the duplicate check", "Factory batch 14: 12 items duplicate check me fail", "बैच 14: 12 विफल"), "adm-factory", "red"],
-              [<Gauge key="b" />, t("Judge p95 is 5.4 s (limit 5 s) since 9:40", "Judge p95 5.4 s (limit 5 s), 9:40 se", "जज p95 5.4 s"), "adm-system", "red"],
-              [<Bot key="c" />, t("AI spend at 82% of today's cap", "AI kharch aaj ki cap ka 82%", "एआई खर्च 82%"), "adm-ai", "coin"],
-              [<LifeBuoy key="d" />, t("3 mistake reports older than 24 hours", "3 reports 24 ghante se purane", "3 पुरानी रिपोर्ट"), "adm-support", "coin"],
-              [<StampIcon key="e" />, t("2 approvals are waiting for you", "2 approvals aapka intezaar", "2 मंज़ूरियाँ"), "adm-approvals", "pen"],
-            ].map(([ic, l, to, c], i) => (
+              [<Factory key="a" />, t("Factory batch 14: 12 items failed the duplicate check", "Factory batch 14: 12 items duplicate check me fail", "बैच 14: 12 विफल"), "adm-factory", "red", "factory"],
+              [<Gauge key="b" />, t("Judge p95 is 5.4 s (limit 5 s) since 9:40", "Judge p95 5.4 s (limit 5 s), 9:40 se", "जज p95 5.4 s"), "adm-system", "red", "system"],
+              [<Bot key="c" />, t("AI spend at 82% of today's cap", "AI kharch aaj ki cap ka 82%", "एआई खर्च 82%"), "adm-ai", "coin", "ai"],
+              [<LifeBuoy key="d" />, t("3 mistake reports older than 24 hours", "3 reports 24 ghante se purane", "3 पुरानी रिपोर्ट"), "adm-support", "coin", "support"],
+              [<IndianRupee key="f" />, t("Refund of ₹6,499 waits for a second approver", "₹6,499 ka refund doosre approver ka intezaar", "रिफ़ंड प्रतीक्षा में"), "adm-commerce", "coin", "commerce"],
+              [<StampIcon key="e" />, t("2 approvals are waiting for you", "2 approvals aapka intezaar", "2 मंज़ूरियाँ"), "adm-approvals", "pen", "approvals"],
+            ]
+              .filter((x) => can(x[5] as string))
+              .map(([ic, l, to, c], i) => (
               <Link key={i} to={to as string} className="li">
                 <span className={`ic-box tone-${c}`}>{ic}</span>
                 <span className="grow small">{l as string}</span>
@@ -232,24 +236,28 @@ export function AdminDashboard() {
           </div>
         </Card>
         <Card title={t("Content pipeline", "Content pipeline", "सामग्री पाइपलाइन")} icon={<ListChecks className="ic" />}>
-          <div className="pipe-funnel">
-            {[
-              [t("Drafted", "Drafted", "मसौदा"), 420, "var(--ink-4)"],
-              [t("Machine checks pass", "Machine checks pass", "मशीन जाँच"), 351, "var(--ai)"],
-              [t("In review", "Review me", "समीक्षा में"), 64, "var(--coin)"],
-              [t("Published this week", "Is hafte publish", "इस सप्ताह प्रकाशित"), 212, "var(--tick)"],
-            ].map(([l, v, c]) => (
-              <div key={l as string} className="pf-row">
-                <span className="small grow">{l as string}</span>
-                <span className="pf-bar">
-                  <i style={{ width: `${((v as number) / 420) * 100}%`, background: c as string }} />
-                </span>
-                <b className="num small" style={{ width: 40, textAlign: "right" }}>
-                  {v as number}
-                </b>
-              </div>
-            ))}
-          </div>
+          {can("content") ? (
+            <div className="pipe-funnel">
+              {[
+                [t("Drafted", "Drafted", "मसौदा"), 420, "var(--ink-4)"],
+                [t("Machine checks pass", "Machine checks pass", "मशीन जाँच"), 351, "var(--ai)"],
+                [t("In review", "Review me", "समीक्षा में"), 64, "var(--coin)"],
+                [t("Published this week", "Is hafte publish", "इस सप्ताह प्रकाशित"), 212, "var(--tick)"],
+              ].map(([l, v, c]) => (
+                <div key={l as string} className="pf-row">
+                  <span className="small grow">{l as string}</span>
+                  <span className="pf-bar">
+                    <i style={{ width: `${((v as number) / 420) * 100}%`, background: c as string }} />
+                  </span>
+                  <b className="num small" style={{ width: 40, textAlign: "right" }}>
+                    {v as number}
+                  </b>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="locked-card small faint">{t("Not in your role", "Aapke role me nahi", "आपकी भूमिका में नहीं")}</div>
+          )}
         </Card>
         <Card title={t("Revenue, this week (₹ thousand)", "Kamaai, is hafte (₹ hazaar)", "आय (₹ हज़ार)")} icon={<IndianRupee className="ic" />}>
           {can("commerce") ? (
