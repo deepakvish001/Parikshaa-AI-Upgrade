@@ -4,7 +4,7 @@
   display: grid;
   grid-template-columns: var(--side-w) minmax(0, 1fr) auto;
   min-height: 100vh;
-  background: var(--page);
+  background: linear-gradient(to right, var(--panel) calc(var(--side-w) - 1px), var(--line) calc(var(--side-w) - 1px), var(--line) var(--side-w), var(--page) var(--side-w));
 }
 .app.side-mini {
   --side-w: 68px;
@@ -44,6 +44,10 @@
 .side-logo {
   display: inline-flex;
   border-radius: 8px;
+}
+.side-search,
+.side-ai {
+  text-align: left;
 }
 .side-search {
   display: flex;
@@ -732,6 +736,7 @@ body.resizing {
 @media (max-width: 860px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
+    background: var(--page);
   }
   .side {
     display: none;

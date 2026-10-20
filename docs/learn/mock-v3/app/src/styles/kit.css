@@ -154,6 +154,7 @@
 .link {
   color: var(--pen-text);
   font-weight: 540;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1138,7 +1139,11 @@ button.li {
   animation: marker 0.7s 0.25s var(--ease) both;
 }
 :root[data-theme="dark"] .hl::before {
-  opacity: 0.32;
+  height: 0.14em;
+  bottom: -0.02em;
+  opacity: 0.95;
+  border-radius: 0.1em;
+  transform: skew(-8deg) rotate(-0.8deg);
 }
 @keyframes marker {
   from {
@@ -1511,6 +1516,7 @@ button.li {
   padding: 0 4px;
 }
 .pen-circle svg {
+  max-width: none;
   position: absolute;
   inset: -8px -10px;
   width: calc(100% + 20px);
