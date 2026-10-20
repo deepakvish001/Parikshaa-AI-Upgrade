@@ -12,6 +12,9 @@ import { RevisionBody, RevisionRail, DailyBody } from "./revise";
 import { CoursesBody, RoadmapBody, CourseBody, CourseRail, LessonBody, LessonRail } from "./learn";
 import { AptitudeBody, AptSetBody, AptMockScreen, AptResultBody } from "./aptitude";
 import { PotdBody, ContestsBody, ContestBriefBody, ContestLiveScreen, ContestResultBody } from "./compete";
+import { BuildBody, ProjectBody, ProjectRail, StudioScreen } from "./build";
+import { CompaniesBody, CompanyBody, ExperiencesBody, PramaanBody, CertificateBody, ProfileBody, JobsBody } from "./career";
+import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mine";
 
 export type ScreenImpl = { Body: ComponentType; Rail?: ComponentType };
 
@@ -43,6 +46,22 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   "contest-brief": { Body: ContestBriefBody },
   "contest-live": { Body: ContestLiveScreen },
   "contest-result": { Body: ContestResultBody },
+  build: { Body: BuildBody },
+  project: { Body: ProjectBody, Rail: ProjectRail },
+  studio: { Body: StudioScreen },
+  companies: { Body: CompaniesBody },
+  company: { Body: CompanyBody },
+  experiences: { Body: ExperiencesBody },
+  pramaan: { Body: PramaanBody },
+  certificate: { Body: CertificateBody },
+  profile: { Body: ProfileBody },
+  jobs: { Body: JobsBody },
+  lists: { Body: ListsBody },
+  notes: { Body: NotesBody },
+  sahayak: { Body: SahayakPageBody },
+  community: { Body: CommunityBody },
+  plus: { Body: PlusBody },
+  settings: { Body: SettingsBody },
 };
 
 for (const k of Object.keys(SCREEN_MAP)) READY.add(k);
