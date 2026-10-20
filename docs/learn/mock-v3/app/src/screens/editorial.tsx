@@ -381,7 +381,7 @@ export function EditorialRail() {
           {t("Remember", "Yaad rakho", "याद रखें")}
         </span>
         <p className="small muted">
-          <Hl>{t("Sorted + pair → two pointers.", "Sorted + pair → two pointers.", "क्रमबद्ध + जोड़ी → दो पॉइंटर।")}</Hl>{" "}
+          <Hl long>{t("Sorted + pair → two pointers.", "Sorted + pair → two pointers.", "क्रमबद्ध + जोड़ी → दो पॉइंटर।")}</Hl>{" "}
           {t("Added to your revision cards.", "Revision cards me jud gaya.", "दोहराई कार्ड में जुड़ा।")}
         </p>
         <Link to="revision" className="link small">

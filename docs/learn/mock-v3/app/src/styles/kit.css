@@ -1652,3 +1652,11 @@ button.li {
     transform: scaleY(0.1);
   }
 }
+.hl-long {
+  background: linear-gradient(transparent 52%, var(--marker-soft) 52%, var(--marker-soft) 92%, transparent 92%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+:root:not([data-theme="dark"]) .hl-long {
+  background: linear-gradient(transparent 52%, color-mix(in srgb, var(--marker) 70%, transparent) 52%, color-mix(in srgb, var(--marker) 70%, transparent) 92%, transparent 92%);
+}

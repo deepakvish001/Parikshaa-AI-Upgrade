@@ -88,8 +88,8 @@ export function Tick({ size = 18, color = "var(--tick)", draw = true }: { size?:
 }
 
 /** Highlighter stroke behind important words. */
-export function Hl({ children }: { children: ReactNode }) {
-  return <span className="hl">{children}</span>;
+export function Hl({ children, long }: { children: ReactNode; long?: boolean }) {
+  return <span className={long ? "hl-long" : "hl"}>{children}</span>;
 }
 
 /** Red pen circle around a word or value, like a teacher marking a mistake. */
