@@ -22,7 +22,7 @@ import { LangProvider, ThemeProvider, ToastProvider, Link, useRoute, useT } from
 import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";
 import { SCREEN_MAP } from "./screens/index";
-import { Shell, useTri } from "./ui/shell";
+import { Shell, useTri, KeySheet } from "./ui/shell";
 import { AdminShell, NoAccess } from "./ui/admin-shell";
 import { Diya } from "./ui/kit";
 
@@ -108,6 +108,7 @@ createRoot(document.getElementById("root")!).render(
             <SideProvider>
               <AiProvider>
                 <App />
+                <KeySheet />
               </AiProvider>
             </SideProvider>
           </RoleProvider>

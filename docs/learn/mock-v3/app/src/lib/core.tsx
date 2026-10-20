@@ -136,22 +136,24 @@ export function Link({
 
 /* ---------------- toasts ---------------- */
 
-type Toast = { id: number; text: string };
+type Toast = { id: number; text: string; out?: boolean };
 const ToastContext = createContext<(text: string) => void>(() => {});
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const seq = useRef(0);
   const push = useCallback((text: string) => {
     const id = ++seq.current;
-    setToasts((t) => [...t, { id, text }]);
-    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2600);
+    setToasts((t) => [...t.slice(-2), { id, text }]);
+    // fade out first, then leave the list
+    window.setTimeout(() => setToasts((t) => t.map((x) => (x.id === id ? { ...x, out: true } : x))), 2400);
+    window.setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2640);
   }, []);
   return (
     <ToastContext.Provider value={push}>
       {children}
       <div className="toast-wrap" role="status" aria-live="polite">
         {toasts.map((t) => (
-          <div className="toast" key={t.id}>
+          <div className={`toast ${t.out ? "out" : ""}`} key={t.id}>
             <CircleCheck size={16} />
             {t.text}
           </div>

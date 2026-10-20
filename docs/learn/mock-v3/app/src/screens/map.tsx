@@ -1,4 +1,4 @@
-import { ArrowRight, Palette, Sparkles, ShieldCheck, CodeXml, Globe, Command, SunMoon, Languages, MousePointerClick } from "lucide-react";
+import { ArrowRight, Palette, Sparkles, ShieldCheck, CodeXml, Globe, Command, SunMoon, Languages, MousePointerClick, Keyboard } from "lucide-react";
 import { Link, useT } from "../lib/core";
 import { Logo, Hl, Badge } from "../ui/kit";
 import { LangButton, ThemeButton, useTri } from "../ui/shell";
@@ -88,6 +88,9 @@ export function MapBody() {
             </span>
             <span>
               <Sparkles /> {t("Ctrl J opens Sahayak", "Ctrl J se Sahayak", "Ctrl J से सहायक")}
+            </span>
+            <span>
+              <Keyboard /> {t("? for all shortcuts", "? se saare shortcuts", "? से शॉर्टकट")}
             </span>
             <span>
               <SunMoon /> {t("Black / paper theme", "Kaala / kaagaz theme", "काला / काग़ज़")}

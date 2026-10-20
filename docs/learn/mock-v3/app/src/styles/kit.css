@@ -456,6 +456,12 @@
   border-radius: inherit;
   background: var(--mc);
   transition: width 0.6s var(--ease);
+  animation: meter-in 0.8s var(--ease) both;
+}
+@keyframes meter-in {
+  from {
+    width: 0;
+  }
 }
 .meter.thin {
   height: 4px;
@@ -485,6 +491,7 @@
 
 /* ---------- tabs & segmented ---------- */
 .tabs {
+  position: relative;
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--line);
@@ -528,6 +535,21 @@
   height: 2px;
   border-radius: 2px;
   background: var(--ink);
+}
+/* the selected tab's line slides between tabs instead of jumping */
+.tab-ink {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ink);
+  pointer-events: none;
+  transition:
+    left 0.28s var(--ease),
+    width 0.28s var(--ease);
+}
+.tabs.has-ink .tab[aria-selected="true"]::after {
+  display: none;
 }
 .tab .count {
   font-size: 11px;
@@ -901,6 +923,15 @@ button.li {
     transform: translateY(-4px) scale(0.98);
   }
 }
+.pop.out {
+  animation: pop-out 0.12s var(--ease) forwards;
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
 .menu-item {
   display: flex;
   align-items: center;
@@ -1017,6 +1048,36 @@ button.li {
   from {
     transform: translateX(24px);
     opacity: 0;
+  }
+}
+/* exits: overlays leave the way they came */
+.scrim.out {
+  animation: fade-out 0.18s var(--ease) forwards;
+}
+.modal.out {
+  animation: sink 0.18s var(--ease) forwards;
+}
+.drawer.out {
+  animation: slide-out 0.2s var(--ease) forwards;
+}
+.toast.out {
+  animation: sink 0.24s var(--ease) forwards;
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes sink {
+  to {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+}
+@keyframes slide-out {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
   }
 }
 .toast-wrap {

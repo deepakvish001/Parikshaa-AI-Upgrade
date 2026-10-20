@@ -260,6 +260,22 @@ export function Empty({ icon, title, body, action }: { icon?: ReactNode; title: 
   );
 }
 
+/* ---------------- motion ---------------- */
+
+const calm = () => document.documentElement.classList.contains("shots") || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Keeps a closing overlay mounted for its exit animation: [mounted, leaving]. */
+export function usePresence(open: boolean, ms = 180): [boolean, boolean] {
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) return setMounted(true);
+    if (calm()) return setMounted(false);
+    const id = window.setTimeout(() => setMounted(false), ms);
+    return () => window.clearTimeout(id);
+  }, [open, ms]);
+  return [open || mounted, mounted && !open];
+}
+
 /* ---------------- controls ---------------- */
 
 export function Tabs<T extends string>({
@@ -273,8 +289,21 @@ export function Tabs<T extends string>({
   onChange: (v: T) => void;
   className?: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [ink, setInk] = useState<{ left: number; width: number } | null>(null);
+  const measure = () => {
+    const el = ref.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+    if (el) setInk({ left: el.offsetLeft + 10, width: Math.max(0, el.offsetWidth - 20) });
+  };
+  useLayoutEffect(measure, [value, items.length]);
+  useEffect(() => {
+    const ro = new ResizeObserver(measure);
+    if (ref.current) ro.observe(ref.current);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <div className={`tabs ${className ?? ""}`} role="tablist">
+    <div className={`tabs ${ink ? "has-ink" : ""} ${className ?? ""}`} role="tablist" ref={ref}>
+      {ink && <span className="tab-ink" style={{ left: ink.left, width: ink.width }} aria-hidden="true" />}
       {items.map((it) => (
         <button key={it.id} className="tab" role="tab" aria-selected={value === it.id} onClick={() => onChange(it.id)}>
           {it.icon}
@@ -388,13 +417,14 @@ export function Menu({
   up?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const [shown, leaving] = usePresence(open, 120);
   const ref = useRef<HTMLDivElement>(null);
   useOutside(ref, () => setOpen(false), open);
   return (
     <div ref={ref} style={{ position: "relative", display: "inline-flex" }}>
       {trigger(open, () => setOpen((o) => !o))}
-      {open && (
-        <div className="pop" style={{ [up ? "bottom" : "top"]: "calc(100% + 6px)", [align]: 0, width }} role="menu">
+      {shown && (
+        <div className={`pop ${leaving ? "out" : ""}`} style={{ [up ? "bottom" : "top"]: "calc(100% + 6px)", [align]: 0, width }} role="menu">
           {children(() => setOpen(false))}
         </div>
       )}
@@ -427,10 +457,11 @@ export function Modal({
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [open, onClose]);
-  if (!open) return null;
+  const [shown, leaving] = usePresence(open);
+  if (!shown) return null;
   return (
-    <div className="scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`modal ${wide ? "wide" : ""}`} role="dialog" aria-modal="true">
+    <div className={`scrim ${leaving ? "out" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className={`modal ${wide ? "wide" : ""} ${leaving ? "out" : ""}`} role="dialog" aria-modal="true">
         <div className="modal-h">
           {icon}
           <div className="grow">
@@ -455,10 +486,11 @@ export function Drawer({ open, onClose, title, children, footer }: { open: boole
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   }, [open, onClose]);
-  if (!open) return null;
+  const [shown, leaving] = usePresence(open, 200);
+  if (!shown) return null;
   return (
-    <div className="scrim drawer-scrim" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <aside className="drawer" role="dialog" aria-modal="true">
+    <div className={`scrim drawer-scrim ${leaving ? "out" : ""}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <aside className={`drawer ${leaving ? "out" : ""}`} role="dialog" aria-modal="true">
         <div className="row" style={{ padding: "16px 18px", borderBottom: "1px solid var(--line)" }}>
           <div className="h2 grow">{title}</div>
           <button className="icon-btn sm" onClick={onClose} aria-label="Close">

@@ -188,6 +188,17 @@ html:lang(hi) .side-label {
 .side-ai svg {
   width: 17px;
   height: 17px;
+  flex: none;
+}
+.side-ai .grow {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side-ai .kbd {
+  flex: none;
+  white-space: nowrap;
 }
 .side-ai:hover,
 .side-ai.on {
@@ -358,13 +369,28 @@ html:lang(hi) .side-label {
   border-left: 1px solid var(--line);
   background: var(--panel);
   z-index: 18;
-  animation: pane-in 0.24s var(--ease);
+  animation: pane-grow 0.26s var(--ease);
   min-width: 0;
+  overflow-x: clip;
 }
-@keyframes pane-in {
+/* The pane opens by growing its column, so the page beside it narrows smoothly; it closes the same way. */
+.ai-pane > .sahayak {
+  min-width: var(--aw, 380px);
+}
+.ai-pane.out {
+  animation: pane-shrink 0.22s var(--ease) forwards;
+  pointer-events: none;
+}
+@keyframes pane-grow {
   from {
+    width: 0;
+    opacity: 0.4;
+  }
+}
+@keyframes pane-shrink {
+  to {
+    width: 0;
     opacity: 0;
-    transform: translateX(16px);
   }
 }
 .pane-grip {
@@ -763,11 +789,24 @@ body.resizing {
     width: 100% !important;
     height: 100%;
     z-index: 70;
+    animation: sheet-up 0.26s var(--ease);
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .pane-grip {
     display: none;
+  }
+  .ai-pane > .sahayak {
+    min-width: 0;
+  }
+  .ai-pane.out {
+    animation: sheet-down 0.22s var(--ease) forwards;
+  }
+  @keyframes sheet-down {
+    to {
+      transform: translateY(40px);
+      opacity: 0;
+    }
   }
   .bottom-tabs {
     display: grid;
@@ -855,5 +894,150 @@ body.resizing {
   .sheet-item[aria-current="page"] {
     border-color: var(--pen);
     color: var(--pen-text);
+  }
+}
+
+/* ---------- notifications drawer ---------- */
+.nt-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 99px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 11.5px;
+  font-weight: 650;
+  background: var(--pen);
+  color: var(--on-pen);
+}
+.nt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -6px 0 12px;
+}
+.nt-top .tabs {
+  border-bottom: 0;
+}
+.nt-group + .nt-group {
+  margin-top: 16px;
+}
+.nt-h {
+  margin: 0 0 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.nt-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  margin: 0 -10px;
+  width: calc(100% + 20px);
+  border-radius: 10px;
+  text-align: left;
+  transition: background 0.14s;
+  animation: rise 0.3s var(--ease) both;
+  animation-delay: calc(var(--i, 0) * 40ms);
+}
+.nt-item:hover {
+  background: var(--hover);
+}
+.nt-item.new b {
+  color: var(--ink);
+}
+.nt-item:not(.new) b {
+  font-weight: 520;
+  color: var(--ink-2);
+}
+.nt-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--sunk);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+}
+.nt-ic svg {
+  width: 17px;
+  height: 17px;
+}
+.nt-ic.coin {
+  background: var(--coin-soft);
+  color: var(--coin);
+  border-color: var(--coin-line);
+}
+.nt-ic.pen {
+  background: var(--pen-soft);
+  color: var(--pen-text);
+  border-color: var(--pen-line);
+}
+.nt-ic.tick {
+  background: var(--tick-soft);
+  color: var(--tick-text);
+  border-color: var(--tick-line);
+}
+.nt-ic.ai {
+  background: var(--ai-soft);
+  color: var(--ai-text);
+  border-color: var(--ai-line);
+}
+.nt-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.nt-side {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.nt-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pen);
+}
+
+/* ---------- keyboard sheet ---------- */
+.ks-ic {
+  width: 22px;
+  height: 22px;
+  margin-top: 3px;
+  color: var(--ink-3);
+}
+.ks-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px 24px;
+}
+.ks-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--line);
+}
+.ks-keys {
+  display: inline-flex;
+  gap: 4px;
+}
+@media (max-width: 760px) {
+  .ks-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

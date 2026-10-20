@@ -337,6 +337,19 @@
 html.shots .mock-fab {
   display: none;
 }
+/* On a computer the mock's own button sits bottom-right, clear of the side bar's account row,
+   and steps aside while Sahayak is open. */
+@media (min-width: 861px) {
+  .mock-fab {
+    left: auto;
+    right: max(16px, env(safe-area-inset-right, 0px));
+    transition: opacity 0.2s var(--ease);
+  }
+  body:has(.app.ai-open) .mock-fab {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
 .soon-page {
   display: flex;
   flex-direction: column;
