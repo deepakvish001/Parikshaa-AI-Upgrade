@@ -1,0 +1,18 @@
+{
+  "name": "parikshaa-learn-mock-v3",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Learn mock v3 (paper and blackboard) with the admin panel. Not part of the npm workspaces; React, Vite and lucide-react resolve from the repo root.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node build-artifact.mjs",
+    "shots": "node shots.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
+    "@fontsource/kalam": "5.3.0",
+    "@fontsource/noto-serif-devanagari": "5.3.0"
+  }
+}

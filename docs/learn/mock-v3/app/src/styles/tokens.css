@@ -1,0 +1,212 @@
+/* Parikshaa v3 tokens: "Kaagaz" (light, exam paper and pens) and "Blackboard" (dark, board and chalk).
+   Light values live on bare :root; dark values are repeated for the system preference and for the explicit toggle. */
+
+:root {
+  color-scheme: light;
+  --page: #f5f3ee;
+  --panel: #ffffff;
+  --panel-2: #faf9f6;
+  --sunk: #efece5;
+  --hover: rgba(21, 22, 26, 0.045);
+  --press: rgba(21, 22, 26, 0.08);
+  --line: #e3dfd6;
+  --line-2: #cfcabd;
+  --ink: #15161a;
+  --ink-2: #4b4d57;
+  --ink-3: #7d7f88;
+  --ink-4: #a6a7ad;
+
+  --pen: #2346e8;
+  --pen-hover: #1a37c9;
+  --pen-text: #1f3fd6;
+  --pen-soft: #e9edff;
+  --pen-line: #c3cefb;
+  --on-pen: #ffffff;
+
+  --red: #d93a2b;
+  --red-text: #c22f21;
+  --red-soft: #fcebe8;
+  --red-line: #f1bdb4;
+
+  --tick: #15803d;
+  --tick-text: #13733a;
+  --tick-soft: #e3f4e8;
+  --tick-line: #b4dfc1;
+
+  --marker: #ffe45c;
+  --marker-soft: #fff6c4;
+  --marker-ink: #6b5600;
+
+  --ai: #6d4aff;
+  --ai-text: #5b38f0;
+  --ai-soft: #efeaff;
+  --ai-line: #d3c8ff;
+
+  --coin: #c26a04;
+  --coin-soft: #fff0da;
+  --coin-line: #f4d2a0;
+
+  --teal: #0e7490;
+  --teal-soft: #e0f2f6;
+
+  --lv1: var(--tick);
+  --lv2: var(--pen);
+  --lv3: var(--coin);
+  --lv4: var(--red);
+  --lv5: var(--ai);
+
+  --grid: rgba(35, 70, 232, 0.075);
+  --grid-strong: rgba(35, 70, 232, 0.13);
+  --margin: rgba(217, 58, 43, 0.5);
+  --ruled: rgba(35, 70, 232, 0.12);
+
+  --code-bg: #fbfaf7;
+  --code-gutter: #b3b1aa;
+  --code-line: #f2efe7;
+  --code-kw: #2346e8;
+  --code-str: #13733a;
+  --code-num: #b45f00;
+  --code-fn: #6d4aff;
+  --code-com: #8c8e96;
+  --code-ty: #0e7490;
+
+  --shadow-1: 0 1px 2px rgba(40, 32, 10, 0.06), 0 1px 1px rgba(40, 32, 10, 0.03);
+  --shadow-2: 0 1px 2px rgba(40, 32, 10, 0.05), 0 12px 32px -14px rgba(40, 32, 10, 0.2);
+  --shadow-3: 0 4px 10px rgba(40, 32, 10, 0.06), 0 28px 56px -18px rgba(40, 32, 10, 0.32);
+  --paper-shadow: 0 1px 0 rgba(40, 32, 10, 0.04), 0 18px 40px -20px rgba(40, 32, 10, 0.35);
+
+  --f-ui: "Geist", "Noto Sans Devanagari", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-display: "Instrument Serif", "Noto Serif Devanagari", "Iowan Old Style", Georgia, serif;
+  --f-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --f-hand: "Kalam", "Segoe Print", "Comic Sans MS", cursive;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --side-w: 248px;
+  --top-h: 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0f1512;
+    --panel: #151d19;
+    --panel-2: #18211d;
+    --sunk: #0b100e;
+    --hover: rgba(233, 238, 234, 0.05);
+    --press: rgba(233, 238, 234, 0.09);
+    --line: #25312c;
+    --line-2: #34433c;
+    --ink: #e9eeea;
+    --ink-2: #a9b6af;
+    --ink-3: #78867f;
+    --ink-4: #56635d;
+    --pen: #8ea6ff;
+    --pen-hover: #a9bbff;
+    --pen-text: #a3b6ff;
+    --pen-soft: rgba(142, 166, 255, 0.13);
+    --pen-line: rgba(142, 166, 255, 0.36);
+    --on-pen: #0d1220;
+    --red: #ff8a7a;
+    --red-text: #ff9b8d;
+    --red-soft: rgba(255, 138, 122, 0.12);
+    --red-line: rgba(255, 138, 122, 0.36);
+    --tick: #6ee7a0;
+    --tick-text: #7eebab;
+    --tick-soft: rgba(110, 231, 160, 0.11);
+    --tick-line: rgba(110, 231, 160, 0.32);
+    --marker: #f5dd6b;
+    --marker-soft: rgba(245, 221, 107, 0.13);
+    --marker-ink: #f5dd6b;
+    --ai: #b7a5ff;
+    --ai-text: #c3b4ff;
+    --ai-soft: rgba(183, 165, 255, 0.13);
+    --ai-line: rgba(183, 165, 255, 0.36);
+    --coin: #ffb547;
+    --coin-soft: rgba(255, 181, 71, 0.12);
+    --coin-line: rgba(255, 181, 71, 0.34);
+    --teal: #67d4e0;
+    --teal-soft: rgba(103, 212, 224, 0.12);
+    --grid: rgba(233, 238, 234, 0.045);
+    --grid-strong: rgba(233, 238, 234, 0.08);
+    --margin: rgba(255, 138, 122, 0.45);
+    --ruled: rgba(233, 238, 234, 0.07);
+    --code-bg: #0c1210;
+    --code-gutter: #4a5852;
+    --code-line: #121a17;
+    --code-kw: #8ea6ff;
+    --code-str: #7eebab;
+    --code-num: #ffb547;
+    --code-fn: #c3b4ff;
+    --code-com: #6b7973;
+    --code-ty: #67d4e0;
+    --shadow-1: 0 0 0 0 transparent;
+    --shadow-2: 0 14px 34px -16px rgba(0, 0, 0, 0.55);
+    --shadow-3: 0 26px 56px -16px rgba(0, 0, 0, 0.7);
+    --paper-shadow: 0 22px 44px -22px rgba(0, 0, 0, 0.75);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0f1512;
+  --panel: #151d19;
+  --panel-2: #18211d;
+  --sunk: #0b100e;
+  --hover: rgba(233, 238, 234, 0.05);
+  --press: rgba(233, 238, 234, 0.09);
+  --line: #25312c;
+  --line-2: #34433c;
+  --ink: #e9eeea;
+  --ink-2: #a9b6af;
+  --ink-3: #78867f;
+  --ink-4: #56635d;
+  --pen: #8ea6ff;
+  --pen-hover: #a9bbff;
+  --pen-text: #a3b6ff;
+  --pen-soft: rgba(142, 166, 255, 0.13);
+  --pen-line: rgba(142, 166, 255, 0.36);
+  --on-pen: #0d1220;
+  --red: #ff8a7a;
+  --red-text: #ff9b8d;
+  --red-soft: rgba(255, 138, 122, 0.12);
+  --red-line: rgba(255, 138, 122, 0.36);
+  --tick: #6ee7a0;
+  --tick-text: #7eebab;
+  --tick-soft: rgba(110, 231, 160, 0.11);
+  --tick-line: rgba(110, 231, 160, 0.32);
+  --marker: #f5dd6b;
+  --marker-soft: rgba(245, 221, 107, 0.13);
+  --marker-ink: #f5dd6b;
+  --ai: #b7a5ff;
+  --ai-text: #c3b4ff;
+  --ai-soft: rgba(183, 165, 255, 0.13);
+  --ai-line: rgba(183, 165, 255, 0.36);
+  --coin: #ffb547;
+  --coin-soft: rgba(255, 181, 71, 0.12);
+  --coin-line: rgba(255, 181, 71, 0.34);
+  --teal: #67d4e0;
+  --teal-soft: rgba(103, 212, 224, 0.12);
+  --grid: rgba(233, 238, 234, 0.045);
+  --grid-strong: rgba(233, 238, 234, 0.08);
+  --margin: rgba(255, 138, 122, 0.45);
+  --ruled: rgba(233, 238, 234, 0.07);
+  --code-bg: #0c1210;
+  --code-gutter: #4a5852;
+  --code-line: #121a17;
+  --code-kw: #8ea6ff;
+  --code-str: #7eebab;
+  --code-num: #ffb547;
+  --code-fn: #c3b4ff;
+  --code-com: #6b7973;
+  --code-ty: #67d4e0;
+  --shadow-1: 0 0 0 0 transparent;
+  --shadow-2: 0 14px 34px -16px rgba(0, 0, 0, 0.55);
+  --shadow-3: 0 26px 56px -16px rgba(0, 0, 0, 0.7);
+  --paper-shadow: 0 22px 44px -22px rgba(0, 0, 0, 0.75);
+}
