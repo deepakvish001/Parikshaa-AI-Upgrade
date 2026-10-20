@@ -1,4 +1,4 @@
-# Learn v2: clickable mock v4, "Kaagaz aur Syaahi" (20 Oct 2026)
+# Learn v2: clickable mock v4.1, "Kaagaz aur Syaahi" (20 Oct 2026)
 
 Mock v3 dekh kar owner ne kaha: "sab achha laga, bas font AI wala lag raha hai; har page complete dark black, sab saaf
 dikhe, light me bhi; har border, box, animation refine karo; Code Studio VS Code jaisa; admin ka har page har pehlu se;
@@ -11,17 +11,40 @@ Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
 
+## v4.1 me naya (owner ki raay ke baad, 20 Oct)
+
+Owner: font aur kaala ✅, roles + 4-eyes ✅, daam testing ke baad, asli code abhi ruko. Saath me maanga: problem page
+default 2 pane, Sahayak par 3 aur band karne par wapas 2 (apne aap adjust); P se naya logo; Studio aur behtar; har page
+par animation, smoothness, naye features. Kya bana:
+
+- **Problem aur SQL: default 2 pane** (Statement | Code). Sahayak button, Ctrl+J ya "Ask Sahayak" se teesra pane
+  dheere se khulta hai aur baaki do khud chhote hote hain; × ya Ctrl+J se band karo to wapas 2 me phail jaate hain.
+- **P se logo, teen option** (`#brand` → "Logo: P banane ke teen raaste"): A *Pass* (P ka danda hi tick), B *Prompt*
+  (P ka pet code ka `>`, neeche cursor), C *Pragati* (P ka aadha pet peela). Har option 96/48/28/16 px par kaale aur
+  kaagaz par, browser tab me kaisa dikhega, aur khoobi / khatra. **"Poore app me lagao"** dabao to wahi logo sidebar,
+  Studio, certificate, landing, har jagah. Abhi A laga hai.
+- **Studio aur behtar:** gutter me badli lines ke nishaan (hara = naya, neela = badla), laal squiggle par hover card,
+  Ctrl+. ya bulb se **quick fix** jo pehle badlav dikhata hai (aur milestone par "madad li" likhta hai), Ctrl+I se
+  **line ke neeche Sahayak** jo sirf hint deta hai, Source control me file dabao to **diff**, tests **ek-ek karke**
+  chalte dikhte hain; fix + "Kaam jaancho" se 8/12 → 10/12, preview me ₹0 wala transfer gayab.
+- **Motion:** modal, drawer, menu, toast aate bhi aur jaate bhi smooth; tab ki line khisak kar agle tab par; meter
+  bharte hue aate; Sahayak pane apna column badha kar khulta (page bagal me dheere sikudta).
+- **Naye features:** bell se **notifications** (Sab / Aapke liye, sab padh liya, shaant samay); kahin bhi **`?`**
+  dabao to shortcut list; **G phir akshar** se jump (G A Aaj, G P Abhyas, G S Seekho...).
+- "Reduce motion" chalu ho to sab animation band.
+
 ## Kaise dekhein
 
 - Link kholte hi **naksha** (`#map`). Kisi card par click karo, ya `#landing` se shuru karo. Neeche **"All screens"**
   se kabhi bhi wapas.
 - Ab **kaala theme default** hai. Upar ka chand/suraj button light "kaagaz" par le jaata hai; chuna hua yaad rehta hai.
   Bhasha: English / Hinglish / हिंदी.
-- **Ctrl+K** koi bhi screen. **Ctrl+J** Sahayak. **Ctrl+\\** sidebar chhota.
-- **Problem, SQL:** Statement | Code | Sahayak teen pane, khinch kar size, × se band.
+- **Ctrl+K** koi bhi screen. **Ctrl+J** Sahayak. **Ctrl+\\** sidebar chhota. **?** saare shortcuts.
+- **Problem, SQL:** pehle Statement | Code do pane; Sahayak kholo to teesra pane, band karo to wapas do. Beech ki patti
+  khinch kar size.
 - **Code Studio (`#studio`):** VS Code jaisa. Activity bar se Explorer / Search / Source control / Testing / Steps,
   Ctrl+B side bar, Ctrl+` panel, Ctrl+J Sahayak, Ctrl+Shift+P command palette, beech ki patti khinch kar size,
-  tabs par × se band, "Check my work" se tests.
+  tabs par × se band, "Check my work" se tests, Ctrl+. quick fix, Ctrl+I line par Sahayak, Source control se diff.
 - **Admin:** `#admin-login` ya `#admin`. Upar **"Viewing as"** se role badlo (Finance, Editor, Analyst...): band module
   par taala, band button par "Chahiye: ...", page role me nahi to "Request access". Risky kaam par wajah + doosre
   insaan ki manzoori.
@@ -41,7 +64,7 @@ Doosron ko dikhana ho to page ke Share menu se.
 | Hissa | Route | Kya dikhata hai | Screenshot |
 |---|---|---|---|
 | Naksha | `#map` | Har screen ka card aur flow; yahin se kuch bhi kholo | [desktop](screens/desktop/map-1440-dark.jpg) |
-|  | `#brand` | Naya logo (प jiske andar tick ✓), lockups, rang (kaala aur kaagaz), IBM Plex font, components, motion | [desktop](screens/desktop/brand-1440-dark.jpg) |
+|  | `#brand` | P se logo ke 3 option ("Poore app me lagao"), rang (kaala aur kaagaz), IBM Plex font, components, motion | [desktop](screens/desktop/brand-1440-dark.jpg) |
 | Pehli baar | `#landing` | Home: hero me kaagaz par aaj ka plan, din kaise chalta hai, kya alag hai (sabse chhota fail test, scrub hone wala editorial, Sahayak pehle poochhta), aptitude, company prep source ke saath, Banao | [desktop](screens/desktop/landing-1440-dark.jpg) · [light](screens/light/landing-1440-light.jpg) · [phone](screens/phone/landing-390-dark.jpg) · [हिंदी](screens/hindi/landing-1440-dark-hi.jpg) |
 |  | `#login` | Google, phone OTP, email; graph-paper par | [desktop](screens/desktop/login-1440-dark.jpg) |
 |  | `#onboarding` | 6 sawaal, side me plan banta dikhta hai | [desktop](screens/desktop/onboarding-1440-dark.jpg) |
@@ -55,7 +78,7 @@ Doosron ko dikhana ho to page ke Share menu se.
 |  | `#lesson` | Copy jaisi margin me teacher ke note, chalne wala code, quiz | [desktop](screens/desktop/lesson-1440-dark.jpg) · [light](screens/light/lesson-1440-light.jpg) · [phone](screens/phone/lesson-390-dark.jpg) · [हिंदी](screens/hindi/lesson-1440-dark-hi.jpg) |
 | Abhyas | `#practice` | Tracks, sheets, aaj ka problem, agla contest | [desktop](screens/desktop/practice-1440-dark.jpg) · [phone](screens/phone/practice-390-dark.jpg) |
 |  | `#sheet` | Kadam-dar-kadam DSA sheet | [desktop](screens/desktop/sheet-1440-dark.jpg) |
-|  | `#problem` | **Statement | Code | Sahayak** teen pane; har pane khinch kar chhota/bada, × se band; "Mock: see each state" se WA/TLE/AC | [desktop](screens/desktop/problem-1440-dark.jpg) · [light](screens/light/problem-1440-light.jpg) · [phone](screens/phone/problem-390-dark.jpg) · [हिंदी](screens/hindi/problem-1440-dark-hi.jpg) |
+|  | `#problem` | Pehle **Statement | Code**; Sahayak khole to teesra pane khud adjust hokar, band karo to wapas do; "Mock: see each state" se WA/TLE/AC | [desktop](screens/desktop/problem-1440-dark.jpg) · [light](screens/light/problem-1440-light.jpg) · [phone](screens/phone/problem-390-dark.jpg) · [हिंदी](screens/hindi/problem-1440-dark-hi.jpg) |
 |  | `#editorial` | Brute → better → best, dry run slider | [desktop](screens/desktop/editorial-1440-dark.jpg) · [light](screens/light/editorial-1440-light.jpg) |
 |  | `#sql` | Schema | query | nateeja, Sahayak pane | [desktop](screens/desktop/sql-1440-dark.jpg) |
 |  | `#aptitude` | Quant, logical, verbal, mocks | [desktop](screens/desktop/aptitude-1440-dark.jpg) |
@@ -111,11 +134,14 @@ Doosron ko dikhana ho to page ke Share menu se.
 
 Screenshots: `screens/desktop` (68, 1440, kaala), `screens/light` (12), `screens/phone` (14, 390, kaala), `screens/hindi` (4).
 
-## Jaanch (20 Oct, v4)
+## Jaanch (20 Oct, v4.1)
 
+- v4.1 ke baad dobara: 68 screens × 7 aur admin ke 25 route 4 role me, sab saaf. Problem ke pane naap kar dekhe:
+  default [601, 813, 0] px, Sahayak khula [423, 572, 409], band karne par wapas [601, 813, 0]. Studio me hover, quick
+  fix, dobara test, inline Sahayak aur diff, aur bell drawer, `?` sheet, G P jump click karke chalaye: console error nahi.
 - 68 screens × 7 (1440 kaala, 1440 light, 1024 kaala, 390 kaala, 390 light, 1440 kaala हिंदी, 390 light हिंदी): page side me
   nahi khisakta (horizontal overflow 0), console me koi error nahi.
-- Admin ke 26 route Finance, Analyst, Editor, Moderator role me bhi khole: taala aur "Request access" sahi.
+- Admin ke 25 route Finance, Analyst, Editor, Moderator role me bhi khole: taala aur "Request access" sahi.
 - Text contrast (WCAG): kaale par mukhya text 12:1, doosra 6:1, neela button par safed 4.9:1; light par mukhya 9.7:1,
   doosra 4.8:1. Sabse halka grey (`ink-4`) sirf disabled aur sajawat me, padhne wale text me nahi.
 - Studio ke naye tabs aur admin ke naye tabs (editorial, visuals, mock patterns, posts) click karke dekhe: error nahi.
@@ -134,12 +160,14 @@ Plus aur campus ka daam `₹[...]` (owner tay karega); TUF/LeetCode ka koi naam,
 
 ## Owner ke faisle
 
-1. Naya font (IBM Plex) aur kaala default ab "human" lagta hai? Kahin aur badlav?
-2. Code Studio VS Code jaisa theek hai? Kuch aur chahiye (jaise extensions, debug)?
-3. Naya logo (प + tick) theek hai?
-4. Plus, campus aur Pramaan test ke daam.
-5. Admin ke 8 roles aur 4-eyes ke niyam (`#adm-security` → "4-eyes rules") theek hain?
-6. Haan ho to: isi design se asli code shuru (Learn v2 handoff ka agla kadam).
+Pichhli baar ke jawab (20 Oct): font + kaala ✅ · roles + 4-eyes ✅ · daam testing ke baad · asli code abhi ruko.
+
+Ab chahiye:
+
+1. **Logo:** A Pass, B Prompt ya C Pragati? (`#brand` par "Poore app me lagao" se har screen par aazma lo.)
+2. Problem ka 2 → 3 pane wala badlav ab theek laga?
+3. Studio ke naye hisse (quick fix, inline Sahayak, diff, test run) me kuch aur chahiye?
+4. Notifications aur shortcuts jaise aur features chahiye, ya ab asli code shuru karein?
 
 ## Chalana aur badalna
 
@@ -149,6 +177,7 @@ npm install            # sirf pehli baar; baaki packages repo ke root se
 npx tsc -p tsconfig.json && npx vite build && node build-artifact.mjs   # dist/artifact.html (ek file)
 node shots.mjs <out> <route,route> 1440,390 dark en view                # screenshots; ROLE=finance se role
 node qa.mjs 390 dark hi                                                 # har screen: overflow, console error; ROLE=finance bhi
+SEL=".logo-opts" node shots.mjs <out> brand 1440 dark en                  # sirf ek hissa (element) ka screenshot
 node overview.mjs                                                       # screens/overview.jpg dobara
 ```
 
