@@ -36,7 +36,7 @@ export function MapBody() {
   return (
     <div className="map">
       <header className="map-top">
-        <Logo size={28} tag="Mock v4" />
+        <Logo size={28} tag="Mock v4.1" />
         <div className="row g4">
           <LangButton />
           <ThemeButton />

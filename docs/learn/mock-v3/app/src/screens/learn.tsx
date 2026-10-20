@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
 import { useAi } from "../lib/state";
-import { Badge, Level, Meter, Ring, Seg, PageHead, Drawer, PenNote, Hl, Tick } from "../ui/kit";
+import { Badge, Level, Meter, Ring, Seg, PageHead, Drawer, PenNote, Hl, Tick, LogoMark } from "../ui/kit";
 
 /* ---------------- notebook covers ---------------- */
 
@@ -51,11 +51,7 @@ export function Cover({ c, size = "md" }: { c: Course; size?: "md" | "lg" }) {
       <span className="cover-spine" />
       <span className="cover-label">
         <span className="cl-brand">
-          <svg width="12" height="12" viewBox="0 0 40 40" aria-hidden="true">
-            <rect width="40" height="40" rx="11" fill="#2346E8" />
-            <path d="M9.5 11.5H30.5M26 11.5V30.5" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" fill="none" />
-            <path d="M13.5 11.5v4.6l4.8 6 7.7-4" stroke="#FFE45C" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
+          <LogoMark size={12} decorative />
           parikshaa
         </span>
         <b>{t(...c.name)}</b>

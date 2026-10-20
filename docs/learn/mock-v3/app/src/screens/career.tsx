@@ -31,7 +31,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
-import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, Heatmap, Avatar, SampleNote, PenNote, PenCircle, Toggle, Seg } from "../ui/kit";
+import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, Heatmap, Avatar, SampleNote, PenNote, PenCircle, Toggle, Seg, LogoMark } from "../ui/kit";
 
 /* ---------------- companies ---------------- */
 
@@ -470,11 +470,7 @@ export function CertificateBody() {
         <div className="cd-border">
           <div className="row between">
             <span className="logo" style={{ ["--ls" as string]: "30px" }}>
-              <svg width="30" height="30" viewBox="0 0 40 40" aria-hidden="true">
-                <rect width="40" height="40" rx="11" fill="#2346E8" />
-                <path d="M9.5 11.5H30.5M26 11.5V30.5" stroke="#fff" strokeWidth="3" strokeLinecap="round" fill="none" />
-                <path d="M13.5 11.5v4.6l4.8 6 7.7-4" stroke="#FFE45C" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              </svg>
+              <LogoMark size={30} decorative />
               <span className="logo-word" style={{ color: "#15161a" }}>
                 parikshaa
               </span>

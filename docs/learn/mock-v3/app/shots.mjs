@@ -1,4 +1,4 @@
-// Screenshots of the built mock: [ROLE=finance] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
+// Screenshots of the built mock: [ROLE=finance] [SEL=".css"] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -24,7 +24,10 @@ for (const w of widthsArg.split(",").map(Number)) {
     await page.waitForTimeout(1600);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     const name = `${outDir}/${route}-${w}-${theme}${lang === "en" ? "" : `-${lang}`}.jpg`;
-    await page.screenshot({ path: name, fullPage: full === "full", type: "jpeg", quality: Number(process.env.Q || 82) });
+    const opts = { path: name, type: "jpeg", quality: Number(process.env.Q || 82) };
+    // SEL shoots one element (e.g. the logo options) instead of the page.
+    if (process.env.SEL) await page.locator(process.env.SEL).first().screenshot(opts);
+    else await page.screenshot({ ...opts, fullPage: full === "full" });
     console.log(`${name}${overflow > 0 ? `  OVERFLOW ${overflow}px` : ""}`);
   }
   if (errors.length) console.log("ERRORS:", errors.join("\n"));

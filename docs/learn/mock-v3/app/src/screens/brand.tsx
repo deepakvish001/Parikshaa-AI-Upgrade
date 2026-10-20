@@ -52,19 +52,62 @@ import {
   Code,
   Skel,
   Stat,
+  setLogoVariant,
+  useLogoVariant,
+  type LogoVariant,
 } from "../ui/kit";
 import { LangButton, ThemeButton } from "../ui/shell";
 
 const SW: { name: string; v: string; light: string; dark: string; use: string }[] = [
-  { name: "Paper / Board", v: "--page", light: "#F5F3EE", dark: "#000000", use: "Page" },
-  { name: "Panel", v: "--panel", light: "#FFFFFF", dark: "#131316", use: "Cards, bars" },
-  { name: "Ink / Chalk", v: "--ink", light: "#15161A", dark: "#fafafa", use: "Text" },
-  { name: "Blue pen", v: "--pen", light: "#2346E8", dark: "#8EA6FF", use: "Action, links, focus" },
-  { name: "Red pen", v: "--red", light: "#D93A2B", dark: "#FF8A7A", use: "Wrong, danger" },
-  { name: "Green tick", v: "--tick", light: "#15803D", dark: "#5fe39b", use: "Pass, done" },
-  { name: "Highlighter", v: "--marker", light: "#FFE45C", dark: "#F5DD6B", use: "What matters" },
-  { name: "Sahayak violet", v: "--ai", light: "#6D4AFF", dark: "#B7A5FF", use: "Everything AI" },
-  { name: "Kesar", v: "--coin", light: "#C26A04", dark: "#FFB547", use: "Coins, streak" },
+  { name: "Paper / Black", v: "--page", light: "#F6F6F4", dark: "#000000", use: "Page" },
+  { name: "Panel", v: "--panel", light: "#FFFFFF", dark: "#0C0C0E", use: "Cards, bars" },
+  { name: "Ink", v: "--ink", light: "#0A0A0B", dark: "#FAFAFA", use: "Text" },
+  { name: "Blue pen", v: "--pen", light: "#2349E6", dark: "#3B62F5", use: "Action, links, focus" },
+  { name: "Red pen", v: "--red", light: "#D9352A", dark: "#FF5D50", use: "Wrong, danger" },
+  { name: "Green tick", v: "--tick", light: "#13803C", dark: "#2CCF78", use: "Pass, done" },
+  { name: "Highlighter", v: "--marker", light: "#FFD84D", dark: "#FFD84D", use: "What matters" },
+  { name: "Sahayak violet", v: "--ai", light: "#6A45FF", dark: "#9F86FF", use: "Everything AI" },
+  { name: "Kesar", v: "--coin", light: "#A85A00", dark: "#FFAB2E", use: "Coins, streak" },
+];
+
+type L3 = [string, string, string];
+const LOGO_OPTS: { id: LogoVariant; key: string; name: L3; idea: L3; good: L3; watch: L3 }[] = [
+  {
+    id: "pass",
+    key: "A",
+    name: ["Pass: P with a tick", "Pass: P + tick", "पास: P और टिक"],
+    idea: [
+      "The stem of the P is the long arm of a tick. Preparation ends in a pass.",
+      "P ka danda hi tick ki lambi line hai. Taiyari ka ant: pass.",
+      "P का डंडा ही टिक की लंबी रेखा है। तैयारी का अंत: पास।",
+    ],
+    good: ["Says what we do: practise, then pass.", "Seedha kehta hai hum kya karte hain: taiyari, phir pass.", "सीधा कहता है: तैयारी, फिर पास।"],
+    watch: ["At 16 px the tick is small, still readable.", "16 px par tick chhota hai, phir bhi padhne me aata hai.", "16 px पर टिक छोटा है, फिर भी पढ़ने में आता है।"],
+  },
+  {
+    id: "prompt",
+    key: "B",
+    name: ["Prompt: P as a code chevron", "Prompt: P code ka >", "प्रॉम्प्ट: P कोड का >"],
+    idea: [
+      "The bowl of the P is the terminal's > and a cursor waits below. Made for people who code.",
+      "P ka pet terminal ka > hai, neeche cursor intezaar me. Code likhne walon ke liye.",
+      "P का पेट टर्मिनल का > है, नीचे कर्सर।",
+    ],
+    good: ["Stands apart from every other P logo.", "Baaki P logos se bilkul alag dikhta hai.", "बाकी P लोगो से अलग दिखता है।"],
+    watch: ["Can read as a flag; says less about aptitude and interviews.", "Jhande jaisa bhi padhta hai; aptitude aur interview se kam judta hai.", "झंडे जैसा भी पढ़ता है।"],
+  },
+  {
+    id: "progress",
+    key: "C",
+    name: ["Progress: a P that fills", "Pragati: bharta hua P", "प्रगति: भरता हुआ P"],
+    idea: [
+      "The lower half of the bowl is gold, like a progress ring halfway round.",
+      "P ke pet ka neeche wala aadha peela hai, jaise progress ring aadhi bhari.",
+      "P के पेट का निचला आधा पीला है, जैसे आधी भरी प्रगति रिंग।",
+    ],
+    good: ["The clearest P at every size.", "Har size par sabse saaf P.", "हर आकार पर सबसे साफ़ P।"],
+    watch: ["A plain P on a blue square looks like a parking sign.", "Neele dabbe par seedha P parking ke board jaisa lagta hai.", "नीले डिब्बे पर सीधा P पार्किंग बोर्ड जैसा लगता है।"],
+  },
 ];
 
 export function BrandBody() {
@@ -76,6 +119,7 @@ export function BrandBody() {
   const [chk, setChk] = useState(true);
   const [modal, setModal] = useState(false);
   const [replay, setReplay] = useState(0);
+  const logo = useLogoVariant();
   return (
     <div className="brand">
       <header className="map-top">
@@ -106,29 +150,64 @@ export function BrandBody() {
 
       <section className="brand-sec">
         <h2 className="brand-h2">
-          <span className="num">01</span> {t("Logo", "Logo", "लोगो")}
+          <span className="num">01</span> {t("Logo: three ways to draw a P", "Logo: P banane ke teen raaste", "लोगो: P के तीन रूप")}
         </h2>
-        <div className="brand-grid c3">
-          <div className="brand-tile light-tile">
-            <Logo size={44} />
-            <span className="tiny">{t("Primary lockup on paper", "Kaagaz par", "काग़ज़ पर")}</span>
-          </div>
-          <div className="brand-tile dark-tile">
-            <span className="logo" style={{ ["--ls" as string]: "44px", color: "#FAFAFA" }}>
-              <LogoMark size={44} />
-              <span className="logo-word">parikshaa</span>
-            </span>
-            <span className="tiny">{t("On black", "Kaale par", "काले पर")}</span>
-          </div>
-          <div className="brand-tile">
-            <div className="row g12" style={{ alignItems: "flex-end" }}>
-              <LogoMark size={96} />
-              <LogoMark size={48} />
-              <LogoMark size={28} />
-              <LogoMark size={16} />
-            </div>
-            <span className="tiny faint">{t("The mark: प whose inner stroke is a tick. Readable at 16 px.", "Mark: प jiska andar ka hissa tick hai. 16 px par bhi saaf.", "मार्क: प जिसका भीतरी हिस्सा टिक है।")}</span>
-          </div>
+        <p className="brand-lead">
+          {t(
+            "Each option is the letter P with one idea inside it. Press \u201cUse across the app\u201d to see it on every screen (sidebar, Studio, certificate, landing). The choice stays in this browser.",
+            "Har option P akshar hai, andar ek idea ke saath. \u201cPoore app me lagao\u201d dabao to wahi logo har screen par dikhega (sidebar, Studio, certificate, landing). Choice isi browser me rehti hai.",
+            "हर विकल्प P अक्षर है, भीतर एक विचार के साथ। \u201cपूरे ऐप में लगाओ\u201d दबाओ तो हर स्क्रीन पर वही दिखेगा।",
+          )}
+        </p>
+        <div className="logo-opts">
+          {LOGO_OPTS.map((o) => {
+            const on = logo === o.id;
+            return (
+              <article className={`logo-opt ${on ? "on" : ""}`} key={o.id}>
+                <header className="lo-head">
+                  <span className="lo-name">
+                    <span className="mono faint">{o.key}</span> {t(...o.name)}
+                  </span>
+                  {on ? (
+                    <Badge tone="tick" icon={<CheckI size={13} />}>
+                      {t("In use", "Laga hua", "लगा हुआ")}
+                    </Badge>
+                  ) : (
+                    <button className="btn sm" onClick={() => setLogoVariant(o.id)}>
+                      {t("Use across the app", "Poore app me lagao", "पूरे ऐप में लगाओ")}
+                    </button>
+                  )}
+                </header>
+                <div className="lo-tile dark-tile">
+                  <div className="lo-sizes">
+                    <LogoMark size={96} variant={o.id} />
+                    <LogoMark size={48} variant={o.id} />
+                    <LogoMark size={28} variant={o.id} />
+                    <LogoMark size={16} variant={o.id} />
+                  </div>
+                  <span className="logo" style={{ ["--ls" as string]: "30px", color: "#FAFAFA" }}>
+                    <LogoMark size={30} variant={o.id} decorative />
+                    <span className="logo-word">parikshaa</span>
+                  </span>
+                </div>
+                <div className="lo-tile light-tile">
+                  <span className="logo" style={{ ["--ls" as string]: "30px", color: "#0A0A0B" }}>
+                    <LogoMark size={30} variant={o.id} decorative />
+                    <span className="logo-word">parikshaa</span>
+                  </span>
+                  <span className="lo-fav">
+                    <LogoMark size={16} variant={o.id} decorative />
+                    <span>Parikshaa · Aaj</span>
+                  </span>
+                </div>
+                <p className="lo-idea">{t(...o.idea)}</p>
+                <ul className="lo-notes">
+                  <li className="ok">{t(...o.good)}</li>
+                  <li className="warn">{t(...o.watch)}</li>
+                </ul>
+              </article>
+            );
+          })}
         </div>
         <div className="brand-grid c3 mt16">
           <div className="brand-tile">

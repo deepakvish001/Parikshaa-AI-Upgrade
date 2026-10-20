@@ -349,6 +349,103 @@ html.shots .mock-fab {
   border-radius: 20px;
 }
 
+/* v4.1 logo options */
+.brand-lead {
+  max-width: 68ch;
+  color: var(--ink-2);
+  margin: -6px 0 18px;
+}
+.logo-opts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.logo-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--edge);
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.logo-opt.on {
+  border-color: var(--pen);
+  box-shadow: 0 0 0 1px var(--pen), var(--edge);
+}
+.lo-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+}
+.lo-name {
+  font-weight: 600;
+  font-size: 15px;
+}
+.lo-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-style: solid;
+}
+.lo-sizes {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.lo-fav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 6px 12px 6px 9px;
+  border-radius: 8px 8px 0 0;
+  background: #e9e9e5;
+  font-size: 12.5px;
+  color: #45464e;
+}
+.lo-idea {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.lo-notes {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.lo-notes li {
+  display: flex;
+  gap: 8px;
+  color: var(--ink-2);
+}
+.lo-notes li::before {
+  content: "";
+  flex: 0 0 6px;
+  height: 6px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: var(--tick);
+}
+.lo-notes li.warn::before {
+  background: var(--coin);
+}
+@media (max-width: 1100px) {
+  .logo-opts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 1000px) {
   .brand-grid.c4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
