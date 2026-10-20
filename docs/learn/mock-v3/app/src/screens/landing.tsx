@@ -556,7 +556,7 @@ export function LandingBody() {
               </div>
               <div className="proof-cols">
                 <div>
-                  <div className="eyebrow" style={{ color: "#6EE7A0" }}>
+                  <div className="eyebrow" style={{ color: "#5fe39b" }}>
                     {t("Verified by Parikshaa", "Parikshaa ne verify kiya", "सत्यापित")}
                   </div>
                   {[

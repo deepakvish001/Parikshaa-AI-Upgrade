@@ -56,12 +56,12 @@ import {
 import { LangButton, ThemeButton } from "../ui/shell";
 
 const SW: { name: string; v: string; light: string; dark: string; use: string }[] = [
-  { name: "Paper / Board", v: "--page", light: "#F5F3EE", dark: "#0F1512", use: "Page" },
-  { name: "Panel", v: "--panel", light: "#FFFFFF", dark: "#151D19", use: "Cards, bars" },
-  { name: "Ink / Chalk", v: "--ink", light: "#15161A", dark: "#E9EEEA", use: "Text" },
+  { name: "Paper / Board", v: "--page", light: "#F5F3EE", dark: "#000000", use: "Page" },
+  { name: "Panel", v: "--panel", light: "#FFFFFF", dark: "#131316", use: "Cards, bars" },
+  { name: "Ink / Chalk", v: "--ink", light: "#15161A", dark: "#fafafa", use: "Text" },
   { name: "Blue pen", v: "--pen", light: "#2346E8", dark: "#8EA6FF", use: "Action, links, focus" },
   { name: "Red pen", v: "--red", light: "#D93A2B", dark: "#FF8A7A", use: "Wrong, danger" },
-  { name: "Green tick", v: "--tick", light: "#15803D", dark: "#6EE7A0", use: "Pass, done" },
+  { name: "Green tick", v: "--tick", light: "#15803D", dark: "#5fe39b", use: "Pass, done" },
   { name: "Highlighter", v: "--marker", light: "#FFE45C", dark: "#F5DD6B", use: "What matters" },
   { name: "Sahayak violet", v: "--ai", light: "#6D4AFF", dark: "#B7A5FF", use: "Everything AI" },
   { name: "Kesar", v: "--coin", light: "#C26A04", dark: "#FFB547", use: "Coins, streak" },
@@ -90,15 +90,15 @@ export function BrandBody() {
       </header>
 
       <section className="brand-hero paper-grid">
-        <div className="eyebrow">{t("Brand & design system · v3", "Brand aur design system · v3", "ब्रांड और डिज़ाइन · v3")}</div>
+        <div className="eyebrow">{t("Brand & design system · v4", "Brand aur design system · v4", "ब्रांड और डिज़ाइन · v4")}</div>
         <h1 className="display brand-h1">
           {t("Paper and ", "Kaagaz aur ", "काग़ज़ और ")}
-          <em>{t("blackboard.", "blackboard.", "ब्लैकबोर्ड।")}</em>
+          <em>{t("ink.", "syaahi.", "स्याही।")}</em>
         </h1>
         <p className="map-sub">
           {t(
-            "Every student in India has written an exam in blue pen, had a mistake circled in red and earned a green tick. That is our whole visual language: no borrowed orange-on-black.",
-            "Har Indian student ne neele pen se exam likha, laal pen se galti ghiri dekhi, aur hara tick kamaya. Yahi hamari poori visual bhasha hai: kisi aur ka naranga-kaala nahi.",
+            "Every student in India has written an exam in blue pen, had a mistake circled in red and earned a green tick. That is our visual language, set on true black by default and on clean paper when you switch.",
+            "Har Indian student ne neele pen se exam likha, laal pen se galti ghiri dekhi, aur hara tick kamaya. Yahi hamari visual bhasha hai: default me gehra kaala, switch karo to saaf kaagaz.",
             "हर भारतीय छात्र ने नीले पेन से परीक्षा लिखी, लाल पेन से गलती घिरी देखी, और हरा टिक पाया। यही हमारी दृश्य भाषा है।",
           )}
         </p>
@@ -114,11 +114,11 @@ export function BrandBody() {
             <span className="tiny">{t("Primary lockup on paper", "Kaagaz par", "काग़ज़ पर")}</span>
           </div>
           <div className="brand-tile dark-tile">
-            <span className="logo" style={{ ["--ls" as string]: "44px", color: "#E9EEEA" }}>
+            <span className="logo" style={{ ["--ls" as string]: "44px", color: "#FAFAFA" }}>
               <LogoMark size={44} />
               <span className="logo-word">parikshaa</span>
             </span>
-            <span className="tiny">{t("On the blackboard", "Blackboard par", "ब्लैकबोर्ड पर")}</span>
+            <span className="tiny">{t("On black", "Kaale par", "काले पर")}</span>
           </div>
           <div className="brand-tile">
             <div className="row g12" style={{ alignItems: "flex-end" }}>
@@ -168,7 +168,7 @@ export function BrandBody() {
 
       <section className="brand-sec">
         <h2 className="brand-h2">
-          <span className="num">02</span> {t("Colour: the pencil box", "Rang: pencil box", "रंग: पेंसिल बॉक्स")}
+          <span className="num">02</span> {t("Colour: pens on black and paper", "Rang: kaale aur kaagaz par pen", "रंग: काले और काग़ज़ पर पेन")}
         </h2>
         <div className="swatches">
           {SW.map((s) => (
@@ -188,15 +188,15 @@ export function BrandBody() {
               Kaagaz
             </b>
             <span className="tiny" style={{ color: "#4B4D57" }}>
-              {t("Light: warm exam paper, ink text, blue pen.", "Light: garam kaagaz, syahi, neela pen.", "लाइट: गर्म काग़ज़।")}
+              {t("Light: clean paper, ink text, blue pen.", "Light: saaf kaagaz, syaahi, neela pen.", "लाइट: साफ़ काग़ज़।")}
             </span>
           </div>
           <div className="brand-tile dark-tile" style={{ minHeight: 150 }}>
             <b className="display" style={{ fontSize: 26 }}>
-              Blackboard
+              Syaahi
             </b>
-            <span className="tiny" style={{ color: "#A9B6AF" }}>
-              {t("Dark: green-black board, chalk colours.", "Dark: hari-kaali patti, chalk ke rang.", "डार्क: ब्लैकबोर्ड, चॉक।")}
+            <span className="tiny" style={{ color: "#C4C4CC" }}>
+              {t("Dark, the default: true black, every edge and icon visible.", "Dark, default: gehra kaala, har dhaar aur icon saaf.", "डार्क, डिफ़ॉल्ट: गहरा काला।")}
             </span>
           </div>
         </div>

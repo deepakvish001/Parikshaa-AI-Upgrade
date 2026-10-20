@@ -36,7 +36,7 @@ export function MapBody() {
   return (
     <div className="map">
       <header className="map-top">
-        <Logo size={28} tag="Mock v3" />
+        <Logo size={28} tag="Mock v4" />
         <div className="row g4">
           <LangButton />
           <ThemeButton />
@@ -49,15 +49,15 @@ export function MapBody() {
 
       <section className="map-hero paper-grid">
         <div className="map-hero-in">
-          <div className="eyebrow">{t("Parikshaa · design v3 · 20 Oct 2026", "Parikshaa · design v3 · 20 Oct 2026", "परीक्षा · डिज़ाइन v3")}</div>
+          <div className="eyebrow">{t("Parikshaa · design v4 · 20 Oct 2026", "Parikshaa · design v4 · 20 Oct 2026", "परीक्षा · डिज़ाइन v4")}</div>
           <h1 className="display map-h1">
             {t("Every screen, ", "Har screen, ", "हर स्क्रीन, ")}
             <Hl>{t("clickable.", "clickable.", "क्लिक करने लायक।")}</Hl>
           </h1>
           <p className="map-sub">
             {t(
-              "The learner site, the admin panel and the brand system in one mock. Paper by day, blackboard by night. Nothing here is real data.",
-              "Learner site, admin panel aur brand system, ek mock me. Din me kaagaz, raat me blackboard. Yahan ka koi data asli nahi.",
+              "The learner site, the admin panel and the brand system in one mock. Black by default, paper when you switch. Nothing here is real data.",
+              "Learner site, admin panel aur brand system, ek mock me. Default kaala, switch karo to kaagaz. Yahan ka koi data asli nahi.",
               "शिक्षार्थी साइट, एडमिन पैनल और ब्रांड, एक मॉक में। यहाँ का कोई डेटा असली नहीं।",
             )}
           </p>
@@ -90,7 +90,7 @@ export function MapBody() {
               <Sparkles /> {t("Ctrl J opens Sahayak", "Ctrl J se Sahayak", "Ctrl J से सहायक")}
             </span>
             <span>
-              <SunMoon /> {t("Paper / blackboard theme", "Kaagaz / blackboard theme", "काग़ज़ / ब्लैकबोर्ड")}
+              <SunMoon /> {t("Black / paper theme", "Kaala / kaagaz theme", "काला / काग़ज़")}
             </span>
             <span>
               <Languages /> {t("English · Hinglish · हिंदी", "English · Hinglish · हिंदी", "English · Hinglish · हिंदी")}

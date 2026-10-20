@@ -44,7 +44,7 @@ export function ThemeButton() {
     <button
       className="icon-btn"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      data-tip={theme === "dark" ? t("Paper (light)", "Kaagaz (light)", "काग़ज़ (लाइट)") : t("Blackboard (dark)", "Blackboard (dark)", "ब्लैकबोर्ड (डार्क)")}
+      data-tip={theme === "dark" ? t("Paper (light)", "Kaagaz (light)", "काग़ज़ (लाइट)") : t("Black (dark)", "Kaala (dark)", "काला (डार्क)")}
       data-tip-pos="bottom"
       aria-label="Theme"
     >

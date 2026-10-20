@@ -689,17 +689,17 @@
 
 /* ink band (always dark) */
 .l-ink {
-  background: #0d1210;
-  color: #e9eeea;
-  border-top: 1px solid #25312c;
-  border-bottom: 1px solid #25312c;
+  background: #0a0a0b;
+  color: #fafafa;
+  border-top: 1px solid #2a2a2f;
+  border-bottom: 1px solid #2a2a2f;
 }
 .l-ink .eyebrow {
-  color: #a9b6af;
+  color: #c4c4cc;
 }
 .l-ink-btn {
-  background: #e9eeea;
-  color: #0d1210;
+  background: #fafafa;
+  color: #0a0a0b;
   border-color: transparent;
 }
 .l-ink-btn:hover {
@@ -709,8 +709,8 @@
   position: relative;
   padding: 24px;
   border-radius: 20px;
-  background: #151d19;
-  border: 1px solid #2c3a34;
+  background: #131316;
+  border: 1px solid #34343a;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -729,16 +729,16 @@
   align-items: center;
   gap: 8px;
   padding: 8px 0;
-  border-bottom: 1px solid #25312c;
+  border-bottom: 1px solid #2a2a2f;
   font-size: 13px;
 }
 .proof-row svg {
   width: 16px;
   height: 16px;
-  color: #6ee7a0;
+  color: #5fe39b;
 }
 .proof-row span {
-  color: #a9b6af;
+  color: #c4c4cc;
 }
 .proof-row.dim {
   grid-template-columns: 18px 1fr;
@@ -747,19 +747,19 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #56635d;
+  background: #62626b;
   margin-left: 5px;
 }
 .proof-qr {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #a9b6af;
+  color: #c4c4cc;
 }
 .proof-qr svg {
   width: 40px;
   height: 40px;
-  color: #e9eeea;
+  color: #fafafa;
 }
 .proof-stamp {
   position: absolute;

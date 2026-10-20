@@ -607,9 +607,9 @@ export function SettingsBody() {
               <div className="set-row">
                 <div>
                   <b className="small">{t("Theme", "Theme", "थीम")}</b>
-                  <p className="tiny faint">{t("Paper by day, blackboard by night.", "Din me kaagaz, raat me blackboard.", "दिन में काग़ज़, रात में ब्लैकबोर्ड।")}</p>
+                  <p className="tiny faint">{t("Black is the default; paper if you prefer light.", "Default kaala; light pasand ho to kaagaz.", "डिफ़ॉल्ट काला; चाहें तो काग़ज़।")}</p>
                 </div>
-                <Seg value={theme} onChange={setTheme} items={[{ id: "light", label: t("Paper", "Kaagaz", "काग़ज़") }, { id: "dark", label: "Blackboard" }]} />
+                <Seg value={theme} onChange={setTheme} items={[{ id: "dark", label: t("Black", "Kaala", "काला") }, { id: "light", label: t("Paper", "Kaagaz", "काग़ज़") }]} />
               </div>
             </div>
           </section>
