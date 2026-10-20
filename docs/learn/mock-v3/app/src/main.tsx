@@ -8,6 +8,7 @@ import "./styles/kit.css";
 import "./styles/shell.css";
 import "./styles/focus.css";
 import "./styles/admin.css";
+import "./styles/admin-pages.css";
 import "./styles/mock.css";
 import "./styles/landing.css";
 import "./styles/app.css";

@@ -15,6 +15,11 @@ import { PotdBody, ContestsBody, ContestBriefBody, ContestLiveScreen, ContestRes
 import { BuildBody, ProjectBody, ProjectRail, StudioScreen } from "./build";
 import { CompaniesBody, CompanyBody, ExperiencesBody, PramaanBody, CertificateBody, ProfileBody, JobsBody } from "./career";
 import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mine";
+import { AdminLogin, AdminDashboard, ReviewQueue, Approvals } from "../admin/a-core";
+import { AdmProblems, AdmProblemEditor, AdmAptitude, AdmLessons, AdmRoadmaps, AdmCompanies, AdmFactory } from "../admin/a-content";
+import { AdmLearners, AdmLearner, AdmSupport, AdmCommunity } from "../admin/a-people";
+import { AdmCommerce, AdmContests, AdmAI, AdmAnalytics, AdmNotify } from "../admin/a-business";
+import { AdmRoles, AdmStaff, AdmAudit, AdmSecurity, AdmSystem } from "../admin/a-security";
 
 export type ScreenImpl = { Body: ComponentType; Rail?: ComponentType };
 
@@ -62,6 +67,32 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   community: { Body: CommunityBody },
   plus: { Body: PlusBody },
   settings: { Body: SettingsBody },
+  // admin
+  "admin-login": { Body: AdminLogin },
+  admin: { Body: AdminDashboard },
+  "adm-review": { Body: ReviewQueue },
+  "adm-approvals": { Body: Approvals },
+  "adm-problems": { Body: AdmProblems },
+  "adm-problem": { Body: AdmProblemEditor },
+  "adm-aptitude": { Body: AdmAptitude },
+  "adm-lessons": { Body: AdmLessons },
+  "adm-roadmaps": { Body: AdmRoadmaps },
+  "adm-companies": { Body: AdmCompanies },
+  "adm-factory": { Body: AdmFactory },
+  "adm-learners": { Body: AdmLearners },
+  "adm-learner": { Body: AdmLearner },
+  "adm-support": { Body: AdmSupport },
+  "adm-community": { Body: AdmCommunity },
+  "adm-commerce": { Body: AdmCommerce },
+  "adm-contests": { Body: AdmContests },
+  "adm-ai": { Body: AdmAI },
+  "adm-analytics": { Body: AdmAnalytics },
+  "adm-notify": { Body: AdmNotify },
+  "adm-roles": { Body: AdmRoles },
+  "adm-staff": { Body: AdmStaff },
+  "adm-audit": { Body: AdmAudit },
+  "adm-security": { Body: AdmSecurity },
+  "adm-system": { Body: AdmSystem },
 };
 
 for (const k of Object.keys(SCREEN_MAP)) READY.add(k);
