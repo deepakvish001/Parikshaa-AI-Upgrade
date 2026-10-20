@@ -11,6 +11,8 @@ import "./styles/admin.css";
 import "./styles/mock.css";
 import "./styles/landing.css";
 import "./styles/app.css";
+import "./styles/work.css";
+import "./styles/practice.css";
 import { LangProvider, ThemeProvider, ToastProvider, Link, useRoute, useT } from "./lib/core";
 import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";

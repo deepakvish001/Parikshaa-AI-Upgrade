@@ -244,11 +244,11 @@ body.resizing .pane-div::before {
   display: none;
 }
 
-.panes.phone {
+.panes.is-phone {
   flex-direction: column;
   gap: 8px;
 }
-.panes.phone .pane {
+.panes.is-phone .pane {
   flex: 1;
 }
 .pane-tabs {

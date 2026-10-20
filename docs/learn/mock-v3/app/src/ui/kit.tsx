@@ -680,10 +680,10 @@ export function Code({
       {lines.map((l, i) => (
         <span
           key={i}
-          className={`ln ${hl.includes(i + 1) ? "hl" : ""} ${bad.includes(i + 1) ? "bad" : ""} ${good.includes(i + 1) ? "good" : ""} ${caret === i + 1 ? "caret" : ""}`}
+          className={`ln ${hl.includes(i + 1) ? "mark" : ""} ${bad.includes(i + 1) ? "bad" : ""} ${good.includes(i + 1) ? "good" : ""} ${caret === i + 1 ? "caret" : ""}`}
         >
           {tokenize(l)}
-          {"\n"}
+          {l === "" ? " " : null}
         </span>
       ))}
     </pre>

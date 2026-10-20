@@ -145,7 +145,7 @@ export function Panes({
   if (phone) {
     const cur = panes.find((p) => p.id === phoneTab) ?? panes[0];
     return (
-      <div className="panes phone">
+      <div className="panes is-phone">
         <div className="pane-tabs" role="tablist">
           {panes.map((p) => (
             <button key={p.id} role="tab" aria-selected={cur.id === p.id} className={p.tone === "ai" ? "ai" : undefined} onClick={() => setPhoneTab(p.id)}>
