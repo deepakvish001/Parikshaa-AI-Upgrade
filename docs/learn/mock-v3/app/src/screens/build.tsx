@@ -27,7 +27,7 @@ import { Badge, Level, Ring, Seg, Tabs, Card } from "../ui/kit";
 
 /* ---------------- mini app previews (pure CSS, not screenshots) ---------------- */
 
-export function SplitApp({ big, settled }: { big?: boolean; settled?: boolean }) {
+export function SplitApp({ big, settled, noZero }: { big?: boolean; settled?: boolean; noZero?: boolean }) {
   return (
     <div className={`mini-app split ${big ? "big" : ""}`}>
       <div className="ma-top">
@@ -62,7 +62,7 @@ export function SplitApp({ big, settled }: { big?: boolean; settled?: boolean })
           ) : (
             <>
               <div className="ma-row sm">Kabir → Aarav ₹620</div>
-              <div className="ma-row sm bad">Kabir → Ishita ₹0</div>
+              {!noZero && <div className="ma-row sm bad">Kabir → Ishita ₹0</div>}
               <div className="ma-row sm">Zoya → Aarav ₹620</div>
               <div className="ma-row sm">Zoya → Ishita ₹310</div>
             </>

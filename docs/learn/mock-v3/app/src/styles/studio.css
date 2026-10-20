@@ -671,6 +671,7 @@ body.dragging .sash {
   min-width: 0;
   overflow: auto;
   padding-top: 6px;
+  container-type: inline-size;
 }
 .vs-lines {
   margin: 0;
@@ -730,7 +731,11 @@ body.dragging .sash {
   text-decoration-skip-ink: none;
   text-underline-offset: 3px;
 }
-/* VS Code style inline diagnostic zone under the line */
+/* VS Code style inline diagnostic zone under the line; the break puts zones on their own row */
+.ed-break {
+  flex-basis: 100%;
+  height: 0;
+}
 .ed-peek {
   flex-basis: 100%;
   display: flex;
@@ -747,7 +752,9 @@ body.dragging .sash {
   flex-wrap: wrap;
   row-gap: 4px;
   width: max-content;
-  max-width: calc(100% - 72px);
+  max-width: calc(100cqw - 72px);
+  position: sticky;
+  left: 56px;
 }
 .ed-peek > svg {
   width: 15px;
@@ -1181,5 +1188,372 @@ pre.pn-pad,
   }
   .ide-aux {
     width: 320px;
+  }
+}
+
+/* ---------- v4.1: change marks, quick fix, hover card, inline chat, diff, test run ---------- */
+.ed-ln.g-add > .ed-num,
+.ed-ln.g-mod > .ed-num {
+  position: relative;
+}
+.ed-ln.g-add > .ed-num::after,
+.ed-ln.g-mod > .ed-num::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 2px;
+  bottom: 2px;
+  width: 3px;
+  border-radius: 1px;
+  background: var(--tick);
+}
+.ed-ln.g-mod > .ed-num::after {
+  background: var(--pen);
+}
+.ed-ln.ed-flash {
+  animation: ed-flash 1.4s var(--ease);
+}
+@keyframes ed-flash {
+  0%,
+  30% {
+    background: var(--tick-soft);
+  }
+}
+.minimap i.m-add {
+  background: var(--tick);
+  opacity: 0.9;
+}
+.minimap i.m-mod {
+  background: var(--pen);
+  opacity: 0.9;
+}
+button.ed-bulb {
+  border-radius: 4px;
+  cursor: pointer;
+}
+button.ed-bulb:hover {
+  background: var(--hover);
+}
+.sq-wrap {
+  position: relative;
+}
+.ed-hover {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(400px, calc(100cqw - 80px));
+  padding: 8px 10px;
+  white-space: normal;
+  font-family: var(--f-ui);
+  font-size: 12.5px;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+  animation: ide-pop 0.14s var(--ease);
+}
+.eh-msg {
+  display: flex;
+  gap: 8px;
+  color: var(--ink);
+}
+.eh-msg svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--red-text);
+}
+.eh-code {
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--editor);
+  font-size: 12px;
+}
+.eh-acts {
+  display: flex;
+  gap: 14px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+.eh-acts .kbd,
+.qf-menu .kbd {
+  margin-left: 4px;
+}
+.qf-menu {
+  position: absolute;
+  left: 40px;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100cqw - 56px));
+  padding: 4px;
+  font-family: var(--f-ui);
+  font-size: 13px;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-3);
+  animation: ide-pop 0.14s var(--ease);
+}
+.qf-h {
+  padding: 4px 8px 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.qf-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 5px;
+  text-align: left;
+  color: var(--ink);
+}
+.qf-menu button svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+.qf-menu button.on,
+.qf-menu button:not(:disabled):hover {
+  background: var(--pen-soft);
+}
+.qf-menu button:disabled {
+  color: var(--ink-3);
+  cursor: not-allowed;
+}
+.qf-pref {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: var(--tick-soft);
+  color: var(--tick-text);
+}
+.qf-prev {
+  margin: 2px 8px 6px 31px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  font-size: 11.5px;
+}
+.qf-prev > div {
+  padding: 2px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.qf-prev .d-del,
+.vs-lines.diff .ed-ln.d-del {
+  background: var(--red-soft);
+}
+.qf-prev .d-add,
+.vs-lines.diff .ed-ln.d-add {
+  background: var(--tick-soft);
+}
+.qf-note {
+  margin: 4px 4px 2px;
+  padding: 6px 8px 2px;
+  border-top: 1px solid var(--line);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.ed-chat {
+  position: sticky;
+  left: 56px;
+  flex-basis: 100%;
+  margin: 4px 0 8px 56px;
+  max-width: min(600px, calc(100cqw - 72px));
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--f-ui);
+  font-size: 13px;
+  white-space: normal;
+  background: var(--panel-2);
+  border: 1px solid var(--ai-line);
+  border-radius: 10px;
+  box-shadow: var(--shadow-2);
+  animation: ide-drop 0.18s var(--ease);
+}
+.ec-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ec-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-left: 4px;
+  color: var(--ai-text);
+}
+.ec-row input {
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--field);
+  color: var(--ink);
+  font: inherit;
+}
+.ec-row input:focus {
+  outline: 2px solid var(--ai);
+  outline-offset: 0;
+  border-color: transparent;
+}
+.ec-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-left: 26px;
+}
+.ec-chips .chip {
+  height: 26px;
+}
+.ec-ans {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 4px 2px 26px;
+  animation: ide-fade 0.2s var(--ease);
+}
+.ec-ans p {
+  max-width: 68ch;
+  line-height: 1.55;
+}
+.diff-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 10px 4px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.diff-head > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--ink-3);
+}
+.ed-scroll.diff-scroll {
+  padding-top: 0;
+}
+.vs-lines.diff .ed-num {
+  width: 44px;
+  padding-right: 10px;
+}
+.d-sign {
+  width: 2ch;
+  flex: none;
+  user-select: none;
+  color: var(--ink-4);
+}
+.vs-lines.diff .d-add .d-sign {
+  color: var(--tick-text);
+}
+.vs-lines.diff .d-del .d-sign {
+  color: var(--red-text);
+}
+.ide .spinner.sm,
+.ide .spinner.ti {
+  display: inline-block;
+  vertical-align: -2px;
+}
+.ide .spinner.sm {
+  width: 11px;
+  height: 11px;
+  border-width: 1.5px;
+}
+.ide .spinner.ti {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  border-width: 1.5px;
+}
+.t-pend {
+  color: var(--ink-3);
+}
+.pn-prog {
+  position: sticky;
+  top: 0;
+  height: 2px;
+  margin: 0 -16px 4px;
+  background: var(--line);
+}
+.pn-prog i {
+  display: block;
+  height: 100%;
+  background: var(--pen);
+  transition: width 0.11s linear;
+}
+.ln-new {
+  animation: ide-fade 0.18s var(--ease);
+}
+.ol-var {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-family: var(--f-mono);
+  color: var(--code-ty);
+  border: 1px solid currentColor;
+}
+.sb-empty {
+  display: block;
+  padding: 4px 22px 8px;
+}
+.tl-list {
+  display: flex;
+  flex-direction: column;
+  padding: 2px 0 6px;
+}
+.tl-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 24px;
+  padding: 0 12px 0 22px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+.tl-row svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--ink-3);
+}
+.tl-row svg.t-ai {
+  color: var(--ai-text);
+}
+@keyframes ide-pop {
+  from {
+    opacity: 0;
+    transform: translateY(3px) scale(0.98);
+  }
+}
+@keyframes ide-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes ide-fade {
+  from {
+    opacity: 0;
   }
 }

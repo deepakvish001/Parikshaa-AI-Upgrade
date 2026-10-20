@@ -39,6 +39,7 @@ import {
   SquareTerminal,
   Eye,
   Code2,
+  GitCompare,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
 import { useAi } from "../lib/state";
@@ -146,6 +147,94 @@ export type Transfer = { from: string; to: string; amount: number };`,
   },
 };
 
+// The fix Quick fix offers for line 11, and what the last commit ("settle: first pass") holds.
+const FIX_LINE = "      if (pay > 0) out.push({ from: o.name, to: g.name, amount: pay });";
+const HEAD: Partial<Record<FileId, string>> = {
+  settle: `import { Balance, Transfer } from "../types";
+
+// Return the fewest transfers that settle every balance.
+export function settle(balances: Balance[]): Transfer[] {
+  const out: Transfer[] = [];
+  const owes = balances.filter((b) => b.amount < 0);
+  const gets = balances.filter((b) => b.amount > 0);
+  for (const o of owes) {
+    for (const g of gets) {
+      out.push({ from: o.name, to: g.name, amount: -o.amount });
+    }
+  }
+  return out;
+}`,
+  room: `import { useRoom } from "./useRoom";
+
+export function RoomPage({ id }: { id: string }) {
+  const room = useRoom(id);
+  return (
+    <main className="room">
+      <h1>Room {room.number}</h1>
+      <Total amount={room.total} month="This month" />
+      <MemberList members={room.members} />
+    </main>
+  );
+}`,
+};
+const codeOf = (id: FileId, fixed: boolean) => {
+  const lines = FILES[id].code.split("\n");
+  if (id === "settle" && fixed) lines[10] = FIX_LINE;
+  return lines;
+};
+
+type Op = { k: "same" | "del" | "add"; text: string; a?: number; b?: number };
+/** Line diff by longest common subsequence; the files here are short. */
+function diffLines(a: string[], b: string[]): Op[] {
+  const L = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) for (let j = b.length - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out: Op[] = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.length || j < b.length) {
+    if (i < a.length && j < b.length && a[i] === b[j]) out.push({ k: "same", text: a[i], a: ++i, b: ++j });
+    else if (i < a.length && (j === b.length || L[i + 1][j] >= L[i][j + 1])) out.push({ k: "del", text: a[i], a: ++i });
+    else out.push({ k: "add", text: b[j], b: ++j });
+  }
+  return out;
+}
+type Mark = "add" | "mod";
+const words = (l: string) => new Set(l.match(/\w+/g) ?? []);
+const likeness = (x: string, y: string) => {
+  const a = words(x);
+  const b = words(y);
+  let both = 0;
+  a.forEach((w) => b.has(w) && both++);
+  return both / Math.max(1, a.size + b.size - both);
+};
+/** Gutter marks against HEAD. In each changed hunk, an added line that looks like a removed one is "modified". */
+function gutterMarks(id: FileId, lines: string[]): Record<number, Mark> {
+  const head = HEAD[id];
+  const marks: Record<number, Mark> = {};
+  if (head === undefined) {
+    if (FILES[id].git === "U") lines.forEach((_, i) => (marks[i + 1] = "add"));
+    return marks;
+  }
+  let dels: string[] = [];
+  let adds: Op[] = [];
+  const flush = () => {
+    adds.forEach((o) => (marks[o.b!] = "add"));
+    for (const d of dels) {
+      const best = adds.reduce<[Op | null, number]>((m, o) => (marks[o.b!] === "add" && likeness(d, o.text) > m[1] ? [o, likeness(d, o.text)] : m), [null, 0.3]);
+      if (best[0]) marks[best[0].b!] = "mod";
+    }
+    dels = [];
+    adds = [];
+  };
+  for (const op of diffLines(head.split("\n"), lines)) {
+    if (op.k === "del") dels.push(op.text);
+    else if (op.k === "add") adds.push(op);
+    else flush();
+  }
+  flush();
+  return marks;
+}
+
 const TREE: { label: string; depth: number; dir?: boolean; file?: FileId; open?: boolean }[] = [
   { label: "src", depth: 0, dir: true, open: true },
   { label: "api", depth: 1, dir: true, open: true },
@@ -175,6 +264,9 @@ const TESTS: [string, boolean, string?][] = [
   ["uses the fewest transfers (5 members)", false, "expected length 4, received 6"],
   ["largest debtor pays first", false, "first payer Kabir, expected Zoya"],
 ];
+
+const FIXED_BY_QF = new Set(["uses the fewest transfers (4 members)", "skips ₹0 transfers"]);
+const resultsFor = (fixed: boolean): [string, boolean, string?][] => TESTS.map(([n, ok, msg]) => (fixed && FIXED_BY_QF.has(n) ? [n, true] : [n, ok, msg]));
 
 /* ---------------- small pieces ---------------- */
 
@@ -207,21 +299,67 @@ function tokens(line: string): ReactNode[] {
   return out;
 }
 
-/** The code editor: gutter, indent guides, current line, one error with a squiggle and an inline message, minimap. */
-function Editor({ file, cursor }: { file: FileId; cursor: number }) {
+type EditorProps = {
+  lines: string[];
+  cursor: number;
+  marks: Record<number, Mark>;
+  err: number;
+  lens?: { failing: number; stale: boolean; onRun: () => void };
+  flash: number;
+  qf: boolean;
+  setQf: (v: boolean) => void;
+  onFix: () => void;
+  chat: boolean;
+  setChat: (v: boolean) => void;
+  fixed: boolean;
+  onProblems: () => void;
+};
+
+/** The code editor: gutter with change marks, indent guides, current line, one error (squiggle, hover card, inline
+    diagnostic, quick fix), Sahayak inline chat, minimap. */
+function Editor({ lines, cursor, marks, err, lens, flash, qf, setQf, onFix, chat, setChat, fixed, onProblems }: EditorProps) {
   const t = useT();
-  const f = FILES[file];
-  const lines = f.code.split("\n");
-  const err = file === "settle" ? 11 : -1;
+  const ai = useAi();
+  const [hover, setHover] = useState(false);
+  const [asked, setAsked] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const askPanel = () => document.dispatchEvent(new CustomEvent("pk-ask-sahayak"));
+  const closeChat = () => {
+    setChat(false);
+    setAsked(null);
+    setDraft("");
+  };
+  const SUGG = fixed
+    ? [t("Why do 2 tests still fail?", "2 tests ab bhi kyun fail?", "2 टेस्ट क्यों विफल?"), t("Is my loop O(n²)?", "Kya mera loop O(n²) hai?", "क्या लूप O(n²) है?")]
+    : [t("What is wrong on this line?", "Is line me galti kya hai?", "इस पंक्ति में गलती?"), t("Give me a hint, not code", "Hint do, code nahi", "संकेत दो, कोड नहीं")];
+  const hint = fixed
+    ? t(
+        "₹0 transfers are gone. The last two tests want the biggest debtor to pay first. Look at the order of owes before the loop. Which sort gives the biggest first?",
+        "₹0 wale transfer chale gaye. Bache do tests chahte hain ki sabse bada karzdar pehle pay kare. Loop se pehle owes ka kram dekho. Kaunsa sort sabse bada pehle laayega?",
+        "₹0 वाले ट्रांसफ़र गए। बचे दो टेस्ट चाहते हैं कि सबसे बड़ा कर्ज़दार पहले चुकाए। लूप से पहले owes का क्रम देखो।",
+      )
+    : t(
+        "When o and g are already even, pay is 0 but push still runs. Put one condition before push. Which one? Write it yourself, then press Check my work.",
+        "Jab o aur g pehle se barabar hain, pay 0 hai par push phir bhi chalta hai. Push se pehle ek shart lagao. Kaunsi? Khud likho, phir Kaam jaancho dabao.",
+        "जब pay 0 हो, तब भी push चलता है। push से पहले एक शर्त लगाओ। कौन सी? खुद लिखो।",
+      );
   return (
     <div className="ed-wrap">
       <div className="ed-scroll">
-        {file === "settle" && (
+        {lens && (
           <div className="ed-lens" style={{ top: `calc(6px + 3 * var(--lh))` }}>
-            <span>
+            <span onClick={lens.onRun} role="button">
               <Play /> {t("Run 12 tests", "12 tests chalao", "12 टेस्ट चलाएँ")}
             </span>
-            <span className="t-red">4 {t("failing", "fail", "विफल")}</span>
+            {lens.stale ? (
+              <span className="t-coin">{t("results are from before your change", "nateeje badlav se pehle ke", "नतीजे पुराने")}</span>
+            ) : lens.failing ? (
+              <span className="t-red">
+                {lens.failing} {t("failing", "fail", "विफल")}
+              </span>
+            ) : (
+              <span className="t-tick">{t("all pass", "sab pass", "सब पास")}</span>
+            )}
             <span>{t("2 references", "2 references", "2 संदर्भ")}</span>
           </div>
         )}
@@ -229,36 +367,149 @@ function Editor({ file, cursor }: { file: FileId; cursor: number }) {
           {lines.map((l, i) => {
             const n = i + 1;
             const indent = (l.match(/^ */)?.[0].length ?? 0) / 2;
+            const mk = marks[n];
             return (
-              <div key={i} className={`ed-ln ${n === cursor ? "cur" : ""} ${n === err ? "err" : ""} ${file === "settle" && n === 4 ? "lens-gap" : ""}`}>
+              <div key={i} className={`ed-ln ${n === cursor ? "cur" : ""} ${n === err ? "err" : ""} ${lens && n === 4 ? "lens-gap" : ""} ${mk ? `g-${mk}` : ""} ${n === flash ? "ed-flash" : ""}`}>
                 <span className="ed-num">{n}</span>
                 <span className="ed-txt">
                   {Array.from({ length: indent }, (_, g) => (
                     <i key={g} className="ed-guide" style={{ left: `${g * 2}ch` }} />
                   ))}
-                  {n === err ? <span className="squiggle">{tokens(l)}</span> : tokens(l)}
+                  {n === err ? (
+                    <span className="sq-wrap" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+                      <span className="squiggle">{tokens(l)}</span>
+                      {hover && (
+                        <span className="ed-hover" role="tooltip">
+                          <span className="eh-msg">
+                            <CircleX />
+                            <span>
+                              {t("A transfer of ₹0 is pushed when pay is 0.", "pay 0 hone par ₹0 ka transfer jud jaata hai.", "pay 0 पर ₹0 का ट्रांसफ़र जुड़ता है।")}{" "}
+                              <span className="faint mono">parikshaa-check(zero-transfer)</span>
+                            </span>
+                          </span>
+                          <span className="eh-code mono">
+                            <span className="sx-kw">const</span> <span className="sx-var">pay</span>: <span className="sx-ty">number</span>
+                          </span>
+                          <span className="eh-acts">
+                            <button className="link tiny" onClick={onProblems}>
+                              {t("View problem", "Problem dekho", "समस्या देखें")} <Kbd>Alt F8</Kbd>
+                            </button>
+                            <button className="link tiny" onClick={() => (setHover(false), setQf(true))}>
+                              {t("Quick fix…", "Quick fix…", "त्वरित सुधार…")} <Kbd>Ctrl .</Kbd>
+                            </button>
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    tokens(l)
+                  )}
                   {l === "" ? " " : null}
                   {n === cursor && <span className="ed-caret" />}
                 </span>
+                {(n === err || (n === cursor && chat)) && <i className="ed-break" />}
                 {n === err && (
                   <div className="ed-peek">
                     <CircleX />
                     <span>
                       {t("A transfer of ₹0 is pushed when pay is 0.", "pay 0 hone par ₹0 ka transfer jud jaata hai.", "pay 0 पर ₹0 का ट्रांसफ़र जुड़ता है।")} <span className="faint">parikshaa-check</span>
                     </span>
-                    <button className="link tiny">{t("Quick fix (Ctrl+.)", "Quick fix (Ctrl+.)", "त्वरित सुधार")}</button>
-                    <button className="link tiny" onClick={() => document.dispatchEvent(new CustomEvent("pk-ask-sahayak"))}>
-                      {t("Ask Sahayak", "Sahayak se poochho", "सहायक से पूछें")}
+                    <button className="link tiny" onClick={() => setQf(true)}>
+                      {t("Quick fix (Ctrl+.)", "Quick fix (Ctrl+.)", "त्वरित सुधार")}
+                    </button>
+                    <button className="link tiny" onClick={() => setChat(true)}>
+                      {t("Ask Sahayak here (Ctrl+I)", "Yahin Sahayak (Ctrl+I)", "यहीं सहायक")}
                     </button>
                   </div>
+                )}
+                {n === cursor && chat && (
+                  <form
+                    className="ed-chat"
+                    role="dialog"
+                    aria-label="Sahayak inline chat"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (draft.trim()) setAsked(draft.trim());
+                    }}
+                    onKeyDown={(e) => e.key === "Escape" && closeChat()}
+                  >
+                    <div className="ec-row">
+                      <Sparkles className="ec-ic" />
+                      <input
+                        ref={(el) => el?.focus({ preventScroll: true })}
+                        value={draft}
+                        onChange={(e) => setDraft(e.target.value)}
+                        placeholder={t("Ask about this line (you get a hint, not the answer)", "Is line ke baare me poochho (hint milega, jawab nahi)", "इस पंक्ति के बारे में पूछो")}
+                        aria-label="Ask Sahayak"
+                      />
+                      <button type="submit" className="ib" aria-label="Send">
+                        <Send />
+                      </button>
+                      <button type="button" className="ib" aria-label="Close" onClick={closeChat}>
+                        <X />
+                      </button>
+                    </div>
+                    {asked ? (
+                      <div className="ec-ans">
+                        <span className="tiny faint">
+                          {t("You asked", "Tumne poochha", "तुमने पूछा")}: {asked}
+                        </span>
+                        <p>{hint}</p>
+                        <div className="row g8 wrap">
+                          <button type="button" className="btn sm" onClick={closeChat}>
+                            <Check /> {t("Got it", "Samajh gaya", "समझ गया")}
+                          </button>
+                          <button type="button" className="btn sm ghost" onClick={() => (closeChat(), ai.open ? null : askPanel())}>
+                            {t("Continue in side panel", "Side panel me aage", "साइड पैनल में")}
+                          </button>
+                          <span className="tiny faint">{t("Hint 1 of 3 for this milestone", "Is milestone ka hint 1 / 3", "संकेत 1 / 3")}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="ec-chips">
+                        {SUGG.map((q) => (
+                          <button type="button" key={q} className="chip" onClick={() => setAsked(q)}>
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </form>
                 )}
               </div>
             );
           })}
         </pre>
-        {file === "settle" && (
-          <div className="ed-bulb" style={{ top: `calc(6px + 11 * var(--lh))` }} title="Quick fix">
+        {err > 0 && (
+          <button className="ed-bulb" style={{ top: `calc(6px + ${err} * var(--lh))` }} aria-label="Quick fix" onClick={() => setQf(!qf)}>
             <Lightbulb />
+          </button>
+        )}
+        {err > 0 && qf && (
+          <div className="qf-menu" role="menu" style={{ top: `calc(6px + ${err + 1} * var(--lh))` }} onKeyDown={(e) => e.key === "Escape" && setQf(false)}>
+            <span className="qf-h">{t("Quick fix", "Quick fix", "त्वरित सुधार")}</span>
+            <button role="menuitem" className="on" ref={(el) => el?.focus({ preventScroll: true })} onClick={onFix}>
+              <Lightbulb className="t-coin" />
+              <span className="grow">{t("Skip the transfer when pay is 0", "pay 0 ho to transfer chhodo", "pay 0 पर ट्रांसफ़र छोड़ो")}</span>
+              <span className="qf-pref">{t("preferred", "behtar", "बेहतर")}</span>
+            </button>
+            <div className="qf-prev mono" aria-hidden="true">
+              <div className="d-del">- {lines[err - 1].trim()}</div>
+              <div className="d-add">+ {FIX_LINE.trim()}</div>
+            </div>
+            <button role="menuitem" onClick={() => (setQf(false), setChat(true))}>
+              <Sparkles className="t-ai" />
+              <span className="grow">{t("Explain it with Sahayak first", "Pehle Sahayak se samjho", "पहले सहायक से समझो")}</span>
+              <Kbd>Ctrl I</Kbd>
+            </button>
+            <button role="menuitem" disabled>
+              <X />
+              <span className="grow">{t("Ignore this check on this line", "Is line par check band", "यह जाँच बंद")}</span>
+              <span className="tiny faint">{t("off in this course", "is course me band", "बंद")}</span>
+            </button>
+            <span className="qf-note">
+              {t("Using a quick fix is noted on the milestone as help taken.", "Quick fix lagane par milestone me 'madad li' likha jaata hai.", "क्विक फ़िक्स पर 'मदद ली' लिखा जाता है।")}
+            </span>
           </div>
         )}
       </div>
@@ -266,11 +517,51 @@ function Editor({ file, cursor }: { file: FileId; cursor: number }) {
         {lines.map((l, i) => (
           <i
             key={i}
-            className={i + 1 === err ? "err" : ""}
+            className={i + 1 === err ? "err" : marks[i + 1] ? `m-${marks[i + 1]}` : ""}
             style={{ marginLeft: `${(l.match(/^ */)?.[0].length ?? 0) * 1.4}px`, width: `${Math.min(92, l.trim().length * 1.3)}px` }}
           />
         ))}
         <span className="mm-view" />
+      </div>
+    </div>
+  );
+}
+
+/** Inline diff of the working tree against HEAD, as VS Code opens it from Source control. */
+function DiffView({ id, fixed, onStage }: { id: FileId; fixed: boolean; onStage: () => void }) {
+  const t = useT();
+  const now = codeOf(id, fixed);
+  const ops = diffLines(HEAD[id]?.split("\n") ?? [], now);
+  const plus = ops.filter((o) => o.k === "add").length;
+  const minus = ops.filter((o) => o.k === "del").length;
+  return (
+    <div className="ed-wrap">
+      <div className="ed-scroll diff-scroll">
+        <div className="diff-head">
+          <GitCompare />
+          <span className="mono small">
+            {HEAD[id] ? "HEAD · settle: first pass" : t("new file", "nayi file", "नई फ़ाइल")} ↔ {t("Working tree", "Working tree", "वर्किंग ट्री")}
+          </span>
+          <span className="t-tick mono small">+{plus}</span>
+          <span className="t-red mono small">−{minus}</span>
+          <span className="grow" />
+          <button className="btn sm ghost" onClick={onStage}>
+            <Plus /> {t("Stage", "Stage", "स्टेज")}
+          </button>
+        </div>
+        <pre className="vs-lines diff">
+          {ops.map((o, i) => (
+            <div key={i} className={`ed-ln d-${o.k}`}>
+              <span className="ed-num">{o.a ?? ""}</span>
+              <span className="ed-num">{o.b ?? ""}</span>
+              <span className="d-sign">{o.k === "add" ? "+" : o.k === "del" ? "−" : ""}</span>
+              <span className="ed-txt">
+                {tokens(o.text)}
+                {o.text === "" ? " " : null}
+              </span>
+            </div>
+          ))}
+        </pre>
       </div>
     </div>
   );
@@ -295,6 +586,9 @@ function Section({ title, open: start = true, actions, children }: { title: stri
 /* ---------------- the IDE ---------------- */
 
 type View = "explorer" | "search" | "scm" | "test" | "steps";
+type Tab = FileId | `diff:${FileId}`;
+const fileOf = (tab: Tab) => tab.replace("diff:", "") as FileId;
+const isDiff = (tab: Tab) => tab.startsWith("diff:");
 type PanelTab = "problems" | "output" | "terminal" | "tests" | "ports";
 
 export function StudioScreen() {
@@ -307,32 +601,67 @@ export function StudioScreen() {
   const [panel, setPanel] = useState(true);
   const [ptab, setPtab] = useState<PanelTab>("tests");
   const [split, setSplit] = useState(true);
-  const [tabs, setTabs] = useState<FileId[]>(["settle", "room", "test"]);
-  const [cur, setCur] = useState<FileId>("settle");
-  const [running, setRunning] = useState(false);
+  const [tabs, setTabs] = useState<Tab[]>(["settle", "room", "test"]);
+  const [cur, setCur] = useState<Tab>("settle");
+  const [fixed, setFixed] = useState(false); // the quick fix on line 11 is applied
+  const [ranFixed, setRanFixed] = useState(false); // which version the last test run checked
+  const [runFor, setRunFor] = useState(false);
+  const [step, setStep] = useState(-1); // tests done in the current run; -1 when idle
+  const [qf, setQf] = useState(false);
+  const [chat, setChat] = useState(false);
+  const [flash, setFlash] = useState(0);
+  const timer = useRef(0);
   const [palette, setPalette] = useState(false);
   const [q, setQ] = useState("");
   const [sideW, setSideW] = useState(260);
   const [panelH, setPanelH] = useState(230);
   const [phoneView, setPhoneView] = useState<"files" | "code" | "prev" | "tests" | "ai">("code");
   const ideRef = useRef<HTMLDivElement>(null);
-  const passed = TESTS.filter((x) => x[1]).length;
+  const running = step >= 0;
+  const results = resultsFor(ranFixed);
+  const passed = results.filter((x) => x[1]).length;
+  const stale = fixed !== ranFixed;
+  const errs = (id: FileId) => (id === "settle" && !fixed ? 1 : 0);
+  const cf = fileOf(cur);
 
+  // Tests report one by one, like vitest in watch mode; screenshots skip straight to the result.
   const run = () => {
-    setRunning(true);
+    if (running) return;
     setPanel(true);
     setPtab("tests");
-    window.setTimeout(() => {
-      setRunning(false);
-      toast(t(`${passed} of 12 tests pass · 4 to go`, `12 me se ${passed} pass · 4 baaki`, "12 में से 8 पास"));
-    }, document.documentElement.classList.contains("shots") ? 0 : 1100);
+    const target = fixed;
+    const done = () => {
+      window.clearInterval(timer.current);
+      setStep(-1);
+      setRanFixed(target);
+      const p = resultsFor(target).filter((x) => x[1]).length;
+      toast(t(`${p} of 12 tests pass · ${12 - p} to go`, `12 me se ${p} pass · ${12 - p} baaki`, `12 में से ${p} पास`));
+    };
+    setRunFor(target);
+    if (document.documentElement.classList.contains("shots")) return done();
+    setStep(0);
+    let i = 0;
+    timer.current = window.setInterval(() => {
+      i += 1;
+      if (i > TESTS.length) done();
+      else setStep(i);
+    }, 110);
   };
-  const open = (id: FileId) => {
+  useEffect(() => () => window.clearInterval(timer.current), []);
+  const applyFix = () => {
+    setFixed(true);
+    setQf(false);
+    setCur("settle");
+    setFlash(11);
+    window.setTimeout(() => setFlash(0), 1400);
+    toast(t("Line 11 changed. Run the tests again.", "Line 11 badli. Tests dobara chalao.", "पंक्ति 11 बदली। टेस्ट फिर चलाओ।"));
+  };
+  const open = (id: Tab) => {
     setTabs((x) => (x.includes(id) ? x : [...x, id]));
     setCur(id);
     if (phone) setPhoneView("code");
   };
-  const close = (id: FileId) => {
+  const close = (id: Tab) => {
     setTabs((x) => {
       const next = x.filter((y) => y !== id);
       if (id === cur && next.length) setCur(next[next.length - 1]);
@@ -357,11 +686,20 @@ export function StudioScreen() {
       } else if (mod && e.key === "`") {
         e.preventDefault();
         setPanel((p) => !p);
-      } else if (e.key === "Escape") setPalette(false);
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "i") {
+        e.preventDefault();
+        setChat(true);
+      } else if (mod && e.key === ".") {
+        e.preventDefault();
+        if (!fixed) setQf(true);
+      } else if (e.key === "Escape") {
+        setPalette(false);
+        setQf(false);
+      }
     };
     window.addEventListener("keydown", h);
     return () => window.removeEventListener("keydown", h);
-  }, []);
+  }, [fixed]);
 
   const drag = (axis: "x" | "y") => (e: RPointerEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -393,7 +731,7 @@ export function StudioScreen() {
     ["explorer", <Files key="e" />, t("Explorer", "Explorer", "एक्सप्लोरर") + " (Ctrl+Shift+E)"],
     ["search", <Search key="s" />, t("Search", "Search", "खोज") + " (Ctrl+Shift+F)"],
     ["scm", <GitBranch key="g" />, t("Source control", "Source control", "सोर्स कंट्रोल"), "3"],
-    ["test", <FlaskConical key="t" />, t("Testing", "Testing", "टेस्टिंग"), "4"],
+    ["test", <FlaskConical key="t" />, t("Testing", "Testing", "टेस्टिंग"), passed < 12 ? String(12 - passed) : undefined],
     ["steps", <ListChecks key="m" />, t("Milestone steps", "Milestone ke kadam", "माइलस्टोन")],
   ];
 
@@ -418,8 +756,11 @@ export function StudioScreen() {
             <Section title={t("Open editors", "Open editors", "खुले एडिटर")} open={false}>
               {tabs.map((id) => (
                 <button key={id} className={`tr ${cur === id ? "on" : ""}`} style={{ paddingLeft: 22 }} onClick={() => setCur(id)}>
-                  <FileIcon kind={FILES[id].kind} name={FILES[id].name} />
-                  <span className="ellipsis">{FILES[id].name}</span>
+                  {isDiff(id) ? <GitCompare className="fi" /> : <FileIcon kind={FILES[fileOf(id)].kind} name={FILES[fileOf(id)].name} />}
+                  <span className="ellipsis">
+                    {FILES[fileOf(id)].name}
+                    {isDiff(id) ? ` (${t("Working Tree", "Working Tree", "वर्किंग ट्री")})` : ""}
+                  </span>
                 </button>
               ))}
             </Section>
@@ -439,17 +780,18 @@ export function StudioScreen() {
               <div className="tree">
                 {TREE.map((n) => {
                   const f = n.file ? FILES[n.file] : undefined;
+                  const e = n.file ? errs(n.file) : 0;
                   return (
                     <button
                       key={n.label + n.depth}
-                      className={`tr ${n.file && n.file === cur ? "on" : ""} ${f?.errors ? "has-err" : ""} ${f?.git === "M" ? "git-m" : f?.git === "U" ? "git-u" : ""}`}
+                      className={`tr ${n.file && n.file === cur ? "on" : ""} ${e ? "has-err" : ""} ${f?.git === "M" ? "git-m" : f?.git === "U" ? "git-u" : ""}`}
                       style={{ paddingLeft: 8 + n.depth * 14 }}
                       onClick={() => n.file && open(n.file)}
                     >
                       {n.dir ? <ChevronDown className="chev" /> : <span className="chev" />}
                       {n.dir ? null : <FileIcon kind={f?.kind} name={n.label} />}
                       <span className="ellipsis grow">{n.label}</span>
-                      {f?.errors ? <span className="deco err">{f.errors}</span> : null}
+                      {e ? <span className="deco err">{e}</span> : null}
                       {f?.git && <span className="deco">{f.git}</span>}
                       {n.dir && n.label === "src" && <span className="deco dot" />}
                     </button>
@@ -458,10 +800,42 @@ export function StudioScreen() {
               </div>
             </Section>
             <Section title={t("Outline", "Outline", "रूपरेखा")} open={false}>
-              <div />
+              {cf === "settle" ? (
+                <div className="tree">
+                  {[
+                    ["settle", 0, "fn"],
+                    ["out", 1, "var"],
+                    ["owes", 1, "var"],
+                    ["gets", 1, "var"],
+                    ["pay", 2, "var"],
+                  ].map(([l, d, k]) => (
+                    <button key={l as string} className="tr" style={{ paddingLeft: 22 + (d as number) * 14 }} onClick={() => setCur("settle")}>
+                      {k === "fn" ? <Braces className="fi" style={{ color: "var(--code-fn)" }} /> : <span className="fi ol-var">x</span>}
+                      <span className="ellipsis">{l as string}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="sb-empty tiny faint">{t("No symbols in this file.", "Is file me koi symbol nahi.", "कोई प्रतीक नहीं।")}</span>
+              )}
             </Section>
             <Section title={t("Timeline", "Timeline", "समयरेखा")} open={false}>
-              <div />
+              <div className="tl-list">
+                {(
+                  [
+                    [t("File saved", "File save hui", "फ़ाइल सेव"), t("now", "abhi", "अभी")],
+                    [t("Sahayak hint 1", "Sahayak hint 1", "सहायक संकेत 1"), "12 min"],
+                    ["settle: first pass", t("2 hrs", "2 ghante", "2 घंटे")],
+                    ["m2: room page", t("yesterday", "kal", "कल")],
+                  ] as [string, string][]
+                ).map(([l, w], i) => (
+                  <div key={l} className="tl-row">
+                    {i === 0 ? <Circle /> : i === 1 ? <Sparkles className="t-ai" /> : <GitBranch />}
+                    <span className="ellipsis grow">{l}</span>
+                    <span className="tiny faint">{w}</span>
+                  </div>
+                ))}
+              </div>
             </Section>
           </>
         )}
@@ -509,7 +883,7 @@ export function StudioScreen() {
             </button>
             <Section title={t("Changes", "Changes", "बदलाव")} actions={<span className="deco cnt">3</span>}>
               {(["settle", "room", "test"] as FileId[]).map((id) => (
-                <button key={id} className={`tr ${FILES[id].git === "U" ? "git-u" : "git-m"}`} style={{ paddingLeft: 22 }} onClick={() => open(id)}>
+                <button key={id} className={`tr ${FILES[id].git === "U" ? "git-u" : "git-m"} ${cur === `diff:${id}` ? "on" : ""}`} style={{ paddingLeft: 22 }} onClick={() => open(`diff:${id}`)} title={t("Open changes", "Badlav dekho", "बदलाव देखें")}>
                   <FileIcon kind={FILES[id].kind} name={FILES[id].name} />
                   <span className="ellipsis grow">
                     {FILES[id].name} <span className="faint tiny">{FILES[id].path.slice(0, -1).join("/")}</span>
@@ -529,22 +903,25 @@ export function StudioScreen() {
               <span className="t-red">
                 <CircleX /> {12 - passed}
               </span>
-              <span className="faint">· 46 ms</span>
+              <span className="faint">{running ? `· ${step}/12` : "· 46 ms"}</span>
             </div>
             <button className="tr">
               <ChevronDown className="chev" />
-              <CircleX className="t-red ti" />
+              {running ? <span className="spinner ti" /> : passed === 12 ? <CircleCheck className="t-tick ti" /> : <CircleX className="t-red ti" />}
               <b className="grow">settle.test.ts</b>
             </button>
-            {TESTS.map(([n, ok, msg]) => (
-              <div key={n} className="col">
-                <button className="tr" style={{ paddingLeft: 30 }} onClick={() => open("test")}>
-                  {ok ? <CircleCheck className="ti t-tick" /> : <CircleX className="ti t-red" />}
-                  <span className="ellipsis grow">{n}</span>
-                </button>
-                {msg && <span className="test-msg mono">{msg}</span>}
-              </div>
-            ))}
+            {(running ? resultsFor(runFor) : results).map(([n, ok, msg], i) => {
+              const pending = running && i >= step;
+              return (
+                <div key={n} className={`col ${pending ? "t-pend" : ""}`}>
+                  <button className="tr" style={{ paddingLeft: 30 }} onClick={() => open("test")}>
+                    {pending ? i === step ? <span className="spinner ti" /> : <Circle className="ti faint" /> : ok ? <CircleCheck className="ti t-tick" /> : <CircleX className="ti t-red" />}
+                    <span className="ellipsis grow">{n}</span>
+                  </button>
+                  {msg && !pending && <span className="test-msg mono">{msg}</span>}
+                </div>
+              );
+            })}
           </div>
         )}
         {view === "steps" && (
@@ -560,7 +937,7 @@ export function StudioScreen() {
             {[
               [t("Write settle() that pays debts", "Karz chukane wala settle() likho", "settle() लिखो"), true],
               [t("Pair the biggest debtor with the biggest creditor", "Sabse bada dena + sabse bada lena jodo", "सबसे बड़े को जोड़ो"), false],
-              [t("Skip zero-rupee transfers", "₹0 wale transfer chhodo", "₹0 छोड़ो"), false],
+              [t("Skip zero-rupee transfers", "₹0 wale transfer chhodo", "₹0 छोड़ो"), ranFixed],
               [t("Show the plan on RoomPage", "RoomPage par plan dikhao", "RoomPage पर दिखाओ"), false],
             ].map(([s, d], i) => (
               <div key={i} className={`g-step ${d ? "done" : i === 1 ? "now" : ""}`}>
@@ -582,14 +959,20 @@ export function StudioScreen() {
   const editorGroup = (
     <section className="ide-group">
       <div className="ide-tabs" role="tablist">
-        {tabs.map((id) => (
+        {tabs.map((id) => {
+          const f = fileOf(id);
+          const e = isDiff(id) ? 0 : errs(f);
+          return (
           <div key={id} role="tab" aria-selected={cur === id} className={`ide-tab ${cur === id ? "on" : ""} ${id === "test" ? "preview" : ""}`} onClick={() => setCur(id)}>
-            <FileIcon kind={FILES[id].kind} name={FILES[id].name} />
-            <span className={FILES[id].errors ? "t-red" : ""}>{FILES[id].name}</span>
-            {FILES[id].errors ? <span className="tab-err">1</span> : null}
+            {isDiff(id) ? <GitCompare className="fi" /> : <FileIcon kind={FILES[f].kind} name={FILES[f].name} />}
+            <span className={e ? "t-red" : ""}>
+              {FILES[f].name}
+              {isDiff(id) ? <span className="faint"> ({t("Working Tree", "Working Tree", "वर्किंग ट्री")})</span> : null}
+            </span>
+            {e ? <span className="tab-err">{e}</span> : null}
             <button
               className="tab-x"
-              aria-label={`Close ${FILES[id].name}`}
+              aria-label={`Close ${FILES[f].name}`}
               onClick={(e) => {
                 e.stopPropagation();
                 close(id);
@@ -598,7 +981,8 @@ export function StudioScreen() {
               <X />
             </button>
           </div>
-        ))}
+          );
+        })}
         <span className="grow" />
         <span className="tab-acts">
           <button className="ib" onClick={run} aria-label="Run tests" data-tip={t("Run tests", "Tests chalao", "टेस्ट चलाएँ")} data-tip-pos="bottom">
@@ -610,11 +994,12 @@ export function StudioScreen() {
         </span>
       </div>
       <div className="crumbs-ide">
-        {FILES[cur].path.map((p, i) => (
+        {FILES[cf].path.map((p, i) => (
           <span key={p}>
             {i > 0 && <ChevronRight />}
-            {i === FILES[cur].path.length - 1 && <FileIcon kind={FILES[cur].kind} name={p} />}
+            {i === FILES[cf].path.length - 1 && <FileIcon kind={FILES[cf].kind} name={p} />}
             {p}
+            {i === FILES[cf].path.length - 1 && isDiff(cur) ? ` (${t("Working Tree", "Working Tree", "वर्किंग ट्री")})` : ""}
           </span>
         ))}
         {cur === "settle" && (
@@ -625,7 +1010,31 @@ export function StudioScreen() {
           </span>
         )}
       </div>
-      <Editor file={cur} cursor={cur === "settle" ? 11 : 1} />
+      {isDiff(cur) ? (
+        <DiffView id={cf} fixed={fixed} onStage={() => toast(t(`${FILES[cf].name} staged`, `${FILES[cf].name} stage hui`, "स्टेज हुई"))} />
+      ) : (
+        (() => {
+          const lines = codeOf(cf, fixed);
+          return (
+            <Editor
+              key={cf}
+              lines={lines}
+              cursor={cf === "settle" ? 11 : 1}
+              marks={gutterMarks(cf, lines)}
+              err={errs(cf) ? 11 : -1}
+              lens={cf === "settle" ? { failing: 12 - passed, stale, onRun: run } : undefined}
+              flash={cf === "settle" ? flash : 0}
+              qf={qf}
+              setQf={setQf}
+              onFix={applyFix}
+              chat={chat}
+              setChat={setChat}
+              fixed={fixed}
+              onProblems={() => (setPanel(true), setPtab("problems"))}
+            />
+          );
+        })()
+      )}
     </section>
   );
 
@@ -652,45 +1061,68 @@ export function StudioScreen() {
       </div>
       <div className="prev-wrap">
         <BrowserFrame url="localhost:5173/rooms/214">
-          <SplitApp big settled={false} />
+          <SplitApp big settled={false} noZero={fixed} />
         </BrowserFrame>
-        <PenNote className="prev-note">{t("4 transfers, one of ₹0. Should be 3.", "4 transfers, ek ₹0 ka. 3 hone chahiye.", "4 ट्रांसफ़र, 3 होने चाहिए।")}</PenNote>
+        <PenNote className="prev-note" key={String(fixed)}>
+          {fixed
+            ? t("3 transfers now. Next: biggest debtor first.", "Ab 3 transfers. Agla: sabse bada karzdar pehle.", "अब 3 ट्रांसफ़र। अगला: सबसे बड़ा पहले।")
+            : t("4 transfers, one of ₹0. Should be 3.", "4 transfers, ek ₹0 ka. 3 hone chahiye.", "4 ट्रांसफ़र, 3 होने चाहिए।")}
+        </PenNote>
       </div>
     </section>
   );
 
   /* ----- bottom panel ----- */
   const PT: [PanelTab, string, string?][] = [
-    ["problems", t("Problems", "Problems", "समस्याएँ"), "1"],
+    ["problems", t("Problems", "Problems", "समस्याएँ"), fixed ? "1" : "2"],
     ["output", t("Output", "Output", "आउटपुट")],
     ["terminal", t("Terminal", "Terminal", "टर्मिनल")],
-    ["tests", t("Test results", "Test results", "टेस्ट नतीजे"), "4"],
+    ["tests", t("Test results", "Test results", "टेस्ट नतीजे"), passed < 12 ? String(12 - passed) : undefined],
     ["ports", t("Ports", "Ports", "पोर्ट"), "2"],
   ];
-  const panelBody = running ? (
-    <div className="pn-pad row g8 small muted">
-      <span className="spinner" />
-      {t("Running 12 tests…", "12 tests chal rahe…", "12 टेस्ट चल रहे…")}
-    </div>
-  ) : ptab === "tests" ? (
+  const shownTests = running ? resultsFor(runFor) : results;
+  const fail = results.find((r) => !r[1]);
+  const want = fail?.[2]?.match(/expected length (\d+), received (\d+)/);
+  const panelBody =
+    ptab === "tests" ? (
     <div className="pn-pad mono pn-tests">
-      <div className="faint"> RUN v2.1.4 /hostel-split</div>
-      {TESTS.map(([n, ok]) => (
-        <div key={n}>
-          {ok ? <span className="t-tick"> ✓</span> : <span className="t-red"> ×</span>} settle › {n}
+      {running && (
+        <div className="pn-prog" aria-hidden="true">
+          <i style={{ width: `${(step / 12) * 100}%` }} />
         </div>
-      ))}
-      <div className="pn-fail">
-        <div className="t-red">FAIL tests/settle.test.ts › uses the fewest transfers (4 members)</div>
-        <div>AssertionError: expected [ …(4) ] to have a length of 3 but got 4</div>
-        <div className="t-tick">- Expected 3</div>
-        <div className="t-red">+ Received 4</div>
-        <div className="faint"> ❯ tests/settle.test.ts:13:26</div>
-      </div>
-      <div>
-        {" "}
-        Tests <span className="t-red">4 failed</span> | <span className="t-tick">{passed} passed</span> (12)
-      </div>
+      )}
+      <div className="faint"> RUN v2.1.4 /hostel-split</div>
+      {shownTests.map(([n, ok], i) =>
+        running && i > step ? null : running && i === step ? (
+          <div key={n} className="faint">
+            {" "}
+            <span className="spinner sm" /> settle › {n}
+          </div>
+        ) : (
+          <div key={n} className={running ? "ln-new" : ""}>
+            {ok ? <span className="t-tick"> ✓</span> : <span className="t-red"> ×</span>} settle › {n}
+          </div>
+        ),
+      )}
+      {!running && fail && (
+        <div className="pn-fail">
+          <div className="t-red">FAIL tests/settle.test.ts › {fail[0]}</div>
+          <div>AssertionError: {fail[2]}</div>
+          {want && (
+            <>
+              <div className="t-tick">- Expected {want[1]}</div>
+              <div className="t-red">+ Received {want[2]}</div>
+            </>
+          )}
+          <div className="faint"> ❯ tests/settle.test.ts:13:26</div>
+        </div>
+      )}
+      {!running && (
+        <div>
+          {" "}
+          Tests <span className="t-red">{12 - passed} failed</span> | <span className="t-tick">{passed} passed</span> (12)
+        </div>
+      )}
     </div>
   ) : ptab === "terminal" ? (
     <div className="pn-term">
@@ -722,13 +1154,15 @@ export function StudioScreen() {
         <FileIcon kind="ts" name="settle.ts" />
         <b>settle.ts</b>
         <span className="faint tiny">src/api</span>
-        <span className="deco cnt">1</span>
+        <span className="deco cnt">{fixed ? 1 : 2}</span>
       </button>
-      <button className="tr" style={{ paddingLeft: 30 }} onClick={() => setCur("settle")}>
-        <CircleX className="ti t-red" />
-        <span className="grow">{t("A transfer of ₹0 is pushed when pay is 0", "pay 0 hone par ₹0 ka transfer jud jaata hai", "₹0 का ट्रांसफ़र")}</span>
-        <span className="faint tiny mono">parikshaa-check [Ln 11, Col 7]</span>
-      </button>
+      {!fixed && (
+        <button className="tr" style={{ paddingLeft: 30 }} onClick={() => setCur("settle")}>
+          <CircleX className="ti t-red" />
+          <span className="grow">{t("A transfer of ₹0 is pushed when pay is 0", "pay 0 hone par ₹0 ka transfer jud jaata hai", "₹0 का ट्रांसफ़र")}</span>
+          <span className="faint tiny mono">parikshaa-check [Ln 11, Col 7]</span>
+        </button>
+      )}
       <button className="tr" style={{ paddingLeft: 30 }}>
         <TriangleAlert className="ti t-coin" />
         <span className="grow">{t("Inner loop mutates o.amount while iterating gets", "Andar ka loop o.amount badal raha", "o.amount बदल रहा")}</span>
@@ -801,6 +1235,9 @@ export function StudioScreen() {
     ["View: Toggle terminal", "Ctrl+`", () => setPanel((p) => !p)],
     ["View: Toggle primary side bar", "Ctrl+B", () => setSide((s) => !s)],
     ["Sahayak: Explain the error on this line", "Ctrl+J", () => ai.setOpen(true)],
+    ["Sahayak: Inline chat on this line", "Ctrl+I", () => setChat(true)],
+    ["Quick fix", "Ctrl+.", () => (fixed ? toast(t("No quick fixes here", "Yahan koi quick fix nahi", "कोई सुधार नहीं")) : (setCur("settle"), setQf(true)))],
+    ["Git: Open changes (settle.ts)", "", () => open("diff:settle")],
     ["Preview: Open live preview to the side", "", () => setSplit(true)],
     ["Git: Commit", "", () => toast(t("Committed on m3-settle", "m3-settle par commit", "कमिट"))],
     ["Format document", "Shift+Alt+F", () => toast(t("Formatted with Prettier", "Prettier se format", "फ़ॉर्मैट"))],
@@ -816,7 +1253,7 @@ export function StudioScreen() {
             <ArrowLeft />
           </Link>
           <span className="ellipsis grow small">
-            <b>hostel-split</b> · {FILES[cur].name}
+            <b>hostel-split</b> · {FILES[cf].name}
           </span>
           <button className="btn sm" onClick={run} disabled={running}>
             {running ? <span className="spinner" /> : <Play />}
@@ -951,10 +1388,10 @@ export function StudioScreen() {
           <RefreshCw /> 0↓ 2↑
         </button>
         <button onClick={() => (setPanel(true), setPtab("problems"))}>
-          <CircleX /> 1 <TriangleAlert /> 1
+          <CircleX /> {fixed ? 0 : 1} <TriangleAlert /> 1
         </button>
         <button onClick={() => (setPanel(true), setPtab("tests"))}>
-          <FlaskConical /> {passed}/12
+          {running ? <span className="spinner sm" /> : <FlaskConical />} {running ? `${step}/12` : `${passed}/12`}
         </button>
         <span className="grow" />
         <span className="hide-narrow">{t("Ln 11, Col 7", "Ln 11, Col 7", "पंक्ति 11")}</span>
