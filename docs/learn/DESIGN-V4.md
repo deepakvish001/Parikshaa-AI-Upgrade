@@ -34,7 +34,7 @@ apna sa laga; Onest/Figtree saaf the par aam; Source Sans aur Mukta chhote dikhe
   zor wali dhaar `#3F3F46`. Text `#FAFAFA`, doosra `#C4C4CC`, teesra `#8F8F99`. Kaale par shadow nahi dikhti, isliye
   card ki pehchaan dhaar + upar 1px ki halki roshni se.
 - **Light "Kaagaz":** page `#F6F6F4`, card safed, dhaar `#E2E2DE` / `#CACAC4`, text `#0A0A0B` / `#45464E`.
-- **Accent:** neela pen `#4069FF` (dark) / `#2349E6` (light), button par safed text (dono me 4.5:1 se upar). Laal =
+- **Accent:** neela pen `#3B62F5` (dark) / `#2349E6` (light), button par safed text (dono me 4.5:1 se upar). Laal =
   galti, hara = pass, peela = zaroori, jamuni = Sahayak, sona = coins. Har ek ka soft fill + dhaar dono theme me.
 - **Niyam:** koi text 4.5:1 se kam nahi (chhota label bhi teesre text rang se upar); har dabne wali cheez ki dhaar
   dikhe; focus ring 2px neela + 2px gap.

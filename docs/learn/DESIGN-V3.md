@@ -1,5 +1,7 @@
 # Learn: design v3, "Kaagaz aur Blackboard" (20 Oct 2026)
 
+> **Aage:** owner ne v3 dekh kar font aur rang badalne ko kaha; [DESIGN-V4.md](DESIGN-V4.md) (IBM Plex, kaala default, VS Code jaisa Studio). Dhaancha aur screens is file ke hisaab se hi hain.
+
 Owner (20 Oct, mock v2 dekh kar): "bilkul ye same design nahi chahiye, TUF se better aur alag lagna chahiye; har page ke
 har feature aur component ko soch samajh kar design karo; Build ke 3 screens bilkul pasand nahi; modern admin panel, saare
 features, saara data admin se manage ho, saare roles, secure; Sahayak khole to usi screen me teesra pane (statement, code,
