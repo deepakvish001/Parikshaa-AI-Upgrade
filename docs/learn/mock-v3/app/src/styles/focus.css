@@ -117,6 +117,8 @@
   padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
 }
 .pane {
+  flex-basis: 0;
+  flex-shrink: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -124,7 +126,25 @@
   border: 1px solid var(--line);
   border-radius: 14px;
   overflow: hidden;
+  box-shadow: var(--edge);
   animation: pane-pop 0.22s var(--ease);
+  transition: flex-grow 0.36s var(--ease), min-width 0.36s var(--ease), opacity 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+.pane-in {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane.is-closed {
+  opacity: 0;
+  border-width: 0;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+body.resizing .pane {
+  transition: none;
 }
 @keyframes pane-pop {
   from {
@@ -166,11 +186,17 @@
 }
 .pane-div {
   flex: 0 0 10px;
+  transition: flex-basis 0.36s var(--ease), opacity 0.2s ease;
   display: grid;
   place-items: center;
   cursor: col-resize;
   color: transparent;
   position: relative;
+}
+.pane-div.off {
+  flex-basis: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 .pane-div::before {
   content: "";
@@ -214,6 +240,7 @@ body.resizing .pane-div::before {
   font-size: 12px;
   font-weight: 560;
   transition: all 0.14s;
+  animation: fade 0.3s 0.12s both;
 }
 .pane-rail span {
   writing-mode: vertical-rl;

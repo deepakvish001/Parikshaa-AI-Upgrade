@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FileText,
   CodeXml,
@@ -33,6 +33,7 @@ import {
 import { Link, navigate, useT, useStopwatch, hms, useToast } from "../lib/core";
 import { Badge, Level, Code, Tabs, Seg, Tick, PenNote, Menu } from "../ui/kit";
 import { SahayakPanel } from "../ui/sahayak";
+import { useAi } from "../lib/state";
 import { FocusBar, PaneToggles, Panes, PaneHead, usePanes } from "../ui/focus";
 
 export const BUGGY = `vector<int> pairWithSum(vector<int>& a, long long target) {
@@ -496,11 +497,15 @@ export function TaskTimer({ label, total = "2h 10m" }: { label: string; total?: 
 
 export function ProblemScreen() {
   const t = useT();
-  const { open, toggle, show } = usePanes({ stmt: true, code: true, ai: true });
+  const { open, toggle, show } = usePanes({ stmt: true, code: true, ai: false });
   const [phoneTab, setPhoneTab] = useState("code");
   const [v, setV] = useState<Verdict>("wa");
+  // Sahayak follows the global Ctrl+J state, so the toggle, Ctrl+J and "Ask Sahayak" all open the same third pane.
+  const ai = useAi();
+  useEffect(() => show("ai", ai.open), [ai.open, show]);
+  const togglePane = (id: string) => (id === "ai" ? ai.toggle() : toggle(id));
   const openAi = () => {
-    show("ai");
+    ai.setOpen(true);
     setPhoneTab("ai");
   };
   const paneDefs = [
@@ -524,20 +529,20 @@ export function ProblemScreen() {
               <ChevronRight />
             </button>
             <span className="hide-phone">
-              <PaneToggles panes={paneDefs} open={open} toggle={toggle} />
+              <PaneToggles panes={paneDefs} open={open} toggle={togglePane} />
             </span>
           </>
         }
       />
       <Panes
         open={open}
-        toggle={toggle}
+        toggle={togglePane}
         phoneTab={phoneTab}
         setPhoneTab={setPhoneTab}
         panes={[
           { ...paneDefs[0], weight: 0.31, min: 300, content: <ProblemPane onClose={() => toggle("stmt")} /> },
           { ...paneDefs[1], weight: 0.42, min: 380, content: <CodePane v={v} setV={setV} openAi={openAi} onClose={() => toggle("code")} /> },
-          { ...paneDefs[2], weight: 0.27, min: 320, content: <SahayakPanel context="problem" onClose={() => toggle("ai")} onMinimize={() => toggle("ai")} /> },
+          { ...paneDefs[2], weight: 0.3, min: 320, rail: false, content: <SahayakPanel context="problem" onClose={() => ai.setOpen(false)} onMinimize={() => ai.setOpen(false)} /> },
         ]}
       />
     </>
@@ -561,8 +566,11 @@ LIMIT 3;`;
 
 export function SqlScreen() {
   const t = useT();
-  const { open, toggle } = usePanes({ q: true, ed: true, ai: false });
+  const { open, toggle, show } = usePanes({ q: true, ed: true, ai: false });
   const [phoneTab, setPhoneTab] = useState("ed");
+  const ai = useAi();
+  useEffect(() => show("ai", ai.open), [ai.open, show]);
+  const togglePane = (id: string) => (id === "ai" ? ai.toggle() : toggle(id));
   const [res, setRes] = useState<"yours" | "diff">("diff");
   const rows = [
     ["CSE", "Ishita Rao", "9.41", true],
@@ -583,13 +591,13 @@ export function SqlScreen() {
         sub={t("SQL · Joins · L3", "SQL · Joins · L3", "SQL · जॉइन")}
         right={
           <span className="hide-phone">
-            <PaneToggles panes={paneDefs} open={open} toggle={toggle} />
+            <PaneToggles panes={paneDefs} open={open} toggle={togglePane} />
           </span>
         }
       />
       <Panes
         open={open}
-        toggle={toggle}
+        toggle={togglePane}
         phoneTab={phoneTab}
         setPhoneTab={setPhoneTab}
         panes={[
@@ -699,7 +707,7 @@ export function SqlScreen() {
                 <div className="statusbar">
                   <span className="faint">{t("12 ms · 3 rows", "12 ms · 3 rows", "12 ms")}</span>
                   <span className="grow" />
-                  <button className="btn sm ai" onClick={() => toggle("ai")}>
+                  <button className="btn sm ai" onClick={() => ai.setOpen(true)}>
                     <Sparkles />
                     Sahayak
                   </button>
@@ -715,7 +723,7 @@ export function SqlScreen() {
               </>
             ),
           },
-          { ...paneDefs[2], weight: 0.3, min: 320, content: <SahayakPanel context="general" onClose={() => toggle("ai")} onMinimize={() => toggle("ai")} /> },
+          { ...paneDefs[2], weight: 0.3, min: 320, rail: false, content: <SahayakPanel context="general" onClose={() => ai.setOpen(false)} onMinimize={() => ai.setOpen(false)} /> },
         ]}
       />
     </>

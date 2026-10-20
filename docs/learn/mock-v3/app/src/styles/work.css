@@ -382,6 +382,7 @@
 .row-miss td {
   background: var(--red-soft);
 }
+.pane-in > .sahayak,
 .pane > .sahayak {
   flex: 1;
   height: auto;

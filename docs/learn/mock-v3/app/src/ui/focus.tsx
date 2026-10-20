@@ -83,7 +83,7 @@ export function useMedia(q: string) {
   return m;
 }
 
-export type PaneDef = { id: string; label: string; icon: ReactNode; content: ReactNode; weight: number; min?: number; tone?: "ai" };
+export type PaneDef = { id: string; label: string; icon: ReactNode; content: ReactNode; weight: number; min?: number; tone?: "ai"; /** show a thin rail to reopen it when closed (default true) */ rail?: boolean };
 
 /** Keeps which panes are open; at least one stays open. */
 export function usePanes(initial: Record<string, boolean>) {
@@ -161,33 +161,41 @@ export function Panes({
     );
   }
 
+  // Every pane stays mounted; opening or closing animates its share of the width, so the others make room
+  // (or take the space back) smoothly instead of jumping.
   return (
     <div className="panes" ref={box}>
       {panes.map((p, i) => {
-        const isOpen = open[p.id];
+        const isOpen = !!open[p.id];
         const nextOpen = openIds[openIds.indexOf(p.id) + 1];
+        const showRail = !isOpen && p.rail !== false;
         return (
           <div key={p.id} style={{ display: "contents" }}>
-            {isOpen ? (
-              <section
-                className={`pane ${p.tone === "ai" ? "pane-ai" : ""}`}
-                style={{ flex: `${w[p.id]} 1 0px`, minWidth: p.min ?? 260 }}
-                aria-label={p.label}
-              >
+            <section
+              className={`pane ${p.tone === "ai" ? "pane-ai" : ""} ${isOpen ? "" : "is-closed"}`}
+              style={{ flexGrow: isOpen ? Math.round((w[p.id] / total) * 1000) : 0, minWidth: isOpen ? (p.min ?? 260) : 0 }}
+              aria-label={p.label}
+              aria-hidden={!isOpen}
+              inert={!isOpen}
+            >
+              <div className="pane-in" style={{ minWidth: p.min ?? 260 }}>
                 {p.content}
-              </section>
-            ) : (
+              </div>
+            </section>
+            {showRail && (
               <button className={`pane-rail ${p.tone === "ai" ? "ai" : ""}`} onClick={() => toggle(p.id)} aria-label={`Show ${p.label}`} data-tip={p.label}>
                 {p.icon}
                 <span>{p.label}</span>
               </button>
             )}
-            {isOpen && nextOpen && (
+            {i < panes.length - 1 && (
               <div
-                className="pane-div"
+                className={`pane-div ${isOpen && nextOpen ? "" : "off"}`}
                 role="separator"
                 aria-orientation="vertical"
+                aria-hidden={!(isOpen && nextOpen)}
                 onPointerDown={(e) => {
+                  if (!isOpen || !nextOpen) return;
                   drag.current = { a: p.id, b: nextOpen, x: e.clientX, wa: w[p.id], wb: w[nextOpen], total, width: box.current?.clientWidth ?? 1000 };
                   document.body.classList.add("resizing");
                 }}
@@ -195,7 +203,6 @@ export function Panes({
                 <ChevronsLeftRight />
               </div>
             )}
-            {!isOpen && i < panes.length - 1 && <span className="pane-gap" />}
           </div>
         );
       })}
