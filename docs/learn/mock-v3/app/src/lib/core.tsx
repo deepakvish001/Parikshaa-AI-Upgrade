@@ -62,22 +62,21 @@ export function useT() {
 
 export type Theme = "dark" | "light";
 type ThemeCtx = { theme: Theme; setTheme: (t: Theme) => void };
-const ThemeContext = createContext<ThemeCtx>({ theme: "light", setTheme: () => {} });
+const ThemeContext = createContext<ThemeCtx>({ theme: "dark", setTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const fromHost = document.documentElement.getAttribute("data-theme");
-    const saved = readStore("pk3-theme");
+    // v4: black is the default for everyone; light only when the learner picks it.
+    const saved = readStore("pk4-theme");
     if (saved === "light" || saved === "dark") return saved;
-    if (fromHost === "light" || fromHost === "dark") return fromHost;
-    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return "dark";
   });
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    writeStore("pk3-theme", t);
+    writeStore("pk4-theme", t);
   }, []);
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

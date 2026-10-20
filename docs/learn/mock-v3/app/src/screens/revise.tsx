@@ -57,7 +57,7 @@ export function RevisionBody() {
       {finished ? (
         <div className="rev-done paper-grid">
           <Tick size={56} />
-          <h2 className="display" style={{ fontSize: 40 }}>
+          <h2 className="display" style={{ fontSize: 33 }}>
             {t("All six done.", "Chhe ke chhe ho gaye.", "सभी छह हो गए।")}
           </h2>
           <p className="muted">{t("Next revision: tomorrow, 4 cards.", "Agla revision: kal, 4 cards.", "अगली दोहराई: कल, 4 कार्ड।")}</p>

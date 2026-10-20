@@ -207,7 +207,7 @@ export function NotesBody() {
             {t("Drafted by Sahayak, edited by you", "Sahayak ne likha, aapne badla", "सहायक ने लिखा")}
           </Badge>
         </div>
-        <h1 className="display" style={{ fontSize: 40 }}>
+        <h1 className="display" style={{ fontSize: 33 }}>
           {notes[sel][0] as string}
         </h1>
         <ol className="note-body">
@@ -440,7 +440,7 @@ export function PlusBody() {
             <Crown style={{ width: 14, height: 14, color: "var(--coin)" }} />
             Plus
           </span>
-          <h1 className="display" style={{ fontSize: 54, lineHeight: 1 }}>
+          <h1 className="display" style={{ fontSize: 44, lineHeight: 1 }}>
             {t("More help, when the exam is close.", "Exam paas ho to zyada madad.", "परीक्षा पास हो तो ज़्यादा मदद।")}
           </h1>
           <p className="muted">{t("Everything that teaches stays free. Plus adds the expensive parts: more AI, unlimited mocks, human review.", "Jo sikhata hai wo free rehta hai. Plus mehenge hisse jodta hai: zyada AI, unlimited mocks, insaan ka review.", "सिखाने वाला सब फ़्री रहता है।")}</p>

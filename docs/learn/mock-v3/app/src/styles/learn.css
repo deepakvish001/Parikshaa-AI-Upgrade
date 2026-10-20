@@ -83,8 +83,9 @@
 }
 .cover-label b {
   font-family: var(--f-display);
-  font-weight: 400;
-  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.018em;
+  font-size: 16px;
   line-height: 1.05;
 }
 .cl-brand {

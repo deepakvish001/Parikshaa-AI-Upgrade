@@ -267,7 +267,7 @@ export function AdmProblemEditor() {
               <span className="h3">{t("Live preview", "Live preview", "लाइव पूर्वावलोकन")}</span>
             </div>
             <div className="card-b col g10">
-              <h2 className="display" style={{ fontSize: 28 }}>
+              <h2 className="display" style={{ fontSize: 24 }}>
                 Valid brackets
               </h2>
               <p className="prose small">Given a string made of the characters ()[]{"{}"}, print true if every opening bracket is closed by the same type of bracket in the right order, else false.</p>

@@ -251,7 +251,7 @@ export function BuildBody() {
         </BrowserFrame>
         <div className="col g12" style={{ minWidth: 0 }}>
           <span className="eyebrow">{t("Continue building", "Banana jaari rakho", "जारी रखें")}</span>
-          <h2 className="display" style={{ fontSize: 40, lineHeight: 1 }}>
+          <h2 className="display" style={{ fontSize: 33, lineHeight: 1 }}>
             Hostel Split
           </h2>
           <div className="ms-strip">
@@ -289,7 +289,7 @@ export function BuildBody() {
       </section>
 
       <div className="row wrap between g12">
-        <h2 className="display" style={{ fontSize: 32 }}>
+        <h2 className="display" style={{ fontSize: 28 }}>
           {t("Projects", "Projects", "प्रोजेक्ट")}
         </h2>
         <Seg
@@ -412,7 +412,7 @@ export function ProjectBody() {
       <section className="proj-hero">
         <div className="col g12" style={{ minWidth: 0 }}>
           <span className="eyebrow">{t("Project · Web · full stack", "Project · Web · full stack", "प्रोजेक्ट · वेब")}</span>
-          <h1 className="display" style={{ fontSize: 56, lineHeight: 0.98 }}>
+          <h1 className="display" style={{ fontSize: 46, lineHeight: 0.98 }}>
             Hostel Split
           </h1>
           <p className="muted" style={{ fontSize: 16, maxWidth: "52ch" }}>

@@ -455,7 +455,7 @@ export function AptResultBody() {
             <b className="display score">
               <CountUp to={36.5} decimals={1} />
             </b>
-            <span className="display faint" style={{ fontSize: 36 }}>
+            <span className="display faint" style={{ fontSize: 30 }}>
               / 60
             </span>
           </div>

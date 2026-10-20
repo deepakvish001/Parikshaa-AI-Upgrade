@@ -362,7 +362,7 @@ function LanguageDemo() {
       />
       <div className="lang-page margin-page paper-ruled" key={l}>
         <span className="eyebrow">Lesson 4 · Arrays</span>
-        <h3 className="display" style={{ fontSize: 34 }}>
+        <h3 className="display" style={{ fontSize: 30 }}>
           {text.h}
         </h3>
         <p className="prose">{text.p}</p>
@@ -712,7 +712,7 @@ export function LandingBody() {
             <div className="price-card">
               <b className="h2">{t("Campus", "Campus", "कैंपस")}</b>
               <div className="price">
-                <span className="display" style={{ fontSize: 40 }}>
+                <span className="display" style={{ fontSize: 33 }}>
                   {t("Per student", "Per student", "प्रति छात्र")}
                 </span>
               </div>

@@ -222,7 +222,7 @@ export function NoAccess({ mod }: { mod: string }) {
       <span className="na-ic">
         <Lock />
       </span>
-      <h1 className="h1" style={{ fontSize: 28 }}>
+      <h1 className="h1" style={{ fontSize: 24 }}>
         {t("This page is not in your role", "Ye page aapke role me nahi hai", "यह पेज आपकी भूमिका में नहीं है")}
       </h1>
       <p className="muted" style={{ maxWidth: 440 }}>

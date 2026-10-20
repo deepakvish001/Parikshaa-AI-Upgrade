@@ -48,7 +48,7 @@ export function PotdBody() {
             <CalendarCheck style={{ width: 14, height: 14 }} />
             {t("Problem of the day · Tuesday 20 October", "Aaj ka problem · Mangal 20 Oct", "आज का प्रश्न · 20 अक्टूबर")}
           </span>
-          <h1 className="display" style={{ fontSize: 56, lineHeight: 1 }}>
+          <h1 className="display" style={{ fontSize: 46, lineHeight: 1 }}>
             Bus stop queue
           </h1>
           <div className="row wrap g8">
@@ -174,7 +174,7 @@ export function ContestsBody() {
         <section className="card pad col g8 rating-card">
           <span className="tiny faint">{t("Your rating", "Aapki rating", "आपकी रेटिंग")}</span>
           <div className="row g8" style={{ alignItems: "baseline" }}>
-            <b className="display" style={{ fontSize: 52, lineHeight: 1 }}>
+            <b className="display" style={{ fontSize: 43, lineHeight: 1 }}>
               <CountUp to={1486} />
             </b>
             <Badge tone="tick" icon={<TrendingUp />}>
@@ -284,7 +284,7 @@ export function ContestBriefBody() {
       <section className="brief-hero">
         <div className="col g10" style={{ minWidth: 0 }}>
           <span className="eyebrow">{t("Contest · Rated", "Contest · Rated", "प्रतियोगिता")}</span>
-          <h1 className="display" style={{ fontSize: 52, lineHeight: 1 }}>
+          <h1 className="display" style={{ fontSize: 43, lineHeight: 1 }}>
             Weekly Round 13
           </h1>
           <div className="row wrap g12 small muted">
@@ -515,13 +515,13 @@ export function ContestResultBody() {
           <div className="row wrap g24" style={{ alignItems: "flex-end" }}>
             <div>
               <span className="tiny faint">{t("Rank", "Rank", "रैंक")}</span>
-              <b className="display" style={{ fontSize: 64, lineHeight: 1, display: "block" }}>
+              <b className="display" style={{ fontSize: 52, lineHeight: 1, display: "block" }}>
                 #<CountUp to={512} />
               </b>
             </div>
             <div>
               <span className="tiny faint">{t("Rating", "Rating", "रेटिंग")}</span>
-              <b className="display t-tick" style={{ fontSize: 44, lineHeight: 1, display: "block" }}>
+              <b className="display t-tick" style={{ fontSize: 36, lineHeight: 1, display: "block" }}>
                 1,486 → 1,529
               </b>
             </div>

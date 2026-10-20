@@ -164,7 +164,7 @@ export function CompanyBody() {
         <div className="col g8" style={{ alignItems: "center" }}>
           <Ring v={58} size={96} stroke={9}>
             <span>
-              <b className="display num" style={{ fontSize: 28 }}>
+              <b className="display num" style={{ fontSize: 24 }}>
                 58
               </b>
             </span>
@@ -191,7 +191,7 @@ export function CompanyBody() {
                 ["Technical 2", "60 min", "DSA + OS / DBMS", "ai"],
                 ["HR", "30 min", "Projects, fit", "tick"],
               ].map(([n, d, w, c], i) => (
-                <div key={n} className="round">
+                <div key={n} className="rnd-row">
                   <span className={`rn ${c}`}>{i + 1}</span>
                   <b className="small">{n}</b>
                   <span className="tiny faint">
@@ -385,7 +385,7 @@ export function PramaanBody() {
       <section className="pramaan-hero paper-grid">
         <div className="col g10" style={{ minWidth: 0 }}>
           <span className="eyebrow">Pramaan</span>
-          <h1 className="display" style={{ fontSize: 56, lineHeight: 1 }}>
+          <h1 className="display" style={{ fontSize: 46, lineHeight: 1 }}>
             {t("Proof, not claims.", "Saboot, daave nahi.", "प्रमाण, दावे नहीं।")}
           </h1>
           <p className="muted" style={{ maxWidth: "54ch" }}>
@@ -423,7 +423,7 @@ export function PramaanBody() {
                 <Badge tone="pen">{t("Open", "Khula", "खुला")}</Badge>
               )}
             </div>
-            <b className="display" style={{ fontSize: 26 }}>
+            <b className="display" style={{ fontSize: 22 }}>
               {c.n}
             </b>
             <div className="row wrap g10 tiny faint">

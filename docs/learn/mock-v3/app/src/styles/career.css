@@ -48,14 +48,14 @@
   gap: 0;
   position: relative;
 }
-.round {
+.rnd-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 0 12px;
   position: relative;
 }
-.round::before {
+.rnd-row::before {
   content: "";
   position: absolute;
   top: 17px;
@@ -64,7 +64,7 @@
   height: 2px;
   background: repeating-linear-gradient(90deg, var(--line-2) 0 6px, transparent 6px 10px);
 }
-.round:last-child::before {
+.rnd-row:last-child::before {
   display: none;
 }
 .rn {
@@ -157,7 +157,8 @@
 }
 .pr-step .num {
   font-family: var(--f-display);
-  font-size: 26px;
+  font-weight: 700;
+  font-size: 22px;
   line-height: 1;
   color: var(--red-text);
 }
@@ -181,8 +182,9 @@
   opacity: 0.75;
 }
 .cert-l {
-  font-family: var(--f-display);
-  font-size: 22px;
+  font-family: var(--f-serif);
+  font-weight: 600;
+  font-size: 18px;
   width: 44px;
   height: 44px;
   border-radius: 50%;
@@ -244,9 +246,9 @@
   color: #4b4d57;
 }
 .cd-name {
-  font-family: var(--f-display);
-  font-weight: 400;
-  font-size: max(28px, 6.4cqw);
+  font-family: var(--f-serif);
+  font-weight: 600;
+  font-size: max(24px, 5.2cqw);
   line-height: 1;
 }
 .cd-skill {
@@ -741,7 +743,7 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     row-gap: 16px;
   }
-  .round:nth-child(2)::before {
+  .rnd-row:nth-child(2)::before {
     display: none;
   }
   .co-hero {

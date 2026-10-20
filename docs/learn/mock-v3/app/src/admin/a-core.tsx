@@ -363,7 +363,7 @@ export function ReviewQueue() {
             <Badge>v3 · {t("diff vs v2: +2 tests, statement edited", "v2 se fark: +2 tests, statement badla", "अंतर")}</Badge>
           </div>
           <div className="card-b col g12">
-            <h2 className="display" style={{ fontSize: 30 }}>
+            <h2 className="display" style={{ fontSize: 26 }}>
               Valid brackets
             </h2>
             <div className="row g6">

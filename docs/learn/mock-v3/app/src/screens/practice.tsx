@@ -98,7 +98,7 @@ export function PracticeBody() {
             </span>
             <Badge tone="coin">+20</Badge>
           </div>
-          <b className="display" style={{ fontSize: 28 }}>
+          <b className="display" style={{ fontSize: 24 }}>
             Bus stop queue
           </b>
           <div className="row g8">
@@ -120,7 +120,7 @@ export function PracticeBody() {
             </span>
             <Badge tone="ai">{t("Rated", "Rated", "रेटेड")}</Badge>
           </div>
-          <b className="display" style={{ fontSize: 28 }}>
+          <b className="display" style={{ fontSize: 24 }}>
             Weekly Round 13
           </b>
           <span className="small muted">{t("Sunday 8:00 pm · 90 min · 4 problems", "Ravivaar 8 baje · 90 min · 4 problems", "रविवार 8 बजे")}</span>
@@ -300,7 +300,7 @@ export function SheetBody() {
         </div>
         <Ring v={(done / 455) * 100} size={96} stroke={9}>
           <span>
-            <b className="display num" style={{ fontSize: 28 }}>
+            <b className="display num" style={{ fontSize: 24 }}>
               {done}
             </b>
             <span className="tiny faint" style={{ display: "block" }}>
@@ -429,7 +429,7 @@ export function SheetRail() {
     <>
       <section className="card pad col g10 resume-mini">
         <span className="eyebrow">{t("Continue", "Jaari rakho", "जारी रखें")}</span>
-        <b className="display" style={{ fontSize: 24 }}>
+        <b className="display" style={{ fontSize: 22 }}>
           Pair with target sum
         </b>
         <span className="tiny t-red">{t("Wrong on test 23 · 14 min ago", "Test 23 par galat · 14 min pehle", "टेस्ट 23 पर गलत")}</span>

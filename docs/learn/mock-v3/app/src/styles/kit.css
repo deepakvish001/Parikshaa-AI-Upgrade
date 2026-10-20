@@ -9,20 +9,20 @@
   gap: 7px;
   height: var(--bh);
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: 8px;
   font-size: 13.5px;
-  font-weight: 560;
-  letter-spacing: -0.005em;
+  font-weight: 600;
+  letter-spacing: -0.006em;
   white-space: nowrap;
   border: 1px solid var(--line-2);
-  background: var(--panel);
+  background: var(--panel-2);
   color: var(--ink);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1), var(--edge);
   transition: background 0.14s var(--ease), border-color 0.14s, transform 0.08s, box-shadow 0.14s, color 0.14s;
   user-select: none;
 }
 .btn:hover {
-  background: var(--panel-2);
+  background: var(--sunk);
   border-color: var(--ink-4);
 }
 .btn:active {
@@ -36,7 +36,7 @@
   background: var(--pen);
   border-color: transparent;
   color: var(--on-pen);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 1px 2px rgba(20, 30, 90, 0.2);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 1px 2px rgba(10, 20, 80, 0.25);
 }
 .btn.pri:hover {
   background: var(--pen-hover);
@@ -67,12 +67,12 @@
 }
 .btn.ai:hover {
   background: var(--ai);
-  color: var(--on-pen);
+  color: var(--on-ai);
   border-color: transparent;
 }
 .btn.ok {
   background: var(--tick);
-  color: var(--on-pen);
+  color: var(--on-tick);
   border-color: transparent;
 }
 .btn.dang {
@@ -83,13 +83,13 @@
 }
 .btn.dang:hover {
   background: var(--red);
-  color: var(--on-pen);
+  color: var(--on-red);
 }
 .btn.sm {
   --bh: 30px;
   padding: 0 10px;
   font-size: 12.5px;
-  border-radius: 8px;
+  border-radius: 7px;
   gap: 6px;
 }
 .btn.sm svg {
@@ -97,17 +97,17 @@
   height: 14px;
 }
 .btn.lg {
-  --bh: 46px;
+  --bh: 44px;
   padding: 0 20px;
   font-size: 15px;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 .btn.block {
   width: 100%;
 }
 .btn:disabled,
 .btn[aria-disabled="true"] {
-  opacity: 0.5;
+  opacity: 0.45;
   pointer-events: none;
 }
 .icon-btn {
@@ -115,7 +115,7 @@
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 9px;
+  border-radius: 8px;
   color: var(--ink-2);
   transition: background 0.14s, color 0.14s;
   position: relative;
@@ -177,11 +177,11 @@
   padding: 0 8px;
   border-radius: 999px;
   font-size: 11.5px;
-  font-weight: 560;
+  font-weight: 600;
   white-space: nowrap;
   background: var(--sunk);
   color: var(--ink-2);
-  border: 1px solid var(--line);
+  border: 1px solid var(--line-2);
 }
 .badge svg {
   width: 12px;
@@ -322,7 +322,7 @@
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1), var(--edge);
   min-width: 0;
 }
 .card.pad {
@@ -336,7 +336,7 @@
 }
 .card.hov:hover {
   border-color: var(--line-2);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-2), var(--edge);
   transform: translateY(-1px);
 }
 .card-h {
@@ -400,8 +400,9 @@
 }
 .stat .v.serif {
   font-family: var(--f-display);
-  font-weight: 400;
-  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  font-size: 28px;
 }
 .stat .d {
   font-size: 12px;
@@ -502,7 +503,7 @@
   height: 40px;
   padding: 0 12px;
   font-size: 13.5px;
-  font-weight: 540;
+  font-weight: 550;
   color: var(--ink-3);
   white-space: nowrap;
   transition: color 0.14s;
@@ -516,6 +517,7 @@
 }
 .tab[aria-selected="true"] {
   color: var(--ink);
+  font-weight: 600;
 }
 .tab[aria-selected="true"]::after {
   content: "";
@@ -591,7 +593,7 @@
 .field > label,
 .label {
   font-size: 12.5px;
-  font-weight: 560;
+  font-weight: 600;
   color: var(--ink-2);
 }
 .help {
@@ -609,9 +611,9 @@
   min-width: 0;
   height: 38px;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid var(--line-2);
-  background: var(--panel);
+  background: var(--field);
   color: var(--ink);
   font-size: 14px;
   transition: border-color 0.14s, box-shadow 0.14s;
@@ -634,7 +636,12 @@
 }
 .input::placeholder,
 .textarea::placeholder {
-  color: var(--ink-4);
+  color: var(--ink-3);
+}
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--ink-4);
 }
 .input:focus,
 .select:focus,
@@ -651,7 +658,7 @@
 .select.sm {
   height: 32px;
   font-size: 13px;
-  border-radius: 8px;
+  border-radius: 7px;
 }
 .input-ic {
   position: relative;
@@ -680,6 +687,7 @@
   height: 20px;
   border-radius: 99px;
   background: var(--line-2);
+  box-shadow: inset 0 0 0 1px var(--ink-4);
   transition: background 0.18s;
   flex-shrink: 0;
 }
@@ -697,6 +705,7 @@
 }
 .toggle[aria-checked="true"] {
   background: var(--pen);
+  box-shadow: none;
 }
 .toggle[aria-checked="true"]::after {
   transform: translateX(16px);
@@ -705,8 +714,8 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  border: 1.5px solid var(--line-2);
-  background: var(--panel);
+  border: 1.5px solid var(--ink-4);
+  background: var(--field);
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
@@ -729,12 +738,16 @@
 .check.tick[aria-checked="true"] {
   background: var(--tick);
   border-color: var(--tick);
+  color: var(--on-tick);
+}
+.check:hover {
+  border-color: var(--ink-3);
 }
 .radio {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  border: 1.5px solid var(--line-2);
+  border: 1.5px solid var(--ink-4);
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
@@ -754,7 +767,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 1px solid var(--line-2);
   background: var(--panel);
   text-align: left;
@@ -781,8 +794,8 @@
 }
 .tbl th {
   text-align: left;
-  font-size: 11.5px;
-  font-weight: 560;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--ink-3);
   padding: 9px 14px;
   border-bottom: 1px solid var(--line);
@@ -807,6 +820,7 @@
 }
 .tbl tr[aria-selected="true"] {
   background: var(--pen-soft);
+  box-shadow: inset 2px 0 0 var(--pen);
 }
 .tbl .r {
   text-align: right;
@@ -874,9 +888,9 @@ button.li {
   position: absolute;
   z-index: 80;
   min-width: 200px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 12px;
+  background: var(--raised);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
   box-shadow: var(--shadow-3);
   padding: 6px;
   animation: pop-in 0.14s var(--ease);
@@ -893,8 +907,9 @@ button.li {
   gap: 10px;
   width: 100%;
   padding: 8px 10px;
-  border-radius: 8px;
+  border-radius: 6px;
   font-size: 13px;
+  font-weight: 500;
   color: var(--ink);
   text-align: left;
 }
@@ -948,8 +963,7 @@ button.li {
   position: fixed;
   inset: 0;
   z-index: 100;
-  background: rgba(15, 16, 12, 0.42);
-  backdrop-filter: blur(3px);
+  background: var(--scrim);
   display: grid;
   place-items: center;
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
@@ -960,8 +974,8 @@ button.li {
   width: min(520px, 100%);
   max-height: calc(100vh - 32px);
   overflow: auto;
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: var(--raised);
+  border: 1px solid var(--line-2);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-3);
   animation: rise 0.22s var(--ease);
@@ -991,8 +1005,8 @@ button.li {
 .drawer {
   width: min(460px, 100vw);
   height: 100%;
-  background: var(--panel);
-  border-left: 1px solid var(--line);
+  background: var(--raised);
+  border-left: 1px solid var(--line-2);
   box-shadow: var(--shadow-3);
   overflow: auto;
   animation: slide-in 0.24s var(--ease);
@@ -1129,13 +1143,13 @@ button.li {
   z-index: -1;
   left: -0.12em;
   right: -0.12em;
-  bottom: 0.06em;
-  height: 0.5em;
+  bottom: 0.04em;
+  height: 0.34em;
   background: var(--marker);
-  border-radius: 0.2em 0.35em 0.25em 0.4em;
+  border-radius: 0.12em;
   transform: skew(-8deg) scaleX(1);
   transform-origin: left center;
-  opacity: 0.85;
+  opacity: 0.8;
   animation: marker 0.7s 0.25s var(--ease) both;
 }
 :root[data-theme="dark"] .hl::before {
@@ -1506,8 +1520,8 @@ button.li {
 .stamp b {
   font-size: 15px;
   letter-spacing: 0.06em;
-  font-family: var(--f-display);
-  font-weight: 400;
+  font-family: var(--f-serif);
+  font-weight: 600;
   text-transform: none;
 }
 .pen-circle {

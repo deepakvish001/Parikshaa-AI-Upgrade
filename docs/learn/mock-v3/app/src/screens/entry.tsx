@@ -177,7 +177,7 @@ export function LoginBody() {
               <span className="eyebrow">{t("Today", "Aaj", "आज")}</span>
               <Badge tone="tick">{t("2 days ahead", "2 din aage", "2 दिन आगे")}</Badge>
             </div>
-            <div className="display" style={{ fontSize: 30, marginTop: 6 }}>
+            <div className="display" style={{ fontSize: 26, marginTop: 6 }}>
               {t("5 things, 2h 10m", "5 kaam, 2h 10m", "5 काम, 2 घं 10 मि")}
             </div>
             <ul className="ps-list">
@@ -343,7 +343,7 @@ export function OnboardingBody() {
           {!done ? (
             <div className="building">
               <Diya size={72} mood="think" />
-              <h1 className="display" style={{ fontSize: 44 }}>
+              <h1 className="display" style={{ fontSize: 36 }}>
                 {t("Writing your plan…", "Aapka plan likh rahe…", "योजना लिख रहे…")}
               </h1>
               <ul className="build-list">

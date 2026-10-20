@@ -208,8 +208,9 @@
   align-items: center;
   gap: 12px;
   font-family: var(--f-display);
-  font-weight: 400;
-  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.024em;
+  font-size: 26px;
   margin-bottom: 18px;
 }
 .brand-h2 .num {

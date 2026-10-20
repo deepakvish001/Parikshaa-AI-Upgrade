@@ -141,7 +141,7 @@ export function BrandBody() {
             <span className="tiny faint">{t("Product tags", "Product tags", "उत्पाद टैग")}</span>
           </div>
           <div className="brand-tile">
-            <span className="display" style={{ fontSize: 44 }}>
+            <span className="display" style={{ fontSize: 36 }}>
               परीक्षा
             </span>
             <span className="tiny faint">{t("Devanagari wordmark (footer, certificates)", "Devanagari wordmark (footer, certificate)", "देवनागरी वर्डमार्क")}</span>
@@ -184,7 +184,7 @@ export function BrandBody() {
         </div>
         <div className="brand-grid c2 mt16">
           <div className="brand-tile light-tile paper-grid" style={{ minHeight: 150 }}>
-            <b className="display" style={{ fontSize: 30, color: "#15161A" }}>
+            <b className="display" style={{ fontSize: 26, color: "#15161A" }}>
               Kaagaz
             </b>
             <span className="tiny" style={{ color: "#4B4D57" }}>
@@ -192,7 +192,7 @@ export function BrandBody() {
             </span>
           </div>
           <div className="brand-tile dark-tile" style={{ minHeight: 150 }}>
-            <b className="display" style={{ fontSize: 30 }}>
+            <b className="display" style={{ fontSize: 26 }}>
               Blackboard
             </b>
             <span className="tiny" style={{ color: "#A9B6AF" }}>
@@ -208,43 +208,43 @@ export function BrandBody() {
         </h2>
         <div className="brand-grid c3">
           <div className="brand-tile">
-            <span className="display" style={{ fontSize: 56, lineHeight: 1 }}>
-              Aa <em>Aa</em>
+            <span style={{ fontSize: 56, lineHeight: 1, fontWeight: 700, letterSpacing: "-0.03em" }}>
+              Aa <span style={{ fontWeight: 400 }}>Aa</span>
             </span>
-            <b>Instrument Serif</b>
-            <span className="tiny faint">{t("Display: page titles, hero, big numbers", "Display: title, hero, bade number", "डिस्प्ले")}</span>
+            <b>IBM Plex Sans</b>
+            <span className="tiny faint">{t("Titles 700, labels 500–600, text 400. Built for screens, clear on black", "Title 700, label 500–600, text 400. Screen ke liye, kaale par saaf", "शीर्षक 700, लेबल 500–600")}</span>
           </div>
           <div className="brand-tile">
-            <span style={{ fontSize: 56, lineHeight: 1, fontWeight: 600, letterSpacing: "-0.03em" }}>Aa</span>
-            <b>Geist</b>
-            <span className="tiny faint">{t("Interface: every label and paragraph", "UI: har label aur paragraph", "इंटरफ़ेस")}</span>
+            <span style={{ fontSize: 44, lineHeight: 1.25, fontWeight: 600 }}>हिंदी में सीखो</span>
+            <b>IBM Plex Sans Devanagari</b>
+            <span className="tiny faint">{t("Drawn with Plex, so Hindi and English sit at the same height and weight", "Plex ke saath bana: Hindi aur English ek unchai aur wazan", "हिंदी और अंग्रेज़ी एक जैसी")}</span>
           </div>
           <div className="brand-tile">
-            <span className="mono" style={{ fontSize: 44, lineHeight: 1.2 }}>
-              {"{a[i]}"}
+            <span className="mono" style={{ fontSize: 40, lineHeight: 1.25 }}>
+              {"0O l1 {a[i]}"}
             </span>
-            <b>Geist Mono</b>
-            <span className="tiny faint">{t("Code, timers, numbers", "Code, timer, number", "कोड, टाइमर")}</span>
+            <b>JetBrains Mono</b>
+            <span className="tiny faint">{t("Code, timers, IDs. 0 and O, l and 1 never mix up", "Code, timer, ID. 0/O aur l/1 alag", "कोड, टाइमर")}</span>
           </div>
           <div className="brand-tile">
-            <span style={{ fontSize: 40, lineHeight: 1.3 }}>हिंदी में सीखो</span>
-            <b>Noto Sans / Serif Devanagari</b>
-            <span className="tiny faint">{t("Hindi interface and display", "Hindi UI aur display", "हिंदी")}</span>
+            <span style={{ fontFamily: "var(--f-serif)", fontWeight: 600, fontSize: 40, lineHeight: 1.2 }}>Aarav Sharma</span>
+            <b>IBM Plex Serif</b>
+            <span className="tiny faint">{t("Only on certificates and the Pramaan stamp", "Sirf certificate aur Pramaan ki mohar", "केवल प्रमाणपत्र")}</span>
           </div>
           <div className="brand-tile">
             <span className="hand" style={{ fontSize: 34, lineHeight: 1.2, color: "var(--red-text)" }}>
               overflow here!
             </span>
             <b>Kalam</b>
-            <span className="tiny faint">{t("Red-pen notes only", "Sirf laal pen ke note", "केवल लाल पेन नोट")}</span>
+            <span className="tiny faint">{t("Teacher's red-pen notes only", "Sirf teacher ke laal pen note", "केवल लाल पेन नोट")}</span>
           </div>
           <div className="brand-tile">
             <div className="col g4">
-              <span className="display" style={{ fontSize: 34 }}>Display 34</span>
-              <span className="h2">Heading 18 / 620</span>
-              <span className="h3">Title 15 / 600</span>
-              <span>Body 14 / 1.5</span>
-              <span className="eyebrow">Label 11 caps</span>
+              <span className="display" style={{ fontSize: 30 }}>Page title 28 / 700</span>
+              <span className="h2">Heading 18 / 650</span>
+              <span className="h3">Card title 15 / 600</span>
+              <span>Body 14 / 1.55</span>
+              <span className="eyebrow">Label 11.5 caps</span>
             </div>
           </div>
         </div>

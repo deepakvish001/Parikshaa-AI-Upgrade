@@ -10,7 +10,7 @@ const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM 
 for (const w of widthsArg.split(",").map(Number)) {
   const ctx = await browser.newContext({ viewport: { width: w, height: w < 600 ? 844 : 900 }, deviceScaleFactor: w < 600 ? 2 : 1, colorScheme: theme });
   await ctx.addInitScript(([th, lg, rl]) => {
-    localStorage.setItem("pk3-theme", th);
+    localStorage.setItem("pk4-theme", th);
     localStorage.setItem("pk3-lang", lg);
     localStorage.setItem("pk-mock-shots", "1");
     if (rl) localStorage.setItem("pk3-role", rl);

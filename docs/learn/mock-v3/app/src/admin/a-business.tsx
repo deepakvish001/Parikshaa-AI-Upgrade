@@ -408,7 +408,7 @@ export function AdmAI() {
           </Card>
           <Card title={t("Today vs cap", "Aaj vs cap", "आज बनाम सीमा")} icon={<Bot className="ic" />}>
             <div className="col g10">
-              <b className="display num" style={{ fontSize: 40, lineHeight: 1 }}>
+              <b className="display num" style={{ fontSize: 33, lineHeight: 1 }}>
                 ₹18,200
               </b>
               <Meter v={82} tone="coin" />
@@ -535,7 +535,7 @@ export function AdmAI() {
           ].map(([n, v, tg]) => (
             <section key={n as string} className="card pad col g8">
               <span className="small">{n as string}</span>
-              <b className="display num" style={{ fontSize: 40 }}>
+              <b className="display num" style={{ fontSize: 33 }}>
                 {v as number}%
               </b>
               <Meter v={v as number} tone={(v as number) >= (tg as number) ? "tick" : "red"} />

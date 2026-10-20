@@ -91,7 +91,7 @@ export function CoursesBody() {
       <section className="path-card">
         <div className="col g8" style={{ minWidth: 0 }}>
           <span className="eyebrow">{t("Your path", "Aapka raasta", "आपका रास्ता")}</span>
-          <h2 className="display" style={{ fontSize: 32 }}>
+          <h2 className="display" style={{ fontSize: 28 }}>
             {t("Product company SDE", "Product company SDE", "प्रोडक्ट कंपनी SDE")}
           </h2>
           <Seg
@@ -336,7 +336,7 @@ export function CourseBody() {
         <Cover c={c} size="lg" />
         <div className="col g12" style={{ minWidth: 0 }}>
           <span className="eyebrow">{t("Course · CS core", "Course · CS core", "कोर्स · CS कोर")}</span>
-          <h1 className="h1" style={{ fontSize: 44 }}>
+          <h1 className="h1" style={{ fontSize: 36 }}>
             {t(...c.name)}
           </h1>
           <p className="muted" style={{ maxWidth: "58ch" }}>

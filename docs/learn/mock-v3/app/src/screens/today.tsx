@@ -201,7 +201,7 @@ export function AajBody() {
         <div className="aaj-day">
           <Diya size={60} />
           <div>
-            <b className="display num" style={{ fontSize: 30 }}>
+            <b className="display num" style={{ fontSize: 26 }}>
               38
             </b>
             <span className="tiny faint"> / 90 {t("days", "din", "दिन")}</span>
@@ -301,7 +301,7 @@ export function AajRail() {
         <div className="row g16">
           <Ring v={58} size={86} stroke={8}>
             <span>
-              <b className="display num" style={{ fontSize: 30 }}>
+              <b className="display num" style={{ fontSize: 26 }}>
                 <CountUp to={58} />
               </b>
             </span>
