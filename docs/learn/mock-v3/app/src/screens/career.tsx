@@ -13,25 +13,19 @@ import {
   QrCode,
   Copy,
   Download,
-  Share2,
   Camera,
   Monitor,
   CalendarDays,
-  MapPin,
-  Link2,
   Pencil,
   Eye,
-  EyeOff,
   Briefcase,
   Send,
   FileText,
   Sparkles,
-  ExternalLink,
   Info,
-  Rocket,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
-import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, Heatmap, Avatar, SampleNote, PenNote, PenCircle, Toggle, Seg, LogoMark } from "../ui/kit";
+import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, PenNote, PenCircle, Seg, LogoMark } from "../ui/kit";
 
 /* ---------------- companies ---------------- */
 
@@ -548,134 +542,6 @@ export function CertificateBody() {
 }
 
 /* ---------------- profile ---------------- */
-
-export function ProfileBody() {
-  const t = useT();
-  const [pub, setPub] = useState(true);
-  return (
-    <div className="col g20">
-      <section className="prof-hero">
-        <Avatar name="Aarav Sharma" size={88} tone={0} />
-        <div className="col g6 grow" style={{ minWidth: 0 }}>
-          <h1 className="h1">Aarav Sharma</h1>
-          <span className="muted small">B.Tech CSE · 3rd year · {t("Class of 2027", "2027 batch", "2027 बैच")}</span>
-          <div className="row wrap g12 tiny faint">
-            <span className="row g4">
-              <MapPin style={{ width: 13, height: 13 }} />
-              Indore
-            </span>
-            <span className="row g4">
-              <Link2 style={{ width: 13, height: 13 }} />
-              parikshaa.in/u/aarav
-            </span>
-            <span className="row g4">
-              <Briefcase style={{ width: 13, height: 13 }} />
-              {t("Open to: internships 2027", "Internships 2027 ke liye open", "इंटर्नशिप 2027")}
-            </span>
-          </div>
-        </div>
-        <div className="row wrap g8">
-          <span className="row g8 small">
-            {pub ? <Eye style={{ width: 16, height: 16 }} /> : <EyeOff style={{ width: 16, height: 16 }} />}
-            {t("Public", "Public", "सार्वजनिक")}
-            <Toggle on={pub} onChange={setPub} label="Public profile" />
-          </span>
-          <button className="btn">
-            <Share2 />
-            {t("Share", "Share", "साझा")}
-          </button>
-          <Link to="settings" className="btn">
-            <Pencil />
-            {t("Edit", "Edit", "संपादित")}
-          </Link>
-        </div>
-      </section>
-      <div className="split-proof">
-        <section className="card proof-col verified">
-          <div className="card-h">
-            <BadgeCheck className="ic" style={{ color: "var(--tick-text)" }} />
-            <span className="h3">{t("Verified by Parikshaa", "Parikshaa ne verify kiya", "परीक्षा द्वारा सत्यापित")}</span>
-          </div>
-          <div className="card-b col g12">
-            <div className="grid c4 small-stats">
-              {[
-                ["212", t("solved on the judge", "judge par solve", "जज पर हल")],
-                ["1,529", t("contest rating", "contest rating", "रेटिंग")],
-                ["3", t("Pramaan certificates", "Pramaan certificates", "प्रमाण")],
-                ["2", t("projects shipped", "projects ship", "प्रोजेक्ट")],
-              ].map(([v, k]) => (
-                <div key={k} className="stat">
-                  <span className="v">{v}</span>
-                  <span className="k">{k}</span>
-                </div>
-              ))}
-            </div>
-            <div className="row wrap g8">
-              {["DSA · L2", "DSA · L1", "SQL · L1"].map((c) => (
-                <Link key={c} to="certificate" className="mini-stamp">
-                  <BadgeCheck />
-                  {c}
-                </Link>
-              ))}
-            </div>
-            <div className="col g6">
-              <span className="eyebrow">{t("Last 26 weeks", "Pichhle 26 hafte", "पिछले 26 सप्ताह")}</span>
-              <div style={{ overflowX: "auto" }}>
-                <Heatmap weeks={26} seed={11} />
-              </div>
-            </div>
-          </div>
-        </section>
-        <section className="card proof-col">
-          <div className="card-h">
-            <Pencil className="ic" />
-            <span className="h3">{t("Self-declared", "Khud bataya", "स्व-घोषित")}</span>
-          </div>
-          <div className="card-b col g10">
-            <p className="tiny faint">{t("Shown separately so recruiters know what was checked.", "Alag dikhaya taaki recruiter jaane kya jaancha gaya.", "अलग दिखाया गया।")}</p>
-            <div className="row wrap g6">
-              {["React", "Figma", "Public speaking", "Hindi, English"].map((s) => (
-                <span key={s} className="chip">
-                  {s}
-                </span>
-              ))}
-            </div>
-            <div className="col g6 small">
-              <b>{t("Clubs", "Clubs", "क्लब")}</b>
-              <span className="muted">{t("Coding club, design lead (2025–26)", "Coding club, design lead (2025–26)", "कोडिंग क्लब")}</span>
-            </div>
-          </div>
-        </section>
-      </div>
-      <Card title={t("Projects", "Projects", "प्रोजेक्ट")} icon={<Rocket className="ic" />}>
-        <div className="grid c2">
-          {[
-            ["Placement Tracker", "Frontend L1 · shipped 2 Oct", "tracker.parikshaa.app"],
-            ["Hostel Split", "In progress · M3 of 5", "—"],
-          ].map(([n, m, l]) => (
-            <div key={n} className="row g12 proj-mini">
-              <span className="ic-box">
-                <Rocket />
-              </span>
-              <span className="grow">
-                <b className="small">{n}</b>
-                <span className="tiny faint" style={{ display: "block" }}>
-                  {m}
-                </span>
-              </span>
-              {l !== "—" && (
-                <a className="link small" href="#profile">
-                  <ExternalLink />
-                  {t("Live", "Live", "लाइव")}
-                </a>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
 
 /* ---------------- jobs ---------------- */
 

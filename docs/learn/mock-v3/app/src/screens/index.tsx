@@ -14,7 +14,8 @@ import { AptitudeBody, AptSetBody, AptMockScreen, AptResultBody } from "./aptitu
 import { PotdBody, ContestsBody, ContestBriefBody, ContestLiveScreen, ContestResultBody } from "./compete";
 import { BuildBody, ProjectBody, ProjectRail } from "./build";
 import { StudioScreen } from "./studio";
-import { CompaniesBody, CompanyBody, ExperiencesBody, PramaanBody, CertificateBody, ProfileBody, JobsBody } from "./career";
+import { CompaniesBody, CompanyBody, ExperiencesBody, PramaanBody, CertificateBody, JobsBody } from "./career";
+import { ProfileBody, ProfileRail } from "./profile";
 import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mine";
 import { AdminLogin, AdminDashboard, ReviewQueue, Approvals } from "../admin/a-core";
 import { AdmProblems, AdmProblemEditor, AdmAptitude, AdmLessons, AdmRoadmaps, AdmCompanies, AdmFactory } from "../admin/a-content";
@@ -60,7 +61,7 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   experiences: { Body: ExperiencesBody },
   pramaan: { Body: PramaanBody },
   certificate: { Body: CertificateBody },
-  profile: { Body: ProfileBody },
+  profile: { Body: ProfileBody, Rail: ProfileRail },
   jobs: { Body: JobsBody },
   lists: { Body: ListsBody },
   notes: { Body: NotesBody },
