@@ -461,6 +461,9 @@ analytics), ek `VideoProvider` adapter ke peeche taaki provider badal sakein.
 
 ## 9. UI (poora design)
 
+> **21 Oct 2026 se purana:** design ab [learn/DESIGN-SYSTEM.md](learn/DESIGN-SYSTEM.md) me tay hai (logo A "Pass", IBM
+> Plex + JetBrains Mono, kaala default, mock v4.2). Neeche ka text (प mark, indigo + saffron, Noto) sirf itihaas ke liye.
+
 Brand [DESIGN.md](DESIGN.md) par: प mark, ink-indigo + saffron, dark aur light, Noto fonts, WCAG AA. Learn v2 me:
 
 - **Dark-first, premium:** glow, glass surface, gol pills, saaf typography; sab tokens me.
