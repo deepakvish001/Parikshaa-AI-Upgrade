@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Play,
@@ -26,10 +26,26 @@ import {
   Lightbulb,
   BookOpen,
   CodeXml,
+  Database,
+  Calculator,
+  Layers,
+  Network,
+  Cpu,
+  Mic,
+  NotebookPen,
+  SquareTerminal,
+  Share2,
+  Eye,
+  Link2,
+  Minus,
+  Zap,
+  MessageSquare,
 } from "lucide-react";
 import { Link, useT } from "../lib/core";
 import { Logo, LogoMark, Hl, PenCircle, PenNote, Tick, Stamp, Seg, Badge, Diya } from "../ui/kit";
 import { LangButton, ThemeButton } from "../ui/shell";
+import { ProfileCard } from "./profile";
+import { NotebookPrev } from "./notebook";
 
 /* ---------------- hero collage ---------------- */
 
@@ -377,6 +393,185 @@ function LanguageDemo() {
   );
 }
 
+/* ---------------- tracks, workbench, journey, comparison (v4.2) ---------------- */
+
+function Tracks() {
+  const t = useT();
+  const items: [ReactNode, string, string, string][] = [
+    [<CodeXml key="a" />, "DSA", t("A step-by-step sheet, checked on our judge", "Kadam-dar-kadam sheet, judge par jaanch", "क्रमवार शीट"), "practice"],
+    [<Database key="b" />, "SQL", t("Same workspace as DSA, real query results", "DSA jaisa workspace, asli query nateeje", "असली क्वेरी"), "sql"],
+    [<Calculator key="c" />, t("Aptitude", "Aptitude", "एप्टीट्यूड"), t("Quant, logical, verbal, company-pattern mocks", "Quant, logical, verbal, company-pattern mocks", "मॉक टेस्ट"), "aptitude"],
+    [<Layers key="d" />, t("Web development", "Web development", "वेब डेवलपमेंट"), t("React and Node projects with tests", "Tests ke saath React aur Node projects", "प्रोजेक्ट"), "build"],
+    [<NotebookPen key="e" />, t("Data & ML", "Data aur ML", "डेटा और ML"), t("Notebooks in the browser, GPU via Colab", "Browser me notebook, Colab se GPU", "नोटबुक"), "notebook"],
+    [<Network key="f" />, t("System design", "System design", "सिस्टम डिज़ाइन"), t("LLD and HLD, from small to large", "LLD aur HLD, chhote se bade tak", "LLD और HLD"), "roadmap"],
+    [<Cpu key="g" />, t("CS fundamentals", "CS fundamentals", "CS मूल बातें"), t("OS, DBMS, networks, OOP for interviews", "Interview ke liye OS, DBMS, networks, OOP", "OS, DBMS"), "courses"],
+    [<Mic key="h" />, t("Mock interviews", "Mock interviews", "मॉक इंटरव्यू"), t("Practise with an AI interviewer, get a rubric", "AI interviewer ke saath, rubric milta hai", "AI इंटरव्यूअर"), "interview"],
+  ];
+  return (
+    <div className="l-tracks">
+      {items.map(([ic, h, p, to]) => (
+        <Link key={h} to={to} className="l-track">
+          <span className="bt-ic">{ic}</span>
+          <span className="col">
+            <b>{h}</b>
+            <span className="small muted">{p}</span>
+          </span>
+          <ArrowRight className="l-track-go" />
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+function Workbench() {
+  const t = useT();
+  const [tab, setTab] = useState<"studio" | "nb" | "sql">("studio");
+  return (
+    <div className="wbench">
+      <Seg
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: "studio", label: "Code Studio", icon: <SquareTerminal /> },
+          { id: "nb", label: t("Notebook", "Notebook", "नोटबुक"), icon: <NotebookPen /> },
+          { id: "sql", label: "SQL", icon: <Database /> },
+        ]}
+      />
+      <div className="wb-frame" key={tab}>
+        <div className="wb-bar">
+          <i />
+          <i />
+          <i />
+          <span className="mono tiny">{tab === "studio" ? "hostel-split · settle.ts" : tab === "nb" ? "forecast.ipynb" : "query.sql"}</span>
+        </div>
+        {tab === "studio" && (
+          <div className="wb-studio">
+            <div className="wb-tree mono tiny">
+              <span>▾ src</span>
+              <span className="in">api/settle.ts</span>
+              <span className="in">ui/RoomPage.tsx</span>
+              <span>▾ tests</span>
+              <span className="in">settle.test.ts</span>
+            </div>
+            <div className="wb-code mono">
+              <span>
+                <b className="k">for</b> (<b className="k">const</b> g <b className="k">of</b> gets) {"{"}
+              </span>
+              <span className="in">
+                <b className="k">const</b> pay = Math.min(-o.amount, g.amount);
+              </span>
+              <span className="in add">
+                <b className="k">if</b> (pay &gt; 0) out.push({"{"} ... {"}"});
+              </span>
+              <span>{"}"}</span>
+              <span className="wb-tests">
+                <i className="ok" />
+                <i className="ok" />
+                <i className="ok" />
+                <i className="ok" />
+                <i className="ok" />
+                <i className="bad" />
+                <em>10 / 12 tests</em>
+              </span>
+            </div>
+          </div>
+        )}
+        {tab === "nb" && (
+          <div className="wb-nb">
+            <NotebookPrev />
+            <span className="wb-chip">
+              <Zap /> {t("Need a GPU? Open in Colab; the grade stays here.", "GPU chahiye? Colab me kholo; grade yahin.", "GPU? Colab में खोलें।")}
+            </span>
+          </div>
+        )}
+        {tab === "sql" && (
+          <div className="wb-sql">
+            <pre className="mono">
+              <b className="k">SELECT</b> branch, name, cgpa <b className="k">FROM</b> ranked{"\n"}
+              <b className="k">WHERE</b> rn &lt;= 3;
+            </pre>
+            <table className="tbl dense">
+              <thead>
+                <tr>
+                  <th>branch</th>
+                  <th>name</th>
+                  <th className="r">cgpa</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ["CSE", "Ishita", "9.41"],
+                  ["CSE", "Neha", "8.97"],
+                  ["ECE", "Zoya", "9.05"],
+                ].map((r) => (
+                  <tr key={r[1]}>
+                    <td>{r[0]}</td>
+                    <td>{r[1]}</td>
+                    <td className="r mono">{r[2]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Journey() {
+  const t = useT();
+  const steps: [string, string, string, ReactNode][] = [
+    [t("Weeks 1–2", "Hafta 1–2", "सप्ताह 1–2"), t("Find your level", "Apna level jaano", "अपना स्तर"), t("A short check, then a plan that fits your college calendar.", "Chhota check, phir college calendar ke hisaab se plan.", "छोटी जाँच, फिर योजना।"), <CalendarRange key="a" />],
+    [t("Weeks 3–8", "Hafta 3–8", "सप्ताह 3–8"), t("Practise every evening", "Roz shaam practice", "रोज़ अभ्यास"), t("DSA, SQL and aptitude, with revision cards for every mistake.", "DSA, SQL aur aptitude; har galti ka revision card.", "हर गलती का कार्ड।"), <Flame key="b" />],
+    [t("Weeks 9–10", "Hafta 9–10", "सप्ताह 9–10"), t("Build one project", "Ek project banao", "एक प्रोजेक्ट"), t("Milestones checked by tests, a live link at the end.", "Tests se jaanche milestones, ant me live link.", "लाइव लिंक।"), <Hammer key="c" />],
+    [t("Weeks 11–12", "Hafta 11–12", "सप्ताह 11–12"), t("Prove it and share", "Saabit karo, share karo", "साबित करो, साझा करो"), t("Mocks, a Pramaan certificate and a profile link for HR.", "Mocks, Pramaan certificate aur HR ke liye profile link.", "HR के लिए लिंक।"), <BadgeCheck key="d" />],
+  ];
+  return (
+    <ol className="journey">
+      {steps.map(([w, h, p, ic], i) => (
+        <li key={i} className="j-step">
+          <span className="j-dot">{ic}</span>
+          <span className="eyebrow">{w}</span>
+          <b className="h3">{h}</b>
+          <p className="small muted">{p}</p>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Compare() {
+  const t = useT();
+  const rows: [string, boolean | string, boolean | string][] = [
+    [t("A plan for today, adjusted to exams", "Aaj ka plan, exams ke hisaab se", "आज की योजना"), false, true],
+    [t("Every solution checked, the failing line shown", "Har solution jaancha, todne wali line dikhti", "हर हल जाँचा"), t("sometimes", "kabhi kabhi", "कभी-कभी"), true],
+    [t("Hints that teach instead of answers", "Jawab nahi, sikhane wale hint", "सिखाने वाले संकेत"), false, true],
+    [t("English, Hinglish and Hindi", "English, Hinglish aur Hindi", "तीन भाषाएँ"), t("some videos", "kuch videos", "कुछ वीडियो"), true],
+    [t("Projects checked by tests", "Tests se jaanche projects", "टेस्ट से जाँचे प्रोजेक्ट"), false, true],
+    [t("Proof a recruiter can verify", "Recruiter verify kar sake aisa saboot", "सत्यापन-योग्य प्रमाण"), false, true],
+  ];
+  const cell = (v: boolean | string) => (v === true ? <Check className="t-tick" /> : v === false ? <Minus className="faint" /> : <span className="small muted">{v}</span>);
+  return (
+    <div className="cmp">
+      <div className="cmp-row cmp-h">
+        <span />
+        <b className="small">{t("On your own (videos + sheets)", "Akele (videos + sheets)", "अकेले")}</b>
+        <b className="small">
+          <LogoMark size={18} decorative /> Parikshaa
+        </b>
+      </div>
+      {rows.map(([l, a, b]) => (
+        <div key={l} className="cmp-row">
+          <span className="small">{l}</span>
+          <span className="cmp-c">{cell(a)}</span>
+          <span className="cmp-c us">{cell(b)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ---------------- page ---------------- */
 
 const FAQ: [string, string, string, string][] = [
@@ -385,6 +580,10 @@ const FAQ: [string, string, string, string][] = [
   ["Will Sahayak just give me the answer?", "Kya Sahayak seedha jawab de dega?", "In Learn mode it gives hints and questions, not full solutions. In Build mode it can suggest code as a diff you choose to apply.", "Seekho mode me hint aur sawaal, poora hal nahi. Banao mode me diff ke roop me code sujhata hai, lagana aapki marzi."],
   ["Can my college use it for placement tests?", "Kya college placement test ke liye use kar sakta hai?", "Yes. Colleges run proctored tests, see readiness by branch and manage drives from one place.", "Haan. College proctored test, branch-war readiness aur drives ek jagah se chala sakte hain."],
   ["Is my data sold?", "Kya mera data becha jaata hai?", "No. Your data is used to run your plan. You can export or delete it from Settings at any time.", "Nahi. Data sirf aapka plan chalane ke liye. Settings se kabhi bhi export ya delete karo."],
+  ["Can I share my profile with HR?", "Kya profile HR ko share kar sakte hain?", "Yes. Make a link for one company with an expiry, choose what they see, and see when they open it. Your phone number stays hidden unless you allow it.", "Haan. Ek company ke liye link banao (expiry ke saath), tay karo kya dikhe, aur dekho kab khola. Phone number tab tak chhupa jab tak aap na chaho."],
+  ["Will my LeetCode or Codeforces work count?", "Kya LeetCode ya Codeforces ka kaam bhi gina jaayega?", "Link the account and its numbers show on your profile with how they were checked. We never ask for passwords.", "Account jodo; number profile par dikhte hain, saath me kaise jaanche gaye. Password kabhi nahi maangte."],
+  ["Do ML projects need a GPU?", "Kya ML projects ke liye GPU chahiye?", "Most run in the browser. Bigger ones run on our CPU jobs, and when you need a GPU you can open the notebook in Google Colab and bring it back.", "Zyadatar browser me chalte hain. Bade hamare CPU jobs par; GPU chahiye to notebook Google Colab me kholo aur wapas lao."],
+  ["Does it work on a phone?", "Kya phone par chalta hai?", "Yes. Plans, lessons, revision, aptitude and even coding work on a phone; long projects are easier on a laptop.", "Haan. Plan, lessons, revision, aptitude aur coding bhi phone par; lambe projects laptop par aasaan."],
 ];
 
 export function LandingBody() {
@@ -394,7 +593,8 @@ export function LandingBody() {
   const links = [
     [t("Learn", "Seekho", "सीखो"), "#l-features"],
     [t("Practice", "Abhyas", "अभ्यास"), "#l-evening"],
-    [t("Build", "Banao", "बनाओ"), "#l-features"],
+    [t("Build", "Banao", "बनाओ"), "#l-code"],
+    [t("For HR", "HR ke liye", "HR के लिए"), "#l-hr"],
     [t("Colleges", "Colleges", "कॉलेज"), "#l-colleges"],
     [t("Pricing", "Pricing", "क़ीमत"), "#l-pricing"],
   ];
@@ -498,6 +698,16 @@ export function LandingBody() {
         </div>
       </section>
 
+      <section className="l-sec l-sec-tight">
+        <div className="l-wrap">
+          <div className="l-sec-h">
+            <span className="eyebrow">{t("What you can learn", "Kya kya seekh sakte ho", "क्या सीख सकते हो")}</span>
+            <h2 className="display l-h2">{t("Everything a placement asks for.", "Placement jo maange, sab yahan.", "प्लेसमेंट जो माँगे, सब यहाँ।")}</h2>
+          </div>
+          <Tracks />
+        </div>
+      </section>
+
       <section className="l-sec" id="l-evening">
         <div className="l-wrap">
           <div className="l-sec-h">
@@ -519,6 +729,52 @@ export function LandingBody() {
             </h2>
           </div>
           <Bento />
+        </div>
+      </section>
+
+      <section className="l-sec" id="l-code">
+        <div className="l-wrap l-split">
+          <div>
+            <span className="eyebrow">{t("Nothing to install", "Kuch install nahi", "कुछ इंस्टॉल नहीं")}</span>
+            <h2 className="display l-h2">{t("Code, notebooks and SQL, right in the browser.", "Code, notebook aur SQL, seedha browser me.", "कोड, नोटबुक और SQL, ब्राउज़र में।")}</h2>
+            <p className="muted l-lead">
+              {t(
+                "A Studio that feels like VS Code, a notebook that feels like Jupyter, and the same workspace for DSA and SQL. Tests run as you go; Sahayak sits beside you.",
+                "VS Code jaisa Studio, Jupyter jaisa notebook, aur DSA aur SQL ke liye ek hi workspace. Tests saath-saath chalte hain; Sahayak bagal me.",
+                "VS Code जैसा स्टूडियो, Jupyter जैसी नोटबुक।",
+              )}
+            </p>
+            <ul className="l-ticks">
+              {[
+                t("Runs on a college laptop or a phone", "College laptop ya phone par bhi chalta hai", "लैपटॉप या फ़ोन पर"),
+                t("GPU when you need it, through Google Colab", "Zaroorat ho to GPU, Google Colab se", "Colab से GPU"),
+                t("Your grade always comes from hidden tests", "Grade hamesha chhupe tests se", "छिपे टेस्ट से ग्रेड"),
+              ].map((x) => (
+                <li key={x}>
+                  <Check /> {x}
+                </li>
+              ))}
+            </ul>
+            <div className="row wrap g10 mt16">
+              <Link to="studio" className="btn lg">
+                <SquareTerminal /> {t("Open Studio", "Studio kholo", "स्टूडियो खोलें")}
+              </Link>
+              <Link to="notebook" className="btn lg ghost">
+                <NotebookPen /> {t("Open a notebook", "Notebook kholo", "नोटबुक खोलें")}
+              </Link>
+            </div>
+          </div>
+          <Workbench />
+        </div>
+      </section>
+
+      <section className="l-sec l-alt">
+        <div className="l-wrap">
+          <div className="l-sec-h">
+            <span className="eyebrow">{t("A 12-week path", "12 hafte ka raasta", "12 सप्ताह का रास्ता")}</span>
+            <h2 className="display l-h2">{t("From “where do I start” to a link you can send.", "“Kahan se shuru karun” se ek bhejne layak link tak.", "शुरुआत से भेजने लायक़ लिंक तक।")}</h2>
+          </div>
+          <Journey />
         </div>
       </section>
 
@@ -612,6 +868,43 @@ export function LandingBody() {
         </div>
       </section>
 
+      <section className="l-sec" id="l-hr">
+        <div className="l-wrap l-split">
+          <div>
+            <span className="eyebrow">{t("For recruiters", "Recruiters ke liye", "रिक्रूटर के लिए")}</span>
+            <h2 className="display l-h2">{t("One link that HR can trust.", "Ek link jis par HR bharosa kare.", "एक लिंक जिस पर HR भरोसा करे।")}</h2>
+            <p className="muted l-lead">
+              {t(
+                "Your profile puts verified skills first and says how each number was checked: our judge, proctored tests, projects with tests, and the coding sites you link.",
+                "Profile me verified skills pehle, aur har number ke saath likha kaise jaancha: hamara judge, proctored tests, tests wale projects, aur aapki judi coding sites.",
+                "सत्यापित कौशल पहले।",
+              )}
+            </p>
+            <div className="l-hr-points">
+              {[
+                [<Link2 key="a" />, t("A private link per company, with an expiry", "Har company ke liye alag link, expiry ke saath", "हर कंपनी के लिए लिंक")],
+                [<Eye key="b" />, t("You choose what HR sees; you see when they look", "Aap tay karo HR kya dekhe; aap dekho kab dekha", "आप तय करें")],
+                [<Layers key="c" />, t("LeetCode, Codeforces, GitHub and more, summed in one place", "LeetCode, Codeforces, GitHub aur bhi, ek jagah jode", "एक जगह सारांश")],
+                [<Share2 key="d" />, t("A profile card for LinkedIn, WhatsApp or a resume", "LinkedIn, WhatsApp ya resume ke liye profile card", "प्रोफ़ाइल कार्ड")],
+              ].map(([ic, l], i) => (
+                <div key={i} className="l-hr-pt">
+                  <span className="bt-ic">{ic}</span>
+                  <span className="small">{l as string}</span>
+                </div>
+              ))}
+            </div>
+            <Link to="profile" className="btn pri lg mt16">
+              {t("See a sample profile", "Sample profile dekho", "नमूना प्रोफ़ाइल")}
+              <ArrowRight />
+            </Link>
+          </div>
+          <div className="l-hr-card">
+            <ProfileCard format="wide" />
+            <span className="tiny faint">{t("Sample learner. Only verified numbers go on the card.", "Sample learner. Card par sirf verified number.", "नमूना।")}</span>
+          </div>
+        </div>
+      </section>
+
       <section className="l-sec" id="l-colleges">
         <div className="l-wrap">
           <div className="l-college">
@@ -647,6 +940,31 @@ export function LandingBody() {
               ))}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="l-sec l-alt">
+        <div className="l-wrap l-split l-split-top">
+          <div>
+            <span className="eyebrow">{t("Why not just videos?", "Sirf videos kyun nahi?", "सिर्फ़ वीडियो क्यों नहीं?")}</span>
+            <h2 className="display l-h2">{t("Watching is not practising.", "Dekhna practice nahi hai.", "देखना अभ्यास नहीं है।")}</h2>
+            <p className="muted l-lead">{t("Videos and sheets are a good start. What they can't do is check your work every evening and turn it into proof.", "Videos aur sheets achhi shuruaat hain. Par wo har shaam aapka kaam jaanch kar use saboot nahi bana sakte.", "वीडियो अच्छी शुरुआत हैं।")}</p>
+            <div className="l-rules">
+              <span className="eyebrow">{t("How Sahayak helps, and where it stops", "Sahayak kaise madad karta hai, aur kahan rukta hai", "सहायक की सीमा")}</span>
+              {[
+                [<Lightbulb key="a" />, t("Hints and questions first, not full answers", "Pehle hint aur sawaal, poora jawab nahi", "पहले संकेत")],
+                [<Lock key="b" />, t("Off during contests, mocks and Pramaan", "Contest, mock aur Pramaan me band", "प्रतियोगिता में बंद")],
+                [<Eye key="c" />, t("Hints you take show on your submission", "Liye hint submission par dikhte hain", "संकेत दिखते हैं")],
+                [<MessageSquare key="d" />, t("Says when it may be wrong; your code is the judge", "Batata hai kab galat ho sakta hai; faisla code karta hai", "कोड ही जज")],
+              ].map(([ic, l], i) => (
+                <div key={i} className="l-rule">
+                  {ic}
+                  <span className="small">{l as string}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <Compare />
         </div>
       </section>
 
@@ -783,8 +1101,8 @@ export function LandingBody() {
               </p>
             </div>
             {[
-              [t("Learn", "Seekho", "सीखो"), ["DSA sheet", "Aptitude", "SQL", "Roadmaps"]],
-              [t("Career", "Career", "करियर"), ["Companies", "Pramaan", "Jobs", "Build"]],
+              [t("Learn", "Seekho", "सीखो"), ["DSA sheet", "Aptitude", "SQL", "Roadmaps", t("ML notebooks", "ML notebooks", "ML नोटबुक")]],
+              [t("Career", "Career", "करियर"), ["Companies", "Pramaan", t("Mock interviews", "Mock interviews", "मॉक इंटरव्यू"), t("Profile for HR", "HR ke liye profile", "HR प्रोफ़ाइल"), "Jobs"]],
               [t("Company", "Company", "कंपनी"), [t("About", "About", "परिचय"), t("Colleges", "Colleges", "कॉलेज"), t("Careers", "Careers", "नौकरियाँ"), t("Contact", "Contact", "संपर्क")]],
               [t("Legal", "Legal", "क़ानूनी"), [t("Privacy", "Privacy", "गोपनीयता"), t("Terms", "Terms", "शर्तें"), t("Refunds", "Refunds", "रिफ़ंड"), "DPDP"]],
             ].map(([h, items]) => (
