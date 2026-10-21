@@ -1,70 +1,15 @@
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { X, Info, Check as CheckIcon } from "lucide-react";
 import { useT } from "../lib/core";
 
 /* ---------------- brand ---------------- */
 
-/* v4.1: the mark is a P. Three options sit on the brand page; "pass" is the default until the owner picks.
-   Brand colours are fixed in both themes. */
-export type LogoVariant = "pass" | "prompt" | "progress";
-export const LOGO_VARIANTS: LogoVariant[] = ["pass", "prompt", "progress"];
-const LOGO_BLUE = "#2349E6";
-const LOGO_GOLD = "#FFD84D";
+/* The mark (final, owner 21 Oct 2026): a P whose stem is the long arm of a gold tick, "prepare, then pass".
+   Brand colours are fixed in both themes. The same paths are the favicon (index.html, build-artifact.mjs). */
+export const LOGO_BLUE = "#2349E6";
+export const LOGO_GOLD = "#FFD84D";
 
-function LogoStrokes({ variant }: { variant: LogoVariant }) {
-  if (variant === "prompt")
-    return (
-      <>
-        <path d="M13.5 30.5V9.5l11 6.3-11 6.3" stroke="#fff" />
-        <path d="M22.5 29.5h6" stroke={LOGO_GOLD} />
-      </>
-    );
-  if (variant === "progress")
-    return (
-      <>
-        <path d="M14 30.5V9.6h7a6.2 6.2 0 0 1 6.2 6.2" stroke="#fff" />
-        <path d="M27.2 15.8a6.2 6.2 0 0 1-6.2 6.2h-7" stroke={LOGO_GOLD} />
-      </>
-    );
-  return (
-    <>
-      <path d="M16 30.5V9.5h6.2a6.1 6.1 0 0 1 0 12.2H16" stroke="#fff" />
-      <path d="M10.2 25.2 16 30.5" stroke={LOGO_GOLD} />
-    </>
-  );
-}
-
-// The mock lets the owner try each option across every screen; the choice lives in this browser only.
-const logoListeners = new Set<() => void>();
-let logoNow: LogoVariant = (() => {
-  try {
-    const v = localStorage.getItem("pk4-logo");
-    return LOGO_VARIANTS.includes(v as LogoVariant) ? (v as LogoVariant) : "pass";
-  } catch {
-    return "pass";
-  }
-})();
-export function setLogoVariant(v: LogoVariant) {
-  logoNow = v;
-  try {
-    localStorage.setItem("pk4-logo", v);
-  } catch {
-    /* private window: the choice lasts this visit */
-  }
-  logoListeners.forEach((l) => l());
-}
-export function useLogoVariant(): LogoVariant {
-  return useSyncExternalStore(
-    (l) => {
-      logoListeners.add(l);
-      return () => logoListeners.delete(l);
-    },
-    () => logoNow,
-  );
-}
-
-export function LogoMark({ size = 28, className, variant, decorative }: { size?: number; className?: string; variant?: LogoVariant; decorative?: boolean }) {
-  const chosen = useLogoVariant();
+export function LogoMark({ size = 28, className, decorative }: { size?: number; className?: string; decorative?: boolean }) {
   return (
     <svg
       className={className}
@@ -77,16 +22,17 @@ export function LogoMark({ size = 28, className, variant, decorative }: { size?:
     >
       <rect width="40" height="40" rx="11" fill={LOGO_BLUE} />
       <g fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.4">
-        <LogoStrokes variant={variant ?? chosen} />
+        <path d="M16 30.5V9.5h6.2a6.1 6.1 0 0 1 0 12.2H16" stroke="#fff" />
+        <path d="M10.2 25.2 16 30.5" stroke={LOGO_GOLD} />
       </g>
     </svg>
   );
 }
 
-export function Logo({ size = 28, tag, word = true, variant }: { size?: number; tag?: string; word?: boolean; variant?: LogoVariant }) {
+export function Logo({ size = 28, tag, word = true }: { size?: number; tag?: string; word?: boolean }) {
   return (
     <span className="logo" style={{ "--ls": `${size}px` } as CSSProperties}>
-      <LogoMark size={size} variant={variant} decorative={word} />
+      <LogoMark size={size} decorative={word} />
       {word && <span className="logo-word">parikshaa</span>}
       {tag && <span className="logo-tag">{tag}</span>}
     </span>

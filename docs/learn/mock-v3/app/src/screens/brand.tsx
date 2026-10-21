@@ -52,9 +52,6 @@ import {
   Code,
   Skel,
   Stat,
-  setLogoVariant,
-  useLogoVariant,
-  type LogoVariant,
 } from "../ui/kit";
 import { LangButton, ThemeButton } from "../ui/shell";
 
@@ -70,45 +67,6 @@ const SW: { name: string; v: string; light: string; dark: string; use: string }[
   { name: "Kesar", v: "--coin", light: "#A85A00", dark: "#FFAB2E", use: "Coins, streak" },
 ];
 
-type L3 = [string, string, string];
-const LOGO_OPTS: { id: LogoVariant; key: string; name: L3; idea: L3; good: L3; watch: L3 }[] = [
-  {
-    id: "pass",
-    key: "A",
-    name: ["Pass: P with a tick", "Pass: P + tick", "पास: P और टिक"],
-    idea: [
-      "The stem of the P is the long arm of a tick. Preparation ends in a pass.",
-      "P ka danda hi tick ki lambi line hai. Taiyari ka ant: pass.",
-      "P का डंडा ही टिक की लंबी रेखा है। तैयारी का अंत: पास।",
-    ],
-    good: ["Says what we do: practise, then pass.", "Seedha kehta hai hum kya karte hain: taiyari, phir pass.", "सीधा कहता है: तैयारी, फिर पास।"],
-    watch: ["At 16 px the tick is small, still readable.", "16 px par tick chhota hai, phir bhi padhne me aata hai.", "16 px पर टिक छोटा है, फिर भी पढ़ने में आता है।"],
-  },
-  {
-    id: "prompt",
-    key: "B",
-    name: ["Prompt: P as a code chevron", "Prompt: P code ka >", "प्रॉम्प्ट: P कोड का >"],
-    idea: [
-      "The bowl of the P is the terminal's > and a cursor waits below. Made for people who code.",
-      "P ka pet terminal ka > hai, neeche cursor intezaar me. Code likhne walon ke liye.",
-      "P का पेट टर्मिनल का > है, नीचे कर्सर।",
-    ],
-    good: ["Stands apart from every other P logo.", "Baaki P logos se bilkul alag dikhta hai.", "बाकी P लोगो से अलग दिखता है।"],
-    watch: ["Can read as a flag; says less about aptitude and interviews.", "Jhande jaisa bhi padhta hai; aptitude aur interview se kam judta hai.", "झंडे जैसा भी पढ़ता है।"],
-  },
-  {
-    id: "progress",
-    key: "C",
-    name: ["Progress: a P that fills", "Pragati: bharta hua P", "प्रगति: भरता हुआ P"],
-    idea: [
-      "The lower half of the bowl is gold, like a progress ring halfway round.",
-      "P ke pet ka neeche wala aadha peela hai, jaise progress ring aadhi bhari.",
-      "P के पेट का निचला आधा पीला है, जैसे आधी भरी प्रगति रिंग।",
-    ],
-    good: ["The clearest P at every size.", "Har size par sabse saaf P.", "हर आकार पर सबसे साफ़ P।"],
-    watch: ["A plain P on a blue square looks like a parking sign.", "Neele dabbe par seedha P parking ke board jaisa lagta hai.", "नीले डिब्बे पर सीधा P पार्किंग बोर्ड जैसा लगता है।"],
-  },
-];
 
 export function BrandBody() {
   const t = useT();
@@ -119,7 +77,6 @@ export function BrandBody() {
   const [chk, setChk] = useState(true);
   const [modal, setModal] = useState(false);
   const [replay, setReplay] = useState(0);
-  const logo = useLogoVariant();
   return (
     <div className="brand">
       <header className="map-top">
@@ -150,74 +107,89 @@ export function BrandBody() {
 
       <section className="brand-sec">
         <h2 className="brand-h2">
-          <span className="num">01</span> {t("Logo: three ways to draw a P", "Logo: P banane ke teen raaste", "लोगो: P के तीन रूप")}
+          <span className="num">01</span> {t("Logo", "Logo", "लोगो")}
+          <Badge tone="tick" icon={<CheckI size={13} />}>
+            {t("Final · 21 Oct", "Final · 21 Oct", "अंतिम · 21 अक्टूबर")}
+          </Badge>
         </h2>
         <p className="brand-lead">
           {t(
-            "Each option is the letter P with one idea inside it. Press \u201cUse across the app\u201d to see it on every screen (sidebar, Studio, certificate, landing). The choice stays in this browser.",
-            "Har option P akshar hai, andar ek idea ke saath. \u201cPoore app me lagao\u201d dabao to wahi logo har screen par dikhega (sidebar, Studio, certificate, landing). Choice isi browser me rehti hai.",
-            "हर विकल्प P अक्षर है, भीतर एक विचार के साथ। \u201cपूरे ऐप में लगाओ\u201d दबाओ तो हर स्क्रीन पर वही दिखेगा।",
+            "The stem of the P is the long arm of a gold tick: prepare, then pass. Blue and gold stay the same in both themes.",
+            "P ka danda hi sunehre tick ki lambi line hai: taiyari, phir pass. Neela aur sunehra dono theme me wahi rehte hain.",
+            "P का डंडा ही सुनहरे टिक की लंबी रेखा है: तैयारी, फिर पास। नीला और सुनहरा दोनों थीम में वही।",
           )}
         </p>
-        <div className="logo-opts">
-          {LOGO_OPTS.map((o) => {
-            const on = logo === o.id;
-            return (
-              <article className={`logo-opt ${on ? "on" : ""}`} key={o.id}>
-                <header className="lo-head">
-                  <span className="lo-name">
-                    <span className="mono faint">{o.key}</span> {t(...o.name)}
-                  </span>
-                  {on ? (
-                    <Badge tone="tick" icon={<CheckI size={13} />}>
-                      {t("In use", "Laga hua", "लगा हुआ")}
-                    </Badge>
-                  ) : (
-                    <button className="btn sm" onClick={() => setLogoVariant(o.id)}>
-                      {t("Use across the app", "Poore app me lagao", "पूरे ऐप में लगाओ")}
-                    </button>
-                  )}
-                </header>
-                <div className="lo-tile dark-tile">
-                  <div className="lo-sizes">
-                    <LogoMark size={96} variant={o.id} />
-                    <LogoMark size={48} variant={o.id} />
-                    <LogoMark size={28} variant={o.id} />
-                    <LogoMark size={16} variant={o.id} />
-                  </div>
-                  <span className="logo" style={{ ["--ls" as string]: "30px", color: "#FAFAFA" }}>
-                    <LogoMark size={30} variant={o.id} decorative />
-                    <span className="logo-word">parikshaa</span>
-                  </span>
-                </div>
-                <div className="lo-tile light-tile">
-                  <span className="logo" style={{ ["--ls" as string]: "30px", color: "#0A0A0B" }}>
-                    <LogoMark size={30} variant={o.id} decorative />
-                    <span className="logo-word">parikshaa</span>
-                  </span>
-                  <span className="lo-fav">
-                    <LogoMark size={16} variant={o.id} decorative />
-                    <span>Parikshaa · Aaj</span>
-                  </span>
-                </div>
-                <p className="lo-idea">{t(...o.idea)}</p>
-                <ul className="lo-notes">
-                  <li className="ok">{t(...o.good)}</li>
-                  <li className="warn">{t(...o.watch)}</li>
-                </ul>
-              </article>
-            );
-          })}
+        <div className="logo-final">
+          <div className="lo-tile dark-tile lo-hero">
+            <LogoMark size={120} />
+            <span className="logo" style={{ ["--ls" as string]: "40px", color: "#FAFAFA" }}>
+              <LogoMark size={40} decorative />
+              <span className="logo-word">parikshaa</span>
+            </span>
+          </div>
+          <div className="lo-tile light-tile">
+            <span className="logo" style={{ ["--ls" as string]: "40px", color: "#0A0A0B" }}>
+              <LogoMark size={40} decorative />
+              <span className="logo-word">parikshaa</span>
+            </span>
+            <span className="row g16 wrap" style={{ color: "#0A0A0B" }}>
+              <Logo size={26} tag="Learn" />
+              <Logo size={26} tag="Admin" />
+            </span>
+            <span className="lo-fav">
+              <LogoMark size={16} decorative />
+              <span>Parikshaa · Aaj</span>
+            </span>
+          </div>
+          <div className="lo-tile dark-tile">
+            <div className="lo-sizes">
+              <LogoMark size={96} />
+              <LogoMark size={48} />
+              <LogoMark size={28} />
+              <LogoMark size={16} />
+            </div>
+            <div className="app-icons">
+              <span className="app-ic">
+                <LogoMark size={56} decorative />
+                <span>Parikshaa</span>
+              </span>
+              <span className="tiny" style={{ color: "#C4C4CC" }}>
+                {t("Phone home screen and browser tab use the same mark.", "Phone ki home screen aur browser tab par yahi mark.", "फ़ोन और ब्राउज़र टैब पर यही मार्क।")}
+              </span>
+            </div>
+          </div>
         </div>
         <div className="brand-grid c3 mt16">
           <div className="brand-tile">
-            <div className="row g10">
-              <Logo size={30} tag="Learn" />
-            </div>
-            <div className="row g10">
-              <Logo size={30} tag="Admin" />
-            </div>
-            <span className="tiny faint">{t("Product tags", "Product tags", "उत्पाद टैग")}</span>
+            <svg className="lo-build" viewBox="-4 -4 48 48" role="img" aria-label={t("How the mark is drawn", "Mark kaise bana", "मार्क की बनावट")}>
+              {Array.from({ length: 9 }, (_, i) => (
+                <g key={i}>
+                  <line x1={i * 5} y1="0" x2={i * 5} y2="40" />
+                  <line x1="0" y1={i * 5} x2="40" y2={i * 5} />
+                </g>
+              ))}
+              <rect width="40" height="40" rx="11" fill="#2349E6" />
+              <g fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.4">
+                <path d="M16 30.5V9.5h6.2a6.1 6.1 0 0 1 0 12.2H16" stroke="#fff" />
+                <path d="M10.2 25.2 16 30.5" stroke="#FFD84D" />
+              </g>
+              <g className="lo-grid-over">
+                {Array.from({ length: 7 }, (_, i) => (
+                  <g key={i}>
+                    <line x1={(i + 1) * 5} y1="0" x2={(i + 1) * 5} y2="40" />
+                    <line x1="0" y1={(i + 1) * 5} x2="40" y2={(i + 1) * 5} />
+                  </g>
+                ))}
+              </g>
+              <rect className="lo-safe" x="-3" y="-3" width="46" height="46" rx="13" />
+            </svg>
+            <span className="tiny faint">
+              {t(
+                "40-unit grid, corner 11, stroke 3.4, round ends. Keep a quarter of the mark's width clear on every side.",
+                "40 ka grid, kona 11, line 3.4, gol sire. Har taraf mark ki chaudai ka chauthai hissa khaali rakho.",
+                "40 का ग्रिड, कोना 11, रेखा 3.4। हर तरफ़ चौथाई जगह ख़ाली।",
+              )}
+            </span>
           </div>
           <div className="brand-tile">
             <span className="display" style={{ fontSize: 36 }}>
@@ -228,19 +200,25 @@ export function BrandBody() {
           <div className="brand-tile">
             <div className="dont-row">
               <span className="dont">
-                <LogoMark size={40} />
+                <span style={{ filter: "hue-rotate(140deg)" }}>
+                  <LogoMark size={40} />
+                </span>
                 <X />
               </span>
-              <span className="dont" style={{ filter: "hue-rotate(140deg)" }}>
-                <LogoMark size={40} />
+              <span className="dont">
+                <span style={{ transform: "rotate(-14deg)" }}>
+                  <LogoMark size={40} />
+                </span>
                 <X />
               </span>
-              <span className="dont" style={{ transform: "rotate(-14deg)" }}>
-                <LogoMark size={40} />
+              <span className="dont">
+                <span style={{ transform: "scaleX(1.4)" }}>
+                  <LogoMark size={40} />
+                </span>
                 <X />
               </span>
             </div>
-            <span className="tiny faint">{t("Don't stretch, recolour or tilt the mark.", "Mark ko na kheencho, na rang badlo, na tirchha karo.", "मार्क न खींचें, न रंग बदलें।")}</span>
+            <span className="tiny faint">{t("Don't recolour, tilt or stretch the mark.", "Mark ka rang na badlo, na tirchha karo, na kheencho.", "मार्क का रंग न बदलें, न तिरछा करें, न खींचें।")}</span>
           </div>
         </div>
       </section>

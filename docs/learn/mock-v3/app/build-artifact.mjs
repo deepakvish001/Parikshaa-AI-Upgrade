@@ -13,8 +13,11 @@ const js = files.filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(a
 const safeJs = js.replace(/<\/script/gi, "<\\/script");
 const safeCss = css.replace(/<\/style/gi, "<\\/style");
 
+// favicon = the final logo (src/ui/kit.tsx LogoMark)
+const icon = "data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 40 40%27%3E%3Crect width=%2740%27 height=%2740%27 rx=%2711%27 fill=%27%232349E6%27/%3E%3Cg fill=%27none%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 stroke-width=%273.4%27%3E%3Cpath d=%27M16 30.5V9.5h6.2a6.1 6.1 0 0 1 0 12.2H16%27 stroke=%27%23fff%27/%3E%3Cpath d=%27M10.2 25.2 16 30.5%27 stroke=%27%23FFD84D%27/%3E%3C/g%3E%3C/svg%3E";
 const head = `<title>Parikshaa Mock v3</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="${icon}">
 <style>${safeCss}</style>`;
 const body = `<div id="root"></div>
 <script type="module">${safeJs}</script>`;

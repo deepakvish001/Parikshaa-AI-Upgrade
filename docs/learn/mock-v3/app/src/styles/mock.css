@@ -273,9 +273,13 @@
 .dont-row {
   display: flex;
   gap: 14px;
+  flex-wrap: wrap;
 }
 .dont {
   position: relative;
+  display: inline-flex;
+}
+.dont > span {
   display: inline-flex;
 }
 .dont > svg:last-child {
@@ -362,51 +366,36 @@ html.shots .mock-fab {
   border-radius: 20px;
 }
 
-/* v4.1 logo options */
+/* logo (final) */
 .brand-lead {
   max-width: 68ch;
   color: var(--ink-2);
   margin: -6px 0 18px;
 }
-.logo-opts {
+.brand-h2 .badge {
+  font-family: var(--f-ui);
+  letter-spacing: 0;
+}
+.logo-final {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-}
-.logo-opt {
-  display: flex;
-  flex-direction: column;
+  grid-template-columns: 1.1fr 1fr 1fr;
   gap: 12px;
-  padding: 14px;
-  border-radius: 16px;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  box-shadow: var(--edge);
-  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
-}
-.logo-opt.on {
-  border-color: var(--pen);
-  box-shadow: 0 0 0 1px var(--pen), var(--edge);
-}
-.lo-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  min-height: 30px;
-}
-.lo-name {
-  font-weight: 600;
-  font-size: 15px;
 }
 .lo-tile {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px;
-  border-radius: 12px;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 16px;
   border-width: 1px;
   border-style: solid;
+  min-width: 0;
+}
+.lo-hero {
+  justify-content: center;
+  align-items: flex-start;
+  gap: 28px;
 }
 .lo-sizes {
   display: flex;
@@ -425,40 +414,52 @@ html.shots .mock-fab {
   font-size: 12.5px;
   color: #45464e;
 }
-.lo-idea {
-  font-size: 14px;
-  color: var(--ink-2);
-}
-.lo-notes {
-  display: grid;
-  gap: 6px;
-  font-size: 13px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.lo-notes li {
+.app-icons {
   display: flex;
-  gap: 8px;
-  color: var(--ink-2);
+  align-items: center;
+  gap: 14px;
 }
-.lo-notes li::before {
-  content: "";
-  flex: 0 0 6px;
-  height: 6px;
-  margin-top: 7px;
-  border-radius: 50%;
-  background: var(--tick);
+.app-ic {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #fafafa;
 }
-.lo-notes li.warn::before {
-  background: var(--coin);
+.app-ic svg {
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(35, 73, 230, 0.35);
+}
+.lo-build {
+  width: 160px;
+  height: 160px;
+  max-width: 100%;
+}
+.lo-build line {
+  stroke: var(--line-2);
+  stroke-width: 0.15;
+}
+.lo-build .lo-grid-over line {
+  stroke: rgba(255, 255, 255, 0.22);
+}
+.light-tile .logo-word {
+  color: #0a0a0b;
+}
+.dark-tile .logo-word {
+  color: #fafafa;
+}
+.lo-safe {
+  fill: none;
+  stroke: var(--coin);
+  stroke-width: 0.3;
+  stroke-dasharray: 1 1;
 }
 @media (max-width: 1100px) {
-  .logo-opts {
+  .logo-final {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
 @media (max-width: 1000px) {
   .brand-grid.c4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
