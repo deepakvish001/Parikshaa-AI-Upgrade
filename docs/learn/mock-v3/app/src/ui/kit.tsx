@@ -669,7 +669,7 @@ export function Heatmap({ weeks = 26, seed = 7 }: { weeks?: number; seed?: numbe
 /* ---------------- code ---------------- */
 
 const KW = new Set(
-  "int long void return for while if else auto const using namespace class public private struct true false def in range and or not None import from break continue new static elif pass lambda select where group by order join on as limit having export default function let var await async type interface extends implements try catch throw".split(
+  "int long void return for while if else auto const using namespace class public private struct true false def in range and or not None import from break continue new static elif pass lambda select where group by order join on as limit having export default function let var await async type interface extends implements try catch throw with left right inner outer is null desc asc partition over distinct union case when then end exists between like".split(
     " ",
   ),
 );

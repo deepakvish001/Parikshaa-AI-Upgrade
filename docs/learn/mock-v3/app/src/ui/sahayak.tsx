@@ -31,7 +31,7 @@ export function SahayakPanel({
 }: {
   onClose?: () => void;
   onMinimize?: () => void;
-  context?: "problem" | "lesson" | "studio" | "general";
+  context?: "problem" | "sql" | "lesson" | "studio" | "general";
   locked?: boolean;
   full?: boolean;
 }) {
@@ -41,11 +41,54 @@ export function SahayakPanel({
   const [hint, setHint] = useState(2);
   const [draft, setDraft] = useState("");
   const body = useRef<HTMLDivElement>(null);
-  const reply = t(
-    "Yes. a[L] + a[R] can reach 3 × 10⁹, but an int stops at about 2.1 × 10⁹, so the sum wraps to a negative number and the loop moves the wrong pointer.",
-    "Haan. a[L] + a[R] 3 × 10⁹ tak ja sakta hai, par int lagbhag 2.1 × 10⁹ par ruk jaata hai; sum negative ho jaata hai aur loop galat pointer hilata hai.",
-    "हाँ। a[L] + a[R] 3 × 10⁹ तक जा सकता है, पर int लगभग 2.1 × 10⁹ पर रुक जाता है; योग ऋणात्मक हो जाता है।",
-  );
+  // What Sahayak talks about follows the workspace: the DSA problem by default, the SQL question on the SQL page.
+  const sql = context === "sql";
+  const sc = sql
+    ? {
+        ask: t("Why do I get only 3 rows?", "Sirf 3 rows kyun aa rahi hain?", "सिर्फ़ 3 पंक्तियाँ क्यों?"),
+        good: t("Your LEFT JOIN with IS NULL finds students without an offer correctly.", "LEFT JOIN aur IS NULL se bina offer wale students sahi mil rahe hain.", "LEFT JOIN और IS NULL सही है।"),
+        missLead: t("Look at line 7:", "Line 7 dekho:", "पंक्ति 7 देखें:"),
+        missCode: "LIMIT 3;",
+        q: t("LIMIT runs once on the whole result. How would you count rows again from 1 inside each branch?", "LIMIT poore nateeje par ek baar chalta hai. Har branch ke andar 1 se dobara kaise ginoge?", "हर शाखा में 1 से दोबारा कैसे गिनेंगे?"),
+        follow: t("Count per branch?", "Branch-war ginti?", "शाखा-वार गिनती?"),
+        reply: t(
+          "Yes. A window function numbers rows inside a group: PARTITION BY the branch and ORDER BY cgpa. The count starts again at 1 for every branch, and you keep the rows numbered 3 or less.",
+          "Haan. Window function group ke andar rows ko number deta hai: branch se PARTITION BY aur cgpa se ORDER BY. Har branch me ginti 1 se shuru hoti hai, aur 3 tak wali rows rakho.",
+          "हाँ। विंडो फ़ंक्शन समूह के भीतर क्रमांक देता है; हर शाखा में 1 से।",
+        ),
+        next: t("Write it yourself in a CTE, then filter outside it. Run Example 1 again.", "Khud CTE me likho, phir bahar filter karo. Example 1 phir chalao.", "CTE में लिखें, बाहर फ़िल्टर करें।"),
+        file: "query.sql",
+        diff: "LIMIT 3;\n) SELECT branch, name, cgpa FROM ranked WHERE rn <= 3;",
+        chips: [t("Explain window functions", "Window functions samjhao", "विंडो फ़ंक्शन समझाएँ"), t("Is my query slow?", "Query dheemi hai?", "क्वेरी धीमी?")],
+        ph: t("Ask about this question…", "Is sawaal ke baare me poochho…", "इस प्रश्न के बारे में पूछें…"),
+      }
+    : {
+        ask: t("Why does my code fail test 23?", "Mera code test 23 par fail kyun?", "मेरा कोड टेस्ट 23 पर क्यों फेल?"),
+        good: t("Two pointers is the right idea, and you move L and R the right way.", "Two pointers sahi idea hai, aur L, R sahi taraf hilte hain.", "दो पॉइंटर सही विचार है।"),
+        missLead: t("Look at line 4:", "Line 4 dekho:", "पंक्ति 4 देखें:"),
+        missCode: "int sum = a[L] + a[R];",
+        q: t(
+          "If a[i] can be 1.5 × 10⁹, what happens when you add two of them in an int?",
+          "Agar a[i] 1.5 × 10⁹ tak ho, to do ko int me jodne par kya hoga?",
+          "अगर a[i] 1.5 × 10⁹ तक हो, तो दो को int में जोड़ने पर क्या होगा?",
+        ),
+        follow: t("It overflows?", "Overflow ho jaata hai?", "ओवरफ़्लो हो जाता है?"),
+        reply: t(
+          "Yes. a[L] + a[R] can reach 3 × 10⁹, but an int stops at about 2.1 × 10⁹, so the sum wraps to a negative number and the loop moves the wrong pointer.",
+          "Haan. a[L] + a[R] 3 × 10⁹ tak ja sakta hai, par int lagbhag 2.1 × 10⁹ par ruk jaata hai; sum negative ho jaata hai aur loop galat pointer hilata hai.",
+          "हाँ। a[L] + a[R] 3 × 10⁹ तक जा सकता है, पर int लगभग 2.1 × 10⁹ पर रुक जाता है; योग ऋणात्मक हो जाता है।",
+        ),
+        next: t(
+          "Which type can hold 3 × 10⁹? Change line 4 yourself and run test 23 again.",
+          "Kaunsa type 3 × 10⁹ rakh sakta hai? Line 4 khud badlo aur test 23 phir chalao.",
+          "कौन-सा टाइप 3 × 10⁹ रख सकता है? पंक्ति 4 खुद बदलें।",
+        ),
+        file: "solution.cpp",
+        diff: "int sum = a[L] + a[R];\nlong long sum = (long long)a[L] + a[R];",
+        chips: [t("Explain two pointers", "Two pointers samjhao", "दो पॉइंटर समझाएँ"), t("Check my complexity", "Complexity jaancho", "जटिलता जाँचें")],
+        ph: t("Ask about this problem…", "Is problem ke baare me poochho…", "इस प्रश्न के बारे में पूछें…"),
+      };
+  const reply = sc.reply;
   const typed = useTyped(reply, asked);
   useEffect(() => {
     body.current?.scrollTo({ top: body.current.scrollHeight, behavior: "smooth" });
@@ -56,7 +99,9 @@ export function SahayakPanel({
       ? t("Lesson · Two pointers", "Lesson · Two pointers", "पाठ · दो पॉइंटर")
       : context === "studio"
         ? t("expense-split · src/api/split.ts", "expense-split · src/api/split.ts", "expense-split · src/api/split.ts")
-        : t("Pair with target sum · line 4", "Pair with target sum · line 4", "Pair with target sum · पंक्ति 4");
+        : sql
+          ? t("Top 3 per branch · query.sql · line 7", "Top 3 per branch · query.sql · line 7", "शीर्ष 3 · query.sql · पंक्ति 7")
+          : t("Pair with target sum · line 4", "Pair with target sum · line 4", "Pair with target sum · पंक्ति 4");
 
   return (
     <div className={`sahayak ${full ? "ai-full" : ""}`}>
@@ -133,14 +178,14 @@ export function SahayakPanel({
                 : t("Build mode: suggests code changes as a diff you can apply or ignore.", "Banao mode: code ka badlaav diff me, lagao ya chhodo.", "बनाओ मोड: बदलाव diff में।")}
             </div>
 
-            <div className="msg me">{t("Why does my code fail test 23?", "Mera code test 23 par fail kyun?", "मेरा कोड टेस्ट 23 पर क्यों फेल?")}</div>
+            <div className="msg me">{sc.ask}</div>
 
             <div className="msg ai-msg">
               <div className="ai-block good">
                 <CircleCheck />
                 <div>
                   <b>{t("What you got right", "Kya theek hai", "क्या सही है")}</b>
-                  <p>{t("Two pointers is the right idea, and you move L and R the right way.", "Two pointers sahi idea hai, aur L, R sahi taraf hilte hain.", "दो पॉइंटर सही विचार है।")}</p>
+                  <p>{sc.good}</p>
                 </div>
               </div>
               <div className="ai-block miss">
@@ -148,19 +193,13 @@ export function SahayakPanel({
                 <div>
                   <b>{t("What is missing", "Kya chhoota", "क्या छूटा")}</b>
                   <p>
-                    {t("Look at line 4:", "Line 4 dekho:", "पंक्ति 4 देखें:")} <code className="inl">int sum = a[L] + a[R];</code>
+                    {sc.missLead} <code className="inl">{sc.missCode}</code>
                   </p>
                 </div>
               </div>
               <div className="ai-q">
                 <Lightbulb />
-                <span>
-                  {t(
-                    "If a[i] can be 1.5 × 10⁹, what happens when you add two of them in an int?",
-                    "Agar a[i] 1.5 × 10⁹ tak ho, to do ko int me jodne par kya hoga?",
-                    "अगर a[i] 1.5 × 10⁹ तक हो, तो दो को int में जोड़ने पर क्या होगा?",
-                  )}
-                </span>
+                <span>{sc.q}</span>
               </div>
               <div className="row g6 mt8">
                 <span className="tiny faint">
@@ -185,7 +224,7 @@ export function SahayakPanel({
 
             {asked && (
               <>
-                <div className="msg me">{t("It overflows?", "Overflow ho jaata hai?", "ओवरफ़्लो हो जाता है?")}</div>
+                <div className="msg me">{sc.follow}</div>
                 <div className="msg ai-msg">
                   <p>
                     {typed}
@@ -195,23 +234,17 @@ export function SahayakPanel({
                     (mode === "build" ? (
                       <div className="ai-diff">
                         <div className="row between tiny faint" style={{ padding: "6px 10px" }}>
-                          <span className="mono">solution.cpp</span>
+                          <span className="mono">{sc.file}</span>
                           <span>1 line</span>
                         </div>
-                        <Code code={"int sum = a[L] + a[R];\nlong long sum = (long long)a[L] + a[R];"} bad={[1]} good={[2]} nonum />
+                        <Code code={sc.diff} bad={[1]} good={[2]} nonum />
                         <div className="row g6" style={{ padding: 8 }}>
                           <button className="btn sm pri">{t("Apply", "Lagao", "लागू करें")}</button>
                           <button className="btn sm ghost">{t("Ignore", "Chhodo", "छोड़ें")}</button>
                         </div>
                       </div>
                     ) : (
-                      <p className="muted mt8">
-                        {t(
-                          "Which type can hold 3 × 10⁹? Change line 4 yourself and run test 23 again.",
-                          "Kaunsa type 3 × 10⁹ rakh sakta hai? Line 4 khud badlo aur test 23 phir chalao.",
-                          "कौन-सा टाइप 3 × 10⁹ रख सकता है? पंक्ति 4 खुद बदलें।",
-                        )}
-                      </p>
+                      <p className="muted mt8">{sc.next}</p>
                     ))}
                 </div>
               </>
@@ -221,11 +254,14 @@ export function SahayakPanel({
           <div className="ai-sugg">
             {!asked && (
               <button className="chip" onClick={() => setAsked(true)}>
-                {t("It overflows?", "Overflow ho jaata hai?", "ओवरफ़्लो हो जाता है?")}
+                {sc.follow}
               </button>
             )}
-            <button className="chip">{t("Explain two pointers", "Two pointers samjhao", "दो पॉइंटर समझाएँ")}</button>
-            <button className="chip">{t("Check my complexity", "Complexity jaancho", "जटिलता जाँचें")}</button>
+            {sc.chips.map((c) => (
+              <button key={c} className="chip">
+                {c}
+              </button>
+            ))}
           </div>
 
           <form
@@ -239,7 +275,7 @@ export function SahayakPanel({
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder={t("Ask about this problem…", "Is problem ke baare me poochho…", "इस प्रश्न के बारे में पूछें…")}
+              placeholder={sc.ph}
               rows={2}
             />
             <div className="row">
