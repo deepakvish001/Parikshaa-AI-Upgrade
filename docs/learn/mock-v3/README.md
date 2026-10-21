@@ -1,8 +1,8 @@
-# Learn v2: clickable mock v4.1, "Kaagaz aur Syaahi" (20 Oct 2026)
+# Learn v2: clickable mock v4.2, "Kaagaz aur Syaahi" (21 Oct 2026)
 
 Mock v3 dekh kar owner ne kaha: "sab achha laga, bas font AI wala lag raha hai; har page complete dark black, sab saaf
 dikhe, light me bhi; har border, box, animation refine karo; Code Studio VS Code jaisa; admin ka har page har pehlu se;
-human feel." Ye v4 wahi hai: **68 screens** (43 learner + naksha/brand, 25 admin), wahi app aur wahi link. Faisla aur
+human feel." Ye v4 tha: 68 screens (43 learner + naksha/brand, 25 admin); ab v4.2 me **72** (neeche), wahi app aur wahi link. Faisla aur
 wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../DESIGN-V3.md)). Purane: v1
 [../mock/README.md](../mock/README.md), v2 [../mock-v2/README.md](../mock-v2/README.md).
 
@@ -10,6 +10,33 @@ wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../
 Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
+
+## v4.2 me naya (21 Oct)
+
+Owner (21 Oct): "A wala logo final; user aur admin dono taraf features; landing aur behtar; AI/ML ke liye Colab jaisa;
+SQL page DSA jaisa; profile me sab, HR se share, baaki platforms ka saar, profile card; aur kya naya; code ke liye kya
+chahiye; sab GitHub par taaki doosre account se wahi design bane." Ab **72 screens** (45 learner + naksha/brand, 27 admin).
+
+- **Logo A final** ("Pass": P ka danda hi sunehre tick ki lambi line). B/C hataaye. Favicon bhi yahi. `#brand` par
+  banawat ka grid, khaali jagah, app icon, don'ts.
+- **SQL = DSA jaisa** (`#sql`): wahi workspace (Problem / Editorial / Submissions, default 2 pane, Sahayak teesra), schema
+  cards, example ki tables, hints, `query.sql` editor + dialect, Tests / WA / Error / AC 6 datasets par. Sahayak SQL ki
+  baat karta hai (LIMIT vs window function).
+- **Profile HR ke liye** (`#profile`): mazbooti meter, 6 KPI, skills saboot ke saath, padhai/internship, 6 coding sites ka
+  saar (har number ke saath "kaise jaancha"), **"HR ko share karo"** (ek company ka link expiry ke saath ya public; HR kya
+  dekhe toggles; WhatsApp/LinkedIn/Email/QR/PDF), **"HR ki nazar se"** view, **profile card** 3 size me, "kisne dekha".
+- **ML notebook** (`#notebook`): Jupyter jaise cells, DataFrame, chart, leakage ki chetavani, CPU job; runtime: browser
+  Python / Parikshaa CPU / **Colab me GPU** (Drive se jaata-aata hai; grade yahin, chhupa test bahar nahi). Banao me
+  "Mandi Price Forecast" project.
+- **AI mock interview** (`#interview`): setup → live (awaaz + code, Sahayak band) → report (5 rubric; "hiring score nahi").
+- **Landing gehra** (`#landing`): 8 tracks, "kuch install nahi" (Studio / Notebook / SQL), 12 hafte ka raasta, HR ke liye
+  (asli profile card), videos vs Parikshaa tulna, Sahayak ke niyam, 4 naye FAQ.
+- **Admin:** `#adm-runtime` (browser / CPU / Colab / GPU labs ka kharch aur seema, linked sites ki haalat + band karo,
+  keys sirf "set hai ya nahi") aur `#adm-recruiters` (share links, recruiter domain jaanch, fee maangne jaisi
+  shikayatein, suspend = 4-eyes). Roles matrix me dono module.
+- **Docs (code ke liye):** [../DESIGN-SYSTEM.md](../DESIGN-SYSTEM.md) (design ka ek sach),
+  [../CODE-READINESS.md](../CODE-READINESS.md) (aapse kya chahiye, connectors, phases),
+  [../FEATURE-IDEAS.md](../FEATURE-IDEAS.md) (aur kya jod sakte hain).
 
 ## v4.1 me naya (owner ki raay ke baad, 20 Oct)
 
@@ -64,7 +91,7 @@ par animation, smoothness, naye features. Kya bana:
 | Hissa | Route | Kya dikhata hai | Screenshot |
 |---|---|---|---|
 | Naksha | `#map` | Har screen ka card aur flow; yahin se kuch bhi kholo | [desktop](screens/desktop/map-1440-dark.jpg) |
-|  | `#brand` | P se logo ke 3 option ("Poore app me lagao"), rang (kaala aur kaagaz), IBM Plex font, components, motion | [desktop](screens/desktop/brand-1440-dark.jpg) |
+|  | `#brand` | **Final logo A** (banawat, khaali jagah, app icon, don'ts), rang (kaala aur kaagaz), IBM Plex font, components, motion | [desktop](screens/desktop/brand-1440-dark.jpg) |
 | Pehli baar | `#landing` | Home: hero me kaagaz par aaj ka plan, din kaise chalta hai, kya alag hai (sabse chhota fail test, scrub hone wala editorial, Sahayak pehle poochhta), aptitude, company prep source ke saath, Banao | [desktop](screens/desktop/landing-1440-dark.jpg) · [light](screens/light/landing-1440-light.jpg) · [phone](screens/phone/landing-390-dark.jpg) · [हिंदी](screens/hindi/landing-1440-dark-hi.jpg) |
 |  | `#login` | Google, phone OTP, email; graph-paper par | [desktop](screens/desktop/login-1440-dark.jpg) |
 |  | `#onboarding` | 6 sawaal, side me plan banta dikhta hai | [desktop](screens/desktop/onboarding-1440-dark.jpg) |
@@ -80,7 +107,7 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#sheet` | Kadam-dar-kadam DSA sheet | [desktop](screens/desktop/sheet-1440-dark.jpg) |
 |  | `#problem` | Pehle **Statement | Code**; Sahayak khole to teesra pane khud adjust hokar, band karo to wapas do; "Mock: see each state" se WA/TLE/AC | [desktop](screens/desktop/problem-1440-dark.jpg) · [light](screens/light/problem-1440-light.jpg) · [phone](screens/phone/problem-390-dark.jpg) · [हिंदी](screens/hindi/problem-1440-dark-hi.jpg) |
 |  | `#editorial` | Brute → better → best, dry run slider | [desktop](screens/desktop/editorial-1440-dark.jpg) · [light](screens/light/editorial-1440-light.jpg) |
-|  | `#sql` | Schema | query | nateeja, Sahayak pane | [desktop](screens/desktop/sql-1440-dark.jpg) |
+|  | `#sql` | **DSA jaisa workspace:** Problem / Editorial / Submissions, schema, example tables, query editor, Tests / WA / Error / AC | [desktop](screens/desktop/sql-1440-dark.jpg) · [light](screens/light/sql-1440-light.jpg) · [phone](screens/phone/sql-390-dark.jpg) |
 |  | `#aptitude` | Quant, logical, verbal, mocks | [desktop](screens/desktop/aptitude-1440-dark.jpg) |
 |  | `#apt-set` | Tareeka aur shortcut ke saath practice set | [desktop](screens/desktop/apt-set-1440-dark.jpg) |
 |  | `#apt-mock` | Asli jaisa timed mock (Sahayak band, taala) | [desktop](screens/desktop/apt-mock-1440-dark.jpg) · [phone](screens/phone/apt-mock-390-dark.jpg) |
@@ -96,9 +123,11 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#build` | **Naya Banao hub:** jaari project ka asli preview, tracks, project gallery, labs | [desktop](screens/desktop/build-1440-dark.jpg) · [phone](screens/phone/build-390-dark.jpg) |
 |  | `#project` | **Naya project page:** spec, milestones (acceptance + tests), rubric, Studio me kholo | [desktop](screens/desktop/project-1440-dark.jpg) |
 |  | `#studio` | **VS Code jaisa Code Studio:** title bar + command center (Ctrl+Shift+P), activity bar, explorer (git M/U, error ginti), tabs + breadcrumbs, code lens, galat line ke neeche error, minimap, live preview doosre group me, panel (Problems, Output, Terminal, Test results, Ports), status bar, Sahayak daayein (Ctrl+J), Ctrl+B / Ctrl+` | [desktop](screens/desktop/studio-1440-dark.jpg) · [light](screens/light/studio-1440-light.jpg) · [phone](screens/phone/studio-390-dark.jpg) |
+|  | `#notebook` | **ML notebook:** cells, DataFrame, chart, leakage check, CPU job; runtime browser / CPU / Colab GPU | [desktop](screens/desktop/notebook-1440-dark.jpg) · [light](screens/light/notebook-1440-light.jpg) · [phone](screens/phone/notebook-390-dark.jpg) |
 |  | `#pramaan` | Proctored certificate test | [desktop](screens/desktop/pramaan-1440-dark.jpg) |
 |  | `#certificate` | Mohar wala certificate, QR se verify | [desktop](screens/desktop/certificate-1440-dark.jpg) |
-|  | `#profile` | Verified vs khud bataya | [desktop](screens/desktop/profile-1440-dark.jpg) · [phone](screens/phone/profile-390-dark.jpg) |
+|  | `#profile` | **HR ke liye profile:** skills saboot ke saath, coding sites ka saar, share link (expiry, view log), "HR ki nazar se", profile card | [desktop](screens/desktop/profile-1440-dark.jpg) · [light](screens/light/profile-1440-light.jpg) · [phone](screens/phone/profile-390-dark.jpg) · [हिंदी](screens/hindi/profile-1440-dark-hi.jpg) |
+|  | `#interview` | **AI mock interview:** setup, live (awaaz + code), report (rubric) | [desktop](screens/desktop/interview-1440-dark.jpg) · [light](screens/light/interview-1440-light.jpg) · [phone](screens/phone/interview-390-dark.jpg) |
 |  | `#jobs` | Jobs, applications, resume par laal-pen check | [desktop](screens/desktop/jobs-1440-dark.jpg) |
 | Mera | `#lists` | Problem lists | [desktop](screens/desktop/lists-1440-dark.jpg) |
 |  | `#notes` | Apni galtiyon se notes | [desktop](screens/desktop/notes-1440-dark.jpg) |
@@ -121,6 +150,7 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-learner` | Ek learner: email/phone masked (reveal log hota), plan, activity, "learner ki nazar se" 4-eyes | [desktop](screens/desktop/adm-learner-1440-dark.jpg) · [phone](screens/phone/adm-learner-390-dark.jpg) |
 |  | `#adm-support` | Ticket aur "galti batao" ek inbox, andar ka note | [desktop](screens/desktop/adm-support-1440-dark.jpg) |
 |  | `#adm-community` | Flags (rakho, spoiler, mute, ban 4-eyes), experiences, saare posts, mute/ban + appeal | [desktop](screens/desktop/adm-community-1440-dark.jpg) |
+|  | `#adm-recruiters` | Share links aur views, recruiter companies + domain jaanch, shikayatein (fee maangna), suspend 4-eyes | [desktop](screens/desktop/adm-recruiters-1440-dark.jpg) |
 |  | `#adm-commerce` | Plans, limits, coupons, orders, ₹5,000+ refund par 4-eyes, GST invoice | [desktop](screens/desktop/adm-commerce-1440-dark.jpg) |
 |  | `#adm-contests` | Saare contests ki list, live monitor, setup, copy check, rating publish | [desktop](screens/desktop/adm-contests-1440-dark.jpg) |
 |  | `#adm-ai` | Sahayak AI: kharch, cap, limits, prompts (A/B), evals, har mode ka kill switch | [desktop](screens/desktop/adm-ai-1440-dark.jpg) |
@@ -131,10 +161,16 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-audit` | Audit log: kaun, kya, kab, wajah, pehle/baad; hash chain | [desktop](screens/desktop/adm-audit-1440-dark.jpg) |
 |  | `#adm-security` | SSO, IP allowlist, session, 4-eyes niyam, learner data, API keys, DPDP requests | [desktop](screens/desktop/adm-security-1440-dark.jpg) |
 |  | `#adm-system` | Health, feature flags, maintenance, site settings | [desktop](screens/desktop/adm-system-1440-dark.jpg) |
+|  | `#adm-runtime` | Code kahan chalta (browser, CPU, Colab, GPU), kharch, plan-war seema, linked sites, keys ki haalat | [desktop](screens/desktop/adm-runtime-1440-dark.jpg) |
 
-Screenshots: `screens/desktop` (68, 1440, kaala), `screens/light` (12), `screens/phone` (14, 390, kaala), `screens/hindi` (4).
+Screenshots: `screens/desktop` (72, 1440, kaala), `screens/light` (16), `screens/phone` (17, 390, kaala), `screens/hindi` (5).
 
-## Jaanch (20 Oct, v4.1)
+## Jaanch (21 Oct, v4.2)
+
+- v4.2 ke baad: **72 screens × 7** (1440 kaala, 1440 light, 1024 kaala, 390 kaala, 390 light, 1440 kaala हिंदी, 390 light
+  हिंदी) aur admin ke **27 route 5 role** (Finance, Analyst, Editor, Moderator, Support) me: overflow 0, console error 0.
+  Naye screens click karke chalaye: SQL ke tabs aur states, profile ke tabs + share modal + "HR ki nazar se", notebook ka
+  runtime menu + Colab modal + Sahayak + "Sab chalao", interview ke teeno kadam, admin ke saare tabs.
 
 - v4.1 ke baad dobara: 68 screens × 7 aur admin ke 25 route 4 role me, sab saaf. Problem ke pane naap kar dekhe:
   default [601, 813, 0] px, Sahayak khula [423, 572, 409], band karne par wapas [601, 813, 0]. Studio me hover, quick
@@ -160,14 +196,15 @@ Plus aur campus ka daam `₹[...]` (owner tay karega); TUF/LeetCode ka koi naam,
 
 ## Owner ke faisle
 
-Pichhli baar ke jawab (20 Oct): font + kaala ✅ · roles + 4-eyes ✅ · daam testing ke baad · asli code abhi ruko.
+Ho gaye: font + kaala ✅ · roles + 4-eyes ✅ · **logo A ✅ (21 Oct)** · daam testing ke baad · asli code abhi ruka.
 
-Ab chahiye:
+Ab chahiye ([../CODE-READINESS.md](../CODE-READINESS.md) §1):
 
-1. **Logo:** A Pass, B Prompt ya C Pragati? (`#brand` par "Poore app me lagao" se har screen par aazma lo.)
-2. Problem ka 2 → 3 pane wala badlav ab theek laga?
-3. Studio ke naye hisse (quick fix, inline Sahayak, diff, test run) me kuch aur chahiye?
-4. Notifications aur shortcuts jaise aur features chahiye, ya ab asli code shuru karein?
+1. v4.2 dekh kar: aur kuch badle, ya **"shuru karo"** (F1)?
+2. Naya brand **sab jagah** (exam app + console bhi) ya sirf Learn (F2)?
+3. Pehle launch me kaunse screens (F3)?
+4. LeetCode / CodeChef ka data kaise (F4)?
+5. [../FEATURE-IDEAS.md](../FEATURE-IDEAS.md) me se kaunse agle?
 
 ## Chalana aur badalna
 
