@@ -16,6 +16,7 @@ import { BuildBody, ProjectBody, ProjectRail } from "./build";
 import { StudioScreen } from "./studio";
 import { CompaniesBody, CompanyBody, ExperiencesBody, PramaanBody, CertificateBody, JobsBody } from "./career";
 import { ProfileBody, ProfileRail } from "./profile";
+import { NotebookScreen } from "./notebook";
 import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mine";
 import { AdminLogin, AdminDashboard, ReviewQueue, Approvals } from "../admin/a-core";
 import { AdmProblems, AdmProblemEditor, AdmAptitude, AdmLessons, AdmRoadmaps, AdmCompanies, AdmFactory } from "../admin/a-content";
@@ -56,6 +57,7 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   build: { Body: BuildBody },
   project: { Body: ProjectBody, Rail: ProjectRail },
   studio: { Body: StudioScreen },
+  notebook: { Body: NotebookScreen },
   companies: { Body: CompaniesBody },
   company: { Body: CompanyBody },
   experiences: { Body: ExperiencesBody },

@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Link, useT } from "../lib/core";
 import { Badge, Level, Ring, Seg, Tabs, Card } from "../ui/kit";
+import { NotebookPrev } from "./notebook";
 
 /* ---------------- mini app previews (pure CSS, not screenshots) ---------------- */
 
@@ -189,12 +190,13 @@ export function BrowserFrame({ url, children, className }: { url: string; childr
 
 /* ---------------- hub ---------------- */
 
-type Proj = { id: string; name: string; out: [string, string, string]; track: string; stack: string[]; lvl: 1 | 2 | 3 | 4 | 5; hours: number; ms: number; status: "new" | "doing" | "shipped"; p?: number; prev: ReactNode; proves: string };
+type Proj = { id: string; name: string; out: [string, string, string]; track: string; stack: string[]; lvl: 1 | 2 | 3 | 4 | 5; hours: number; ms: number; status: "new" | "doing" | "shipped"; p?: number; prev: ReactNode; proves: string; to?: string };
 const PROJECTS: Proj[] = [
   { id: "split", name: "Hostel Split", out: ["Split bills in your hostel room, settle up in fewest transfers", "Hostel room ke bills baanto, kam se kam transfers me hisaab", "हॉस्टल बिल बाँटें"], track: "web", stack: ["React", "Node", "Postgres"], lvl: 3, hours: 14, ms: 5, status: "doing", p: 52, prev: <SplitApp />, proves: "Full-stack L1" },
   { id: "track", name: "Placement Tracker", out: ["A board for every application, OA and interview", "Har application, OA aur interview ka board", "हर आवेदन का बोर्ड"], track: "web", stack: ["React", "LocalStorage"], lvl: 2, hours: 8, ms: 4, status: "shipped", prev: <KanbanApp />, proves: "Frontend L1" },
   { id: "short", name: "Fest Link Shortener", out: ["Short links with click charts for your college fest", "College fest ke liye short links aur click chart", "छोटे लिंक"], track: "backend", stack: ["Node", "Redis", "SQL"], lvl: 3, hours: 10, ms: 4, status: "new", prev: <ShortenerApp />, proves: "Backend L1" },
   { id: "canteen", name: "Canteen Pre-order", out: ["Order before the bell, pick up without the queue", "Bell se pehle order, bina line ke pickup", "पहले ऑर्डर"], track: "mobile", stack: ["React Native", "Firebase"], lvl: 3, hours: 16, ms: 5, status: "new", prev: <CanteenApp />, proves: "Mobile L1" },
+  { id: "mandi", name: "Mandi Price Forecast", out: ["Predict tomorrow's onion price from 30 days of mandi data, in a notebook", "30 din ke mandi data se kal ka pyaaz ka bhav, notebook me", "कल का भाव, नोटबुक में"], track: "ai", stack: ["Python", "pandas", "scikit-learn"], lvl: 3, hours: 10, ms: 4, status: "doing", p: 40, prev: <NotebookPrev />, proves: "ML L1", to: "notebook" },
   { id: "resume", name: "Resume Field Extractor", out: ["Pull name, skills and CGPA from a PDF resume", "PDF resume se naam, skills, CGPA nikaalo", "रिज़्यूमे से जानकारी"], track: "ai", stack: ["Python", "LLM API", "FastAPI"], lvl: 4, hours: 12, ms: 4, status: "new", prev: <ResumeApp />, proves: "Applied AI L1" },
   { id: "chat", name: "Class Chat", out: ["A realtime chat for your class with rooms", "Class ke liye realtime chat, rooms ke saath", "रियलटाइम चैट"], track: "backend", stack: ["WebSocket", "Node", "Postgres"], lvl: 4, hours: 18, ms: 5, status: "new", prev: <ChatApp />, proves: "Backend L2" },
 ];
@@ -294,7 +296,7 @@ export function BuildBody() {
       </div>
       <div className="proj-grid">
         {list.map((p) => (
-          <Link key={p.id} to="project" className="proj card hov">
+          <Link key={p.id} to={p.to ?? "project"} className="proj card hov">
             <div className="proj-prev">{p.prev}</div>
             <div className="proj-b">
               <div className="row between">

@@ -31,7 +31,7 @@ export function SahayakPanel({
 }: {
   onClose?: () => void;
   onMinimize?: () => void;
-  context?: "problem" | "sql" | "lesson" | "studio" | "general";
+  context?: "problem" | "sql" | "notebook" | "lesson" | "studio" | "general";
   locked?: boolean;
   full?: boolean;
 }) {
@@ -43,7 +43,27 @@ export function SahayakPanel({
   const body = useRef<HTMLDivElement>(null);
   // What Sahayak talks about follows the workspace: the DSA problem by default, the SQL question on the SQL page.
   const sql = context === "sql";
-  const sc = sql
+  const nb = context === "notebook";
+  const sc = nb
+    ? {
+        ask: t("Why is my RMSE so good?", "Mera RMSE itna achha kyun?", "RMSE इतना अच्छा क्यों?"),
+        good: t("Splitting by time without shuffling is right for prices, and lag1 is a fair feature.", "Bhav ke liye bina shuffle time se split sahi hai, aur lag1 theek feature hai.", "समय से बाँटना सही है।"),
+        missLead: t("Look at cell 2:", "Cell 2 dekho:", "सेल 2 देखें:"),
+        missCode: 'df["roll7"] = df["modal_price"].rolling(7).mean()',
+        q: t("On a given day, which prices go into that day's 7-day average? Is the price you predict one of them?", "Kisi din ke 7 din ke average me kaunse bhav aate hain? Jo bhav aap predict kar rahe ho, kya wo bhi?", "क्या आज का भाव भी शामिल है?"),
+        follow: t("So it leaks the answer?", "To jawab leak ho raha hai?", "तो जवाब लीक हो रहा है?"),
+        reply: t(
+          "Yes. rolling(7) on day t includes the price at t, so the model sees the answer while training. Shift by one day before rolling, so day t only uses prices up to t−1.",
+          "Haan. Din t par rolling(7) me t ka bhav bhi hai, isliye model training me jawab dekh leta hai. Rolling se pehle ek din shift karo, taaki din t sirf t−1 tak ke bhav use kare.",
+          "हाँ। रोलिंग से पहले एक दिन शिफ़्ट करें।",
+        ),
+        next: t("Change cell 2 yourself and run cells 2 to 4 again. The RMSE will go up; that number is the honest one.", "Cell 2 khud badlo aur cell 2 se 4 phir chalao. RMSE badhega; wahi sachcha number hai.", "सेल 2 बदलें और फिर चलाएँ।"),
+        file: "forecast.ipynb",
+        diff: 'df["roll7"] = df["modal_price"].rolling(7).mean()\ndf["roll7"] = df["modal_price"].shift(1).rolling(7).mean()',
+        chips: [t("Explain data leakage", "Data leakage samjhao", "डेटा लीकेज समझाएँ"), t("What should I try next?", "Aage kya try karun?", "आगे क्या करूँ?")],
+        ph: t("Ask about this notebook…", "Is notebook ke baare me poochho…", "इस नोटबुक के बारे में पूछें…"),
+      }
+    : sql
     ? {
         ask: t("Why do I get only 3 rows?", "Sirf 3 rows kyun aa rahi hain?", "सिर्फ़ 3 पंक्तियाँ क्यों?"),
         good: t("Your LEFT JOIN with IS NULL finds students without an offer correctly.", "LEFT JOIN aur IS NULL se bina offer wale students sahi mil rahe hain.", "LEFT JOIN और IS NULL सही है।"),
@@ -99,7 +119,9 @@ export function SahayakPanel({
       ? t("Lesson · Two pointers", "Lesson · Two pointers", "पाठ · दो पॉइंटर")
       : context === "studio"
         ? t("expense-split · src/api/split.ts", "expense-split · src/api/split.ts", "expense-split · src/api/split.ts")
-        : sql
+        : nb
+          ? t("Mandi price forecast · cell 2", "Mandi bhav forecast · cell 2", "मंडी भाव · सेल 2")
+          : sql
           ? t("Top 3 per branch · query.sql · line 7", "Top 3 per branch · query.sql · line 7", "शीर्ष 3 · query.sql · पंक्ति 7")
           : t("Pair with target sum · line 4", "Pair with target sum · line 4", "Pair with target sum · पंक्ति 4");
 

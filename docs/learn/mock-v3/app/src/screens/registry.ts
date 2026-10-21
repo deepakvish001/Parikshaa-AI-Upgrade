@@ -147,6 +147,7 @@ export const SCREENS: ScreenDef[] = [
   s({ id: "build", group: "career", layout: "shell", nav: true, icon: Hammer, title: ["Build", "Banao", "बनाओ"], desc: ["Projects and labs you ship", "Projects aur labs, ship karo", "प्रोजेक्ट और लैब"] }),
   s({ id: "project", group: "career", layout: "shell", parent: "build", icon: FolderKanban, title: ["Project", "Project", "प्रोजेक्ट"], desc: ["Spec, milestones, rubric", "Spec, milestones, rubric", "स्पेक, माइलस्टोन"] }),
   s({ id: "studio", group: "career", layout: "focus", parent: "build", icon: SquareTerminal, title: ["Code Studio", "Code Studio", "कोड स्टूडियो"], desc: ["Files, editor, live preview, tests", "Files, editor, preview, tests", "फ़ाइलें, प्रीव्यू"] }),
+  s({ id: "notebook", group: "career", layout: "focus", parent: "build", icon: NotebookPen, title: ["ML notebook", "ML notebook", "ML नोटबुक"], desc: ["Python in the browser; CPU jobs; GPU via Colab", "Browser me Python; CPU job; Colab se GPU", "ब्राउज़र में Python; Colab से GPU"] }),
   s({ id: "pramaan", group: "career", layout: "shell", nav: true, icon: BadgeCheck, title: ["Pramaan", "Pramaan", "प्रमाण"], desc: ["Proctored skill certificates", "Proctored certificate", "प्रमाणपत्र"] }),
   s({ id: "certificate", group: "career", layout: "shell", parent: "pramaan", icon: ScrollText, title: ["Certificate", "Certificate", "प्रमाणपत्र"], desc: ["Verify by QR, share", "QR se verify, share", "QR से सत्यापन"] }),
   s({ id: "profile", group: "career", layout: "shell", nav: true, icon: UserRound, title: ["Profile", "Profile", "प्रोफ़ाइल"], desc: ["Verified vs self-declared", "Verified vs khud bataya", "सत्यापित बनाम स्व-घोषित"] }),
@@ -198,7 +199,7 @@ export const FLOWS: { name: Tri; ids: string[] }[] = [
   { name: ["Aptitude", "Aptitude", "एप्टीट्यूड"], ids: ["aptitude", "apt-set", "apt-mock", "apt-result"] },
   { name: ["Contests", "Contests", "प्रतियोगिता"], ids: ["contests", "contest-brief", "contest-live", "contest-result"] },
   { name: ["Companies", "Companies", "कंपनियाँ"], ids: ["companies", "company", "experiences"] },
-  { name: ["Build", "Banao", "बनाओ"], ids: ["build", "project", "studio"] },
+  { name: ["Build", "Banao", "बनाओ"], ids: ["build", "project", "studio", "notebook"] },
   { name: ["Career", "Career", "करियर"], ids: ["pramaan", "certificate", "profile", "jobs"] },
   { name: ["Mine", "Mera", "मेरा"], ids: ["lists", "notes", "sahayak", "community", "plus", "settings"] },
 ];
