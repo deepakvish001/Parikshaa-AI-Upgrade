@@ -17,6 +17,8 @@ import { StudioScreen } from "./studio";
 import { CompaniesBody, CompanyBody, ExperiencesBody, PramaanBody, CertificateBody, JobsBody } from "./career";
 import { ProfileBody, ProfileRail } from "./profile";
 import { NotebookScreen } from "./notebook";
+import { InterviewScreen } from "./interview";
+import { AdmRuntime, AdmRecruiters } from "../admin/a-platform";
 import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mine";
 import { AdminLogin, AdminDashboard, ReviewQueue, Approvals } from "../admin/a-core";
 import { AdmProblems, AdmProblemEditor, AdmAptitude, AdmLessons, AdmRoadmaps, AdmCompanies, AdmFactory } from "../admin/a-content";
@@ -58,6 +60,7 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   project: { Body: ProjectBody, Rail: ProjectRail },
   studio: { Body: StudioScreen },
   notebook: { Body: NotebookScreen },
+  interview: { Body: InterviewScreen },
   companies: { Body: CompaniesBody },
   company: { Body: CompanyBody },
   experiences: { Body: ExperiencesBody },
@@ -97,6 +100,8 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   "adm-audit": { Body: AdmAudit },
   "adm-security": { Body: AdmSecurity },
   "adm-system": { Body: AdmSystem },
+  "adm-runtime": { Body: AdmRuntime },
+  "adm-recruiters": { Body: AdmRecruiters },
 };
 
 for (const k of Object.keys(SCREEN_MAP)) READY.add(k);

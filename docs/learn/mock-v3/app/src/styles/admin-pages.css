@@ -1018,3 +1018,45 @@ button.perm:not(:disabled):hover {
   background: var(--pen-soft);
   box-shadow: inset 2px 0 0 var(--pen);
 }
+
+/* runtimes & integrations, recruiters (v4.2) */
+.rt-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.rt-card .card-b,
+.rt-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rt-ic {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--pen-soft);
+  color: var(--pen-text);
+}
+.rt-ic svg {
+  width: 17px;
+  height: 17px;
+}
+.rt-v {
+  font-size: 22px;
+}
+.rep-card svg {
+  flex: none;
+}
+@media (max-width: 1200px) {
+  .rt-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .rt-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

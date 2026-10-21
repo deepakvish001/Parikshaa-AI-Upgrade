@@ -38,6 +38,7 @@ const MODS: [string, string][] = [
   ["review", "Review & publish"],
   ["factory", "Content factory"],
   ["learners", "Learners"],
+  ["recruiters", "Recruiters & links"],
   ["support", "Support"],
   ["community", "Community"],
   ["commerce", "Payments"],
@@ -49,6 +50,7 @@ const MODS: [string, string][] = [
   ["audit", "Audit log"],
   ["security", "Security & staff"],
   ["system", "System"],
+  ["runtime", "Runtimes & integrations"],
 ];
 const ORDER: Access[] = ["none", "view", "own", "edit", "full"];
 const ACC_LABEL: Record<Access, string> = { none: "—", view: "View", own: "Own", edit: "Edit", full: "Full" };

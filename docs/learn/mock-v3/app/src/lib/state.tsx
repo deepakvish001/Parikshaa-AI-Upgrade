@@ -89,6 +89,8 @@ export const MATRIX: Record<string, Record<Role, Access>> = {
   security: { super: "full", content: "none", editor: "none", reviewer: "none", support: "none", finance: "none", moderator: "none", analyst: "none" },
   approvals: { super: "full", content: "full", editor: "none", reviewer: "none", support: "none", finance: "full", moderator: "none", analyst: "none" },
   audit: { super: "full", content: "none", editor: "none", reviewer: "none", support: "none", finance: "none", moderator: "none", analyst: "view" },
+  runtime: { super: "full", content: "view", editor: "none", reviewer: "none", support: "view", finance: "view", moderator: "none", analyst: "view" },
+  recruiters: { super: "full", content: "none", editor: "none", reviewer: "none", support: "edit", finance: "none", moderator: "edit", analyst: "view" },
 };
 
 type RoleCtx = { role: Role; setRole: (r: Role) => void; can: (mod: string, need?: "view" | "edit" | "full") => boolean; access: (mod: string) => Access };
