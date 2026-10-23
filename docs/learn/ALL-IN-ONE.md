@@ -192,6 +192,32 @@ baselines, e2e; R-slices me load (20k DAU), security, restore.
 **Bachat ke niyam:** har slice naya session (handoff se), lamba context na khinchein, ultracode sirf zaroorat par,
 content factory API (Batch) par alag.
 
+### 8a. Naya naap aur sujhaav (23 Oct 2026)
+
+**Naap (session `session_018vRviyFgDfdAVh2GzLcBn3`, 27 Sep–23 Oct, Opus 5.5):** output 8.2M tokens, input 1.2M, cache
+write 41M, cache read 3.34 billion; API daam par ~$1,161 (~$45 roz). Isme ~85% purana context dobara padhna/likhna tha,
+kyunki ye ek hi lamba session hai. Isliye: **har slice naya session**.
+
+**Model aur effort:** roz ke slices Opus 5.5 `high`; architecture, judge sandbox, login/payments, migrations, mushkil bug
+`xhigh`; UI polish/docs/mock `medium`; sirf 3–4 sabse zaroori review Fable 5.1 (Opus 5.5 se 2.5 guna mehnga, kuch
+plans par usage credits se). Subagents Sonnet 5.5 / Haiku 5.5. Ultracode sirf bade design/review/security slices par.
+**Fast mode band** (plan me nahi; seedha usage credits se, Opus 5.5 par $8/$40).
+
+**Kaam ka naya andaaza (v4.2 ke features milakar):** ~145–180 sessions (P0 8–10, P1 6–8, P2 20–25, P3 15–20, Build
+15–20, admin 20–25, P4 8–10, P5 8–10, content factory 30–35, video upload 4–6, security/launch 10–12). Kul ~25–45M
+output tokens; API daam par ~$4,000–10,000.
+
+| Max 20x accounts | Slices/hafta | ~160 sessions | Subscription |
+|---|---|---|---|
+| 1 | 6–8 | ~5–6 mahine | ~$1,000–1,200 |
+| **2 (sujhaav)** | 12–16 | ~3–3.5 mahine | ~$1,200–1,400 |
+| 3 | 18–22 | ~2.5 mahine | ~$1,500 |
+
+Anthropic limit tokens me nahi batata; ye table hamare naap ka andaaza hai, P0 ke pehle 2 hafte `/usage` se sahi
+karna. Ek account ek insaan ka (login share karna terms ke khilaf). Usage credits ON, $50–100/mahina ki seema, sirf
+buffer. Content factory aur product ka AI subscription se nahi, API key (Batch) se. Sources: Claude Code docs
+(fast-mode, costs, model-config) aur Claude Help Center (Max plan), 23 Oct 2026.
+
 ## 9. Sources (19 Oct 2026)
 
 - Platforms: [Scrimba: Boot.dev alternatives 2026](https://scrimba.com/articles/best-boot-dev-alternatives-2026/),

@@ -196,6 +196,10 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   F2 brand sab jagah ya sirf Learn, F3 pehle launch ke screens, F4 LeetCode/CodeChef niyam, F5 merge kaun kare, F6 content
   samples, F7 daam (testing ke baad). Aur [learn/FEATURE-IDEAS.md](learn/FEATURE-IDEAS.md) se kaunse features agle
   (sujhaav: L1, L7, L9, A2, A8). Owner ko ye sab 21 Oct ko chat me bataya ja chuka hai; dobara lamba mat samjhao.
+- **Ab chal raha: mock v4.3** (owner, 23 Oct: "v4.3 shuru karo"; tracker row 135). Kram: U0 plan + jaanch (axe,
+  touch size) → U4 dark me 3 parat + focus bar menu → U1 Aaj ke 3 roop → U3 profile ke 3 roop → U2 brand ke 6 pal →
+  U5 12 screens × 5 haalat → U6 jaanch, screenshots, docs, publish. Har U ke baad push + yahan status. Aaj aur profile
+  ke roop switch se dikhte hain; owner ek chunega, baaki hatenge. Status: U0 chal raha.
 - **Owner jo bole, uska rasta:**
   - Mock me badlav ya naya screen → wahi app, kram: plan (yahan + tracker "Plan") → banao → `qa.mjs` jaanch →
     screenshots → README → publish → push. Version ka naam aage badhao (v4.3) aur tracker me nayi row.
