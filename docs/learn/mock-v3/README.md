@@ -1,8 +1,8 @@
-# Learn v2: clickable mock v4.2, "Kaagaz aur Syaahi" (21 Oct 2026)
+# Learn v2: clickable mock v4.3, "Kaagaz aur Syaahi" (23 Oct 2026)
 
 Mock v3 dekh kar owner ne kaha: "sab achha laga, bas font AI wala lag raha hai; har page complete dark black, sab saaf
 dikhe, light me bhi; har border, box, animation refine karo; Code Studio VS Code jaisa; admin ka har page har pehlu se;
-human feel." Ye v4 tha: 68 screens (43 learner + naksha/brand, 25 admin); ab v4.2 me **72** (neeche), wahi app aur wahi link. Faisla aur
+human feel." Ye v4 tha: 68 screens (43 learner + naksha/brand, 25 admin); v4.2 me **72**, v4.3 me wahi 72 aur behtar (neeche), wahi app aur wahi link. Faisla aur
 wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../DESIGN-V3.md)). Purane: v1
 [../mock/README.md](../mock/README.md), v2 [../mock-v2/README.md](../mock-v2/README.md).
 
@@ -10,6 +10,31 @@ wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../
 Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
+
+## v4.3 me naya (23 Oct)
+
+Owner (23 Oct): "v4.3 shuru karo" (best design ki taraf: jaanch + 5 sudhaar). Screens wahi 72; badlav:
+
+- **Aaj ke 3 roop** (`#aaj`, upar "Mock · roop chuno" se badlo): **A Ek kaam** (agla kaam sabse upar aur bada, baaki chhoti
+  list, side me sirf 2 card; phone ki pehli screen par kaam + 3 aur), **B Kaagaz** (din ek ruled panne par: margin me samay,
+  haath ke notes, abhi wala kaam marker se), **C Timeline** (shaam ek samay ki patti par, "abhi" ki laal line, poori
+  chaudai). **v4.2** bhi tulna ke liye. Aap ek chuno, baaki hatenge.
+- **Profile ke 3 roop** (`#profile`): **A Saar pehle** (6 dabbon ki jagah 3 number), **B Saboot ka kaagaz** (letterhead,
+  Pramaan mohar, table: kya, level, saboot, kaise jaancha, kab; phone par har line ek card), **C Kahani** (naya pehle,
+  har ek ke saath saboot). v4.2 bhi.
+- **Dark me gehraai:** kaala page, card thoda utha hua (`--panel` + halki roshni), menu aur modal aur upar; card ki dhaar
+  naram. Halka text ab har jagah padhne layak (4.5:1).
+- **Focus bar halki:** problem, SQL, Studio, notebook me bhasha, theme, shortcuts, pichhla/agla ek **⋯ menu** me.
+- **6 khaas pal** (Diya + haath ki line + kabhi mohar): pehla AC (problem → AC), Pramaan pass (`#certificate`), contest
+  ka naya best (`#contest-result`), HR ne profile kholi (`#profile` side), aur Aaj par din poora / plan halka / streak bachi
+  ("Halka karo" se). Sab ek saath `#brand` → 07b.
+- **12 mukhya screens ki 5 haalatein:** neeche-baayein **"Haalat"** se pehli baar, khaali, loading, error, offline (Aaj, plan,
+  problem, SQL, DSA sheet, revision, lesson, aptitude set, contests, profile, Studio, notebook).
+- **Accessibility saaf:** axe (WCAG 2.2) me 72 screens, dono theme, computer + phone, English + Hindi: **0**. Pehle 69–72
+  screens par dikkat thi. Phone par har button kam se kam 40 px (pehle 889 chhote touch, ab 0).
+- Kharch aur samay ka naya naap: [../ALL-IN-ONE.md](../ALL-IN-ONE.md) §8a.
+
+Screenshots: `screens/v43/` (Aaj aur profile ke A/B/C computer + phone, Aaj aur problem ki 5 haalatein, 6 pal).
 
 ## v4.2 me naya (21 Oct)
 
@@ -163,7 +188,17 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-system` | Health, feature flags, maintenance, site settings | [desktop](screens/desktop/adm-system-1440-dark.jpg) |
 |  | `#adm-runtime` | Code kahan chalta (browser, CPU, Colab, GPU), kharch, plan-war seema, linked sites, keys ki haalat | [desktop](screens/desktop/adm-runtime-1440-dark.jpg) |
 
-Screenshots: `screens/desktop` (72, 1440, kaala), `screens/light` (16), `screens/phone` (17, 390, kaala), `screens/hindi` (5).
+Screenshots (23 Oct, v4.3): `screens/desktop` (72, 1440, kaala), `screens/light` (16), `screens/phone` (17, 390, kaala),
+`screens/hindi` (5), `screens/v43` (24: roop, haalatein, pal). Aaj aur profile ke screenshots roop A me hain.
+
+## Jaanch (23 Oct, v4.3)
+
+- **72 screens × 7** (1440 kaala, 1440 light, 1024 kaala, 390 kaala, 390 light, 1440 kaala हिंदी, 390 light हिंदी): overflow 0,
+  console error 0. Admin ke 26 route 5 role me saaf. Aaj aur profile ke chaaron roop aur 12 screens × 5 haalatein bhi
+  (390 kaala, 1440 light हिंदी): saaf.
+- **Accessibility** (`app/a11y.mjs`, axe-core WCAG 2.2 A/AA, serious + critical): 1440 kaala 0, 1440 light 0, 390 kaala 0,
+  390 light 0, 1440 kaala हिंदी 0, 390 kaala हिंदी 0. Phone par touch 40 × 40 se chhota (switch/checkbox 24) 0. Shuruat me:
+  69 / 71 / 72 screens par dikkat, 889 chhote touch.
 
 ## Jaanch (21 Oct, v4.2)
 
@@ -190,8 +225,9 @@ Plus aur campus ka daam `₹[...]` (owner tay karega); TUF/LeetCode ka koi naam,
 ## Abhi mock me nahi (code ke waqt)
 
 - Asli login, data, judge, AI, payment: sab dikhawa hai; buttons toast dikhate hain.
-- Har haalat (loading, khaali, error) har screen par nahi; loading aur khaali ke namoone `#brand` par, aur problem
-  screen par "Mock: see each state" se WA / TLE / AC.
+- 5 haalatein (pehli baar, khaali, loading, error, offline) 12 mukhya screens par hain; baaki screens par code ke waqt
+  wahi pattern (`src/ui/states.tsx`).
+- Accessibility ki jaanch machine se hai (axe); screen reader aur sirf-keyboard se poora safar insaan ne nahi chalaya.
 - Hindi poori nahi: menus aur mukhya text teen bhasha me, lambe paragraph kai jagah English me.
 
 ## Owner ke faisle
@@ -200,11 +236,13 @@ Ho gaye: font + kaala ✅ · roles + 4-eyes ✅ · **logo A ✅ (21 Oct)** · da
 
 Ab chahiye ([../CODE-READINESS.md](../CODE-READINESS.md) §1):
 
-1. v4.2 dekh kar: aur kuch badle, ya **"shuru karo"** (F1)?
-2. Naya brand **sab jagah** (exam app + console bhi) ya sirf Learn (F2)?
-3. Pehle launch me kaunse screens (F3)?
-4. LeetCode / CodeChef ka data kaise (F4)?
-5. [../FEATURE-IDEAS.md](../FEATURE-IDEAS.md) me se kaunse agle?
+1. **Aaj ka roop** (A / B / C / v4.2) aur **profile ka roop** (A / B / C / v4.2) chuno.
+2. 5–8 students aur 2 HR/TPO ke saath 30 minute ka test (script main dunga); unki raay ke baad v4.4.
+3. Aur kuch badle, ya **"shuru karo"** (F1)?
+4. Naya brand **sab jagah** (exam app + console bhi) ya sirf Learn (F2)?
+5. Pehle launch me kaunse screens (F3)?
+6. LeetCode / CodeChef ka data kaise (F4)?
+7. [../FEATURE-IDEAS.md](../FEATURE-IDEAS.md) me se kaunse agle?
 
 ## Chalana aur badalna
 
@@ -214,6 +252,8 @@ npm install            # sirf pehli baar; baaki packages repo ke root se
 npx tsc -p tsconfig.json && npx vite build && node build-artifact.mjs   # dist/artifact.html (ek file)
 node shots.mjs <out> <route,route> 1440,390 dark en view                # screenshots; ROLE=finance se role
 node qa.mjs 390 dark hi                                                 # har screen: overflow, console error; ROLE=finance bhi
+node a11y.mjs 390 dark en                                               # har screen: axe (WCAG 2.2) + phone par chhote touch
+VAR="aaj=b,state=error" node shots.mjs <out> aaj 1440 dark en view       # koi roop ya haalat khol kar
 SEL=".logo-opts" node shots.mjs <out> brand 1440 dark en                  # sirf ek hissa (element) ka screenshot
 node overview.mjs                                                       # screens/overview.jpg dobara
 ```

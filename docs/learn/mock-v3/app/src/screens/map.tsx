@@ -36,7 +36,7 @@ export function MapBody() {
   return (
     <div className="map">
       <header className="map-top">
-        <Logo size={28} tag="Mock v4.2" />
+        <Logo size={28} tag="Mock v4.3" />
         <div className="row g4">
           <LangButton />
           <ThemeButton />
@@ -49,7 +49,7 @@ export function MapBody() {
 
       <section className="map-hero paper-grid">
         <div className="map-hero-in">
-          <div className="eyebrow">{t("Parikshaa · design v4.2 · 21 Oct 2026", "Parikshaa · design v4.2 · 21 Oct 2026", "परीक्षा · डिज़ाइन v4.2")}</div>
+          <div className="eyebrow">{t("Parikshaa · design v4.3 · 23 Oct 2026", "Parikshaa · design v4.3 · 23 Oct 2026", "परीक्षा · डिज़ाइन v4.3")}</div>
           <h1 className="display map-h1">
             {t("Every screen, ", "Har screen, ", "हर स्क्रीन, ")}
             <Hl>{t("clickable.", "clickable.", "क्लिक करने लायक।")}</Hl>

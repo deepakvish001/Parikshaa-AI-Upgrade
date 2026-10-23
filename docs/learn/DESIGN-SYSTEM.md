@@ -1,10 +1,13 @@
-# Learn design system: code banane ke liye ek hi sach (21 Oct 2026)
+# Learn design system: code banane ke liye ek hi sach (21 Oct 2026, v4.3: 23 Oct)
 
 Ye file batati hai ki Parikshaa Learn **kaisa dikhega aur kaise chalega**, taaki koi bhi session ya account asli code me
 **wahi design** banaye. Mock (`docs/learn/mock-v3/app`) is file ka chalta hua namoona hai: jahan ye file aur mock alag
 dikhein, **mock sahi hai** aur is file ko theek karo.
 
 - Owner ne manzoor kiya: font + kaala default (20 Oct), 8 roles + 4-eyes (20 Oct), **logo A "Pass"** (21 Oct).
+- **v4.3 (23 Oct):** dark me teen parat aur naram card-dhaar (§3), focus bar me ek ⋯ menu (§7), brand ke 6 pal (§8–9),
+  har mukhya screen ki 5 haalatein (§9), accessibility aur phone par 40 px touch (§5, §9). Aaj aur profile ke **3-3 roop**
+  mock me switch se; owner jo chunega wahi yahan likha jaayega, baaki hatenge.
 - Purane docs ki jagah: [../LEARN-V2.md](../LEARN-V2.md) §9 (प mark, indigo + saffron, Noto) ab **purana** hai;
   [DESIGN-V4.md](DESIGN-V4.md) ka dhaancha sahi hai, bas logo aur v4.1/v4.2 ke badlav yahan.
 - Link (owner ka, private): https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn · Screenshots:
@@ -25,7 +28,7 @@ dikhein, **mock sahi hai** aur is file ko theek karo.
 | Har screen ki list | `src/screens/registry.ts` (72 routes: 45 learner + mock, 27 admin) | product router |
 
 Mock chalana: `cd docs/learn/mock-v3/app && npx tsc -p tsconfig.json && npx vite build && node build-artifact.mjs`;
-screenshots `node shots.mjs <out> <routes> 1440,390 dark en view`; jaanch `node qa.mjs 390 dark hi`.
+screenshots `node shots.mjs <out> <routes> 1440,390 dark en view` (`VAR="aaj=b,state=error"` se roop ya haalat); jaanch `node qa.mjs 390 dark hi` aur `node a11y.mjs 390 dark en`.
 
 ## 2. Logo (final: A "Pass")
 
@@ -59,19 +62,26 @@ bare `:root` par; dark do jagah: `@media (prefers-color-scheme: dark) :root:not(
 | Token | Kaam | Light | Dark |
 |---|---|---|---|
 | `--page` | Page | `#F6F6F4` | `#000000` |
-| `--panel` / `--panel-2` / `--sunk` | Card / utha hua / track | `#FFFFFF` / `#FAFAF9` / `#ECECEA` | `#0C0C0E` / `#131316` / `#1C1C20` |
-| `--line` / `--line-2` | Dhaar / zor wali dhaar | `#E2E2DE` / `#C9C9C3` | `#2A2A2F` / `#3F3F46` |
-| `--ink` … `--ink-4` | Text 1–4 | `#0A0A0B` `#43444C` `#6A6C74` `#9A9CA3` | `#FAFAFA` `#C4C4CC` `#8F8F99` `#62626B` |
+| `--panel` / `--panel-2` / `--sunk` | Card / utha hua / track | `#FFFFFF` / `#FAFAF9` / `#ECECEA` | `#101013` / `#16161A` / `#1F1F24` |
+| `--raised` / `--overlay` | Menu, hover card / modal, drawer | `#FFFFFF` / `#FFFFFF` | `#1A1A1F` / `#1E1E23` |
+| `--card-line` | Card ki dhaar (dividers se naram) | `rgba(10,10,12,.08)` | `rgba(255,255,255,.075)` |
+| `--sheen` | Card par upar se halki roshni | none | `linear-gradient(180deg, rgba(255,255,255,.02), 0 140px)` |
+| `--line` / `--line-2` | Divider / zor wali dhaar | `#E2E2DE` / `#C9C9C3` | `#2A2A2F` / `#3F3F46` |
+| `--ink` … `--ink-4` | Text 1–4 | `#0A0A0B` `#43444C` `#5C5E66` `#66686F` | `#FAFAFA` `#C4C4CC` `#A3A3AD` `#86868F` |
 | `--pen` | Action, link, focus | `#2349E6` | `#3B62F5` |
 | `--red` | Galti, khatra | `#D9352A` | `#FF5D50` |
 | `--tick` | Pass, ho gaya | `#13803C` | `#2CCF78` |
 | `--marker` | Zaroori (highlighter) | `#FFD84D` | `#FFD84D` |
 | `--ai` | Sab kuch AI / Sahayak | `#6A45FF` | `#9F86FF` |
-| `--coin` | Coins, streak, chetavani | `#A85A00` | `#FFAB2E` |
+| `--coin` | Coins, streak, chetavani | `#9A5300` | `#FFAB2E` |
 
-Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. **Niyam:** padhne wala text 4.5:1 se kam
-nahi; `--ink-4` sirf disabled ya sajawat; kaale par shadow nahi dikhti, isliye card ki pehchaan dhaar + `--edge` (upar 1 px
-halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
+Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. **Niyam:**
+- Padhne wala har text 4.5:1 se kam nahi, `--ink-3` aur `--ink-4` bhi (v4.3 me dono theme me har surface par jaancha).
+- **Gehraai parat se, dhaar se nahi:** page kaala, card `--panel` + `--sheen` + `--card-line`, menu `--raised`, modal/drawer
+  `--overlay`. Dividers aur table lines `--line`.
+- Kisi cheez ko "band/locked" dikhane ke liye `opacity` nahi (contrast girta hai); dashed dhaar + `--panel-2` + taala.
+- Rangeen bhare hisse par text: `--on-pen`, `--on-tick`, `--on-red`, `--on-ai` (safed hard-code nahi).
+- Code ke rang `--code-*` (gutter aur comment bhi 4.5:1). Poori list: `tokens.css`.
 
 ## 4. Type
 
@@ -86,6 +96,8 @@ halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
 - Radius: 6 (chip), 8 (button, input), 12 (card), 14–18 (bade panel, modal).
 - Button 36 px (sm 30, lg 44), 600; primary bhara, secondary dhaar wala, ghost sirf hover par; dabane par 1 px neeche.
 - Input 38 px, dhaar `--line-2`, focus par 2 px neela ring + 2 px gap.
+- **Phone / touch par** har control kam se kam **40 × 40 px** (button 40, icon button 40, chip/tab/menu row 40); switch aur
+  checkbox kam se kam 24 px. List me akele link ko upar-neeche 4 px jagah; vakya ke andar wale link waise hi.
 - Table: header uthe rang me, number daayein, row hover halka.
 
 ## 6. Motion
@@ -102,6 +114,7 @@ halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
 | Layout | Kahan | Niyam |
 |---|---|---|
 | Learner shell | Aaj, Seekho, Abhyas, Career, Mera | Side bar 248 (chhota hone wala, `Ctrl+\`), top bar 56, rail 320 (≥1180 px), Sahayak **push pane** (overlay nahi), phone par neeche 5 tabs |
+| Focus bar | Problem, SQL, Studio, notebook, interview | Sirf har minute kaam aane wali cheezein (wapas, title, kaam + timer, panes); bhasha, theme, shortcuts, pichhla/agla ek **⋯ menu** me |
 | Workspace | Problem, SQL | **Default 2 pane** (Problem 0.31, Code 0.42, min 300/380); Sahayak teesra (0.3, min 320) `Ctrl+J`/button se, band par wapas 2; beech ki patti khinchti hai; phone par tabs |
 | Code Studio | Projects | VS Code jaisa: activity bar, explorer/search/git/tests/steps, editor groups + preview, panel (problems/output/terminal/tests/ports), status bar, `Ctrl+Shift+P`; gutter me badlav ke nishaan, quick fix pehle diff dikhata hai, `Ctrl+I` line par Sahayak (sirf hint) |
 | Notebook | Data & ML | Side (Files / Data / Variables + RAM) · cells · Sahayak; runtime: Browser Python (Pyodide) / Parikshaa CPU job / **Colab me GPU** (grade hamesha yahin, chhupa test bahar nahi) |
@@ -116,7 +129,10 @@ halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
 - **focus.tsx:** FocusBar, PaneToggles, Panes, PaneHead, usePanes. **shell.tsx:** Shell, CommandPalette (`Ctrl+K`),
   KeySheet (`?`, `G`+akshar), notifications drawer, ThemeButton, LangButton. **sahayak.tsx:** SahayakPanel (contexts:
   problem, sql, notebook, lesson, studio, general).
-- **akit.tsx (admin):** AdmHead, Gate, FourEyes, RowMenu, Toolbar, Pager, useSelection, Status, Masked, useFirstLoad,
+- **v4.3:** `Moment` (kit: Diya + ek haath ki line + kabhi stamp), `ui/states.tsx` (`StateBody` khaali/loading/error,
+  `FirstCard` pehli baar, `OfflineBanner`), FocusBar ka `more` (⋯ menu). Sirf mock: `lib/variant.tsx` (`VariantBar`, roop
+  ka switch) aur `StateFab` (haalat ka switch), product me nahi jaayenge.
+- **akit.tsx (admin):** `Gate` ko icon-only button par `label` dena zaroori. AdmHead, Gate, FourEyes, RowMenu, Toolbar, Pager, useSelection, Status, Masked, useFirstLoad,
   SkelRows.
 - Har component ki haalatein (hover, focus, disabled, loading, khaali, error) `#brand` page par dikhti hain.
 
@@ -132,6 +148,15 @@ halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
   chhupa.
 - **Bhasha:** har text `t(en, hinglish, hindi)`; Hinglish default; code code hi rehta hai.
 - **Keyboard:** `Ctrl+K`, `Ctrl+J`, `Ctrl+\`, `?`, `G` phir akshar; Studio me `Ctrl+Shift+P`, `Ctrl+B`, ``Ctrl+` ``, `Ctrl+.`, `Ctrl+I`.
+- **Khaas pal (Moments), sirf 6:** pehla AC kisi pattern par, streak bachi (freeze), Pramaan pass, plan halka hua, HR ne
+  profile kholi, contest me naya best; aur din ka kaam poora. Kahin aur Moment nahi, warna khaas nahi rehta. Confetti nahi.
+- **Har mukhya screen ki 5 haalatein** (mock me 12 screens): pehli baar (3 kadam ka card), khaali (Diya + ek agla kadam),
+  loading (page ke shape ka skeleton + likha hua "load ho raha hai"), error (kya hua, "aapka kuch nahi gaya", phir koshish,
+  reference), offline (patti; padhna-likhna chalta rahe, submit aur Sahayak net ka intezaar karein). Focus screens me top
+  bar har haalat me rahe.
+- **Accessibility (har PR me):** axe (WCAG 2.2 A/AA) me serious/critical 0, dono theme, computer + phone, English + Hindi
+  (`mock-v3/app/a11y.mjs`). Icon-only control ka `aria-label` = uska tooltip; har field ka label; meter/progress ka naam;
+  scroll hone wale code, table, canvas `tabIndex=0`; tab ke andar button nahi; rang ke alawa bhi farq (tick, shabd).
 - **Admin:** jokhim wale kaam (refund ₹5,000+, role badalna, recruiter suspend, GPU chalu) 4-eyes; keys ki value kabhi
   screen par nahi, sirf "set hai ya nahi".
 
@@ -143,7 +168,8 @@ halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
 2. Kit components ko `packages/brand/src/ui.tsx` me laana, tests ke saath (har component ka render + a11y).
 3. Learner shell aur screens `packages/web` me, pehle fixtures (sample data) se, phir API se.
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
-5. Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe 0 errors; bundle budget.
+5. Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
+   touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.
 6. Har slice ke baad tracker (`PREP-TRACKER.md`) aur handoff update.
 
 ## 11. Naye session ke liye checklist (design wahi rahe)
@@ -153,3 +179,4 @@ halki roshni). Code ke rang `--code-*`. Poori list: `tokens.css`.
 - [ ] Naya rang ya font nahi; zaroorat ho to pehle token, phir use.
 - [ ] Naya screen pehle mock me (registry + shots + qa), owner dekhe, phir code.
 - [ ] Har text teen bhasha, dono theme, 390 px par jaancha.
+- [ ] `node a11y.mjs` (1440 + 390, dono theme) me 0; `node qa.mjs` me overflow aur console error 0.

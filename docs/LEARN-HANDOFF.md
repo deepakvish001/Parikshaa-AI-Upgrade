@@ -199,7 +199,12 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 - **Ab chal raha: mock v4.3** (owner, 23 Oct: "v4.3 shuru karo"; tracker row 135). Kram: U0 plan + jaanch (axe,
   touch size) → U4 dark me 3 parat + focus bar menu → U1 Aaj ke 3 roop → U3 profile ke 3 roop → U2 brand ke 6 pal →
   U5 12 screens × 5 haalat → U6 jaanch, screenshots, docs, publish. Har U ke baad push + yahan status. Aaj aur profile
-  ke roop switch se dikhte hain; owner ek chunega, baaki hatenge. Status: U0 chal raha.
+  ke roop switch se dikhte hain; owner ek chunega, baaki hatenge. Status: **U0–U6 ✅ (23 Oct)**: Aaj A/B/C
+  (`today43.tsx`), profile A/B/C (`profile43.tsx`), roop ka switch `lib/variant.tsx` (`pk43-v-<screen>`), dark parat
+  (`tokens.css`), focus bar ⋯ (`focus.tsx`), `Moment` (kit), `ui/states.tsx` + neeche-baayein "Haalat" switch, sab CSS
+  `v43.css`; axe 0 har combination me, phone touch 0; 72 × 7 saaf; README v4.3, DESIGN-SYSTEM v4.3, screenshots +
+  `screens/v43/`, wahi link par publish. **Agla: owner ki raay** (roop chunna, users par test, F1–F7). Roop chune jaane
+  par: baaki roop aur `VariantBar` hatao, DESIGN-SYSTEM me chuna roop likho.
 - **Owner jo bole, uska rasta:**
   - Mock me badlav ya naya screen → wahi app, kram: plan (yahan + tracker "Plan") → banao → `qa.mjs` jaanch →
     screenshots → README → publish → push. Version ka naam aage badhao (v4.3) aur tracker me nayi row.
@@ -233,6 +238,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 23 Oct 2026: mock v4.3 (U0–U6): Aaj aur profile ke 3-3 roop (switch), dark me 3 parat, focus bar ⋯, 6 brand pal, 12 screens × 5 haalat, accessibility saaf (axe 0, phone touch 0); `a11y.mjs`; ALL-IN-ONE §8a me kharch ka naya naap aur model/effort ka sujhaav. Owner ki raay baaki.
 - 23 Oct 2026: owner ke kehne par 21st.dev ki 7 skills project me (`.claude/skills/21st-*`, Apache-2.0, README wahin); istemaal ke niyam `CLAUDE.md` me (DESIGN-SYSTEM.md jeetta hai, `packages/*` me `21st add` nahi, publish aur paid AI sirf owner ki haan se). Chalane ke liye owner kare: environment me `21st.dev` allow + `TWENTYFIRST_TOKEN`.
 - 21 Oct 2026: mock v4.2 (T0–T8): logo A final + favicon; SQL = DSA workspace; profile v2 (HR share link, card, coding sites ka saar); landing gehra; ML notebook (Colab GPU); AI mock interview; admin runtimes + recruiters; docs DESIGN-SYSTEM, CODE-READINESS, FEATURE-IDEAS. 72 screens, wahi link. Owner ki raay baaki.
 - 20 Oct 2026: mock v4.1 (S0–S5): problem/SQL default 2 pane, Sahayak se 3 aur wapas 2 (animate); P se logo ke 3 option (brand page se poore app me aazmao, default A); Studio me quick fix, diff, inline Sahayak, hover card, test ek-ek karke; modal/drawer/menu/toast exit motion, tab line, notifications drawer, `?` shortcuts. Screenshots + README v4.1, wahi link. Owner ki raay baaki (logo).
