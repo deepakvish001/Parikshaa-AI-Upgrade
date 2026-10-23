@@ -578,3 +578,355 @@ html.shots .variant-bar {
     grid-column: 1 / -1;
   }
 }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Profile A: three numbers instead of six boxes ---------- */
+.pf-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--sheen), var(--panel);
+  overflow: hidden;
+}
+.pf-stat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  min-width: 0;
+}
+.pf-stat + .pf-stat {
+  border-left: 1px solid var(--line);
+}
+.pf-stat b {
+  font-family: var(--f-display);
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+/* ---------- Profile B: the proof sheet ---------- */
+.ps-sheet {
+  position: relative;
+  border-radius: 4px;
+  border: 1px solid var(--card-line);
+  background: var(--panel);
+  box-shadow: var(--paper-shadow), var(--edge);
+  padding: 26px 30px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ps-sheet::before {
+  /* a thin double rule along the top, like letterhead */
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  border-bottom: 1px solid var(--pen-line);
+  background: var(--pen);
+  border-radius: 4px 4px 0 0;
+}
+.ps-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.ps-brand {
+  font-family: var(--f-display);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.ps-kind {
+  flex: 1;
+  font-family: var(--f-serif);
+  font-style: italic;
+  color: var(--ink-2);
+}
+.ps-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.ps-name {
+  font-family: var(--f-serif);
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.ps-line {
+  font-weight: 560;
+}
+.ps-stamp {
+  flex-shrink: 0;
+  transform: rotate(-9deg);
+}
+.ps-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+.ps-table th,
+.ps-table td {
+  text-align: left;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+.ps-table thead th {
+  border-top: 0;
+  background: var(--panel-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ps-table tbody th {
+  font-weight: 560;
+  white-space: nowrap;
+}
+.ps-table tbody th svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.ps-when {
+  white-space: nowrap;
+}
+.ps-table tr.self th,
+.ps-table tr.self td {
+  color: var(--ink-3);
+}
+.ps-foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.ps-sign {
+  font-family: var(--f-hand);
+  font-size: 22px;
+  color: var(--pen-text);
+  border-bottom: 1px solid var(--line-2);
+  align-self: flex-start;
+  padding: 0 18px 2px 0;
+}
+.ps-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.ps-qr svg {
+  width: 56px;
+  height: 56px;
+  color: var(--ink);
+}
+
+/* ---------- Profile C: the story ---------- */
+.pst-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.pst-hero > .col {
+  flex: 1 1 360px;
+}
+.pst-pitch {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 62ch;
+}
+.pst-line {
+  list-style: none;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.pst-line::before {
+  content: "";
+  position: absolute;
+  left: 117px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--line);
+}
+.pst-line li {
+  display: grid;
+  grid-template-columns: 96px 44px minmax(0, 1fr);
+  align-items: start;
+  gap: 0 0;
+}
+.pst-when {
+  padding-top: 12px;
+  font-size: 12px;
+  color: var(--ink-3);
+  text-align: right;
+  padding-right: 12px;
+}
+.pst-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+}
+.pst-dot svg {
+  width: 17px;
+  height: 17px;
+}
+.pst-dot.t-pen {
+  background: var(--pen-soft);
+  color: var(--pen-text);
+  border-color: var(--pen-line);
+}
+.pst-dot.t-tick {
+  background: var(--tick-soft);
+  color: var(--tick-text);
+  border-color: var(--tick-line);
+}
+.pst-dot.t-ai {
+  background: var(--ai-soft);
+  color: var(--ai-text);
+  border-color: var(--ai-line);
+}
+.pst-dot.t-coin {
+  background: var(--coin-soft);
+  color: var(--coin);
+  border-color: var(--coin-line);
+}
+.pst-dot.t-teal {
+  background: var(--teal-soft);
+  color: var(--teal);
+}
+.pst-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+}
+.pst-proof {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--tick-text);
+  font-weight: 560;
+}
+.pst-proof.self {
+  color: var(--ink-3);
+}
+.pst-proof svg {
+  width: 14px;
+  height: 14px;
+}
+.pst-line li.self .pst-card {
+  border-style: dashed;
+}
+
+@media (max-width: 760px) {
+  .pf-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .pf-stat + .pf-stat {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+  .ps-sheet {
+    padding: 20px 16px 16px;
+  }
+  .ps-id {
+    flex-wrap: wrap;
+  }
+  .ps-name {
+    font-size: 26px;
+  }
+  .ps-stamp {
+    display: none;
+  }
+  /* On a phone the table becomes one small card per line, each value labelled. */
+  .ps-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+  .ps-table {
+    min-width: 0;
+  }
+  .ps-table thead {
+    display: none;
+  }
+  .ps-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 2px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .ps-table tbody th {
+    grid-column: 1 / -1;
+    padding: 0 0 6px;
+    border: 0;
+    white-space: normal;
+  }
+  .ps-table td {
+    display: contents;
+  }
+  .ps-table td::before {
+    content: attr(data-label);
+    color: var(--ink-3);
+    font-size: 12px;
+  }
+  .pst-line::before {
+    left: 17px;
+  }
+  .pst-line li {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+  .pst-when {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: left;
+    padding: 0 0 4px;
+  }
+  .pst-dot {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .pst-card {
+    grid-column: 2;
+  }
+}

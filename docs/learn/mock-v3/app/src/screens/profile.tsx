@@ -35,13 +35,15 @@ import {
   Layers,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
+import { useVariant, VariantBar } from "../lib/variant";
+import { ProofSheet, ProofStory } from "./profile43";
 import { Avatar, Badge, Card, Donut, Heatmap, LogoMark, Meter, Modal, SampleNote, Seg, Spark, Tabs, Toggle } from "../ui/kit";
 
 /* Sample learner. Everything a recruiter sees is either checked by Parikshaa (verified) or marked as the
    learner's own claim; numbers from other sites carry how they were checked and when. */
 
 type Plat = { id: string; name: string; handle: string; solved: number; extra: string; how: string; synced: string; c: string; icon: typeof Code2 };
-const PLATS: Plat[] = [
+export const PLATS: Plat[] = [
   { id: "pk", name: "Parikshaa", handle: "aarav", solved: 212, extra: "rating 1,529 · top 18%", how: "judge", synced: "live", c: "var(--pen)", icon: ShieldCheck },
   { id: "lc", name: "LeetCode", handle: "aarav_s", solved: 318, extra: "contest 1,642", how: "code in bio", synced: "2 h", c: "var(--coin)", icon: Code2 },
   { id: "cf", name: "Codeforces", handle: "aarav.sh", solved: 96, extra: "rating 1,388 · Specialist", how: "official API", synced: "1 h", c: "var(--ai)", icon: Trophy },
@@ -50,7 +52,7 @@ const PLATS: Plat[] = [
   { id: "kg", name: "Kaggle", handle: "aaravsharma", solved: 0, extra: "2 notebooks · 1 bronze", how: "profile link", synced: "5 d", c: "var(--teal)", icon: Brain },
 ];
 
-const SKILLS: { name: string; icon: typeof Code2; lvl: number; proof: [string, string, string]; v: boolean }[] = [
+export const SKILLS: { name: string; icon: typeof Code2; lvl: number; proof: [string, string, string]; v: boolean }[] = [
   { name: "DSA", icon: Code2, lvl: 72, v: true, proof: ["Pramaan L2 (proctored) · 212 solved on the judge", "Pramaan L2 (proctored) · judge par 212 solve", "प्रमाण L2 · 212 हल"] },
   { name: "SQL", icon: Database, lvl: 58, v: true, proof: ["Pramaan L1 · 41 SQL problems", "Pramaan L1 · 41 SQL problems", "प्रमाण L1 · 41 SQL"] },
   { name: "React", icon: Layers, lvl: 54, v: true, proof: ["Placement Tracker shipped · 18/18 tests · mentor reviewed", "Placement Tracker ship · 18/18 tests · mentor review", "प्रोजेक्ट · 18/18 टेस्ट"] },
@@ -122,7 +124,7 @@ export function ProfileCard({ format = "wide" }: { format?: "wide" | "square" | 
   );
 }
 
-function ShareModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ShareModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT();
   const toast = useToast();
   const [mode, setMode] = useState<"public" | "private">("private");
@@ -230,6 +232,25 @@ function ShareModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 
 export function ProfileBody() {
   const t = useT();
+  const [v] = useVariant("profile");
+  return (
+    <>
+      <VariantBar
+        id="profile"
+        items={[
+          { id: "a", label: t("Summary first", "Saar pehle", "सार पहले"), hint: t("The v4.2 profile with three numbers instead of six boxes; skills with proof lead.", "v4.2 wali profile, chhe dabbon ki jagah teen number; saboot wali skills pehle.", "छह डिब्बों की जगह तीन संख्याएँ।") },
+          { id: "b", label: t("Proof sheet", "Saboot ka kaagaz", "प्रमाण पत्र"), hint: t("A document HR can trust at a glance: every line says what was checked, how and when.", "HR ek nazar me bharosa kare: har line batati hai kya, kaise aur kab jaancha.", "हर पंक्ति बताती है क्या जाँचा।") },
+          { id: "c", label: t("Story", "Kahani", "कहानी"), hint: t("The same facts as a story, newest first, each with its proof.", "Wahi baatein kahani ki tarah, naya pehle, har ek ke saath saboot.", "वही बातें कहानी की तरह।") },
+          { id: "z", label: "v4.2", hint: t("The v4.2 profile, for comparison.", "v4.2 wali profile, tulna ke liye.", "v4.2, तुलना के लिए।") },
+        ]}
+      />
+      {v === "b" ? <ProofSheet /> : v === "c" ? <ProofStory /> : <ProfileDash v42={v === "z"} />}
+    </>
+  );
+}
+
+function ProfileDash({ v42 }: { v42: boolean }) {
+  const t = useT();
   const toast = useToast();
   const [tab, setTab] = useState<"over" | "plats" | "proj" | "card">("over");
   const [share, setShare] = useState(false);
@@ -308,7 +329,24 @@ export function ProfileBody() {
         </div>
       </section>
 
-      <div className="pf-kpis">
+      {!v42 && (
+        <div className="pf-stats">
+          {[
+            [String(total), t("problems, 4 sites", "problems, 4 sites", "प्रश्न, 4 साइटें"), t("212 checked by our judge", "212 hamare judge ne jaanche", "212 हमारे जज ने")],
+            ["1,529", t("contest rating", "contest rating", "रेटिंग"), t("top 18% · 9 contests", "top 18% · 9 contests", "शीर्ष 18%")],
+            ["3", t("Pramaan certificates", "Pramaan certificates", "प्रमाणपत्र"), "DSA L2 · DSA L1 · SQL L1"],
+          ].map(([v, k, d]) => (
+            <div key={k} className="pf-stat">
+              <b className="num">{v}</b>
+              <span className="col">
+                <span className="small">{k}</span>
+                <span className="tiny faint">{d}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {v42 && <div className="pf-kpis">
         {[
           [String(total), t("problems across 4 sites", "4 sites par problems", "4 साइटों पर"), t("212 on Parikshaa's judge", "212 Parikshaa judge par", "212 यहाँ")],
           ["1,529", t("contest rating", "contest rating", "रेटिंग"), t("top 18% · 9 contests", "top 18% · 9 contests", "शीर्ष 18%")],
@@ -323,7 +361,7 @@ export function ProfileBody() {
             <span className="tiny faint">{d}</span>
           </div>
         ))}
-      </div>
+      </div>}
 
       <Tabs
         value={tab}
