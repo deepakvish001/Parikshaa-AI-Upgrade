@@ -205,6 +205,16 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   `v43.css`; axe 0 har combination me, phone touch 0; 72 × 7 saaf; README v4.3, DESIGN-SYSTEM v4.3, screenshots +
   `screens/v43/`, wahi link par publish. **Agla: owner ki raay** (roop chunna, users par test, F1–F7). Roop chune jaane
   par: baaki roop aur `VariantBar` hatao, DESIGN-SYSTEM me chuna roop likho.
+- **Ab chal raha: mock v4.4 "raay se final" (plan pakka, owner 23 Oct; tracker row 136).** Kadam: **44-0** plan (ye entry + tracker row) +
+  user-test script (30 min, 5–8 students + 2 HR/TPO; tasks: aaj ka kaam, problem + Sahayak hint, teeno Aaj roop; HR: shared profile,
+  "kaise jaancha", teeno Profile roop; har task par kamyaabi, kahan atke, roop ki pasand) → **44-1** roop final (Aaj ka ek roop:
+  A/B/C/v4.2; Profile ka ek: A/B/C/v4.2; baaki roop, `VariantBar`, `lib/variant.tsx` switch aur `pk43-v-*` hatao; chuna roop
+  `today.tsx`/`profile.tsx` me; DESIGN-SYSTEM me chuna roop likho) → **44-2** test ki dikkato ke fix (sirf wahi, naya design nahi,
+  pehle/baad screenshot) → **44-3** screen reader + keyboard safar (learner: Aaj → problem → submit → editorial; admin: dashboard →
+  review queue → approve) → **44-4** owner ke chune feature screens (sujhaav L1, L7, L9, A2, A8; koi na chune to kadam chhutega) →
+  **44-5** sirf-mock safai (`StateFab` jaisi cheezein) + 12 screens ki 5 haalatein final roop par → **44-6** QA (`qa.mjs`, `a11y.mjs`
+  axe 0, touch 0) + screenshots `screens/v44/` + README v4.4 + DESIGN-SYSTEM note + publish (naya link). **Gates:** G1 test ke log/
+  samay owner dega (test bina 44-1 nahi), G2 roop sirf owner, G3 features owner. Status: **44-0 [~]**: plan ✅ (23 Oct), test script baaki.
 - **Owner jo bole, uska rasta:**
   - Mock me badlav ya naya screen → wahi app, kram: plan (yahan + tracker "Plan") → banao → `qa.mjs` jaanch →
     screenshots → README → publish → push. Version ka naam aage badhao (v4.3) aur tracker me nayi row.
@@ -240,6 +250,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 23 Oct 2026: mock v4.4 ka plan pakka (owner ki haan): kadam 44-0–44-6 (test script, roop final, test fix, SR/keyboard safar, chune feature screens, sirf-mock safai, QA + publish); gates G1–G3 owner ke. Plan LEARN-HANDOFF §5 me, tracker row 136. Agla: 44-0 ka test script.
 - 23 Oct 2026: mock v4.3 ka naya preview (Muse session): commit `4273c4538a` se mock dobara build (tsc OK, vite build OK, artifact.html 1891 KB), preview.html Muse link par publish (https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html, miyaad 25 Oct 2026 16:46 UTC) aur file owner ko chat me di. Mock ya design me koi badlav nahi.
 - 23 Oct 2026: naya session (Muse, Meta Muse, GitHub deepakvish001): canonical branch claude/learn-v2 verify kiya, HANDOFF aur LEARN-HANDOFF §5/§1 padha, saari branches list karke autosave jaanch poori ki: sirf ek Learn snapshot autosave/claude/learn-v2--4a0a2180 (780992b1, 23 Oct 07:44 UTC, parent = canonical tip 4273c4538a) mila, uske .claude/live/state.md me Uncommitted changes (none) aur U0-U6 completed hai, isliye koi adhoora kaam restore nahi kiya (v4.3 ka kaam saaf push hai), CLAUDE.md, DESIGN-SYSTEM v4.3, CODE-READINESS F1-F7 aur FEATURE-IDEAS padhe. Owner ki raay ka intezaar: Aaj/Profile ka roop chunna, F1-F7 faisle; mock ka naya preview link banana baaki.
 - 23 Oct 2026: mock v4.3 (U0–U6): Aaj aur profile ke 3-3 roop (switch), dark me 3 parat, focus bar ⋯, 6 brand pal, 12 screens × 5 haalat, accessibility saaf (axe 0, phone touch 0); `a11y.mjs`; ALL-IN-ONE §8a me kharch ka naya naap aur model/effort ka sujhaav. Owner ki raay baaki.
