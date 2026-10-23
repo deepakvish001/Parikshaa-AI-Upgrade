@@ -1030,3 +1030,196 @@ html.shots .variant-bar {
     transform: rotate(-10deg) scale(0.6);
   }
 }
+
+/* ---------- screen states ---------- */
+.state-fab {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 70;
+}
+.state-fab .btn {
+  box-shadow: var(--shadow-3);
+}
+.app .state-fab {
+  left: calc(var(--side-w) + 16px);
+}
+html.shots .state-fab {
+  display: none;
+}
+.st-center {
+  display: grid;
+  place-items: center;
+  min-height: min(60vh, 560px);
+}
+.st-empty,
+.st-error {
+  width: min(560px, 100%);
+  padding: 40px 24px;
+  gap: 12px;
+}
+.st-error {
+  border-color: var(--red-line);
+}
+.st-focus {
+  flex: 1;
+  overflow: auto;
+  padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+}
+.st-focus .st-skel.st-workspace {
+  height: 100%;
+}
+.st-float {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 65;
+  width: min(760px, calc(100vw - 32px));
+  box-shadow: var(--shadow-3);
+  border-radius: 12px;
+}
+.st-offline {
+  margin-bottom: 16px;
+}
+.st-float .st-offline {
+  margin: 0;
+}
+.st-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.st-skel.st-workspace {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 12px;
+}
+.st-skel.st-workspace .st-cap {
+  grid-column: 1 / -1;
+}
+.st-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  min-height: 420px;
+}
+.st-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+.st-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.st-rows {
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.st-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+}
+.st-row:first-child {
+  border-top: 0;
+}
+.st-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+}
+.st-first {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 48px 18px 18px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--pen-line);
+  background: radial-gradient(100% 160% at 0% 0%, var(--pen-soft), transparent 65%), var(--sheen), var(--panel);
+  box-shadow: var(--shadow-2), var(--edge);
+  animation: moment-in 0.4s var(--ease) both;
+}
+.st-first.float {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  z-index: 66;
+  width: min(440px, calc(100vw - 32px));
+  margin: 0;
+  background: radial-gradient(100% 160% at 0% 0%, var(--pen-soft), transparent 65%), var(--overlay);
+  box-shadow: var(--shadow-3);
+}
+.st-first-t {
+  font-size: 16px;
+  font-weight: 650;
+}
+.st-first-x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.st-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.st-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.st-steps .num {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pen-soft);
+  color: var(--pen-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+@media (max-width: 1080px) {
+  .app .state-fab {
+    left: max(16px, env(safe-area-inset-left, 0px));
+  }
+}
+@media (max-width: 760px) {
+  .app .state-fab {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  .st-skel.st-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .st-skel.st-workspace .st-pane:last-child {
+    display: none;
+  }
+  .st-first.float {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .st-float {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}

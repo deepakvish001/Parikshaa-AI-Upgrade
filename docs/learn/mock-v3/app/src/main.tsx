@@ -26,6 +26,8 @@ import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";
 import { SCREEN_MAP } from "./screens/index";
 import { useVariant } from "./lib/variant";
+import { STATE_SCREENS, useMockState, StateBody, OfflineBanner, FirstCard, FocusState, StateFab } from "./ui/states";
+import { Skel } from "./ui/kit";
 import { Shell, useTri, KeySheet } from "./ui/shell";
 import { AdminShell, NoAccess } from "./ui/admin-shell";
 import { Diya } from "./ui/kit";
@@ -57,8 +59,25 @@ function MockFab() {
   );
 }
 
+/** Side column while a core screen loads. */
+function RailSkel() {
+  return (
+    <>
+      {[0, 1].map((i) => (
+        <div key={i} className="card pad col g10" aria-hidden="true">
+          <Skel w="45%" h={14} />
+          <Skel w="70%" h={26} />
+          <Skel h={12} />
+          <Skel w="60%" h={12} />
+        </div>
+      ))}
+    </>
+  );
+}
+
 function App() {
   const route = useRoute();
+  const tri = useTri();
   const { can } = useRole();
   const def = byId(route) ?? byId("map")!;
   const impl = SCREEN_MAP[def.id];
@@ -67,6 +86,11 @@ function App() {
   // Today's timeline direction (mock v4.3) uses the full width, so it has no side column.
   const [aajV] = useVariant("aaj");
   const noRail = def.id === "aaj" && aajV === "c";
+  // Mock v4.3: the twelve core screens can be seen empty, loading, failing, offline or on a first visit.
+  const [mstate] = useMockState();
+  const core = STATE_SCREENS.includes(def.id);
+  const st = core ? mstate : "ok";
+  const replaced = st === "empty" || st === "loading" || st === "error";
   if (def.layout === "bare" || def.layout === "admin-bare") {
     return (
       <>
@@ -78,7 +102,20 @@ function App() {
   if (def.layout === "focus") {
     return (
       <div className="focus-app" key={def.id}>
-        <Body />
+        {replaced ? (
+          <FocusState id={def.id} title={tri(def.title)} state={st} />
+        ) : (
+          <>
+            <Body />
+            {st === "offline" && (
+              <div className="st-float">
+                <OfflineBanner />
+              </div>
+            )}
+            {st === "first" && <FirstCard id={def.id} floating />}
+          </>
+        )}
+        {core && <StateFab />}
       </div>
     );
   }
@@ -92,10 +129,19 @@ function App() {
   }
   return (
     <>
-      <Shell route={def.id} rail={Rail && !noRail ? <Rail /> : undefined}>
-        <Body />
+      <Shell route={def.id} rail={st === "loading" ? <RailSkel /> : replaced ? undefined : Rail && !noRail ? <Rail /> : undefined}>
+        {replaced ? (
+          <StateBody id={def.id} state={st} />
+        ) : (
+          <>
+            {st === "offline" && <OfflineBanner />}
+            {st === "first" && <FirstCard id={def.id} />}
+            <Body />
+          </>
+        )}
       </Shell>
       <MockFab />
+      {core && <StateFab />}
     </>
   );
 }
