@@ -17,6 +17,16 @@ When the owner asks what is pending, start with the "Ruka hua kaam" section: wor
 
 Mark something ✅ only when it works and has tests; say plainly in the note what is still missing. Write the tracker in the same Hinglish as the rest of it.
 
+## 21st.dev skills
+
+`.claude/skills/21st-*` (see `.claude/skills/README.md`) let Claude search 21st.dev for UI references and components. In this repo:
+
+1. `docs/learn/DESIGN-SYSTEM.md` is the design source of truth. If `21st init --design-context` writes `.21st/design.json`, it must match that file; where they differ, DESIGN-SYSTEM.md wins.
+2. Our packages do not use Tailwind or shadcn. Do not run `21st add` into `packages/*`. Read a component with `21st get`, check its licence, and rebuild it with our tokens and kit.
+3. Never publish anything to 21st.dev (`publish`, `publish-theme`, `publish-template`, `21st-design-sync`, profile) without the owner's explicit yes. Those pages are public and carry our brand.
+4. Hosted 21st AI (`generate`, `iterate`) spends paid credits: only with the owner's yes.
+5. The key lives only in the environment variable `TWENTYFIRST_TOKEN`, set in the environment settings. Never ask for it in chat or write it to the repo.
+
 ## Checks
 
 Run `npm run check` (typecheck and every test) before pushing. For web or console changes also run `npm run build:clients` and `npm run budget`. After changing an API route or schema, run `npm run openapi` to regenerate `docs/openapi.json`.

@@ -229,6 +229,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 23 Oct 2026: owner ke kehne par 21st.dev ki 7 skills project me (`.claude/skills/21st-*`, Apache-2.0, README wahin); istemaal ke niyam `CLAUDE.md` me (DESIGN-SYSTEM.md jeetta hai, `packages/*` me `21st add` nahi, publish aur paid AI sirf owner ki haan se). Chalane ke liye owner kare: environment me `21st.dev` allow + `TWENTYFIRST_TOKEN`.
 - 21 Oct 2026: mock v4.2 (T0–T8): logo A final + favicon; SQL = DSA workspace; profile v2 (HR share link, card, coding sites ka saar); landing gehra; ML notebook (Colab GPU); AI mock interview; admin runtimes + recruiters; docs DESIGN-SYSTEM, CODE-READINESS, FEATURE-IDEAS. 72 screens, wahi link. Owner ki raay baaki.
 - 20 Oct 2026: mock v4.1 (S0–S5): problem/SQL default 2 pane, Sahayak se 3 aur wapas 2 (animate); P se logo ke 3 option (brand page se poore app me aazmao, default A); Studio me quick fix, diff, inline Sahayak, hover card, test ek-ek karke; modal/drawer/menu/toast exit motion, tab line, notifications drawer, `?` shortcuts. Screenshots + README v4.1, wahi link. Owner ki raay baaki (logo).
 - 20 Oct 2026: mock v4 (R0–R5): IBM Plex Sans + Devanagari + JetBrains Mono, kaala default, kit refine, VS Code jaisa Studio, admin pages gehre; screenshots aur README v4; wahi link. Owner ki raay baaki.
