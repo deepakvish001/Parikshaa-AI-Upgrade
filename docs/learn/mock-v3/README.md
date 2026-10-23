@@ -7,6 +7,7 @@ wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../
 [../mock/README.md](../mock/README.md), v2 [../mock-v2/README.md](../mock-v2/README.md).
 
 **Dekhne ka link (private, sirf owner):** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn
+**Muse session ka rebuild (23 Oct 2026):** yahi v4.3 bina kisi badlav ke dobara build karke `preview.html` owner ko diya gaya; Muse file link (25 Oct 2026 16:46 UTC tak): https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html
 Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
