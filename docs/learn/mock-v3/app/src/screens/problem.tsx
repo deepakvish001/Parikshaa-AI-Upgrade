@@ -542,18 +542,22 @@ function Workspace({
         sub={sub}
         center={<TaskTimer label={task} />}
         right={
-          <>
-            <button className="icon-btn hide-phone" data-tip={t("Previous problem", "Pichhla", "पिछला")} data-tip-pos="bottom">
-              <ChevronLeft />
-            </button>
-            <button className="icon-btn hide-phone" data-tip={t("Next problem", "Agla", "अगला")} data-tip-pos="bottom">
-              <ChevronRight />
-            </button>
-            <span className="hide-phone">
-              <PaneToggles panes={paneDefs} open={open} toggle={togglePane} />
-            </span>
-          </>
+          <span className="hide-phone">
+            <PaneToggles panes={paneDefs} open={open} toggle={togglePane} />
+          </span>
         }
+        more={(close) => (
+          <>
+            <button className="menu-item" onClick={close}>
+              <ChevronLeft />
+              <span className="grow">{t("Previous problem", "Pichhla sawaal", "पिछला सवाल")}</span>
+            </button>
+            <button className="menu-item" onClick={close}>
+              <ChevronRight />
+              <span className="grow">{t("Next problem", "Agla sawaal", "अगला सवाल")}</span>
+            </button>
+          </>
+        )}
       />
       <Panes
         open={open}

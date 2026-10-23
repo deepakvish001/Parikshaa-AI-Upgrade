@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowLeft, ChevronsLeftRight } from "lucide-react";
-import { Link, useT } from "../lib/core";
-import { LogoMark } from "./kit";
-import { LangButton, ThemeButton } from "./shell";
+import { ArrowLeft, Check, ChevronsLeftRight, Keyboard, Moon, MoreHorizontal, Sun } from "lucide-react";
+import { Link, useLang, useT, useTheme, type Lang } from "../lib/core";
+import { LogoMark, Menu } from "./kit";
 
 /* ---------------- focus top bar ---------------- */
 
@@ -12,12 +11,15 @@ export function FocusBar({
   sub,
   center,
   right,
+  more,
 }: {
   back: string;
   title: ReactNode;
   sub?: ReactNode;
   center?: ReactNode;
   right?: ReactNode;
+  /** Page actions that are useful but not needed every minute; they sit in the ⋯ menu above language and theme. */
+  more?: (close: () => void) => ReactNode;
 }) {
   const t = useT();
   return (
@@ -37,14 +39,66 @@ export function FocusBar({
       {center && <div className="fbar-c">{center}</div>}
       <div className="fbar-r">
         {right}
-        <span className="hide-phone">
-          <LangButton compact />
-        </span>
-        <span className="hide-phone">
-          <ThemeButton />
-        </span>
+        <MoreMenu more={more} />
       </div>
     </header>
+  );
+}
+
+const LANGS: [Lang, string][] = [
+  ["en", "English"],
+  ["hg", "Hinglish"],
+  ["hi", "हिंदी"],
+];
+
+/** One ⋯ menu instead of a row of small icons: page actions, then language, theme and the shortcut list. */
+function MoreMenu({ more }: { more?: (close: () => void) => ReactNode }) {
+  const t = useT();
+  const { lang, setLang } = useLang();
+  const { theme, setTheme } = useTheme();
+  return (
+    <Menu
+      width={236}
+      trigger={(open, toggle) => (
+        <button className="icon-btn" onClick={toggle} aria-label={t("More", "Aur", "और")} aria-expanded={open} data-tip={t("More", "Aur", "और")} data-tip-pos="bottom">
+          <MoreHorizontal />
+        </button>
+      )}
+    >
+      {(close) => (
+        <>
+          {more && (
+            <>
+              {more(close)}
+              <div className="menu-sep" />
+            </>
+          )}
+          <div className="menu-label">{t("Language", "Bhasha", "भाषा")}</div>
+          {LANGS.map(([id, name]) => (
+            <button key={id} className="menu-item" role="menuitemradio" aria-checked={lang === id} onClick={() => setLang(id)}>
+              <span className="grow">{name}</span>
+              {lang === id && <Check />}
+            </button>
+          ))}
+          <div className="menu-sep" />
+          <button className="menu-item" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+            {theme === "dark" ? <Sun /> : <Moon />}
+            <span className="grow">{theme === "dark" ? t("Paper (light)", "Kaagaz (light)", "काग़ज़ (लाइट)") : t("Black (dark)", "Kaala (dark)", "काला (डार्क)")}</span>
+          </button>
+          <button
+            className="menu-item"
+            onClick={() => {
+              close();
+              window.dispatchEvent(new Event("pk-keys"));
+            }}
+          >
+            <Keyboard />
+            <span className="grow">{t("Keyboard shortcuts", "Shortcuts", "शॉर्टकट")}</span>
+            <kbd className="kbd">?</kbd>
+          </button>
+        </>
+      )}
+    </Menu>
   );
 }
 

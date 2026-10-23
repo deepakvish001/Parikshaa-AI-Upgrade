@@ -319,8 +319,8 @@
 
 /* ---------- cards ---------- */
 .card {
-  background: var(--panel);
-  border: 1px solid var(--line);
+  background: var(--sheen), var(--panel);
+  border: 1px solid var(--card-line);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-1), var(--edge);
   min-width: 0;
@@ -335,7 +335,8 @@
   transition: border-color 0.16s, box-shadow 0.16s, transform 0.16s var(--ease);
 }
 .card.hov:hover {
-  border-color: var(--line-2);
+  border-color: var(--line);
+  background: var(--sheen), var(--raised);
   box-shadow: var(--shadow-2), var(--edge);
   transform: translateY(-1px);
 }
@@ -958,6 +959,14 @@ button.li {
 .menu-item.dang svg {
   color: var(--red-text);
 }
+.menu-label {
+  padding: 6px 10px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
 .menu-sep {
   height: 1px;
   background: var(--line);
@@ -1005,7 +1014,7 @@ button.li {
   width: min(520px, 100%);
   max-height: calc(100vh - 32px);
   overflow: auto;
-  background: var(--raised);
+  background: var(--overlay);
   border: 1px solid var(--line-2);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-3);
@@ -1036,7 +1045,7 @@ button.li {
 .drawer {
   width: min(460px, 100vw);
   height: 100%;
-  background: var(--raised);
+  background: var(--overlay);
   border-left: 1px solid var(--line-2);
   box-shadow: var(--shadow-3);
   overflow: auto;

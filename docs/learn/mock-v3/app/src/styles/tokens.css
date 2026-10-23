@@ -1,4 +1,5 @@
-/* Parikshaa v4 tokens: "Syaahi" (dark, the default: true black, every edge visible) and "Kaagaz" (light, crisp).
+/* Parikshaa v4.3 tokens. "Syaahi" (dark, the default: true black page) and "Kaagaz" (light, crisp). Dark has three
+   surface steps (page, panel, raised/overlay); card outlines (--card-line) are softer than dividers (--line).
    Light values live on bare :root; dark values are repeated for the system preference and for the explicit toggle,
    and the app sets data-theme="dark" unless the learner picks light. */
 
@@ -12,10 +13,15 @@
   --press: rgba(10, 10, 12, 0.085);
   --line: #e2e2de;
   --line-2: #c9c9c3;
+  /* Card outlines are softer than dividers: depth comes from the surface steps and shadow, not from a box on every edge. */
+  --card-line: rgba(10, 10, 12, 0.08);
+  --overlay: #ffffff;
+  /* A faint top-lit wash on cards in dark; none on paper. */
+  --sheen: none;
   --ink: #0a0a0b;
   --ink-2: #43444c;
-  --ink-3: #6a6c74;
-  --ink-4: #9a9ca3;
+  --ink-3: #5c5e66;
+  --ink-4: #66686f;
   --pen: #2349e6;
   --pen-hover: #1b3bc4;
   --pen-text: #1d41d4;
@@ -55,7 +61,7 @@
   --code-fn: #6a45ff;
   --code-com: #8a8c93;
   --code-ty: #0b7189;
-  --shadow-1: 0 1px 2px rgba(10, 10, 12, 0.06);
+  --shadow-1: 0 1px 2px rgba(10, 10, 12, 0.05), 0 2px 8px -4px rgba(10, 10, 12, 0.06);
   --shadow-2: 0 1px 2px rgba(10, 10, 12, 0.05), 0 10px 28px -12px rgba(10, 10, 12, 0.18);
   --shadow-3: 0 2px 6px rgba(10, 10, 12, 0.06), 0 24px 56px -16px rgba(10, 10, 12, 0.3);
   --paper-shadow: 0 1px 0 rgba(10, 10, 12, 0.04), 0 16px 36px -18px rgba(10, 10, 12, 0.3);
@@ -94,17 +100,20 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --page: #000000;
-    --panel: #0c0c0e;
-    --panel-2: #131316;
-    --sunk: #1c1c20;
+    --panel: #101013;
+    --panel-2: #16161a;
+    --sunk: #1f1f24;
     --hover: rgba(255, 255, 255, 0.06);
     --press: rgba(255, 255, 255, 0.1);
     --line: #2a2a2f;
     --line-2: #3f3f46;
+    --card-line: rgba(255, 255, 255, 0.075);
+    --overlay: #1e1e23;
+    --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0) 140px);
     --ink: #fafafa;
     --ink-2: #c4c4cc;
-    --ink-3: #8f8f99;
-    --ink-4: #62626b;
+    --ink-3: #a3a3ad;
+    --ink-4: #86868f;
     --pen: #3b62f5;
     --pen-hover: #5a7dff;
     --pen-text: #94a9ff;
@@ -148,12 +157,12 @@
     --shadow-2: 0 16px 40px -18px rgba(0, 0, 0, 0.9);
     --shadow-3: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 28px 64px -16px rgba(0, 0, 0, 0.95);
     --paper-shadow: 0 20px 44px -22px rgba(0, 0, 0, 0.9);
-    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
-    --field: #101013;
+    --edge: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    --field: #0b0b0d;
     --on-tick: #03170b;
     --on-red: #1c0402;
     --on-ai: #0e0822;
-    --raised: #141417;
+    --raised: #1a1a1f;
     --scrim: rgba(0, 0, 0, 0.72);
   }
 }
@@ -161,17 +170,20 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --page: #000000;
-  --panel: #0c0c0e;
-  --panel-2: #131316;
-  --sunk: #1c1c20;
+  --panel: #101013;
+  --panel-2: #16161a;
+  --sunk: #1f1f24;
   --hover: rgba(255, 255, 255, 0.06);
   --press: rgba(255, 255, 255, 0.1);
   --line: #2a2a2f;
   --line-2: #3f3f46;
+  --card-line: rgba(255, 255, 255, 0.075);
+  --overlay: #1e1e23;
+  --sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0) 140px);
   --ink: #fafafa;
   --ink-2: #c4c4cc;
-  --ink-3: #8f8f99;
-  --ink-4: #62626b;
+  --ink-3: #a3a3ad;
+  --ink-4: #86868f;
   --pen: #3b62f5;
   --pen-hover: #5a7dff;
   --pen-text: #94a9ff;
@@ -215,11 +227,11 @@
   --shadow-2: 0 16px 40px -18px rgba(0, 0, 0, 0.9);
   --shadow-3: 0 0 0 1px rgba(255, 255, 255, 0.04), 0 28px 64px -16px rgba(0, 0, 0, 0.95);
   --paper-shadow: 0 20px 44px -22px rgba(0, 0, 0, 0.9);
-  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.045);
-  --field: #101013;
+  --edge: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --field: #0b0b0d;
   --on-tick: #03170b;
   --on-red: #1c0402;
   --on-ai: #0e0822;
-  --raised: #141417;
+  --raised: #1a1a1f;
   --scrim: rgba(0, 0, 0, 0.72);
 }

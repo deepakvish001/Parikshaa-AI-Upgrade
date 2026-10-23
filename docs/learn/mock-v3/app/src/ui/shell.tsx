@@ -599,8 +599,13 @@ export function KeySheet() {
         }
       }
     };
+    const flip = () => setOpen((o) => !o);
     window.addEventListener("keydown", h);
-    return () => window.removeEventListener("keydown", h);
+    window.addEventListener("pk-keys", flip);
+    return () => {
+      window.removeEventListener("keydown", h);
+      window.removeEventListener("pk-keys", flip);
+    };
   }, []);
   const groups: [string, [string[], string][]][] = [
     [
