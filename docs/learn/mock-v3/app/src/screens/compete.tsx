@@ -239,7 +239,7 @@ export function ContestsBody() {
         </div>
       ) : (
         <Card pad={false}>
-          <div className="tbl-wrap"><table className="tbl">
+          <div className="tbl-wrap" tabIndex={0}><table className="tbl">
             <thead>
               <tr>
                 <th>{t("Contest", "Contest", "प्रतियोगिता")}</th>
@@ -475,7 +475,7 @@ export function ContestLiveScreen() {
                     </span>
                   </div>
                 </PaneHead>
-                <div className="editor">
+                <div className="editor" tabIndex={0} role="region" aria-label={t("Code editor", "Code editor", "कोड एडिटर")}>
                   <Code code={BUGGY} caret={4} className="ed-code" />
                 </div>
                 <div className="statusbar">
@@ -547,7 +547,7 @@ export function ContestResultBody() {
         <Stamp top="ROUND 13" mid="+43" bottom="RATING UP" />
       </section>
       <Card title={t("Problem by problem", "Har problem", "हर प्रश्न")} icon={<Medal className="ic" />} pad={false}>
-        <div className="tbl-wrap"><table className="tbl">
+        <div className="tbl-wrap" tabIndex={0}><table className="tbl">
           <thead>
             <tr>
               <th>{t("Problem", "Problem", "प्रश्न")}</th>

@@ -94,7 +94,7 @@ export function AdmLearners() {
             </Gate>
           }
         />
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl">
             <thead>
               <tr>
@@ -306,7 +306,7 @@ export function AdmLearner() {
       )}
       {(tab === "subs" || tab === "pay" || tab === "audit") && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <tbody>
                 {(tab === "subs"
@@ -391,10 +391,10 @@ export function AdmSupport() {
             </div>
             <div className="field">
               <label>{t("Reply to learner", "Learner ko jawab", "जवाब")}</label>
-              <textarea className="textarea" defaultValue={t("Thank you, you're right. We've fixed test 14; the fix goes live after review. +20 coins added for the report.", "Shukriya, aap sahi ho. Test 14 theek kar diya; review ke baad live. Report ke liye +20 coins.", "धन्यवाद, आप सही हैं।")} />
+              <textarea aria-label={t("Reply to learner", "Learner ko jawab", "जवाब")} className="textarea" defaultValue={t("Thank you, you're right. We've fixed test 14; the fix goes live after review. +20 coins added for the report.", "Shukriya, aap sahi ho. Test 14 theek kar diya; review ke baad live. Report ke liye +20 coins.", "धन्यवाद, आप सही हैं।")} />
             </div>
             <div className="row g8">
-              <select className="select sm" style={{ width: 200 }} defaultValue="t1">
+              <select className="select sm" style={{ width: 200 }} defaultValue="t1" aria-label={t("Reply template", "Jawab ka template", "टेम्पलेट")}>
                 <option value="t1">{t("Template: fixed, thanks", "Template: theek, shukriya", "टेम्पलेट")}</option>
               </select>
               <span className="grow" />
@@ -546,7 +546,7 @@ export function AdmCommunity() {
       {tab === "posts" && (
         <section className="card">
           <Toolbar placeholder={t("Search posts or people", "Posts ya log khojo", "पोस्ट खोजें")} filters={[{ label: t("Has spoiler", "Spoiler", "स्पॉइलर") }, { label: t("Answered", "Answered", "उत्तरित") }, { label: t("Reported once", "Ek report", "एक रिपोर्ट") }]} />
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -585,7 +585,7 @@ export function AdmCommunity() {
       )}
       {tab === "bans" && (
         <section className="card">
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>

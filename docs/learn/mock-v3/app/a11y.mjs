@@ -1,5 +1,5 @@
 // Accessibility pass over every screen of the built mock: axe-core rules (WCAG 2.2 A/AA) and,
-// on phone widths, tap targets smaller than 40 px. Prints one line per screen with problems and a summary.
+// on phone widths, tap targets under 40 x 40 px or under 24 px on any side. Prints one line per screen with problems and a summary.
 // [ROLE=finance] [ROUTES=file] [VAR="aaj=b"] [IMPACT=serious] node a11y.mjs [w=1440] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { resolve } from "node:path";
@@ -40,7 +40,9 @@ for (const r of routes) {
         if (st.visibility === "hidden" || st.display === "none" || st.position === "fixed" && r.height === 0) continue;
         // Inline text links inside running text are exempt (WCAG 2.5.8).
         if (el.tagName === "A" && st.display === "inline" && el.parentElement && /P|LI|SPAN/.test(el.parentElement.tagName)) continue;
-        if (r.height < 40 && r.width < 40 || r.height < 32 || r.width < 32) out.push(`${el.tagName.toLowerCase()}.${String(el.className).split(" ")[0]} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 20)}"`);
+        // Our floor is 40 px on the short side for icon-sized controls, and nothing under 24 px (WCAG 2.5.8).
+        const floor = el.matches(".check, .toggle, [role=checkbox], [role=switch]") ? 24 : 40;
+        if ((r.height < floor && r.width < floor) || r.height < 24 || r.width < 24) out.push(`${el.tagName.toLowerCase()}.${String(el.className).split(" ")[0]} ${Math.round(r.width)}x${Math.round(r.height)} "${(el.getAttribute("aria-label") || el.textContent || "").trim().slice(0, 20)}"`);
       }
       return out;
     });

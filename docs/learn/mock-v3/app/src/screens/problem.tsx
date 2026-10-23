@@ -414,17 +414,17 @@ function CodePane({ v, setV, openAi, onClose }: { v: Verdict; setV: (v: Verdict)
             ))
           }
         </Menu>
-        <button className="icon-btn sm" data-tip={t("Reset code", "Code reset", "रीसेट")} data-tip-pos="bottom">
+        <button className="icon-btn sm" aria-label={t("Reset code", "Code reset", "रीसेट")} data-tip={t("Reset code", "Code reset", "रीसेट")} data-tip-pos="bottom">
           <RotateCcw />
         </button>
-        <button className="icon-btn sm" data-tip={t("Editor settings", "Editor settings", "सेटिंग्स")} data-tip-pos="bottom">
+        <button className="icon-btn sm" aria-label={t("Editor settings", "Editor settings", "सेटिंग्स")} data-tip={t("Editor settings", "Editor settings", "सेटिंग्स")} data-tip-pos="bottom">
           <Settings2 />
         </button>
-        <button className="icon-btn sm" data-tip={t("Full screen", "Full screen", "पूर्ण स्क्रीन")} data-tip-pos="bottom">
+        <button className="icon-btn sm" aria-label={t("Full screen", "Full screen", "पूर्ण स्क्रीन")} data-tip={t("Full screen", "Full screen", "पूर्ण स्क्रीन")} data-tip-pos="bottom">
           <Maximize2 />
         </button>
       </PaneHead>
-      <div className="editor">
+      <div className="editor" tabIndex={0} role="region" aria-label={t("Code editor", "Code editor", "कोड एडिटर")}>
         <Code code={code} bad={v === "wa" ? [4] : []} good={fixed ? [4] : []} caret={4} className="ed-code" />
         {v === "wa" && (
           <div className="ed-note">
@@ -1071,17 +1071,17 @@ function SqlCodePane({ v, setV, openAi, onClose }: { v: SqlVerdict; setV: (v: Sq
             ))
           }
         </Menu>
-        <button className="icon-btn sm" data-tip={t("Reset query", "Query reset", "रीसेट")} data-tip-pos="bottom">
+        <button className="icon-btn sm" aria-label={t("Reset query", "Query reset", "रीसेट")} data-tip={t("Reset query", "Query reset", "रीसेट")} data-tip-pos="bottom">
           <RotateCcw />
         </button>
-        <button className="icon-btn sm" data-tip={t("Editor settings", "Editor settings", "सेटिंग्स")} data-tip-pos="bottom">
+        <button className="icon-btn sm" aria-label={t("Editor settings", "Editor settings", "सेटिंग्स")} data-tip={t("Editor settings", "Editor settings", "सेटिंग्स")} data-tip-pos="bottom">
           <Settings2 />
         </button>
-        <button className="icon-btn sm" data-tip={t("Full screen", "Full screen", "पूर्ण स्क्रीन")} data-tip-pos="bottom">
+        <button className="icon-btn sm" aria-label={t("Full screen", "Full screen", "पूर्ण स्क्रीन")} data-tip={t("Full screen", "Full screen", "पूर्ण स्क्रीन")} data-tip-pos="bottom">
           <Maximize2 />
         </button>
       </PaneHead>
-      <div className="editor">
+      <div className="editor" tabIndex={0} role="region" aria-label={t("Code editor", "Code editor", "कोड एडिटर")}>
         <Code code={fixed ? QUERY_OK : QUERY} bad={v === "wa" ? [7] : v === "err" ? [] : []} good={fixed ? [3, 10] : []} caret={fixed ? 10 : 7} className="ed-code" />
         {v === "wa" && (
           <div className="ed-note" style={{ top: "calc(10px + 6 * 1.7em)" }}>

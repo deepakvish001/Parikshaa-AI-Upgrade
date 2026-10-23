@@ -704,13 +704,13 @@
 .pq.ans {
   background: var(--tick);
   border-color: var(--tick);
-  color: #fff;
+  color: var(--on-tick);
   border-radius: 9px 9px 18px 18px;
 }
 .pq.not {
   background: var(--red);
   border-color: var(--red);
-  color: #fff;
+  color: var(--on-red);
   border-radius: 18px 18px 9px 9px;
 }
 .pq.mark {

@@ -116,7 +116,7 @@ export function AdmProblems() {
             </div>
           </div>
         )}
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl">
             <thead>
               <tr>
@@ -226,7 +226,7 @@ export function AdmProblemEditor() {
             <Save />
             {t("Save", "Save", "सहेजें")}
           </Gate>
-          <button className="btn pri" disabled data-tip={t(`${failing} checks failing · review pending`, `${failing} checks fail · review baaki`, "जाँच विफल")}>
+          <button className="btn pri" disabled aria-label={t(`${failing} checks failing · review pending`, `${failing} checks fail · review baaki`, "जाँच विफल")} data-tip={t(`${failing} checks failing · review pending`, `${failing} checks fail · review baaki`, "जाँच विफल")}>
             <Lock />
             {t("Publish", "Publish", "प्रकाशित")}
           </button>
@@ -262,6 +262,7 @@ export function AdmProblemEditor() {
             </div>
             <textarea
               className="md-ed mono"
+              aria-label="Markdown"
               defaultValue={`Given a string made of the characters ()[]{}, print true if every opening bracket is closed by the same type of bracket in the right order, else false.\n\nAn empty string counts as valid.\n\n## Constraints\n- 0 ≤ |s| ≤ 10^5\n\n## Example 1\nInput: ([]{})\nOutput: true`}
             />
           </section>
@@ -298,7 +299,7 @@ export function AdmProblemEditor() {
               </>
             }
           />
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl dense">
               <thead>
                 <tr>
@@ -416,7 +417,7 @@ export function AdmProblemEditor() {
             ].map(([k, v]) => (
               <div key={k} className="field">
                 <label>{k}</label>
-                <input className="input" defaultValue={v} />
+                <input aria-label={k} className="input" defaultValue={v} />
               </div>
             ))}
           </div>
@@ -450,6 +451,7 @@ export function AdmProblemEditor() {
             </div>
             <textarea
               className="md-ed mono"
+              aria-label={t("Lesson block", "Lesson block", "पाठ खंड")}
               style={{ minHeight: 200 }}
               defaultValue={`## Where people slip\n- Pushing ")" when the stack is empty: check before pop.\n- Returning true when the stack still has "(" left at the end.\n- Using one counter for all three bracket types: "([)]" passes, but is wrong.`}
             />
@@ -494,6 +496,7 @@ export function AdmProblemEditor() {
             </div>
             <textarea
               className="md-ed mono"
+              aria-label={t("Visual spec", "Visual spec", "दृश्य स्पेक")}
               defaultValue={`{\n  "kind": "stack",\n  "input": "([]{})",\n  "frames": [\n    { "read": "(", "stack": ["("], "say": "open: push" },\n    { "read": "[", "stack": ["(", "["], "say": "open: push" },\n    { "read": "]", "stack": ["("], "say": "matches top: pop" },\n    { "read": "{", "stack": ["(", "{"], "say": "open: push" },\n    { "read": "}", "stack": ["("], "say": "matches top: pop" },\n    { "read": ")", "stack": [], "say": "matches top: pop" }\n  ],\n  "end": "stack empty → true"\n}`}
             />
           </section>
@@ -633,7 +636,7 @@ export function AdmAptitude() {
                 </button>
               </div>
             )}
-            <div className="tbl-wrap">
+            <div className="tbl-wrap" tabIndex={0}>
               <table className="tbl">
                 <thead>
                   <tr>
@@ -717,7 +720,7 @@ export function AdmAptitude() {
       {tab === "sets" && (
         <section className="card">
           <Toolbar placeholder={t("Search sets", "Sets khojo", "सेट खोजें")} filters={[{ label: "Quant" }, { label: "Logical" }, { label: "Verbal" }]} right={<Gate mod="content" className="btn sm pri"><Plus />{t("New set", "Naya set", "नया सेट")}</Gate>} />
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -789,7 +792,7 @@ export function AdmAptitude() {
                 {t("Source verified", "Source verified", "स्रोत सत्यापित")}
               </Badge>
             </div>
-            <div className="tbl-wrap">
+            <div className="tbl-wrap" tabIndex={0}>
               <table className="tbl">
                 <thead>
                   <tr>
@@ -902,7 +905,7 @@ export function AdmAptitude() {
         <div className="col g12">
           <div className="field">
             <label>{t("Question", "Sawaal", "प्रश्न")}</label>
-            <textarea className="textarea" defaultValue="The price of a phone rises by 20% in March and then falls by 20% in April. Compared with February, the April price:" />
+            <textarea aria-label={t("Question", "Sawaal", "प्रश्न")} className="textarea" defaultValue="The price of a phone rises by 20% in March and then falls by 20% in April. Compared with February, the April price:" />
           </div>
           {["Increases by 4%", "Decreases by 4%", "No change", "Decreases by 2%"].map((o, i) => (
             <div key={o} className="row g8">
@@ -912,16 +915,16 @@ export function AdmAptitude() {
           ))}
           <div className="field">
             <label>{t("Shortcut", "Shortcut", "शॉर्टकट")}</label>
-            <input className="input" defaultValue="a + b + ab/100" />
+            <input aria-label={t("Shortcut", "Shortcut", "शॉर्टकट")} className="input" defaultValue="a + b + ab/100" />
           </div>
           <div className="row g12">
             <div className="field grow">
               <label>{t("Time target (s)", "Time target (s)", "समय लक्ष्य")}</label>
-              <input className="input" defaultValue="40" />
+              <input aria-label={t("Time target (s)", "Time target (s)", "समय लक्ष्य")} className="input" defaultValue="40" />
             </div>
             <div className="field grow">
               <label>{t("Level", "Level", "स्तर")}</label>
-              <select className="select" defaultValue="2">
+              <select aria-label={t("Level", "Level", "स्तर")} className="select" defaultValue="2">
                 <option value="1">L1</option>
                 <option value="2">L2</option>
                 <option value="3">L3</option>
@@ -1059,7 +1062,7 @@ export function AdmRoadmaps() {
         }
       />
       <div className="rm-ed">
-        <section className="card rm-canvas paper-grid">
+        <section className="card rm-canvas paper-grid" tabIndex={0} aria-label={t("Roadmap canvas", "Roadmap canvas", "रोडमैप कैनवास")}>
           <svg width="100%" height="420" viewBox="0 0 560 420" aria-label="Roadmap graph editor">
             {edges.map(([a, b]) => {
               const A = pos(a);
@@ -1081,7 +1084,7 @@ export function AdmRoadmaps() {
             <div className="col g10">
               <div className="field">
                 <label>{t("Title", "Title", "शीर्षक")}</label>
-                <input className="input" defaultValue={pos(sel).t} key={sel} />
+                <input aria-label={t("Title", "Title", "शीर्षक")} className="input" defaultValue={pos(sel).t} key={sel} />
               </div>
               <div className="row between small">
                 <span>{t("Required", "Zaroori", "आवश्यक")}</span>
@@ -1133,7 +1136,7 @@ export function AdmCompanies() {
       />
       {tab === "queue" && (
         <section className="card">
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -1181,7 +1184,7 @@ export function AdmCompanies() {
       )}
       {tab === "sources" && (
         <section className="card">
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -1214,7 +1217,7 @@ export function AdmCompanies() {
       )}
       {tab === "list" && (
         <section className="card">
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -1319,7 +1322,7 @@ export function AdmFactory() {
         ))}
       </div>
       <section className="card">
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl">
             <thead>
               <tr>
@@ -1358,10 +1361,10 @@ export function AdmFactory() {
                     <td>{s === "run" ? <Status s="info">{t("Running", "Chal raha", "चालू")}</Status> : s === "done" ? <Status s="live">{t("Done", "Ho gaya", "पूरा")}</Status> : <Status s="review">{t("Paused", "Ruka", "रुका")}</Status>}</td>
                     <td>
                       <span className="row g4">
-                        <Gate mod="factory" need="full" className="icon-btn sm" onClick={() => toast(t("Batch paused", "Batch ruka", "बैच रुका"))}>
+                        <Gate mod="factory" need="full" className="icon-btn sm" label={s === "pause" ? t("Resume batch", "Batch chalao", "बैच चलाएँ") : t("Pause batch", "Batch roko", "बैच रोकें")} onClick={() => toast(t("Batch paused", "Batch ruka", "बैच रुका"))}>
                           {s === "pause" ? <Play /> : <Pause />}
                         </Gate>
-                        <Gate mod="factory" need="full" className="icon-btn sm" onClick={() => setKill(true)}>
+                        <Gate mod="factory" need="full" className="icon-btn sm" label={t("Stop batch", "Batch band karo", "बैच बंद करें")} onClick={() => setKill(true)}>
                           <Square />
                         </Gate>
                       </span>

@@ -58,7 +58,7 @@ export function AdmRuntime() {
             ))}
           </div>
           <Card title={t("Limits per plan", "Plan-war seema", "योजना-वार सीमा")} icon={<Clock className="ic" />} actions={<Gate mod="runtime" need="edit" className="btn sm">{t("Change limits", "Seema badlo", "सीमा बदलें")}</Gate>}>
-            <div className="tbl-wrap">
+            <div className="tbl-wrap" tabIndex={0}>
               <table className="tbl">
                 <thead>
                   <tr>

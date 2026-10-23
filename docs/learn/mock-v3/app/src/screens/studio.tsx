@@ -958,18 +958,21 @@ export function StudioScreen() {
   /* ----- editor group ----- */
   const editorGroup = (
     <section className="ide-group">
-      <div className="ide-tabs" role="tablist">
+      <div className="ide-tabs">
+        <div className="ide-tablist" role="group" aria-label={t("Open files", "Khuli files", "खुली फ़ाइलें")}>
         {tabs.map((id) => {
           const f = fileOf(id);
           const e = isDiff(id) ? 0 : errs(f);
           return (
-          <div key={id} role="tab" aria-selected={cur === id} className={`ide-tab ${cur === id ? "on" : ""} ${id === "test" ? "preview" : ""}`} onClick={() => setCur(id)}>
-            {isDiff(id) ? <GitCompare className="fi" /> : <FileIcon kind={FILES[f].kind} name={FILES[f].name} />}
-            <span className={e ? "t-red" : ""}>
-              {FILES[f].name}
-              {isDiff(id) ? <span className="faint"> ({t("Working Tree", "Working Tree", "वर्किंग ट्री")})</span> : null}
-            </span>
-            {e ? <span className="tab-err">{e}</span> : null}
+          <div key={id} className={`ide-tab ${cur === id ? "on" : ""} ${id === "test" ? "preview" : ""}`} onClick={() => setCur(id)}>
+            <button aria-current={cur === id ? "true" : undefined} className="ide-tab-b" onClick={() => setCur(id)}>
+              {isDiff(id) ? <GitCompare className="fi" /> : <FileIcon kind={FILES[f].kind} name={FILES[f].name} />}
+              <span className={e ? "t-red" : ""}>
+                {FILES[f].name}
+                {isDiff(id) ? <span className="faint"> ({t("Working Tree", "Working Tree", "वर्किंग ट्री")})</span> : null}
+              </span>
+              {e ? <span className="tab-err">{e}</span> : null}
+            </button>
             <button
               className="tab-x"
               aria-label={`Close ${FILES[f].name}`}
@@ -983,6 +986,7 @@ export function StudioScreen() {
           </div>
           );
         })}
+        </div>
         <span className="grow" />
         <span className="tab-acts">
           <button className="ib" onClick={run} aria-label="Run tests" data-tip={t("Run tests", "Tests chalao", "टेस्ट चलाएँ")} data-tip-pos="bottom">
@@ -1223,7 +1227,9 @@ export function StudioScreen() {
           <X />
         </button>
       </div>
-      <div className="pn-body">{panelBody}</div>
+      <div className="pn-body" tabIndex={0} role="region" aria-label={t("Panel output", "Panel ka output", "पैनल आउटपुट")}>
+        {panelBody}
+      </div>
     </section>
   );
 
@@ -1255,10 +1261,10 @@ export function StudioScreen() {
           <span className="ellipsis grow small">
             <b>hostel-split</b> · {FILES[cf].name}
           </span>
-          <button className="btn sm" onClick={run} disabled={running}>
+          <button className="btn sm" onClick={run} disabled={running} aria-label={t("Run tests", "Tests chalao", "टेस्ट चलाएँ")}>
             {running ? <span className="spinner" /> : <Play />}
           </button>
-          <button className="btn sm pri" onClick={() => toast(t("Milestone opens when all 12 tests pass", "12 tests pass hone par submit", "सभी टेस्ट पास होने पर"))}>
+          <button className="btn sm pri" onClick={() => toast(t("Milestone opens when all 12 tests pass", "12 tests pass hone par submit", "सभी टेस्ट पास होने पर"))} aria-label={t("Submit milestone", "Milestone submit", "पड़ाव जमा करें")}>
             <Send />
           </button>
         </header>

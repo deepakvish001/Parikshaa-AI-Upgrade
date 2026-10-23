@@ -397,13 +397,13 @@ export function SheetBody() {
                               </td>
                               <td style={{ width: 140 }} className="r">
                                 <span className="row g4" style={{ justifyContent: "flex-end" }}>
-                                  <Link to="editorial" className="icon-btn sm" data-tip={t("Editorial", "Editorial", "हल")}>
+                                  <Link to="editorial" className="icon-btn sm" aria-label={t("Editorial", "Editorial", "हल")} data-tip={t("Editorial", "Editorial", "हल")}>
                                     <FileText />
                                   </Link>
-                                  <Link to="problem" className="icon-btn sm" data-tip={t("Solve", "Solve", "हल")}>
+                                  <Link to="problem" className="icon-btn sm" aria-label={t("Solve", "Solve", "हल")} data-tip={t("Solve", "Solve", "हल")}>
                                     <CodeXml />
                                   </Link>
-                                  <button className={`icon-btn sm ${x.star ? "starred" : ""}`} data-tip={t("Revision", "Revision", "दोहराई")} aria-pressed={!!x.star}>
+                                  <button className={`icon-btn sm ${x.star ? "starred" : ""}`} aria-label={t("Revision", "Revision", "दोहराई")} data-tip={t("Revision", "Revision", "दोहराई")} aria-pressed={!!x.star}>
                                     <Star />
                                   </button>
                                 </span>
@@ -455,7 +455,7 @@ export function SheetRail() {
           ["c", "Maximum subarray sum"],
         ].map(([k, n]) => (
           <div key={k} className="row g10 small">
-            <Check on={pick[k]} onChange={(v) => setPick((p) => ({ ...p, [k]: v }))} round tick />
+            <Check on={pick[k]} onChange={(v) => setPick((p) => ({ ...p, [k]: v }))} round tick label={n} />
             <span className={pick[k] ? "faint" : ""} style={{ textDecoration: pick[k] ? "line-through" : undefined }}>
               {n}
             </span>

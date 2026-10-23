@@ -751,8 +751,9 @@
   box-shadow: 0 0 0 3px var(--pen-soft);
   background: var(--panel);
 }
-.wday.done {
-  opacity: 0.75;
+.wday.done .wtask {
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-4);
 }
 .wday.rest {
   background: repeating-linear-gradient(-45deg, var(--sunk) 0 6px, transparent 6px 12px);
@@ -793,7 +794,7 @@
 }
 .wtask.done span:first-of-type {
   text-decoration: line-through;
-  opacity: 0.6;
+  color: var(--ink-3);
 }
 .wtask .num {
   color: var(--ink-3);

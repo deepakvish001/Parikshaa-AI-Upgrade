@@ -83,14 +83,14 @@ export function AdmCommerce() {
               ].map(([k, v]) => (
                 <div key={k} className="row between g12">
                   <span className="small">{k}</span>
-                  <input className="input sm" style={{ width: 180 }} defaultValue={v} />
+                  <input className="input sm" style={{ width: 180 }} defaultValue={v} aria-label={k} />
                 </div>
               ))}
               <span className="tiny faint">{t("Shown with GST included. Price changes apply to new purchases only.", "GST shaamil dikhta hai. Naya daam sirf naye purchases par.", "GST सहित।")}</span>
             </div>
           </Card>
           <Card title={t("What each plan gets", "Har plan ko kya milta", "प्रत्येक योजना")} pad={false}>
-            <div className="tbl-wrap">
+            <div className="tbl-wrap" tabIndex={0}>
               <table className="tbl dense">
                 <thead>
                   <tr>
@@ -110,10 +110,10 @@ export function AdmCommerce() {
                     <tr key={f}>
                       <td className="small">{f}</td>
                       <td className="r">
-                        <input className="input sm cell-in" defaultValue={a} />
+                        <input className="input sm cell-in" defaultValue={a} aria-label={`${f}, Free`} />
                       </td>
                       <td className="r">
-                        <input className="input sm cell-in" defaultValue={b} />
+                        <input className="input sm cell-in" defaultValue={b} aria-label={`${f}, Plus`} />
                       </td>
                     </tr>
                   ))}
@@ -125,7 +125,7 @@ export function AdmCommerce() {
       )}
       {tab === "refunds" && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -164,7 +164,7 @@ export function AdmCommerce() {
       {(tab === "coupons" || tab === "orders" || tab === "invoices") && (
         <Card pad={false}>
           <Toolbar placeholder={t("Search", "Khojo", "खोजें")} />
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <tbody>
                 {(tab === "coupons"
@@ -233,7 +233,7 @@ export function AdmContests() {
       {tab === "all" && (
         <section className="card">
           <Toolbar placeholder={t("Search contests", "Contests khojo", "खोजें")} filters={[{ label: t("Rated", "Rated", "रेटेड") }, { label: t("Campus", "Campus", "कैंपस") }, { label: t("Needs problems", "Problems chahiye", "प्रश्न चाहिए") }]} />
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -308,16 +308,16 @@ export function AdmContests() {
             <div className="col g10">
               <div className="field">
                 <label>{t("Name", "Naam", "नाम")}</label>
-                <input className="input" defaultValue="Weekly Round 13" />
+                <input aria-label={t("Name", "Naam", "नाम")} className="input" defaultValue="Weekly Round 13" />
               </div>
               <div className="row g10">
                 <div className="field grow">
                   <label>{t("Starts", "Shuru", "शुरू")}</label>
-                  <input className="input" defaultValue="25 Oct 2026, 20:00 IST" />
+                  <input aria-label={t("Starts", "Shuru", "शुरू")} className="input" defaultValue="25 Oct 2026, 20:00 IST" />
                 </div>
                 <div className="field grow">
                   <label>{t("Length", "Lambai", "अवधि")}</label>
-                  <input className="input" defaultValue="90 min" />
+                  <input aria-label={t("Length", "Lambai", "अवधि")} className="input" defaultValue="90 min" />
                 </div>
               </div>
               <div className="row between small">
@@ -345,7 +345,7 @@ export function AdmContests() {
       )}
       {tab === "plag" && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -482,7 +482,7 @@ export function AdmAI() {
             </div>
           </Card>
           <Card title={t("Per mode, today", "Har mode, aaj", "प्रति मोड, आज")} pad={false} style={{ gridColumn: "1 / -1" }}>
-            <div className="tbl-wrap">
+            <div className="tbl-wrap" tabIndex={0}>
               <table className="tbl">
                 <thead>
                   <tr>
@@ -530,7 +530,7 @@ export function AdmAI() {
             ].map(([k, v]) => (
               <div key={k} className="set-row">
                 <span className="small">{k}</span>
-                {can("ai", "full") ? <input className="input sm" style={{ width: 160 }} defaultValue={v} /> : <span className="row g6 small faint"><Lock style={{ width: 13, height: 13 }} />{v}</span>}
+                {can("ai", "full") ? <input className="input sm" style={{ width: 160 }} defaultValue={v} aria-label={k} /> : <span className="row g6 small faint"><Lock style={{ width: 13, height: 13 }} />{v}</span>}
               </div>
             ))}
           </div>
@@ -538,7 +538,7 @@ export function AdmAI() {
       )}
       {tab === "prompts" && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -700,7 +700,7 @@ export function AdmAnalytics() {
           </div>
         </Card>
         <Card title={t("Weekly retention", "Weekly retention", "साप्ताहिक प्रतिधारण")}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="cohort-tbl">
               <thead>
                 <tr>
@@ -717,7 +717,7 @@ export function AdmAnalytics() {
                   <tr key={c as string}>
                     <td className="tiny faint">{c as string}</td>
                     {(vals as number[]).map((v, i) => (
-                      <td key={i} style={{ background: `color-mix(in srgb, var(--pen) ${v * 0.8}%, var(--panel))`, color: v > 50 ? "var(--on-pen)" : "var(--ink)" }} className="num tiny">
+                      <td key={i} style={{ background: `color-mix(in srgb, var(--pen) ${v * 0.92}%, var(--panel))`, color: v * 0.92 >= 88 ? "var(--on-pen)" : "var(--ink)" }} className="num tiny">
                         {v}%
                       </td>
                     ))}
@@ -729,7 +729,7 @@ export function AdmAnalytics() {
         </Card>
       </div>
       <Card title={t("Content that needs work", "Jis content par kaam chahiye", "सुधार योग्य सामग्री")} pad={false}>
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl">
             <thead>
               <tr>
@@ -804,12 +804,12 @@ export function AdmNotify() {
             </div>
             <div className="field">
               <label>{t("Message (Hindi + English versions)", "Message (Hindi + English)", "संदेश")}</label>
-              <textarea className="textarea" defaultValue={"Aarav, aapka plan 2 din se ruka hai. Aaj sirf 20 minute: ek problem aur 5 revision cards. 👉 parikshaa.in/aaj"} />
+              <textarea aria-label={t("Message (Hindi + English versions)", "Message (Hindi + English)", "संदेश")} className="textarea" defaultValue={"Aarav, aapka plan 2 din se ruka hai. Aaj sirf 20 minute: ek problem aur 5 revision cards. 👉 parikshaa.in/aaj"} />
             </div>
             <div className="row wrap g12">
               <div className="field grow">
                 <label>{t("Send", "Kab", "कब")}</label>
-                <input className="input" defaultValue="Tomorrow 7:00 pm IST" />
+                <input aria-label={t("Send", "Kab", "कब")} className="input" defaultValue="Tomorrow 7:00 pm IST" />
               </div>
               <div className="field grow">
                 <label>{t("Rules", "Niyam", "नियम")}</label>
@@ -844,7 +844,7 @@ export function AdmNotify() {
             </div>
           </div>
           <Card title={t("Last campaigns", "Pichhle campaigns", "पिछले अभियान")} pad={false}>
-            <div className="tbl-wrap">
+            <div className="tbl-wrap" tabIndex={0}>
               <table className="tbl dense">
                 <tbody>
                   {[

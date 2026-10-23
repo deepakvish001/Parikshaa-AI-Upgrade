@@ -598,18 +598,18 @@
 }
 .mpal.a {
   background: var(--tick);
-  color: #fff;
+  color: var(--on-tick);
   border-color: transparent;
 }
 .mpal.r {
   background: var(--ai);
-  color: #fff;
+  color: var(--on-ai);
   border-color: transparent;
   border-radius: 50%;
 }
 .mpal.n {
   background: var(--red);
-  color: #fff;
+  color: var(--on-red);
   border-color: transparent;
 }
 .mpal.m {

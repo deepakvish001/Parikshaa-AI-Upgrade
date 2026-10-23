@@ -115,7 +115,7 @@ export function PaneToggles({
   return (
     <div className="pane-toggles" role="group" aria-label="Panes">
       {panes.map((p) => (
-        <button key={p.id} aria-pressed={open[p.id]} className={p.tone === "ai" ? "ai" : undefined} onClick={() => toggle(p.id)} data-tip={p.label} data-tip-pos="bottom">
+        <button key={p.id} aria-pressed={open[p.id]} className={p.tone === "ai" ? "ai" : undefined} onClick={() => toggle(p.id)} aria-label={p.label} data-tip={p.label} data-tip-pos="bottom">
           {p.icon}
           <span className="hide-narrow">{p.label}</span>
         </button>

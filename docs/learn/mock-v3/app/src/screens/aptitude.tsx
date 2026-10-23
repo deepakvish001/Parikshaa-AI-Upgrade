@@ -262,7 +262,7 @@ export function AptMockScreen() {
         }
         right={
           <>
-            <button className={`btn sm ${calc ? "pri" : ""}`} onClick={() => setCalc(!calc)}>
+            <button className={`btn sm ${calc ? "pri" : ""}`} onClick={() => setCalc(!calc)} aria-label={t("Calculator", "Calculator", "कैलकुलेटर")} aria-pressed={calc}>
               <Calculator />
               <span className="hide-narrow">{t("Calculator", "Calculator", "कैलकुलेटर")}</span>
             </button>
@@ -304,7 +304,7 @@ export function AptMockScreen() {
             <div className="col g8">
               {["6", "8", "7½", "9"].map((o, i) => (
                 <button key={i} className="option" aria-pressed={pick === i} onClick={() => setPick(i)}>
-                  <span className="radio" aria-checked={pick === i} />
+                  <span className="radio" aria-hidden="true" data-on={pick === i} />
                   <span className="grow">
                     {o} {t("days", "din", "दिन")}
                   </span>
@@ -322,7 +322,7 @@ export function AptMockScreen() {
               {t("Mark for review", "Review ke liye", "समीक्षा")}
             </button>
             <span className="grow" />
-            <button className="btn" onClick={() => setCur((c) => Math.max(0, c - 1))}>
+            <button className="btn" onClick={() => setCur((c) => Math.max(0, c - 1))} aria-label={t("Previous question", "Pichhla sawaal", "पिछला प्रश्न")}>
               <ArrowLeft />
             </button>
             <button className="btn pri" onClick={() => setCur((c) => Math.min(19, c + 1))}>
@@ -404,7 +404,7 @@ export function AptMockScreen() {
           </>
         }
       >
-        <div className="tbl-wrap"><table className="tbl">
+        <div className="tbl-wrap" tabIndex={0}><table className="tbl">
           <thead>
             <tr>
               <th>{t("Section", "Section", "खंड")}</th>
@@ -520,7 +520,7 @@ export function AptResultBody() {
             </div>
           </>
         ) : (
-          <div className="tbl-wrap"><table className="tbl">
+          <div className="tbl-wrap" tabIndex={0}><table className="tbl">
             <thead>
               <tr>
                 <th>{t("Topic", "Topic", "विषय")}</th>

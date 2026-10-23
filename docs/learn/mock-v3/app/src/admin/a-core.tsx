@@ -68,11 +68,11 @@ export function AdminLogin() {
             </div>
             <div className="field">
               <label>{t("Work email", "Work email", "कार्य ईमेल")}</label>
-              <input className="input" defaultValue="meera@parikshaa.in" />
+              <input aria-label={t("Work email", "Work email", "कार्य ईमेल")} className="input" defaultValue="meera@parikshaa.in" />
             </div>
             <div className="field">
               <label>{t("Password", "Password", "पासवर्ड")}</label>
-              <input className="input" type="password" defaultValue="••••••••••••" />
+              <input aria-label={t("Password", "Password", "पासवर्ड")} className="input" type="password" defaultValue="••••••••••••" />
             </div>
             <button className="btn pri lg block" onClick={() => setStep("otp")}>
               {t("Next", "Aage", "आगे")}
@@ -413,11 +413,11 @@ export function ReviewQueue() {
               <MessageSquare style={{ width: 15, height: 15 }} />
               {t("Comment", "Comment", "टिप्पणी")}
             </span>
-            <textarea className="textarea" defaultValue="Line 2: 'say whether' → 'print true or false'." />
+            <textarea className="textarea" aria-label={t("Comment", "Comment", "टिप्पणी")} defaultValue="Line 2: 'say whether' → 'print true or false'." />
           </section>
           <div className="decide">
             {done < CHECKLIST.length ? (
-              <button className="btn ok block" disabled data-tip={t(`${CHECKLIST.length - done} checklist items left`, `Checklist ke ${CHECKLIST.length - done} item baaki`, "जाँच सूची बाकी")}>
+              <button className="btn ok block" disabled aria-label={t(`${CHECKLIST.length - done} checklist items left`, `Checklist ke ${CHECKLIST.length - done} item baaki`, "जाँच सूची बाकी")} data-tip={t(`${CHECKLIST.length - done} checklist items left`, `Checklist ke ${CHECKLIST.length - done} item baaki`, "जाँच सूची बाकी")}>
                 <Check />
                 {t("Approve and publish", "Approve aur publish", "स्वीकृत व प्रकाशित")}
               </button>
@@ -505,7 +505,7 @@ export function Approvals() {
         </div>
       ) : (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -558,7 +558,7 @@ export function Approvals() {
       >
         <div className="field">
           <label>{t("Reason", "Wajah", "कारण")}</label>
-          <textarea className="textarea" />
+          <textarea aria-label={t("Reason", "Wajah", "कारण")} className="textarea" />
         </div>
       </Modal>
     </div>

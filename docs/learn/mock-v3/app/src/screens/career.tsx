@@ -32,7 +32,7 @@ import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, Pen
 const COS = [
   { n: "Nimbu Labs", m: "NL", c: "#2346E8", type: "Product", roles: "SDE 1, SDE intern", rounds: "OA → 2 tech → HR", src: 14, ready: 58, pin: true },
   { n: "Patang Tech", m: "PT", c: "#15803D", type: "Product", roles: "SDE 1", rounds: "OA → 3 tech → HR", src: 9, ready: 41, pin: true },
-  { n: "Kesar Cloud", m: "KC", c: "#C26A04", type: "Product", roles: "Backend SDE", rounds: "OA → system → tech → HR", src: 6, ready: 33, pin: false },
+  { n: "Kesar Cloud", m: "KC", c: "#A85A00", type: "Product", roles: "Backend SDE", rounds: "OA → system → tech → HR", src: 6, ready: 33, pin: false },
   { n: "Tara Fintech", m: "TF", c: "#6D4AFF", type: "Startup", roles: "Full-stack", rounds: "Take-home → 2 tech", src: 4, ready: 62, pin: true },
   { n: "Sitara Infotech", m: "SI", c: "#0E7490", type: "Service", roles: "Graduate engineer", rounds: "Aptitude → coding → HR", src: 22, ready: 74, pin: false },
   { n: "Bodhi Services", m: "BS", c: "#D93A2B", type: "Service", roles: "Systems engineer", rounds: "Aptitude → tech + HR", src: 17, ready: 69, pin: false },
@@ -226,7 +226,7 @@ export function CompanyBody() {
         </>
       ) : tab === "q" ? (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -500,7 +500,7 @@ export function CertificateBody() {
           </div>
           <div className="cd-foot">
             <div className="cd-sign">
-              <span className="hand" style={{ fontSize: 22, color: "#1f3fd6" }}>
+              <span className="hand" style={{ fontSize: 22, color: "#1a39c4" }}>
                 Parikshaa
               </span>
               <span className="cd-small">{t("Parikshaa Assessment Board", "Parikshaa Assessment Board", "मूल्यांकन बोर्ड")}</span>

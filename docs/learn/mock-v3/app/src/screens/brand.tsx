@@ -420,11 +420,11 @@ export function BrandBody() {
             <div className="eyebrow">{t("Inputs", "Inputs", "इनपुट")}</div>
             <div className="field">
               <label>{t("Email", "Email", "ईमेल")}</label>
-              <input className="input" placeholder="you@college.edu" />
+              <input aria-label={t("Email", "Email", "ईमेल")} className="input" placeholder="you@college.edu" />
             </div>
             <div className="field">
               <label>{t("Phone", "Phone", "फ़ोन")}</label>
-              <input className="input bad" defaultValue="98765" />
+              <input aria-label={t("Phone", "Phone", "फ़ोन")} className="input bad" defaultValue="98765" />
               <span className="err">{t("Enter all 10 digits", "Poore 10 ank likho", "पूरे 10 अंक")}</span>
             </div>
             <div className="row g16">

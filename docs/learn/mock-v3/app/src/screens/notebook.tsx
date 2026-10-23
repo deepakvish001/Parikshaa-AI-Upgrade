@@ -55,7 +55,7 @@ function DataFrameOut() {
     ["2026-09-05", 366, "26.0"],
   ];
   return (
-    <div className="nb-df">
+    <div className="nb-df" tabIndex={0}>
       <table className="tbl dense">
         <thead>
           <tr>
@@ -219,7 +219,7 @@ export function NotebookScreen() {
     <Menu
       width={330}
       trigger={(_, toggle) => (
-        <button className="nb-rt" onClick={toggle}>
+        <button className="nb-rt" onClick={toggle} aria-label={`${t("Runtime", "Runtime", "रनटाइम")}: ${RT[rt].name}`}>
           <i className={`nb-dot ${rt}`} />
           {RT[rt].icon}
           <span className="hide-phone">{RT[rt].name}</span>
@@ -359,7 +359,7 @@ export function NotebookScreen() {
             <button className="btn sm hide-phone" onClick={() => setColab(true)}>
               <Zap /> {t("GPU in Colab", "Colab me GPU", "Colab GPU")}
             </button>
-            <button className="btn sm pri" onClick={() => (setChecked(true), toast(t("2 of 3 checks pass", "3 me se 2 check pass", "3 में से 2")))}>
+            <button className="btn sm pri" onClick={() => (setChecked(true), toast(t("2 of 3 checks pass", "3 me se 2 check pass", "3 में से 2")))} aria-label={t("Check my work", "Kaam jaancho", "जाँचें")}>
               <CircleCheck /> <span className="hide-phone">{t("Check my work", "Kaam jaancho", "जाँचें")}</span>
             </button>
             <button className={`icon-btn ${ai.open ? "on" : ""}`} onClick={ai.toggle} aria-label="Sahayak (Ctrl+J)" data-tip="Sahayak (Ctrl+J)" data-tip-pos="bottom">

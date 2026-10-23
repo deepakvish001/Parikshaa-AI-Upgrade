@@ -91,7 +91,7 @@ export function ListsBody() {
         }
         pad={false}
       >
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl">
             <tbody>
               {[
@@ -143,7 +143,7 @@ export function ListsBody() {
         <div className="col g12">
           <div className="field">
             <label>{t("Name", "Naam", "नाम")}</label>
-            <input className="input" defaultValue="Patang Tech round 1" />
+            <input aria-label={t("Name", "Naam", "नाम")} className="input" defaultValue="Patang Tech round 1" />
           </div>
           <div className="row between">
             <span className="small">{t("Public (anyone with the link)", "Public (link wala koi bhi)", "सार्वजनिक")}</span>
@@ -457,7 +457,7 @@ export function PlusBody() {
         </div>
       </section>
       <Card pad={false}>
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl plus-tbl">
             <thead>
               <tr>
@@ -568,7 +568,7 @@ export function SettingsBody() {
                   <b className="small">{t("Goal", "Goal", "लक्ष्य")}</b>
                   <p className="tiny faint">{t("Changing it re-balances your plan.", "Badalne par plan khud adjust.", "योजना बदल जाएगी।")}</p>
                 </div>
-                <select className="select sm" style={{ width: 220 }} defaultValue="p">
+                <select className="select sm" style={{ width: 220 }} defaultValue="p" aria-label={t("Goal", "Goal", "लक्ष्य")}>
                   <option value="p">Product company SDE</option>
                   <option value="s">Service companies</option>
                 </select>

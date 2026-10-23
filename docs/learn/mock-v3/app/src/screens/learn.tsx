@@ -460,7 +460,7 @@ export function LessonBody() {
             { id: "hi", label: "हि" },
           ]}
         />
-        <button className={`icon-btn ${saved ? "starred" : ""}`} onClick={() => setSaved(!saved)} aria-pressed={saved} data-tip={t("Save", "Save", "सहेजें")}>
+        <button className={`icon-btn ${saved ? "starred" : ""}`} onClick={() => setSaved(!saved)} aria-pressed={saved} aria-label={t("Save", "Save", "सहेजें")} data-tip={t("Save", "Save", "सहेजें")}>
           <Bookmark />
         </button>
       </div>
@@ -558,7 +558,7 @@ export function LessonBody() {
           <div className="col g6">
             {[t("Yes, always", "Haan, hamesha", "हाँ"), t("No: same order means no circular wait", "Nahi: ek hi kram, circular wait nahi", "नहीं: एक क्रम"), t("Only on one CPU", "Sirf ek CPU par", "केवल एक CPU पर")].map((o, i) => (
               <button key={i} className={`option ${ans === i ? (i === 1 ? "right" : "wrong") : ans !== null && i === 1 ? "right" : ""}`} onClick={() => setAns(i)} aria-pressed={ans === i}>
-                <span className="radio" aria-checked={ans === i} />
+                <span className="radio" aria-hidden="true" data-on={ans === i} />
                 <span className="grow">{o}</span>
                 {ans !== null && i === 1 && <Tick size={18} />}
                 {ans === i && i !== 1 && <X className="t-red" />}

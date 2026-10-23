@@ -32,19 +32,22 @@ export function Gate({
   children,
   className = "btn",
   onClick,
+  label,
 }: {
   mod: string;
   need?: "view" | "edit" | "full";
   children: ReactNode;
   className?: string;
   onClick?: () => void;
+  /** Accessible name; required when the button shows only an icon. */
+  label?: string;
 }) {
   const { can } = useRole();
   const tri = useTri();
   const t = useT();
   if (can(mod, need)) {
     return (
-      <button className={className} onClick={onClick}>
+      <button className={className} onClick={onClick} aria-label={label} data-tip={label}>
         {children}
       </button>
     );
@@ -54,7 +57,7 @@ export function Gate({
     .map((r) => tri(r.name))
     .join(" / ");
   return (
-    <button className={`${className} gated`} disabled data-tip={`${t("Needs", "Chahiye", "चाहिए")}: ${who}`}>
+    <button className={`${className} gated`} disabled aria-label={`${label ? `${label}. ` : ""}${t("Needs", "Chahiye", "चाहिए")}: ${who}`} data-tip={`${t("Needs", "Chahiye", "चाहिए")}: ${who}`}>
       <Lock />
       {children}
     </button>
@@ -109,7 +112,7 @@ export function FourEyes({
         <div className="well small">{what}</div>
         <div className="field">
           <label>{t("Reason (required, goes in the audit log)", "Wajah (zaroori, audit log me)", "कारण (ज़रूरी)")}</label>
-          <textarea className="textarea" placeholder={t("Why is this needed?", "Kyun zaroori hai?", "क्यों ज़रूरी?")} />
+          <textarea aria-label={t("Reason (required, goes in the audit log)", "Wajah (zaroori, audit log me)", "कारण (ज़रूरी)")} className="textarea" placeholder={t("Why is this needed?", "Kyun zaroori hai?", "क्यों ज़रूरी?")} />
         </div>
       </div>
     </Modal>

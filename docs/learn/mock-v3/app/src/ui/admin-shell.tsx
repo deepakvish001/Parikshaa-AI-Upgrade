@@ -35,7 +35,7 @@ function AdminSide({ route, onSearch, open, onClose }: { route: string; onSearch
           </span>
           <ChevronDown />
         </button>
-        <button className="side-search" onClick={onSearch}>
+        <button className="side-search" onClick={onSearch} aria-label={t("Search", "Search", "खोजें")}>
           <Search />
           <span className="grow">{t("Search", "Khojo", "खोजें")}</span>
           <Kbd>Ctrl K</Kbd>
@@ -55,7 +55,7 @@ function AdminSide({ route, onSearch, open, onClose }: { route: string; onSearch
                       to={s.id}
                       className={`side-item ${ok ? "" : "locked"}`}
                       current={active === s.id}
-                      data-tip={ok ? undefined : t("Not in your role", "Aapke role me nahi", "आपकी भूमिका में नहीं")}
+                      aria-label={ok ? tri(s.title) : `${tri(s.title)}: ${t("not in your role", "aapke role me nahi", "आपकी भूमिका में नहीं")}`} data-tip={ok ? undefined : t("Not in your role", "Aapke role me nahi", "आपकी भूमिका में नहीं")}
                     >
                       <I />
                       <span className="grow ellipsis">{tri(s.title)}</span>
@@ -68,7 +68,7 @@ function AdminSide({ route, onSearch, open, onClose }: { route: string; onSearch
           })}
         </nav>
         <div className="side-foot">
-          <Link to="aaj" className="side-item">
+          <Link to="aaj" className="side-item" aria-label={t("Open learner site", "Learner site kholo", "शिक्षार्थी साइट")}>
             <ExternalLink />
             <span className="grow">{t("Open learner site", "Learner site kholo", "शिक्षार्थी साइट")}</span>
           </Link>
@@ -88,9 +88,9 @@ function RoleSwitch() {
     <Menu
       width={300}
       trigger={(_, toggle) => (
-        <button className="role-btn" onClick={toggle} data-tip={t("Preview the panel as another role", "Doosre role ki nazar se dekho", "दूसरी भूमिका से देखें")} data-tip-pos="bottom">
+        <button className="role-btn" onClick={toggle} aria-label={t("Preview the panel as another role", "Doosre role ki nazar se dekho", "दूसरी भूमिका से देखें")} data-tip={t("Preview the panel as another role", "Doosre role ki nazar se dekho", "दूसरी भूमिका से देखें")} data-tip-pos="bottom">
           <Eye />
-          <span className="hide-phone tiny faint">{t("Viewing as", "Role", "भूमिका")}</span>
+          <span className="hide-phone tiny">{t("Viewing as", "Role", "भूमिका")}</span>
           <b>{tri(cur.name)}</b>
           <ChevronDown />
         </button>
@@ -185,7 +185,7 @@ function AdminTop({ route, onMenu }: { route: string; onMenu: () => void }) {
       <Menu
         width={220}
         trigger={(_, toggle) => (
-          <button onClick={toggle} aria-label="Account" style={{ display: "inline-flex", marginLeft: 4 }}>
+          <button className="acct-btn" onClick={toggle} aria-label="Account" style={{ display: "inline-flex", marginLeft: 4 }}>
             <Avatar name="Meera Iyer" size={30} tone={3} />
           </button>
         )}
@@ -268,11 +268,11 @@ export function NoAccess({ mod }: { mod: string }) {
         <div className="col g12">
           <div className="field">
             <label>{t("Why do you need it?", "Kyun chahiye?", "क्यों चाहिए?")}</label>
-            <textarea className="textarea" defaultValue="Fixing a refund ticket for learner #48213" />
+            <textarea aria-label={t("Why do you need it?", "Kyun chahiye?", "क्यों चाहिए?")} className="textarea" defaultValue="Fixing a refund ticket for learner #48213" />
           </div>
           <div className="field">
             <label>{t("Until", "Kab tak", "कब तक")}</label>
-            <select className="select" defaultValue="7">
+            <select aria-label={t("Until", "Kab tak", "कब तक")} className="select" defaultValue="7">
               <option value="1">1 day</option>
               <option value="7">7 days</option>
               <option value="30">30 days</option>

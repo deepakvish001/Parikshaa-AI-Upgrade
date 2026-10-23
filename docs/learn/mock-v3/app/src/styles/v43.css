@@ -1223,3 +1223,97 @@ html.shots .state-fab {
     bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ---------- phone: tap targets ---------- */
+/* On a touch screen every control is at least 40 px on its short side (WCAG 2.5.8 asks 24; 40 is our floor). */
+@media (max-width: 760px), (pointer: coarse) {
+  .btn {
+    --bh: 40px;
+  }
+  .btn.sm {
+    --bh: 40px;
+  }
+  .icon-btn,
+  .icon-btn.sm,
+  .acct-btn,
+  .nb-run,
+  .send {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+  }
+  .check {
+    width: 24px;
+    height: 24px;
+  }
+  .toggle {
+    /* the switch keeps its drawing and grows as a whole */
+    transform: scale(1.3);
+    margin: 3px 6px;
+  }
+  .qn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .tab-x,
+  .ide .ib {
+    width: 40px;
+    height: 40px;
+  }
+  .ide-phone-bar .btn.sm,
+  .ide .btn.sm {
+    min-width: 40px;
+    height: 40px;
+  }
+  /* links that stand alone in lists get a taller hit area; links inside sentences are left as they are */
+  .p-link,
+  a.ellipsis,
+  button.link,
+  a.link {
+    display: inline-block;
+    padding-block: 4px;
+  }
+  .ed-lens [role="button"] {
+    display: inline-block;
+    padding-block: 6px;
+  }
+  .ed-bulb {
+    /* a 40 px hit area around the 18 px bulb, without moving the code */
+    width: 40px;
+    height: 40px;
+    margin: -11px;
+  }
+  button.link,
+  .flow-step {
+    min-width: 40px;
+  }
+  /* the certificate grows to fit on a phone instead of keeping its A4 shape */
+  .cert-doc {
+    aspect-ratio: auto;
+  }
+  .cd-border {
+    height: auto;
+  }
+  .fbar-l > a,
+  .top-logo {
+    display: inline-flex;
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+  }
+  input[type="range"] {
+    height: 28px;
+  }
+  .stat-chip,
+  .side-search,
+  .side-item,
+  .chip,
+  .tab,
+  .seg button,
+  .menu-item {
+    min-height: 40px;
+  }
+}

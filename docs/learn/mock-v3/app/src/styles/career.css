@@ -179,7 +179,8 @@
   background-image: radial-gradient(circle at 100% 0, var(--tick-soft), transparent 50%);
 }
 .cert-card.lock {
-  opacity: 0.75;
+  border-style: dashed;
+  background: var(--panel-2);
 }
 .cert-l {
   font-family: var(--f-serif);

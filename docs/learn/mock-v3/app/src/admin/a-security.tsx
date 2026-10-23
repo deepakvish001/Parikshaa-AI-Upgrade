@@ -103,7 +103,7 @@ export function AdmRoles() {
           ))}
         </div>
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl perm-matrix">
               <thead>
                 <tr>
@@ -197,11 +197,11 @@ export function AdmRoles() {
         <div className="col g12">
           <div className="field">
             <label>{t("Name", "Naam", "नाम")}</label>
-            <input className="input" defaultValue="Campus success" />
+            <input aria-label={t("Name", "Naam", "नाम")} className="input" defaultValue="Campus success" />
           </div>
           <div className="field">
             <label>{t("Copy access from", "Access kahan se copy", "से कॉपी करें")}</label>
-            <select className="select" defaultValue="support">
+            <select aria-label={t("Copy access from", "Access kahan se copy", "से कॉपी करें")} className="select" defaultValue="support">
               {ROLES.filter((r) => r.id !== "super").map((r) => (
                 <option key={r.id} value={r.id}>
                   {tri(r.name)}
@@ -256,7 +256,7 @@ export function AdmStaff() {
       </div>
       <Card pad={false}>
         <Toolbar placeholder={t("Search staff", "Staff khojo", "स्टाफ़ खोजें")} filters={[{ label: "2FA missing" }, { label: "Inactive 30 d" }]} />
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl">
             <thead>
               <tr>
@@ -340,11 +340,11 @@ export function AdmStaff() {
         <div className="col g12">
           <div className="field">
             <label>Email</label>
-            <input className="input" defaultValue="neha@parikshaa.in" />
+            <input aria-label="Email" className="input" defaultValue="neha@parikshaa.in" />
           </div>
           <div className="field">
             <label>{t("Role", "Role", "भूमिका")}</label>
-            <select className="select" defaultValue="editor">
+            <select aria-label={t("Role", "Role", "भूमिका")} className="select" defaultValue="editor">
               {ROLES.filter((r) => r.id !== "super").map((r) => (
                 <option key={r.id} value={r.id}>
                   {tri(r.name)} · {r.desc}
@@ -354,7 +354,7 @@ export function AdmStaff() {
           </div>
           <div className="field">
             <label>{t("Access ends", "Access kab tak", "पहुँच समाप्ति")}</label>
-            <select className="select" defaultValue="never">
+            <select aria-label={t("Access ends", "Access kab tak", "पहुँच समाप्ति")} className="select" defaultValue="never">
               <option value="never">{t("No end date", "Koi end nahi", "कोई अंत नहीं")}</option>
               <option value="30">{t("30 days (contractor)", "30 din (contractor)", "30 दिन")}</option>
               <option value="90">{t("90 days", "90 din", "90 दिन")}</option>
@@ -409,7 +409,7 @@ export function AdmAudit() {
           placeholder={t("Person, object or IP", "Insaan, object ya IP", "व्यक्ति, वस्तु, IP")}
           filters={[{ label: t("Learner data", "Learner data", "शिक्षार्थी डेटा") }, { label: t("Money", "Paisa", "पैसा") }, { label: t("Failed sign-ins", "Galat sign-in", "विफल साइन इन") }, { label: t("Today", "Aaj", "आज"), on: true }]}
         />
-        <div className="tbl-wrap">
+        <div className="tbl-wrap" tabIndex={0}>
           <table className="tbl audit-tbl">
             <thead>
               <tr>
@@ -549,7 +549,7 @@ export function AdmSecurity() {
                 <b className="small">{t("Lock after failed tries", "Galat koshish par lock", "विफल प्रयास पर लॉक")}</b>
                 <p className="tiny faint">{t("5 wrong tries → 15 minute lock, and an alert", "5 galat → 15 minute lock, alert", "5 गलत → 15 मिनट")}</p>
               </div>
-              <input className="input sm" style={{ width: 90 }} defaultValue="5" disabled={!full} />
+              <input className="input sm" style={{ width: 90 }} defaultValue="5" disabled={!full} aria-label={t("Wrong tries before lock", "Lock se pehle galat koshish", "लॉक से पहले गलत प्रयास")} />
             </div>
           </div>
         </Card>
@@ -567,7 +567,7 @@ export function AdmSecurity() {
                 </div>
               ))}
               <div className="row g8">
-                <input className="input sm grow" placeholder="CIDR, e.g. 152.58.0.0/16" disabled={!full} />
+                <input className="input sm grow" placeholder="CIDR, e.g. 152.58.0.0/16" disabled={!full} aria-label={t("Add an IP range", "IP range jodo", "IP रेंज जोड़ें")} />
                 <button className="btn sm" disabled={!full} onClick={() => setAsk({ title: t("Add IP range", "IP range jodo", "IP जोड़ें"), what: "152.58.0.0/16 · Home VPN" })}>
                   <Plus />
                   {t("Add", "Jodo", "जोड़ें")}
@@ -585,7 +585,7 @@ export function AdmSecurity() {
               ].map(([k, v]) => (
                 <div key={k} className="row between g12">
                   <span className="small">{k}</span>
-                  <input className="input sm" style={{ width: 120 }} defaultValue={v} disabled={!full} />
+                  <input className="input sm" style={{ width: 120 }} defaultValue={v} disabled={!full} aria-label={k} />
                 </div>
               ))}
             </div>
@@ -594,7 +594,7 @@ export function AdmSecurity() {
       )}
       {tab === "rules" && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -651,7 +651,7 @@ export function AdmSecurity() {
       )}
       {tab === "keys" && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>
@@ -782,7 +782,7 @@ export function AdmSystem() {
                     </span>
                   </div>
                 </div>
-                <select className="select sm" value={v} onChange={(e) => setFlags((f) => ({ ...f, [k]: Number(e.target.value) }))} style={{ width: 92 }}>
+                <select className="select sm" value={v} onChange={(e) => setFlags((f) => ({ ...f, [k]: Number(e.target.value) }))} style={{ width: 92 }} aria-label={`${k}: ${t("share of learners", "learners ka hissa", "शिक्षार्थियों का हिस्सा")}`}>
                   {[0, 10, 25, 50, 100].map((p) => (
                     <option key={p} value={p}>
                       {p}%
@@ -803,7 +803,7 @@ export function AdmSystem() {
             ].map(([k, v]) => (
               <div key={k} className="field">
                 <label>{k}</label>
-                <input className="input" defaultValue={v} placeholder={t("Empty: no banner", "Khaali: koi banner nahi", "खाली")} />
+                <input aria-label={k} className="input" defaultValue={v} placeholder={t("Empty: no banner", "Khaali: koi banner nahi", "खाली")} />
               </div>
             ))}
             <div className="row g8">

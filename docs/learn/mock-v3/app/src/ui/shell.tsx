@@ -200,17 +200,17 @@ function SideNav({ route, onSearch }: { route: string; onSearch: () => void }) {
           {mini ? <LogoMark size={28} /> : <Logo size={28} />}
         </Link>
         {!mini && (
-          <button className="icon-btn sm" onClick={() => setMini(true)} data-tip={t("Collapse (Ctrl \\)", "Chhota (Ctrl \\)", "छोटा (Ctrl \\)")} data-tip-pos="bottom">
+          <button className="icon-btn sm" onClick={() => setMini(true)} aria-label={t("Collapse (Ctrl \\)", "Chhota (Ctrl \\)", "छोटा (Ctrl \\)")} data-tip={t("Collapse (Ctrl \\)", "Chhota (Ctrl \\)", "छोटा (Ctrl \\)")} data-tip-pos="bottom">
             <PanelLeftClose />
           </button>
         )}
       </div>
       {mini && (
-        <button className="side-item" onClick={() => setMini(false)} data-tip={t("Expand", "Bada karo", "बड़ा करें")}>
+        <button className="side-item" onClick={() => setMini(false)} aria-label={t("Expand", "Bada karo", "बड़ा करें")} data-tip={t("Expand", "Bada karo", "बड़ा करें")}>
           <PanelLeftOpen />
         </button>
       )}
-      <button className="side-search" onClick={onSearch}>
+      <button className="side-search" onClick={onSearch} aria-label={t("Search", "Search", "खोजें")}>
         <Search />
         {!mini && (
           <>
@@ -229,7 +229,7 @@ function SideNav({ route, onSearch }: { route: string; onSearch: () => void }) {
               {items.map((s) => {
                 const I = s.icon;
                 return (
-                  <Link key={s.id} to={s.id} className="side-item" current={active === s.id} data-tip={mini ? tri(s.title) : undefined}>
+                  <Link key={s.id} to={s.id} className="side-item" current={active === s.id} aria-label={mini ? tri(s.title) : undefined} data-tip={mini ? tri(s.title) : undefined}>
                     <I />
                     {!mini && <span className="grow ellipsis">{tri(s.title)}</span>}
                     {!mini && s.badge && <span className="side-count">{s.badge}</span>}
@@ -351,7 +351,7 @@ function TopBar({ route, onMenu, onBell, unread }: { route: string; onMenu: () =
       </span>
       <Crumbs route={route} />
       <div className="grow" />
-      <Link to="potd" className="stat-chip coin" data-tip={t("12-day streak", "12 din ki streak", "12 दिन की लगातार")} data-tip-pos="bottom">
+      <Link to="potd" className="stat-chip coin" aria-label={t("12-day streak", "12 din ki streak", "12 दिन की लगातार")} data-tip={t("12-day streak", "12 din ki streak", "12 दिन की लगातार")} data-tip-pos="bottom">
         <Flame />
         <span className="num">12</span>
       </Link>
@@ -369,7 +369,7 @@ function TopBar({ route, onMenu, onBell, unread }: { route: string; onMenu: () =
         <Bell />
         {unread > 0 && <span className="dot-badge" />}
       </button>
-      <button className={`btn sm ai-btn ${ai.open ? "on" : ""}`} onClick={ai.toggle}>
+      <button className={`btn sm ai-btn ${ai.open ? "on" : ""}`} onClick={ai.toggle} aria-label="Sahayak" aria-expanded={ai.open}>
         <Sparkles />
         <span className="hide-phone">Sahayak</span>
       </button>

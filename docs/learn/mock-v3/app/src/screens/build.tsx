@@ -529,7 +529,7 @@ export function ProjectBody() {
       )}
       {tab === "rubric" && (
         <Card pad={false}>
-          <div className="tbl-wrap">
+          <div className="tbl-wrap" tabIndex={0}>
             <table className="tbl">
               <thead>
                 <tr>

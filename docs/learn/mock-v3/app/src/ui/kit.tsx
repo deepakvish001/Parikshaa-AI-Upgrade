@@ -165,7 +165,7 @@ export function Level({ n, short }: { n: 1 | 2 | 3 | 4 | 5; short?: boolean }) {
   );
 }
 
-const AV_TONES = ["#2346E8", "#15803D", "#C26A04", "#6D4AFF", "#D93A2B", "#0E7490"];
+const AV_TONES = ["#2346E8", "#15803D", "#A85A00", "#6D4AFF", "#D93A2B", "#0E7490"];
 export function Avatar({ name, size = 32, sq, tone }: { name: string; size?: number; sq?: boolean; tone?: number }) {
   const initials = name
     .split(" ")
@@ -475,11 +475,12 @@ export function CountUp({ to, dur = 900, decimals = 0, prefix = "", suffix = "" 
   );
 }
 
-export function Meter({ v, tone = "pen", size }: { v: number; tone?: string; size?: "thin" | "thick" }) {
+export function Meter({ v, tone = "pen", size, label }: { v: number; tone?: string; size?: "thin" | "thick"; label?: string }) {
   return (
     <div
       className={`meter ${size ?? ""}`}
       role="progressbar"
+      aria-label={label ?? `${Math.round(v)}%`}
       aria-valuenow={Math.round(v)}
       aria-valuemin={0}
       aria-valuemax={100}
@@ -656,7 +657,7 @@ export function rng(seed: number) {
 export function Heatmap({ weeks = 26, seed = 7 }: { weeks?: number; seed?: number }) {
   const r = rng(seed);
   return (
-    <div className="heat" aria-label="Activity heatmap">
+    <div className="heat" role="img" aria-label="Activity heatmap">
       {Array.from({ length: weeks * 7 }, (_, i) => {
         const v = r();
         const l = v < 0.35 ? 0 : v < 0.55 ? 1 : v < 0.75 ? 2 : v < 0.9 ? 3 : 4;
@@ -720,7 +721,7 @@ export function Code({
 }) {
   const lines = code.replace(/\n$/, "").split("\n");
   return (
-    <pre className={`code ${nonum ? "nonum" : ""} ${className ?? ""}`} style={style}>
+    <pre className={`code ${nonum ? "nonum" : ""} ${className ?? ""}`} style={style} tabIndex={0}>
       {lines.map((l, i) => (
         <span
           key={i}

@@ -143,12 +143,12 @@ export function SahayakPanel({
         {!full && (
           <>
             {onMinimize && (
-              <button className="icon-btn sm" onClick={onMinimize} data-tip={t("Collapse", "Chhota karo", "छोटा करें")} data-tip-pos="bottom">
+              <button className="icon-btn sm" onClick={onMinimize} aria-label={t("Collapse", "Chhota karo", "छोटा करें")} data-tip={t("Collapse", "Chhota karo", "छोटा करें")} data-tip-pos="bottom">
                 <PanelRightClose />
               </button>
             )}
             {onClose && (
-              <button className="icon-btn sm" onClick={onClose} data-tip={t("Close (Ctrl J)", "Band (Ctrl J)", "बंद (Ctrl J)")} data-tip-pos="bottom">
+              <button className="icon-btn sm" onClick={onClose} aria-label={t("Close (Ctrl J)", "Band (Ctrl J)", "बंद (Ctrl J)")} data-tip={t("Close (Ctrl J)", "Band (Ctrl J)", "बंद (Ctrl J)")} data-tip-pos="bottom">
                 <X />
               </button>
             )}
@@ -185,7 +185,7 @@ export function SahayakPanel({
               <FileCode2 />
               <span className="ellipsis">{ctxLabel}</span>
             </span>
-            <button className="icon-btn sm" data-tip={t("History", "History", "इतिहास")} data-tip-pos="bottom">
+            <button className="icon-btn sm" aria-label={t("History", "History", "इतिहास")} data-tip={t("History", "History", "इतिहास")} data-tip-pos="bottom">
               <History />
             </button>
           </div>

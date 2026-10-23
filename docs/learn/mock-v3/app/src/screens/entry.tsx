@@ -48,7 +48,7 @@ export function LoginBody() {
     <div className="auth">
       <div className="auth-form">
         <div className="row between">
-          <Link to="landing" aria-label="Parikshaa">
+          <Link to="landing" aria-label="Parikshaa" className="top-logo">
             <Logo size={28} />
           </Link>
           <div className="row g4">
@@ -406,7 +406,7 @@ export function OnboardingBody() {
   return (
     <div className="onb">
       <header className="onb-top">
-        <Link to="landing" aria-label="Parikshaa">
+        <Link to="landing" aria-label="Parikshaa" className="top-logo">
           <LogoMark size={28} />
         </Link>
         <div className="onb-prog">
@@ -440,7 +440,7 @@ export function OnboardingBody() {
           <div className={`onb-opts ${q.opts[0].sub ? "rich" : ""}`}>
             {q.opts.map((o) => (
               <button key={o.id} className="option" aria-pressed={val === o.id} onClick={() => set(q.key, o.id)}>
-                {o.icon ? <span className="opt-ic">{o.icon}</span> : <span className="radio" aria-checked={val === o.id} />}
+                {o.icon ? <span className="opt-ic">{o.icon}</span> : <span className="radio" aria-hidden="true" data-on={val === o.id} />}
                 <span className="grow" style={{ minWidth: 0 }}>
                   <b style={{ fontWeight: 560 }}>{o.label}</b>
                   {o.sub && <span className="tiny faint" style={{ display: "block" }}>{o.sub}</span>}

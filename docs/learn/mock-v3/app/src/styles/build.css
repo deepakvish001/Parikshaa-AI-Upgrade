@@ -6,6 +6,9 @@
   --ma-ink: #15161a;
   --ma-soft: #f2f0ea;
   --ma-line: #e6e2d8;
+  --ma-pos: #0f6b31;
+  --ma-neg: #b3261a;
+  --ma-pen: #1d41d4;
   background: var(--ma-bg);
   color: var(--ma-ink);
   font-size: 11px;
@@ -21,6 +24,9 @@
   --ma-ink: #e7ecef;
   --ma-soft: #1a2228;
   --ma-line: #26323a;
+  --ma-pos: #5fe39b;
+  --ma-neg: #ff8d84;
+  --ma-pen: #94a9ff;
 }
 .ma-top {
   display: flex;
@@ -75,10 +81,10 @@
   font-weight: 700;
 }
 .ma-row .pos {
-  color: #15803d;
+  color: var(--ma-pos);
 }
 .ma-row .neg {
-  color: #d93a2b;
+  color: var(--ma-neg);
 }
 .ma-settle {
   display: flex;
@@ -174,7 +180,7 @@
 .sh-out {
   font-size: 13px;
   font-weight: 700;
-  color: #2346e8;
+  color: var(--ma-pen);
 }
 .sh-bars {
   flex: 1;
@@ -462,8 +468,8 @@
   box-shadow: 0 0 0 4px var(--pen-soft), var(--shadow-2);
 }
 .ms-card.lock {
-  opacity: 0.72;
   background: var(--panel-2);
+  border-style: dashed;
 }
 .ms-num {
   width: 38px;

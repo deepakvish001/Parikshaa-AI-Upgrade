@@ -272,7 +272,8 @@
   gap: 5px;
   font-size: 12px;
   font-weight: 560;
-  color: var(--lv);
+  /* the level colour pulled toward the ink so the label reads on every surface */
+  color: color-mix(in srgb, var(--lv) 62%, var(--ink));
   white-space: nowrap;
 }
 .lvl i {
@@ -775,10 +776,10 @@
   place-items: center;
   flex-shrink: 0;
 }
-.radio[aria-checked="true"] {
+.radio[data-on="true"] {
   border-color: var(--pen);
 }
-.radio[aria-checked="true"]::after {
+.radio[data-on="true"]::after {
   content: "";
   width: 8px;
   height: 8px;
