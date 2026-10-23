@@ -20,10 +20,12 @@ import "./styles/career.css";
 import "./styles/studio.css";
 import "./styles/notebook.css";
 import "./styles/interview.css";
+import "./styles/v43.css";
 import { LangProvider, ThemeProvider, ToastProvider, Link, useRoute, useT } from "./lib/core";
 import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";
 import { SCREEN_MAP } from "./screens/index";
+import { useVariant } from "./lib/variant";
 import { Shell, useTri, KeySheet } from "./ui/shell";
 import { AdminShell, NoAccess } from "./ui/admin-shell";
 import { Diya } from "./ui/kit";
@@ -62,6 +64,9 @@ function App() {
   const impl = SCREEN_MAP[def.id];
   const Body = impl?.Body ?? (() => <Soon id={def.id} />);
   const Rail = impl?.Rail;
+  // Today's timeline direction (mock v4.3) uses the full width, so it has no side column.
+  const [aajV] = useVariant("aaj");
+  const noRail = def.id === "aaj" && aajV === "c";
   if (def.layout === "bare" || def.layout === "admin-bare") {
     return (
       <>
@@ -87,7 +92,7 @@ function App() {
   }
   return (
     <>
-      <Shell route={def.id} rail={Rail ? <Rail /> : undefined}>
+      <Shell route={def.id} rail={Rail && !noRail ? <Rail /> : undefined}>
         <Body />
       </Shell>
       <MockFab />

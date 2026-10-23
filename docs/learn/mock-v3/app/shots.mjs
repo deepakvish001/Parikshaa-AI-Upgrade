@@ -1,4 +1,4 @@
-// Screenshots of the built mock: [ROLE=finance] [SEL=".css"] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
+// Screenshots of the built mock: [ROLE=finance] [SEL=".css"] [VAR="aaj=b,profile=c"] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -9,12 +9,13 @@ mkdirSync(outDir, { recursive: true });
 const browser = await chromium.launch({ executablePath: process.env.PW_CHROMIUM || "/opt/pw-browsers/chromium" });
 for (const w of widthsArg.split(",").map(Number)) {
   const ctx = await browser.newContext({ viewport: { width: w, height: w < 600 ? 844 : 900 }, deviceScaleFactor: w < 600 ? 2 : 1, colorScheme: theme });
-  await ctx.addInitScript(([th, lg, rl]) => {
+  await ctx.addInitScript(([th, lg, rl, vr]) => {
     localStorage.setItem("pk4-theme", th);
     localStorage.setItem("pk3-lang", lg);
     localStorage.setItem("pk-mock-shots", "1");
     if (rl) localStorage.setItem("pk3-role", rl);
-  }, [theme, lang, process.env.ROLE || ""]);
+    for (const kv of vr.split(",").filter(Boolean)) localStorage.setItem(`pk43-v-${kv.split("=")[0]}`, kv.split("=")[1]);
+  }, [theme, lang, process.env.ROLE || "", process.env.VAR || ""]);
   const page = await ctx.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -23,7 +24,7 @@ for (const w of widthsArg.split(",").map(Number)) {
     await page.goto(`file://${file}#${route}`);
     await page.waitForTimeout(1600);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-    const name = `${outDir}/${route}-${w}-${theme}${lang === "en" ? "" : `-${lang}`}.jpg`;
+    const name = `${outDir}/${route}${process.env.TAG ? `-${process.env.TAG}` : ""}-${w}-${theme}${lang === "en" ? "" : `-${lang}`}.jpg`;
     const opts = { path: name, type: "jpeg", quality: Number(process.env.Q || 82) };
     // SEL shoots one element (e.g. the logo options) instead of the page.
     if (process.env.SEL) await page.locator(process.env.SEL).first().screenshot(opts);

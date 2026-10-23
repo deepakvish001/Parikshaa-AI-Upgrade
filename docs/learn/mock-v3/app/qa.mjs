@@ -1,5 +1,5 @@
 // Checks every screen of the built mock for sideways overflow, console errors and empty pages.
-// [ROLE=finance] [ROUTES=file] node qa.mjs [w=1440] [theme=light] [lang=en]
+// [ROLE=finance] [ROUTES=file] [VAR="aaj=b"] node qa.mjs [w=1440] [theme=light] [lang=en]
 import { chromium } from "@playwright/test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
@@ -10,7 +10,7 @@ const routes = (process.env.ROUTES ? readFileSync(process.env.ROUTES, "utf8") : 
 const file = resolve("dist/preview.html");
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
 const ctx = await b.newContext({ viewport: { width: +w, height: +w < 600 ? 844 : 900 }, colorScheme: theme });
-await ctx.addInitScript(([th, lg, rl]) => { localStorage.setItem("pk4-theme", th); localStorage.setItem("pk3-lang", lg); localStorage.setItem("pk-mock-shots", "1"); if (rl) localStorage.setItem("pk3-role", rl); }, [theme, lang, process.env.ROLE || ""]);
+await ctx.addInitScript(([th, lg, rl, vr]) => { localStorage.setItem("pk4-theme", th); localStorage.setItem("pk3-lang", lg); localStorage.setItem("pk-mock-shots", "1"); if (rl) localStorage.setItem("pk3-role", rl); for (const kv of vr.split(",").filter(Boolean)) localStorage.setItem(`pk43-v-${kv.split("=")[0]}`, kv.split("=")[1]); }, [theme, lang, process.env.ROLE || "", process.env.VAR || ""]);
 const p = await ctx.newPage();
 let errs = [];
 p.on("pageerror", (e) => errs.push(String(e)));

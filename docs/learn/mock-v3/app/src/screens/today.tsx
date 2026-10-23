@@ -29,18 +29,20 @@ import {
 } from "lucide-react";
 import { Link, navigate, useT, useCountdown, hms, useToast } from "../lib/core";
 import { useAi } from "../lib/state";
+import { useVariant, VariantBar } from "../lib/variant";
+import { AajFocus, AajPaper, AajTimeline, RailFocus, RailPaper } from "./today43";
 import { Card, Badge, Level, Check as CheckBox, Ring, Meter, Diya, PenCircle, Hl, Modal, Tick, CountUp, Seg } from "../ui/kit";
 
 type Task = { id: string; kind: "lesson" | "problem" | "revision" | "aptitude"; title: [string, string, string]; meta: string; level?: 1 | 2 | 3 | 4 | 5; min: number; done: boolean; to: string };
 
-const TASKS: Task[] = [
+export const TASKS: Task[] = [
   { id: "t1", kind: "lesson", title: ["Stack: the LIFO idea", "Stack: LIFO idea", "स्टैक: LIFO का विचार"], meta: "Lesson · 4 min read + 3 questions", min: 25, done: true, to: "lesson" },
   { id: "t2", kind: "problem", title: ["Pair with target sum", "Pair with target sum", "Pair with target sum"], meta: "Two pointers", level: 2, min: 30, done: false, to: "problem" },
   { id: "t3", kind: "problem", title: ["Valid brackets", "Valid brackets", "Valid brackets"], meta: "Stack", level: 2, min: 35, done: false, to: "problem" },
   { id: "t4", kind: "revision", title: ["6 revision cards", "6 revision cards", "6 दोहराई कार्ड"], meta: "3 mistakes, 3 concepts", min: 15, done: false, to: "revision" },
   { id: "t5", kind: "aptitude", title: ["Successive percentages", "Successive percentage", "क्रमिक प्रतिशत"], meta: "Aptitude set · 10 questions", level: 2, min: 25, done: false, to: "apt-set" },
 ];
-const KIND: Record<Task["kind"], ReactElement> = {
+export const KIND: Record<Task["kind"], ReactElement> = {
   lesson: <BookOpen />,
   problem: <CodeXml />,
   revision: <RotateCcw />,
@@ -108,7 +110,7 @@ function TaskList() {
   );
 }
 
-function LighterModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LighterModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useT();
   const toast = useToast();
   const [pick, setPick] = useState("half");
@@ -181,7 +183,33 @@ function WeekStrip() {
   );
 }
 
+/** The v4.3 directions for Today, compared with the v4.2 layout. */
+export function AajDirections() {
+  const t = useT();
+  return (
+    <VariantBar
+      id="aaj"
+      items={[
+        { id: "a", label: t("One thing", "Ek kaam", "एक काम"), hint: t("The next task comes first and biggest; the rest is a short list. Two cards on the side.", "Agla kaam sabse upar aur bada; baaki chhoti list. Side me do card.", "अगला काम सबसे ऊपर।") },
+        { id: "b", label: t("Paper page", "Kaagaz", "काग़ज़"), hint: t("The day written on a ruled page: times in the margin, notes in hand, the current task marked.", "Din ek ruled panne par: margin me samay, haath ke notes, abhi wala kaam marker se.", "दिन एक पन्ने पर।") },
+        { id: "c", label: t("Timeline", "Timeline", "समय-रेखा"), hint: t("The evening as a time bar with a 'now' line; full width, no side column.", "Shaam ek samay ki patti par, 'abhi' ki line; poori chaudai, side column nahi.", "शाम एक समय-पट्टी पर।") },
+        { id: "z", label: "v4.2", hint: t("The layout from v4.2, for comparison.", "v4.2 wala layout, tulna ke liye.", "v4.2 वाला, तुलना के लिए।") },
+      ]}
+    />
+  );
+}
+
 export function AajBody() {
+  const [v] = useVariant("aaj");
+  return (
+    <>
+      <AajDirections />
+      {v === "b" ? <AajPaper /> : v === "c" ? <AajTimeline /> : v === "z" ? <AajV42 /> : <AajFocus />}
+    </>
+  );
+}
+
+function AajV42() {
   const t = useT();
   const ai = useAi();
   return (
@@ -289,6 +317,11 @@ export function AajBody() {
 }
 
 export function AajRail() {
+  const [v] = useVariant("aaj");
+  return v === "b" ? <RailPaper /> : v === "z" ? <RailV42 /> : <RailFocus />;
+}
+
+function RailV42() {
   const t = useT();
   const [left] = useCountdown(3 * 3600 + 57 * 60 + 38);
   return (

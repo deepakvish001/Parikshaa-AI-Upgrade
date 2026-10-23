@@ -1,6 +1,6 @@
 // Accessibility pass over every screen of the built mock: axe-core rules (WCAG 2.2 A/AA) and,
 // on phone widths, tap targets smaller than 40 px. Prints one line per screen with problems and a summary.
-// [ROLE=finance] [ROUTES=file] [IMPACT=serious] node a11y.mjs [w=1440] [theme=dark] [lang=en]
+// [ROLE=finance] [ROUTES=file] [VAR="aaj=b"] [IMPACT=serious] node a11y.mjs [w=1440] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";
@@ -15,7 +15,7 @@ const file = resolve("dist/preview.html");
 const phone = +w < 600;
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
 const ctx = await b.newContext({ viewport: { width: +w, height: phone ? 844 : 900 }, colorScheme: theme, hasTouch: phone });
-await ctx.addInitScript(([th, lg, rl]) => { localStorage.setItem("pk4-theme", th); localStorage.setItem("pk3-lang", lg); localStorage.setItem("pk-mock-shots", "1"); if (rl) localStorage.setItem("pk3-role", rl); }, [theme, lang, process.env.ROLE || ""]);
+await ctx.addInitScript(([th, lg, rl, vr]) => { localStorage.setItem("pk4-theme", th); localStorage.setItem("pk3-lang", lg); localStorage.setItem("pk-mock-shots", "1"); if (rl) localStorage.setItem("pk3-role", rl); for (const kv of vr.split(",").filter(Boolean)) localStorage.setItem(`pk43-v-${kv.split("=")[0]}`, kv.split("=")[1]); }, [theme, lang, process.env.ROLE || "", process.env.VAR || ""]);
 const p = await ctx.newPage();
 const total = {};
 let small = 0, bad = 0;

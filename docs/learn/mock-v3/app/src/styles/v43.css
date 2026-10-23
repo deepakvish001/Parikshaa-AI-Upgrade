@@ -1,0 +1,580 @@
+/* Mock v4.3: direction switch, the three Today directions, profile directions, brand moments and screen states. */
+
+/* ---------- direction switch (mock chrome) ---------- */
+.variant-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 10px;
+  margin-bottom: 18px;
+  border: 1px dashed var(--line-2);
+  border-radius: 12px;
+  background: var(--panel-2);
+}
+.vb-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.vb-opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.vb-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 12px 0 6px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 520;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.vb-opt b {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: var(--sunk);
+  font-size: 11px;
+}
+.vb-opt:hover {
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+.vb-opt[aria-pressed="true"] {
+  border-color: var(--pen-line);
+  background: var(--pen-soft);
+  color: var(--ink);
+}
+.vb-opt[aria-pressed="true"] b {
+  background: var(--pen);
+  color: var(--on-pen);
+}
+.vb-hint {
+  flex: 1 1 260px;
+  min-width: 0;
+  color: var(--ink-3);
+}
+html.shots .variant-bar {
+  display: none;
+}
+
+/* ---------- Today A: one thing at a time ---------- */
+.af-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.af-h1 {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.022em;
+  margin-top: 6px;
+  text-wrap: balance;
+}
+.af-sub {
+  display: block;
+  font-size: 0.72em;
+  color: var(--ink-3);
+  font-weight: 560;
+  letter-spacing: -0.012em;
+}
+.af-now .resume-code {
+  display: inline-block;
+}
+.af-list .num {
+  white-space: nowrap;
+}
+.af-now {
+  position: relative;
+  padding: 20px 22px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--pen-line);
+  background: radial-gradient(120% 140% at 100% 0%, var(--pen-soft), transparent 55%), var(--sheen), var(--panel);
+  box-shadow: var(--shadow-2), var(--edge);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.af-now-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.af-now-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.af-now-t {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.024em;
+  margin-bottom: 8px;
+}
+.af-now-act {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.af-segs i.now {
+  background: var(--pen);
+  animation: seg-pulse 1.8s ease-in-out infinite;
+}
+@keyframes seg-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.af-list {
+  list-style: none;
+}
+.af-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  min-height: 56px;
+  border-top: 1px solid var(--line);
+}
+.af-list li:first-child {
+  border-top: 0;
+}
+.af-list li.done b {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-4);
+}
+.af-list b {
+  display: block;
+  font-weight: 560;
+  font-size: 14px;
+}
+.af-streak {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--coin-soft);
+}
+.af-streak svg {
+  width: 18px;
+  height: 18px;
+  color: var(--coin);
+}
+.af-streak b {
+  font-size: 18px;
+}
+.agenda {
+  list-style: none;
+}
+.agenda li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+}
+.agenda li:first-child {
+  border-top: 0;
+}
+.agenda li > svg {
+  width: 17px;
+  height: 17px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+/* ---------- Today B: the day on a ruled page ---------- */
+.ap-page {
+  position: relative;
+  padding: 26px 26px 18px 76px;
+  border-radius: 6px 6px 18px 18px;
+  border: 1px solid var(--card-line);
+  background-color: var(--panel);
+  background-image: linear-gradient(90deg, transparent 58px, var(--margin) 58px, var(--margin) 60px, transparent 60px);
+  box-shadow: var(--paper-shadow), var(--edge);
+}
+.ap-page::before {
+  /* binder holes */
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 30px;
+  bottom: 30px;
+  width: 14px;
+  background: radial-gradient(circle, var(--page) 5px, transparent 6px) 0 0 / 14px 72px repeat-y;
+  opacity: 0.9;
+}
+.ap-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 14px;
+}
+.ap-date {
+  font-family: var(--f-hand);
+  font-size: 20px;
+  color: var(--pen-text);
+}
+.ap-t {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -0.024em;
+  margin: 2px 0 6px;
+}
+.ap-lines {
+  list-style: none;
+  border-top: 1px solid var(--ruled);
+}
+.ap-lines li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--ruled);
+}
+.ap-at {
+  position: absolute;
+  left: -64px;
+  width: 44px;
+  text-align: right;
+  font-family: var(--f-hand);
+  font-size: 15px;
+  color: var(--ink-3);
+}
+.ap-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ap-title {
+  font-size: 16px;
+  font-weight: 560;
+}
+.ap-lines li.done .ap-title {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--pen);
+  text-decoration-thickness: 2px;
+}
+.ap-mark {
+  --mk: color-mix(in srgb, var(--marker) 34%, transparent);
+  background: linear-gradient(transparent 50%, var(--mk) 50%, var(--mk) 94%, transparent 94%);
+  color: inherit;
+  padding: 0 2px;
+}
+.ap-note {
+  font-family: var(--f-hand);
+  font-size: 16px;
+  line-height: 1.2;
+  color: var(--red-text);
+  max-width: 220px;
+  transform: rotate(-1.5deg);
+}
+.ap-lines li.done .ap-note {
+  color: var(--tick-text);
+}
+.ap-act {
+  flex-shrink: 0;
+}
+.ap-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+}
+.ap-sum {
+  font-family: var(--f-hand);
+  font-size: 18px;
+  color: var(--ink-2);
+}
+.ap-pencil {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-family: var(--f-hand);
+  font-size: 17px;
+  cursor: pointer;
+  text-decoration: underline wavy var(--ink-4);
+  text-underline-offset: 5px;
+}
+.ap-pencil svg {
+  width: 16px;
+  height: 16px;
+}
+.rail-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 16px 18px;
+  background: #ffe45c;
+  color: #3d3300;
+  font-family: var(--f-hand);
+  font-size: 17px;
+  line-height: 1.25;
+  transform: rotate(-1.2deg);
+  box-shadow: 0 12px 24px -12px rgba(60, 50, 0, 0.55);
+  border-radius: 2px 2px 10px 2px;
+}
+.rail-note b {
+  font-size: 19px;
+}
+.ap-score {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 2px solid var(--red-text);
+  color: var(--red-text);
+  transform: rotate(-8deg);
+  box-shadow: inset 0 0 0 4px transparent, inset 0 0 0 5px var(--red-line);
+  flex-shrink: 0;
+}
+.ap-score b {
+  font-size: 26px;
+  line-height: 1;
+}
+.ap-score small {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.tally {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--f-hand);
+  color: var(--ink-2);
+}
+.tally-g {
+  /* a group of five: four strokes and a slash */
+  width: 26px;
+  height: 22px;
+  background:
+    linear-gradient(115deg, transparent 46%, var(--ink-2) 46%, var(--ink-2) 54%, transparent 54%),
+    repeating-linear-gradient(90deg, var(--ink-2) 0 2px, transparent 2px 6px);
+  background-size: 100% 100%, 22px 100%;
+  background-repeat: no-repeat;
+}
+.tally-r {
+  font-size: 22px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* ---------- Today C: the evening as a timeline ---------- */
+.at-card {
+  padding: 18px 18px 30px;
+}
+.at-track {
+  position: relative;
+  height: 64px;
+}
+.at-blk {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: inset 0 0 0 2px var(--panel);
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--ink);
+  transition: transform 0.15s var(--ease), border-color 0.15s;
+}
+.at-blk:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-2);
+}
+.at-blk.done {
+  opacity: 0.6;
+}
+.at-blk.done .at-l {
+  text-decoration: line-through;
+}
+.at-blk.now {
+  border-color: var(--pen);
+  box-shadow: inset 0 0 0 2px var(--panel), 0 0 0 3px var(--pen-soft);
+}
+.at-ic svg {
+  width: 16px;
+  height: 16px;
+}
+.at-l {
+  min-width: 0;
+}
+.at-now {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--red);
+  border-radius: 1px;
+}
+.at-now i {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--red-text);
+}
+.at-ticks {
+  position: relative;
+  height: 14px;
+  margin-top: 10px;
+}
+.at-ticks span {
+  position: absolute;
+  transform: translateX(-2px);
+}
+.at-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 16px;
+}
+.at-time {
+  width: 34px;
+}
+.at-week {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.at-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  color: var(--ink);
+}
+.at-tile svg {
+  width: 14px;
+  height: 14px;
+}
+.at-tile b {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+@media (max-width: 760px) {
+  .af-h1 {
+    font-size: 24px;
+  }
+  .af-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .af-now {
+    padding: 16px;
+  }
+  .af-now-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .af-now-t {
+    font-size: 22px;
+  }
+  .af-now-act {
+    flex-direction: row;
+  }
+  .af-now-act .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+  .af-list li {
+    padding: 10px 14px;
+  }
+  .ap-page {
+    padding: 18px 16px 14px 52px;
+    background-image: linear-gradient(90deg, transparent 38px, var(--margin) 38px, var(--margin) 40px, transparent 40px);
+  }
+  .ap-page::before {
+    display: none;
+  }
+  .ap-t {
+    font-size: 26px;
+  }
+  .ap-at {
+    left: -48px;
+    width: 34px;
+    font-size: 13px;
+  }
+  .ap-lines li {
+    flex-wrap: wrap;
+  }
+  .ap-body {
+    flex: 1 1 0;
+  }
+  .ap-lines li.now .ap-act {
+    order: 4;
+    flex-basis: calc(100% - 34px);
+    margin-left: 34px;
+  }
+  .ap-note {
+    order: 5;
+    flex-basis: 100%;
+    max-width: none;
+    padding-left: 34px;
+    font-size: 15px;
+  }
+  .at-track {
+    height: 52px;
+  }
+  .at-l {
+    display: none;
+  }
+  .at-grid,
+  .at-week {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .at-grid > .at-nowcard {
+    grid-column: 1 / -1;
+  }
+  .at-grid > .card:last-child {
+    grid-column: 1 / -1;
+  }
+}
