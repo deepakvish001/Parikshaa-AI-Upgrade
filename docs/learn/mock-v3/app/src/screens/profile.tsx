@@ -37,7 +37,7 @@ import {
 import { Link, useT, useToast } from "../lib/core";
 import { useVariant, VariantBar } from "../lib/variant";
 import { ProofSheet, ProofStory } from "./profile43";
-import { Avatar, Badge, Card, Donut, Heatmap, LogoMark, Meter, Modal, SampleNote, Seg, Spark, Tabs, Toggle } from "../ui/kit";
+import { Avatar, Badge, Card, Donut, Heatmap, LogoMark, Meter, Modal, Moment, SampleNote, Seg, Spark, Tabs, Toggle } from "../ui/kit";
 
 /* Sample learner. Everything a recruiter sees is either checked by Parikshaa (verified) or marked as the
    learner's own claim; numbers from other sites carry how they were checked and when. */
@@ -596,6 +596,12 @@ export function ProfileRail() {
   const t = useT();
   return (
     <>
+      <Moment
+        mood="peek"
+        tone="pen"
+        title={t("Nimbu Labs HR opened your profile", "Nimbu Labs HR ne profile kholi", "निम्बू लैब्स HR ने प्रोफ़ाइल खोली")}
+        note={t("2 hours ago, for 4 minutes. They read the DSA proof.", "2 ghante pehle, 4 minute. DSA ka saboot padha.", "2 घंटे पहले, 4 मिनट।")}
+      />
       <Card title={t("Who looked", "Kisne dekha", "किसने देखा")} icon={<Building2 className="ic" />}>
         <div className="col g10">
           <div className="row between">

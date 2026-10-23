@@ -930,3 +930,103 @@ html.shots .variant-bar {
     grid-column: 2;
   }
 }
+
+/* ---------- brand moments ---------- */
+.moment {
+  --m: var(--tick);
+  --m-soft: var(--tick-soft);
+  --m-line: var(--tick-line);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--m-line);
+  background: radial-gradient(90% 160% at 0% 50%, var(--m-soft), transparent 70%), var(--sheen), var(--panel);
+  box-shadow: var(--shadow-2), var(--edge);
+  animation: moment-in 0.5s var(--ease) both;
+  overflow: hidden;
+}
+.moment.m-pen {
+  --m: var(--pen);
+  --m-soft: var(--pen-soft);
+  --m-line: var(--pen-line);
+}
+.moment.m-coin {
+  --m: var(--coin);
+  --m-soft: var(--coin-soft);
+  --m-line: var(--coin-line);
+}
+.moment.m-ai {
+  --m: var(--ai);
+  --m-soft: var(--ai-soft);
+  --m-line: var(--ai-line);
+}
+@keyframes moment-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+.moment-diya {
+  flex-shrink: 0;
+  animation: moment-hop 0.7s 0.2s var(--ease) both;
+}
+@keyframes moment-hop {
+  40% {
+    transform: translateY(-6px) rotate(-4deg);
+  }
+}
+.moment-b {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.moment-t {
+  font-weight: 650;
+  font-size: 15px;
+}
+.moment-note {
+  font-family: var(--f-hand);
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--ink-2);
+}
+.moment-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.moment-stamp {
+  flex-shrink: 0;
+  transform: rotate(-10deg) scale(0.82);
+  transform-origin: center;
+  animation: stamp-in 0.45s 0.35s var(--ease) both;
+}
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: rotate(-18deg) scale(1.3);
+  }
+}
+.moments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: 14px;
+}
+@media (max-width: 760px) {
+  .moment {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+  .moment-stamp {
+    position: absolute;
+    right: 6px;
+    top: 4px;
+    transform: rotate(-10deg) scale(0.6);
+  }
+}

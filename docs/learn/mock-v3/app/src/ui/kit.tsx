@@ -805,3 +805,38 @@ export function Stat({ k, v, d, dir, serif }: { k: ReactNode; v: ReactNode; d?: 
     </div>
   );
 }
+
+/** A small celebration or reassurance at one of the moments that matter (first AC, streak saved, Pramaan
+ *  passed, plan made lighter, HR viewed the profile, contest result). Diya, one handwritten line, an
+ *  optional stamp, and at most two actions. Quiet: no confetti, nothing moves if the learner asked for less motion. */
+export function Moment({
+  mood = "cheer",
+  title,
+  note,
+  stamp,
+  tone = "tick",
+  children,
+}: {
+  mood?: Mood;
+  title: ReactNode;
+  note?: ReactNode;
+  stamp?: { top: string; mid: string; bottom: string };
+  tone?: "tick" | "pen" | "coin" | "ai";
+  children?: ReactNode;
+}) {
+  return (
+    <div className={`moment m-${tone}`} role="status">
+      <Diya size={54} mood={mood} className="moment-diya" />
+      <div className="moment-b">
+        <b className="moment-t">{title}</b>
+        {note && <span className="moment-note">{note}</span>}
+        {children && <div className="moment-act">{children}</div>}
+      </div>
+      {stamp && (
+        <span className="moment-stamp">
+          <Stamp {...stamp} />
+        </span>
+      )}
+    </div>
+  );
+}

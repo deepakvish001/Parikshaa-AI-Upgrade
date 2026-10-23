@@ -32,7 +32,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { Link, navigate, useT, useStopwatch, hms, useToast } from "../lib/core";
-import { Badge, Level, Code, Tabs, Seg, Tick, PenNote, Menu } from "../ui/kit";
+import { Badge, Level, Code, Tabs, Seg, Tick, PenNote, Menu, Moment } from "../ui/kit";
 import { SahayakPanel } from "../ui/sahayak";
 import { useAi } from "../lib/state";
 import { FocusBar, PaneToggles, Panes, PaneHead, usePanes } from "../ui/focus";
@@ -336,6 +336,11 @@ function VerdictPanel({ v, setV, openAi }: { v: Verdict; setV: (v: Verdict) => v
               +10
             </Badge>
           </div>
+          <Moment
+            title={t("Your first Accepted on two pointers", "Two pointers par pehla Accepted", "टू पॉइंटर्स पर पहला Accepted")}
+            note={t("int to long long: that was the real lesson. It goes on your revision cards.", "int se long long: yahi asli sabak tha. Revision card me jud gaya.", "int से long long: यही असली सबक था।")}
+            stamp={{ top: "PEHLA", mid: "AC", bottom: "TWO POINTERS" }}
+          />
           <div className="ac-grid">
             <div className="well">
               <span className="tiny faint">{t("Complexity", "Complexity", "जटिलता")}</span>

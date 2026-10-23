@@ -25,7 +25,7 @@ import {
   Info,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
-import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, PenNote, PenCircle, Seg, LogoMark } from "../ui/kit";
+import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, PenNote, PenCircle, Seg, LogoMark, Moment } from "../ui/kit";
 
 /* ---------------- companies ---------------- */
 
@@ -460,6 +460,12 @@ export function CertificateBody() {
   const toast = useToast();
   return (
     <div className="cert-page">
+      <Moment
+        tone="pen"
+        title={t("You passed Pramaan DSA Level 2", "Pramaan DSA Level 2 pass!", "प्रमाण DSA लेवल 2 पास!")}
+        note={t("A person checked the two flags from your test; both were fine. Your certificate is ready.", "Test ke do flag ek insaan ne dekhe; dono theek the. Certificate taiyaar hai.", "दो फ़्लैग एक व्यक्ति ने देखे; दोनों ठीक थे।")}
+        stamp={{ top: "PRAMAAN", mid: "Pass", bottom: "DSA · L2" }}
+      />
       <div className="cert-doc">
         <div className="cd-border">
           <div className="row between">

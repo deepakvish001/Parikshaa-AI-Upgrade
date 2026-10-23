@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Play, Sparkles, CircleX, Check, Flame, Snowflake, Trophy, CalendarClock, Feather, SkipForward, RotateCcw, Timer, CalendarRange, ArrowRight } from "lucide-react";
 import { Link, navigate, useT, useCountdown, hms } from "../lib/core";
 import { useAi } from "../lib/state";
-import { Badge, Level, Check as CheckBox, Ring, Diya, PenCircle, Tick, CountUp } from "../ui/kit";
+import { Badge, Level, Check as CheckBox, Ring, Diya, PenCircle, Tick, CountUp, Moment } from "../ui/kit";
 import { TASKS, KIND, LighterModal } from "./today";
 
 /* Mock v4.3: three directions for Today. A puts the next task first, B writes the day on a ruled page,
@@ -14,6 +14,39 @@ function useDone() {
   return useState<Record<string, boolean>>(Object.fromEntries(TASKS.map((x) => [x.id, x.done])));
 }
 
+/** The moments Today can show: the day finished, the plan made lighter, or the streak kept with a freeze. */
+function DayMoment({ allDone, lit }: { allDone: boolean; lit: string | null }) {
+  const t = useT();
+  if (allDone)
+    return (
+      <Moment
+        title={t("Today's work is done", "Aaj ka kaam poora", "आज का काम पूरा")}
+        note={t("13 days in a row. Nothing left for tonight; tomorrow's plan is ready.", "Lagaataar 13 din. Aaj raat kuch nahi bacha; kal ka plan taiyaar.", "लगातार 13 दिन।")}
+        stamp={{ top: "AAJ", mid: "Poora", bottom: "13 DIN" }}
+      />
+    );
+  if (lit === "off")
+    return (
+      <Moment
+        mood="sleepy"
+        tone="coin"
+        title={t("Day off. Your streak is safe.", "Aaj chhutti. Streak bachi rahi.", "आज छुट्टी। लगातार बचा रहा।")}
+        note={t("One freeze used. I will remind you tomorrow at 7 pm.", "Ek freeze laga. Kal shaam 7 baje yaad dilaunga.", "एक फ़्रीज़ लगा।")}
+        stamp={{ top: "STREAK", mid: "12", bottom: "SAFE" }}
+      />
+    );
+  if (lit)
+    return (
+      <Moment
+        mood="happy"
+        tone="pen"
+        title={t("Today is lighter. The plan took care of it.", "Aaj halka hua. Plan ne khud sambhala.", "आज हल्का हुआ।")}
+        note={t("End date is still 10 Dec; tomorrow has 20 extra minutes.", "End date ab bhi 10 Dec; kal 20 minute zyada.", "अंतिम तारीख़ वही 10 दिसंबर।")}
+      />
+    );
+  return null;
+}
+
 /* ---------------- A: one thing at a time ---------------- */
 
 export function AajFocus() {
@@ -21,6 +54,7 @@ export function AajFocus() {
   const ai = useAi();
   const [done, setDone] = useDone();
   const [light, setLight] = useState(false);
+  const [lit, setLit] = useState<string | null>(null);
   const left = TASKS.filter((x) => !done[x.id]);
   const mins = left.reduce((a, x) => a + x.min, 0);
   const rest = TASKS.filter((x) => x.id !== NOW);
@@ -40,6 +74,7 @@ export function AajFocus() {
           {t("2 days ahead", "2 din aage", "2 दिन आगे")}
         </Badge>
       </header>
+      <DayMoment allDone={left.length === 0} lit={lit} />
 
       <section className="af-now" aria-labelledby="af-now-t">
         <div className="af-now-top">
@@ -117,7 +152,7 @@ export function AajFocus() {
           </button>
         </div>
       </section>
-      <LighterModal open={light} onClose={() => setLight(false)} />
+      <LighterModal open={light} onClose={() => setLight(false)} onDone={setLit} />
     </div>
   );
 }
@@ -216,9 +251,11 @@ export function AajPaper() {
   const ai = useAi();
   const [done, setDone] = useDone();
   const [light, setLight] = useState(false);
+  const [lit, setLit] = useState<string | null>(null);
   const n = Object.values(done).filter(Boolean).length;
   return (
     <div className="col g16">
+      <DayMoment allDone={n === TASKS.length} lit={lit} />
       <article className="ap-page" aria-labelledby="ap-t">
         <div className="ap-top">
           <div className="grow" style={{ minWidth: 0 }}>
@@ -279,7 +316,7 @@ export function AajPaper() {
           </button>
         </div>
       </article>
-      <LighterModal open={light} onClose={() => setLight(false)} />
+      <LighterModal open={light} onClose={() => setLight(false)} onDone={setLit} />
     </div>
   );
 }

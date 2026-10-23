@@ -110,7 +110,7 @@ function TaskList() {
   );
 }
 
-export function LighterModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function LighterModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone?: (pick: string) => void }) {
   const t = useT();
   const toast = useToast();
   const [pick, setPick] = useState("half");
@@ -134,7 +134,8 @@ export function LighterModal({ open, onClose }: { open: boolean; onClose: () => 
             className="btn pri"
             onClick={() => {
               onClose();
-              toast(t("Plan updated. Tomorrow has 20 extra minutes.", "Plan badla. Kal 20 minute zyada.", "योजना बदली।"));
+              if (onDone) onDone(pick);
+              else toast(t("Plan updated. Tomorrow has 20 extra minutes.", "Plan badla. Kal 20 minute zyada.", "योजना बदली।"));
             }}
           >
             {t("Update plan", "Plan badlo", "योजना बदलें")}

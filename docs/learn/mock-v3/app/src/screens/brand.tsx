@@ -52,6 +52,7 @@ import {
   Code,
   Skel,
   Stat,
+  Moment,
 } from "../ui/kit";
 import { LangButton, ThemeButton } from "../ui/shell";
 
@@ -575,6 +576,27 @@ export function BrandBody() {
         <p className="tiny faint mt8">
           {t("Used sparingly: empty states, streaks, onboarding. Final art by an illustrator.", "Kam jagah: khaali haalat, streak, onboarding. Asli art illustrator banaye.", "कम जगह पर।")}
         </p>
+      </section>
+
+      <section className="brand-sec">
+        <h2 className="brand-h2">
+          <span className="num">07b</span> {t("Moments", "Khaas pal", "ख़ास पल")}
+        </h2>
+        <p className="small muted" style={{ maxWidth: "70ch" }}>
+          {t(
+            "Six moments get a small celebration or reassurance: Diya, one handwritten line, sometimes a stamp. Nothing else in the app does this, so it stays special. No confetti; nothing moves when the learner asks for less motion.",
+            "Chhe pal par chhoti khushi ya tasalli: Diya, ek haath ki likhi line, kabhi stamp. App me aur kahin ye nahi hota, isliye khaas rehta hai. Confetti nahi; kam motion maangne par kuch nahi hilta.",
+            "छह पलों पर छोटी ख़ुशी: दीया, एक हाथ से लिखी पंक्ति, कभी मुहर।",
+          )}
+        </p>
+        <div className="moments-grid mt12">
+          <Moment title={t("Your first Accepted on two pointers", "Two pointers par pehla Accepted", "पहला Accepted")} note={t("int to long long: that was the real lesson.", "int se long long: yahi asli sabak tha.", "यही असली सबक था।")} stamp={{ top: "PEHLA", mid: "AC", bottom: "TWO POINTERS" }} />
+          <Moment mood="sleepy" tone="coin" title={t("Day off. Your streak is safe.", "Aaj chhutti. Streak bachi rahi.", "लगातार बचा रहा।")} note={t("One freeze used. Reminder tomorrow at 7 pm.", "Ek freeze laga. Kal 7 baje yaad.", "एक फ़्रीज़ लगा।")} stamp={{ top: "STREAK", mid: "12", bottom: "SAFE" }} />
+          <Moment tone="pen" title={t("You passed Pramaan DSA Level 2", "Pramaan DSA L2 pass!", "प्रमाण DSA L2 पास!")} note={t("A person checked both flags; your certificate is ready.", "Dono flag insaan ne dekhe; certificate taiyaar.", "प्रमाणपत्र तैयार।")} stamp={{ top: "PRAMAAN", mid: "Pass", bottom: "DSA · L2" }} />
+          <Moment mood="happy" tone="pen" title={t("Today is lighter. The plan took care of it.", "Aaj halka hua. Plan ne sambhala.", "आज हल्का हुआ।")} note={t("End date still 10 Dec; tomorrow has 20 extra minutes.", "End date 10 Dec; kal 20 min zyada.", "तारीख़ वही।")} />
+          <Moment mood="peek" tone="pen" title={t("Nimbu Labs HR opened your profile", "Nimbu Labs HR ne profile kholi", "HR ने प्रोफ़ाइल खोली")} note={t("2 hours ago, for 4 minutes. They read the DSA proof.", "2 ghante pehle, 4 minute. DSA saboot padha.", "2 घंटे पहले।")} />
+          <Moment tone="ai" title={t("New best: rating 1,529, up 43", "Naya best: 1,529, +43", "नया सर्वश्रेष्ठ: 1,529")} note={t("Three rounds in a row going up.", "Lagaataar teen round upar.", "लगातार तीन राउंड ऊपर।")} stamp={{ top: "ROUND 13", mid: "Best", bottom: "+43" }} />
+        </div>
       </section>
 
       <section className="brand-sec">

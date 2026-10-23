@@ -28,7 +28,7 @@ import {
   Send,
 } from "lucide-react";
 import { Link, navigate, useT, useCountdown, hms } from "../lib/core";
-import { Badge, Level, Card, PageHead, LineChart, Tabs, Code, CountUp, Stamp, Tick } from "../ui/kit";
+import { Badge, Level, Card, PageHead, LineChart, Tabs, Code, CountUp, Stamp, Tick, Moment } from "../ui/kit";
 import { FocusBar, Panes, PaneHead, usePanes, PaneToggles } from "../ui/focus";
 import { SahayakPanel } from "../ui/sahayak";
 import { BUGGY } from "./problem";
@@ -509,6 +509,12 @@ export function ContestResultBody() {
   const t = useT();
   return (
     <div className="col g20">
+      <Moment
+        tone="ai"
+        title={t("New best: rating 1,529, up 43", "Naya best: rating 1,529, +43", "नया सर्वश्रेष्ठ: 1,529, +43")}
+        note={t("Three rounds in a row going up. B's overflow is on your revision list.", "Lagaataar teen round upar. B ka overflow revision list me hai.", "लगातार तीन राउंड ऊपर।")}
+        stamp={{ top: "ROUND 13", mid: "Best", bottom: "+43" }}
+      />
       <section className="cres-hero paper-grid">
         <div className="col g8" style={{ minWidth: 0 }}>
           <span className="eyebrow">{t("Weekly Round 13 · final", "Weekly Round 13 · final", "राउंड 13 · अंतिम")}</span>
