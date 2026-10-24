@@ -196,10 +196,12 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   (`#interview`), phir **AE1 track** (`#ai-track`), **AE4 AI istemal report** (`#ai-report`), **AE7 readiness ke do
   hisse**, **AE8 kaagaz ki line**; code `src/screens/ailab.tsx`, `aitrack.tsx`, `interview.tsx`, CSS `src/styles/ai.css`;
   76 screens, QA/axe 0; wahi link Version 13. Owner ne AI ke daur ke **saare sujhaav maane** (tracker "Faisle"; LEARN-V2 §4c me AE1–AE9).
-  **Agla (kram me):** (1) **44-0** user-test ka script, chune roop par, jisme ticket lab aur drill ke task bhi (5–8
-  students + 2 HR/TPO, 30 min) → owner se G1 (log aur samay); (2) mock me baaki AE: **AE6** code padhna, **AE9**
-  interview format guide; (3) 44-2/44-3/44-5/44-6.
-  Code abhi nahi (F1 "shuru karo" ke baad). Sample content (2 ticket labs, 20 drills, 5 code-padhna sets) owner manzoor
+  **Agla (kram tay, 24 Oct; [learn/CODE-READINESS.md](learn/CODE-READINESS.md) §4b, tracker row 138):** contract-first
+  frontend, Kadam 0–5. **Kadam 0 (abhi, bina faisle ke):** mock me **AE6** code padhna + **AE9** interview format guide,
+  phir **44-0** user-test ka script (5–8 students + 2 HR/TPO, 30 min, ticket lab aur drill ke task bhi). **Kadam 1**
+  (frontend ki neev, `packages/brand` + kit + Learn shell) tabhi jab owner F1 "shuru karo", F2 (brand kahan), F5 (merge)
+  de aur GitHub billing theek ho; **Kadam 2** se pehle Supabase Mumbai chalu karne ki haan (§0 me aaj ki haalat).
+  44-2/44-3/44-5/44-6 test ki raay aane par. Code F1 ke baad hi. Sample content (2 ticket labs, 20 drills, 5 code-padhna sets) owner manzoor
   kare tab bulk.
 
 - **Bana aur push hua:** Learn ka clickable mock **v4.2** (`docs/learn/mock-v3/app`, 72 screens: 45 learner + 27 admin).
@@ -290,7 +292,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
-- 24 Oct 2026: owner ne poocha "build ke liye mujhse kya chahiye". Connectors se live jaanch: GitHub Actions ab bhi budget se band (19 Oct), PR #66 khula; Supabase org free, `parikshaa-mumbai` paused (INACTIVE), Singapore wala chalu; Vercel par Parikshaa project nahi; `ANTHROPIC_API_KEY` environment me nahi. Likha [learn/CODE-READINESS.md](learn/CODE-READINESS.md) §0 me. Owner ko kram diya: contract-first frontend (Kadam 0–5).
+- 24 Oct 2026: owner ne poocha "build ke liye mujhse kya chahiye". Connectors se live jaanch: GitHub Actions ab bhi budget se band (19 Oct), PR #66 khula; Supabase org free, `parikshaa-mumbai` paused (INACTIVE), Singapore wala chalu; Vercel par Parikshaa project nahi; `ANTHROPIC_API_KEY` environment me nahi. Likha [learn/CODE-READINESS.md](learn/CODE-READINESS.md) §0 me. Owner ko kram diya: contract-first frontend (Kadam 0–5), likha CODE-READINESS §4b + tracker plan row 138 + §5 "Agla"; owner doosre account se isi kram par aage badhayega.
 - 24 Oct 2026: owner "AE1 AE4 AE7 AE8 bhi mock me banao": `#ai-track` (AE1), `#ai-report` (AE4), readiness ke do hisse Aaj + company page par (AE7), profile ke kaagaz me "AI ke saath kaam" line (AE8); 76 screens; qa 76 × 7 + axe 0; wahi link Version 13. Agla: 44-0 test script, phir AE6, AE9.
 - 24 Oct 2026: owner ne AI ke daur ke saare sujhaav maane (tracker Faisle; LEARN-V2 §4c me AE1–AE9; CP bank 2027+; Pramaan ke do tier). Mock v4.4 kadam 44-4 ka pehla hissa: `#ticket-lab` (AE2), `#ai-drill` (AE3), `#interview` ke do roop (AE5); raaste Abhyas, Banao, Aaj se; 74 screens; qa 74 × 7 + axe har combo aur har naye kadam par 0; screenshots `screens/v44/`; wahi link Version 12. §1 me naya kadam 2b (pichhle session ka kaam pehle padho). Agla: 44-0 test script, phir AE1/AE4/AE7/AE8.
 - 24 Oct 2026: owner ke kehne par AI ke daur ki deep research (HackerRank ka palatna, Chakra GA 5 Oct, Meta/Canva/Google ke AI rounds, Cluely, Greenhouse survey, Anthropic RCT, Stanford "Canaries", Bharat ki placements, kanoon) aur plan: [research/AI-ERA-PLAN-2026.md](research/AI-ERA-PLAN-2026.md), tracker row 137 (⬜) + "Ruka hua kaam". Jodna AE1–AE9, badalna AC1–AC6, na banana AR1–AR5, Hire AH1–AH5 (ruka). Owner ke 6 faisle baaki; kuch bana nahi.

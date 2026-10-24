@@ -86,6 +86,26 @@ connectors se jaanchi thi ([../OWNER-SETUP.md](../OWNER-SETUP.md) §1); code shu
 
 Har phase ke baad: tracker update, PR, aur aapke dekhne ke liye staging link.
 
+### 4b. Kram (24 Oct 2026): contract-first frontend
+
+Owner (24 Oct): "complete frontend ho jaye phir database and backend and baki ai". Learn ka backend kaafi bana hua hai
+(`packages/api` me ~160 Learn/Practice raaste, ~30 tables, tracker me 110 ✅), isliye frontend pehle, par do niyam:
+jahan backend hai wahan naya screen **seedha asli API** se judta hai; jahan nahi hai wahan pehle API ka **contract**
+(types + OpenAPI) aur us par nakli data, taaki backend aane par sirf nakli data hate, screen dobara na bane. Naya UI
+feature flag ke peeche; purani practice site tab tak chalti rahe jab tak naya uske barabar na ho. Tracker plan row 138.
+
+| Kadam | Kya banega | Phase (upar) | Aapse chahiye |
+|---|---|---|---|
+| 0 Design freeze | Mock me AE6 (code padhna) + AE9 (interview format guide); 44-0 user-test script; ho sake to 5–8 students se mock ka test | — | Test ke log aur samay (G1), zaroori nahi |
+| 1 Frontend ki neev | `packages/brand` me v4.4 tokens, fonts, logo A; kit (Panes, FocusBar, Seg, Ring, Meter, states); Learn shell (nav, rail, phone tabs, Ctrl+K); en/hi; CI me visual + axe; `packages/web/package.json` ki dohri dependencies (`lucide-react`, `@tanstack/react-query`) theek | P0 | F1, F2, F5 + GitHub billing (§0) |
+| 2 Screens jinka backend hai | Aaj, plan/onboarding, DSA sheet + workspace + editorial, SQL, revision, aptitude, POTD, contests, profile + share, Plus, community, Sahayak panel. Har slice: screen + asli API + tests + screenshot; chhoti API kami usi slice me | P0, P1, P2 | Supabase Mumbai chalu (haan), DB URL GitHub secret me, AWS VM, Vercel token, domain, Google OAuth client; F6 samples |
+| 3 Screens jinka backend nahi | Contract + nakli data par: ticket lab, AI track, drill, AI report, readiness split, interview ke do roop, Studio, notebook. Yahan frontend poora | P0 | Kuch nahi |
+| 4 Database + backend | Kadam 3 ke liye migrations, store, service, routes; nakli data hatao | P2, P4 | Judge0 VM + `PYTHON_SHA256` |
+| 5 AI | Evals pehle; Sahayak v3, sandbox me lab agent, viva, interview ka AI mode, AI report | P3 | Anthropic key + spend limit; content factory ke kharch ki haan |
+
+Saath-saath: content ke S0 samples (Kadam 1 ke saath shuru), aur launch ki cheezein (P5: Razorpay KYC, SES,
+WhatsApp, daam), jinme din lagte hain.
+
 ## 5. Aapko ye nahi karna
 
 Code, tests, CI, Docker, Terraform, migrations, keys ke naam, webhooks, monitoring, docs: sab Claude. Aap sirf F1–F7, §2 ke
