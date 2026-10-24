@@ -58,6 +58,12 @@ revision, aptitude, contests, Pramaan, Studio) yahan nahi; wo [../LEARN-V2.md](.
 | B2 | **Company ke liye verified shortlist** (learner ki manzoori se) | Profile share ka agla kadam | L |
 | B3 | **College ka apna contest** (sirf unke students, proctored) | Placement cell ka kaam | M |
 
+## AI ke daur ke liye (owner ki haan, 24 Oct 2026)
+
+AE1–AE9 (AI ke saath kaam track, ticket labs, "galat AI pakdo" drills, AI istemal report, mock interview ke do roop,
+code padhna, readiness ke do hisse, kaagaz ki line, interview format guide) ab Learn ke plan me hain:
+[../LEARN-V2.md](../LEARN-V2.md) §4c. Mock me pehle AE2, AE3, AE5.
+
 ## Sujhaav: kram
 
 1. **L1, L7, L9, A2, A8** (chhote, bina naye account ke, turant asar).

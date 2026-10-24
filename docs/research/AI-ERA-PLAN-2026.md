@@ -191,6 +191,8 @@ kaam karna sikhana aur naapna**, aur **repo/ticket wale asli tasks**.
 
 ## 7. Owner se faisle
 
+**24 Oct 2026, owner: "haa sab sujhaav theek hai, AE2 AE3 AE5 mock me banao"**, aur AE1–AE9 Learn me jodo. Isliye 1, 2, 3, 6: haan; 4: sasta model labs me, mehnga sirf viva/report me, labs ki ginti daam ke saath; 5: AE2 + AE3 + AE5 mock me. Faisle tracker "Faisle" me, features [../LEARN-V2.md](../LEARN-V2.md) §4c me.
+
 1. **Disha:** "Buniyaad + AI ke saath kaam, dono ka saboot" ko Learn ki mukhya pehchaan banayein? (Sujhaav: haan.)
 2. **CP bank 2,000** ko 2027+ khiskana (AC1)? (Sujhaav: haan; budget AE2/AE3/AE6 par.)
 3. **Pramaan ke do tier** (AC3)? (Sujhaav: haan.)

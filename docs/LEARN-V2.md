@@ -73,14 +73,15 @@ Home (aaj ka plan, streak, revision due, contest)
 ├─ DSA A2Z (520 problems, 18 step, apna kram)
 ├─ Sheets (Placement 150, Aakhri 30 din, Company-style, Topic sheets)
 ├─ Problems (5,000 ka bank: filter topic, mushkil, pattern, rating)
-├─ CP (rating-wise 800–2600, CP math, interactive)
+├─ CP (rating-wise 800–2600, CP math, interactive; **2027+**, §4c)
+├─ AI ke saath kaam (track, ticket labs, "galat AI pakdo" drills, code padhna; §4c)
 ├─ Aptitude (quant, reasoning, verbal → topic lessons, practice sets, timed mocks, company-pattern mocks)
 ├─ CS Core (DBMS, OS, CN, OOPs → lessons, interview Q&A, MCQ)
 ├─ Design (LLD, HLD, design patterns → lessons, case studies, diagrams)
 ├─ Languages (C, C++, Java, Python, JavaScript/TypeScript, Go → basics se advanced, output-predict)
 ├─ SQL (lessons + 300 problems, SQL runner)
 ├─ Contests (weekly, rated, virtual, upsolve)
-├─ Mock interview (AI interviewer, rubric)
+├─ Mock interview (AI interviewer, rubric; do roop: bina AI / AI ke saath, §4c)
 ├─ Workspace (mera code, lists, notes, mistake notebook, downloads)
 ├─ Profile (portfolio, heatmap, Pramaan, certificate)
 └─ Plus (pricing, campus licence)
@@ -97,7 +98,7 @@ Home (aaj ka plan, streak, revision due, contest)
 | **Coding problems** | **5,000** | 1,500 (A2Z 520 + bank 980) | Runner par reference = brute, validator, doosra model hal kare |
 | ↳ DSA A2Z path | 520 | 520 | Upar + **100% insaan review** |
 | ↳ Interview bank (LeetCode level; Easy 30% · Medium 50% · Hard 20%) | 2,480 | 980 | Upar + 10% insaan |
-| ↳ CP bank (Codeforces level, rating 800–2600) | 2,000 | 0 | Upar + validator + wrong solutions fail hon |
+| ↳ CP bank (Codeforces level, rating 800–2600) | 2,000 | 0 (**2027+**, owner 24 Oct 2026; §4c) | Upar + validator + wrong solutions fail hon |
 | **Basics** (owner ke series batches + naye; TCS NQT jaise coding rounds) | **500** (5,000 ke upar) | 200 | Upgrade v1 → v2 ([learn/PROBLEM-STANDARD.md](learn/PROBLEM-STANDARD.md) §6) |
 | **Aptitude** | **5,000** | 2,000 | Har sawaal ka Python solver = sahi option |
 | ↳ Quant | 2,200 | 900 | |
@@ -325,6 +326,40 @@ reviewer ki queue → "Expert ne jaancha" label. Har AI course par "galti batao"
 
 **Admin me:** roadmap editor (graph, nodes, content se jod), AI courses ki queue (popular → review), fair-use ki seema,
 abuse dekhna.
+
+### 4c. AI ke daur ke liye (owner ki haan, 24 Oct 2026)
+
+**Kyun:** hiring puzzle se "AI ke saath asli kaam + kyun samjhao" par ja rahi hai (Meta, Canva, HackerRank Chakra,
+CoderPad), par Bharat do-raftaar hai (mass recruiters ab bhi aptitude + coding). Anthropic ki study: AI se code
+likhwane par seekh ghatti, "kyun" poochhne par bachi rehti. Poori research aur sources:
+[research/AI-ERA-PLAN-2026.md](research/AI-ERA-PLAN-2026.md). **Learn ki pehchaan:** buniyaad + AI ke saath kaam, dono
+ka saboot.
+
+| # | Feature | Kya milta hai | Kahan (IA) | Naap |
+|---|---|---|---|---|
+| AE1 | **"AI ke saath kaam" track** | Context dena, plan likhna, AI ka diff padhna, galat output pakadna, test se jaanchna, kab AI **na** lein, data/privacy ki seema | Roadmaps → naya skill roadmap; har node par lesson + lab + node ka Pramaan | Node pass % |
+| AE2 | **Ticket labs** | Chhota asli repo (MERN / Python / Spring) + 3–5 bug tickets. Pehle `PLAN.md` (samajh, scope andar/bahar, acceptance criteria, risk); phir Agent ke saath fix (har maani hui badlav par ek line "kyun"); tests se jaanch; aakhir me viva | Banao → Labs; Studio jaisa workspace (mock `#ticket-lab`) | Tickets jinke tests + viva pass |
+| AE3 | **"Galat AI pakdo" drills** | Roz 5 min: AI ka likha code jisme chhupi galti; galat line chuno → failing test likho → theek karo → ek line seekh | Abhyas → Aaj ka drill; Aaj ke plan me (mock `#ai-drill`) | Drill accuracy, galti ki category |
+| AE4 | **Sahayak ki "AI istemal report"** | Session ke baad: context kaisa diya, AI ka output jaancha ya nahi, follow-up kiya ya nahi; har baat transcript ke time ke saath. **Sirf seekhne ke liye, hiring score nahi** | Lab, Studio aur Sahayak page ke ant me | Agle session me sudhaar |
+| AE5 | **Mock interview ke do roop** | (a) **Bina AI** buniyaad (DSA/CS); (b) **AI ke saath** chhota task + "ye tareeka kyun? AI ka code kaise jaancha?" ke sawaal (micro-viva engine); report saboot ke saath | Career → Mock interview (mock `#interview`) | Dobara interview me sudhaar |
+| AE6 | **Code padhna aur samjhana** | Anjaan code (200–400 line): "ye kya karta, bug kahan, kya badloge" | Abhyas → drills | Sahi jawab % |
+| AE7 | **Readiness ke do hisse** | Buniyaad (bina AI) + AI ke saath kaam; company type ke hisaab se wazan (service: buniyaad zyada; GCC/product: dono) | Aaj ki rail, company page | Readiness vs asli selection |
+| AE8 | **Kaagaz me "AI ke saath kaam" ki line** | Ticket lab + viva se jaancha; kab aur kaise | Profile (saboot ka kaagaz) | Recruiter views |
+| AE9 | **Interview format guide** | Company type ke hisaab se kaunsa round AI ke saath / bina AI, kya laayein; **sirf source ke saath** | Companies → company page | Guide padhne wale % |
+
+**Badlav (owner ki haan, 24 Oct 2026):** CP bank 2,000 **2027+** (§3a), uska budget AE2/AE3/AE6 par; chune editorials
+me chhota hissa "AI ke saath ye problem" (kaisa prompt, AI ne kya galat diya, kaise pakda); **Pramaan ke do tier**
+(Buniyaad: bina AI, proctored; AI-Saath: ticket lab + viva); leaderboard aur streak me sirf viva-verified solve (M-T2);
+landing: "AI ke daur ki taiyaari, saboot ke saath"; Sahayak ka Agent/Banao mode sirf labs me, Seekho waisa hi
+(hint-only). **Labs me AI:** sasta model, mehnga sirf viva aur report me; Free/Plus me labs ki ginti daam ke saath
+(testing ke baad).
+
+**Nahi banayenge:** AI se score hone wala recorded video interview bina insaan; saboot ke bina koi "score";
+practice me har AI istemal ko cheating maanna; "problems solved" ko profile ka sabse bada number; browser se invisible
+tools (Cluely jaise) pakadne ka daava.
+
+**Kram:** mock me pehle AE2, AE3, AE5 (owner, 24 Oct; v4.4 kadam 44-4), phir AE1, AE4, AE7, AE8, AE6, AE9; sample
+content (2 ticket labs, 20 drills, 5 code-padhna sets) owner manzoor kare (§3g jaisa gate); code F1 "shuru karo" ke baad.
 
 ---
 
