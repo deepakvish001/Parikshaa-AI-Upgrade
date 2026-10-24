@@ -12,8 +12,8 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    git fetch origin claude/learn-v2 && git checkout -B claude/learn-v2 origin/claude/learn-v2
    ```
    Force-push kabhi nahi. `main` par push kabhi nahi. Push se pehle `git pull --rebase origin claude/learn-v2`.
-   **PR:** abhi nahi khuli. Pehla code slice push karne wala session PR khole (base `claude/festive-maxwell-pb4k5v`
-   jab tak #66 merge na ho, phir `main`), aur [HANDOFF.md](HANDOFF.md) ki table me likhe.
+   **PR:** [#67](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/67) (draft, 24 Oct; base
+   `claude/festive-maxwell-pb4k5v` jab tak #66 merge na ho, phir `main` par badlo aur [HANDOFF.md](HANDOFF.md) me likho).
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
 2b. **Pichhle session ne kya kiya (har baar, chahe wo doosra account ho):** neeche §5 ka "Abhi yahan ho" (sabse upar
