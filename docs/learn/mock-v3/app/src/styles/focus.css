@@ -83,7 +83,7 @@
 }
 .pane-toggles button.ai[aria-pressed="true"] {
   background: var(--ai);
-  color: var(--on-pen);
+  color: var(--on-ai);
   box-shadow: none;
 }
 .timer {
@@ -309,7 +309,7 @@ body.resizing .pane-div::before {
 }
 .pane-tabs button.ai[aria-selected="true"] {
   background: var(--ai);
-  color: var(--on-pen);
+  color: var(--on-ai);
 }
 
 @media (max-width: 1100px) {

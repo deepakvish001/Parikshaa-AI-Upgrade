@@ -23,6 +23,9 @@ import {
   Trophy,
   CalendarCheck,
   Play,
+  Bug,
+  Bot,
+  FlaskConical,
 } from "lucide-react";
 import { Link, useT, useCountdown, hms } from "../lib/core";
 import { Badge, Level, Ring, Meter, Spark, Card, PageHead, Tabs, Check } from "../ui/kit";
@@ -88,6 +91,44 @@ export function PracticeBody() {
           </Link>
         ))}
       </div>
+
+      <section className="col g10" aria-labelledby="ai-strip-h">
+        <div className="ai-head">
+          <h2 className="h3" id="ai-strip-h">
+            {t("Working with AI", "AI ke saath kaam", "AI के साथ काम")}
+          </h2>
+          <span className="tiny faint">{t("Plan, check the AI's code, explain why. Learning only, no hiring score.", "Plan karo, AI ka code jaancho, kyun samjhao. Sirf seekhne ke liye, hiring score nahi.", "सिर्फ़ सीखने के लिए।")}</span>
+        </div>
+        <div className="ai-strip">
+          <Link to="ai-drill" className="card hov ai-card">
+            <span className="tr-ic red">
+              <Bug />
+            </span>
+            <span className="col g4" style={{ minWidth: 0 }}>
+              <b>{t("Catch the AI · 5 min", "Galat AI pakdo · 5 min", "गलत AI पकड़ो · 5 मिनट")}</b>
+              <span className="tiny faint">{t("Drill 2 of 3 today · 6-day streak", "Aaj drill 2 / 3 · 6 din streak", "आज 2 / 3")}</span>
+            </span>
+          </Link>
+          <Link to="ticket-lab" className="card hov ai-card">
+            <span className="tr-ic ai">
+              <FlaskConical />
+            </span>
+            <span className="col g4" style={{ minWidth: 0 }}>
+              <b>{t("Ticket lab: Canteen Queue", "Ticket lab: Canteen Queue", "टिकट लैब")}</b>
+              <span className="tiny faint">{t("3 bug tickets · plan → agent → tests → viva", "3 bug tickets · plan → agent → tests → viva", "3 बग टिकट")}</span>
+            </span>
+          </Link>
+          <Link to="interview" className="card hov ai-card">
+            <span className="tr-ic pen">
+              <Bot />
+            </span>
+            <span className="col g4" style={{ minWidth: 0 }}>
+              <b>{t("Mock interview, two kinds", "Mock interview, do roop", "मॉक इंटरव्यू, दो रूप")}</b>
+              <span className="tiny faint">{t("Without AI · with AI", "Bina AI · AI ke saath", "बिना AI · AI के साथ")}</span>
+            </span>
+          </Link>
+        </div>
+      </section>
 
       <div className="grid c3">
         <section className="card pad col g10 potd-card">

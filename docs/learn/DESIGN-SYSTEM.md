@@ -26,10 +26,10 @@ dikhein, **mock sahi hai** aur is file ko theek karo.
 | Workspace (problem/SQL panes) | `src/ui/focus.tsx`, `src/screens/problem.tsx`, `styles/focus.css`, `work.css` | `packages/web` |
 | Code Studio, notebook, interview | `src/screens/studio.tsx`, `notebook.tsx`, `interview.tsx` + unki CSS | `packages/web` |
 | Admin shell aur kit | `src/ui/admin-shell.tsx`, `src/admin/akit.tsx`, `styles/admin*.css` | `packages/console` |
-| Har screen ki list | `src/screens/registry.ts` (72 routes: 45 learner + mock, 27 admin) | product router |
+| Har screen ki list | `src/screens/registry.ts` (74 routes: 47 learner + mock, 27 admin) | product router |
 
 Mock chalana: `cd docs/learn/mock-v3/app && npx tsc -p tsconfig.json && npx vite build && node build-artifact.mjs`;
-screenshots `node shots.mjs <out> <routes> 1440,390 dark en view` (`VAR="state=error"` se haalat); jaanch `node qa.mjs 390 dark hi` aur `node a11y.mjs 390 dark en`.
+screenshots `node shots.mjs <out> <routes> 1440,390 dark en view` (`VAR="state=error"` se haalat; `lab=`, `drill=`, `ivmode=`/`ivphase=` se naye screens ke kadam); jaanch `node qa.mjs 390 dark hi` aur `node a11y.mjs 390 dark en`.
 
 ## 2. Logo (final: A "Pass")
 
@@ -122,6 +122,27 @@ Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. 
 | Interview | Career | Setup → live (baat + code, Sahayak band) → report (rubric, "hiring score nahi") |
 | Admin | Console | Side bar groups, "Viewing as" role, `Gate` (taala + kaun kar sakta), `FourEyes` (wajah + doosri manzoori), audit me sab |
 
+### 7b. AI ke saath kaam: ticket lab, drill, interview ke do roop (owner, 24 Oct 2026)
+
+Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`), `src/screens/interview.tsx`; CSS
+`src/styles/ai.css`. LEARN-V2 §4c ke AE2, AE3, AE5.
+
+- **Ticket lab** (focus layout): focus bar ke beech **5 kadam ka stepper** (Samjho, Plan, Banao, Viva, Nateeja; ho chuke
+  par tick, abhi wala utha hua; ≤1100 px par sirf abhi wale ka naam; phone par body ke upar poori chaudai, har button
+  40 px aur `aria-label` me naam). Page wale kadam 1080 px tak, do column (content + 340 px aside), 960 se neeche ek.
+  **Banao** = `Panes` (code 0.4, Agent 0.34 `tone: "ai"`, tests 0.26); phone par tabs, Agent pehle. Agent ke jawab me
+  **diff card**: file, +/−, aur "kyun" ki ek line bina "Maano"/"Mana karo" band; maana = hari dhaar, mana = dashed. Tests
+  ticket-war (tick/cross) + terminal. Plan me jaanch **niyamon** se (AI nahi), dheeli shart peeli. Nateeja par `Moment`
+  (stamp LAB · 3/3 · AI-SAATH) aur "hiring score nahi" banner.
+- **Galat AI pakdo** (shell layout + rail): upar timer pill aur 3 drill ke gole; code ki **har line ek button**
+  (`aria-pressed`, `aria-label` me line), chuni = laal dhaar, theek = hari; daayein card me 4 kadam ki goli-patti aur
+  us kadam ka kaam; nateeja `dr-run` (laal/hari). Rail me kismon ke meter.
+- **Interview ke do roop:** setup me do bade card (`iv-mode`: bina AI = `pen`, AI ke saath = `ai`); focus bar me daayein
+  `Seg` (phone par body me). AI roop me code ke neeche **AI saathi** patti (har prompt report me); report ke har hisse
+  me `iv-ev` chip "transcript mm:ss".
+- **Niyam:** in screens par kahin "hiring score" nahi; AI ka har sujhaav record; maanne/mana karne ki wajah zaroori;
+  chuna hua AI tab/toggle `--on-ai` text ke saath.
+
 ### 7a. Aaj aur profile: chune hue roop (owner, 24 Oct 2026)
 
 **Aaj = A "Ek kaam"** (`src/screens/today.tsx`: `AajBody`, `AajRail`; CSS `v43.css` `.af-*`, `.agenda`). Agla kaam sabse
@@ -161,8 +182,8 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
   KeySheet (`?`, `G`+akshar), notifications drawer, ThemeButton, LangButton. **sahayak.tsx:** SahayakPanel (contexts:
   problem, sql, notebook, lesson, studio, general).
 - **v4.3:** `Moment` (kit: Diya + ek haath ki line + kabhi stamp), `ui/states.tsx` (`StateBody` khaali/loading/error,
-  `FirstCard` pehli baar, `OfflineBanner`), FocusBar ka `more` (⋯ menu). Sirf mock: `lib/variant.tsx` (`useVariant`, ab sirf
-  haalat ke switch ke liye; roop ka switch 24 Oct ko hata) aur `StateFab` (haalat ka switch), product me nahi jaayenge.
+  `FirstCard` pehli baar, `OfflineBanner`), FocusBar ka `more` (⋯ menu). Sirf mock: `lib/variant.tsx` (`useVariant`: haalat, lab/drill
+  ke kadam, interview ka roop/kadam; roop ka switch 24 Oct ko hata) aur `StateFab` (haalat ka switch), product me nahi jaayenge.
 - **akit.tsx (admin):** `Gate` ko icon-only button par `label` dena zaroori. AdmHead, Gate, FourEyes, RowMenu, Toolbar, Pager, useSelection, Status, Masked, useFirstLoad,
   SkelRows.
 - Har component ki haalatein (hover, focus, disabled, loading, khaali, error) `#brand` page par dikhti hain.

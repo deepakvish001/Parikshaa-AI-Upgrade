@@ -16,6 +16,9 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    jab tak #66 merge na ho, phir `main`), aur [HANDOFF.md](HANDOFF.md) ki table me likhe.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
+2b. **Pichhle session ne kya kiya (har baar, chahe wo doosra account ho):** neeche §5 ka "Abhi yahan ho" (sabse upar
+   ka bullet), §7 log ki upar ki 3–5 lines, aur `git log --oneline -15 origin/claude/learn-v2` padho. Tumhari pichhli
+   §6 row ke baad jo hua, use samjho aur **dobara mat banao**; wahi se aage badho.
 3. **Adhoora kaam:** autosave restore, [HIRE-HANDOFF.md](HIRE-HANDOFF.md) §7 wala tareeka (`autosave/claude/learn-v2`).
 4. **Apni row** §6 me jodo, commit + push.
 5. **Padho:** `CLAUDE.md`, ye file, [LEARN-V2.md](LEARN-V2.md) (poora), aur build spec `docs/learn/`:
@@ -187,6 +190,17 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ### Abhi yahan ho (21 Oct 2026, naya session pehle ye padhe)
 
+- **Sabse taaza (24 Oct 2026, account 2, `session_018vRviyFgDfdAVh2GzLcBn3`):** mock **v4.4** chal raha (tracker row
+  136, aur AI ke daur ka plan row 137). Ho chuka: **44-1** roop final (Aaj A, Profile B); **44-4 ka pehla hissa**: owner
+  ke chune **AE2 ticket lab** (`#ticket-lab`), **AE3 Galat AI pakdo** (`#ai-drill`), **AE5 interview ke do roop**
+  (`#interview`), code `src/screens/ailab.tsx`, `interview.tsx`, CSS `src/styles/ai.css`; 74 screens, QA/axe 0; wahi
+  link par publish. Owner ne AI ke daur ke **saare sujhaav maane** (tracker "Faisle"; LEARN-V2 §4c me AE1–AE9).
+  **Agla (kram me):** (1) **44-0** user-test ka script, chune roop par, jisme ticket lab aur drill ke task bhi (5–8
+  students + 2 HR/TPO, 30 min) → owner se G1 (log aur samay); (2) mock me baaki AE: **AE1** track page, **AE4** AI
+  istemal report, **AE7** readiness ke do hisse, **AE8** kaagaz ki line, phir **AE6**, **AE9**; (3) 44-2/44-3/44-5/44-6.
+  Code abhi nahi (F1 "shuru karo" ke baad). Sample content (2 ticket labs, 20 drills, 5 code-padhna sets) owner manzoor
+  kare tab bulk.
+
 - **Bana aur push hua:** Learn ka clickable mock **v4.2** (`docs/learn/mock-v3/app`, 72 screens: 45 learner + 27 admin).
   Ye sirf mock hai: asli data, judge, AI, Colab ka aana-jaana aur doosri sites ka sync nahi; iske automated tests nahi.
   Kya-kya hai: [learn/mock-v3/README.md](learn/mock-v3/README.md). Screenshots `learn/mock-v3/screens/`.
@@ -227,6 +241,14 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   (11 bache: haalatein + pal). Jaanch: `qa.mjs` 72 × 8 saaf (+ Finance role), `a11y.mjs` 6 combos axe 0, touch 0; profile
   ke tabs, HR ki nazar, share modal click karke 1440/390 × kaala/light axe 0. **Agla: 44-0 test script (chune roop par),
   phir G1 owner se.**
+  **44-4 (pehla hissa) ✅ (24 Oct):** owner ne AI ke daur ke saare sujhaav maane aur kaha "AE2 AE3 AE5 mock me banao".
+  Bane: `#ticket-lab` (AE2: Samjho → PLAN.md → Agent + diff + tests → viva → nateeja), `#ai-drill` (AE3: galat line →
+  failing test → fix → seekh, rail me kismein), `#interview` me **bina AI / AI ke saath** (AE5: setup ke do card, AI
+  saathi, report me transcript ke saboot). Raaste: Abhyas hub ki patti, Banao par card, Aaj ki "Aage" list. Code
+  `src/screens/ailab.tsx`, `interview.tsx`, `src/styles/ai.css`; mock switch keys `pk43-v-lab/drill/ivmode/ivphase`.
+  Saath me theek: chune AI tab/toggle par `--on-ai`, code ki hari line aadhe rang par. Jaanch: 74 × 7 qa 0, axe 0 (sab
+  combos + har naya kadam), touch 0. Screenshots `screens/v44/` (17) + desktop/light/phone/hindi; DESIGN-SYSTEM §7b;
+  README v4.4; wahi link Version 12. **Baaki 44-4:** AE1, AE4, AE7, AE8, AE6, AE9 mock me.
 - **Owner jo bole, uska rasta:**
   - Mock me badlav ya naya screen → wahi app, kram: plan (yahan + tracker "Plan") → banao → `qa.mjs` jaanch →
     screenshots → README → publish → push. Version ka naam aage badhao (v4.3) aur tracker me nayi row.
@@ -234,7 +256,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `packages/console` me; DESIGN-SYSTEM §10–11 ka porting kram). P0 ke liye sirf F1, F2, F3, F5 aur GitHub billing
     chahiye. P0 ke baad §4 ke slices (LV-F3 problem package, LV-F5 visual renderer, LV-S0 samples ...).
   - Koi feature idea chuna → pehle mock me screen, owner ki haan, phir code.
-- **Preview link:** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn (Version 10 = v4.3, Version 11 = v4.4 ka 44-1, 24 Oct). Ye account 2 ka artifact hai.
+- **Preview link:** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn (Version 10 = v4.3, Version 11 = v4.4 ka 44-1, Version 12 = AE2/AE3/AE5, 24 Oct). Ye account 2 ka artifact hai.
   Doosra account ise update nahi kar sakta: wo `dist/artifact.html` ko **naye** artifact ke roop me publish kare, naya
   link yahan aur README me likhe, aur owner ko bataye (ya owner purane artifact par edit access de).
   **Muse session (23 Oct 2026):** upar wala tareeka is session me kiya gaya — mock v4.3 commit `4273c4538a` se waisa ka waisa dobara build hua (tsc OK, vite build OK, `dist/artifact.html` 1891 KB) aur `dist/preview.html` Muse ke file link par publish hua: https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html (ye link **25 Oct 2026 16:46 UTC tak** chalega; poori file owner ko chat me de di gayi hai, aur is workspace me `parikshaa-learn-mock-v4.3-preview.html` naam se rakhi hai). Link ki miyaad khatam ho to preview.html dobara upload karna hoga; design ya mock me koi badlav nahi hua.
@@ -258,11 +280,12 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 | # | Tareekh | Account / session | Kya kiya | Kahan ruka |
 |---|---|---|---|---|
 | 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8). 20 Oct: design study, DESIGN-PLAN-V2, mock v2 (41 screens, `learn/mock-v2/`); mock v2 nakaara gaya, phir DESIGN-V3 aur mock v3 (68 screens incl. 25 admin, `learn/mock-v3/`); v3 par raay ke baad mock v4 (font, kaala default, VS Code Studio, admin gehra); 20–21 Oct: mock v4.1 (2↔3 pane, Studio, motion) aur v4.2 | 21 Oct: mock v4.2 poora (72 screens, logo A final, SQL = DSA workspace, profile v2 + HR share, notebook + Colab, AI interview, admin runtimes + recruiters) aur docs DESIGN-SYSTEM / CODE-READINESS / FEATURE-IDEAS; sab push, wahi link. Owner ke faisle F1–F7 ka intezaar (§5 "Abhi yahan ho") |
-| 3 | 23–24 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` (row 1 wala session, aage) | 23 Oct: 21st.dev skills (`.claude/skills/21st-*`), mock v4.3 (U0–U6). 24 Oct: Muse session ke 3 commit (v4.4 plan) par fast-forward, phir v4.4 kadam 44-1: Aaj A + Profile B final, baaki roop aur switch hataye, docs, screenshots | 24 Oct: 44-1 push, wahi link par Version 11. Agla 44-0 test script (chune roop par), phir G1 owner se |
+| 3 | 23–24 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` (row 1 wala session, aage) | 23 Oct: 21st.dev skills (`.claude/skills/21st-*`), mock v4.3 (U0–U6). 24 Oct: Muse session ke 3 commit (v4.4 plan) par fast-forward, phir v4.4 kadam 44-1: Aaj A + Profile B final, baaki roop aur switch hataye, docs, screenshots | 24 Oct: 44-1 (Version 11); AI ke daur ki research + plan (row 137) aur owner ki haan; AE2/AE3/AE5 mock me (Version 12). Agla: 44-0 test script (chune roop + naye screens par), phir baaki AE mock me |
 | 2 | 23 Oct 2026 | Muse (Meta Muse, GitHub deepakvish001) | Naya session: canonical branch claude/learn-v2 verify kiya, HANDOFF aur LEARN-HANDOFF §5/§1 padha, saari branches list karke autosave jaanch poori ki: sirf ek Learn snapshot autosave/claude/learn-v2--4a0a2180 (780992b1, 23 Oct 07:44 UTC, parent = canonical tip 4273c4538a) mila, uske .claude/live/state.md me Uncommitted changes (none) aur U0-U6 completed hai, isliye koi adhoora kaam restore nahi kiya (v4.3 ka kaam saaf push hai), CLAUDE.md, DESIGN-SYSTEM v4.3, CODE-READINESS F1-F7 aur FEATURE-IDEAS padhe | Owner ki raay ka intezaar: Aaj/Profile ka roop chunna, F1-F7 faisle; mock v4.3 is session me dobara build (tsc OK, vite build OK, artifact.html 1891 KB) karke Muse link par publish kiya (neeche §5); baaki owner ki raay baaki |
 
 ## 7. Log (naya upar)
 
+- 24 Oct 2026: owner ne AI ke daur ke saare sujhaav maane (tracker Faisle; LEARN-V2 §4c me AE1–AE9; CP bank 2027+; Pramaan ke do tier). Mock v4.4 kadam 44-4 ka pehla hissa: `#ticket-lab` (AE2), `#ai-drill` (AE3), `#interview` ke do roop (AE5); raaste Abhyas, Banao, Aaj se; 74 screens; qa 74 × 7 + axe har combo aur har naye kadam par 0; screenshots `screens/v44/`; wahi link Version 12. §1 me naya kadam 2b (pichhle session ka kaam pehle padho). Agla: 44-0 test script, phir AE1/AE4/AE7/AE8.
 - 24 Oct 2026: owner ke kehne par AI ke daur ki deep research (HackerRank ka palatna, Chakra GA 5 Oct, Meta/Canva/Google ke AI rounds, Cluely, Greenhouse survey, Anthropic RCT, Stanford "Canaries", Bharat ki placements, kanoon) aur plan: [research/AI-ERA-PLAN-2026.md](research/AI-ERA-PLAN-2026.md), tracker row 137 (⬜) + "Ruka hua kaam". Jodna AE1–AE9, badalna AC1–AC6, na banana AR1–AR5, Hire AH1–AH5 (ruka). Owner ke 6 faisle baaki; kuch bana nahi.
 - 24 Oct 2026: owner ne HackerRank ka naya rukh ("Hire for the agentic era": Chakra, asli repo wale tasks, AI fluency ka report) samajh kar yaad rakhne ko diya; aur input aayega, phir plan. Note: [research/HACKERRANK-AGENTIC-2026.md](research/HACKERRANK-AGENTIC-2026.md). Abhi koi code ya plan nahi.
 - 24 Oct 2026: v4.4 kadam 44-1 (roop final): owner "Aaj ka A aur profile ka B final karo". Aaj = A "Ek kaam", Profile = B "Saboot ka kaagaz" (tabs me coding sites, projects, card; kaagaz me internship + heatmap). Baaki roop, `VariantBar`, `today43.tsx`/`profile43.tsx` aur ~900 line CSS hati. DESIGN-SYSTEM §7a, README v4.4, tracker Faisle + row 136. qa 72 × 8 saaf, axe 0, touch 0. Wahi link par Version 11. Agla: 44-0 test script chune roop par, phir G1 owner se.

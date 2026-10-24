@@ -26,6 +26,7 @@ import {
   MoveRight,
   BedDouble,
   Timer,
+  Bug,
 } from "lucide-react";
 import { Link, navigate, useT, useCountdown, hms, useToast } from "../lib/core";
 import { useAi } from "../lib/state";
@@ -280,6 +281,18 @@ export function AajRail() {
           <span className="h3">{t("Coming up", "Aage", "आगे")}</span>
         </div>
         <ul className="agenda">
+          <li>
+            <Bug />
+            <span className="grow">
+              <b className="small">{t("Catch the AI", "Galat AI pakdo", "गलत AI पकड़ो")}</b>
+              <span className="tiny faint" style={{ display: "block" }}>
+                {t("Today's drill · 5 min · 2 of 3 left", "Aaj ka drill · 5 min · 3 me se 2 baaki", "आज का ड्रिल · 5 मिनट")}
+              </span>
+            </span>
+            <Link to="ai-drill" className="btn sm">
+              {t("Start", "Shuru", "शुरू")}
+            </Link>
+          </li>
           <li>
             <Timer />
             <span className="grow">

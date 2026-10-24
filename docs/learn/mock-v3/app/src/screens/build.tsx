@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import {
   Rocket,
   FlaskConical,
+  ArrowRight,
   Globe,
   Lock,
   Play,
@@ -276,6 +277,20 @@ export function BuildBody() {
           </div>
         </div>
       </section>
+
+      <Link to="ticket-lab" className="card hov lab-callout">
+        <span className="tr-ic ai">
+          <FlaskConical />
+        </span>
+        <span className="col g4 grow" style={{ minWidth: 0 }}>
+          <span className="eyebrow">{t("New · ticket labs", "Naya · ticket labs", "नया · टिकट लैब")}</span>
+          <b className="h3">{t("Fix real bugs in a real repo, with an AI agent", "Asli repo me asli bug theek karo, AI agent ke saath", "असली रिपो में असली बग, AI एजेंट के साथ")}</b>
+          <span className="small muted">{t("Plan first, accept or reject the agent's changes with a reason, prove it with tests, then explain it in a short viva.", "Pehle plan, agent ke badlav wajah ke saath maano ya mana karo, tests se saabit karo, phir chhote viva me samjhao.", "पहले योजना, फिर टेस्ट और वाइवा।")}</span>
+        </span>
+        <span className="btn pri">
+          {t("Open the lab", "Lab kholo", "लैब खोलो")} <ArrowRight />
+        </span>
+      </Link>
 
       <div className="row wrap between g12">
         <h2 className="display" style={{ fontSize: 28 }}>

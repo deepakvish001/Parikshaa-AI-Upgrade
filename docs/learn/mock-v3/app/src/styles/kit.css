@@ -1337,7 +1337,8 @@ button.li {
   color: var(--red-text);
 }
 .code .ln.good {
-  background: var(--tick-soft);
+  /* half strength so code colours keep 4.5:1 on it in both themes */
+  background: color-mix(in srgb, var(--tick-soft) 50%, transparent);
 }
 .code .ln.caret::after {
   content: "";

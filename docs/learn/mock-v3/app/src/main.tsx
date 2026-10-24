@@ -21,6 +21,7 @@ import "./styles/studio.css";
 import "./styles/notebook.css";
 import "./styles/interview.css";
 import "./styles/v43.css";
+import "./styles/ai.css";
 import { LangProvider, ThemeProvider, ToastProvider, Link, useRoute, useT } from "./lib/core";
 import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";

@@ -64,6 +64,8 @@ import {
   Network,
   Calculator,
   Layers,
+  Bug,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -138,6 +140,7 @@ export const SCREENS: ScreenDef[] = [
   s({ id: "apt-mock", group: "practice", layout: "focus", parent: "aptitude", icon: Timer, title: ["Mock test", "Mock test", "मॉक टेस्ट"], desc: ["Timed test like the real one", "Asli jaisa timed test", "समयबद्ध टेस्ट"] }),
   s({ id: "apt-result", group: "practice", layout: "shell", parent: "aptitude", icon: ChartColumn, title: ["Mock result", "Mock ka nateeja", "मॉक परिणाम"], desc: ["Score, time per question, weak topics", "Score, har sawaal ka samay", "स्कोर, समय"] }),
   s({ id: "potd", group: "practice", layout: "shell", nav: true, icon: CalendarCheck, title: ["Problem of the day", "Aaj ka problem", "आज का प्रश्न"], desc: ["One problem a day, streak calendar", "Roz ek problem, streak", "रोज़ एक प्रश्न"] }),
+  s({ id: "ai-drill", group: "practice", layout: "shell", nav: true, icon: Bug, title: ["Catch the AI", "Galat AI pakdo", "गलत AI पकड़ो"], desc: ["Five-minute daily drill on AI code that is almost right", "Roz 5 minute: lagbhag sahi AI code me galti pakdo", "रोज़ 5 मिनट का ड्रिल"] }),
   s({ id: "contests", group: "practice", layout: "shell", nav: true, icon: Trophy, title: ["Contests", "Contests", "प्रतियोगिताएँ"], desc: ["Upcoming, past, rating", "Aane wale, pichhle, rating", "आगामी, पिछली"] }),
   s({ id: "contest-brief", group: "practice", layout: "shell", parent: "contests", icon: Flag, title: ["Contest rules", "Contest ke niyam", "नियम"], desc: ["Rules and start", "Niyam aur shuru", "नियम और शुरू"] }),
   s({ id: "contest-live", group: "practice", layout: "focus", parent: "contests", icon: Timer, title: ["Contest (live)", "Contest (live)", "प्रतियोगिता (लाइव)"], desc: ["Timer, problems, editor", "Timer, problems, editor", "टाइमर, प्रश्न"] }),
@@ -150,7 +153,8 @@ export const SCREENS: ScreenDef[] = [
   s({ id: "build", group: "career", layout: "shell", nav: true, icon: Hammer, title: ["Build", "Banao", "बनाओ"], desc: ["Projects and labs you ship", "Projects aur labs, ship karo", "प्रोजेक्ट और लैब"] }),
   s({ id: "project", group: "career", layout: "shell", parent: "build", icon: FolderKanban, title: ["Project", "Project", "प्रोजेक्ट"], desc: ["Spec, milestones, rubric", "Spec, milestones, rubric", "स्पेक, माइलस्टोन"] }),
   s({ id: "studio", group: "career", layout: "focus", parent: "build", icon: SquareTerminal, title: ["Code Studio", "Code Studio", "कोड स्टूडियो"], desc: ["Files, editor, live preview, tests", "Files, editor, preview, tests", "फ़ाइलें, प्रीव्यू"] }),
-  s({ id: "interview", group: "career", layout: "focus", nav: true, icon: Mic, title: ["Mock interview", "Mock interview", "मॉक इंटरव्यू"], desc: ["AI interviewer, voice and code, rubric", "AI interviewer, awaaz aur code, rubric", "AI इंटरव्यूअर"] }),
+  s({ id: "ticket-lab", group: "career", layout: "focus", parent: "build", icon: FlaskConical, title: ["Ticket lab", "Ticket lab", "टिकट लैब"], desc: ["Real repo, bug tickets: plan, fix with an agent, tests, viva", "Asli repo, bug tickets: plan, agent ke saath fix, tests, viva", "असली रिपो: योजना, एजेंट, टेस्ट, वाइवा"] }),
+  s({ id: "interview", group: "career", layout: "focus", nav: true, icon: Mic, title: ["Mock interview", "Mock interview", "मॉक इंटरव्यू"], desc: ["Without AI or with AI; rubric with evidence", "Bina AI ya AI ke saath; saboot ke saath rubric", "बिना AI या AI के साथ"] }),
   s({ id: "notebook", group: "career", layout: "focus", parent: "build", icon: NotebookPen, title: ["ML notebook", "ML notebook", "ML नोटबुक"], desc: ["Python in the browser; CPU jobs; GPU via Colab", "Browser me Python; CPU job; Colab se GPU", "ब्राउज़र में Python; Colab से GPU"] }),
   s({ id: "pramaan", group: "career", layout: "shell", nav: true, icon: BadgeCheck, title: ["Pramaan", "Pramaan", "प्रमाण"], desc: ["Proctored skill certificates", "Proctored certificate", "प्रमाणपत्र"] }),
   s({ id: "certificate", group: "career", layout: "shell", parent: "pramaan", icon: ScrollText, title: ["Certificate", "Certificate", "प्रमाणपत्र"], desc: ["Verify by QR, share", "QR se verify, share", "QR से सत्यापन"] }),
@@ -207,5 +211,6 @@ export const FLOWS: { name: Tri; ids: string[] }[] = [
   { name: ["Companies", "Companies", "कंपनियाँ"], ids: ["companies", "company", "experiences"] },
   { name: ["Build", "Banao", "बनाओ"], ids: ["build", "project", "studio", "notebook"] },
   { name: ["Career", "Career", "करियर"], ids: ["pramaan", "certificate", "profile", "interview", "jobs"] },
+  { name: ["Working with AI", "AI ke saath kaam", "AI के साथ काम"], ids: ["ai-drill", "ticket-lab", "interview", "profile"] },
   { name: ["Mine", "Mera", "मेरा"], ids: ["lists", "notes", "sahayak", "community", "plus", "settings"] },
 ];

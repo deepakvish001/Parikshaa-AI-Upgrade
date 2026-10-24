@@ -1,4 +1,4 @@
-# Learn v2: clickable mock v4.4 (chal raha), "Kaagaz aur Syaahi" (24 Oct 2026)
+# Learn v2: clickable mock v4.4 (chal raha), "Kaagaz aur Syaahi" (24 Oct 2026, 74 screens)
 
 Mock v3 dekh kar owner ne kaha: "sab achha laga, bas font AI wala lag raha hai; har page complete dark black, sab saaf
 dikhe, light me bhi; har border, box, animation refine karo; Code Studio VS Code jaisa; admin ka har page har pehlu se;
@@ -11,6 +11,31 @@ wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../
 Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
+
+## v4.4: AI ke saath kaam (24 Oct, kadam 44-4)
+
+Owner (24 Oct): **"haa sab sujhaav theek hai, AE2 AE3 AE5 mock me banao."** Kyun aur research:
+[../../research/AI-ERA-PLAN-2026.md](../../research/AI-ERA-PLAN-2026.md); poori list AE1–AE9: [../../LEARN-V2.md](../../LEARN-V2.md) §4c.
+Screens ab **74** (2 naye). Teeno sirf seekhne ke liye: kahin hiring score nahi.
+
+- **AE2 Ticket lab** (`#ticket-lab`, naya; Banao → lab): chhota asli repo "Canteen Queue" (React + Node + MongoDB, sample)
+  me 3 bug tickets (bill ka paisa, rush me do baar order, UTC time). 5 kadam, upar stepper se: **Samjho** (tickets +
+  repo + niyam) → **Plan** (`PLAN.md`: kya galat, scope andar/bahar, tareeka, acceptance shartein, risk; niyamon wali
+  jaanch ek dheeli shart pakadti; har ticket ki jaanchne layak shart ke bina agent band) → **Banao** (3 pane: code,
+  Agent, tests; agent ke har badlav par diff card, maanne ya mana karne par ek line "kyun" zaroori; ek sujhaav wajah ke
+  saath mana kiya hua; tests ticket-war) → **Viva** (apne code par 3 sawaal, agent band; ek jawab "adhoora": race
+  condition ka test nahi) → **Nateeja** (3/3 ticket, plan ki shartein, viva, samay; agent ke saath kaise kaam kiya;
+  Pramaan AI-Saath ki pragati 1/3).
+- **AE3 Galat AI pakdo** (`#ai-drill`, naya; Abhyas me sidebar par): roz 3 drill, 5 minute. AI ka likha code (binary
+  search, `while lo < hi`) → galat line chuno → sabse chhota failing test (`[5]`, 5 → AI −1, sahi 0) → line theek karo →
+  galti ki kism + ek line yaad. Side me is hafte ki kismein (off-by-one, edge case, security, banaya hua API) aur streak.
+- **AE5 Mock interview ke do roop** (`#interview`): upar daayein **Bina AI / AI ke saath**. Setup me do bade card (kis
+  company type ke liye); AI wale live me interviewer aapke faislon par "kyun" poochhta hai, code ke neeche AI saathi
+  (har prompt report me); report ke 5 hisse har ek ke saath transcript ka time (saboot), aur "bina-AI round bhi do".
+- **Raaste:** Abhyas hub me "AI ke saath kaam" ki patti (drill, ticket lab, interview), Banao page par ticket lab ka card,
+  Aaj ki "Aage" list me aaj ka drill.
+- **Saath me theek:** chune hue AI tab/toggle (Sahayak, Agent) par text ab `--on-ai` (kaale me contrast theek); code me
+  hari (`good`) line ka rang aadha, taaki light me bhi 4.5:1.
 
 ## v4.4: roop final (24 Oct)
 
@@ -154,6 +179,7 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#apt-mock` | Asli jaisa timed mock (Sahayak band, taala) | [desktop](screens/desktop/apt-mock-1440-dark.jpg) · [phone](screens/phone/apt-mock-390-dark.jpg) |
 |  | `#apt-result` | Score, har sawaal ka samay | [desktop](screens/desktop/apt-result-1440-dark.jpg) |
 |  | `#potd` | Roz ek problem, streak | [desktop](screens/desktop/potd-1440-dark.jpg) |
+|  | `#ai-drill` | **Galat AI pakdo (AE3):** roz 5 minute; galat line, failing test, fix, seekh | [desktop](screens/desktop/ai-drill-1440-dark.jpg) · [light](screens/light/ai-drill-1440-light.jpg) · [phone](screens/phone/ai-drill-390-dark.jpg) |
 |  | `#contests` | Aane wale, pichhle, rating | [desktop](screens/desktop/contests-1440-dark.jpg) · [phone](screens/phone/contests-390-dark.jpg) |
 |  | `#contest-brief` | Niyam, shuru | [desktop](screens/desktop/contest-brief-1440-dark.jpg) |
 |  | `#contest-live` | Timer, problems, editor (Sahayak band) | [desktop](screens/desktop/contest-live-1440-dark.jpg) |
@@ -168,7 +194,8 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#pramaan` | Proctored certificate test | [desktop](screens/desktop/pramaan-1440-dark.jpg) |
 |  | `#certificate` | Mohar wala certificate, QR se verify | [desktop](screens/desktop/certificate-1440-dark.jpg) |
 |  | `#profile` | **HR ke liye profile:** skills saboot ke saath, coding sites ka saar, share link (expiry, view log), "HR ki nazar se", profile card | [desktop](screens/desktop/profile-1440-dark.jpg) · [light](screens/light/profile-1440-light.jpg) · [phone](screens/phone/profile-390-dark.jpg) · [हिंदी](screens/hindi/profile-1440-dark-hi.jpg) |
-|  | `#interview` | **AI mock interview:** setup, live (awaaz + code), report (rubric) | [desktop](screens/desktop/interview-1440-dark.jpg) · [light](screens/light/interview-1440-light.jpg) · [phone](screens/phone/interview-390-dark.jpg) |
+|  | `#interview` | **AI mock interview, do roop:** bina AI / AI ke saath; setup, live (awaaz + code, AI saathi), report (rubric + transcript ke saboot) | [desktop](screens/desktop/interview-1440-dark.jpg) · [light](screens/light/interview-1440-light.jpg) · [phone](screens/phone/interview-390-dark.jpg) |
+|  | `#ticket-lab` | **Ticket lab (AE2):** asli repo, 3 bug tickets; Samjho → PLAN.md → Agent + diff + tests → viva → nateeja | [desktop](screens/desktop/ticket-lab-1440-dark.jpg) · [light](screens/light/ticket-lab-1440-light.jpg) · [phone](screens/phone/ticket-lab-390-dark.jpg) · [har kadam](screens/v44/) |
 |  | `#jobs` | Jobs, applications, resume par laal-pen check | [desktop](screens/desktop/jobs-1440-dark.jpg) |
 | Mera | `#lists` | Problem lists | [desktop](screens/desktop/lists-1440-dark.jpg) |
 |  | `#notes` | Apni galtiyon se notes | [desktop](screens/desktop/notes-1440-dark.jpg) |
@@ -204,8 +231,18 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-system` | Health, feature flags, maintenance, site settings | [desktop](screens/desktop/adm-system-1440-dark.jpg) |
 |  | `#adm-runtime` | Code kahan chalta (browser, CPU, Colab, GPU), kharch, plan-war seema, linked sites, keys ki haalat | [desktop](screens/desktop/adm-runtime-1440-dark.jpg) |
 
-Screenshots (23 Oct, v4.3; Aaj, profile aur naksha 24 Oct ko dobara): `screens/desktop` (72, 1440, kaala), `screens/light`
-(16), `screens/phone` (17, 390, kaala), `screens/hindi` (5), `screens/v43` (11: haalatein, pal). Aaj roop A, profile roop B.
+Screenshots (23 Oct, v4.3; 24 Oct ko naye aur badle screens dobara): `screens/desktop` (74, 1440, kaala), `screens/light`
+(18), `screens/phone` (19, 390, kaala), `screens/hindi` (7), `screens/v43` (11: haalatein, pal), `screens/v44` (17: ticket
+lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone). Aaj roop A, profile roop B.
+
+## Jaanch (24 Oct, v4.4 kadam 44-4: AE2, AE3, AE5)
+
+- **74 screens × 7** (1440 kaala, 1440 light, 1024 kaala, 390 kaala, 390 light, 1440 kaala हिंदी, 390 light हिंदी): overflow 0,
+  console error 0; Finance role me 74 route saaf.
+- **Accessibility** (`a11y.mjs`): 74 screens 1440/390 × kaala/light (English) aur 1440/390 kaala हिंदी: **0**; phone par chhote
+  touch 0. Har naye kadam alag se (`VAR`): ticket lab ke 5, drill ke 4, interview ke 2 roop × 3 kadam, 1440/390 ×
+  kaala/light: 0. (Pehle mile aur theek kiye: phone stepper ke naam, chune AI tab ka contrast, light me hari line ka
+  contrast, test-bar ka role.)
 
 ## Jaanch (24 Oct, v4.4 kadam 44-1)
 
@@ -279,6 +316,8 @@ node shots.mjs <out> <route,route> 1440,390 dark en view                # screen
 node qa.mjs 390 dark hi                                                 # har screen: overflow, console error; ROLE=finance bhi
 node a11y.mjs 390 dark en                                               # har screen: axe (WCAG 2.2) + phone par chhote touch
 VAR="state=error" node shots.mjs <out> aaj 1440 dark en view            # koi haalat khol kar (first/empty/loading/error/offline)
+VAR="lab=viva" node shots.mjs <out> ticket-lab 1440 dark en view         # lab ka kadam: tickets/plan/build/viva/result
+VAR="ivmode=ai,ivphase=report" node shots.mjs <out> interview 1440 dark en view   # interview: noai/ai × setup/live/report; drill: VAR="drill=fix"
 SEL=".logo-opts" node shots.mjs <out> brand 1440 dark en                  # sirf ek hissa (element) ka screenshot
 node overview.mjs                                                       # screens/overview.jpg dobara
 ```
