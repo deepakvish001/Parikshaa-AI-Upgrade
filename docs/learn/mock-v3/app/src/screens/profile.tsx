@@ -238,6 +238,7 @@ const ROWS: { what: [string, string, string]; level: string; proof: [string, str
   { what: ["Codeforces", "Codeforces", "Codeforces"], level: "1,388", proof: ["96 solved · Specialist", "96 solve · Specialist", "96 हल"], how: ["Official API, synced 1 h ago", "Official API, 1 ghanta pehle", "आधिकारिक API"], when: "Oct 2026", v: true },
   { what: ["LeetCode", "LeetCode", "LeetCode"], level: "1,642", proof: ["318 solved", "318 solve", "318 हल"], how: ["Code in profile bio", "Bio me code", "बायो में कोड"], when: "Oct 2026", v: true },
   { what: ["Web internship, Kesar Cloud (sample)", "Web internship, Kesar Cloud (sample)", "वेब इंटर्नशिप (नमूना)"], level: "—", proof: ["May–Jul 2026 · two React dashboards", "May–Jul 2026 · do React dashboards", "मई–जुलाई 2026"], how: ["Offer letter checked", "Offer letter jaancha", "ऑफ़र लेटर जाँचा"], when: "Jul 2026", v: true },
+  { what: ["Working with AI (ticket labs)", "AI ke saath kaam (ticket labs)", "AI के साथ काम (टिकट लैब)"], level: "1 / 3", proof: ["Canteen Queue: 3/3 tickets, tests pass; viva 2½ of 3", "Canteen Queue: 3/3 tickets, tests pass; viva 3 me 2½", "3/3 टिकट, वाइवा 2½"], how: ["Lab tests + viva on own code · Pramaan AI-Saath pending", "Lab tests + apne code par viva · Pramaan AI-Saath baaki", "लैब टेस्ट + वाइवा"], when: "Oct 2026", v: true },
   { what: ["Machine learning", "Machine learning", "मशीन लर्निंग"], level: "—", proof: ["1 notebook in progress", "1 notebook chal rahi", "1 नोटबुक"], how: ["Self-declared, not checked", "Khud bataya, jaancha nahi", "स्व-घोषित"], when: "—", v: false },
 ];
 

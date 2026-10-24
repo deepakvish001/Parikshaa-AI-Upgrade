@@ -358,7 +358,7 @@ landing: "AI ke daur ki taiyaari, saboot ke saath"; Sahayak ka Agent/Banao mode 
 practice me har AI istemal ko cheating maanna; "problems solved" ko profile ka sabse bada number; browser se invisible
 tools (Cluely jaise) pakadne ka daava.
 
-**Kram:** mock me pehle AE2, AE3, AE5 (owner, 24 Oct; v4.4 kadam 44-4), phir AE1, AE4, AE7, AE8, AE6, AE9; sample
+**Kram:** mock me AE2, AE3, AE5, phir AE1, AE4, AE7, AE8 (sab owner ke kehne par, 24 Oct; v4.4 kadam 44-4; ban gaye), baaki AE6, AE9; sample
 content (2 ticket labs, 20 drills, 5 code-padhna sets) owner manzoor kare (§3g jaisa gate); code F1 "shuru karo" ke baad.
 
 ---

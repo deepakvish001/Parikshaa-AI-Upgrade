@@ -26,7 +26,7 @@ dikhein, **mock sahi hai** aur is file ko theek karo.
 | Workspace (problem/SQL panes) | `src/ui/focus.tsx`, `src/screens/problem.tsx`, `styles/focus.css`, `work.css` | `packages/web` |
 | Code Studio, notebook, interview | `src/screens/studio.tsx`, `notebook.tsx`, `interview.tsx` + unki CSS | `packages/web` |
 | Admin shell aur kit | `src/ui/admin-shell.tsx`, `src/admin/akit.tsx`, `styles/admin*.css` | `packages/console` |
-| Har screen ki list | `src/screens/registry.ts` (74 routes: 47 learner + mock, 27 admin) | product router |
+| Har screen ki list | `src/screens/registry.ts` (76 routes: 49 learner + mock, 27 admin) | product router |
 
 Mock chalana: `cd docs/learn/mock-v3/app && npx tsc -p tsconfig.json && npx vite build && node build-artifact.mjs`;
 screenshots `node shots.mjs <out> <routes> 1440,390 dark en view` (`VAR="state=error"` se haalat; `lab=`, `drill=`, `ivmode=`/`ivphase=` se naye screens ke kadam); jaanch `node qa.mjs 390 dark hi` aur `node a11y.mjs 390 dark en`.
@@ -140,6 +140,14 @@ Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`),
 - **Interview ke do roop:** setup me do bade card (`iv-mode`: bina AI = `pen`, AI ke saath = `ai`); focus bar me daayein
   `Seg` (phone par body me). AI roop me code ke neeche **AI saathi** patti (har prompt report me); report ke har hisse
   me `iv-ev` chip "transcript mm:ss".
+- **AI track** (`#ai-track`, `src/screens/aitrack.tsx`): roadmap jaisa khada raasta (`at-path`, baayein 2 px ki line,
+  36 px gole: poora = tick, abhi = pen + halki chhaya, band = dashed); har padaav ek card, sar par naam + hisson ki
+  goliyan (`at-parts`) + badge; abhi wala khula: do-do card ki tulna (`at-weak` peela sar, `at-good` hari dhaar).
+- **AI istemal report** (`#ai-report`): har hissa ek poori chaudai ka card: rang wala icon + **shabd me level** (Mazboot /
+  Theek, badh raha / Sudhaar chahiye; number nahi) + 6 hafte ki `Spark`; neeche saboot ke chhote card (2 column tak),
+  har ek me kahan se + samay, quote (mono), ek line, aur us pal par teer. Rail me data ke niyam, download, delete.
+- **Readiness ke do hisse** (`ReadinessSplit`): ring me kul, neeche do patli patti: buniyaad (`pen`) aur AI ke saath (`ai`),
+  wazan likha hua. Aaj ki rail aur company page par.
 - **Niyam:** in screens par kahin "hiring score" nahi; AI ka har sujhaav record; maanne/mana karne ki wajah zaroori;
   chuna hua AI tab/toggle `--on-ai` text ke saath.
 

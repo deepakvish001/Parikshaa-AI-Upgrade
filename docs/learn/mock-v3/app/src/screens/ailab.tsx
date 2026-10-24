@@ -639,7 +639,7 @@ function ResultStep({ again }: { again: () => void }) {
           <span className="h3 row g8">
             <ShieldCheck className="ic" /> {t("What this counts towards", "Ye kahan ginta hai", "यह कहाँ गिनता है")}
           </span>
-          <p className="small">{t("Pramaan AI-Saath: lab 1 of 3 done. After three labs and a proctored viva, your profile sheet gets a checked line.", "Pramaan AI-Saath: 3 me se 1 lab poora. Teen lab aur proctored viva ke baad profile ke kaagaz me jaanchi hui line aayegi.", "प्रमाण AI-साथ: 3 में से 1।")}</p>
+          <p className="small">{t("Your profile sheet now has a checked \"Working with AI\" line (lab 1 of 3). After three labs and a proctored viva it becomes Pramaan AI-Saath.", "Profile ke kaagaz me ab jaanchi hui \"AI ke saath kaam\" line hai (lab 1 / 3). Teen lab aur proctored viva ke baad ye Pramaan AI-Saath banegi.", "प्रोफ़ाइल में लाइन जुड़ी (लैब 1 / 3)।")}</p>
           <Meter v={33} tone="tick" label={t("Pramaan AI-Saath progress", "Pramaan AI-Saath ki pragati", "प्रगति")} />
         </section>
       </div>
@@ -651,7 +651,10 @@ function ResultStep({ again }: { again: () => void }) {
         <button className="btn pri">
           <Bug /> {t("Add the race test (5 min)", "Race ka test jodo (5 min)", "रेस टेस्ट जोड़ो")}
         </button>
-        <Link to="build" className="btn">
+        <Link to="ai-report" className="btn">
+          <Sparkles /> {t("Full AI-use report", "Poori AI istemal report", "पूरी AI रिपोर्ट")}
+        </Link>
+        <Link to="build" className="btn ghost">
           {t("Next lab", "Agla lab", "अगला लैब")} <ArrowRight />
         </Link>
         <span className="grow" />

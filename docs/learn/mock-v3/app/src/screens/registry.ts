@@ -129,6 +129,8 @@ export const SCREENS: ScreenDef[] = [
   s({ id: "course", group: "learn", layout: "shell", parent: "courses", icon: GraduationCap, title: ["Course", "Course", "कोर्स"], desc: ["Syllabus, progress, project", "Syllabus, pragati, project", "पाठ्यक्रम"] }),
   s({ id: "lesson", group: "learn", layout: "shell", parent: "course", icon: BookOpen, title: ["Lesson", "Lesson", "पाठ"], desc: ["Read, try, quiz, notes in the margin", "Padho, chalao, quiz", "पढ़ो, चलाओ, क्विज़"] }),
 
+  s({ id: "ai-track", group: "learn", layout: "shell", nav: true, icon: Bot, title: ["Working with AI", "AI ke saath kaam", "AI के साथ काम"], desc: ["Skill track: context, plan, diff, tests, when not to use AI", "Skill track: context, plan, diff, tests, kab AI na lein", "कौशल ट्रैक"] }),
+
   // practice
   s({ id: "practice", group: "practice", layout: "shell", nav: true, icon: Target, title: ["Practice", "Abhyas", "अभ्यास"], desc: ["Tracks, sheets, today's problem", "Tracks, sheets, aaj ka problem", "ट्रैक, शीट"] }),
   s({ id: "sheet", group: "practice", layout: "shell", nav: true, icon: ListChecks, title: ["DSA sheet", "DSA sheet", "DSA शीट"], desc: ["Step-by-step problem sheet", "Kadam-dar-kadam sheet", "क्रमवार शीट"] }),
@@ -166,6 +168,7 @@ export const SCREENS: ScreenDef[] = [
   s({ id: "notes", group: "mine", layout: "shell", nav: true, icon: NotebookPen, title: ["Notes", "Notes", "नोट्स"], desc: ["Notes from your own mistakes", "Apni galtiyon se notes", "अपनी गलतियों से"] }),
   s({ id: "community", group: "mine", layout: "shell", nav: true, icon: Users, title: ["Community", "Community", "समुदाय"], desc: ["Discussions and study groups", "Charcha aur groups", "चर्चा और समूह"] }),
   s({ id: "sahayak", group: "mine", layout: "shell", icon: Sparkles, title: ["Sahayak", "Sahayak", "सहायक"], desc: ["AI tutor, full page", "AI tutor, poora page", "एआई शिक्षक"] }),
+  s({ id: "ai-report", group: "mine", layout: "shell", parent: "sahayak", icon: ChartColumn, title: ["AI-use report", "AI istemal report", "AI उपयोग रिपोर्ट"], desc: ["How you worked with AI, with evidence; learning only", "AI ke saath kaise kaam kiya, saboot ke saath; sirf seekhne ke liye", "सिर्फ़ सीखने के लिए"] }),
   s({ id: "plus", group: "mine", layout: "shell", icon: Crown, title: ["Plus", "Plus", "प्लस"], desc: ["Free vs Plus", "Free vs Plus", "फ़्री बनाम प्लस"] }),
   s({ id: "settings", group: "mine", layout: "shell", icon: Settings, title: ["Settings", "Settings", "सेटिंग्स"], desc: ["Language, theme, privacy, alerts", "Bhasha, theme, privacy", "भाषा, थीम"] }),
 
@@ -211,6 +214,6 @@ export const FLOWS: { name: Tri; ids: string[] }[] = [
   { name: ["Companies", "Companies", "कंपनियाँ"], ids: ["companies", "company", "experiences"] },
   { name: ["Build", "Banao", "बनाओ"], ids: ["build", "project", "studio", "notebook"] },
   { name: ["Career", "Career", "करियर"], ids: ["pramaan", "certificate", "profile", "interview", "jobs"] },
-  { name: ["Working with AI", "AI ke saath kaam", "AI के साथ काम"], ids: ["ai-drill", "ticket-lab", "interview", "profile"] },
+  { name: ["Working with AI", "AI ke saath kaam", "AI के साथ काम"], ids: ["ai-track", "ai-drill", "ticket-lab", "interview", "ai-report", "profile"] },
   { name: ["Mine", "Mera", "मेरा"], ids: ["lists", "notes", "sahayak", "community", "plus", "settings"] },
 ];

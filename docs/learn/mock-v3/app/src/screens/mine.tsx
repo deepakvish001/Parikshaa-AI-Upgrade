@@ -292,6 +292,10 @@ export function SahayakPageBody() {
           </ul>
           <p className="tiny faint mt8">{t("Chats are private. Staff can read one only if it is reported, with a written reason, and that is logged.", "Chats private hain. Staff tabhi padh sakta hai jab report ho, likhit wajah ke saath, aur log hota hai.", "चैट निजी हैं।")}</p>
         </Card>
+        <Link to="ai-report" className="card hov sp-report">
+          <b className="small">{t("Your AI-use report", "Aapki AI istemal report", "आपकी AI उपयोग रिपोर्ट")}</b>
+          <span className="tiny faint">{t("Context, checking, follow-ups, with evidence. Only you see it.", "Context, jaanch, follow-up, saboot ke saath. Sirf aap dekhte ho.", "सिर्फ़ आप देखते हैं।")}</span>
+        </Link>
         <Card title={t("Today", "Aaj", "आज")} icon={<Flame className="ic" />}>
           <div className="row between small">
             <span className="muted">{t("Messages", "Messages", "संदेश")}</span>

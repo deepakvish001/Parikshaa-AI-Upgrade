@@ -29,8 +29,9 @@ import {
   Bug,
 } from "lucide-react";
 import { Link, navigate, useT, useCountdown, hms, useToast } from "../lib/core";
+import { ReadinessSplit } from "./aitrack";
 import { useAi } from "../lib/state";
-import { Card, Badge, Level, Check as CheckBox, Ring, PenCircle, Hl, Modal, Tick, CountUp, Seg, Moment } from "../ui/kit";
+import { Card, Badge, Level, Check as CheckBox, PenCircle, Hl, Modal, Tick, Seg, Moment } from "../ui/kit";
 
 type Task = { id: string; kind: "lesson" | "problem" | "revision" | "aptitude"; title: [string, string, string]; meta: string; level?: 1 | 2 | 3 | 4 | 5; min: number; done: boolean; to: string };
 
@@ -256,17 +257,7 @@ export function AajRail() {
     <>
       <section className="card pad col g12">
         <span className="h3">{t("This week", "Is hafte", "इस सप्ताह")}</span>
-        <div className="row g14">
-          <Ring v={58} size={72} stroke={7}>
-            <b className="display num" style={{ fontSize: 22 }}>
-              <CountUp to={58} />
-            </b>
-          </Ring>
-          <div className="col g4 small">
-            <b>{t("Readiness 58, up 6", "Readiness 58, +6", "तैयारी 58, +6")}</b>
-            <span className="muted">{t("Weakest: dynamic programming", "Sabse kamzor: DP", "सबसे कमज़ोर: DP")}</span>
-          </div>
-        </div>
+        <ReadinessSplit />
         <div className="af-streak">
           <Flame />
           <b className="num">12</b>

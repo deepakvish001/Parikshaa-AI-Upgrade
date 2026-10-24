@@ -25,6 +25,7 @@ import {
   Info,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
+import { ReadinessSplit } from "./aitrack";
 import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, PenNote, PenCircle, Seg, LogoMark, Moment } from "../ui/kit";
 
 /* ---------------- companies ---------------- */
@@ -155,15 +156,9 @@ export function CompanyBody() {
             <SampleNote />
           </div>
         </div>
-        <div className="col g8" style={{ alignItems: "center" }}>
-          <Ring v={58} size={96} stroke={9}>
-            <span>
-              <b className="display num" style={{ fontSize: 24 }}>
-                58
-              </b>
-            </span>
-          </Ring>
-          <span className="tiny faint">{t("your readiness", "aapki readiness", "आपकी तैयारी")}</span>
+        <div className="co-rs">
+          <span className="tiny faint">{t("Your readiness for Nimbu Labs", "Nimbu Labs ke liye aapki readiness", "निम्बू लैब्स के लिए तैयारी")}</span>
+          <ReadinessSplit compact />
         </div>
       </section>
       <Tabs

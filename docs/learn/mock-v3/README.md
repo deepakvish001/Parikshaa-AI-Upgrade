@@ -1,4 +1,4 @@
-# Learn v2: clickable mock v4.4 (chal raha), "Kaagaz aur Syaahi" (24 Oct 2026, 74 screens)
+# Learn v2: clickable mock v4.4 (chal raha), "Kaagaz aur Syaahi" (24 Oct 2026, 76 screens)
 
 Mock v3 dekh kar owner ne kaha: "sab achha laga, bas font AI wala lag raha hai; har page complete dark black, sab saaf
 dikhe, light me bhi; har border, box, animation refine karo; Code Studio VS Code jaisa; admin ka har page har pehlu se;
@@ -11,6 +11,24 @@ wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../
 Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
+
+## v4.4: AI ke saath kaam, doosra hissa (24 Oct, kadam 44-4)
+
+Owner (24 Oct): **"AE1 AE4 AE7 AE8 bhi mock me banao."** Screens ab **76**.
+
+- **AE1 "AI ke saath kaam" track** (`#ai-track`, naya; Seekho me sidebar par): 10 padaav ka raasta (AI kahan achha,
+  context dena, code se pehle plan, AI ka diff padhna, galat output, test se saabit, kab AI na lein, data/privacy ki
+  seema, teen ticket labs, Pramaan AI-Saath). Abhi wala padaav khula: **kamzor vs achha prompt** aur **dheeli vs jaanchne
+  layak shart** ka udaharan, lesson/practice/lab ke button. Rail me Pramaan AI-Saath ki pragati, "ye track kyun", AI
+  kahan khula/band.
+- **AE4 AI istemal report** (`#ai-report`, naya; Sahayak page, ticket lab ke nateeje aur track se): teen hisse (kitna
+  context diya, AI ka output jaancha, aage-peeche baat), har ek ke saath shabd me level (number nahi), 6 hafte ki line,
+  aur **saboot**: asli prompt/jawab, kahan se aur kab, achha ya kamzor, us pal par jaane ka teer. "Jab AI nahi liya",
+  "agle hafte ek aadat", "kaise banti" (galat ho sakti), aur rail me data: sirf aap, download, delete.
+- **AE7 Readiness ke do hisse:** Aaj ki rail aur company page par **Buniyaad (bina AI) 66 · AI ke saath kaam 46**, wazan
+  60/40 se kul 58 (pehle wala number wahi).
+- **AE8 Kaagaz ki line:** profile ke saboot ke kaagaz me **"AI ke saath kaam (ticket labs)"**: 1/3, Canteen Queue 3/3
+  tickets + viva 2½/3, "lab tests + apne code par viva · Pramaan AI-Saath baaki". Ticket lab ke nateeje par bhi yahi baat.
 
 ## v4.4: AI ke saath kaam (24 Oct, kadam 44-4)
 
@@ -180,6 +198,7 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#apt-result` | Score, har sawaal ka samay | [desktop](screens/desktop/apt-result-1440-dark.jpg) |
 |  | `#potd` | Roz ek problem, streak | [desktop](screens/desktop/potd-1440-dark.jpg) |
 |  | `#ai-drill` | **Galat AI pakdo (AE3):** roz 5 minute; galat line, failing test, fix, seekh | [desktop](screens/desktop/ai-drill-1440-dark.jpg) · [light](screens/light/ai-drill-1440-light.jpg) · [phone](screens/phone/ai-drill-390-dark.jpg) |
+|  | `#ai-track` | **AI ke saath kaam track (AE1):** 10 padaav, kamzor vs achha prompt, Pramaan AI-Saath | [desktop](screens/desktop/ai-track-1440-dark.jpg) · [light](screens/light/ai-track-1440-light.jpg) · [phone](screens/phone/ai-track-390-dark.jpg) |
 |  | `#contests` | Aane wale, pichhle, rating | [desktop](screens/desktop/contests-1440-dark.jpg) · [phone](screens/phone/contests-390-dark.jpg) |
 |  | `#contest-brief` | Niyam, shuru | [desktop](screens/desktop/contest-brief-1440-dark.jpg) |
 |  | `#contest-live` | Timer, problems, editor (Sahayak band) | [desktop](screens/desktop/contest-live-1440-dark.jpg) |
@@ -196,6 +215,7 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#profile` | **HR ke liye profile:** skills saboot ke saath, coding sites ka saar, share link (expiry, view log), "HR ki nazar se", profile card | [desktop](screens/desktop/profile-1440-dark.jpg) · [light](screens/light/profile-1440-light.jpg) · [phone](screens/phone/profile-390-dark.jpg) · [हिंदी](screens/hindi/profile-1440-dark-hi.jpg) |
 |  | `#interview` | **AI mock interview, do roop:** bina AI / AI ke saath; setup, live (awaaz + code, AI saathi), report (rubric + transcript ke saboot) | [desktop](screens/desktop/interview-1440-dark.jpg) · [light](screens/light/interview-1440-light.jpg) · [phone](screens/phone/interview-390-dark.jpg) |
 |  | `#ticket-lab` | **Ticket lab (AE2):** asli repo, 3 bug tickets; Samjho → PLAN.md → Agent + diff + tests → viva → nateeja | [desktop](screens/desktop/ticket-lab-1440-dark.jpg) · [light](screens/light/ticket-lab-1440-light.jpg) · [phone](screens/phone/ticket-lab-390-dark.jpg) · [har kadam](screens/v44/) |
+|  | `#ai-report` | **AI istemal report (AE4):** context, jaanch, aage-peeche baat; har line ke saath saboot; sirf aap | [desktop](screens/desktop/ai-report-1440-dark.jpg) · [phone](screens/phone/ai-report-390-dark.jpg) |
 |  | `#jobs` | Jobs, applications, resume par laal-pen check | [desktop](screens/desktop/jobs-1440-dark.jpg) |
 | Mera | `#lists` | Problem lists | [desktop](screens/desktop/lists-1440-dark.jpg) |
 |  | `#notes` | Apni galtiyon se notes | [desktop](screens/desktop/notes-1440-dark.jpg) |
@@ -231,9 +251,14 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-system` | Health, feature flags, maintenance, site settings | [desktop](screens/desktop/adm-system-1440-dark.jpg) |
 |  | `#adm-runtime` | Code kahan chalta (browser, CPU, Colab, GPU), kharch, plan-war seema, linked sites, keys ki haalat | [desktop](screens/desktop/adm-runtime-1440-dark.jpg) |
 
-Screenshots (23 Oct, v4.3; 24 Oct ko naye aur badle screens dobara): `screens/desktop` (74, 1440, kaala), `screens/light`
-(18), `screens/phone` (19, 390, kaala), `screens/hindi` (7), `screens/v43` (11: haalatein, pal), `screens/v44` (17: ticket
-lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone). Aaj roop A, profile roop B.
+Screenshots (23 Oct, v4.3; 24 Oct ko naye aur badle screens dobara): `screens/desktop` (76, 1440, kaala), `screens/light`
+(19), `screens/phone` (21, 390, kaala), `screens/hindi` (9), `screens/v43` (11: haalatein, pal), `screens/v44` (20: ticket
+lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone, AI track (computer + phone), AI istemal report). Aaj roop A, profile roop B.
+
+## Jaanch (24 Oct, v4.4 kadam 44-4: AE1, AE4, AE7, AE8)
+
+- **76 screens × 7** aur Finance role: overflow 0, console error 0. **Accessibility** 76 screens 1440/390 × kaala/light (English)
+  aur 1440/390 kaala हिंदी: 0; phone par chhote touch 0.
 
 ## Jaanch (24 Oct, v4.4 kadam 44-4: AE2, AE3, AE5)
 
