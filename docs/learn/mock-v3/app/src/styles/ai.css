@@ -1193,12 +1193,32 @@
 .cr-ed .ln.bad {
   box-shadow: inset 3px 0 0 var(--red);
 }
+/* Words next to the marked lines, so the mark does not rest on colour alone. */
+.cr-ed .ln.bad::after,
+.cr-ed .ln.mark::after {
+  content: var(--cr-bug);
+  margin-left: 14px;
+  font-family: var(--f-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--red-text);
+}
+.cr-ed .ln.mark::after {
+  content: var(--cr-mine);
+  color: var(--pen-text);
+}
+.cr-rh {
+  font-weight: 600;
+}
+.cr-body [tabindex="-1"]:focus:not(:focus-visible) {
+  outline: none;
+}
 .cr-facts {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   gap: 6px 16px;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-line);
   border-radius: var(--r);
   background: var(--panel-2);
   font-size: 13px;
@@ -1283,12 +1303,12 @@
 }
 .cr-big {
   font-family: var(--f-display);
-  font-size: 40px;
-  line-height: 1.1;
+  font-size: 30px;
+  line-height: 1.15;
   font-weight: 650;
 }
 .cr-big .faint {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 500;
 }
 .cr-res {
@@ -1302,7 +1322,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-line);
   border-radius: var(--r);
   background: var(--panel);
 }
@@ -1363,7 +1383,7 @@
   flex-direction: column;
   gap: 6px;
   padding: 12px 14px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--card-line);
   border-radius: var(--r);
   background: var(--panel-2);
 }
@@ -1386,6 +1406,10 @@
   }
   .cr-fn {
     min-height: 40px;
+  }
+  /* Picking a line with a finger: each line is a 40 px target, like the drill's line buttons. */
+  .tl-wrap.cr .cr-ed.picking .ln {
+    padding-block: 9px;
   }
 }
 @media (max-width: 480px) {

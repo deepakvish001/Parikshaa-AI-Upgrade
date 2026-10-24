@@ -154,11 +154,16 @@ Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`),
   line `.bad` + laal dhaar. Har click ka keyboard raasta bhi: line ka number likhne ka field, aur "Is file me" ke function
   buttons se code me us line par jaana. Sawaal 1 `.option` + `.radio`; nateeje me har sawaal ek card (sahi tick, galat
   cross, aadha dashed gola `--coin`), phir diff (`bad`/`good`) aur test. FocusBar me "Sahayak band" badge (phone par chhupa).
+  Chuni aur galti wali line ke aage likha nishaan ("← aapki chuni" / "← galti"), sirf rang nahi. Phone par line chunte
+  waqt har line 40 px. Kadam badle to us kadam ki heading par focus; bina jawab ke Nateeja nahi khulta (pill se bhi), aur
+  seedha khule to "namoona jawab" ka banner. Galti ka sandesh batata hai kya chhoota, aur focus wahin jaata.
 - **Interview ka format** (`#company` ka tab, AE9, `src/screens/format.tsx`, CSS `.fmt-*` in `career.css`): upar saar
   card (ginti wali heading + role ka `Seg`); har round ek card, baayein 3 px dhaar (bina AI = `pen`, AI ke saath = `ai`,
   pata nahi = dashed `--line-2`) aur `.rn` gola (pata nahi = `.rn.unk`, dashed); daayein **AI ka badge** (`pen` BotOff /
   `ai` Bot / saada CircleHelp) aur zaroorat ho to `coin` "naya" badge. Har tathya `dt`/`dd`; `dd` ke neeche **source chip**
   (`.fmt-src`: kism ka icon tick rang me, chhota naam · tareekh; 90 din se purana = dashed + `coin` "purana ho sakta").
+  Chip ek button hai: neeche source ki list me us source par le jaata. Round ki lambai/jagah, AI ka badge aur "naya" badge
+  ka bhi apna source ("Round aur AI ka niyam:" wali line); jo round sirf purane source par tika, uski ginti saar me.
   **Niyam:** source ke bina koi tathya nahi; chhupe tathyon ki sirf ginti, unka text kabhi nahi. Neeche source ki list
   (icon ka dabba, naam, kaise jaancha, tareekh). Phone par fact ek column, badges gole ke neeche.
 - **Niyam:** in screens par kahin "hiring score" nahi; AI ka har sujhaav record; maanne/mana karne ki wajah zaroori;

@@ -1172,7 +1172,14 @@
 .co-ai svg {
   width: 13px;
   height: 13px;
+  flex: none;
   color: var(--ai-text);
+}
+.co-ai.off svg {
+  color: var(--pen-text);
+}
+.co-ai.unknown svg {
+  color: var(--ink-3);
 }
 .fmt-sum {
   display: flex;
@@ -1188,7 +1195,7 @@
 .fmt-round {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   padding: 16px 18px;
   border-left: 3px solid var(--pen);
 }
@@ -1235,12 +1242,36 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
+  min-height: 26px;
   padding: 2px 8px;
   border-radius: 6px;
   background: var(--sunk);
   border: 1px solid var(--line);
+  font: inherit;
   font-size: 11.5px;
   color: var(--ink-2);
+  cursor: pointer;
+}
+.fmt-src:hover {
+  border-color: var(--line-2);
+  color: var(--ink);
+}
+.fmt-basis {
+  margin-left: 48px;
+  align-items: center;
+}
+.fmt-oldnote {
+  color: var(--coin);
+}
+.fmt-oldnote svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.fmt-srcs li:focus {
+  outline: 2px solid var(--pen);
+  outline-offset: 2px;
+  border-radius: 8px;
 }
 .fmt-src svg {
   width: 12px;
@@ -1325,8 +1356,12 @@
   }
   .fmt-dl,
   .fmt-none,
-  .fmt-prep {
+  .fmt-prep,
+  .fmt-basis {
     margin-left: 0;
+  }
+  .fmt-src {
+    min-height: 32px;
   }
   .fmt-fact {
     grid-template-columns: minmax(0, 1fr);

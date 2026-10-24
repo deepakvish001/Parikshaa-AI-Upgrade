@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
 import { ReadinessSplit } from "./aitrack";
-import { InterviewFormat, AiRuleLine } from "./format";
+import { InterviewFormat, AiRuleLine, type Rule } from "./format";
 import { useVariant } from "../lib/variant";
 import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, PenNote, PenCircle, Seg, LogoMark, Moment } from "../ui/kit";
 
@@ -35,14 +35,14 @@ import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, Pen
 const tri = (...x: [string, string, string]) => x;
 
 const COS = [
-  { n: "Nimbu Labs", m: "NL", c: "#2346E8", type: "Product", roles: "SDE 1, SDE intern", rounds: "OA → 2 tech → HR", src: 14, ready: 58, pin: true, ai: tri("1 of 4 rounds with AI", "4 me se 1 round AI ke saath", "4 में से 1 राउंड AI के साथ") },
-  { n: "Patang Tech", m: "PT", c: "#15803D", type: "Product", roles: "SDE 1", rounds: "OA → 3 tech → HR", src: 9, ready: 41, pin: true, ai: tri("No AI in any round", "Kisi round me AI nahi", "किसी राउंड में AI नहीं") },
-  { n: "Kesar Cloud", m: "KC", c: "#A85A00", type: "Product", roles: "Backend SDE", rounds: "OA → system → tech → HR", src: 6, ready: 33, pin: false, ai: tri("Not known yet", "Abhi pata nahi", "अभी पता नहीं") },
-  { n: "Tara Fintech", m: "TF", c: "#6D4AFF", type: "Startup", roles: "Full-stack", rounds: "Take-home → 2 tech", src: 4, ready: 62, pin: true, ai: tri("Take-home: AI allowed, say how you used it", "Take-home: AI chalega, batana hoga kaise", "टेक-होम: AI चलेगा") },
-  { n: "Sitara Infotech", m: "SI", c: "#0E7490", type: "Service", roles: "Graduate engineer", rounds: "Aptitude → coding → HR", src: 22, ready: 74, pin: false, ai: tri("No AI in any round", "Kisi round me AI nahi", "किसी राउंड में AI नहीं") },
-  { n: "Bodhi Services", m: "BS", c: "#D93A2B", type: "Service", roles: "Systems engineer", rounds: "Aptitude → tech + HR", src: 17, ready: 69, pin: false, ai: tri("No AI · final round in person", "AI nahi · aakhri round office me", "AI नहीं · ऑफ़िस में") },
-  { n: "Megh Data", m: "MD", c: "#15161A", type: "Product", roles: "Data analyst", rounds: "SQL test → case → HR", src: 5, ready: 47, pin: false, ai: tri("Not known yet", "Abhi pata nahi", "अभी पता नहीं") },
-  { n: "Jugnu Apps", m: "JA", c: "#B45F00", type: "Startup", roles: "Mobile SDE", rounds: "Take-home → tech", src: 3, ready: 39, pin: false, ai: tri("Take-home: AI allowed, say how you used it", "Take-home: AI chalega, batana hoga kaise", "टेक-होम: AI चलेगा") },
+  { n: "Nimbu Labs", m: "NL", c: "#2346E8", type: "Product", roles: "SDE 1, SDE intern", rounds: "OA → 2 tech → HR", src: 14, ready: 58, pin: true, ai: { rule: "on" as Rule, text: tri("SDE 1: 1 of 4 rounds with AI", "SDE 1: 4 me se 1 round AI ke saath", "SDE 1: 4 में से 1 राउंड AI के साथ"), checked: "Oct 2026" } },
+  { n: "Patang Tech", m: "PT", c: "#15803D", type: "Product", roles: "SDE 1", rounds: "OA → 3 tech → HR", src: 9, ready: 41, pin: true, ai: { rule: "off" as Rule, text: tri("No AI in any round", "Kisi round me AI nahi", "किसी राउंड में AI नहीं"), checked: "Sep 2026" } },
+  { n: "Kesar Cloud", m: "KC", c: "#A85A00", type: "Product", roles: "Backend SDE", rounds: "OA → system → tech → HR", src: 6, ready: 33, pin: false, ai: { rule: "unknown" as Rule, text: tri("AI rule not known yet", "AI ka niyam abhi pata nahi", "AI का नियम अभी पता नहीं") } },
+  { n: "Tara Fintech", m: "TF", c: "#6D4AFF", type: "Startup", roles: "Full-stack", rounds: "Take-home → 2 tech", src: 4, ready: 62, pin: true, ai: { rule: "on" as Rule, text: tri("Take-home: AI allowed, say how you used it", "Take-home: AI chalega, batana hoga kaise", "टेक-होम: AI चलेगा, बताना होगा कैसे इस्तेमाल किया"), checked: "Oct 2026" } },
+  { n: "Sitara Infotech", m: "SI", c: "#0E7490", type: "Service", roles: "Graduate engineer", rounds: "Aptitude → coding → HR", src: 22, ready: 74, pin: false, ai: { rule: "off" as Rule, text: tri("No AI in any round", "Kisi round me AI nahi", "किसी राउंड में AI नहीं"), checked: "Aug 2026" } },
+  { n: "Bodhi Services", m: "BS", c: "#D93A2B", type: "Service", roles: "Systems engineer", rounds: "Aptitude → tech + HR", src: 17, ready: 69, pin: false, ai: { rule: "off" as Rule, text: tri("No AI · final round in person", "AI nahi · aakhri round office me", "AI नहीं · आख़िरी राउंड ऑफ़िस में"), checked: "Sep 2026" } },
+  { n: "Megh Data", m: "MD", c: "#15161A", type: "Product", roles: "Data analyst", rounds: "SQL test → case → HR", src: 5, ready: 47, pin: false, ai: { rule: "unknown" as Rule, text: tri("AI rule not known yet", "AI ka niyam abhi pata nahi", "AI का नियम अभी पता नहीं") } },
+  { n: "Jugnu Apps", m: "JA", c: "#B45F00", type: "Startup", roles: "Mobile SDE", rounds: "Take-home → tech", src: 3, ready: 39, pin: false, ai: { rule: "on" as Rule, text: tri("Take-home: AI allowed, say how you used it", "Take-home: AI chalega, batana hoga kaise", "टेक-होम: AI चलेगा, बताना होगा कैसे इस्तेमाल किया"), checked: "Jul 2026" } },
 ];
 
 function Mono({ m, c, size = 40 }: { m: string; c: string; size?: number }) {
@@ -116,7 +116,7 @@ export function CompaniesBody() {
               </span>
             </div>
             <div className="co-rounds small">{c.rounds}</div>
-            <AiRuleLine rule={c.ai} />
+            <AiRuleLine rule={c.ai.rule} text={c.ai.text} checked={c.ai.checked} />
             <div className="row between">
               <span className="tiny row g4 t-tick">
                 <ShieldCheck style={{ width: 13, height: 13 }} />
@@ -183,9 +183,9 @@ export function CompanyBody() {
           <Card title={t("Rounds", "Rounds", "राउंड")} icon={<Clock className="ic" />}>
             <div className="rounds">
               {[
-                ["Online test", "90 min", "2 coding + 20 MCQ", "pen"],
-                ["Technical 1", "60 min", "DSA, 2 problems", "ai"],
-                ["Technical 2", "60 min", "DSA + OS / DBMS", "ai"],
+                ["Online test", "90 min", "2 coding + 20 MCQ · no AI", "pen"],
+                ["Technical 1", "60 min", "DSA, 2 problems · no AI", "pen"],
+                ["Technical 2", "60 min", "Small repo · with AI", "ai"],
                 ["HR", "30 min", "Projects, fit", "tick"],
               ].map(([n, d, w, c], i) => (
                 <div key={n} className="rnd-row">

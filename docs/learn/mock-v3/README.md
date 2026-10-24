@@ -24,6 +24,10 @@ Doosron ko dikhana ho to page ke Share menu se.
 - **Companies list:** har card par ek line "AI: 4 me se 1 round AI ke saath / Kisi round me AI nahi / Abhi pata nahi /
   Take-home: AI chalega, batana hoga kaise". Sab company naam banaye hue (sample); asli company ki koi baat nahi.
 - Mock switch: `pk43-v-cotab` = `ov` / `q` / `exp` / `fmt` (company page ka tab).
+- **Review ke baad theek:** round ki lambai/jagah, AI ka badge aur "naya" badge bhi ab source ke saath (pehle bina source the);
+  HR round ka niyam bhi source se; source chip ab button, neeche us source par le jaata; purane source par tike round ki
+  ginti saar me; Overview ke rounds ab format tab se milte (Technical 1 bina AI, Technical 2 chhota repo AI ke saath);
+  companies list ki line ka icon niyam ke hisaab se, "SDE 1:" aur jaanch ki tareekh; Hindi poori.
 
 ## v4.4: Code padhna, AE6 (24 Oct, Kadam 0)
 
@@ -39,7 +43,13 @@ Build ke kram ka Kadam 0 (design freeze, [../CODE-READINESS.md](../CODE-READINES
 - **Galti asli hai:** file chala kar jaancha. Line 73 `if d in HOLIDAYS` me `d` ek `datetime` hai aur `HOLIDAYS` me `date`,
   isliye chhutti ka din bhi late gina jaata (19 → 21 Oct: code 2 din, sahi 1). `d.date()` se test pass.
 - **Phone:** do tab (Code / Sawaal), sawaal pehle; code tab me line par tap se line chuni jaati.
-- Mock switch: `pk43-v-read` = `read` / `answer` / `result` (screenshot ke liye `VAR="read=result"`).
+- Mock switch: `pk43-v-read` = `read` / `answer` / `result` (screenshot ke liye `VAR="read=result"`). Seedha nateeje par
+  khule to "namoona jawab" ka banner aata hai. Sawaal 3 ko mock sirf shabdon se jaanchta (wajah, `.date()`, test); khaali
+  chhoda to 0.
+- **Review (critic agent, 24 Oct) ke baad theek:** sawaal 3 khaali par bhi aadha number milta tha; Python me do aur jagah
+  (ghadi ke samay se tulna, exam-week ka niyam) jinhe sahi padhne wala bhi galti keh sakta tha, ab saaf (line 73 hi akeli
+  galti, chala kar dobara saabit); bina jawab Nateeja; kadam badalne par focus aur scroll; galat line number par saaf
+  sandesh; phone par 40 px line; band code pane naksha dabane par khulta; galti ki line par likha nishaan; Hindi poori.
 - Saath me theek: tablet chaudai (≤1180 px) par sidebar sirf icon dikhata tha aur un links ka naam screen reader ko nahi
   milta tha (har shell screen par axe `link-name`); ab har link aur Sahayak/user button ka naam hai.
 
