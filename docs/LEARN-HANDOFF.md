@@ -196,9 +196,17 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   format" (`src/screens/format.tsx`, `.fmt-*` in `career.css`, switch `pk43-v-cotab`) + companies list par AI ki line.
   (3) **44-0 test script** [learn/USER-TEST-44-0.md](learn/USER-TEST-44-0.md). Saath me tablet par sidebar ke naam theek.
   77 screens. **Draft PR [#67](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/67)** khuli.
-  **Agla:** naya preview link (ye account account 2 ka artifact update nahi kar sakta; `dist/artifact.html` naye artifact
-  ke roop me, link yahan + README me). Phir **owner ke faisle** (prompt me khaali the): F1, F2, F5, GitHub billing,
-  Supabase Mumbai. F1 + billing ke bina Kadam 1 nahi; test (G1) owner chahe to.
+  **Owner ke faisle (24 Oct, session 4 me poochhe):** F1 haan, F2 brand sab jagah, F5 har PR owner merge karega, GitHub
+  billing theek (CI ab #67 par chal raha), Supabase Mumbai chalu karne ki haan. **Supabase ka connector is account me
+  nahi:** owner https://claude.ai/customize/connectors par Supabase jode, phir naya session; tab `parikshaa-mumbai`
+  restore (ya owner khud Supabase dashboard se Restore).
+  **Agla: Kadam 1** (tracker plan row 139), tukde ek-ek PR me:
+  - [~] K1-0 plan (row 139) + `packages/web` / `packages/console` ki `package.json` me dohri keys hatao (lockfile na badle).
+  - [ ] K1-1 `packages/brand` me v4.4 tokens (purane naam, naye maan + mock ke naam alias), fonts, logo A; contrast test;
+    e2e visual baselines dobara.
+  - [ ] K1-2 kit (`Panes`, `FocusBar`, `Seg`, `Ring`, `Meter`, haalatein) `packages/brand/src/ui.tsx` me, render + axe tests.
+  - [ ] K1-3 Learn shell `packages/web` me flag `learn_v2` ke peeche (sidebar, rail, phone tabs, Ctrl+K, ⋯ menu, en/hi).
+  - [ ] K1-4 CI me Learn shell ka visual + axe, budget.
 - **Pichhla (24 Oct 2026, account 2, `session_018vRviyFgDfdAVh2GzLcBn3`):** mock **v4.4** chal raha (tracker row
   136, aur AI ke daur ka plan row 137). Ho chuka: **44-1** roop final (Aaj A, Profile B); **44-4 ka pehla hissa**: owner
   ke chune **AE2 ticket lab** (`#ticket-lab`), **AE3 Galat AI pakdo** (`#ai-drill`), **AE5 interview ke do roop**
