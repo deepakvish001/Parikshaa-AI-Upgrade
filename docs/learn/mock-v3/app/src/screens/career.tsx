@@ -26,19 +26,23 @@ import {
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
 import { ReadinessSplit } from "./aitrack";
+import { InterviewFormat, AiRuleLine } from "./format";
+import { useVariant } from "../lib/variant";
 import { Badge, Level, Ring, Meter, Card, PageHead, Tabs, Stamp, SampleNote, PenNote, PenCircle, Seg, LogoMark, Moment } from "../ui/kit";
 
 /* ---------------- companies ---------------- */
 
+const tri = (...x: [string, string, string]) => x;
+
 const COS = [
-  { n: "Nimbu Labs", m: "NL", c: "#2346E8", type: "Product", roles: "SDE 1, SDE intern", rounds: "OA → 2 tech → HR", src: 14, ready: 58, pin: true },
-  { n: "Patang Tech", m: "PT", c: "#15803D", type: "Product", roles: "SDE 1", rounds: "OA → 3 tech → HR", src: 9, ready: 41, pin: true },
-  { n: "Kesar Cloud", m: "KC", c: "#A85A00", type: "Product", roles: "Backend SDE", rounds: "OA → system → tech → HR", src: 6, ready: 33, pin: false },
-  { n: "Tara Fintech", m: "TF", c: "#6D4AFF", type: "Startup", roles: "Full-stack", rounds: "Take-home → 2 tech", src: 4, ready: 62, pin: true },
-  { n: "Sitara Infotech", m: "SI", c: "#0E7490", type: "Service", roles: "Graduate engineer", rounds: "Aptitude → coding → HR", src: 22, ready: 74, pin: false },
-  { n: "Bodhi Services", m: "BS", c: "#D93A2B", type: "Service", roles: "Systems engineer", rounds: "Aptitude → tech + HR", src: 17, ready: 69, pin: false },
-  { n: "Megh Data", m: "MD", c: "#15161A", type: "Product", roles: "Data analyst", rounds: "SQL test → case → HR", src: 5, ready: 47, pin: false },
-  { n: "Jugnu Apps", m: "JA", c: "#B45F00", type: "Startup", roles: "Mobile SDE", rounds: "Take-home → tech", src: 3, ready: 39, pin: false },
+  { n: "Nimbu Labs", m: "NL", c: "#2346E8", type: "Product", roles: "SDE 1, SDE intern", rounds: "OA → 2 tech → HR", src: 14, ready: 58, pin: true, ai: tri("1 of 4 rounds with AI", "4 me se 1 round AI ke saath", "4 में से 1 राउंड AI के साथ") },
+  { n: "Patang Tech", m: "PT", c: "#15803D", type: "Product", roles: "SDE 1", rounds: "OA → 3 tech → HR", src: 9, ready: 41, pin: true, ai: tri("No AI in any round", "Kisi round me AI nahi", "किसी राउंड में AI नहीं") },
+  { n: "Kesar Cloud", m: "KC", c: "#A85A00", type: "Product", roles: "Backend SDE", rounds: "OA → system → tech → HR", src: 6, ready: 33, pin: false, ai: tri("Not known yet", "Abhi pata nahi", "अभी पता नहीं") },
+  { n: "Tara Fintech", m: "TF", c: "#6D4AFF", type: "Startup", roles: "Full-stack", rounds: "Take-home → 2 tech", src: 4, ready: 62, pin: true, ai: tri("Take-home: AI allowed, say how you used it", "Take-home: AI chalega, batana hoga kaise", "टेक-होम: AI चलेगा") },
+  { n: "Sitara Infotech", m: "SI", c: "#0E7490", type: "Service", roles: "Graduate engineer", rounds: "Aptitude → coding → HR", src: 22, ready: 74, pin: false, ai: tri("No AI in any round", "Kisi round me AI nahi", "किसी राउंड में AI नहीं") },
+  { n: "Bodhi Services", m: "BS", c: "#D93A2B", type: "Service", roles: "Systems engineer", rounds: "Aptitude → tech + HR", src: 17, ready: 69, pin: false, ai: tri("No AI · final round in person", "AI nahi · aakhri round office me", "AI नहीं · ऑफ़िस में") },
+  { n: "Megh Data", m: "MD", c: "#15161A", type: "Product", roles: "Data analyst", rounds: "SQL test → case → HR", src: 5, ready: 47, pin: false, ai: tri("Not known yet", "Abhi pata nahi", "अभी पता नहीं") },
+  { n: "Jugnu Apps", m: "JA", c: "#B45F00", type: "Startup", roles: "Mobile SDE", rounds: "Take-home → tech", src: 3, ready: 39, pin: false, ai: tri("Take-home: AI allowed, say how you used it", "Take-home: AI chalega, batana hoga kaise", "टेक-होम: AI चलेगा") },
 ];
 
 function Mono({ m, c, size = 40 }: { m: string; c: string; size?: number }) {
@@ -112,6 +116,7 @@ export function CompaniesBody() {
               </span>
             </div>
             <div className="co-rounds small">{c.rounds}</div>
+            <AiRuleLine rule={c.ai} />
             <div className="row between">
               <span className="tiny row g4 t-tick">
                 <ShieldCheck style={{ width: 13, height: 13 }} />
@@ -131,7 +136,7 @@ export function CompaniesBody() {
 
 export function CompanyBody() {
   const t = useT();
-  const [tab, setTab] = useState("ov");
+  const [tab, setTab] = useVariant("cotab", "ov");
   const topics = [
     ["Arrays & strings", 28, 74],
     ["Graphs", 18, 31],
@@ -168,9 +173,12 @@ export function CompanyBody() {
           { id: "ov", label: t("Overview", "Overview", "सारांश") },
           { id: "q", label: t("Problems asked", "Pooche gaye problems", "पूछे गए प्रश्न"), count: 46 },
           { id: "exp", label: t("Experiences", "Experiences", "अनुभव"), count: 14 },
+          { id: "fmt", label: t("Interview format", "Interview ka format", "इंटरव्यू का फ़ॉर्मेट") },
         ]}
       />
-      {tab === "ov" ? (
+      {tab === "fmt" ? (
+        <InterviewFormat />
+      ) : tab === "ov" ? (
         <>
           <Card title={t("Rounds", "Rounds", "राउंड")} icon={<Clock className="ic" />}>
             <div className="rounds">

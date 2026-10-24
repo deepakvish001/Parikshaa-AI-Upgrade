@@ -122,7 +122,7 @@ Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. 
 | Interview | Career | Setup → live (baat + code, Sahayak band) → report (rubric, "hiring score nahi") |
 | Admin | Console | Side bar groups, "Viewing as" role, `Gate` (taala + kaun kar sakta), `FourEyes` (wajah + doosri manzoori), audit me sab |
 
-### 7b. AI ke saath kaam: ticket lab, drill, code padhna, interview ke do roop (owner, 24 Oct 2026)
+### 7b. AI ke saath kaam: ticket lab, drill, code padhna, interview ke do roop, interview ka format (owner, 24 Oct 2026)
 
 Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`), `src/screens/interview.tsx`; CSS
 `src/styles/ai.css`. LEARN-V2 §4c ke AE2, AE3, AE5.
@@ -154,6 +154,13 @@ Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`),
   line `.bad` + laal dhaar. Har click ka keyboard raasta bhi: line ka number likhne ka field, aur "Is file me" ke function
   buttons se code me us line par jaana. Sawaal 1 `.option` + `.radio`; nateeje me har sawaal ek card (sahi tick, galat
   cross, aadha dashed gola `--coin`), phir diff (`bad`/`good`) aur test. FocusBar me "Sahayak band" badge (phone par chhupa).
+- **Interview ka format** (`#company` ka tab, AE9, `src/screens/format.tsx`, CSS `.fmt-*` in `career.css`): upar saar
+  card (ginti wali heading + role ka `Seg`); har round ek card, baayein 3 px dhaar (bina AI = `pen`, AI ke saath = `ai`,
+  pata nahi = dashed `--line-2`) aur `.rn` gola (pata nahi = `.rn.unk`, dashed); daayein **AI ka badge** (`pen` BotOff /
+  `ai` Bot / saada CircleHelp) aur zaroorat ho to `coin` "naya" badge. Har tathya `dt`/`dd`; `dd` ke neeche **source chip**
+  (`.fmt-src`: kism ka icon tick rang me, chhota naam · tareekh; 90 din se purana = dashed + `coin` "purana ho sakta").
+  **Niyam:** source ke bina koi tathya nahi; chhupe tathyon ki sirf ginti, unka text kabhi nahi. Neeche source ki list
+  (icon ka dabba, naam, kaise jaancha, tareekh). Phone par fact ek column, badges gole ke neeche.
 - **Niyam:** in screens par kahin "hiring score" nahi; AI ka har sujhaav record; maanne/mana karne ki wajah zaroori;
   chuna hua AI tab/toggle `--on-ai` text ke saath.
 

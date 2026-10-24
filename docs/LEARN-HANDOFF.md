@@ -190,13 +190,15 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ### Abhi yahan ho (21 Oct 2026, naya session pehle ye padhe)
 
-- **Sabse taaza (24 Oct 2026, session 4, doosra account, `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode):** Kadam 0
-  chal raha. **AE6 ✅** mock me: `#code-read` (`src/screens/coderead.tsx`, CSS `.cr-*` `ai.css`, switch `pk43-v-read`),
-  219 line ka asli Python (galti line 73, chala kar saabit), 77 screens; saath me tablet (1024) par sidebar ke naam theek.
-  **Agla:** AE9 (company page par "Interview ka format" tab, har tathya source + tareekh ke saath), phir 44-0 test script
-  (`docs/learn/USER-TEST-44-0.md`, ek background agent likh raha; file push na hui ho to dobara likhwao), phir naya preview
-  link (ye account account 2 ka artifact update nahi kar sakta, naya banega). **Owner ke F1/F2/F5, GitHub billing, Supabase
-  ke jawab abhi nahi mile** (prompt me khaali the); Kadam 1 unke bina nahi.
+- **Sabse taaza (24 Oct 2026, session 4, doosra account, `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode):** **Kadam 0
+  ka design wala hissa poora.** (1) **AE6** `#code-read` (`src/screens/coderead.tsx`, `.cr-*` in `ai.css`, switch
+  `pk43-v-read`): 219 line ka asli Python, galti line 73 (chala kar saabit). (2) **AE9** `#company` ka tab "Interview ka
+  format" (`src/screens/format.tsx`, `.fmt-*` in `career.css`, switch `pk43-v-cotab`) + companies list par AI ki line.
+  (3) **44-0 test script** [learn/USER-TEST-44-0.md](learn/USER-TEST-44-0.md). Saath me tablet par sidebar ke naam theek.
+  77 screens. **Draft PR [#67](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/67)** khuli.
+  **Agla:** naya preview link (ye account account 2 ka artifact update nahi kar sakta; `dist/artifact.html` naye artifact
+  ke roop me, link yahan + README me). Phir **owner ke faisle** (prompt me khaali the): F1, F2, F5, GitHub billing,
+  Supabase Mumbai. F1 + billing ke bina Kadam 1 nahi; test (G1) owner chahe to.
 - **Pichhla (24 Oct 2026, account 2, `session_018vRviyFgDfdAVh2GzLcBn3`):** mock **v4.4** chal raha (tracker row
   136, aur AI ke daur ka plan row 137). Ho chuka: **44-1** roop final (Aaj A, Profile B); **44-4 ka pehla hissa**: owner
   ke chune **AE2 ticket lab** (`#ticket-lab`), **AE3 Galat AI pakdo** (`#ai-drill`), **AE5 interview ke do roop**
@@ -238,7 +240,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   review queue → approve) → **44-4** owner ke chune feature screens (sujhaav L1, L7, L9, A2, A8; koi na chune to kadam chhutega) →
   **44-5** sirf-mock safai (`StateFab` jaisi cheezein) + 12 screens ki 5 haalatein final roop par → **44-6** QA (`qa.mjs`, `a11y.mjs`
   axe 0, touch 0) + screenshots `screens/v44/` + README v4.4 + DESIGN-SYSTEM note + publish (naya link). **Gates:** G1 test ke log/
-  samay owner dega (test bina 44-1 nahi), G2 roop sirf owner, G3 features owner. Status: **44-0 [~]**: plan ✅ (23 Oct), test script baaki.
+  samay owner dega (test bina 44-1 nahi), G2 roop sirf owner, G3 features owner. Status: **44-0 ✅**: plan ✅ (23 Oct), test script ✅ (24 Oct, [learn/USER-TEST-44-0.md](learn/USER-TEST-44-0.md)); test khud G1 par.
   **44-1 ✅ (24 Oct):** owner ne test se pehle hi chun liya ("Aaj ka A aur profile ka B final karo"), isliye G1 ab 44-1 ko
   nahi rokta; test ab **chune roop par** hoga (44-0 ke script se "teeno roop" wale task hatao, roop ki pasand ki jagah
   "kya samjha, kahan atka"). Kya hua: Aaj = A "Ek kaam" `src/screens/today.tsx` (`AajBody`, `AajRail`); Profile = B
@@ -300,6 +302,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 24 Oct 2026 (session 4, aage): **AE9** mock me: company page ka tab "Interview ka format" (har round AI haan / nahi / pata nahi, har baat ka source + tareekh, bina source ki baat chhupi, purana source alag, SDE 1 / intern) + companies list par AI ki line. **44-0 test script** (`learn/USER-TEST-44-0.md`, background agent ne likha, maine jaancha). Ek critic agent ne AE6/AE9 ka review kiya (nateeje neeche wali entry me ya agle commit me). Draft PR #67 khuli, HANDOFF.md me likhi.
 - 24 Oct 2026 (session 4): naya account, ultracode. HANDOFF se `claude/learn-v2`; autosave me kuch adhoora nahi tha. Kadam 0: **AE6 "Code padhna"** mock me (`#code-read`): college library ke fine ka 219 line Python (galti: `datetime` ko `date` ke set me dhoondhna, chala kar saabit), Padho → Jawab (kya karta / galti ki line / kya badloge + saboot) → Nateeja (rubric, diff, test); Abhyas hub aur drill rail se raasta; 77 screens. Saath me: tablet (≤1180 px) par sidebar links ke naam (axe `link-name` har shell screen par tha). Agla: AE9, 44-0 test script.
 - 24 Oct 2026: owner ne poocha "build ke liye mujhse kya chahiye". Connectors se live jaanch: GitHub Actions ab bhi budget se band (19 Oct), PR #66 khula; Supabase org free, `parikshaa-mumbai` paused (INACTIVE), Singapore wala chalu; Vercel par Parikshaa project nahi; `ANTHROPIC_API_KEY` environment me nahi. Likha [learn/CODE-READINESS.md](learn/CODE-READINESS.md) §0 me. Owner ko kram diya: contract-first frontend (Kadam 0–5), likha CODE-READINESS §4b + tracker plan row 138 + §5 "Agla"; owner doosre account se isi kram par aage badhayega.
 - 24 Oct 2026: owner "AE1 AE4 AE7 AE8 bhi mock me banao": `#ai-track` (AE1), `#ai-report` (AE4), readiness ke do hisse Aaj + company page par (AE7), profile ke kaagaz me "AI ke saath kaam" line (AE8); 76 screens; qa 76 × 7 + axe 0; wahi link Version 13. Agla: 44-0 test script, phir AE6, AE9.

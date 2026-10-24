@@ -12,6 +12,19 @@ Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
 
+## v4.4: Interview ka format, AE9 (24 Oct, Kadam 0)
+
+- **AE9 Interview format guide** (`#company` ka naya tab **"Interview ka format"**, `src/screens/format.tsx`): har round ke
+  liye **Bina AI / AI ke saath / Pata nahi** badge, kya chalega, kya dekhte, kya laayein, aur **har baat ke neeche uske
+  source ke chip** (company ka page, jaancha hua mail, ya verified experiences) + jaanch ki tareekh. Jiska source nahi,
+  wo dikhta nahi, sirf ginti: "2 aur baatein nahi dikha rahe" + **Source bhejo**. Upar saar ("4 round: 1 AI ke saath, 3 bina
+  AI") aur **SDE 1 / SDE intern** ka switch. Intern me ek round **Pata nahi** (source nahi; "tab tak bina AI maan kar
+  chalo") aur ek source 90 din se purana ("purana ho sakta", dashed). Har round ke neeche taiyari ke raaste (bina AI
+  interview, ticket lab, code padhna, timed mock). Neeche "Is page ke source" ki list aur bharose ka kram.
+- **Companies list:** har card par ek line "AI: 4 me se 1 round AI ke saath / Kisi round me AI nahi / Abhi pata nahi /
+  Take-home: AI chalega, batana hoga kaise". Sab company naam banaye hue (sample); asli company ki koi baat nahi.
+- Mock switch: `pk43-v-cotab` = `ov` / `q` / `exp` / `fmt` (company page ka tab).
+
 ## v4.4: Code padhna, AE6 (24 Oct, Kadam 0)
 
 Build ke kram ka Kadam 0 (design freeze, [../CODE-READINESS.md](../CODE-READINESS.md) §4b). Screens ab **77**.
@@ -222,8 +235,8 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#contest-brief` | Niyam, shuru | [desktop](screens/desktop/contest-brief-1440-dark.jpg) |
 |  | `#contest-live` | Timer, problems, editor (Sahayak band) | [desktop](screens/desktop/contest-live-1440-dark.jpg) |
 |  | `#contest-result` | Rank, rating, kya seekhna | [desktop](screens/desktop/contest-result-1440-dark.jpg) |
-| Career aur Banao | `#companies` | Company ke hisaab se taiyari (naam nakli) | [desktop](screens/desktop/companies-1440-dark.jpg) |
-|  | `#company` | Rounds, topics, readiness | [desktop](screens/desktop/company-1440-dark.jpg) · [light](screens/light/company-1440-light.jpg) · [phone](screens/phone/company-390-dark.jpg) |
+| Career aur Banao | `#companies` | Company ke hisaab se taiyari (naam nakli); har card par AI ka niyam | [desktop](screens/desktop/companies-1440-dark.jpg) |
+|  | `#company` | Rounds, topics, readiness; **Interview ka format (AE9):** har round me AI haan / nahi / pata nahi, har baat ka source + tareekh | [desktop](screens/desktop/company-1440-dark.jpg) · [light](screens/light/company-1440-light.jpg) · [phone](screens/phone/company-390-dark.jpg) · [format](screens/v44/company-format-1440-dark.jpg) · [format phone](screens/v44/company-format-390-dark.jpg) |
 |  | `#experiences` | Round-dar-round interview experiences | [desktop](screens/desktop/experiences-1440-dark.jpg) |
 |  | `#build` | **Naya Banao hub:** jaari project ka asli preview, tracks, project gallery, labs | [desktop](screens/desktop/build-1440-dark.jpg) · [phone](screens/phone/build-390-dark.jpg) |
 |  | `#project` | **Naya project page:** spec, milestones (acceptance + tests), rubric, Studio me kholo | [desktop](screens/desktop/project-1440-dark.jpg) |
@@ -271,9 +284,9 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-runtime` | Code kahan chalta (browser, CPU, Colab, GPU), kharch, plan-war seema, linked sites, keys ki haalat | [desktop](screens/desktop/adm-runtime-1440-dark.jpg) |
 
 Screenshots (23 Oct, v4.3; 24 Oct ko naye aur badle screens dobara): `screens/desktop` (76, 1440, kaala), `screens/light`
-(19), `screens/phone` (21, 390, kaala), `screens/hindi` (9), `screens/v43` (11: haalatein, pal), `screens/v44` (24: ticket
+(19), `screens/phone` (21, 390, kaala), `screens/hindi` (9), `screens/v43` (11: haalatein, pal), `screens/v44` (27: ticket
 lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone, AI track (computer + phone), AI istemal report,
-code padhna ke 3 kadam + phone). Aaj roop A, profile roop B.
+code padhna ke 3 kadam + phone, interview ka format SDE 1 + intern + phone). Aaj roop A, profile roop B.
 
 ## Jaanch (24 Oct, v4.4 kadam 44-4: AE1, AE4, AE7, AE8)
 
