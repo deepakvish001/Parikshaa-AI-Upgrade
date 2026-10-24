@@ -202,7 +202,10 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   restore (ya owner khud Supabase dashboard se Restore).
   **Naya preview:** https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG (Version 1).
   **Agla: Kadam 1** (tracker plan row 139), tukde ek-ek PR me:
-  - [~] K1-0 plan (row 139) + `packages/web` / `packages/console` ki `package.json` me dohri keys hatao (lockfile na badle).
+  - [x] K1-0 plan (row 139) + `packages/web` / `packages/console` ki `package.json` me dohri keys hatai (lockfile wahi;
+    check, build:clients, budget hare; `1fca51a`). Saath me CI ka `security` job (npm audit, high) theek: lockfile me sirf zod
+    4.6.7, fastify 5.12.7, fast-uri patch (`a46f171`). **Baaki:** nodemailer ka moderate advisory (10.1.4 chahiye) alag badlav
+    me; ye #66 (`claude/festive-maxwell-pb4k5v`) par bhi wahi failure hai, #67 merge hone par theek.
   - [ ] K1-1 `packages/brand` me v4.4 tokens (purane naam, naye maan + mock ke naam alias), fonts, logo A; contrast test;
     e2e visual baselines dobara. **Session 4 ka mapping (shuru yahin se):** sach `docs/learn/mock-v3/app/src/styles/tokens.css`.
     `packages/brand/src/tokens.css` ke naam rakho, maan badlo: `--gray-50/0/25/100/200/300` = mock `--page/--panel/--panel-2/
