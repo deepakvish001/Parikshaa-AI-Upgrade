@@ -204,7 +204,19 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   **Agla: Kadam 1** (tracker plan row 139), tukde ek-ek PR me:
   - [~] K1-0 plan (row 139) + `packages/web` / `packages/console` ki `package.json` me dohri keys hatao (lockfile na badle).
   - [ ] K1-1 `packages/brand` me v4.4 tokens (purane naam, naye maan + mock ke naam alias), fonts, logo A; contrast test;
-    e2e visual baselines dobara.
+    e2e visual baselines dobara. **Session 4 ka mapping (shuru yahin se):** sach `docs/learn/mock-v3/app/src/styles/tokens.css`.
+    `packages/brand/src/tokens.css` ke naam rakho, maan badlo: `--gray-50/0/25/100/200/300` = mock `--page/--panel/--panel-2/
+    --sunk/--line/--line-2`; `--gray-900/600/500` = `--ink/--ink-2/--ink-3`; `--brand-600/700/50/200` = `--pen/--pen-hover/
+    --pen-soft/--pen-line` (baaki brand scale isi pen #2349e6 se); accent (saffron) = marker `#ffd84d` (solid, dark text) +
+    `--coin` (accent-text); success = tick; danger = red; review = ai; info = teal; warning = coin. Chrome (exam bar, console
+    sidebar) = Syaahi (`#101013`/`#16161a`, text `#c4c4cc`). Dark blocks = mock ke dark maan (dono block same; console ka
+    `tokens.test.ts` contrast + "dono dark block barabar" jaanchta). Mock ke naam (`--page`, `--panel`, `--ink`, `--pen`,
+    `--ai`, `--coin`, `--marker`, `--code-*`, `--card-line` …) alias/maan ke saath isi file me. Fonts: `--font-sans` me
+    "IBM Plex Sans", "IBM Plex Sans Devanagari" pehle, baaki 9 Noto rahe; Inter hatao; `@fontsource/ibm-plex-sans`,
+    `-devanagari`, `ibm-plex-serif`, `kalam` brand ki dependency (lockfile `npm install`). Logo: `packages/brand/src/react.tsx`
+    ka `Wordmark` (प) → mock `src/ui/kit.tsx` ka `LogoMark` A SVG; web/console ke favicon bhi. Radius/space abhi mat badlo
+    (layout churn). Baselines: Postgres 16 container me hai (`/usr/lib/postgresql/16`); `npm run visual:update -w
+    @parikshaa/e2e`, diff dekh kar commit. Har shell/console screen naya dikhega; owner ko pehle/baad dikhana.
   - [ ] K1-2 kit (`Panes`, `FocusBar`, `Seg`, `Ring`, `Meter`, haalatein) `packages/brand/src/ui.tsx` me, render + axe tests.
   - [ ] K1-3 Learn shell `packages/web` me flag `learn_v2` ke peeche (sidebar, rail, phone tabs, Ctrl+K, ⋯ menu, en/hi).
   - [ ] K1-4 CI me Learn shell ka visual + axe, budget.
@@ -308,7 +320,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 |---|---|---|---|---|
 | 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8). 20 Oct: design study, DESIGN-PLAN-V2, mock v2 (41 screens, `learn/mock-v2/`); mock v2 nakaara gaya, phir DESIGN-V3 aur mock v3 (68 screens incl. 25 admin, `learn/mock-v3/`); v3 par raay ke baad mock v4 (font, kaala default, VS Code Studio, admin gehra); 20–21 Oct: mock v4.1 (2↔3 pane, Studio, motion) aur v4.2 | 21 Oct: mock v4.2 poora (72 screens, logo A final, SQL = DSA workspace, profile v2 + HR share, notebook + Colab, AI interview, admin runtimes + recruiters) aur docs DESIGN-SYSTEM / CODE-READINESS / FEATURE-IDEAS; sab push, wahi link. Owner ke faisle F1–F7 ka intezaar (§5 "Abhi yahan ho") |
 | 3 | 23–24 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` (row 1 wala session, aage) | 23 Oct: 21st.dev skills (`.claude/skills/21st-*`), mock v4.3 (U0–U6). 24 Oct: Muse session ke 3 commit (v4.4 plan) par fast-forward, phir v4.4 kadam 44-1: Aaj A + Profile B final, baaki roop aur switch hataye, docs, screenshots | 24 Oct: 44-1 (Version 11); AI ke daur ki research + plan (row 137) aur owner ki haan; AE2/AE3/AE5 (Version 12), AE1/AE4/AE7/AE8 (Version 13) mock me. Agla: 44-0 test script (chune roop + naye screens par), phir AE6, AE9 |
-| 4 | 24 Oct 2026 | doosra account (account 2 ki limit ke baad), `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode | Chal raha. Shuru: HANDOFF se `claude/learn-v2`, autosave `learn-v2--4a0a2180` (parent = tip `d9dd55e`, uncommitted kuch nahi, isliye restore nahi), §5/§7/git log padha. Kaam: Kadam 0 (AE6, AE9 mock me, phir 44-0 test script). Owner ke F1/F2/F5, billing, Supabase ke jawab prompt me khaali the | — |
+| 4 | 24 Oct 2026 | doosra account (account 2 ki limit ke baad), `session_01CxKYSJpaMfGb259ZWTqTDB`, ultracode | Autosave me adhoora kuch nahi tha. Kadam 0 poora: AE6 `#code-read`, AE9 company page ka format tab, 44-0 test script (background agent), critic agent ke 12 sudhaar; tablet par sidebar ke naam; 77 screens, qa + axe 0; naya preview https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG; draft PR #67. Owner ke faisle: F1 haan, F2 sab jagah, F5 owner merge, billing theek (CI chal raha), Supabase haan (connector is account me nahi). Kadam 1 ka plan (tracker row 139) + K1-1 ka mapping (§5) | K1-0 (dohri keys hatana) ka `npm run check` chal raha tha; hara ho to push, phir K1-1. Limit 5 ghante ki window ~65%+ par ruka |
 | 2 | 23 Oct 2026 | Muse (Meta Muse, GitHub deepakvish001) | Naya session: canonical branch claude/learn-v2 verify kiya, HANDOFF aur LEARN-HANDOFF §5/§1 padha, saari branches list karke autosave jaanch poori ki: sirf ek Learn snapshot autosave/claude/learn-v2--4a0a2180 (780992b1, 23 Oct 07:44 UTC, parent = canonical tip 4273c4538a) mila, uske .claude/live/state.md me Uncommitted changes (none) aur U0-U6 completed hai, isliye koi adhoora kaam restore nahi kiya (v4.3 ka kaam saaf push hai), CLAUDE.md, DESIGN-SYSTEM v4.3, CODE-READINESS F1-F7 aur FEATURE-IDEAS padhe | Owner ki raay ka intezaar: Aaj/Profile ka roop chunna, F1-F7 faisle; mock v4.3 is session me dobara build (tsc OK, vite build OK, artifact.html 1891 KB) karke Muse link par publish kiya (neeche §5); baaki owner ki raay baaki |
 
 ## 7. Log (naya upar)
