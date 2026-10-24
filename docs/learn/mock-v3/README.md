@@ -299,6 +299,18 @@ Screenshots (23 Oct, v4.3; 24 Oct ko naye aur badle screens dobara): `screens/de
 lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone, AI track (computer + phone), AI istemal report,
 code padhna ke 3 kadam + phone, interview ka format SDE 1 + intern + phone). Aaj roop A, profile roop B.
 
+## Jaanch (24 Oct, Kadam 0: AE6, AE9 aur review ke sudhaar)
+
+- **77 screens × 7** (1440 kaala, 1440 light, 1024 kaala, 390 kaala, 390 light, 1440 kaala हिंदी, 390 light हिंदी) aur
+  Finance role: overflow 0, console error 0.
+- **Accessibility** (`a11y.mjs`): 77 screens 1440/390 × kaala/light (English), 1440/390 kaala हिंदी aur 1024 kaala: **0**;
+  phone par chhote touch 0. `#code-read` ke teeno kadam aur company page ka format tab (`VAR="read=…,cotab=fmt"`) har
+  combo me alag se: qa 0, axe 0.
+- Click se jaanch (Playwright): code-read me galat/khaali jawab ke sandesh aur focus, sawaal 3 ki ginti, namoona banner,
+  Nateeja ki pill bina jawab ke band, band code pane khulna, phone par line 40 px; format tab me SDE 1/intern ki ginti,
+  "pata nahi" aur purana source.
+- Pehle mila aur theek: 1024 px par har shell screen ke sidebar links ka naam (`link-name`).
+
 ## Jaanch (24 Oct, v4.4 kadam 44-4: AE1, AE4, AE7, AE8)
 
 - **76 screens × 7** aur Finance role: overflow 0, console error 0. **Accessibility** 76 screens 1440/390 × kaala/light (English)
