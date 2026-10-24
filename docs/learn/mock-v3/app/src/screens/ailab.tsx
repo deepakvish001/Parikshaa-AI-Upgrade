@@ -96,7 +96,6 @@ const TIME_JS = `export function formatReady(iso) {
 
 function LabStepper({ step, setStep, phone }: { step: LabStep; setStep: (s: LabStep) => void; phone?: boolean }) {
   const t = useT();
-  const at = STEPS.indexOf(step);
   const names: Record<LabStep, string> = {
     tickets: t("Understand", "Samjho", "समझो"),
     plan: t("Plan", "Plan", "योजना"),
@@ -104,9 +103,30 @@ function LabStepper({ step, setStep, phone }: { step: LabStep; setStep: (s: LabS
     viva: t("Explain", "Viva", "वाइवा"),
     result: t("Result", "Nateeja", "नतीजा"),
   };
+  return <StepPills steps={STEPS} names={names} step={step} setStep={setStep} phone={phone} label={t("Lab steps", "Lab ke kadam", "लैब के चरण")} />;
+}
+
+/** The step pills of the ticket lab, also used by the code-reading drill (#code-read). */
+export function StepPills<S extends string>({
+  steps,
+  names,
+  step,
+  setStep,
+  phone,
+  label,
+}: {
+  steps: S[];
+  names: Record<S, string>;
+  step: S;
+  setStep: (s: S) => void;
+  phone?: boolean;
+  label: string;
+}) {
+  const t = useT();
+  const at = steps.indexOf(step);
   return (
-    <ol className={`tl-steps ${phone ? "phone" : ""}`} aria-label={t("Lab steps", "Lab ke kadam", "लैब के चरण")}>
-      {STEPS.map((s, i) => (
+    <ol className={`tl-steps ${phone ? "phone" : ""}`} aria-label={label}>
+      {steps.map((s, i) => (
         <li key={s}>
           <button
             className={`tl-step ${i < at ? "done" : i === at ? "now" : ""}`}
@@ -944,6 +964,9 @@ export function AiDrillRail() {
         </span>
         <Link to="ticket-lab" className="btn sm block">
           <Bug /> {t("Ticket lab: Canteen Queue", "Ticket lab: Canteen Queue", "टिकट लैब")}
+        </Link>
+        <Link to="code-read" className="btn sm block ghost">
+          <FileText /> {t("Read the code: library fines", "Code padhna: library fine", "कोड पढ़ना")}
         </Link>
         <Link to="interview" className="btn sm block ghost">
           <Bot /> {t("Mock interview with AI", "AI ke saath mock interview", "AI के साथ इंटरव्यू")}

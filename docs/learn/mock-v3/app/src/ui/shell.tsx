@@ -229,7 +229,7 @@ function SideNav({ route, onSearch }: { route: string; onSearch: () => void }) {
               {items.map((s) => {
                 const I = s.icon;
                 return (
-                  <Link key={s.id} to={s.id} className="side-item" current={active === s.id} aria-label={mini ? tri(s.title) : undefined} data-tip={mini ? tri(s.title) : undefined}>
+                  <Link key={s.id} to={s.id} className="side-item" current={active === s.id} aria-label={`${tri(s.title)}${s.badge ? ` (${s.badge})` : ""}`} data-tip={mini ? tri(s.title) : undefined}>
                     <I />
                     {!mini && <span className="grow ellipsis">{tri(s.title)}</span>}
                     {!mini && s.badge && <span className="side-count">{s.badge}</span>}
@@ -241,7 +241,7 @@ function SideNav({ route, onSearch }: { route: string; onSearch: () => void }) {
         })}
       </nav>
       <div className="side-foot">
-        <button className={`side-ai ${ai.open ? "on" : ""}`} onClick={ai.toggle}>
+        <button className={`side-ai ${ai.open ? "on" : ""}`} onClick={ai.toggle} aria-label={t("Ask Sahayak", "Sahayak kholo", "सहायक खोलें")}>
           <Sparkles />
           {!mini && (
             <>
@@ -274,7 +274,7 @@ function UserMenu({ mini }: { mini: boolean }) {
       up
       width={220}
       trigger={(_, toggle) => (
-        <button className="side-user" onClick={toggle}>
+        <button className="side-user" onClick={toggle} aria-label={t("Aarav Sharma, account menu", "Aarav Sharma, account menu", "आरव शर्मा, खाता मेन्यू")}>
           <Avatar name="Aarav Sharma" size={30} tone={0} />
           {!mini && (
             <span className="grow" style={{ minWidth: 0, textAlign: "left" }}>

@@ -66,6 +66,7 @@ import {
   Layers,
   Bug,
   FlaskConical,
+  FileSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -143,6 +144,7 @@ export const SCREENS: ScreenDef[] = [
   s({ id: "apt-result", group: "practice", layout: "shell", parent: "aptitude", icon: ChartColumn, title: ["Mock result", "Mock ka nateeja", "मॉक परिणाम"], desc: ["Score, time per question, weak topics", "Score, har sawaal ka samay", "स्कोर, समय"] }),
   s({ id: "potd", group: "practice", layout: "shell", nav: true, icon: CalendarCheck, title: ["Problem of the day", "Aaj ka problem", "आज का प्रश्न"], desc: ["One problem a day, streak calendar", "Roz ek problem, streak", "रोज़ एक प्रश्न"] }),
   s({ id: "ai-drill", group: "practice", layout: "shell", nav: true, icon: Bug, title: ["Catch the AI", "Galat AI pakdo", "गलत AI पकड़ो"], desc: ["Five-minute daily drill on AI code that is almost right", "Roz 5 minute: lagbhag sahi AI code me galti pakdo", "रोज़ 5 मिनट का ड्रिल"] }),
+  s({ id: "code-read", group: "practice", layout: "focus", parent: "practice", icon: FileSearch, title: ["Read the code", "Code padhna", "कोड पढ़ना"], desc: ["Unfamiliar code: what it does, where the bug is, what you would change", "Anjaan code: kya karta, galti kahan, kya badloge", "अनजान कोड: क्या करता, गलती कहाँ"] }),
   s({ id: "contests", group: "practice", layout: "shell", nav: true, icon: Trophy, title: ["Contests", "Contests", "प्रतियोगिताएँ"], desc: ["Upcoming, past, rating", "Aane wale, pichhle, rating", "आगामी, पिछली"] }),
   s({ id: "contest-brief", group: "practice", layout: "shell", parent: "contests", icon: Flag, title: ["Contest rules", "Contest ke niyam", "नियम"], desc: ["Rules and start", "Niyam aur shuru", "नियम और शुरू"] }),
   s({ id: "contest-live", group: "practice", layout: "focus", parent: "contests", icon: Timer, title: ["Contest (live)", "Contest (live)", "प्रतियोगिता (लाइव)"], desc: ["Timer, problems, editor", "Timer, problems, editor", "टाइमर, प्रश्न"] }),

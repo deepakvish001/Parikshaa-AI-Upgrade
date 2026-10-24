@@ -122,7 +122,7 @@ Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. 
 | Interview | Career | Setup → live (baat + code, Sahayak band) → report (rubric, "hiring score nahi") |
 | Admin | Console | Side bar groups, "Viewing as" role, `Gate` (taala + kaun kar sakta), `FourEyes` (wajah + doosri manzoori), audit me sab |
 
-### 7b. AI ke saath kaam: ticket lab, drill, interview ke do roop (owner, 24 Oct 2026)
+### 7b. AI ke saath kaam: ticket lab, drill, code padhna, interview ke do roop (owner, 24 Oct 2026)
 
 Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`), `src/screens/interview.tsx`; CSS
 `src/styles/ai.css`. LEARN-V2 §4c ke AE2, AE3, AE5.
@@ -148,6 +148,12 @@ Code: `src/screens/ailab.tsx` (`TicketLabScreen`, `AiDrillBody`, `AiDrillRail`),
   har ek me kahan se + samay, quote (mono), ek line, aur us pal par teer. Rail me data ke niyam, download, delete.
 - **Readiness ke do hisse** (`ReadinessSplit`): ring me kul, neeche do patli patti: buniyaad (`pen`) aur AI ke saath (`ai`),
   wazan likha hua. Aaj ki rail aur company page par.
+- **Code padhna** (`#code-read`, AE6, `src/screens/coderead.tsx`, CSS `.cr-*` in `ai.css`): focus layout, ticket lab
+  wala stepper (`StepPills`: Padho, Jawab, Nateeja) aur `Panes` (code 0.58, sawaal 0.42; phone par tabs, sawaal pehle).
+  Code `Code` component me; jawab ke kadam me line par click se chunav (`.mark` + 3 px pen ki dhaar), nateeje me galti wali
+  line `.bad` + laal dhaar. Har click ka keyboard raasta bhi: line ka number likhne ka field, aur "Is file me" ke function
+  buttons se code me us line par jaana. Sawaal 1 `.option` + `.radio`; nateeje me har sawaal ek card (sahi tick, galat
+  cross, aadha dashed gola `--coin`), phir diff (`bad`/`good`) aur test. FocusBar me "Sahayak band" badge (phone par chhupa).
 - **Niyam:** in screens par kahin "hiring score" nahi; AI ka har sujhaav record; maanne/mana karne ki wajah zaroori;
   chuna hua AI tab/toggle `--on-ai` text ke saath.
 

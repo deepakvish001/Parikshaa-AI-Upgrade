@@ -19,6 +19,7 @@ import { ProfileBody, ProfileRail } from "./profile";
 import { NotebookScreen } from "./notebook";
 import { InterviewScreen } from "./interview";
 import { TicketLabScreen, AiDrillBody, AiDrillRail } from "./ailab";
+import { CodeReadScreen } from "./coderead";
 import { AiTrackBody, AiTrackRail, AiReportBody, AiReportRail } from "./aitrack";
 import { AdmRuntime, AdmRecruiters } from "../admin/a-platform";
 import { ListsBody, NotesBody, SahayakPageBody, CommunityBody, PlusBody, SettingsBody } from "./mine";
@@ -65,6 +66,7 @@ export const SCREEN_MAP: Record<string, ScreenImpl> = {
   interview: { Body: InterviewScreen },
   "ticket-lab": { Body: TicketLabScreen },
   "ai-drill": { Body: AiDrillBody, Rail: AiDrillRail },
+  "code-read": { Body: CodeReadScreen },
   "ai-track": { Body: AiTrackBody, Rail: AiTrackRail },
   "ai-report": { Body: AiReportBody, Rail: AiReportRail },
   companies: { Body: CompaniesBody },

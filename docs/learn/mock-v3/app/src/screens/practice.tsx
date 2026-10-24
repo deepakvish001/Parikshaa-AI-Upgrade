@@ -26,6 +26,7 @@ import {
   Bug,
   Bot,
   FlaskConical,
+  FileSearch,
 } from "lucide-react";
 import { Link, useT, useCountdown, hms } from "../lib/core";
 import { Badge, Level, Ring, Meter, Spark, Card, PageHead, Tabs, Check } from "../ui/kit";
@@ -107,6 +108,15 @@ export function PracticeBody() {
             <span className="col g4" style={{ minWidth: 0 }}>
               <b>{t("Catch the AI · 5 min", "Galat AI pakdo · 5 min", "गलत AI पकड़ो · 5 मिनट")}</b>
               <span className="tiny faint">{t("Drill 2 of 3 today · 6-day streak", "Aaj drill 2 / 3 · 6 din streak", "आज 2 / 3")}</span>
+            </span>
+          </Link>
+          <Link to="code-read" className="card hov ai-card">
+            <span className="tr-ic coin">
+              <FileSearch />
+            </span>
+            <span className="col g4" style={{ minWidth: 0 }}>
+              <b>{t("Read the code · 12 min", "Code padhna · 12 min", "कोड पढ़ना · 12 मिनट")}</b>
+              <span className="tiny faint">{t("Code you did not write: what, where, why", "Anjaan code: kya, kahan, kyun", "अनजान कोड: क्या, कहाँ, क्यों")}</span>
             </span>
           </Link>
           <Link to="ticket-lab" className="card hov ai-card">

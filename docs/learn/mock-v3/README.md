@@ -1,4 +1,4 @@
-# Learn v2: clickable mock v4.4 (chal raha), "Kaagaz aur Syaahi" (24 Oct 2026, 76 screens)
+# Learn v2: clickable mock v4.4 (chal raha), "Kaagaz aur Syaahi" (24 Oct 2026, 77 screens)
 
 Mock v3 dekh kar owner ne kaha: "sab achha laga, bas font AI wala lag raha hai; har page complete dark black, sab saaf
 dikhe, light me bhi; har border, box, animation refine karo; Code Studio VS Code jaisa; admin ka har page har pehlu se;
@@ -11,6 +11,24 @@ wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../
 Doosron ko dikhana ho to page ke Share menu se.
 
 ![Saare screens ek nazar me](screens/overview.jpg)
+
+## v4.4: Code padhna, AE6 (24 Oct, Kadam 0)
+
+Build ke kram ka Kadam 0 (design freeze, [../CODE-READINESS.md](../CODE-READINESS.md) §4b). Screens ab **77**.
+
+- **AE6 Code padhna** (`#code-read`, naya; Abhyas hub ki "AI ke saath kaam" patti aur drill ki rail se): focus layout, do
+  pane: **code** (`library/fines.py`, college library ke fine ke niyam, 219 line asli Python) aur **sawaal**. Teen kadam
+  (Padho → Jawab → Nateeja). *Padho:* file ka parichay, kaise padhein, "Is file me" ka naksha (har function par click se code
+  me wahi line). *Jawab:* (1) file kya karti hai, 4 me se ek; (2) galti kis line me: code me line par click ya number likho;
+  (3) kya badloge aur kaise saabit karoge (likhit). 1 aur 2 bina bheje nahi jaata. *Nateeja:* 3 me se kitna, har sawaal par
+  sahi/galat, sawaal 3 ka rubric (wajah, badlav, saboot), sahi badlav ka diff, saboot wala test, ek line yaad rakhne ko,
+  copy me save, ab Sahayak se poochho. Sahayak jawab tak band.
+- **Galti asli hai:** file chala kar jaancha. Line 73 `if d in HOLIDAYS` me `d` ek `datetime` hai aur `HOLIDAYS` me `date`,
+  isliye chhutti ka din bhi late gina jaata (19 → 21 Oct: code 2 din, sahi 1). `d.date()` se test pass.
+- **Phone:** do tab (Code / Sawaal), sawaal pehle; code tab me line par tap se line chuni jaati.
+- Mock switch: `pk43-v-read` = `read` / `answer` / `result` (screenshot ke liye `VAR="read=result"`).
+- Saath me theek: tablet chaudai (≤1180 px) par sidebar sirf icon dikhata tha aur un links ka naam screen reader ko nahi
+  milta tha (har shell screen par axe `link-name`); ab har link aur Sahayak/user button ka naam hai.
 
 ## v4.4: AI ke saath kaam, doosra hissa (24 Oct, kadam 44-4)
 
@@ -198,6 +216,7 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#apt-result` | Score, har sawaal ka samay | [desktop](screens/desktop/apt-result-1440-dark.jpg) |
 |  | `#potd` | Roz ek problem, streak | [desktop](screens/desktop/potd-1440-dark.jpg) |
 |  | `#ai-drill` | **Galat AI pakdo (AE3):** roz 5 minute; galat line, failing test, fix, seekh | [desktop](screens/desktop/ai-drill-1440-dark.jpg) · [light](screens/light/ai-drill-1440-light.jpg) · [phone](screens/phone/ai-drill-390-dark.jpg) |
+|  | `#code-read` | **Code padhna (AE6):** anjaan 219 line ka Python; kya karta, galti kahan, kya badloge; Sahayak jawab tak band | [har kadam](screens/v44/) · [phone](screens/v44/code-read-answer-390-dark.jpg) |
 |  | `#ai-track` | **AI ke saath kaam track (AE1):** 10 padaav, kamzor vs achha prompt, Pramaan AI-Saath | [desktop](screens/desktop/ai-track-1440-dark.jpg) · [light](screens/light/ai-track-1440-light.jpg) · [phone](screens/phone/ai-track-390-dark.jpg) |
 |  | `#contests` | Aane wale, pichhle, rating | [desktop](screens/desktop/contests-1440-dark.jpg) · [phone](screens/phone/contests-390-dark.jpg) |
 |  | `#contest-brief` | Niyam, shuru | [desktop](screens/desktop/contest-brief-1440-dark.jpg) |
@@ -252,8 +271,9 @@ par animation, smoothness, naye features. Kya bana:
 |  | `#adm-runtime` | Code kahan chalta (browser, CPU, Colab, GPU), kharch, plan-war seema, linked sites, keys ki haalat | [desktop](screens/desktop/adm-runtime-1440-dark.jpg) |
 
 Screenshots (23 Oct, v4.3; 24 Oct ko naye aur badle screens dobara): `screens/desktop` (76, 1440, kaala), `screens/light`
-(19), `screens/phone` (21, 390, kaala), `screens/hindi` (9), `screens/v43` (11: haalatein, pal), `screens/v44` (20: ticket
-lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone, AI track (computer + phone), AI istemal report). Aaj roop A, profile roop B.
+(19), `screens/phone` (21, 390, kaala), `screens/hindi` (9), `screens/v43` (11: haalatein, pal), `screens/v44` (24: ticket
+lab ke 5 kadam + phone, drill ke 4 kadam, interview ke 2 roop × 3 kadam + phone, AI track (computer + phone), AI istemal report,
+code padhna ke 3 kadam + phone). Aaj roop A, profile roop B.
 
 ## Jaanch (24 Oct, v4.4 kadam 44-4: AE1, AE4, AE7, AE8)
 
