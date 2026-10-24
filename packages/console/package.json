@@ -12,8 +12,6 @@
   },
   "dependencies": {
     "@parikshaa/brand": "*",
-    "@tanstack/react-query": "^5.62.7",
-    "lucide-react": "^1.52.0",
     "@tanstack/react-query": "^5.104.1",
     "lucide-react": "^1.48.0",
     "qrcode-generator": "^2.0.4",
