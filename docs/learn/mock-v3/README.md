@@ -6,7 +6,8 @@ human feel." Ye v4 tha: 68 screens (43 learner + naksha/brand, 25 admin); v4.2 m
 wajah: [../DESIGN-V4.md](../DESIGN-V4.md) (v3 ka dhaancha: [../DESIGN-V3.md](../DESIGN-V3.md)). Purane: v1
 [../mock/README.md](../mock/README.md), v2 [../mock-v2/README.md](../mock-v2/README.md).
 
-**Dekhne ka link (private, sirf owner):** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn
+**Dekhne ka link (private, sirf owner), sabse naya (24 Oct, 77 screens):** https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG
+**Purana link (account 2, 76 screens tak):** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn
 **Muse session ka rebuild (23 Oct 2026):** yahi v4.3 bina kisi badlav ke dobara build karke `preview.html` owner ko diya gaya; Muse file link (25 Oct 2026 16:46 UTC tak): https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html
 Doosron ko dikhana ho to page ke Share menu se.
 

@@ -200,6 +200,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   billing theek (CI ab #67 par chal raha), Supabase Mumbai chalu karne ki haan. **Supabase ka connector is account me
   nahi:** owner https://claude.ai/customize/connectors par Supabase jode, phir naya session; tab `parikshaa-mumbai`
   restore (ya owner khud Supabase dashboard se Restore).
+  **Naya preview:** https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG (Version 1).
   **Agla: Kadam 1** (tracker plan row 139), tukde ek-ek PR me:
   - [~] K1-0 plan (row 139) + `packages/web` / `packages/console` ki `package.json` me dohri keys hatao (lockfile na badle).
   - [ ] K1-1 `packages/brand` me v4.4 tokens (purane naam, naye maan + mock ke naam alias), fonts, logo A; contrast test;
@@ -280,7 +281,9 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `packages/console` me; DESIGN-SYSTEM §10–11 ka porting kram). P0 ke liye sirf F1, F2, F3, F5 aur GitHub billing
     chahiye. P0 ke baad §4 ke slices (LV-F3 problem package, LV-F5 visual renderer, LV-S0 samples ...).
   - Koi feature idea chuna → pehle mock me screen, owner ki haan, phir code.
-- **Preview link:** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn (Version 10 = v4.3, Version 11 = v4.4 ka 44-1, Version 12 = AE2/AE3/AE5, Version 13 = AE1/AE4/AE7/AE8, 24 Oct). Ye account 2 ka artifact hai.
+- **Preview link (sabse naya, 24 Oct, session 4, AE6 + AE9 ke saath, 77 screens):** https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG
+  (is account ka artifact; aage isi account se isi link par republish, doosra account naya banaye aur yahan likhe).
+- **Purana preview link (account 2):** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn (Version 10 = v4.3, Version 11 = v4.4 ka 44-1, Version 12 = AE2/AE3/AE5, Version 13 = AE1/AE4/AE7/AE8, 24 Oct). Ye account 2 ka artifact hai.
   Doosra account ise update nahi kar sakta: wo `dist/artifact.html` ko **naye** artifact ke roop me publish kare, naya
   link yahan aur README me likhe, aur owner ko bataye (ya owner purane artifact par edit access de).
   **Muse session (23 Oct 2026):** upar wala tareeka is session me kiya gaya — mock v4.3 commit `4273c4538a` se waisa ka waisa dobara build hua (tsc OK, vite build OK, `dist/artifact.html` 1891 KB) aur `dist/preview.html` Muse ke file link par publish hua: https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html (ye link **25 Oct 2026 16:46 UTC tak** chalega; poori file owner ko chat me de di gayi hai, aur is workspace me `parikshaa-learn-mock-v4.3-preview.html` naam se rakhi hai). Link ki miyaad khatam ho to preview.html dobara upload karna hoga; design ya mock me koi badlav nahi hua.
