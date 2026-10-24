@@ -8,6 +8,18 @@ ke kadam-dar-kadam tareeke: [../OWNER-SETUP.md](../OWNER-SETUP.md).
 **(1)** kuch faisle, **(2)** kuch accounts jinke liye aapka naam, card ya KYC lagta hai, aur **(3)** unki keys GitHub me
 daalna (chat me kabhi nahi). Pehla phase (design ko code me laana) **bina kisi key ke** shuru ho sakta hai.
 
+## 0. Aaj ki asli haalat (24 Oct 2026, connectors se jaanchi)
+
+| Cheez | Haalat | Aage kya |
+|---|---|---|
+| GitHub Actions | ❌ ab bhi band. Aakhri run (19 Oct, PR #66): "The job was not started because an Actions budget is preventing further use" | Owner: GitHub → Settings → Billing and plans → payment method ya Actions budget |
+| PR #66 (`main` ka toota lockfile) | Khula, merge nahi | Billing ke baad CI hara, phir merge |
+| Supabase org | Free plan | Asli users se pehle Pro (backup + PITR) |
+| Supabase `parikshaa-mumbai` (ap-south-1) | **INACTIVE (paused)**: free plan me project kuch din bina use ke ruk jaata hai | Owner ki haan par Claude connector se restore karega (free), phir baaki migrations |
+| Supabase `Parikshaa` (Singapore) | Chalu; purane problems, legacy import ke liye | Kuch nahi |
+| Vercel | Team hai, Parikshaa ka project abhi nahi; plan connector se nahi dikha | Owner ki haan par Claude project banayega; commercial launch ke liye Pro |
+| `ANTHROPIC_API_KEY` | Is cloud environment me nahi | AI ke kadam (P3) se pehle |
+
 ## 1. Faisle (sirf aap le sakte hain)
 
 | # | Faisla | Sujhaav | Kab tak |
