@@ -287,6 +287,7 @@ Seedhi baat: blueprint ka **core loop** (aaj ka plan → kaam → atakne par Sah
 
 | Sawaal | Faisla | Kab |
 |---|---|---|
+| Learn ka asli code, brand, merge, accounts (CODE-READINESS F1, F2, F5) | **F1: haan, shuru karo** (Kadam 1: frontend ki neev). **F2: naya brand sab jagah** (Learn, exam app, console, Hire; ek `packages/brand`). **F5: har PR owner khud merge karega** (Claude PR khole, hara kare, merge nahi). Owner ke mutabiq **GitHub billing theek kar di**, aur **Supabase `parikshaa-mumbai` chalu karne ki haan** (owner, 24 Oct 2026, session 4 me sawaal ke jawab) | 24 Oct 2026 |
 | Learn ki pehchaan AI ke daur me | **"Buniyaad + AI ke saath kaam, dono ka saboot"**; AE1–AE9 Learn me (owner, 24 Oct 2026: "haa sab sujhaav theek hai"; [research/AI-ERA-PLAN-2026.md](research/AI-ERA-PLAN-2026.md) §5a). Practice me AI seekhne ka saathi, band sirf contest, Pramaan, mock aur test me | 24 Oct 2026 |
 | CP bank (2,000) aur Pramaan | **CP bank 2027+ khiska** (A2Z 520 + interview bank rahe; uska budget ticket labs, drills, code padhne par). **Pramaan ke do tier:** Buniyaad (bina AI, proctored) + AI-Saath (ticket lab + viva) (owner, 24 Oct 2026) | 24 Oct 2026 |
 | Labs me AI ka kharch, landing ki bhasha, mock me pehle kya | Labs me **sasta model**, mehnga sirf viva aur report me; Free/Plus me labs ki ginti daam ke saath (testing ke baad). Landing: "AI ke daur ki taiyaari, saboot ke saath", grind ki baat nahi. Mock me pehle **AE2, AE3, AE5** (owner, 24 Oct 2026) | 24 Oct 2026 |

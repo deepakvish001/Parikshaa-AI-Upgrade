@@ -24,11 +24,11 @@ daalna (chat me kabhi nahi). Pehla phase (design ko code me laana) **bina kisi k
 
 | # | Faisla | Sujhaav | Kab tak |
 |---|---|---|---|
-| F1 | "Shuru karo": mock v4.2 ke design se asli code | Haan, phase P0 se (neeche §4) | Abhi |
-| F2 | Naya brand (logo A, IBM Plex, kaala default) **sab jagah** (exam app + console bhi) ya sirf Learn | Sab jagah, ek saath; warna do brand dikhenge | P0 se pehle |
+| F1 | "Shuru karo": mock v4.2 ke design se asli code | Haan, phase P0 se (neeche §4) | **✅ Haan (owner, 24 Oct 2026)** |
+| F2 | Naya brand (logo A, IBM Plex, kaala default) **sab jagah** (exam app + console bhi) ya sirf Learn | Sab jagah, ek saath; warna do brand dikhenge | **✅ Sab jagah (owner, 24 Oct 2026)** |
 | F3 | Pehle launch me kaunse screens | Aaj, plan, DSA sheet + workspace, SQL, revision, aptitude, profile + share, Studio (web projects); notebook aur interview doosre launch me | P0 me |
 | F4 | LeetCode / CodeChef ka data | Inka official public API nahi. Shuru me sirf **link + khud bataya**; "bio code" se padhna tabhi jab unki terms dekh li jaayein. Codeforces (official API) aur GitHub (OAuth) seedhe | P4 se pehle |
-| F5 | Merge kaun kare | Har PR aap, ya likh kar haan ki CI hara ho to Claude kare ([../ROADMAP-END-TO-END.md](../ROADMAP-END-TO-END.md) §2a) | P0 |
+| F5 | Merge kaun kare | Har PR aap, ya likh kar haan ki CI hara ho to Claude kare ([../ROADMAP-END-TO-END.md](../ROADMAP-END-TO-END.md) §2a) | **✅ Har PR owner merge karega (24 Oct 2026)** |
 | F6 | Content ki manzoori | 10 editorial + 10 aptitude + 2 lesson ke samples ([../LEARN-V2.md](../LEARN-V2.md) §13) | P2 se pehle |
 | F7 | Daam | Testing ke baad (aapka 20 Oct ka faisla); tab tak `₹[...]` | Launch se pehle |
 
