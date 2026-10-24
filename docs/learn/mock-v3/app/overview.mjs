@@ -16,7 +16,7 @@ h2{font:600 15px system-ui;margin:22px 0 10px;letter-spacing:.04em;text-transfor
 figure{margin:0;background:#0c0c0e;border:1px solid #2a2a2f;border-radius:8px;overflow:hidden}
 img{display:block;width:100%;aspect-ratio:1440/900;object-fit:cover;object-position:top}
 figcaption{padding:5px 8px;font:12px ui-monospace,monospace;color:#a1a1aa}
-</style><h1>Parikshaa Learn · mock v4.3 “Kaagaz aur Syaahi”</h1><p>${routes.length} screens · 1440 px · black theme (default) · sample data</p>
+</style><h1>Parikshaa Learn · mock v4.4 “Kaagaz aur Syaahi”</h1><p>${routes.length} screens · 1440 px · black theme (default) · sample data</p>
 ${groups.map(([g, rs]) => `<h2>${g} · ${rs.length}</h2><div class="g">${rs.map((r) => `<figure><img src="file://${dir}/${r}-1440-dark.jpg"><figcaption>#${r}</figcaption></figure>`).join("")}</div>`).join("")}`;
 const tmp = join(tmpdir(), "pk3-overview.html");
 writeFileSync(tmp, html);

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   BadgeCheck,
-  Briefcase,
   Building2,
   CircleCheck,
   Circle,
@@ -12,11 +11,9 @@ import {
   EyeOff,
   FileText,
   GitBranch,
-  GraduationCap,
   Link2,
   Lock,
   Mail,
-  MapPin,
   MessageCircle,
   Pencil,
   Plus,
@@ -29,15 +26,12 @@ import {
   ExternalLink,
   Info,
   Send,
-  Database,
   Brain,
-  Calculator,
   Layers,
+  CircleDashed,
 } from "lucide-react";
 import { Link, useT, useToast } from "../lib/core";
-import { useVariant, VariantBar } from "../lib/variant";
-import { ProofSheet, ProofStory } from "./profile43";
-import { Avatar, Badge, Card, Donut, Heatmap, LogoMark, Meter, Modal, Moment, SampleNote, Seg, Spark, Tabs, Toggle } from "../ui/kit";
+import { Avatar, Badge, Card, Heatmap, LogoMark, Modal, Moment, SampleNote, Seg, Spark, Stamp, Tabs, Toggle } from "../ui/kit";
 
 /* Sample learner. Everything a recruiter sees is either checked by Parikshaa (verified) or marked as the
    learner's own claim; numbers from other sites carry how they were checked and when. */
@@ -51,29 +45,6 @@ export const PLATS: Plat[] = [
   { id: "gh", name: "GitHub", handle: "aarav-sharma", solved: 0, extra: "14 repos · 312 contributions this year", how: "sign-in (OAuth)", synced: "3 h", c: "var(--ink-3)", icon: GitBranch },
   { id: "kg", name: "Kaggle", handle: "aaravsharma", solved: 0, extra: "2 notebooks · 1 bronze", how: "profile link", synced: "5 d", c: "var(--teal)", icon: Brain },
 ];
-
-export const SKILLS: { name: string; icon: typeof Code2; lvl: number; proof: [string, string, string]; v: boolean }[] = [
-  { name: "DSA", icon: Code2, lvl: 72, v: true, proof: ["Pramaan L2 (proctored) · 212 solved on the judge", "Pramaan L2 (proctored) · judge par 212 solve", "प्रमाण L2 · 212 हल"] },
-  { name: "SQL", icon: Database, lvl: 58, v: true, proof: ["Pramaan L1 · 41 SQL problems", "Pramaan L1 · 41 SQL problems", "प्रमाण L1 · 41 SQL"] },
-  { name: "React", icon: Layers, lvl: 54, v: true, proof: ["Placement Tracker shipped · 18/18 tests · mentor reviewed", "Placement Tracker ship · 18/18 tests · mentor review", "प्रोजेक्ट · 18/18 टेस्ट"] },
-  { name: "Aptitude", icon: Calculator, lvl: 78, v: true, proof: ["Mock test: 78th percentile (3 mocks)", "Mock test: 78th percentile (3 mocks)", "मॉक: 78वाँ पर्सेंटाइल"] },
-  { name: "Machine learning", icon: Brain, lvl: 30, v: false, proof: ["Self-declared · 1 notebook in progress", "Khud bataya · 1 notebook chal rahi", "स्व-घोषित"] },
-];
-
-function Strength() {
-  const t = useT();
-  return (
-    <div className="pf-strength">
-      <div className="row between">
-        <span className="small">
-          <b>82%</b> {t("profile strength", "profile ki mazbooti", "प्रोफ़ाइल मज़बूती")}
-        </span>
-        <span className="tiny faint">{t("add a resume for 100%", "100% ke liye resume jodo", "रिज़्यूमे जोड़ें")}</span>
-      </div>
-      <Meter v={82} tone="tick" size="thin" />
-    </div>
-  );
-}
 
 /** The card a learner downloads and posts, or sends to HR. Brand colours are fixed so it looks the same everywhere. */
 export function ProfileCard({ format = "wide" }: { format?: "wide" | "square" | "story" }) {
@@ -230,228 +201,190 @@ export function ShareModal({ open, onClose }: { open: boolean; onClose: () => vo
   );
 }
 
-export function ProfileBody() {
+/* The profile is a proof sheet: a document HR can trust at a glance, where every line says what was
+   checked, how and when (chosen by the owner, 24 Oct 2026). Coding sites, projects and the card sit in tabs. */
+
+function Actions({ onShare, onHr }: { onShare: () => void; onHr: () => void }) {
   const t = useT();
-  const [v] = useVariant("profile");
+  const toast = useToast();
   return (
-    <>
-      <VariantBar
-        id="profile"
-        items={[
-          { id: "a", label: t("Summary first", "Saar pehle", "सार पहले"), hint: t("The v4.2 profile with three numbers instead of six boxes; skills with proof lead.", "v4.2 wali profile, chhe dabbon ki jagah teen number; saboot wali skills pehle.", "छह डिब्बों की जगह तीन संख्याएँ।") },
-          { id: "b", label: t("Proof sheet", "Saboot ka kaagaz", "प्रमाण पत्र"), hint: t("A document HR can trust at a glance: every line says what was checked, how and when.", "HR ek nazar me bharosa kare: har line batati hai kya, kaise aur kab jaancha.", "हर पंक्ति बताती है क्या जाँचा।") },
-          { id: "c", label: t("Story", "Kahani", "कहानी"), hint: t("The same facts as a story, newest first, each with its proof.", "Wahi baatein kahani ki tarah, naya pehle, har ek ke saath saboot.", "वही बातें कहानी की तरह।") },
-          { id: "z", label: "v4.2", hint: t("The v4.2 profile, for comparison.", "v4.2 wali profile, tulna ke liye.", "v4.2, तुलना के लिए।") },
-        ]}
-      />
-      {v === "b" ? <ProofSheet /> : v === "c" ? <ProofStory /> : <ProfileDash v42={v === "z"} />}
-    </>
+    <div className="row wrap g8">
+      <button className="btn pri" onClick={onShare}>
+        <Share2 />
+        {t("Share with HR", "HR ko share karo", "HR को साझा करें")}
+      </button>
+      <button className="btn" onClick={() => toast(t("Resume PDF made from your verified profile", "Verified profile se resume PDF bana", "रिज़्यूमे PDF बना"))}>
+        <Download />
+        {t("Resume PDF", "Resume PDF", "रिज़्यूमे PDF")}
+      </button>
+      <button className="btn ghost" onClick={onHr}>
+        <Eye />
+        {t("See as HR", "HR ki nazar se", "HR की नज़र से")}
+      </button>
+      <Link to="settings" className="btn ghost">
+        <Pencil />
+        {t("Edit", "Edit", "संपादित")}
+      </Link>
+    </div>
   );
 }
 
-function ProfileDash({ v42 }: { v42: boolean }) {
+const ROWS: { what: [string, string, string]; level: string; proof: [string, string, string]; how: [string, string, string]; when: string; v: boolean }[] = [
+  { what: ["Data structures and algorithms", "DSA", "डेटा संरचना और एल्गोरिदम"], level: "L2", proof: ["Pramaan exam, proctored · 212 solved on the judge", "Pramaan exam, proctored · judge par 212", "प्रमाण परीक्षा · 212 हल"], how: ["Parikshaa judge + proctoring", "Parikshaa judge + proctoring", "पारिक्षा जज"], when: "Sep 2026", v: true },
+  { what: ["SQL", "SQL", "SQL"], level: "L1", proof: ["Pramaan exam · 41 SQL problems", "Pramaan exam · 41 SQL problems", "प्रमाण · 41 SQL"], how: ["Parikshaa judge", "Parikshaa judge", "पारिक्षा जज"], when: "Aug 2026", v: true },
+  { what: ["React (project)", "React (project)", "React (प्रोजेक्ट)"], level: "—", proof: ["Placement Tracker · 18/18 tests · mentor review", "Placement Tracker · 18/18 tests · mentor review", "प्रोजेक्ट · 18/18 टेस्ट"], how: ["Studio tests + reviewer", "Studio tests + reviewer", "स्टूडियो टेस्ट"], when: "Oct 2026", v: true },
+  { what: ["Aptitude", "Aptitude", "एप्टीट्यूड"], level: "78%ile", proof: ["3 full mocks, timed", "3 poore mocks, timed", "3 पूरे मॉक"], how: ["Parikshaa mock tests", "Parikshaa mock tests", "पारिक्षा मॉक"], when: "Oct 2026", v: true },
+  { what: ["Contests", "Contests", "प्रतियोगिताएँ"], level: "1,529", proof: ["9 rated contests · top 18%", "9 rated contests · top 18%", "9 प्रतियोगिताएँ"], how: ["Parikshaa contests", "Parikshaa contests", "पारिक्षा"], when: "Oct 2026", v: true },
+  { what: ["Codeforces", "Codeforces", "Codeforces"], level: "1,388", proof: ["96 solved · Specialist", "96 solve · Specialist", "96 हल"], how: ["Official API, synced 1 h ago", "Official API, 1 ghanta pehle", "आधिकारिक API"], when: "Oct 2026", v: true },
+  { what: ["LeetCode", "LeetCode", "LeetCode"], level: "1,642", proof: ["318 solved", "318 solve", "318 हल"], how: ["Code in profile bio", "Bio me code", "बायो में कोड"], when: "Oct 2026", v: true },
+  { what: ["Web internship, Kesar Cloud (sample)", "Web internship, Kesar Cloud (sample)", "वेब इंटर्नशिप (नमूना)"], level: "—", proof: ["May–Jul 2026 · two React dashboards", "May–Jul 2026 · do React dashboards", "मई–जुलाई 2026"], how: ["Offer letter checked", "Offer letter jaancha", "ऑफ़र लेटर जाँचा"], when: "Jul 2026", v: true },
+  { what: ["Machine learning", "Machine learning", "मशीन लर्निंग"], level: "—", proof: ["1 notebook in progress", "1 notebook chal rahi", "1 नोटबुक"], how: ["Self-declared, not checked", "Khud bataya, jaancha nahi", "स्व-घोषित"], when: "—", v: false },
+];
+
+function ProofSheet({ hr }: { hr: boolean }) {
+  const t = useT();
+  return (
+    <article className="ps-sheet" aria-label={t("Proof sheet", "Saboot ka kaagaz", "प्रमाण पत्र")}>
+      <header className="ps-head">
+        <span className="row g8">
+          <LogoMark size={26} decorative />
+          <b className="ps-brand">parikshaa</b>
+        </span>
+        <span className="ps-kind">{t("Verified profile", "Verified profile", "सत्यापित प्रोफ़ाइल")}</span>
+        <span className="tiny faint num">No. PK-2027-0418</span>
+      </header>
+      <div className="ps-id">
+        <Avatar name="Aarav Sharma" size={72} tone={0} />
+        <div className="col g4 grow" style={{ minWidth: 0 }}>
+          <h1 className="ps-name">Aarav Sharma</h1>
+          <span className="ps-line">{t("SDE intern 2027 · DSA, SQL, React", "SDE intern 2027 · DSA, SQL, React", "SDE इंटर्न 2027")}</span>
+          <span className="small muted">B.Tech CSE · {t("3rd year · class of 2027 · CGPA 8.6 (college email checked)", "3rd year · 2027 batch · CGPA 8.6 (college email jaancha)", "तीसरा वर्ष · CGPA 8.6")}</span>
+          <span className="small muted">{t("Indore · open to Bengaluru and remote · joins May 2027", "Indore · Bengaluru aur remote · May 2027 se", "इंदौर · मई 2027")}</span>
+          {!hr && (
+            <span className="tiny faint row g4">
+              <Lock style={{ width: 12, height: 12 }} />
+              +91 98•••• 4410 · {t("only you see this", "sirf aap dekhte ho", "सिर्फ़ आप")}
+            </span>
+          )}
+        </div>
+        <span className="ps-stamp">
+          <Stamp top="PRAMAAN" mid="Verified" bottom="DSA · L2" />
+        </span>
+      </div>
+      <div className="ps-table-wrap">
+        <table className="ps-table">
+          <caption className="sr-only">{t("What is checked, and how", "Kya jaancha, kaise", "क्या जाँचा, कैसे")}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{t("Skill or record", "Skill ya record", "कौशल")}</th>
+              <th scope="col">{t("Level", "Level", "स्तर")}</th>
+              <th scope="col">{t("Evidence", "Saboot", "प्रमाण")}</th>
+              <th scope="col">{t("How it was checked", "Kaise jaancha", "कैसे जाँचा")}</th>
+              <th scope="col">{t("When", "Kab", "कब")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ROWS.map((r) => (
+              <tr key={r.what[0]} className={r.v ? "" : "self"}>
+                <th scope="row">
+                  <span className="row g6">
+                    {r.v ? <BadgeCheck className="t-tick" /> : <CircleDashed className="faint" />}
+                    {t(...r.what)}
+                  </span>
+                </th>
+                <td className="num" data-label={t("Level", "Level", "स्तर")}>
+                  <b>{r.level}</b>
+                </td>
+                <td data-label={t("Evidence", "Saboot", "प्रमाण")}>{t(...r.proof)}</td>
+                <td className="muted" data-label={t("Checked", "Jaancha", "जाँचा")}>
+                  {t(...r.how)}
+                </td>
+                <td className="num muted ps-when" data-label={t("When", "Kab", "कब")}>
+                  {r.when}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <section className="ps-practice" aria-labelledby="ps-practice-t">
+        <div className="row wrap between g8">
+          <b className="ps-sec" id="ps-practice-t">
+            {t("Practice, last 26 weeks", "Practice, pichhle 26 hafte", "अभ्यास, पिछले 26 सप्ताह")}
+          </b>
+          <span className="tiny faint">{t("Days with a judged submission · best streak 46 days", "Judge wale submission ke din · sabse lambi streak 46 din", "सबसे लंबा क्रम 46 दिन")}</span>
+        </div>
+        <div className="ps-heat" tabIndex={0} aria-label={t("Practice heatmap, scrolls sideways", "Practice heatmap, side me scroll", "अभ्यास हीटमैप")}>
+          <Heatmap weeks={26} seed={11} />
+        </div>
+      </section>
+      <footer className="ps-foot">
+        <div className="col g4 grow" style={{ minWidth: 0 }}>
+          <span className="ps-sign">{t("Checked by Parikshaa", "Parikshaa ne jaancha", "पारिक्षा ने जाँचा")}</span>
+          <span className="tiny faint">
+            {t(
+              "Ticked lines are checked by Parikshaa or the site's own API. A dashed circle means the learner said it and nobody checked it. Updated 23 Oct 2026.",
+              "Tick wali lines Parikshaa ya site ke API ne jaanchi. Dashed circle matlab learner ne bataya, kisi ne jaancha nahi. 23 Oct 2026.",
+              "टिक वाली पंक्तियाँ जाँची गई हैं। 23 अक्टूबर 2026।",
+            )}
+          </span>
+        </div>
+        <span className="ps-qr">
+          <QrCode />
+          <span className="tiny mono">parikshaa.in/u/aarav</span>
+        </span>
+      </footer>
+    </article>
+  );
+}
+
+export function ProfileBody() {
   const t = useT();
   const toast = useToast();
-  const [tab, setTab] = useState<"over" | "plats" | "proj" | "card">("over");
+  const [tab, setTab] = useState<"sheet" | "plats" | "proj" | "card">("sheet");
   const [share, setShare] = useState(false);
-  const [asHr, setAsHr] = useState(false);
+  const [hr, setHr] = useState(false);
   const [fmt, setFmt] = useState<"wide" | "square" | "story">("wide");
-  const total = PLATS.reduce((n, p) => n + p.solved, 0);
   return (
-    <div className="col g20">
-      {asHr && (
+    <div className="col g16">
+      {hr ? (
         <div className="banner pen pf-hr-banner">
           <Eye />
           <span className="grow">
             {t("You are seeing what HR sees on your private link. Phone is hidden; edit buttons are gone.", "Aap wahi dekh rahe ho jo HR ko private link par dikhta hai. Phone chhupa hai; edit button nahi.", "आप HR की नज़र से देख रहे हैं।")}
           </span>
-          <button className="btn sm" onClick={() => setAsHr(false)}>
+          <button className="btn sm" onClick={() => setHr(false)}>
             {t("Back to my view", "Apne view par wapas", "अपने दृश्य पर")}
           </button>
         </div>
-      )}
-      <section className="prof-hero pf-hero">
-        <Avatar name="Aarav Sharma" size={92} tone={0} />
-        <div className="col g6 grow" style={{ minWidth: 0 }}>
-          <div className="row wrap g8">
-            <h1 className="h1">Aarav Sharma</h1>
-            <Badge tone="tick" icon={<BadgeCheck size={13} />}>
-              {t("Verified", "Verified", "सत्यापित")}
-            </Badge>
+      ) : (
+        <div className="row wrap between g12">
+          <div className="col g4">
+            <span className="eyebrow">{t("Your profile", "Aapki profile", "आपकी प्रोफ़ाइल")}</span>
+            <span className="small muted">{t("This sheet is what HR opens from your link.", "HR aapke link se yahi kaagaz kholta hai.", "HR यही पत्र खोलता है।")}</span>
           </div>
-          <span className="pf-headline">{t("SDE intern 2027 · DSA, SQL, React", "SDE intern 2027 · DSA, SQL, React", "SDE इंटर्न 2027")}</span>
-          <span className="muted small">B.Tech CSE · 3rd year · {t("Class of 2027", "2027 batch", "2027 बैच")} · CGPA 8.6</span>
-          <div className="row wrap g12 tiny faint">
-            <span className="row g4">
-              <MapPin style={{ width: 13, height: 13 }} />
-              Indore · {t("open to Bengaluru, remote", "Bengaluru, remote bhi", "बेंगलुरु, रिमोट")}
-            </span>
-            <span className="row g4">
-              <Link2 style={{ width: 13, height: 13 }} />
-              parikshaa.in/u/aarav
-            </span>
-            {!asHr && (
-              <span className="row g4">
-                <Lock style={{ width: 13, height: 13 }} />
-                +91 98•••• 4410 · {t("only you", "sirf aap", "सिर्फ़ आप")}
-              </span>
-            )}
-          </div>
-          <div className="row wrap g6 mt4">
-            <Badge tone="pen" icon={<Briefcase size={13} />}>
-              {t("Open to: internships 2027", "Open: internships 2027", "इंटर्नशिप 2027")}
-            </Badge>
-            <Badge>{t("Joins in: May 2027", "Join: May 2027", "मई 2027")}</Badge>
-          </div>
-        </div>
-        <div className="col g10 pf-hero-r">
-          {!asHr && (
-            <div className="row wrap g8">
-              <button className="btn pri" onClick={() => setShare(true)}>
-                <Share2 />
-                {t("Share with HR", "HR ko share karo", "HR को साझा करें")}
-              </button>
-              <button className="btn" onClick={() => toast(t("Resume PDF made from your verified profile", "Verified profile se resume PDF bana", "रिज़्यूमे PDF बना"))}>
-                <Download />
-                {t("Resume PDF", "Resume PDF", "रिज़्यूमे PDF")}
-              </button>
-              <button className="btn ghost" onClick={() => setAsHr(true)}>
-                <Eye />
-                {t("See as HR", "HR ki nazar se", "HR की नज़र से")}
-              </button>
-              <Link to="settings" className="btn ghost">
-                <Pencil />
-                {t("Edit", "Edit", "संपादित")}
-              </Link>
-            </div>
-          )}
-          {!asHr && <Strength />}
-        </div>
-      </section>
-
-      {!v42 && (
-        <div className="pf-stats">
-          {[
-            [String(total), t("problems, 4 sites", "problems, 4 sites", "प्रश्न, 4 साइटें"), t("212 checked by our judge", "212 hamare judge ne jaanche", "212 हमारे जज ने")],
-            ["1,529", t("contest rating", "contest rating", "रेटिंग"), t("top 18% · 9 contests", "top 18% · 9 contests", "शीर्ष 18%")],
-            ["3", t("Pramaan certificates", "Pramaan certificates", "प्रमाणपत्र"), "DSA L2 · DSA L1 · SQL L1"],
-          ].map(([v, k, d]) => (
-            <div key={k} className="pf-stat">
-              <b className="num">{v}</b>
-              <span className="col">
-                <span className="small">{k}</span>
-                <span className="tiny faint">{d}</span>
-              </span>
-            </div>
-          ))}
+          <Actions
+            onShare={() => setShare(true)}
+            onHr={() => {
+              setHr(true);
+              if (tab === "card") setTab("sheet");
+            }}
+          />
         </div>
       )}
-      {v42 && <div className="pf-kpis">
-        {[
-          [String(total), t("problems across 4 sites", "4 sites par problems", "4 साइटों पर"), t("212 on Parikshaa's judge", "212 Parikshaa judge par", "212 यहाँ")],
-          ["1,529", t("contest rating", "contest rating", "रेटिंग"), t("top 18% · 9 contests", "top 18% · 9 contests", "शीर्ष 18%")],
-          ["3", t("Pramaan certificates", "Pramaan certificates", "प्रमाणपत्र"), "DSA L2 · DSA L1 · SQL L1"],
-          ["2", t("projects shipped", "projects ship", "प्रोजेक्ट"), t("tests pass, reviewed", "tests pass, review hue", "टेस्ट पास")],
-          ["78%ile", t("aptitude mocks", "aptitude mocks", "एप्टीट्यूड"), t("3 full mocks", "3 poore mocks", "3 मॉक")],
-          ["46", t("days best streak", "din sabse lambi streak", "दिन लगातार"), t("now 12", "abhi 12", "अभी 12")],
-        ].map(([v, k, d]) => (
-          <div key={k} className="pf-kpi">
-            <b className="num">{v}</b>
-            <span>{k}</span>
-            <span className="tiny faint">{d}</span>
-          </div>
-        ))}
-      </div>}
 
       <Tabs
         value={tab}
         onChange={setTab}
         items={[
-          { id: "over", label: t("Summary", "Saar", "सार") },
+          { id: "sheet", label: t("Proof sheet", "Saboot ka kaagaz", "प्रमाण पत्र") },
           { id: "plats", label: t("Coding sites", "Coding sites", "कोडिंग साइटें"), count: PLATS.length },
           { id: "proj", label: t("Projects", "Projects", "प्रोजेक्ट"), count: 3 },
-          { id: "card", label: t("Profile card", "Profile card", "प्रोफ़ाइल कार्ड") },
+          ...(hr ? [] : [{ id: "card" as const, label: t("Profile card", "Profile card", "प्रोफ़ाइल कार्ड") }]),
         ]}
       />
 
-      {tab === "over" && (
-        <div className="pf-grid">
-          <Card title={t("Skills, with proof", "Skills, saboot ke saath", "कौशल, प्रमाण सहित")} icon={<ShieldCheck className="ic" />}>
-            <div className="pf-skills">
-              {SKILLS.map((s) => {
-                const I = s.icon;
-                return (
-                  <div key={s.name} className={`pf-skill ${s.v ? "" : "self"}`}>
-                    <span className="pf-sk-ic">
-                      <I />
-                    </span>
-                    <div className="grow col g4" style={{ minWidth: 0 }}>
-                      <div className="row between g8">
-                        <b className="small">{s.name}</b>
-                        {s.v ? (
-                          <Badge tone="tick" sq>
-                            {t("verified", "verified", "सत्यापित")}
-                          </Badge>
-                        ) : (
-                          <Badge sq>{t("self-declared", "khud bataya", "स्व-घोषित")}</Badge>
-                        )}
-                      </div>
-                      <Meter v={s.lvl} tone={s.v ? "pen" : "ink-3"} size="thin" />
-                      <span className="tiny faint">{t(...s.proof)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </Card>
-          <div className="col g16">
-            <Card title={t("All coding sites together", "Saari coding sites ek saath", "सभी साइटें")} icon={<Layers className="ic" />}>
-              <div className="pf-donut">
-                <Donut parts={PLATS.filter((p) => p.solved).map((p) => ({ v: p.solved, c: p.c }))} size={132} stroke={16}>
-                  <span className="pf-donut-c">
-                    <b className="num">{total}</b>
-                    <span className="tiny faint">{t("solved", "solve", "हल")}</span>
-                  </span>
-                </Donut>
-                <div className="col g6 grow">
-                  {PLATS.filter((p) => p.solved).map((p) => (
-                    <div key={p.id} className="pf-leg">
-                      <i style={{ background: p.c }} />
-                      <span className="grow small">{p.name}</span>
-                      <b className="num small">{p.solved}</b>
-                    </div>
-                  ))}
-                  <button className="link tiny" onClick={() => setTab("plats")}>
-                    {t("How each number is checked", "Har number kaise jaancha", "कैसे जाँचा")} →
-                  </button>
-                </div>
-              </div>
-            </Card>
-            <Card title={t("Education and experience", "Padhai aur anubhav", "शिक्षा और अनुभव")} icon={<GraduationCap className="ic" />}>
-              <div className="pf-tl">
-                {[
-                  [t("B.Tech CSE · SGSITS Indore (sample)", "B.Tech CSE · SGSITS Indore (sample)", "बी.टेक"), "2023 – 2027 · CGPA 8.6", true],
-                  [t("Web intern · Kesar Cloud (sample)", "Web intern · Kesar Cloud (sample)", "वेब इंटर्न"), t("May – Jul 2026 · offer letter checked", "May – Jul 2026 · offer letter jaancha", "जाँचा गया"), true],
-                  [t("Design lead · Coding club", "Design lead · Coding club", "डिज़ाइन लीड"), t("2025 – 26 · self-declared", "2025 – 26 · khud bataya", "स्व-घोषित"), false],
-                ].map(([a, b, v], i) => (
-                  <div key={i} className="pf-tl-row">
-                    {v ? <CircleCheck className="t-tick" /> : <Circle className="faint" />}
-                    <div className="col">
-                      <b className="small">{a as string}</b>
-                      <span className="tiny faint">{b as string}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </div>
-          <Card title={t("Practice, last 26 weeks", "Practice, pichhle 26 hafte", "अभ्यास, 26 सप्ताह")} icon={<Trophy className="ic" />} className="pf-wide">
-            <div style={{ overflowX: "auto" }}>
-              <Heatmap weeks={26} seed={11} />
-            </div>
-          </Card>
-        </div>
-      )}
+      {tab === "sheet" && <ProofSheet hr={hr} />}
 
       {tab === "plats" && (
         <div className="col g12">
@@ -502,11 +435,13 @@ function ProfileDash({ v42 }: { v42: boolean }) {
                 </div>
               );
             })}
-            <button className="pf-plat pf-add" onClick={() => toast(t("Pick a site, then paste the code in your bio", "Site chuno, phir bio me code daalo", "साइट चुनें"))}>
-              <Plus />
-              <b className="small">{t("Link another site", "Aur site jodo", "और साइट जोड़ें")}</b>
-              <span className="tiny faint">HackerRank, GeeksforGeeks, AtCoder…</span>
-            </button>
+            {!hr && (
+              <button className="pf-plat pf-add" onClick={() => toast(t("Pick a site, then paste the code in your bio", "Site chuno, phir bio me code daalo", "साइट चुनें"))}>
+                <Plus />
+                <b className="small">{t("Link another site", "Aur site jodo", "और साइट जोड़ें")}</b>
+                <span className="tiny faint">HackerRank, GeeksforGeeks, AtCoder…</span>
+              </button>
+            )}
           </div>
           <SampleNote>{t("Sample numbers. Sites without an official API are checked from the public profile page you link.", "Sample number. Jin sites ka official API nahi, unhe aapke diye public profile se jaancha jaata hai.", "नमूना संख्याएँ।")}</SampleNote>
         </div>

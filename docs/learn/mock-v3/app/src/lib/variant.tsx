@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { useT } from "./core";
+import { useEffect, useState } from "react";
 
-/* Mock v4.3: some screens come in a few directions so the owner can compare them and pick one.
-   The choice is kept per screen in localStorage (pk43-v-<screen>) and shared by the page body and its rail. */
+/* Mock-only switches kept in localStorage (pk43-v-<id>) and shared by every component that reads them.
+   Only the screen-state switch (pk43-v-state) uses it now: the Today and Profile directions were settled on
+   24 Oct 2026, so their switch is gone. The state switch goes in the mock clean-up step (44-5). */
 
 const key = (id: string) => `pk43-v-${id}`;
 
@@ -31,25 +31,4 @@ export function useVariant(id: string, def = "a"): [string, (v: string) => void]
     window.dispatchEvent(new Event("pk-variant"));
   };
   return [v, set];
-}
-
-/** The switch shown above a screen that has directions. It is mock chrome, not product UI. */
-export function VariantBar({ id, items, note }: { id: string; items: { id: string; label: string; hint: string }[]; note?: ReactNode }) {
-  const t = useT();
-  const [v, set] = useVariant(id);
-  const cur = items.find((x) => x.id === v) ?? items[0];
-  return (
-    <div className="variant-bar" role="group" aria-label={t("Compare directions (mock)", "Roop chuno (mock)", "रूप चुनें (मॉक)")}>
-      <span className="vb-tag">{t("Mock · pick a direction", "Mock · roop chuno", "मॉक · रूप चुनें")}</span>
-      <div className="vb-opts">
-        {items.map((x) => (
-          <button key={x.id} className="vb-opt" aria-pressed={v === x.id} onClick={() => set(x.id)}>
-            <b>{x.id.toUpperCase()}</b>
-            <span>{x.label}</span>
-          </button>
-        ))}
-      </div>
-      <span className="vb-hint tiny">{note ?? cur.hint}</span>
-    </div>
-  );
 }

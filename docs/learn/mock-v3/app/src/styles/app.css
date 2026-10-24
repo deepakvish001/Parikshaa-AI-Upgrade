@@ -392,57 +392,7 @@
 }
 
 /* ---------- today ---------- */
-.aaj-head {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-}
-.aaj-h1 {
-  font-size: 42px;
-  margin-top: 6px;
-}
-.aaj-day {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.resume {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 22px 24px;
-  border-radius: 20px;
-  border: 1px solid var(--line);
-  background-color: var(--panel);
-  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-  background-size: 22px 22px;
-  box-shadow: var(--shadow-2);
-  position: relative;
-  overflow: hidden;
-}
-.resume::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--pen);
-}
-.resume-l {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.resume-t {
-  font-family: var(--f-display);
-  font-weight: 700;
-  letter-spacing: -0.024em;
-  font-size: 26px;
-  line-height: 1.1;
-}
+
 .resume-code {
   align-self: flex-start;
   margin-top: 4px;
@@ -454,12 +404,6 @@
   white-space: nowrap;
   max-width: 100%;
   overflow: visible;
-}
-.resume-r {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: stretch;
 }
 .tasks {
   display: flex;
@@ -478,16 +422,6 @@
 }
 .task.next {
   background: var(--pen-soft);
-}
-.task.done .task-t {
-  color: var(--ink-3);
-  text-decoration: line-through;
-  text-decoration-color: var(--ink-4);
-}
-.task-t {
-  display: block;
-  font-weight: 560;
-  font-size: 14px;
 }
 .task-ic {
   width: 34px;
@@ -524,90 +458,10 @@
   background: var(--ai-soft);
   color: var(--ai-text);
 }
-.task-done {
-  width: 64px;
-  display: flex;
-  justify-content: center;
-}
 .week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
-}
-.wk {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 8px 0;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-}
-.wk b {
-  font-size: 15px;
-}
-.wk-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--ink-3);
-}
-.wk.done .wk-dot {
-  background: var(--tick);
-  color: var(--on-pen);
-}
-.wk.today {
-  border-color: var(--pen);
-  background: var(--pen-soft);
-}
-.wk.today .wk-dot::after {
-  content: "";
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--pen);
-}
-.wk.test .wk-dot {
-  background: var(--ai-soft);
-  color: var(--ai-text);
-}
-.wk.rest {
-  opacity: 0.6;
-}
-.rev-stack {
-  position: relative;
-  height: 96px;
-}
-.rev-card {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 84px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-}
-.rev-card.r3 {
-  transform: translateY(12px) scale(0.92);
-  opacity: 0.5;
-}
-.rev-card.r2 {
-  transform: translateY(6px) scale(0.96);
-  opacity: 0.8;
-}
-.rev-card.r1 {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 4px;
-  padding: 12px 14px;
-  box-shadow: var(--shadow-2);
-  background-image: repeating-linear-gradient(to bottom, transparent 0 23px, var(--ruled) 23px 24px);
 }
 .weak {
   display: flex;
@@ -618,39 +472,6 @@
   font-size: 22px;
   font-weight: 600;
   letter-spacing: 0.02em;
-}
-.flames {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
-}
-.fl {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 6px 0;
-  border-radius: 10px;
-  color: var(--ink-4);
-}
-.fl svg {
-  width: 18px;
-  height: 18px;
-}
-.fl i {
-  font-style: normal;
-  font-size: 10.5px;
-}
-.fl.on {
-  color: var(--coin);
-}
-.fl.on svg {
-  fill: var(--coin-soft);
-}
-.fl.now {
-  color: var(--coin);
-  background: var(--coin-soft);
-  outline: 1.5px dashed var(--coin);
 }
 
 /* ---------- my plan ---------- */
@@ -894,26 +715,6 @@
     right: -6px;
     top: -40px;
     transform: scale(0.8);
-  }
-  .aaj-head {
-    align-items: flex-start;
-  }
-  .aaj-h1 {
-    font-size: 34px;
-  }
-  .aaj-day {
-    display: none;
-  }
-  .resume {
-    flex-direction: column;
-    align-items: stretch;
-    padding: 18px;
-  }
-  .resume-r {
-    flex-direction: row;
-  }
-  .resume-r .btn {
-    flex: 1;
   }
   .task {
     padding: 10px 14px;

@@ -1,4 +1,4 @@
-# Learn design system: code banane ke liye ek hi sach (21 Oct 2026, v4.3: 23 Oct)
+# Learn design system: code banane ke liye ek hi sach (21 Oct 2026, v4.3: 23 Oct, roop final: 24 Oct)
 
 Ye file batati hai ki Parikshaa Learn **kaisa dikhega aur kaise chalega**, taaki koi bhi session ya account asli code me
 **wahi design** banaye. Mock (`docs/learn/mock-v3/app`) is file ka chalta hua namoona hai: jahan ye file aur mock alag
@@ -6,8 +6,9 @@ dikhein, **mock sahi hai** aur is file ko theek karo.
 
 - Owner ne manzoor kiya: font + kaala default (20 Oct), 8 roles + 4-eyes (20 Oct), **logo A "Pass"** (21 Oct).
 - **v4.3 (23 Oct):** dark me teen parat aur naram card-dhaar (§3), focus bar me ek ⋯ menu (§7), brand ke 6 pal (§8–9),
-  har mukhya screen ki 5 haalatein (§9), accessibility aur phone par 40 px touch (§5, §9). Aaj aur profile ke **3-3 roop**
-  mock me switch se; owner jo chunega wahi yahan likha jaayega, baaki hatenge.
+  har mukhya screen ki 5 haalatein (§9), accessibility aur phone par 40 px touch (§5, §9).
+- **Roop final (24 Oct, owner):** Aaj = **A "Ek kaam"**, Profile = **B "Saboot ka kaagaz"** (§7a). Baaki roop (Aaj B/C,
+  profile A/C, dono ka v4.2) aur unka switch mock se hata diye.
 - Purane docs ki jagah: [../LEARN-V2.md](../LEARN-V2.md) §9 (प mark, indigo + saffron, Noto) ab **purana** hai;
   [DESIGN-V4.md](DESIGN-V4.md) ka dhaancha sahi hai, bas logo aur v4.1/v4.2 ke badlav yahan.
 - Link (owner ka, private): https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn · Screenshots:
@@ -28,7 +29,7 @@ dikhein, **mock sahi hai** aur is file ko theek karo.
 | Har screen ki list | `src/screens/registry.ts` (72 routes: 45 learner + mock, 27 admin) | product router |
 
 Mock chalana: `cd docs/learn/mock-v3/app && npx tsc -p tsconfig.json && npx vite build && node build-artifact.mjs`;
-screenshots `node shots.mjs <out> <routes> 1440,390 dark en view` (`VAR="aaj=b,state=error"` se roop ya haalat); jaanch `node qa.mjs 390 dark hi` aur `node a11y.mjs 390 dark en`.
+screenshots `node shots.mjs <out> <routes> 1440,390 dark en view` (`VAR="state=error"` se haalat); jaanch `node qa.mjs 390 dark hi` aur `node a11y.mjs 390 dark en`.
 
 ## 2. Logo (final: A "Pass")
 
@@ -121,6 +122,36 @@ Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. 
 | Interview | Career | Setup → live (baat + code, Sahayak band) → report (rubric, "hiring score nahi") |
 | Admin | Console | Side bar groups, "Viewing as" role, `Gate` (taala + kaun kar sakta), `FourEyes` (wajah + doosri manzoori), audit me sab |
 
+### 7a. Aaj aur profile: chune hue roop (owner, 24 Oct 2026)
+
+**Aaj = A "Ek kaam"** (`src/screens/today.tsx`: `AajBody`, `AajRail`; CSS `v43.css` `.af-*`, `.agenda`). Agla kaam sabse
+upar aur sabse bada; baaki ek chhoti list. Sab ek saath barabar zor se nahi bolta.
+
+1. **Sir:** tareekh · din 38/90 (eyebrow), "Shubh sandhya, Aarav." aur usi heading me halki line "4 kaam baaki, lagbhag
+   105 min"; daayein ek hi badge ("2 din aage").
+2. **Abhi wala kaam** (`.af-now`, pen ki halki roshni wala card): "Abhi · kaam 2/5" + minute; kaam ka naam (display 28);
+   verdict badge + ek line kyun; galat line `PenCircle` ke saath; **Jaari rakho** (pri, lg) aur **Fail kyun? Poochho** (ai);
+   neeche har kaam ki ek patti, abhi wali dheere dhadakti hai (reduced motion me ruk jaati hai).
+3. **Phir** (card): baaki kaam, har line par check, kaam ka icon, naam + meta + level, minute, aur teer wala link
+   (`aria-label` me kaam ka naam). Neeche "Bhaari din? Halka karo" → `LighterModal` → `DayMoment` (plan halka / chhutti
+   me streak bachi / sab poora).
+4. **Rail:** "Is hafte" (readiness ring + streak aur freeze), "Aage" agenda (aaj ka problem timer, sprint test, weekly
+   round, semester exams). Phone par sir ek ke neeche ek, dono button ek line me 44 px, rail page ke neeche.
+
+**Profile = B "Saboot ka kaagaz"** (`src/screens/profile.tsx`: `ProfileBody`, `ProofSheet`, `ProfileRail`; CSS `.ps-*`).
+Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line batati hai kya jaancha, kaise aur kab.
+
+1. **Upar:** "Aapki profile" + "HR aapke link se yahi kaagaz kholta hai"; buttons: **HR ko share karo** (pri, `ShareModal`),
+   Resume PDF, HR ki nazar se, Edit.
+2. **Tabs:** Saboot ka kaagaz · Coding sites · Projects · Profile card (card ka tab HR ki nazar me nahi).
+3. **Kaagaz** (`article.ps-sheet`): upar pen rang ki patti; letterhead (logo, *Verified profile* serif italic, No.
+   PK-…); pehchaan (avatar, naam serif 32, ek line, college + CGPA, shahar + join; phone sirf maalik ko); Pramaan ka
+   `Stamp`; table (skill/record, level, saboot, kaise jaancha, kab; tick = jaancha, dashed gola = khud bataya, halka
+   rang); pichhle 26 hafte ka practice heatmap; neeche haath se "Parikshaa ne jaancha" + QR aur link.
+4. **HR ki nazar:** upar banner + "Apne view par wapas"; phone, buttons aur card tab chhupe.
+5. **Phone:** table ki har line ek label wala chhota card (`td::before` me `data-label`), stamp chhupa, tabs side me
+   scroll.
+
 ## 8. Components
 
 - **kit.tsx:** LogoMark, Logo, Diya, Tick, Hl, PenCircle, PenNote, Stamp, Badge, Kbd, Level, Avatar, SampleNote, Skel,
@@ -130,8 +161,8 @@ Har rang ke saath `-text`, `-soft`, `-line` (jaise `--pen-soft`) dono theme me. 
   KeySheet (`?`, `G`+akshar), notifications drawer, ThemeButton, LangButton. **sahayak.tsx:** SahayakPanel (contexts:
   problem, sql, notebook, lesson, studio, general).
 - **v4.3:** `Moment` (kit: Diya + ek haath ki line + kabhi stamp), `ui/states.tsx` (`StateBody` khaali/loading/error,
-  `FirstCard` pehli baar, `OfflineBanner`), FocusBar ka `more` (⋯ menu). Sirf mock: `lib/variant.tsx` (`VariantBar`, roop
-  ka switch) aur `StateFab` (haalat ka switch), product me nahi jaayenge.
+  `FirstCard` pehli baar, `OfflineBanner`), FocusBar ka `more` (⋯ menu). Sirf mock: `lib/variant.tsx` (`useVariant`, ab sirf
+  haalat ke switch ke liye; roop ka switch 24 Oct ko hata) aur `StateFab` (haalat ka switch), product me nahi jaayenge.
 - **akit.tsx (admin):** `Gate` ko icon-only button par `label` dena zaroori. AdmHead, Gate, FourEyes, RowMenu, Toolbar, Pager, useSelection, Status, Masked, useFirstLoad,
   SkelRows.
 - Har component ki haalatein (hover, focus, disabled, loading, khaali, error) `#brand` page par dikhti hain.

@@ -1,6 +1,6 @@
 // Accessibility pass over every screen of the built mock: axe-core rules (WCAG 2.2 A/AA) and,
 // on phone widths, tap targets under 40 x 40 px or under 24 px on any side. Prints one line per screen with problems and a summary.
-// [ROLE=finance] [ROUTES=file] [VAR="aaj=b"] [IMPACT=serious] node a11y.mjs [w=1440] [theme=dark] [lang=en]
+// [ROLE=finance] [ROUTES=file] [VAR="state=error"] [IMPACT=serious] node a11y.mjs [w=1440] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";

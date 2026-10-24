@@ -203,8 +203,8 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   (`today43.tsx`), profile A/B/C (`profile43.tsx`), roop ka switch `lib/variant.tsx` (`pk43-v-<screen>`), dark parat
   (`tokens.css`), focus bar ⋯ (`focus.tsx`), `Moment` (kit), `ui/states.tsx` + neeche-baayein "Haalat" switch, sab CSS
   `v43.css`; axe 0 har combination me, phone touch 0; 72 × 7 saaf; README v4.3, DESIGN-SYSTEM v4.3, screenshots +
-  `screens/v43/`, wahi link par publish. **Agla: owner ki raay** (roop chunna, users par test, F1–F7). Roop chune jaane
-  par: baaki roop aur `VariantBar` hatao, DESIGN-SYSTEM me chuna roop likho.
+  `screens/v43/`, wahi link par publish. Roop 24 Oct ko chune gaye (Aaj A, Profile B): `today43.tsx`, `profile43.tsx`
+  aur roop ka switch ab nahi hain (neeche v4.4, 44-1).
 - **Ab chal raha: mock v4.4 "raay se final" (plan pakka, owner 23 Oct; tracker row 136).** Kadam: **44-0** plan (ye entry + tracker row) +
   user-test script (30 min, 5–8 students + 2 HR/TPO; tasks: aaj ka kaam, problem + Sahayak hint, teeno Aaj roop; HR: shared profile,
   "kaise jaancha", teeno Profile roop; har task par kamyaabi, kahan atke, roop ki pasand) → **44-1** roop final (Aaj ka ek roop:
@@ -215,6 +215,18 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   **44-5** sirf-mock safai (`StateFab` jaisi cheezein) + 12 screens ki 5 haalatein final roop par → **44-6** QA (`qa.mjs`, `a11y.mjs`
   axe 0, touch 0) + screenshots `screens/v44/` + README v4.4 + DESIGN-SYSTEM note + publish (naya link). **Gates:** G1 test ke log/
   samay owner dega (test bina 44-1 nahi), G2 roop sirf owner, G3 features owner. Status: **44-0 [~]**: plan ✅ (23 Oct), test script baaki.
+  **44-1 ✅ (24 Oct):** owner ne test se pehle hi chun liya ("Aaj ka A aur profile ka B final karo"), isliye G1 ab 44-1 ko
+  nahi rokta; test ab **chune roop par** hoga (44-0 ke script se "teeno roop" wale task hatao, roop ki pasand ki jagah
+  "kya samjha, kahan atka"). Kya hua: Aaj = A "Ek kaam" `src/screens/today.tsx` (`AajBody`, `AajRail`); Profile = B
+  "Saboot ka kaagaz" `src/screens/profile.tsx` (`ProfileBody`: upar share/Resume PDF/HR ki nazar/Edit, tabs Saboot ka
+  kaagaz · Coding sites · Projects · Profile card; `ProofSheet` me internship line + 26 hafte ka heatmap; HR ki nazar me
+  phone, buttons aur card tab chhupe). `today43.tsx`, `profile43.tsx`, `VariantBar`, `pk43-v-aaj/profile`, `main.tsx` ka
+  `noRail` gaye; `lib/variant.tsx` sirf `pk43-v-state` (haalat, 44-5 me jaayega); `app.css`/`career.css`/`v43.css` se
+  ~900 line bekaar CSS hati. DESIGN-SYSTEM §7a (chuna roop), README v4.4, tracker "Faisle" + row 136. Screenshots:
+  desktop/light/phone/hindi ke aaj + profile + naksha dobara, overview dobara; `screens/v43/` se roop A/B/C ke 13 hataye
+  (11 bache: haalatein + pal). Jaanch: `qa.mjs` 72 × 8 saaf (+ Finance role), `a11y.mjs` 6 combos axe 0, touch 0; profile
+  ke tabs, HR ki nazar, share modal click karke 1440/390 × kaala/light axe 0. **Agla: 44-0 test script (chune roop par),
+  phir G1 owner se.**
 - **Owner jo bole, uska rasta:**
   - Mock me badlav ya naya screen → wahi app, kram: plan (yahan + tracker "Plan") → banao → `qa.mjs` jaanch →
     screenshots → README → publish → push. Version ka naam aage badhao (v4.3) aur tracker me nayi row.
@@ -222,7 +234,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     `packages/console` me; DESIGN-SYSTEM §10–11 ka porting kram). P0 ke liye sirf F1, F2, F3, F5 aur GitHub billing
     chahiye. P0 ke baad §4 ke slices (LV-F3 problem package, LV-F5 visual renderer, LV-S0 samples ...).
   - Koi feature idea chuna → pehle mock me screen, owner ki haan, phir code.
-- **Preview link:** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn (Version 9 = v4.2). Ye account 2 ka artifact hai.
+- **Preview link:** https://claude.ai/artifact/LDK6qdh2qKj8WzWYAiN4Zn (Version 10 = v4.3, Version 11 = v4.4 ka 44-1, 24 Oct). Ye account 2 ka artifact hai.
   Doosra account ise update nahi kar sakta: wo `dist/artifact.html` ko **naye** artifact ke roop me publish kare, naya
   link yahan aur README me likhe, aur owner ko bataye (ya owner purane artifact par edit access de).
   **Muse session (23 Oct 2026):** upar wala tareeka is session me kiya gaya — mock v4.3 commit `4273c4538a` se waisa ka waisa dobara build hua (tsc OK, vite build OK, `dist/artifact.html` 1891 KB) aur `dist/preview.html` Muse ke file link par publish hua: https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html (ye link **25 Oct 2026 16:46 UTC tak** chalega; poori file owner ko chat me de di gayi hai, aur is workspace me `parikshaa-learn-mock-v4.3-preview.html` naam se rakhi hai). Link ki miyaad khatam ho to preview.html dobara upload karna hoga; design ya mock me koi badlav nahi hua.
@@ -246,9 +258,12 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 | # | Tareekh | Account / session | Kya kiya | Kahan ruka |
 |---|---|---|---|---|
 | 1 | 19 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` | Owner ka faisla "Learn pehle"; LEARN-V2.md, LEARN-LAUNCH-PLAN.md, ye handoff; branch `claude/learn-v2`. Phir owner ki editorial file se style guide (`learn/EDITORIAL-STYLE.md`) aur roadmap.sh jaise features (LEARN-V2 §4b, LV-M1–M8). 20 Oct: design study, DESIGN-PLAN-V2, mock v2 (41 screens, `learn/mock-v2/`); mock v2 nakaara gaya, phir DESIGN-V3 aur mock v3 (68 screens incl. 25 admin, `learn/mock-v3/`); v3 par raay ke baad mock v4 (font, kaala default, VS Code Studio, admin gehra); 20–21 Oct: mock v4.1 (2↔3 pane, Studio, motion) aur v4.2 | 21 Oct: mock v4.2 poora (72 screens, logo A final, SQL = DSA workspace, profile v2 + HR share, notebook + Colab, AI interview, admin runtimes + recruiters) aur docs DESIGN-SYSTEM / CODE-READINESS / FEATURE-IDEAS; sab push, wahi link. Owner ke faisle F1–F7 ka intezaar (§5 "Abhi yahan ho") |
+| 3 | 23–24 Oct 2026 | account 2, `session_018vRviyFgDfdAVh2GzLcBn3` (row 1 wala session, aage) | 23 Oct: 21st.dev skills (`.claude/skills/21st-*`), mock v4.3 (U0–U6). 24 Oct: Muse session ke 3 commit (v4.4 plan) par fast-forward, phir v4.4 kadam 44-1: Aaj A + Profile B final, baaki roop aur switch hataye, docs, screenshots | 24 Oct: 44-1 push, wahi link par Version 11. Agla 44-0 test script (chune roop par), phir G1 owner se |
 | 2 | 23 Oct 2026 | Muse (Meta Muse, GitHub deepakvish001) | Naya session: canonical branch claude/learn-v2 verify kiya, HANDOFF aur LEARN-HANDOFF §5/§1 padha, saari branches list karke autosave jaanch poori ki: sirf ek Learn snapshot autosave/claude/learn-v2--4a0a2180 (780992b1, 23 Oct 07:44 UTC, parent = canonical tip 4273c4538a) mila, uske .claude/live/state.md me Uncommitted changes (none) aur U0-U6 completed hai, isliye koi adhoora kaam restore nahi kiya (v4.3 ka kaam saaf push hai), CLAUDE.md, DESIGN-SYSTEM v4.3, CODE-READINESS F1-F7 aur FEATURE-IDEAS padhe | Owner ki raay ka intezaar: Aaj/Profile ka roop chunna, F1-F7 faisle; mock v4.3 is session me dobara build (tsc OK, vite build OK, artifact.html 1891 KB) karke Muse link par publish kiya (neeche §5); baaki owner ki raay baaki |
 
 ## 7. Log (naya upar)
+
+- 24 Oct 2026: v4.4 kadam 44-1 (roop final): owner "Aaj ka A aur profile ka B final karo". Aaj = A "Ek kaam", Profile = B "Saboot ka kaagaz" (tabs me coding sites, projects, card; kaagaz me internship + heatmap). Baaki roop, `VariantBar`, `today43.tsx`/`profile43.tsx` aur ~900 line CSS hati. DESIGN-SYSTEM §7a, README v4.4, tracker Faisle + row 136. qa 72 × 8 saaf, axe 0, touch 0. Wahi link par Version 11. Agla: 44-0 test script chune roop par, phir G1 owner se.
 
 - 23 Oct 2026: mock v4.4 ka plan pakka (owner ki haan): kadam 44-0–44-6 (test script, roop final, test fix, SR/keyboard safar, chune feature screens, sirf-mock safai, QA + publish); gates G1–G3 owner ke. Plan LEARN-HANDOFF §5 me, tracker row 136. Agla: 44-0 ka test script.
 - 23 Oct 2026: mock v4.3 ka naya preview (Muse session): commit `4273c4538a` se mock dobara build (tsc OK, vite build OK, artifact.html 1891 KB), preview.html Muse link par publish (https://muse.ai/files/1378887248645809/1135041539468113/ieh6pi5ypdfjrtas0800f1jk/preview.html, miyaad 25 Oct 2026 16:46 UTC) aur file owner ko chat me di. Mock ya design me koi badlav nahi.

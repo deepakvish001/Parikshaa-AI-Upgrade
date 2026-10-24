@@ -1,5 +1,5 @@
 // Checks every screen of the built mock for sideways overflow, console errors and empty pages.
-// [ROLE=finance] [ROUTES=file] [VAR="aaj=b"] node qa.mjs [w=1440] [theme=light] [lang=en]
+// [ROLE=finance] [ROUTES=file] [VAR="state=error"] node qa.mjs [w=1440] [theme=light] [lang=en]
 import { chromium } from "@playwright/test";
 import { resolve } from "node:path";
 import { readFileSync } from "node:fs";

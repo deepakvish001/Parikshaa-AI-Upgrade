@@ -16,7 +16,6 @@ import {
   CircleX,
   Check,
   Clock,
-  Target,
   CalendarClock,
   Settings2,
   ChevronLeft,
@@ -26,12 +25,11 @@ import {
   CalendarPlus,
   MoveRight,
   BedDouble,
+  Timer,
 } from "lucide-react";
 import { Link, navigate, useT, useCountdown, hms, useToast } from "../lib/core";
 import { useAi } from "../lib/state";
-import { useVariant, VariantBar } from "../lib/variant";
-import { AajFocus, AajPaper, AajTimeline, RailFocus, RailPaper } from "./today43";
-import { Card, Badge, Level, Check as CheckBox, Ring, Meter, Diya, PenCircle, Hl, Modal, Tick, CountUp, Seg } from "../ui/kit";
+import { Card, Badge, Level, Check as CheckBox, Ring, PenCircle, Hl, Modal, Tick, CountUp, Seg, Moment } from "../ui/kit";
 
 type Task = { id: string; kind: "lesson" | "problem" | "revision" | "aptitude"; title: [string, string, string]; meta: string; level?: 1 | 2 | 3 | 4 | 5; min: number; done: boolean; to: string };
 
@@ -48,67 +46,6 @@ export const KIND: Record<Task["kind"], ReactElement> = {
   revision: <RotateCcw />,
   aptitude: <Brain />,
 };
-
-function TaskList() {
-  const t = useT();
-  const [done, setDone] = useState<Record<string, boolean>>(Object.fromEntries(TASKS.map((x) => [x.id, x.done])));
-  const n = Object.values(done).filter(Boolean).length;
-  const mins = TASKS.filter((x) => done[x.id]).reduce((a, x) => a + x.min, 0);
-  const [light, setLight] = useState(false);
-  return (
-    <section className="card">
-      <div className="card-h">
-        <span className="h3">{t("Today's work", "Aaj ka kaam", "आज का काम")}</span>
-        <span className="tiny faint num">
-          {n} / {TASKS.length} · {mins} / 130 {t("min", "min", "मिनट")}
-        </span>
-      </div>
-      <div className="segs" style={{ padding: "12px 18px 4px" }}>
-        {TASKS.map((x) => (
-          <i key={x.id} className={done[x.id] ? "ok" : ""} />
-        ))}
-      </div>
-      <ul className="tasks">
-        {TASKS.map((x, i) => {
-          const isDone = done[x.id];
-          const next = !isDone && TASKS.slice(0, i).every((y) => done[y.id]);
-          return (
-            <li key={x.id} className={`task ${isDone ? "done" : ""} ${next ? "next" : ""}`}>
-              <CheckBox round tick on={isDone} onChange={(v) => setDone((d) => ({ ...d, [x.id]: v }))} label="Done" />
-              <span className={`task-ic k-${x.kind}`}>{KIND[x.kind]}</span>
-              <span className="grow" style={{ minWidth: 0 }}>
-                <b className="task-t ellipsis">{t(...x.title)}</b>
-                <span className="tiny faint row g8">
-                  {x.meta}
-                  {x.level && <Level n={x.level} short />}
-                </span>
-              </span>
-              <span className="tiny faint num hide-phone">{x.min} min</span>
-              {isDone ? (
-                <span className="task-done">
-                  <Tick size={16} />
-                </span>
-              ) : (
-                <Link to={x.to} className={`btn sm ${next ? "pri" : ""}`}>
-                  <Play />
-                  {next ? t("Start", "Shuru", "शुरू") : t("Open", "Kholo", "खोलें")}
-                </Link>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      <div className="card-f">
-        <Feather className="faint" style={{ width: 15, height: 15 }} />
-        <span className="small muted grow">{t("Heavy day? Make today lighter and the plan re-balances.", "Bhaari din? Aaj halka karo, plan khud sambhal lega.", "भारी दिन? आज हल्का करें।")}</span>
-        <button className="btn sm ghost" onClick={() => setLight(true)}>
-          {t("Make lighter", "Halka karo", "हल्का करें")}
-        </button>
-      </div>
-      <LighterModal open={light} onClose={() => setLight(false)} />
-    </section>
-  );
-}
 
 export function LighterModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone?: (pick: string) => void }) {
   const t = useT();
@@ -160,256 +97,232 @@ export function LighterModal({ open, onClose, onDone }: { open: boolean; onClose
   );
 }
 
-function WeekStrip() {
-  const t = useT();
-  const days = [
-    { d: t("Mon", "Som", "सोम"), n: 19, s: "done" },
-    { d: t("Tue", "Mangal", "मंगल"), n: 20, s: "today" },
-    { d: t("Wed", "Budh", "बुध"), n: 21, s: "" },
-    { d: t("Thu", "Guru", "गुरु"), n: 22, s: "" },
-    { d: t("Fri", "Shukra", "शुक्र"), n: 23, s: "" },
-    { d: t("Sat", "Shani", "शनि"), n: 24, s: "test" },
-    { d: t("Sun", "Ravi", "रवि"), n: 25, s: "rest" },
-  ];
-  return (
-    <div className="week">
-      {days.map((x) => (
-        <div key={x.n} className={`wk ${x.s}`}>
-          <span className="tiny faint">{x.d}</span>
-          <b className="num">{x.n}</b>
-          <span className="wk-dot">{x.s === "done" ? <Tick size={12} color="currentColor" /> : x.s === "test" ? "T" : x.s === "rest" ? "·" : ""}</span>
-        </div>
-      ))}
-    </div>
-  );
+
+/* ---------------- today ---------------- */
+
+const NOW = "t2";
+
+function useDone() {
+  return useState<Record<string, boolean>>(Object.fromEntries(TASKS.map((x) => [x.id, x.done])));
 }
 
-/** The v4.3 directions for Today, compared with the v4.2 layout. */
-export function AajDirections() {
+/** The moments Today can show: the day finished, the plan made lighter, or the streak kept with a freeze. */
+function DayMoment({ allDone, lit }: { allDone: boolean; lit: string | null }) {
   const t = useT();
-  return (
-    <VariantBar
-      id="aaj"
-      items={[
-        { id: "a", label: t("One thing", "Ek kaam", "एक काम"), hint: t("The next task comes first and biggest; the rest is a short list. Two cards on the side.", "Agla kaam sabse upar aur bada; baaki chhoti list. Side me do card.", "अगला काम सबसे ऊपर।") },
-        { id: "b", label: t("Paper page", "Kaagaz", "काग़ज़"), hint: t("The day written on a ruled page: times in the margin, notes in hand, the current task marked.", "Din ek ruled panne par: margin me samay, haath ke notes, abhi wala kaam marker se.", "दिन एक पन्ने पर।") },
-        { id: "c", label: t("Timeline", "Timeline", "समय-रेखा"), hint: t("The evening as a time bar with a 'now' line; full width, no side column.", "Shaam ek samay ki patti par, 'abhi' ki line; poori chaudai, side column nahi.", "शाम एक समय-पट्टी पर।") },
-        { id: "z", label: "v4.2", hint: t("The layout from v4.2, for comparison.", "v4.2 wala layout, tulna ke liye.", "v4.2 वाला, तुलना के लिए।") },
-      ]}
-    />
-  );
+  if (allDone)
+    return (
+      <Moment
+        title={t("Today's work is done", "Aaj ka kaam poora", "आज का काम पूरा")}
+        note={t("13 days in a row. Nothing left for tonight; tomorrow's plan is ready.", "Lagaataar 13 din. Aaj raat kuch nahi bacha; kal ka plan taiyaar.", "लगातार 13 दिन।")}
+        stamp={{ top: "AAJ", mid: "Poora", bottom: "13 DIN" }}
+      />
+    );
+  if (lit === "off")
+    return (
+      <Moment
+        mood="sleepy"
+        tone="coin"
+        title={t("Day off. Your streak is safe.", "Aaj chhutti. Streak bachi rahi.", "आज छुट्टी। लगातार बचा रहा।")}
+        note={t("One freeze used. I will remind you tomorrow at 7 pm.", "Ek freeze laga. Kal shaam 7 baje yaad dilaunga.", "एक फ़्रीज़ लगा।")}
+        stamp={{ top: "STREAK", mid: "12", bottom: "SAFE" }}
+      />
+    );
+  if (lit)
+    return (
+      <Moment
+        mood="happy"
+        tone="pen"
+        title={t("Today is lighter. The plan took care of it.", "Aaj halka hua. Plan ne khud sambhala.", "आज हल्का हुआ।")}
+        note={t("End date is still 10 Dec; tomorrow has 20 extra minutes.", "End date ab bhi 10 Dec; kal 20 minute zyada.", "अंतिम तारीख़ वही 10 दिसंबर।")}
+      />
+    );
+  return null;
 }
 
+/** Today: the next task first and biggest, the rest as a short list (chosen by the owner, 24 Oct 2026). */
 export function AajBody() {
-  const [v] = useVariant("aaj");
-  return (
-    <>
-      <AajDirections />
-      {v === "b" ? <AajPaper /> : v === "c" ? <AajTimeline /> : v === "z" ? <AajV42 /> : <AajFocus />}
-    </>
-  );
-}
-
-function AajV42() {
   const t = useT();
   const ai = useAi();
+  const [done, setDone] = useDone();
+  const [light, setLight] = useState(false);
+  const [lit, setLit] = useState<string | null>(null);
+  const left = TASKS.filter((x) => !done[x.id]);
+  const mins = left.reduce((a, x) => a + x.min, 0);
+  const rest = TASKS.filter((x) => x.id !== NOW);
   return (
-    <div className="col g20">
-      <header className="aaj-head">
-        <div className="grow">
-          <div className="eyebrow">{t("Tuesday, 20 October", "Mangalvaar, 20 October", "मंगलवार, 20 अक्टूबर")}</div>
-          <h1 className="h1 aaj-h1">{t("Good evening, Aarav.", "Shubh sandhya, Aarav.", "शुभ संध्या, आरव।")}</h1>
-          <div className="row wrap g6 mt12">
-            <Badge icon={<Target />}>{t("Product company SDE", "Product company SDE", "प्रोडक्ट कंपनी SDE")}</Badge>
-            <Badge icon={<CalendarRange />}>{t("Plan ends 10 Dec", "Plan 10 Dec tak", "योजना 10 दिसंबर तक")}</Badge>
-            <Badge tone="tick" icon={<Check />}>
-              {t("2 days ahead", "2 din aage", "2 दिन आगे")}
-            </Badge>
-          </div>
+    <div className="col g16">
+      <header className="af-head">
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div className="eyebrow">{t("Tuesday, 20 October · day 38 of 90", "Mangalvaar, 20 October · din 38/90", "मंगलवार, 20 अक्टूबर · दिन 38/90")}</div>
+          <h1 className="af-h1">
+            {t("Good evening, Aarav.", "Shubh sandhya, Aarav.", "शुभ संध्या, आरव।")}{" "}
+            <span className="af-sub">
+              {t(`${left.length} things left, about ${mins} min.`, `${left.length} kaam baaki, lagbhag ${mins} min.`, `${left.length} काम बाकी, लगभग ${mins} मिनट।`)}
+            </span>
+          </h1>
         </div>
-        <div className="aaj-day">
-          <Diya size={60} />
-          <div>
-            <b className="display num" style={{ fontSize: 26 }}>
-              38
-            </b>
-            <span className="tiny faint"> / 90 {t("days", "din", "दिन")}</span>
-          </div>
-        </div>
+        <Badge tone="tick" icon={<Check />}>
+          {t("2 days ahead", "2 din aage", "2 दिन आगे")}
+        </Badge>
       </header>
+      <DayMoment allDone={left.length === 0} lit={lit} />
 
-      <section className="resume">
-        <div className="resume-l">
-          <span className="eyebrow">{t("Pick up where you stopped", "Jahan chhoda, wahin se", "जहाँ छोड़ा, वहीं से")}</span>
-          <h2 className="resume-t">Pair with target sum</h2>
-          <div className="row wrap g8 small muted">
-            <Badge tone="red" icon={<CircleX />}>
-              {t("Wrong answer · test 23", "Galat · test 23", "गलत · टेस्ट 23")}
-            </Badge>
-            <span>{t("14 min ago · 23 of 24 tests pass", "14 min pehle · 24 me se 23 pass", "14 मिनट पहले")}</span>
+      <section className="af-now" aria-labelledby="af-now-t">
+        <div className="af-now-top">
+          <span className="eyebrow">{t("Now · task 2 of 5", "Abhi · kaam 2 / 5", "अभी · काम 2 / 5")}</span>
+          <span className="tiny faint num">30 min</span>
+        </div>
+        <div className="af-now-main">
+          <div className="grow" style={{ minWidth: 0 }}>
+            <h2 className="af-now-t" id="af-now-t">
+              Pair with target sum
+            </h2>
+            <div className="row wrap g8 small muted">
+              <Badge tone="red" icon={<CircleX />}>
+                {t("Wrong answer · test 23", "Galat · test 23", "गलत · टेस्ट 23")}
+              </Badge>
+              <span>{t("The idea is right; one input breaks it.", "Idea sahi hai; ek input todta hai.", "विचार सही है; एक इनपुट तोड़ता है।")}</span>
+            </div>
+            <div className="resume-code mono">
+              <span className="faint">4 </span>int sum = <PenCircle>a[L] + a[R]</PenCircle>;
+            </div>
           </div>
-          <div className="resume-code mono">
-            <span className="faint">4 </span>int sum = <PenCircle>a[L] + a[R]</PenCircle>;
+          <div className="af-now-act">
+            <button className="btn pri lg" onClick={() => navigate("problem")}>
+              <Play />
+              {t("Resume", "Jaari rakho", "जारी रखें")}
+            </button>
+            <button className="btn ai" onClick={() => ai.setOpen(true)}>
+              <Sparkles />
+              {t("Ask why it fails", "Fail kyun? Poochho", "क्यों फेल? पूछें")}
+            </button>
           </div>
         </div>
-        <div className="resume-r">
-          <button className="btn pri lg" onClick={() => navigate("problem")}>
-            <Play />
-            {t("Resume", "Jaari rakho", "जारी रखें")}
-          </button>
-          <button className="btn ai" onClick={() => ai.setOpen(true)}>
-            <Sparkles />
-            {t("Ask why it fails", "Fail kyun? Poochho", "क्यों फेल? पूछें")}
-          </button>
+        <div className="segs af-segs" aria-hidden="true">
+          {TASKS.map((x) => (
+            <i key={x.id} className={done[x.id] ? "ok" : x.id === NOW ? "now" : ""} />
+          ))}
         </div>
       </section>
 
-      <TaskList />
-
-      <div className="grid c2">
-        <Card
-          title={t("Sprint 3 · Linked lists, stacks, queues", "Sprint 3 · Linked list, stack, queue", "स्प्रिंट 3")}
-          icon={<CalendarRange className="ic" />}
-          actions={
-            <Link to="plan" className="link small">
-              {t("Plan", "Plan", "योजना")}
-              <ArrowRight />
-            </Link>
-          }
-        >
-          <WeekStrip />
-          <div className="row between mt12 small">
-            <span className="muted">{t("Day 6 of 7 · Saturday is a sprint test", "Din 6/7 · Shanivar sprint test", "दिन 6/7")}</span>
-            <span className="num strong">68%</span>
-          </div>
-          <Meter v={68} />
-        </Card>
-        <Card
-          title={t("Revision due", "Revision baaki", "दोहराई बाकी")}
-          icon={<RotateCcw className="ic" />}
-          actions={<Badge tone="red">6</Badge>}
-        >
-          <div className="rev-stack">
-            <div className="rev-card r3" />
-            <div className="rev-card r2" />
-            <div className="rev-card r1">
-              <span className="tiny faint">{t("From your mistake · 2 days ago", "Aapki galti se · 2 din pehle", "आपकी गलती से")}</span>
-              <b className="small">{t("Why did 2³⁰ + 2³⁰ break your int?", "2³⁰ + 2³⁰ ne int kyun toda?", "2³⁰ + 2³⁰ ने int क्यों तोड़ा?")}</b>
-            </div>
-          </div>
-          <Link to="revision" className="btn block mt12">
-            {t("Revise 6 cards · 8 min", "6 cards dohrao · 8 min", "6 कार्ड · 8 मिनट")}
-          </Link>
-        </Card>
-      </div>
-
-      <div className="banner marker">
-        <CalendarClock />
-        <span className="grow">
-          <b>{t("Semester exams 3–15 Nov.", "Semester exams 3–15 Nov.", "सेमेस्टर परीक्षा 3–15 नवंबर।")}</b>{" "}
-          {t("Your plan drops to 45 minutes a day in those weeks, mostly revision. Nothing for you to do.", "Un hafton me plan roz 45 minute, zyada revision. Aapko kuch nahi karna.", "उन सप्ताहों में 45 मिनट रोज़।")}
-        </span>
-        <Link to="plan" className="link small">
-          {t("Edit dates", "Dates badlo", "तारीख़ें बदलें")}
-        </Link>
-      </div>
+      <section className="card">
+        <div className="card-h">
+          <span className="h3">{t("Then", "Phir", "फिर")}</span>
+          <span className="tiny faint num">
+            {Object.values(done).filter(Boolean).length} / {TASKS.length} {t("done", "ho gaye", "पूरे")}
+          </span>
+        </div>
+        <ul className="af-list">
+          {rest.map((x) => (
+            <li key={x.id} className={done[x.id] ? "done" : ""}>
+              <CheckBox round tick on={done[x.id]} onChange={(v) => setDone((d) => ({ ...d, [x.id]: v }))} label={t("Done", "Ho gaya", "पूरा")} />
+              <span className={`task-ic k-${x.kind}`}>{KIND[x.kind]}</span>
+              <span className="grow" style={{ minWidth: 0 }}>
+                <b className="ellipsis">{t(...x.title)}</b>
+                <span className="tiny faint row g8">
+                  {x.meta}
+                  {x.level && <Level n={x.level} short />}
+                </span>
+              </span>
+              <span className="tiny faint num">{x.min} min</span>
+              {done[x.id] ? (
+                <Tick size={16} />
+              ) : (
+                <Link to={x.to} className="btn sm ghost" aria-label={`${t("Open", "Kholo", "खोलें")}: ${t(...x.title)}`}>
+                  <ArrowRight />
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+        <div className="card-f">
+          <Feather className="faint" style={{ width: 15, height: 15 }} />
+          <span className="small muted grow">{t("Heavy day? Make today lighter.", "Bhaari din? Aaj halka karo.", "भारी दिन? आज हल्का करें।")}</span>
+          <button className="btn sm ghost" onClick={() => setLight(true)}>
+            {t("Make lighter", "Halka karo", "हल्का करें")}
+          </button>
+        </div>
+      </section>
+      <LighterModal open={light} onClose={() => setLight(false)} onDone={setLit} />
     </div>
   );
 }
 
 export function AajRail() {
-  const [v] = useVariant("aaj");
-  return v === "b" ? <RailPaper /> : v === "z" ? <RailV42 /> : <RailFocus />;
-}
-
-function RailV42() {
   const t = useT();
   const [left] = useCountdown(3 * 3600 + 57 * 60 + 38);
   return (
     <>
       <section className="card pad col g12">
-        <div className="row between">
-          <span className="h3">{t("Readiness", "Readiness", "तैयारी")}</span>
-          <span className="tiny faint">Product SDE</span>
-        </div>
-        <div className="row g16">
-          <Ring v={58} size={86} stroke={8}>
-            <span>
-              <b className="display num" style={{ fontSize: 26 }}>
-                <CountUp to={58} />
-              </b>
-            </span>
+        <span className="h3">{t("This week", "Is hafte", "इस सप्ताह")}</span>
+        <div className="row g14">
+          <Ring v={58} size={72} stroke={7}>
+            <b className="display num" style={{ fontSize: 22 }}>
+              <CountUp to={58} />
+            </b>
           </Ring>
-          <p className="small muted">{t("From 212 solved, 3 mocks and 1 contest. Up 6 this week.", "212 solved, 3 mocks, 1 contest se. Is hafte +6.", "212 हल, 3 मॉक से।")}</p>
+          <div className="col g4 small">
+            <b>{t("Readiness 58, up 6", "Readiness 58, +6", "तैयारी 58, +6")}</b>
+            <span className="muted">{t("Weakest: dynamic programming", "Sabse kamzor: DP", "सबसे कमज़ोर: DP")}</span>
+          </div>
         </div>
-        <div className="col g10">
-          <span className="eyebrow">{t("Weakest", "Sabse kamzor", "सबसे कमज़ोर")}</span>
-          {[
-            ["Dynamic programming", 22, "red"],
-            ["Graphs", 31, "coin"],
-            ["Sliding window", 44, "coin"],
-          ].map(([n, v, c]) => (
-            <div key={n as string} className="weak">
-              <span className="small grow">{n}</span>
-              <div style={{ width: 90 }}>
-                <Meter v={v as number} tone={c as string} />
-              </div>
-              <span className="tiny num faint" style={{ width: 30, textAlign: "right" }}>
-                {v}%
-              </span>
-            </div>
-          ))}
-        </div>
-        <Link to="sheet" className="btn sm block">
-          {t("Practise weak topics", "Kamzor topics practice", "कमज़ोर विषय")}
-        </Link>
-      </section>
-
-      <section className="card pad col g10 potd-mini">
-        <div className="row between">
-          <span className="h3">{t("Problem of the day", "Aaj ka problem", "आज का प्रश्न")}</span>
-          <Badge tone="coin">+20</Badge>
-        </div>
-        <b>Bus stop queue</b>
-        <div className="row between">
-          <span className="mono num potd-clock">{hms(left)}</span>
-          <Link to="potd" className="btn sm pri">
-            {t("Solve", "Solve karo", "हल करें")}
-          </Link>
-        </div>
-      </section>
-
-      <section className="card pad col g10">
-        <div className="row g8">
-          <Flame style={{ color: "var(--coin)", width: 18, height: 18 }} />
-          <span className="h3 grow">{t("12-day streak", "12 din ki streak", "12 दिन लगातार")}</span>
+        <div className="af-streak">
+          <Flame />
+          <b className="num">12</b>
+          <span className="small muted grow">{t("day streak", "din ki streak", "दिन लगातार")}</span>
           <span className="tiny faint row g4">
-            <Snowflake style={{ width: 13, height: 13 }} />1
+            <Snowflake style={{ width: 13, height: 13 }} />1 {t("freeze", "freeze", "फ़्रीज़")}
           </span>
-        </div>
-        <div className="flames">
-          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-            <span key={i} className={`fl ${i === 0 ? "on" : i === 1 ? "now" : ""}`}>
-              <Flame />
-              <i>{d}</i>
-            </span>
-          ))}
         </div>
       </section>
-
-      <section className="card pad row g12">
-        <span className="task-ic k-contest">
-          <Trophy />
-        </span>
-        <span className="grow">
-          <b className="small">Weekly Round 13</b>
-          <span className="tiny faint" style={{ display: "block" }}>
-            {t("Sunday 8:00 pm · 90 min", "Ravivaar 8 baje · 90 min", "रविवार 8 बजे")}
-          </span>
-        </span>
-        <Link to="contest-brief" className="btn sm">
-          {t("Register", "Register", "पंजीकरण")}
-        </Link>
+      <section className="card">
+        <div className="card-h">
+          <span className="h3">{t("Coming up", "Aage", "आगे")}</span>
+        </div>
+        <ul className="agenda">
+          <li>
+            <Timer />
+            <span className="grow">
+              <b className="small">{t("Problem of the day", "Aaj ka problem", "आज का प्रश्न")}</b>
+              <span className="tiny faint mono num" style={{ display: "block" }}>
+                {hms(left)} {t("left", "baaki", "बाकी")}
+              </span>
+            </span>
+            <Link to="potd" className="btn sm">
+              {t("Solve", "Solve", "हल करें")}
+            </Link>
+          </li>
+          <li>
+            <CalendarRange />
+            <span className="grow">
+              <b className="small">{t("Sprint test", "Sprint test", "स्प्रिंट टेस्ट")}</b>
+              <span className="tiny faint" style={{ display: "block" }}>
+                {t("Saturday · 45 min", "Shanivar · 45 min", "शनिवार · 45 मिनट")}
+              </span>
+            </span>
+          </li>
+          <li>
+            <Trophy />
+            <span className="grow">
+              <b className="small">Weekly Round 13</b>
+              <span className="tiny faint" style={{ display: "block" }}>
+                {t("Sunday 8:00 pm", "Ravivaar 8 baje", "रविवार 8 बजे")}
+              </span>
+            </span>
+            <Link to="contest-brief" className="btn sm">
+              {t("Register", "Register", "पंजीकरण")}
+            </Link>
+          </li>
+          <li>
+            <CalendarClock />
+            <span className="grow">
+              <b className="small">{t("Semester exams 3–15 Nov", "Semester exams 3–15 Nov", "सेमेस्टर परीक्षा 3–15 नवंबर")}</b>
+              <span className="tiny faint" style={{ display: "block" }}>
+                {t("Plan drops to 45 min a day", "Plan roz 45 min ho jaayega", "योजना रोज़ 45 मिनट")}
+              </span>
+            </span>
+          </li>
+        </ul>
       </section>
     </>
   );

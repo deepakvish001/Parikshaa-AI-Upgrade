@@ -1,4 +1,4 @@
-// Screenshots of the built mock: [ROLE=finance] [SEL=".css"] [VAR="aaj=b,profile=c"] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
+// Screenshots of the built mock: [ROLE=finance] [SEL=".css"] [VAR="state=error"] node shots.mjs <outDir> <route[,route]> [w=1440,390] [theme=dark] [lang=en]
 import { chromium } from "@playwright/test";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";

@@ -25,7 +25,6 @@ import { LangProvider, ThemeProvider, ToastProvider, Link, useRoute, useT } from
 import { AiProvider, SideProvider, RoleProvider, useRole } from "./lib/state";
 import { byId } from "./screens/registry";
 import { SCREEN_MAP } from "./screens/index";
-import { useVariant } from "./lib/variant";
 import { STATE_SCREENS, useMockState, StateBody, OfflineBanner, FirstCard, FocusState, StateFab } from "./ui/states";
 import { Skel } from "./ui/kit";
 import { Shell, useTri, KeySheet } from "./ui/shell";
@@ -83,9 +82,6 @@ function App() {
   const impl = SCREEN_MAP[def.id];
   const Body = impl?.Body ?? (() => <Soon id={def.id} />);
   const Rail = impl?.Rail;
-  // Today's timeline direction (mock v4.3) uses the full width, so it has no side column.
-  const [aajV] = useVariant("aaj");
-  const noRail = def.id === "aaj" && aajV === "c";
   // Mock v4.3: the twelve core screens can be seen empty, loading, failing, offline or on a first visit.
   const [mstate] = useMockState();
   const core = STATE_SCREENS.includes(def.id);
@@ -129,7 +125,7 @@ function App() {
   }
   return (
     <>
-      <Shell route={def.id} rail={st === "loading" ? <RailSkel /> : replaced ? undefined : Rail && !noRail ? <Rail /> : undefined}>
+      <Shell route={def.id} rail={st === "loading" ? <RailSkel /> : replaced ? undefined : Rail ? <Rail /> : undefined}>
         {replaced ? (
           <StateBody id={def.id} state={st} />
         ) : (
