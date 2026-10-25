@@ -248,7 +248,13 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    `packages/brand/src/react.tsx` ka `LogoMark` (logo A) + `Wordmark`, favicons `packages/web/index.html`,
    `packages/console/index.html`, PWA icons `packages/web/public/icons/`. Contrast test
    `packages/console/src/tokens.test.ts`. Baaki: achievement card SVG aur `docs/screenshots/` purane rang me.
-2. Kit components ko `packages/brand/src/ui.tsx` me laana, tests ke saath (har component ka render + a11y).
+2. ✅ **Kit `packages/brand` me** (K1-2, 25 Oct 2026): `packages/brand/src/kit.tsx` + `packages/brand/src/kit.css`
+   (export `@parikshaa/brand/kit`, `@parikshaa/brand/kit.css`; tokens.css aur learn.css ke baad load karo): `Panes`,
+   `usePanes`, `PaneHead`, `useMedia`, `FocusBar`, `Seg`, `Ring`, `Meter`, `Empty`, `Skeleton`/`Skel`, `ErrorState`,
+   `OfflineBanner`, `FirstTime`. Har shabd app prop se deta (bhasha andar nahi; default aria label badle ja sakte); link
+   `href` + `onNavigate`, isliye router app ka. Dialog, Drawer, Tabs, Tooltip, Menu (⋯), toasts pehle se
+   `packages/brand/src/ui.tsx` me. Tests (render, behaviour, axe-core) `packages/console/src/components/kit.test.tsx`.
+   Mock ke baaki kit (Diya, Badge, Modal, charts …) jab koi screen maange tab.
 3. Learner shell aur screens `packages/web` me, pehle fixtures (sample data) se, phir API se.
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
 5. Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
