@@ -1,6 +1,6 @@
 // Builds ../screens/overview.jpg from ../screens/desktop/*-1440-dark.jpg: node overview.mjs
 import { chromium } from "@playwright/test";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { resolve, join } from "node:path";
 import { tmpdir } from "node:os";
 const routes = (process.env.ROUTES ? readFileSync(process.env.ROUTES, "utf8") : [...readFileSync("src/screens/registry.ts", "utf8").matchAll(/s\(\{ id: "([a-z0-9-]+)"/g)].map((m) => m[1]).join(","))
@@ -18,10 +18,13 @@ img{display:block;width:100%;aspect-ratio:1440/900;object-fit:cover;object-posit
 figcaption{padding:5px 8px;font:12px ui-monospace,monospace;color:#a1a1aa}
 </style><h1>Parikshaa Learn · mock v4.4 “Kaagaz aur Syaahi”</h1><p>${routes.length} screens · 1440 px · black theme (default) · sample data</p>
 ${groups.map(([g, rs]) => `<h2>${g} · ${rs.length}</h2><div class="g">${rs.map((r) => `<figure><img src="file://${dir}/${r}-1440-dark.jpg"><figcaption>#${r}</figcaption></figure>`).join("")}</div>`).join("")}`;
-const tmp = join(tmpdir(), "pk3-overview.html");
+// A private directory of our own (mode 0700, unpredictable name), not a fixed name in the shared temp dir.
+const work = mkdtempSync(join(tmpdir(), "pk3-overview-"));
+const tmp = join(work, "overview.html");
 writeFileSync(tmp, html);
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
 const p = await b.newPage({ viewport: { width: 2000, height: 1000 } });
 await p.goto(`file://${tmp}`); await p.waitForTimeout(1500);
 await p.screenshot({ path: resolve("../screens/overview.jpg"), fullPage: true, type: "jpeg", quality: 72 });
 await b.close();
+rmSync(work, { recursive: true, force: true });

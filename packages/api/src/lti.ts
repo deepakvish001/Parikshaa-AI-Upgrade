@@ -37,6 +37,13 @@ const AGS = "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
 const SCORE_SCOPE = "https://purl.imsglobal.org/spec/lti-ags/scope/score";
 const STATE_TTL_MS = 10 * 60 * 1000;
 
+/** `text` without its trailing slashes. A loop, not `/\/+$/`: that regex is quadratic on a long run of slashes, and an issuer is typed in. */
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "/") end--;
+  return text.slice(0, end);
+}
+
 export class LtiError extends Error {
   constructor(
     readonly code: "unknown_platform" | "invalid_launch" | "no_exam" | "not_found",
@@ -147,7 +154,7 @@ export class LtiService {
       id,
       orgId: actor.orgId,
       name: input.name.trim(),
-      issuer: input.issuer.trim().replace(/\/+$/, ""),
+      issuer: withoutTrailingSlashes(input.issuer.trim()),
       clientId: input.clientId.trim(),
       deploymentIds: input.deploymentIds.map((d) => d.trim()).filter((d) => d !== ""),
       authLoginUrl: input.authLoginUrl.trim(),
@@ -172,7 +179,7 @@ export class LtiService {
     this.#checkUrls(input);
     const saved = await this.#o.lti.updatePlatform(actor.orgId, id, {
       name: input.name.trim(),
-      issuer: input.issuer.trim().replace(/\/+$/, ""),
+      issuer: withoutTrailingSlashes(input.issuer.trim()),
       clientId: input.clientId.trim(),
       deploymentIds: input.deploymentIds.map((d) => d.trim()).filter((d) => d !== ""),
       authLoginUrl: input.authLoginUrl.trim(),

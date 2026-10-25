@@ -218,6 +218,22 @@ describe("launching from Moodle", () => {
   });
 });
 
+describe("registering an LMS", () => {
+  it("keeps the issuer without the trailing slashes an owner typed, however many", async () => {
+    const res = await call("POST", owner, "/lti/platforms", {
+      name: "IITH Moodle, second client",
+      issuer: `${site}${"/".repeat(5_000)}`,
+      clientId: "moodle-client-2",
+      deploymentIds: [],
+      authLoginUrl: `${site}/mod/lti/auth.php`,
+      authTokenUrl: `${site}/mod/lti/token.php`,
+      jwksUrl: `${site}/mod/lti/certs.php`,
+    });
+    expect(res.statusCode, res.payload).toBe(201);
+    expect(res.json().issuer).toBe(site);
+  });
+});
+
 describe("the grade", () => {
   it("goes back to Moodle's grade book once graded, with a token bought by the tool's signed assertion", async () => {
     const res = await launch(asLearner());
