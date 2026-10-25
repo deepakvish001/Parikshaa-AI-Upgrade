@@ -54,12 +54,8 @@ beforeEach(async () => {
       res.setHeader("content-type", "application/json");
       if (req.url === "/mod/lti/certs.php") return res.end(JSON.stringify(platformJwks));
       if (req.url === "/mod/lti/token.php") {
-        // Check the tool's assertion against the key the tool publishes.
         const form = new URLSearchParams(body);
-        const toolKeys = (await app.inject({ method: "GET", url: `/lti/${platformId}/jwks` })).json() as JSONWebKeySet;
-        try {
-          await jwtVerify(form.get("client_assertion")!, createLocalJWKSet(toolKeys), { issuer: "moodle-client-1", audience: `${site}/mod/lti/token.php` });
-        } catch {
+        if (!(await toolAssertionHolds(form.get("client_assertion")!))) {
           res.statusCode = 401;
           return res.end(JSON.stringify({ error: "invalid_client" }));
         }
@@ -127,6 +123,17 @@ afterEach(async () => {
   await db.close();
   await new Promise((r) => moodle.close(r));
 });
+
+/** The stand-in Moodle checks the tool's client assertion against the key the tool publishes. */
+async function toolAssertionHolds(assertion: string): Promise<boolean> {
+  const toolKeys = (await app.inject({ method: "GET", url: `/lti/${platformId}/jwks` })).json() as JSONWebKeySet;
+  try {
+    await jwtVerify(assertion, createLocalJWKSet(toolKeys), { issuer: "moodle-client-1", audience: `${site}/mod/lti/token.php` });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const call = (method: "GET" | "POST", token: string | null, url: string, payload?: object) =>
   app.inject({ method, url, headers: token === null ? {} : bearer(token), ...(payload === undefined ? {} : { payload }) });
@@ -254,6 +261,20 @@ describe("the grade", () => {
     expect(score.headers.authorization).toBe("Bearer moodle-access");
     expect(score.headers["content-type"]).toBe("application/vnd.ims.lis.v1.score+json");
     expect(JSON.parse(score.body)).toMatchObject({ userId: "42", scoreGiven: 5, scoreMaximum: 5, activityProgress: "Completed", gradingProgress: "FullyGraded" });
+  });
+
+  it("is not sent when the score scope is not one entry of the scope list", async () => {
+    const endpoint = "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
+    const claims = asLearner();
+    const res = await launch({ ...claims, [endpoint]: { ...(claims[endpoint] as object), scope: "https://purl.imsglobal.org/spec/lti-ags/scope/score" } });
+    const code = decodeURIComponent(new URL(res.headers.location as string).searchParams.get("invite")!);
+    const { token, attemptId } = (await call("POST", null, "/invitations/redeem", { code })).json();
+    await call("POST", token, "/attempts/me/answers", { questionId: "q1", answer: "0" });
+    await call("POST", token, "/attempts/me/submit");
+    await drain();
+    await call("POST", owner, `/attempts/${attemptId}/grade`);
+    await drain();
+    expect(received.some((r) => r.url === "/mod/lti/token.php" || r.url.includes("/scores"))).toBe(false);
   });
 
   it("publishes only the tool's public key", async () => {
