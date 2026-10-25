@@ -628,13 +628,20 @@ tbody tr:last-child > * {
 
 /* --- the mark ------------------------------------------------------------ */
 
+/* The wordmark is set in small letters (DESIGN-SYSTEM §2); the page's text keeps the name's capital for search and screen readers. */
 .brand-mark {
   display: inline-flex;
   align-items: center;
   gap: 0.6em;
-  font-weight: var(--weight-bold);
+  font-weight: var(--weight-wordmark);
   letter-spacing: -0.02em;
   color: inherit;
+}
+.brand-mark > span {
+  text-transform: lowercase;
+}
+.brand-mark .brand-product {
+  text-transform: none;
 }
 .brand-mark svg {
   flex: none;
@@ -728,7 +735,8 @@ tbody tr:last-child > * {
 :lang(or) {
   --leading: var(--leading-indic);
 }
-:is(:lang(hi), :lang(mr), :lang(bn), :lang(ta), :lang(te), :lang(gu), :lang(kn), :lang(ml), :lang(pa), :lang(or)) :is(*, *::before, *::after) {
+/* The wordmark is a Latin name, set the same in every language. */
+:is(:lang(hi), :lang(mr), :lang(bn), :lang(ta), :lang(te), :lang(gu), :lang(kn), :lang(ml), :lang(pa), :lang(or)) :is(*, *::before, *::after):not(.brand-mark, .brand-mark *) {
   text-transform: none !important;
   letter-spacing: 0 !important;
 }
@@ -742,7 +750,7 @@ tbody tr:last-child > * {
 
 /* --- icons ---------------------------------------------------------------- */
 
-/* Lucide's 2px stroke is heavier than Inter at 14–16px; 1.75 matches it. */
+/* Lucide's 2px stroke is heavier than IBM Plex Sans at 14–16px; 1.75 matches it. */
 svg.lucide {
   stroke-width: var(--icon-stroke);
 }

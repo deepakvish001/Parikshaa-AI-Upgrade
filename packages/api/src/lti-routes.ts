@@ -57,7 +57,7 @@ const escape = (text: string) => text.replace(/[&<>"']/g, (c) => ({ "&": "&amp;"
 /** A small page for the browser, which is what an LMS launch lands on. */
 function page(title: string, body: string): string {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escape(title)}</title>
-<style>body{font:16px/1.55 system-ui,sans-serif;margin:0;background:#f6f7fb;color:#131a2e}main{max-width:36rem;margin:3rem auto;padding:1.5rem 16px;background:#fff;border:1px solid #e2e6ef;border-radius:12px}h1{font-size:1.3rem;margin:0 0 .5rem}code{background:#f1f3fe;padding:.1rem .3rem;border-radius:4px}a{color:#3346c4}</style>
+<style>body{font:16px/1.55 "IBM Plex Sans",system-ui,sans-serif;margin:0;background:#f6f6f4;color:#0a0a0b}main{max-width:36rem;margin:3rem auto;padding:1.5rem 16px;background:#fff;border:1px solid #e2e2de;border-radius:12px}h1{font-size:1.3rem;margin:0 0 .5rem}code{background:#ebefff;padding:.1rem .3rem;border-radius:4px}a{color:#2349e6}</style>
 </head><body><main><h1>${escape(title)}</h1>${body}</main></body></html>`;
 }
 
