@@ -255,7 +255,14 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    `href` + `onNavigate`, isliye router app ka. Dialog, Drawer, Tabs, Tooltip, Menu (⋯), toasts pehle se
    `packages/brand/src/ui.tsx` me. Tests (render, behaviour, axe-core) `packages/console/src/components/kit.test.tsx`.
    Mock ke baaki kit (Diya, Badge, Modal, charts …) jab koi screen maange tab.
-3. Learner shell aur screens `packages/web` me, pehle fixtures (sample data) se, phir API se.
+3. 🟡 **Learner shell `packages/web` me, flag `learn_v2` ke peeche** (K1-3, 25 Oct 2026; screens abhi baaki): shell
+   `packages/web/src/learn/LearnApp.tsx` (sidebar 5 group, ≤1180 px par chhota aur har link ka naam bacha, top bar me
+   breadcrumb + ⋯ menu (bhasha en/hg/hi, theme) + Sahayak, Aaj par right rail, ≤860 px par neeche 5 tab + "Aur" sheet,
+   `Ctrl+K` search, `Ctrl+J` Sahayak, `Ctrl+\` chhota side bar, skip link, landmarks); screens ki list `screens.ts`
+   (mock registry ke 24 `nav` screens), shabd `text.ts` (en/hg/hi, Learn ke chunk me), Aaj A sample data par `Aaj.tsx`,
+   CSS `learn.css` (learn.css, ui.css, kit.css isi chunk me). Flag `src/learn/flag.ts`: `?learn_v2=1` se chalu, `=0` se
+   band, device par yaad; build `VITE_LEARN_V2=on` sabke liye. Flag band par purani practice site wahi
+   (`src/PracticeRoot.tsx`). Baaki: har screen pehle fixtures (sample data) se, phir API se (Kadam 2).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
 5. Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.
