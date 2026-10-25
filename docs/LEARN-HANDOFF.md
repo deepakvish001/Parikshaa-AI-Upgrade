@@ -243,6 +243,11 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     load karein (base.css har `button` ko primary banata, kit apne buttons reset karta); Vite test me
     `new URL(...)` me template string (`${x}`) ho to `import.meta.url` se file nahi padhta (asset ban jaata), `fileURLToPath` + `join` lo.
   - [ ] K1-3 Learn shell `packages/web` me flag `learn_v2` ke peeche (sidebar, rail, phone tabs, Ctrl+K, ⋯ menu, en/hi).
+    **Kahan ruka (25 Oct, ~09:23 UTC):** K1-3 shuru hi nahi hua, koi code nahi likha. Agent ne shuru me five-hour usage
+    0.90 dekha (rok ki seema 0.85), isliye ye note likh kar ruka. Window 25 Oct 12:30 UTC par khulti. Us waqt `7184f9a`
+    ka CI: security, deploy, github-advanced-security, GitGuardian hare; check, e2e, docker, CodeQL analyze chal rahe the.
+    Agla session: pehle `7184f9a` (ya naye head) ka CI dekho, phir K1-3 poora shuru se (task brief wahi: flag `learn_v2`,
+    shell + placeholder pages + Aaj ka sample, tests + axe, budget na badhe).
   - [ ] K1-4 CI me Learn shell ka visual + axe, budget.
 - **Pichhla (24 Oct 2026, account 2, `session_018vRviyFgDfdAVh2GzLcBn3`):** mock **v4.4** chal raha (tracker row
   136, aur AI ke daur ka plan row 137). Ho chuka: **44-1** roop final (Aaj A, Profile B); **44-4 ka pehla hissa**: owner
