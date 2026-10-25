@@ -240,9 +240,14 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
 
 ## 10. Asli code me laana (jab owner kahe "shuru karo")
 
-1. **Brand ek jagah:** `packages/brand` ke tokens, fonts aur logo is file ke hisaab se. Abhi wahan purana look (Inter,
-   प mark) hai jo exam app (`packages/web`) aur console bhi use karte hain. **Faisla chahiye:** naya brand sab jagah
-   (sujhaav: haan, ek saath) ya sirf Learn. [CODE-READINESS.md](CODE-READINESS.md) §1.
+1. ✅ **Brand ek jagah, sab jagah naya** (owner F2 "sab jagah", K1-1, 25 Oct 2026): exam app (`packages/web`), console
+   aur Learn ek hi brand par. Rang `packages/brand/src/tokens.css` (purane naam, v4.4 ke maan; dark me `--primary`
+   `#5A7DFF` gehre text ke saath, kyunki `#3B62F5` link aur safed-text button dono nahi ban sakta); mock ke naam
+   (`--page`, `--ink`, `--pen` …) `packages/brand/src/learn.css` me (sirf Learn ke pages load karein); fonts
+   `packages/brand/src/fonts.css` (IBM Plex Sans + Plex Sans Devanagari; Plex Serif aur Kalam `learn.css` me); logo
+   `packages/brand/src/react.tsx` ka `LogoMark` (logo A) + `Wordmark`, favicons `packages/web/index.html`,
+   `packages/console/index.html`, PWA icons `packages/web/public/icons/`. Contrast test
+   `packages/console/src/tokens.test.ts`. Baaki: achievement card SVG aur `docs/screenshots/` purane rang me.
 2. Kit components ko `packages/brand/src/ui.tsx` me laana, tests ke saath (har component ka render + a11y).
 3. Learner shell aur screens `packages/web` me, pehle fixtures (sample data) se, phir API se.
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.

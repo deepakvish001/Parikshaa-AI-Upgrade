@@ -200,13 +200,26 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
   billing theek (CI ab #67 par chal raha), Supabase Mumbai chalu karne ki haan. **Supabase ka connector is account me
   nahi:** owner https://claude.ai/customize/connectors par Supabase jode, phir naya session; tab `parikshaa-mumbai`
   restore (ya owner khud Supabase dashboard se Restore).
+  **25 Oct 2026:** connector ab is account me hai; `parikshaa-mumbai` (status INACTIVE tha) ka restore connector se maanga
+  gaya (restore requested). Agla session `get_project` se status dekhe (ACTIVE_HEALTHY hone par Kadam 2 ka DB kaam).
   **Naya preview:** https://claude.ai/artifact/PsBMjWL2TwJSDLT5QVmvJG (Version 1).
   **Agla: Kadam 1** (tracker plan row 139), tukde ek-ek PR me:
   - [x] K1-0 plan (row 139) + `packages/web` / `packages/console` ki `package.json` me dohri keys hatai (lockfile wahi;
     check, build:clients, budget hare; `1fca51a`). Saath me CI ka `security` job (npm audit, high) theek: lockfile me sirf zod
     4.6.7, fastify 5.12.7, fast-uri patch (`a46f171`). **Baaki:** nodemailer ka moderate advisory (10.1.4 chahiye) alag badlav
     me; ye #66 (`claude/festive-maxwell-pb4k5v`) par bhi wahi failure hai, #67 merge hone par theek.
-  - [ ] K1-1 `packages/brand` me v4.4 tokens (purane naam, naye maan + mock ke naam alias), fonts, logo A; contrast test;
+  - [x] K1-1 (25 Oct: `debdb54` CI visual fix, `3992e6a` brand, `81af3de` 134 baselines, `9f17273` e2e F1 Sunday fix):
+    exam app, console aur Learn naye brand me; tokens.css ke purane naam naye maan, mock ke naam
+    `packages/brand/src/learn.css` me (web CSS budget ke liye alag), IBM Plex, logo A; check/build:clients/budget/lint:css/
+    visual, e2e chromium 44/44 aur Lighthouse hare (Firefox/WebKit sirf CI me). Mock se ek maan alag: dark `--primary`
+    `#5a7dff` (gehra text). Baaki: achievement card SVG, `docs/screenshots/`. **Baselines CI jaise banana (zaroori):** is container ka
+    fontconfig grayscale hai (`/etc/fonts/conf.d/12-unhinted-grayscale.conf`, `56-prefer-inter.conf`) aur
+    `/opt/pw-browsers/chromium_headless_shell-1243/.../chrome-headless-shell` wrapper `--disable-lcd-text
+    --font-render-hinting=none` lagata hai; CI (ubuntu) subpixel RGB banata hai, isliye bina iske har image 1–2% alag. Tareeka:
+    `/etc/fonts` ki copy jisme ye do file na hon, `FONTCONFIG_FILE` se; Playwright 1.64 ko `chromium_headless_shell-1248` chahiye:
+    wahan ek wrapper jo `...-1243/.../chrome-headless-shell.real "$@"` bina flags chalaye (repo me kuch nahi). Postgres data dir
+    `/tmp/claude-0` ke neeche mat rakho (uski permission 700 ho jaati hai, Postgres mar jaata hai): `/var/lib/postgresql/k1-e2e`.
+    Purana plan (session 4): contrast test;
     e2e visual baselines dobara. **Session 4 ka mapping (shuru yahin se):** sach `docs/learn/mock-v3/app/src/styles/tokens.css`.
     `packages/brand/src/tokens.css` ke naam rakho, maan badlo: `--gray-50/0/25/100/200/300` = mock `--page/--panel/--panel-2/
     --sunk/--line/--line-2`; `--gray-900/600/500` = `--ink/--ink-2/--ink-3`; `--brand-600/700/50/200` = `--pen/--pen-hover/
@@ -328,6 +341,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 25 Oct 2026 (session 4 aage, agent ne K1-1 kiya): CI ke e2e visual ke do failure dhoondhe: `console-welcome-1440-light` (onboarding ka naya org har run random id → Company ID badalta; `settle()` me ek wording, `debdb54`) aur `console-staff-1440-light` (H2a ke "Hiring manager" se role picker chauda, baseline kabhi dobara nahi li). **K1-1** (`3992e6a`): `packages/brand` v4.4 (tokens.css purane naam naye maan, `learn.css` me mock ke naam + Plex Serif/Kalam, IBM Plex Sans + Devanagari, Inter gaya, logo A, favicons + PWA icons, contrast test learn.css tak); 134 baselines dobara (`81af3de`). Budget: web CSS 18.9 → 18.7 KB, console 19.1 → 18.9 KB. e2e F1 Sunday ko fail hota tha (plan form me Sunday default chhutti): test ab Sunday untick karta (`9f17273`). Supabase `parikshaa-mumbai` ka restore 25 Oct ko connector se maanga (INACTIVE tha). Agla: K1-2 kit.
 - 24 Oct 2026 (session 4, aage): **AE9** mock me: company page ka tab "Interview ka format" (har round AI haan / nahi / pata nahi, har baat ka source + tareekh, bina source ki baat chhupi, purana source alag, SDE 1 / intern) + companies list par AI ki line. **44-0 test script** (`learn/USER-TEST-44-0.md`, background agent ne likha, maine jaancha). Ek critic agent ne AE6/AE9 ka review kiya: 12 baatein, sab sahi nikli aur theek ki (mock README ke AE6/AE9 hisse me list). Draft PR #67 khuli, HANDOFF.md me likhi.
 - 24 Oct 2026 (session 4): naya account, ultracode. HANDOFF se `claude/learn-v2`; autosave me kuch adhoora nahi tha. Kadam 0: **AE6 "Code padhna"** mock me (`#code-read`): college library ke fine ka 219 line Python (galti: `datetime` ko `date` ke set me dhoondhna, chala kar saabit), Padho → Jawab (kya karta / galti ki line / kya badloge + saboot) → Nateeja (rubric, diff, test); Abhyas hub aur drill rail se raasta; 77 screens. Saath me: tablet (≤1180 px) par sidebar links ke naam (axe `link-name` har shell screen par tha). Agla: AE9, 44-0 test script.
 - 24 Oct 2026: owner ne poocha "build ke liye mujhse kya chahiye". Connectors se live jaanch: GitHub Actions ab bhi budget se band (19 Oct), PR #66 khula; Supabase org free, `parikshaa-mumbai` paused (INACTIVE), Singapore wala chalu; Vercel par Parikshaa project nahi; `ANTHROPIC_API_KEY` environment me nahi. Likha [learn/CODE-READINESS.md](learn/CODE-READINESS.md) §0 me. Owner ko kram diya: contract-first frontend (Kadam 0–5), likha CODE-READINESS §4b + tracker plan row 138 + §5 "Agla"; owner doosre account se isi kram par aage badhayega.
