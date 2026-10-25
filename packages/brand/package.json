@@ -12,7 +12,9 @@
     "./react": "./src/react.tsx",
     "./markdown": "./src/markdown.tsx",
     "./ui": "./src/ui.tsx",
-    "./ui.css": "./src/ui.css"
+    "./ui.css": "./src/ui.css",
+    "./kit": "./src/kit.tsx",
+    "./kit.css": "./src/kit.css"
   },
   "peerDependencies": {
     "react": "^19.3.0"
