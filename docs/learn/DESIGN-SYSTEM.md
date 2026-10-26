@@ -264,7 +264,7 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    band, device par yaad; build `VITE_LEARN_V2=on` sabke liye. Flag band par purani practice site wahi
    (`src/PracticeRoot.tsx`). Baaki: har screen pehle fixtures (sample data) se, phir API se (Kadam 2).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
-5. Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
+5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; har naye screen ki apni baseline Kadam 2 me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.
 6. Har slice ke baad tracker (`PREP-TRACKER.md`) aur handoff update.
 
