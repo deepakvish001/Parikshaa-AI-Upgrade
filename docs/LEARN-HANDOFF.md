@@ -309,7 +309,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     out; visual: `tests/learn-day.ts` seed, ghadi `page.clock` se 7 baje IST, tareekh `.ln-dated` (text badal kar mask),
     12 Learn images naye. Budget `LearnApp-*.js` 19.1 KB, limit 16 → 20. Kaam ke link `problems/<slug>`, `lessons/<slug>`
     (purani site ke hi address): unka Learn screen K2-4/K2-5 me, tab tak "abhi Learn me nahi" page purani site ka link deta.
-  - [x] K2-2 (27 Oct, PR [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70), `b004ac1`) Learn ka apna sign-in/sign-up
+  - [x] K2-2 (27 Oct, PR [#70](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/70), `b004ac1`, gitleaks fix `3de8906`) Learn ka apna sign-in/sign-up
     (`learn/LearnAccount.tsx`: practice site ke hi raaste + session; email + password; Google ka `#session=` rakha, address se hata, aur
     jahan se nikle wahin wapas; `?signin_error=`, `?verify=`, `?ref=` ek baar padh kar hatte; `?next=` sirf is site ka screen (`safeNext`
     in `data.tsx`); ⋯ menu me Sign out) + onboarding aur Mera plan (`learn/LearnPlan.tsx`: track, job, companies, deadline, minute +
@@ -442,6 +442,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 27 Oct 2026 (session 4 aage, K2-2 ke baad): #70 par CI `security` do baar laal. (1) `4d1e1b8`: gitleaks ne `LearnAccount.test.tsx` ka nakli token (`l1.abcdefghijk`) generic-api-key maana; `3de8906` me test ka value saada kiya aur `.gitleaksignore` me sirf us ek fingerprint (`b004ac1`, line 140) ko chhoda, kyunki purana commit bina force-push ke nahi badalta; workflow nahi badla. (2) `3de8906`: ab sirf `dependency-review-action` laal, "Dependency graph is not enabled": repo ki setting band hai (#69 tak chalu thi). Owner ka kaam: Settings → Code security → Dependency graph chalu, phir `security` job dobara. Tracker "Ruka hua kaam" me row.
 - 27 Oct 2026 (session 4 aage, K2-2): owner ne #69 `claude/festive-maxwell-pb4k5v` me merge kiya; `claude/learn-v2` fast-forward (`fd0043a`), autosave me adhoora kuch nahi tha. Owner "K2-2 shuru karo". Learn ka apna sign-in/sign-up (`learn/LearnAccount.tsx`), onboarding aur Mera plan (`learn/LearnPlan.tsx`), practice site ke hi raaste aur session par; Google `#session=` aur `?next=` (`safeNext`) surakshit; sign out. API wahi. 24 naye unit + 2 e2e (asli API) + 12 visual (+ menu ke 4). Naya draft PR #70. Agla: K2-3.
 
 - 27 Oct 2026 (session 4 aage, K2-1): Learn ka Aaj asli data par (`learn/Aaj.tsx`): plan, abhi wala kaam + judge ka verdict, phir ki list, streak/chhutti, target company, POTD, revision, sprint test, contest; har haalat; side bar me naam. API: `/home` ke plan me `startedAt`. 18 unit + 3 e2e (asli API) + 12 visual images (seeded din). Budget LearnApp 16 → 20 KB. Bina backend wale hisse chhupe (Kadam 3 list, §5). Agla: K2-2.
