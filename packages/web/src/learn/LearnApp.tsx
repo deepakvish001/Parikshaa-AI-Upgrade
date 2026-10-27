@@ -6,9 +6,10 @@ import { Dialog } from "@parikshaa/brand/ui";
 import { PreferencesProvider } from "../i18n.tsx";
 import { AajBody, AajRail } from "./Aaj.tsx";
 import { LearnProvider, ScreenLink, useLearn, type LearnState } from "./context.tsx";
+import { LearnDataProvider, useLearnData, useMe } from "./data.tsx";
 import { Search, Sparkles, Target } from "./icons.tsx";
 import { LEARN_GROUPS, LEARN_SCREENS, screenById, tabOf, type LearnScreen } from "./screens.ts";
-import { LEARN_LANGS, T, useLearnLang } from "./text.ts";
+import { A, D, LEARN_LANGS, T, useLearnLang } from "./text.ts";
 import "./learn.css";
 
 /**
@@ -25,8 +26,9 @@ import "./learn.css";
  * - Ctrl+K to search the screens and go to one.
  *
  * Every screen has its address (/practice/<site>/<id>). Aaj shows the mock's
- * Aaj A on sample data; the others a placeholder until Kadam 2 connects them
- * to the API. Nothing here calls the API yet.
+ * Aaj A on the learner's own day (K2-1, through data.tsx: the practice site's
+ * client and session); the others a placeholder until their Kadam 2 slice.
+ * The side bar names the signed-in learner, or offers the way to sign in.
  */
 
 const THEME_KEY = "parikshaa.learn.theme";
@@ -69,7 +71,9 @@ export function routeOf(site: string, pathname: string): string | null {
 export function LearnApp({ site }: { readonly site: string }) {
   return (
     <PreferencesProvider>
-      <Shell site={site} />
+      <LearnDataProvider site={site}>
+        <Shell site={site} />
+      </LearnDataProvider>
     </PreferencesProvider>
   );
 }
@@ -79,6 +83,7 @@ function Shell({ site }: { readonly site: string }) {
   const [theme, setTheme] = useLearnTheme();
   const [path, setPath] = useState(() => window.location.pathname);
   const route = routeOf(site, path);
+  const { signedIn } = useLearnData();
   const phone = useMedia(PHONE_QUERY);
   const narrow = useMedia(NARROW_QUERY);
   const [chosenMini, setChosenMini] = useState(false);
@@ -141,7 +146,8 @@ function Shell({ site }: { readonly site: string }) {
     () => ({ site, lang, setLang, t, theme, setTheme, href: (id) => `/practice/${site}/${id}`, go, openSahayak: () => setAi(true) }),
     [site, lang, setLang, t, theme, setTheme, go],
   );
-  const rail = route === "aaj" ? <AajRail /> : null;
+  // Aaj's rail is the learner's own week; signed out there is none.
+  const rail = route === "aaj" && signedIn ? <AajRail /> : null;
 
   return (
     <LearnProvider value={state}>
@@ -270,17 +276,40 @@ function SideNav({
             </kbd>
           )}
         </button>
-        <ScreenLink to="profile" className="ln-side-user" {...(mini ? { title: t(T.account) } : {})}>
-          <span className="ln-avatar" aria-hidden="true">
-            <UserRound />
-          </span>
-          <span className={mini ? "ln-sr" : "ln-grow ln-user-text"}>
-            <b>{t(T.account)}</b>
-            <span className="ln-faint">{t(T.accountSub)}</span>
-          </span>
-        </ScreenLink>
+        <Account mini={mini} />
       </div>
     </nav>
+  );
+}
+
+/** The signed-in learner, a link to their profile; signed out, the way to sign in (the practice site's, until K2-2). */
+function Account({ mini }: { readonly mini: boolean }) {
+  const { t, site } = useLearn();
+  const { signedIn } = useLearnData();
+  const me = useMe();
+  const inner = (title: string, sub: string) => (
+    <>
+      <span className="ln-avatar" aria-hidden="true">
+        <UserRound />
+      </span>
+      <span className={mini ? "ln-sr" : "ln-grow ln-user-text"}>
+        <b>{title}</b>
+        <span className="ln-faint">{sub}</span>
+      </span>
+    </>
+  );
+  if (!signedIn) {
+    return (
+      <a className="ln-side-user" href={`/practice/${site}/signin?learn_v2=0`} {...(mini ? { title: t(D.signIn) } : {})}>
+        {inner(t(D.signIn), t(A.signInSub))}
+      </a>
+    );
+  }
+  const name = me.data?.name ?? t(T.account);
+  return (
+    <ScreenLink to="profile" className="ln-side-user" {...(mini ? { title: name } : {})}>
+      {inner(name, t(A.profile))}
+    </ScreenLink>
   );
 }
 

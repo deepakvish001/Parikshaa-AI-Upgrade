@@ -423,7 +423,7 @@ export class PrepService {
       dueCards: Math.min(REVISE_PER_DAY, cards.filter((c) => c.dueOn <= today).length),
       focusMinutesToday: Math.round((focus[0]?.seconds ?? 0) / 60),
       potd: potd.today,
-      plan: plan === null ? null : { track: plan.track, finishOn: plan.finishOn, deadline: plan.deadline, sprint: plan.sprint, sprints: plan.sprints, today: plan.today, moved: plan.moved },
+      plan: plan === null ? null : { track: plan.track, startedAt: plan.startedAt, finishOn: plan.finishOn, deadline: plan.deadline, sprint: plan.sprint, sprints: plan.sprints, today: plan.today, moved: plan.moved },
       continue: active ?? continuing[0] ?? null,
       solved: state.solved.size,
       frozenToday: state.frozen.has(today),

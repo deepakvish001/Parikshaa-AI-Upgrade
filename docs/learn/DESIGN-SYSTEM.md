@@ -262,9 +262,11 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    (mock registry ke 24 `nav` screens), shabd `text.ts` (en/hg/hi, Learn ke chunk me), Aaj A sample data par `Aaj.tsx`,
    CSS `learn.css` (learn.css, ui.css, kit.css isi chunk me). Flag `src/learn/flag.ts`: `?learn_v2=1` se chalu, `=0` se
    band, device par yaad; build `VITE_LEARN_V2=on` sabke liye. Flag band par purani practice site wahi
-   (`src/PracticeRoot.tsx`). Baaki: har screen pehle fixtures (sample data) se, phir API se (Kadam 2).
+   (`src/PracticeRoot.tsx`). **Kadam 2 (27 Oct se):** data `src/learn/data.tsx` (practice site ka hi client + session,
+   react-query hooks, kit ki haalatein `Loading`/`Failed`/`Offline`/`SignedOut`); Aaj asli data par (K2-1), jinka backend
+   nahi wo chhupe (sample nahi dikhate). Baaki screens apne K2 tukde me (tracker row 140).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
-5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; har naye screen ki apni baseline Kadam 2 me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
+5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; K2-1 se Aaj seeded din par (`packages/e2e/tests/learn-day.ts`), tareekh wala text `.ln-dated` me aur mask; har naye screen ki apni baseline uske K2 tukde me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.
 6. Har slice ke baad tracker (`PREP-TRACKER.md`) aur handoff update.
 

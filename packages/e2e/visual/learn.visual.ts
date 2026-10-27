@@ -1,22 +1,49 @@
 import { expect, test, type Page } from "@playwright/test";
+import { istDay, seedLearnDay } from "../tests/learn-day.js";
 
 /**
- * Learn v2's shell (tracker row 139, K1-4) with the flag `learn_v2` on, held
- * to its committed images: Aaj on its sample day, one placeholder screen, the
- * ⋯ menu open, and on a phone the "Aur" sheet; at 1440 and 390, dark (Learn's
- * default) and light, and the narrow side bar at 1100. The shell calls no API
- * and its sample data has no clock or random part, so no site is seeded and
- * nothing is masked. The theme is Learn's own (`parikshaa.learn.theme`, set
- * before the page loads), not the browser's.
+ * Learn v2 with the flag `learn_v2` on, held to its committed images (K1-4;
+ * Aaj on real data since K2-1, tracker row 140): Aaj on a seeded learner's
+ * day, one placeholder screen, the ⋯ menu open, and on a phone the "Aur"
+ * sheet; at 1440 and 390, dark (Learn's default) and light, and the narrow
+ * side bar at 1100. Signed in as the seeded learner throughout (the side bar
+ * shows their name). What the date changes is in `.ln-dated`: set to one date,
+ * then masked. The page's clock is held at 7 pm in India today, so the
+ * greeting is the evening's. The theme is Learn's own
+ * (`parikshaa.learn.theme`, set before the page loads), not the browser's.
  */
 
 const SITE = "visual-learn";
+let token = "";
+
+test.describe.configure({ mode: "serial" });
+
+test.beforeAll(async ({ request }) => {
+  ({ token } = await seedLearnDay(request, { org: "e2e-learn-visual", site: SITE, learner: { name: "Asha Verma", email: "asha@students.learn-visual.test" } }));
+});
+
+const DATED = ".ln-dated";
+const masks = (page: Page) => [page.locator(DATED)];
 
 async function open(page: Page, path: string, theme: "light" | "dark") {
-  await page.addInitScript((t) => localStorage.setItem("parikshaa.learn.theme", t), theme);
+  await page.clock.setFixedTime(new Date(`${istDay()}T13:30:00Z`));
+  await page.addInitScript(([key, value, t]) => {
+    localStorage.setItem(key!, value!);
+    localStorage.setItem("parikshaa.learn.theme", t!);
+  }, [`parikshaa.practice.${SITE}.session`, token, theme]);
   await page.goto(`/practice/${SITE}${path}?learn_v2=1`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  if (path === "") {
+    // The day, the verdict on the task at hand, and the rail's reads, all in.
+    await expect(page.getByText("Galat jawab")).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: "Infosys ki taiyari" })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Aage" })).toContainText("Weekly Round 13");
+  }
+  await page.waitForLoadState("networkidle");
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
+  await page.evaluate((selector) => {
+    for (const el of document.querySelectorAll(selector)) el.textContent = "1 Oct 2026";
+  }, DATED);
   await page.evaluate(() => document.fonts.ready);
   await page.mouse.move(0, 0);
 }
@@ -33,7 +60,7 @@ for (const theme of ["dark", "light"] as const) {
 
     test("aaj", async ({ page }) => {
       await open(page, "", theme);
-      await expect(page).toHaveScreenshot(`learn-aaj-1440-${theme}.png`, { fullPage: true });
+      await expect(page).toHaveScreenshot(`learn-aaj-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
     });
 
     test("a placeholder screen", async ({ page }) => {
@@ -44,7 +71,7 @@ for (const theme of ["dark", "light"] as const) {
     test("the ⋯ menu", async ({ page }) => {
       await open(page, "", theme);
       await openMenu(page);
-      await expect(page).toHaveScreenshot(`learn-menu-1440-${theme}.png`);
+      await expect(page).toHaveScreenshot(`learn-menu-1440-${theme}.png`, { mask: masks(page) });
     });
   });
 
@@ -53,7 +80,7 @@ for (const theme of ["dark", "light"] as const) {
 
     test("aaj", async ({ page }) => {
       await open(page, "", theme);
-      await expect(page).toHaveScreenshot(`learn-aaj-390-${theme}.png`, { fullPage: true });
+      await expect(page).toHaveScreenshot(`learn-aaj-390-${theme}.png`, { fullPage: true, mask: masks(page) });
     });
 
     test("a placeholder screen", async ({ page }) => {
@@ -66,13 +93,13 @@ for (const theme of ["dark", "light"] as const) {
       await page.getByRole("navigation", { name: "Mukhya tabs" }).getByRole("button", { name: "Aur" }).click();
       await expect(page.getByRole("dialog", { name: "Aur" })).toBeVisible();
       await page.mouse.move(0, 0);
-      await expect(page).toHaveScreenshot(`learn-sheet-390-${theme}.png`);
+      await expect(page).toHaveScreenshot(`learn-sheet-390-${theme}.png`, { mask: masks(page) });
     });
 
     test("the ⋯ menu", async ({ page }) => {
       await open(page, "", theme);
       await openMenu(page);
-      await expect(page).toHaveScreenshot(`learn-menu-390-${theme}.png`);
+      await expect(page).toHaveScreenshot(`learn-menu-390-${theme}.png`, { mask: masks(page) });
     });
   });
 }
