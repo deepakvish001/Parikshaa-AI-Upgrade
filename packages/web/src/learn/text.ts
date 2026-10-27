@@ -105,3 +105,22 @@ export const T = {
   phoneNav: ["Main tabs", "Mukhya tabs", "मुख्य टैब"],
   rail: ["Beside the page", "Page ke saath", "पेज के साथ"],
 } as const satisfies Record<string, Tri>;
+
+/** Put values into a text's `{name}` places. */
+export const fill = (text: string, values: Readonly<Record<string, string | number>>): string =>
+  text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in values ? String(values[name]) : whole));
+
+/** The words every screen's data shares: loading, failing, offline, signed out (DESIGN-SYSTEM §9, five states). */
+export const D = {
+  loading: ["Loading… a slow connection takes a few seconds.", "Load ho raha hai… dheema net ho to kuch second.", "लोड हो रहा है… धीमे नेट पर कुछ सेकंड।"],
+  failedTitle: ["This did not load", "Ye load nahi hua", "यह लोड नहीं हुआ"],
+  failedBody: ["Nothing of yours is lost. Try again in a moment.", "Aapka kuch nahi gaya. Thodi der me phir koshish karo.", "आपका कुछ नहीं गया। थोड़ी देर में फिर कोशिश करें।"],
+  retry: ["Try again", "Phir koshish karo", "फिर कोशिश करें"],
+  reference: ["Reference", "Reference", "संदर्भ"],
+  offlineTitle: ["You are offline.", "Aap offline ho.", "आप ऑफ़लाइन हैं।"],
+  offlineBody: ["What is on the page stays; it updates when the network is back.", "Jo dikh raha hai wo rahega; net aate hi naya ho jayega.", "जो दिख रहा है वह रहेगा; नेट आते ही नया हो जाएगा।"],
+  offlineWait: ["This shows once the network is back.", "Net aate hi ye dikhega.", "नेट आते ही यह दिखेगा।"],
+  signedOutTitle: ["Sign in to see your day", "Apna din dekhne ke liye sign in karo", "अपना दिन देखने के लिए साइन इन करें"],
+  signedOutBody: ["For now you sign in on the current practice site; your plan and progress are the same there.", "Abhi sign-in purani practice site par hota hai; plan aur progress wahi hain.", "अभी साइन-इन मौजूदा प्रैक्टिस साइट पर होता है; योजना और प्रगति वही हैं।"],
+  signIn: ["Sign in", "Sign in karo", "साइन इन करें"],
+} as const satisfies Record<string, Tri>;

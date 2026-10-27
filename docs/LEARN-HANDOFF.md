@@ -293,6 +293,28 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     secret (`PARIKSHAA_DATABASE_URL`, Repository secrets), AWS VM, Vercel token, domain, Google OAuth client; content wale
     slices (editorial, aptitude, lesson) se pehle F6: 10 editorial + 10 aptitude + 2 lesson samples ki manzoori. Har PR owner
     merge karega (F5). #67 (Kadam 0 + 1) 27 Oct ko merge ho gaya (#66 ki branch me); Kadam 2 naye PR me.
+  - **Kadam 2 shuru (27 Oct 2026, owner: "Kadam 2 shuru karo"; tracker plan row 140, Faisle; PR [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68)).**
+    Har tukda ek-do push (code, phir docs): screen + asli API + tests (unit + axe, e2e asli API par) + visual; chhoti API
+    kami usi tukde me (`npm run openapi`), badi kami Kadam 3/4 ki list me. Kram:
+  - [x] K2-0 (27 Oct) plan (row 140, Faisle, ye list) + saajha data layer `packages/web/src/learn/data.tsx`: practice site ka
+    `PracticeClient` + session (`parikshaa.practice.<site>.session`, Google ka `#session=` bhi), `useLearnQuery` (key me session,
+    401 par session bhoolna), hooks `useMe/useHome/useTargets/useContests/useSubmissions/useOnline`, haalatein `Loading/Failed/
+    Offline/SignedOut` (kit se). Tests `learn/data.test.tsx` (12). **Bundle:** practice client ab saajha chunk `client-*.js`
+    (3.1 KB), `PracticeApp` 15.1 → 12.4 KB; budget saath khiska (16 → 13, naya `client-*.js` 4); Learn ki koi limit nahi badhi.
+  - [ ] K2-1 Aaj asli data par (+ side bar me learner ka naam)
+  - [ ] K2-2 sign-in/sign-up + onboarding + Mera plan
+  - [ ] K2-3 revision + lists + notes
+  - [ ] K2-4 DSA sheet + lesson reader + problems bank + POTD calendar
+  - [ ] K2-5 problem workspace + editorial
+  - [ ] K2-6 Sahayak panel
+  - [ ] K2-7 SQL
+  - [ ] K2-8 aptitude (maujooda MCQ par; mocks Kadam 3/4)
+  - [ ] K2-9 contests
+  - [ ] K2-10 profile B + share
+  - [ ] K2-11 Plus
+  - [ ] K2-12 community
+    **Kadam 3 ki list (Kadam 2 me backend nahi mila):** Aaj par AI drill ("Galat AI pakdo"), semester exams ki line, AE7
+    readiness ke do hisse, "fail kyun" ki AI line + galat code line.
 - **Pichhla (24 Oct 2026, account 2, `session_018vRviyFgDfdAVh2GzLcBn3`):** mock **v4.4** chal raha (tracker row
   136, aur AI ke daur ka plan row 137). Ho chuka: **44-1** roop final (Aaj A, Profile B); **44-4 ka pehla hissa**: owner
   ke chune **AE2 ticket lab** (`#ticket-lab`), **AE3 Galat AI pakdo** (`#ai-drill`), **AE5 interview ke do roop**
@@ -398,6 +420,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
+- 27 Oct 2026 (session 4 aage, K2-0): owner "Kadam 2 shuru karo". Tracker plan row 140 (Kadam 2 ke 13 tukde, kram code padh kar), "Faisle" me owner ki haan, §5 me K2 ki list. Learn ka saajha data layer `learn/data.tsx` (practice site ka hi client + session; react-query hooks; 401 par session bhoolna; kit ki haalatein) + 12 test. Practice client ab dono app ka saajha chunk (`client-*.js`), budget usi hisaab se. Agla: K2-1 Aaj asli data par.
 - 27 Oct 2026 (session 4 aage): owner ne #67 (Kadam 0 + Kadam 1) merge kiya, base `claude/festive-maxwell-pb4k5v` (#66 ki branch) me, `main` me nahi. `claude/learn-v2` ko us merge `85204df` tak fast-forward kiya (force-push nahi), HANDOFF.md aur §1/§5 me PR ka haal sahi kiya. Kadam 2 owner ke kehne par, naye draft PR [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68) me.
 - 26 Oct 2026 (session 4 aage, K1-4): Learn shell ke visual CI me (`27efad9`): `packages/e2e/visual/learn.visual.ts`, 15 images (Aaj, Courses placeholder, ⋯ menu, phone "Aur" sheet; 1440/390 × dark/light; 1100 chhota side bar), flag `learn_v2` chalu, koi seed/mask nahi. Purane 74 visual test aur Learn e2e hare. **Kadam 1 poora.** Agla Kadam 2 (§5: code ke liye naya faisla nahi; staging ke liye DB URL secret, AWS VM, Vercel, domain, Google OAuth; F6 samples).
 - 25 Oct 2026 (session 4 aage, K1-3): pehle `5654238` ka CI dekha: `github-advanced-security` (GitHub ka Copilot "AI findings" run) monthly quota (HTTP 402) se laal, code ki galti nahi, owner ka kaam (§5, tracker "Ruka hua kaam"); baaki sab hara. Phir **K1-3** (`b9d0b06`): Learn v2 ka shell `packages/web/src/learn/` me flag `learn_v2` ke peeche (`?learn_v2=1`; flag band par practice site wahi, Learn ka chunk nahi aata). Sidebar 5 group (≤1180 px chhota, naam bache), breadcrumb, ⋯ menu (en/hg/hi app ki bhasha se jude, Kaagaz/Kaala), Sahayak pane, right rail, phone par 5 tab + "Aur", Ctrl+K search; placeholders + Aaj A sample data par; 12 Lucide icon khud bane taaki purane chunks na badlein. 26 unit test (axe-core) + e2e `learn-shell.spec.ts` (1440/390, axe serious/critical 0). Checks: `check` (web 291 test), `build:clients`, `budget`, `lint:css` hare; visual 74/74 aur e2e chromium 48/48 hare (flag band par sab image wahi). Agla: K1-4 (shell ke visual + CI).

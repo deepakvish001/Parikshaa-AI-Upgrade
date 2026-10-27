@@ -6,6 +6,7 @@ import { Dialog } from "@parikshaa/brand/ui";
 import { PreferencesProvider } from "../i18n.tsx";
 import { AajBody, AajRail } from "./Aaj.tsx";
 import { LearnProvider, ScreenLink, useLearn, type LearnState } from "./context.tsx";
+import { LearnDataProvider } from "./data.tsx";
 import { Search, Sparkles, Target } from "./icons.tsx";
 import { LEARN_GROUPS, LEARN_SCREENS, screenById, tabOf, type LearnScreen } from "./screens.ts";
 import { LEARN_LANGS, T, useLearnLang } from "./text.ts";
@@ -69,7 +70,9 @@ export function routeOf(site: string, pathname: string): string | null {
 export function LearnApp({ site }: { readonly site: string }) {
   return (
     <PreferencesProvider>
-      <Shell site={site} />
+      <LearnDataProvider site={site}>
+        <Shell site={site} />
+      </LearnDataProvider>
     </PreferencesProvider>
   );
 }
