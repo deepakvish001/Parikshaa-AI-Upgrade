@@ -264,7 +264,10 @@ Profile dashboard nahi, ek **document** hai jo HR ek nazar me maan le: har line 
    band, device par yaad; build `VITE_LEARN_V2=on` sabke liye. Flag band par purani practice site wahi
    (`src/PracticeRoot.tsx`). **Kadam 2 (27 Oct se):** data `src/learn/data.tsx` (practice site ka hi client + session,
    react-query hooks, kit ki haalatein `Loading`/`Failed`/`Offline`/`SignedOut`); Aaj asli data par (K2-1), jinka backend
-   nahi wo chhupe (sample nahi dikhate). Baaki screens apne K2 tukde me (tracker row 140).
+   nahi wo chhupe (sample nahi dikhate). K2-2: sign-in/sign-up aur onboarding "bare" pages (side bar nahi, upar logo + ⋯;
+   `LearnAccount.tsx`, mock ka `.auth`) aur Mera plan (`LearnPlan.tsx`, mock ka `PlanBody`), dono apne chunk aur CSS
+   (`learn-account.css`, `learn-plan.css`); form fields `.ln-field`/`.ln-input` aur notice line `.ln-notice` `learn.css` me.
+   Sign-in ke art me namoona card par "Namoona" likha (§9). Baaki screens apne K2 tukde me (tracker row 140).
 4. Admin pages `packages/console` me, roles matrix `ADMIN-PANEL.md` §1 + `runtime`, `recruiters`.
 5. 🟡 (shell ki baselines CI me: K1-4, 26 Oct 2026, `packages/e2e/visual/learn.visual.ts`, 1440/390 × dark/light; K2-1 se Aaj seeded din par (`packages/e2e/tests/learn-day.ts`), tareekh wala text `.ln-dated` me aur mask; har naye screen ki apni baseline uske K2 tukde me) Har screen ki **visual baseline** mock ke screenshots se milao (1440/390, dono theme); axe serious/critical 0; phone par
    touch 40 px; har mukhya screen ki 5 haalatein; bundle budget.
