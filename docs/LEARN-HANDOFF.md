@@ -14,8 +14,9 @@ account ka Claude **isi file se** shuru karta hai aur isi ko update karta hai. O
    Force-push kabhi nahi. `main` par push kabhi nahi. Push se pehle `git pull --rebase origin claude/learn-v2`.
    **PR:** [#67](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/67) (Kadam 0 + Kadam 1) owner ne 27 Oct ko
    **merge** kiya, `claude/festive-maxwell-pb4k5v` me (PR #66 ki branch), `main` me nahi; `main` tak #66 se jayega.
-   `claude/learn-v2` ab us merge (`85204df`) par hai. Agla kaam draft [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68) me (27 Oct
-   khola; [HANDOFF.md](HANDOFF.md) ki row dekho; wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
+   [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68) (docs) bhi 27 Oct 15:42 ko usi branch me merge hua (`88ec9a4`); `claude/learn-v2` me wo merge, bina force-push ke,
+   ek normal merge commit (`7775272`) se aaya. **Kadam 2 ab draft [#69](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/69) me** (27 Oct khola; [HANDOFF.md](HANDOFF.md) ki row dekho;
+   wo bhi merge ho chuka ho to naya draft PR kholo), base `claude/festive-maxwell-pb4k5v` jab tak #66 khula hai, phir `main`.
    Merge hua PR dobara mat kholo, us par commit mat jodo.
 2. **Doosra session to nahi chal raha?** §6 ki aakhri row. "Chal raha" ho aur 30 minute ke andar commit ho, to owner
    se poochho.
@@ -293,7 +294,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
     secret (`PARIKSHAA_DATABASE_URL`, Repository secrets), AWS VM, Vercel token, domain, Google OAuth client; content wale
     slices (editorial, aptitude, lesson) se pehle F6: 10 editorial + 10 aptitude + 2 lesson samples ki manzoori. Har PR owner
     merge karega (F5). #67 (Kadam 0 + 1) 27 Oct ko merge ho gaya (#66 ki branch me); Kadam 2 naye PR me.
-  - **Kadam 2 shuru (27 Oct 2026, owner: "Kadam 2 shuru karo"; tracker plan row 140, Faisle; PR [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68)).**
+  - **Kadam 2 shuru (27 Oct 2026, owner: "Kadam 2 shuru karo"; tracker plan row 140, Faisle; PR [#69](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/69); #68 merge ho chuka).**
     Har tukda ek-do push (code, phir docs): screen + asli API + tests (unit + axe, e2e asli API par) + visual; chhoti API
     kami usi tukde me (`npm run openapi`), badi kami Kadam 3/4 ki list me. Kram:
   - [x] K2-0 (27 Oct) plan (row 140, Faisle, ye list) + saajha data layer `packages/web/src/learn/data.tsx`: practice site ka
@@ -420,7 +421,7 @@ aur TUF se behtar features. Pehle text-only launch; video phase 2 me DRM ke saat
 
 ## 7. Log (naya upar)
 
-- 27 Oct 2026 (session 4 aage, K2-0): owner "Kadam 2 shuru karo". Tracker plan row 140 (Kadam 2 ke 13 tukde, kram code padh kar), "Faisle" me owner ki haan, §5 me K2 ki list. Learn ka saajha data layer `learn/data.tsx` (practice site ka hi client + session; react-query hooks; 401 par session bhoolna; kit ki haalatein) + 12 test. Practice client ab dono app ka saajha chunk (`client-*.js`), budget usi hisaab se. Agla: K2-1 Aaj asli data par.
+- 27 Oct 2026 (session 4 aage, K2-0): owner ne #68 (docs) 15:42 par `claude/festive-maxwell-pb4k5v` me merge kiya; `claude/learn-v2` me wo merge normal merge commit `7775272` se (force-push nahi), Kadam 2 naye draft PR #69 me. Owner "Kadam 2 shuru karo". Tracker plan row 140 (Kadam 2 ke 13 tukde, kram code padh kar), "Faisle" me owner ki haan, §5 me K2 ki list. Learn ka saajha data layer `learn/data.tsx` (practice site ka hi client + session; react-query hooks; 401 par session bhoolna; kit ki haalatein) + 12 test. Practice client ab dono app ka saajha chunk (`client-*.js`), budget usi hisaab se. Agla: K2-1 Aaj asli data par.
 - 27 Oct 2026 (session 4 aage): owner ne #67 (Kadam 0 + Kadam 1) merge kiya, base `claude/festive-maxwell-pb4k5v` (#66 ki branch) me, `main` me nahi. `claude/learn-v2` ko us merge `85204df` tak fast-forward kiya (force-push nahi), HANDOFF.md aur §1/§5 me PR ka haal sahi kiya. Kadam 2 owner ke kehne par, naye draft PR [#68](https://github.com/deepakvish001/Parikshaa-AI-Upgrade/pull/68) me.
 - 26 Oct 2026 (session 4 aage, K1-4): Learn shell ke visual CI me (`27efad9`): `packages/e2e/visual/learn.visual.ts`, 15 images (Aaj, Courses placeholder, ⋯ menu, phone "Aur" sheet; 1440/390 × dark/light; 1100 chhota side bar), flag `learn_v2` chalu, koi seed/mask nahi. Purane 74 visual test aur Learn e2e hare. **Kadam 1 poora.** Agla Kadam 2 (§5: code ke liye naya faisla nahi; staging ke liye DB URL secret, AWS VM, Vercel, domain, Google OAuth; F6 samples).
 - 25 Oct 2026 (session 4 aage, K1-3): pehle `5654238` ka CI dekha: `github-advanced-security` (GitHub ka Copilot "AI findings" run) monthly quota (HTTP 402) se laal, code ki galti nahi, owner ka kaam (§5, tracker "Ruka hua kaam"); baaki sab hara. Phir **K1-3** (`b9d0b06`): Learn v2 ka shell `packages/web/src/learn/` me flag `learn_v2` ke peeche (`?learn_v2=1`; flag band par practice site wahi, Learn ka chunk nahi aata). Sidebar 5 group (≤1180 px chhota, naam bache), breadcrumb, ⋯ menu (en/hg/hi app ki bhasha se jude, Kaagaz/Kaala), Sahayak pane, right rail, phone par 5 tab + "Aur", Ctrl+K search; placeholders + Aaj A sample data par; 12 Lucide icon khud bane taaki purane chunks na badlein. 26 unit test (axe-core) + e2e `learn-shell.spec.ts` (1440/390, axe serious/critical 0). Checks: `check` (web 291 test), `build:clients`, `budget`, `lint:css` hare; visual 74/74 aur e2e chromium 48/48 hare (flag band par sab image wahi). Agla: K1-4 (shell ke visual + CI).
