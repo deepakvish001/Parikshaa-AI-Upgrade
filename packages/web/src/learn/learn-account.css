@@ -1,0 +1,201 @@
+/*
+ * Learn's sign-in and sign-up (LearnAccount.tsx, K2-2), from the mock's
+ * `.auth` (docs/learn/mock-v3/app/src/styles/app.css). Only that page's chunk
+ * loads this file.
+ */
+
+.la-auth {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: calc(100vh - 61px);
+}
+.la-form {
+  display: flex;
+  flex-direction: column;
+  padding: 24px max(32px, env(safe-area-inset-right, 0px)) 24px max(32px, env(safe-area-inset-left, 0px));
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+}
+.la-in {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  width: min(400px, 100%);
+  margin: 0 auto;
+  padding: 32px 0;
+}
+.la-h {
+  margin: 0;
+  font-family: var(--f-display);
+  font-size: var(--text-3xl);
+  line-height: 1.1;
+  color: var(--ink);
+}
+.la-sub {
+  margin: 0;
+  color: var(--ink-2);
+}
+.la-google {
+  width: 100%;
+  margin-top: 8px;
+}
+.la-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+.la-or::before,
+.la-or::after {
+  flex: 1;
+  height: 1px;
+  content: "";
+  background: var(--line);
+}
+.la-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.la-hint {
+  margin-top: -6px;
+}
+.la-fields .ln-btn-pri {
+  width: 100%;
+  margin-top: 4px;
+}
+.la-error {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: var(--text-sm);
+  color: var(--red-text);
+  background: var(--red-soft);
+  border: 1px solid var(--red-line);
+  border-radius: var(--r-sm);
+}
+.la-switch {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+.la-switch a {
+  color: var(--pen-text);
+  font-weight: var(--weight-semibold);
+}
+.la-art {
+  display: grid;
+  place-items: center;
+  padding: 40px;
+  background-color: var(--page);
+  background-image:
+    linear-gradient(var(--ruled) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ruled) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.la-art-in {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: min(420px, 100%);
+}
+.la-card {
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+  transform: rotate(-1.5deg);
+}
+.la-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.la-sample {
+  padding: 2px 8px;
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-semibold);
+  color: var(--marker-ink);
+  background: var(--marker-soft);
+  border-radius: var(--radius-full);
+}
+.la-card ul,
+.la-points {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.la-card li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+.la-card li.la-done {
+  color: var(--ink-3);
+  text-decoration: line-through;
+}
+.la-box {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--on-pen);
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--radius-xs);
+}
+.la-done .la-box {
+  background: var(--tick);
+  border-color: var(--tick);
+}
+.la-box svg {
+  width: 12px;
+  height: 12px;
+}
+.la-points {
+  margin: 0;
+}
+.la-points li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+.la-points svg {
+  width: 18px;
+  height: 18px;
+  color: var(--pen-text);
+}
+
+@media (max-width: 1000px) {
+  .la-auth {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .la-art {
+    display: none;
+  }
+  .la-form {
+    border-right: 0;
+  }
+}
+@media (max-width: 600px) {
+  .la-form {
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+  }
+  .la-h {
+    font-size: var(--text-3xl);
+  }
+}

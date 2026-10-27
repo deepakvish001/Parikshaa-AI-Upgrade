@@ -10,11 +10,19 @@ export interface LearnState {
   readonly t: (tri: Tri) => string;
   readonly theme: "dark" | "light";
   readonly setTheme: (theme: "dark" | "light") => void;
-  /** The address of a screen of this site. */
+  /** The address of a screen of this site (`id` may carry a query: `signin?next=plan`). */
   readonly href: (id: string) => string;
-  /** Go to a screen without reloading the page. */
-  readonly go: (id: string) => void;
+  /** Go to a screen without reloading the page; `replace` leaves no step behind in the history (a redirect). */
+  readonly go: (id: string, replace?: boolean) => void;
   readonly openSahayak: () => void;
+  /** Say something above the page until the learner moves on or dismisses it; null clears it. */
+  readonly notify: (notice: Notice | null) => void;
+}
+
+/** A line above the page: an outcome ("ok"), something that went wrong ("error"), or a nudge ("info"). */
+export interface Notice {
+  readonly tone: "ok" | "error" | "info";
+  readonly text: string;
 }
 
 const LearnContext = createContext<LearnState | null>(null);

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api.ts";
 import { LearnProvider, type LearnState } from "./context.tsx";
-import { arrivedSession, Failed, LearnDataProvider, learnKey, Loading, Offline, SignedOut, useContests, useHome, useLearnData, useMe, useOnline, useSubmissions, waitingForNetwork } from "./data.tsx";
+import { arrival, Failed, keepNext, safeNext, LearnDataProvider, learnKey, Loading, Offline, SignedOut, useContests, useHome, useLearnData, useMe, useOnline, useSubmissions, waitingForNetwork } from "./data.tsx";
 import { D, fill } from "./text.ts";
 
 /**
@@ -60,6 +60,7 @@ const learn: LearnState = {
   href: (id) => `/practice/${SITE}/${id}`,
   go: () => undefined,
   openSahayak: () => undefined,
+  notify: () => undefined,
 };
 
 function wrapper() {
@@ -118,11 +119,34 @@ describe("the session", () => {
 
   it("comes back from Google sign-in in the address's fragment: kept, and taken out of the address", () => {
     window.history.replaceState(null, "", `/practice/${SITE}/aaj?learn_v2=1#session=pl_google`);
-    expect(arrivedSession(SITE)).toBe("pl_google");
+    expect(arrival(SITE).session).toBe("pl_google");
     expect(localStorage.getItem(SESSION)).toBe("pl_google");
     expect(window.location.hash).toBe("");
     expect(window.location.search).toBe("?learn_v2=1");
-    expect(arrivedSession(SITE)).toBeNull();
+    expect(arrival(SITE).session).toBeNull();
+  });
+
+  it("takes a confirmation link, a failed Google sign-in and a coupon out of the address, and keeps the coupon", () => {
+    window.history.replaceState(null, "", `/practice/${SITE}?verify=l1.abc&signin_error=sign_in_failed&ref=asha10&learn_v2=1`);
+    expect(arrival(SITE)).toEqual({ session: null, verify: "l1.abc", signinError: "sign_in_failed", next: null });
+    expect(window.location.search).toBe("?learn_v2=1");
+    expect(localStorage.getItem(`parikshaa.ref.${SITE}`)).toBe("ASHA10");
+  });
+
+  it("comes back from Google to the screen it set out from, only a screen of this site", () => {
+    keepNext(SITE, "plan");
+    window.history.replaceState(null, "", `/practice/${SITE}#session=pl_google`);
+    expect(arrival(SITE).next).toBe("plan");
+    keepNext(SITE, "//evil.example/plan");
+    window.history.replaceState(null, "", `/practice/${SITE}#session=pl_google`);
+    expect(arrival(SITE).next).toBeNull();
+  });
+
+  it("lets a return address name only a screen of this site", () => {
+    for (const ok of ["aaj", "plan", "onboarding", "problems/two-sum", "lessons/stack-lifo"]) expect(safeNext(ok)).toBe(ok);
+    for (const bad of [null, "", "/plan", "//evil.example", "https://evil.example", "plan?x=1", "nope", "problems/../admin", "problems/a/b", "javascript:alert(1)", "signin", "Plan"]) {
+      expect(safeNext(bad)).toBeNull();
+    }
   });
 
   it("keys every read by the site and the session, so one learner's data never shows for another", () => {
@@ -199,7 +223,8 @@ describe("the states", () => {
     expect(retry).toHaveBeenCalledOnce();
     expect(screen.getByText(D.offlineBody[1])).toBeInTheDocument();
     expect(screen.getByText(D.offlineWait[1])).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: D.signIn[1] })).toHaveAttribute("href", "/practice/demo/signin?learn_v2=0");
+    // Learn's own sign-in, which comes back to this screen.
+    expect(screen.getByRole("link", { name: D.signIn[1] })).toHaveAttribute("href", "/practice/demo/signin");
     expect(await violations(container)).toEqual([]);
   });
 
