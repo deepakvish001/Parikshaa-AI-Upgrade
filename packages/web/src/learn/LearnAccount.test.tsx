@@ -134,10 +134,10 @@ describe("signing in", () => {
 
   it("follows a confirmation link once and says how it went", async () => {
     api.routes["POST /practice/demo/verify"] = () => ({ body: { ok: true } });
-    at("?verify=l1.abcdefghijk");
+    at("?verify=l1.aaaaaaaaaaaa");
     renderLearn();
     expect(await screen.findByText(hg(D.verified))).toBeInTheDocument();
-    expect(await bodyOf("POST", "/practice/demo/verify")).toEqual({ token: "l1.abcdefghijk" });
+    expect(await bodyOf("POST", "/practice/demo/verify")).toEqual({ token: "l1.aaaaaaaaaaaa" });
     expect(window.location.search).toBe("");
   });
 
