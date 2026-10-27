@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Jobs aur internships</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="jobs" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <h1 style="margin: 0 0 6px; font-size: 28px">Jobs aur internships</h1>
+      <p style="margin: 0 0 16px; color: #4f586c">Parikshaa Hire par companies. Aapka profile aur Pramaan ek click me jaata hai. Har company ki jaanch hamari team ne ki hai.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px">
+        <sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+          <button type="button" onClick="{{f.pick}}" aria-pressed="{{f.on}}" style="min-height: 40px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; {{f.style}}">{{f.label}}</button>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section aria-label="Jobs" style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+          <sc-for list="{{jobs}}" as="j" hint-placeholder-count="5">
+            <div style="padding: 18px 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; display: flex; flex-wrap: wrap; gap: 14px; align-items: center">
+              <div aria-hidden="true" style="flex: 0 0 52px; height: 52px; border-radius: 12px; background: {{j.bg}}; display: grid; place-items: center; font-weight: 800; font-size: 20px; color: #131a2e">{{j.init}}</div>
+              <div style="flex: 1 1 280px; min-width: 0">
+                <div style="font-weight: 700; font-size: 17px">{{j.role}}</div>
+                <div style="color: #4f586c; font-size: 14px">{{j.co}} · {{j.place}} · {{j.pay}}</div>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px">
+                  <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #f1ebff; color: #6b3fd4">{{j.needs}}</span>
+                  <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; {{j.matchStyle}}">{{j.match}}</span>
+                </div>
+              </div>
+              <button type="button" onClick="{{j.apply}}" style="min-height: 44px; padding: 0 18px; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; {{j.btnStyle}}">{{j.btn}}</button>
+            </div>
+          </sc-for>
+        </section>
+
+        <aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <div style="padding: 20px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="font-weight: 700; margin-bottom: 12px">Meri applications</div>
+            <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px">
+              <div><div style="display: flex; justify-content: space-between"><b>Frontend intern · Nimbu Labs</b><span style="color: #1f63b8; font-weight: 700">Test</span></div>
+                <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 6px"><span style="height: 6px; border-radius: 999px; background: #3346c4"></span><span style="height: 6px; border-radius: 999px; background: #3346c4"></span><span style="height: 6px; border-radius: 999px; background: #e2e6ef"></span><span style="height: 6px; border-radius: 999px; background: #e2e6ef"></span></div>
+                <div style="font-size: 12px; color: #5f687c; margin-top: 4px">Online test kal 6 PM tak</div></div>
+              <div><div style="display: flex; justify-content: space-between"><b>SDE intern · Patang Tech</b><span style="color: #117a57; font-weight: 700">Interview</span></div>
+                <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 6px"><span style="height: 6px; border-radius: 999px; background: #3346c4"></span><span style="height: 6px; border-radius: 999px; background: #3346c4"></span><span style="height: 6px; border-radius: 999px; background: #3346c4"></span><span style="height: 6px; border-radius: 999px; background: #e2e6ef"></span></div>
+                <div style="font-size: 12px; color: #5f687c; margin-top: 4px">Shukravaar 11 AM · <a href="Career.dc.html">mock pehle karo</a></div></div>
+            </div>
+          </div>
+          <a href="Contests.dc.html" style="display: block; padding: 20px; border-radius: 18px; background: #141b4d; color: #ffffff; text-decoration: none">
+            <div style="font-size: 12px; font-weight: 700; color: #c9cffa; letter-spacing: 0.06em">HIRING CHALLENGE</div>
+            <div style="font-weight: 700; font-size: 17px; margin: 4px 0">Chaabi Bank: 3 ghante ka build challenge</div>
+            <div style="font-size: 14px; color: #c9cffa">Top 50 ko seedha interview. Niyam pehle se likhe hue.</div>
+          </a>
+          <p style="margin: 0; font-size: 13px; color: #5f687c">Company names namune ke hain. Asli list Hire par companies ke judne ke baad.</p>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1200}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { f: 'all', applied: { j3: false } };
+  }
+  renderVals() {
+    const filters = [['all', 'Sab'], ['intern', 'Internship'], ['full', 'Full-time'], ['remote', 'Remote'], ['pramaan', 'Sirf Pramaan wale']].map(([id, label]) => ({
+      label, on: this.state.f === id,
+      style: this.state.f === id ? 'border: 1px solid #141b4d; background: #141b4d; color: #ffffff' : 'border: 1px solid #cdd3df; background: #ffffff; color: #373f52',
+      pick: () => this.setState({ f: id })
+    }));
+    const raw = [
+      { id: 'j1', role: 'Frontend intern', co: 'Nimbu Labs', place: 'Bengaluru / remote', pay: '₹25k / mahina', needs: 'React Builder Pramaan', match: '78% match', init: 'N', bg: '#fdebd4', kind: 'intern', remote: true, done: true },
+      { id: 'j2', role: 'SDE intern', co: 'Patang Tech', place: 'Pune', pay: '₹40k / mahina', needs: 'DSA Foundations', match: '86% match', init: 'P', bg: '#eaf2fc', kind: 'intern', remote: false, done: true },
+      { id: 'j3', role: 'Backend developer (fresher)', co: 'Chaabi Bank', place: 'Indore', pay: '₹6–8 LPA', needs: 'DSA + SQL Level 1', match: '81% match', init: 'C', bg: '#e7f6ef', kind: 'full', remote: false },
+      { id: 'j4', role: 'Data analyst intern', co: 'Khet Data', place: 'Remote', pay: '₹15k / mahina', needs: 'SQL Level 1', match: '74% match', init: 'K', bg: '#f1ebff', kind: 'intern', remote: true },
+      { id: 'j5', role: 'Associate engineer', co: 'Setu Systems', place: 'Hyderabad', pay: '₹4.5 LPA', needs: 'Aptitude Pramaan', match: '52% match', init: 'S', bg: '#fdebd4', kind: 'full', remote: false }
+    ];
+    const f = this.state.f;
+    const list = raw.filter((j) => f === 'all' || (f === 'intern' && j.kind === 'intern') || (f === 'full' && j.kind === 'full') || (f === 'remote' && j.remote) || f === 'pramaan');
+    const jobs = list.map((j) => {
+      const applied = j.done || this.state.applied[j.id];
+      const strong = parseInt(j.match, 10) >= 75;
+      return {
+        ...j,
+        matchStyle: strong ? 'background: #e7f6ef; color: #117a57' : 'background: #eef0f6; color: #373f52',
+        btn: applied ? 'Applied' : 'Ek click me apply',
+        btnStyle: applied ? 'border: 1px solid #b9e2cf; background: #e7f6ef; color: #0d5c42' : 'border: 0; background: #f28c28; color: #131a2e',
+        apply: () => this.setState({ applied: { ...this.state.applied, [j.id]: true } })
+      };
+    });
+    return { filters, jobs };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin: content factory</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="AdminNav" active="factory" hint-size="240px,980px"></dc-import>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+    <h1 style="margin: 0 0 4px; font-size: 26px">Content factory</h1>
+    <p style="margin: 0 0 18px; color: #4f586c">AI draft banata hai, machine jaanchti hai, insaan manzoor karta hai. Kuch bhi bina insaan ke live nahi hota.</p>
+
+    <section aria-label="Pipeline" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 18px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; margin-bottom: 18px">
+      <sc-for list="{{stages}}" as="s" hint-placeholder-count="5">
+        <div style="flex: 1 1 140px; padding: 12px; border-radius: 12px; background: #f6f7fb">
+          <div style="font-size: 12px; font-weight: 700; color: #5f687c">{{s.n}}. {{s.name}}</div>
+          <div style="font-size: 24px; font-weight: 800">{{s.count}}</div>
+          <div style="font-size: 12px; color: #4f586c">{{s.note}}</div>
+        </div>
+      </sc-for>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <section aria-labelledby="new" style="flex: 1 1 320px; max-width: 400px; padding: 22px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+        <h2 id="new" style="margin: 0 0 14px; font-size: 18px">Naya batch</h2>
+        <div style="display: flex; flex-direction: column; gap: 14px; font-size: 14px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Kya banana hai
+            <select style="height: 42px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 10px; font: inherit; font-weight: 400"><option>DSA problem package (v2)</option><option>Aptitude sawaal</option><option>Lesson + quiz</option><option>Arena problem</option><option>Editorial (owner style)</option></select>
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Topic
+            <input type="text" value="Arrays: sliding window" style="height: 42px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 10px; font: inherit; font-weight: 400">
+          </label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Kitne
+            <input type="number" value="25" style="height: 42px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 10px; font: inherit; font-weight: 400">
+          </label>
+          <div style="font-weight: 600">Level mix</div>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; font-size: 13px">
+            <span style="padding: 6px 10px; border-radius: 8px; background: #e7f6ef">L1 · 5</span><span style="padding: 6px 10px; border-radius: 8px; background: #e7f6ef">L2 · 8</span><span style="padding: 6px 10px; border-radius: 8px; background: #fdebd4">L3 · 9</span><span style="padding: 6px 10px; border-radius: 8px; background: #fdeeec">L4 · 3</span>
+          </div>
+          <div style="padding: 12px; border-radius: 12px; background: #f6f7fb; font-size: 13px; line-height: 1.6">
+            <b>Andaaza:</b> ~$9 API (Batch, 50% sasta) · runner par ~2 ghante · review ~6 ghante insaan<br>
+            <b>Niyam:</b> PROBLEM-STANDARD v2 (10 gates), EDITORIAL-STYLE (4 kadam)
+          </div>
+          <button type="button" style="min-height: 46px; border-radius: 12px; border: 0; background: #f28c28; color: #131a2e; font: inherit; font-weight: 700; cursor: pointer">Batch shuru karo (raat ko chalega)</button>
+        </div>
+      </section>
+
+      <section aria-labelledby="batches" style="flex: 2 1 480px; min-width: 0; padding: 22px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+        <h2 id="batches" style="margin: 0 0 12px; font-size: 18px">Batches</h2>
+        <div role="table" aria-label="Batches" style="font-size: 14px; overflow-x: auto">
+          <div role="row" style="display: grid; grid-template-columns: 70px minmax(0, 2fr) 70px minmax(0, 1.4fr) 90px; min-width: 560px; color: #5f687c; font-size: 13px; font-weight: 700; padding: 8px 0">
+            <span role="columnheader">Batch</span><span role="columnheader">Kya</span><span role="columnheader">Kitne</span><span role="columnheader">Machine jaanch</span><span role="columnheader">Haalat</span>
+          </div>
+          <sc-for list="{{batches}}" as="b" hint-placeholder-count="5">
+            <button type="button" role="row" onClick="{{b.pick}}" aria-pressed="{{b.on}}" style="display: grid; grid-template-columns: 70px minmax(0, 2fr) 70px minmax(0, 1.4fr) 90px; min-width: 560px; width: 100%; align-items: center; text-align: left; padding: 10px 0; border: 0; border-top: 1px solid #eef0f6; font: inherit; cursor: pointer; color: #131a2e; {{b.bg}}">
+              <span role="cell" style="font-family: 'JetBrains Mono', monospace; font-size: 13px">{{b.id}}</span>
+              <span role="cell" style="font-weight: 600">{{b.what}}</span>
+              <span role="cell">{{b.n}}</span>
+              <span role="cell"><span style="display: inline-block; width: 70px; height: 8px; border-radius: 4px; background: #eef0f6; vertical-align: middle"><span style="display: block; height: 8px; border-radius: 4px; background: #3346c4; width: {{b.w}}"></span></span> {{b.pass}}</span>
+              <span role="cell"><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{b.stStyle}}">{{b.st}}</span></span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="margin-top: 16px; padding: 16px; border-radius: 14px; background: #f6f7fb">
+          <div style="font-weight: 700; margin-bottom: 8px">{{sel.id}}: fail kyun hue</div>
+          <ul style="margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.7; color: #373f52">
+            <sc-for list="{{sel.fails}}" as="f" hint-placeholder-count="3">
+              <li>{{f.t}}</li>
+            </sc-for>
+          </ul>
+          <a href="AdminReview.dc.html" style="display: inline-block; margin-top: 8px; font-weight: 700">Pass hue wale review ko bhejo</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 'C-07' };
+  }
+  renderVals() {
+    const stages = [
+      ['AI draft', '412', 'is hafte'], ['Machine jaanch', '361', 'runner, solver, tests, validator'], ['Duplicate jaanch', '349', 'embeddings + insaan'],
+      ['Insaan review', '38', 'do log, 4-eyes'], ['Live', '311', 'is hafte live']
+    ].map(([name, count, note], i) => ({ n: i + 1, name, count, note }));
+    const st = {
+      Review: 'background: #f1ebff; color: #6b3fd4', Chal: 'background: #eaf2fc; color: #1f63b8', Live: 'background: #e7f6ef; color: #117a57', Ruka: 'background: #fdeeec; color: #9c2d21'
+    };
+    const raw = [
+      { id: 'C-07', what: 'Aptitude: percentages + profit', n: 200, pass: 186, st: 'Review', fails: ['8: jawab galat (solver se mismatch)', '4: do sahi option', '2: bahut milte-julte doosre sawaal se'] },
+      { id: 'C-06', what: 'DSA: two pointers (v2 package)', n: 25, pass: 21, st: 'Live', fails: ['2: mutation score 91% (95% chahiye)', '1: brute aur reference alag jawab', '1: validator ne sample reject kiya'] },
+      { id: 'C-05', what: 'Lesson: DBMS normalization', n: 12, pass: 12, st: 'Live', fails: ['Koi nahi'] },
+      { id: 'C-08', what: 'Arena: SQL window functions', n: 30, pass: 0, st: 'Chal', fails: ['Abhi chal raha (raat 2 baje tak)'] },
+      { id: 'C-04', what: 'Editorial: sliding window (owner style)', n: 16, pass: 9, st: 'Ruka', fails: ['5: "Kadam 4" me tests ki table nahi', '2: AI ne apni kahaani joda (mana hai)'] }
+    ];
+    const batches = raw.map((b) => ({
+      ...b, pass: b.pass + ' / ' + b.n, w: Math.round((b.pass / b.n) * 100) + '%', stStyle: st[b.st], on: this.state.sel === b.id,
+      bg: this.state.sel === b.id ? 'background: #f1f3fe' : 'background: transparent',
+      pick: () => this.setState({ sel: b.id })
+    }));
+    const s = raw.find((b) => b.id === this.state.sel);
+    return { stages, batches, sel: { id: s.id, fails: s.fails.map((t) => ({ t })) } };
+  }
+}
+</script>
+</body>
+</html>

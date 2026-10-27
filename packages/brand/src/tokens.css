@@ -1,76 +1,84 @@
 /*
- * Parikshaa design tokens, v2.
+ * Parikshaa design tokens, v4.4 (docs/learn/DESIGN-SYSTEM.md).
  *
  * One source for colour, type, space, shape and depth, shared by the
- * candidate app and the console. Components never name a colour; they name a
- * token, so the dark theme and any later re-theme change here only. Stylelint
- * fails the build on a literal colour anywhere else.
+ * candidate app, the console and Learn. Components never name a colour; they
+ * name a token, so the dark theme and any later re-theme change here only.
+ * Stylelint fails the build on a literal colour anywhere else.
  *
- * The palette: an ink indigo that reads as trustworthy and institutional
- * (the ledger, the record), and saffron used sparingly as the accent — the
- * bindu in the mark, the eyebrow, and the one action that ends a test. Status
- * colours are kept apart from both, so "failed" never looks like "brand".
+ * The palette: pen blue (#2349e6) for every action, link and focus; a gold
+ * marker (#ffd84d) used sparingly as the accent, the highlighter's yellow;
+ * warm paper neutrals in light ("Kaagaz") and true black with three surface
+ * steps in dark ("Syaahi"). Status colours are kept apart from both, so
+ * "failed" never looks like "brand". The logo's colours do not change with
+ * the theme and are not tokens: see LogoMark in react.tsx.
  *
  * Every status comes as a set: text (on a surface), soft (a tint behind
  * text), border, solid (a fill) and on-solid (text on that fill). Solid and
  * on-solid are separate from the text colour because a colour light enough
- * to read on a dark surface is too light to carry white text: that is what
- * made the question palette unreadable in the dark theme.
+ * to read on a dark surface is too light to carry white text.
+ *
+ * These are the names the exam app and the console were built on, with the
+ * v4.4 values. The Learn mock's own names (--page, --ink, --pen ...) are in
+ * learn.css, as aliases of these where one holds the same colour: only Learn
+ * uses them, so only Learn's pages load them, and the exam app's first
+ * download does not grow (bundle-budget.json).
  *
  * `tokens.test.ts` in the console checks every pair below meets WCAG AA in
  * both themes, and that the two dark blocks are identical.
  */
 
 :root {
-  /* --- brand ------------------------------------------------------------ */
-  --brand-950: #0b1033;
-  --brand-900: #141b4d;
-  --brand-800: #1d2770;
-  --brand-700: #26338f;
-  --brand-600: #3346c4;
-  --brand-500: #4a5ce0;
-  --brand-400: #7482ee;
-  --brand-200: #c9cffa;
-  --brand-100: #e3e7fd;
-  --brand-50: #f1f3fe;
-  --saffron-600: #d9730f;
-  --saffron-500: #f28c28;
-  --saffron-100: #fdebd4;
+  /* --- brand: pen blue, and the scale around it ------------------------- */
+  --brand-950: #0a1446;
+  --brand-900: #102070;
+  --brand-800: #15309e;
+  --brand-700: #1b3bc4;
+  --brand-600: #2349e6;
+  --brand-500: #4a6af0;
+  --brand-400: #7690f7;
+  --brand-200: #bfcbfb;
+  --brand-100: #dce3fe;
+  --brand-50: #ebefff;
+  /* The accent kept its old name: it is now the marker's gold, not saffron. */
+  --saffron-600: #f5c518;
+  --saffron-500: #ffd84d;
+  --saffron-100: #fff5c7;
 
-  /* --- neutrals: a cool grey, tinted toward the brand ------------------- */
+  /* --- neutrals: warm paper, near-black ink ------------------------------ */
   --gray-0: #ffffff;
-  --gray-25: #fbfbfd;
-  --gray-50: #f6f7fb;
-  --gray-100: #eef0f6;
-  --gray-200: #e2e6ef;
-  --gray-300: #cdd3df;
-  --gray-400: #9aa3b5;
-  --gray-500: #5f687c;
-  --gray-600: #4f586c;
-  --gray-700: #373f52;
-  --gray-800: #222938;
-  --gray-900: #131a2e;
+  --gray-25: #fafaf9;
+  --gray-50: #f6f6f4;
+  --gray-100: #ececea;
+  --gray-200: #e2e2de;
+  --gray-300: #c9c9c3;
+  --gray-400: #9b9ca3;
+  --gray-500: #5c5e66;
+  --gray-600: #43444c;
+  --gray-700: #2c2d33;
+  --gray-800: #1a1a1f;
+  --gray-900: #0a0a0b;
 
   /* --- surfaces ---------------------------------------------------------- */
   --bg: var(--gray-50);
   --surface: var(--gray-0);
   --surface-2: var(--gray-25);
   --surface-sunken: var(--gray-100);
-  --scrim: rgb(8 11 25 / 0.55);
+  --scrim: rgb(10 10 12 / 0.42);
 
   /* --- text ------------------------------------------------------------- */
   --text: var(--gray-900);
   --text-secondary: var(--gray-600); /* descriptions, long helper text */
   --text-muted: var(--gray-500); /* labels, meta, timestamps, placeholders */
   --text-subtle: var(--gray-400); /* decoration only, never words */
-  --text-disabled: #8a93a6; /* disabled controls, which always say why beside them */
+  --text-disabled: #8a8b92; /* disabled controls, which always say why beside them */
   --text-on-primary: #ffffff;
 
   /* --- lines ------------------------------------------------------------ */
   --border: var(--gray-200);
   --border-strong: var(--gray-300);
   --focus-color: var(--brand-600);
-  --focus-ring: 0 0 0 3px rgb(51 70 196 / 0.28);
+  --focus-ring: 0 0 0 3px rgb(35 73 230 / 0.28);
 
   /* --- action ----------------------------------------------------------- */
   --primary: var(--brand-600);
@@ -80,47 +88,47 @@
   --primary-soft-border: var(--brand-200);
   --on-primary: var(--text-on-primary);
 
-  --accent: var(--saffron-500);
+  --accent: #ffd84d;
   --accent-soft: var(--saffron-100);
-  --accent-text: #a35200; /* saffron dark enough to be words */
+  --accent-text: #9a5300; /* the coin's brown: gold dark enough to be words */
   --accent-solid: var(--saffron-500);
-  --accent-solid-hover: #f59b43;
-  --on-accent-solid: #1b1203;
+  --accent-solid-hover: #ffe170;
+  --on-accent-solid: #1b1500;
 
   --disabled-bg: var(--gray-100);
   --disabled-border: var(--gray-200);
 
   /* --- status ----------------------------------------------------------- */
-  --success: #117a57;
-  --success-soft: #e7f6ef;
-  --success-border: #b9e2cf;
-  --success-solid: #117a57;
+  --success: #0f6f33;
+  --success-soft: #e4f5ea;
+  --success-border: #ade0bf;
+  --success-solid: #13803c;
   --on-success-solid: #ffffff;
 
-  --warning: #9a5800;
-  --warning-soft: #fff5e3;
-  --warning-border: #f3d59f;
-  --warning-solid: #f3b23a;
+  --warning: #9a5300;
+  --warning-soft: #fff1dc;
+  --warning-border: #f2cf98;
+  --warning-solid: #ffab2e;
   --on-warning-solid: #1b1203;
 
-  --danger: #c23a2b;
-  --danger-soft: #fdeeec;
-  --danger-border: #f3c5bf;
-  --danger-solid: #c23a2b;
+  --danger: #bf2a1f;
+  --danger-soft: #fdecea;
+  --danger-border: #f3bcb5;
+  --danger-solid: #d9352a;
   --on-danger-solid: #ffffff;
 
-  /* Marked for review: in the exam and in Try test, nowhere else. */
-  --review: #6b3fd4;
-  --review-soft: #f1ebff;
-  --review-border: #d6c7fb;
-  --review-solid: #6b3fd4;
+  /* Marked for review: in the exam and in Try test. Learn's AI colour. */
+  --review: #5632ee;
+  --review-soft: #f0ebff;
+  --review-border: #d2c6ff;
+  --review-solid: #6a45ff;
   --on-review-solid: #ffffff;
 
-  /* Announcements and tips, so the brand indigo stays for actions. */
-  --info: #1f63b8;
-  --info-soft: #eaf2fc;
-  --info-border: #bcd4f2;
-  --info-solid: #1f63b8;
+  /* Announcements and tips, so pen blue stays for actions. */
+  --info: #0b7189;
+  --info-soft: #e0f3f7;
+  --info-border: #a6d8e3;
+  --info-solid: #0b7189;
   --on-info-solid: #ffffff;
 
   /* The tick on an answered-and-marked palette cell, drawn in on-success-solid. */
@@ -130,17 +138,17 @@
   --on-neutral-solid: var(--gray-600);
 
   /* --- charts: one family for histograms, heatmaps and section bars ------ */
-  --chart-seq-1: #e3e7fd;
-  --chart-seq-2: #c9cffa;
-  --chart-seq-3: #7482ee;
-  --chart-seq-4: #3346c4;
-  --chart-seq-5: #1d2770;
-  --chart-cat-1: #3346c4;
+  --chart-seq-1: #dce3fe;
+  --chart-seq-2: #bfcbfb;
+  --chart-seq-3: #7690f7;
+  --chart-seq-4: #2349e6;
+  --chart-seq-5: #15309e;
+  --chart-cat-1: #2349e6;
   --chart-cat-2: #d9730f;
-  --chart-cat-3: #0f7c86;
+  --chart-cat-3: #0b7189;
   --chart-cat-4: #c2416b;
-  --chart-cat-5: #6b3fd4;
-  --chart-cat-6: #5f687c;
+  --chart-cat-5: #6a45ff;
+  --chart-cat-6: #5c5e66;
 
   /* Practice leaderboard places: fills with their own text, the same in both themes. */
   --medal-gold: #f6d365;
@@ -150,32 +158,32 @@
   --medal-bronze: #efc39c;
   --on-medal-bronze: #5a3314;
 
-  /* --- chrome: the exam bar and the console sidebar, ink in both themes --- */
-  --chrome: var(--brand-950);
-  --chrome-2: #121946;
-  --chrome-text: #c9cff0;
+  /* --- chrome: the exam bar and the console sidebar, Syaahi in both themes --- */
+  --chrome: #101013;
+  --chrome-2: #16161a;
+  --chrome-text: #c4c4cc;
   --chrome-text-strong: #ffffff;
-  --chrome-text-muted: rgb(201 207 240 / 0.62);
+  --chrome-text-muted: rgb(196 196 204 / 0.62);
   --chrome-hover: rgb(255 255 255 / 0.06);
-  --chrome-active: rgb(116 130 238 / 0.18);
+  --chrome-active: rgb(59 98 245 / 0.2);
   --chrome-fill: rgb(255 255 255 / 0.05);
   --chrome-border: rgb(255 255 255 / 0.08);
   --chrome-border-strong: rgb(255 255 255 / 0.16);
-  --chrome-glow: rgb(74 92 224 / 0.35);
-  --chrome-warm-glow: rgb(242 140 40 / 0.18);
-  --chrome-success: #7ee2b3;
-  --chrome-success-fill: rgb(83 199 148 / 0.12);
-  --chrome-success-border: rgb(83 199 148 / 0.3);
-  --chrome-warning: #ffc978;
-  --chrome-danger: #ffb4a8;
-  --chrome-danger-fill: rgb(242 128 111 / 0.14);
-  --chrome-danger-border: rgb(242 128 111 / 0.45);
-  --chrome-accent-tint: rgb(242 140 40 / 0.14);
+  --chrome-glow: rgb(35 73 230 / 0.35);
+  --chrome-warm-glow: rgb(255 216 77 / 0.12);
+  --chrome-success: #5fe39b;
+  --chrome-success-fill: rgb(44 207 120 / 0.13);
+  --chrome-success-border: rgb(44 207 120 / 0.42);
+  --chrome-warning: #ffab2e;
+  --chrome-danger: #ff8d84;
+  --chrome-danger-fill: rgb(255 93 80 / 0.14);
+  --chrome-danger-border: rgb(255 120 110 / 0.45);
+  --chrome-accent-tint: rgb(255 216 77 / 0.14);
 
   /* --- type ------------------------------------------------------------- */
-  --font-sans: "Inter Variable", "Inter", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil", "Noto Sans Telugu",
-    "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Oriya", "Segoe UI", system-ui,
-    -apple-system, Roboto, "Nirmala UI", "Mangal", sans-serif;
+  --font-sans: "IBM Plex Sans", "IBM Plex Sans Devanagari", "Noto Sans Devanagari", "Noto Sans Bengali", "Noto Sans Tamil",
+    "Noto Sans Telugu", "Noto Sans Gujarati", "Noto Sans Kannada", "Noto Sans Malayalam", "Noto Sans Gurmukhi", "Noto Sans Oriya",
+    "Segoe UI", system-ui, -apple-system, Roboto, "Nirmala UI", "Mangal", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, Consolas, monospace;
   --text-2xs: 0.6875rem; /* 11: overline labels only, Latin only */
   --text-xs: 0.75rem; /* 12 */
@@ -196,6 +204,7 @@
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
+  --weight-wordmark: 650; /* the name beside the mark, DESIGN-SYSTEM §2 */
 
   /* --- space (4px grid), shape, depth, motion ----------------------------- */
   --space-0-5: 0.125rem;
@@ -217,12 +226,12 @@
   --radius-xl: 16px;
   --radius-full: 999px;
   --icon-stroke: 1.75;
-  --shadow-xs: 0 1px 2px rgb(19 26 46 / 0.05);
-  --shadow-sm: 0 1px 3px rgb(19 26 46 / 0.07), 0 1px 2px rgb(19 26 46 / 0.04);
-  --shadow-md: 0 6px 16px rgb(19 26 46 / 0.08), 0 2px 4px rgb(19 26 46 / 0.04);
-  --shadow-lg: 0 20px 48px rgb(19 26 46 / 0.14), 0 4px 12px rgb(19 26 46 / 0.06);
-  --shadow-bar: 0 1px 0 rgb(0 0 0 / 0.2), 0 8px 24px rgb(8 11 25 / 0.18);
-  --shadow-accent: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 16px rgb(242 140 40 / 0.28);
+  --shadow-xs: 0 1px 2px rgb(10 10 12 / 0.05);
+  --shadow-sm: 0 1px 3px rgb(10 10 12 / 0.07), 0 1px 2px rgb(10 10 12 / 0.04);
+  --shadow-md: 0 6px 16px rgb(10 10 12 / 0.08), 0 2px 4px rgb(10 10 12 / 0.04);
+  --shadow-lg: 0 20px 48px rgb(10 10 12 / 0.14), 0 4px 12px rgb(10 10 12 / 0.06);
+  --shadow-bar: 0 1px 0 rgb(0 0 0 / 0.2), 0 8px 24px rgb(10 10 12 / 0.18);
+  --shadow-accent: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 6px 16px rgb(214 166 0 / 0.28);
   --shadow-inset-highlight: inset 0 1px 0 rgb(255 255 255 / 0.12);
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --duration: 140ms;
@@ -238,77 +247,82 @@
  * otherwise; and any element with data-theme="dark" takes it for itself and
  * everything inside it (the dark code editor in a light page). The two blocks
  * below are the same list and must stay so; a test compares them.
+ *
+ * The soft tints and their borders are the mock's tints laid on a panel
+ * (#101013), as solid colours, so their contrast can be checked. The mock's
+ * pen (#3b62f5) cannot carry white text and be read as a link on black, so
+ * --primary is the mock's pen-hover with dark text on it (learn.css: --pen keeps #3b62f5).
  */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0c1020;
-    --surface: #141a2c;
-    --surface-2: #171e32;
-    --surface-sunken: #10152a;
-    --scrim: rgb(0 0 0 / 0.6);
-    --text: #e8ebf5;
-    --text-secondary: #b7bed1;
-    --text-muted: #a1a9bf;
-    --text-subtle: #737c95;
-    --text-disabled: #6b748c;
-    --text-on-primary: #0c1020;
-    --on-primary: #0c1020;
-    --border: #252d45;
-    --border-strong: #343d58;
-    --focus-color: #8b98fa;
-    --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
-    --primary: #8b98fa;
-    --primary-hover: #a3adfb;
-    --primary-active: #b9c1fc;
-    --primary-soft: #1b2248;
-    --primary-soft-border: #2f3a78;
-    --accent: #f7a04a;
-    --accent-soft: #3a2712;
-    --accent-text: #f7a04a;
-    --accent-solid: #f7a04a;
-    --accent-solid-hover: #f9b068;
-    --disabled-bg: #1a2136;
-    --disabled-border: #252d45;
-    --success: #53c794;
-    --success-soft: #11291f;
-    --success-border: #1f4a37;
-    --success-solid: #2fa874;
-    --on-success-solid: #04130c;
-    --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%2304130c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-    --warning: #f1b65c;
-    --warning-soft: #2a2011;
-    --warning-border: #4d3a17;
-    --warning-solid: #f1b65c;
-    --danger: #f2806f;
-    --danger-soft: #2e1715;
-    --danger-border: #5a2923;
-    --danger-solid: #e5604e;
-    --on-danger-solid: #1a0604;
-    --review: #b69cff;
-    --review-soft: #241a3f;
-    --review-border: #3f2f6d;
-    --review-solid: #9c7bf0;
-    --on-review-solid: #12072e;
-    --info: #7fb4f5;
-    --info-soft: #12233a;
-    --info-border: #1f3d63;
-    --info-solid: #7fb4f5;
-    --on-info-solid: #0c1020;
-    --neutral-solid: #232b43;
-    --on-neutral-solid: #c4cadb;
-    --chart-seq-1: #1b2248;
-    --chart-seq-2: #2f3a78;
-    --chart-seq-3: #5a68d8;
-    --chart-seq-4: #8b98fa;
-    --chart-seq-5: #c9cffa;
-    --chart-cat-1: #8b98fa;
-    --chart-cat-2: #f7a04a;
-    --chart-cat-3: #4cc3cc;
+    --bg: #000000;
+    --surface: #101013;
+    --surface-2: #16161a;
+    --surface-sunken: #1f1f24;
+    --scrim: rgb(0 0 0 / 0.72);
+    --text: #fafafa;
+    --text-secondary: #c4c4cc;
+    --text-muted: #a3a3ad;
+    --text-subtle: #70707a;
+    --text-disabled: #6b6b75;
+    --text-on-primary: #0a0a0b;
+    --on-primary: #0a0a0b;
+    --border: #2a2a2f;
+    --border-strong: #3f3f46;
+    --focus-color: #5a7dff;
+    --focus-ring: 0 0 0 3px rgb(90 125 255 / 0.35);
+    --primary: #5a7dff;
+    --primary-hover: #7d97ff;
+    --primary-active: #94a9ff;
+    --primary-soft: #181e39;
+    --primary-soft-border: #435189;
+    --accent: #ffd84d;
+    --accent-soft: #312c1b;
+    --accent-text: #ffab2e;
+    --accent-solid: #ffd84d;
+    --accent-solid-hover: #ffe170;
+    --disabled-bg: #1a1a1f;
+    --disabled-border: #2a2a2f;
+    --success: #5fe39b;
+    --success-soft: #142920;
+    --success-border: #1c603d;
+    --success-solid: #2ccf78;
+    --on-success-solid: #03170b;
+    --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%2303170b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --warning: #ffab2e;
+    --warning-soft: #312617;
+    --warning-border: #74511e;
+    --warning-solid: #ffab2e;
+    --danger: #ff8d84;
+    --danger-soft: #311b1c;
+    --danger-border: #7c3f3c;
+    --danger-solid: #ff5d50;
+    --on-danger-solid: #1c0402;
+    --review: #bba9ff;
+    --review-soft: #252236;
+    --review-border: #554b7d;
+    --review-solid: #9f86ff;
+    --on-review-solid: #0e0822;
+    --info: #3dcfe2;
+    --info-soft: #16292e;
+    --info-border: #23606a;
+    --info-solid: #3dcfe2;
+    --on-info-solid: #031417;
+    --neutral-solid: #26262c;
+    --on-neutral-solid: #c4c4cc;
+    --chart-seq-1: #181e39;
+    --chart-seq-2: #2a3a85;
+    --chart-seq-3: #3b62f5;
+    --chart-seq-4: #7d97ff;
+    --chart-seq-5: #c2cfff;
+    --chart-cat-1: #7d97ff;
+    --chart-cat-2: #ffab2e;
+    --chart-cat-3: #3dcfe2;
     --chart-cat-4: #f08aac;
-    --chart-cat-5: #b69cff;
-    --chart-cat-6: #a1a9bf;
-    --chrome: #10163d;
-    --chrome-2: #151c4a;
+    --chart-cat-5: #9f86ff;
+    --chart-cat-6: #a3a3ad;
+    --chrome: #101013;
+    --chrome-2: #16161a;
     --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
     --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
     --shadow-md: 0 6px 16px rgb(0 0 0 / 0.4);
@@ -319,74 +333,74 @@
 }
 :root[data-theme="dark"],
 [data-theme="dark"] {
-  --bg: #0c1020;
-  --surface: #141a2c;
-  --surface-2: #171e32;
-  --surface-sunken: #10152a;
-  --scrim: rgb(0 0 0 / 0.6);
-  --text: #e8ebf5;
-  --text-secondary: #b7bed1;
-  --text-muted: #a1a9bf;
-  --text-subtle: #737c95;
-  --text-disabled: #6b748c;
-  --text-on-primary: #0c1020;
-  --on-primary: #0c1020;
-  --border: #252d45;
-  --border-strong: #343d58;
-  --focus-color: #8b98fa;
-  --focus-ring: 0 0 0 3px rgb(139 152 250 / 0.35);
-  --primary: #8b98fa;
-  --primary-hover: #a3adfb;
-  --primary-active: #b9c1fc;
-  --primary-soft: #1b2248;
-  --primary-soft-border: #2f3a78;
-  --accent: #f7a04a;
-  --accent-soft: #3a2712;
-  --accent-text: #f7a04a;
-  --accent-solid: #f7a04a;
-  --accent-solid-hover: #f9b068;
-  --disabled-bg: #1a2136;
-  --disabled-border: #252d45;
-  --success: #53c794;
-  --success-soft: #11291f;
-  --success-border: #1f4a37;
-  --success-solid: #2fa874;
-  --on-success-solid: #04130c;
-  --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%2304130c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  --warning: #f1b65c;
-  --warning-soft: #2a2011;
-  --warning-border: #4d3a17;
-  --warning-solid: #f1b65c;
-  --danger: #f2806f;
-  --danger-soft: #2e1715;
-  --danger-border: #5a2923;
-  --danger-solid: #e5604e;
-  --on-danger-solid: #1a0604;
-  --review: #b69cff;
-  --review-soft: #241a3f;
-  --review-border: #3f2f6d;
-  --review-solid: #9c7bf0;
-  --on-review-solid: #12072e;
-  --info: #7fb4f5;
-  --info-soft: #12233a;
-  --info-border: #1f3d63;
-  --info-solid: #7fb4f5;
-  --on-info-solid: #0c1020;
-  --neutral-solid: #232b43;
-  --on-neutral-solid: #c4cadb;
-  --chart-seq-1: #1b2248;
-  --chart-seq-2: #2f3a78;
-  --chart-seq-3: #5a68d8;
-  --chart-seq-4: #8b98fa;
-  --chart-seq-5: #c9cffa;
-  --chart-cat-1: #8b98fa;
-  --chart-cat-2: #f7a04a;
-  --chart-cat-3: #4cc3cc;
+  --bg: #000000;
+  --surface: #101013;
+  --surface-2: #16161a;
+  --surface-sunken: #1f1f24;
+  --scrim: rgb(0 0 0 / 0.72);
+  --text: #fafafa;
+  --text-secondary: #c4c4cc;
+  --text-muted: #a3a3ad;
+  --text-subtle: #70707a;
+  --text-disabled: #6b6b75;
+  --text-on-primary: #0a0a0b;
+  --on-primary: #0a0a0b;
+  --border: #2a2a2f;
+  --border-strong: #3f3f46;
+  --focus-color: #5a7dff;
+  --focus-ring: 0 0 0 3px rgb(90 125 255 / 0.35);
+  --primary: #5a7dff;
+  --primary-hover: #7d97ff;
+  --primary-active: #94a9ff;
+  --primary-soft: #181e39;
+  --primary-soft-border: #435189;
+  --accent: #ffd84d;
+  --accent-soft: #312c1b;
+  --accent-text: #ffab2e;
+  --accent-solid: #ffd84d;
+  --accent-solid-hover: #ffe170;
+  --disabled-bg: #1a1a1f;
+  --disabled-border: #2a2a2f;
+  --success: #5fe39b;
+  --success-soft: #142920;
+  --success-border: #1c603d;
+  --success-solid: #2ccf78;
+  --on-success-solid: #03170b;
+  --tick-mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6.2l2 2 4-4.4' fill='none' stroke='%2303170b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --warning: #ffab2e;
+  --warning-soft: #312617;
+  --warning-border: #74511e;
+  --warning-solid: #ffab2e;
+  --danger: #ff8d84;
+  --danger-soft: #311b1c;
+  --danger-border: #7c3f3c;
+  --danger-solid: #ff5d50;
+  --on-danger-solid: #1c0402;
+  --review: #bba9ff;
+  --review-soft: #252236;
+  --review-border: #554b7d;
+  --review-solid: #9f86ff;
+  --on-review-solid: #0e0822;
+  --info: #3dcfe2;
+  --info-soft: #16292e;
+  --info-border: #23606a;
+  --info-solid: #3dcfe2;
+  --on-info-solid: #031417;
+  --neutral-solid: #26262c;
+  --on-neutral-solid: #c4c4cc;
+  --chart-seq-1: #181e39;
+  --chart-seq-2: #2a3a85;
+  --chart-seq-3: #3b62f5;
+  --chart-seq-4: #7d97ff;
+  --chart-seq-5: #c2cfff;
+  --chart-cat-1: #7d97ff;
+  --chart-cat-2: #ffab2e;
+  --chart-cat-3: #3dcfe2;
   --chart-cat-4: #f08aac;
-  --chart-cat-5: #b69cff;
-  --chart-cat-6: #a1a9bf;
-  --chrome: #10163d;
-  --chrome-2: #151c4a;
+  --chart-cat-5: #9f86ff;
+  --chart-cat-6: #a3a3ad;
+  --chrome: #101013;
+  --chrome-2: #16161a;
   --shadow-xs: 0 1px 2px rgb(0 0 0 / 0.3);
   --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.35);
   --shadow-md: 0 6px 16px rgb(0 0 0 / 0.4);

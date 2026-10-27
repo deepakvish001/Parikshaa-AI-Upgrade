@@ -1,0 +1,759 @@
+/* Mock v4.3 and v4.4: Today (one thing at a time), the profile proof sheet, brand moments and screen states. */
+
+/* ---------- Today: one thing at a time ---------- */
+.af-head {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.af-h1 {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -0.022em;
+  margin-top: 6px;
+  text-wrap: balance;
+}
+.af-sub {
+  display: block;
+  font-size: 0.72em;
+  color: var(--ink-3);
+  font-weight: 560;
+  letter-spacing: -0.012em;
+}
+.af-now .resume-code {
+  display: inline-block;
+}
+.af-list .num {
+  white-space: nowrap;
+}
+.af-now {
+  position: relative;
+  padding: 20px 22px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--pen-line);
+  background: radial-gradient(120% 140% at 100% 0%, var(--pen-soft), transparent 55%), var(--sheen), var(--panel);
+  box-shadow: var(--shadow-2), var(--edge);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.af-now-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.af-now-main {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.af-now-t {
+  font-family: var(--f-display);
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 1.1;
+  letter-spacing: -0.024em;
+  margin-bottom: 8px;
+}
+.af-now-act {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.af-segs i.now {
+  background: var(--pen);
+  animation: seg-pulse 1.8s ease-in-out infinite;
+}
+@keyframes seg-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.af-list {
+  list-style: none;
+}
+.af-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  min-height: 56px;
+  border-top: 1px solid var(--line);
+}
+.af-list li:first-child {
+  border-top: 0;
+}
+.af-list li.done b {
+  color: var(--ink-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-4);
+}
+.af-list b {
+  display: block;
+  font-weight: 560;
+  font-size: 14px;
+}
+.af-streak {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--coin-soft);
+}
+.af-streak svg {
+  width: 18px;
+  height: 18px;
+  color: var(--coin);
+}
+.af-streak b {
+  font-size: 18px;
+}
+.agenda {
+  list-style: none;
+}
+.agenda li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+}
+.agenda li:first-child {
+  border-top: 0;
+}
+.agenda li > svg {
+  width: 17px;
+  height: 17px;
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+@media (max-width: 760px) {
+  .af-h1 {
+    font-size: 24px;
+  }
+  .af-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .af-now {
+    padding: 16px;
+  }
+  .af-now-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+  .af-now-t {
+    font-size: 22px;
+  }
+  .af-now-act {
+    flex-direction: row;
+  }
+  .af-now-act .btn {
+    flex: 1;
+    min-height: 44px;
+  }
+  .af-list li {
+    padding: 10px 14px;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---------- Profile: the proof sheet ---------- */
+.ps-sheet {
+  position: relative;
+  border-radius: 4px;
+  border: 1px solid var(--card-line);
+  background: var(--panel);
+  box-shadow: var(--paper-shadow), var(--edge);
+  padding: 26px 30px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.ps-sheet::before {
+  /* a thin double rule along the top, like letterhead */
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  border-bottom: 1px solid var(--pen-line);
+  background: var(--pen);
+  border-radius: 4px 4px 0 0;
+}
+.ps-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.ps-brand {
+  font-family: var(--f-display);
+  font-size: 18px;
+  letter-spacing: -0.02em;
+}
+.ps-kind {
+  flex: 1;
+  white-space: nowrap;
+  font-family: var(--f-serif);
+  font-style: italic;
+  color: var(--ink-2);
+}
+.ps-id {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.ps-name {
+  font-family: var(--f-serif);
+  font-weight: 600;
+  font-size: 32px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+.ps-line {
+  font-weight: 560;
+}
+.ps-stamp {
+  flex-shrink: 0;
+  transform: rotate(-9deg);
+}
+.ps-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 640px;
+}
+.ps-table th,
+.ps-table td {
+  text-align: left;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line);
+  vertical-align: top;
+}
+.ps-table thead th {
+  border-top: 0;
+  background: var(--panel-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ps-table tbody th {
+  font-weight: 560;
+  white-space: nowrap;
+}
+.ps-table tbody th svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.ps-when {
+  white-space: nowrap;
+}
+.ps-table tr.self th,
+.ps-table tr.self td {
+  color: var(--ink-3);
+}
+.ps-practice {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ps-sec {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.ps-heat {
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.ps-foot {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+.ps-sign {
+  font-family: var(--f-hand);
+  font-size: 22px;
+  color: var(--pen-text);
+  border-bottom: 1px solid var(--line-2);
+  align-self: flex-start;
+  padding: 0 18px 2px 0;
+}
+.ps-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.ps-qr svg {
+  width: 56px;
+  height: 56px;
+  color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .ps-sheet {
+    padding: 20px 16px 16px;
+  }
+  .ps-id {
+    flex-wrap: wrap;
+  }
+  .ps-name {
+    font-size: 26px;
+  }
+  .ps-stamp {
+    display: none;
+  }
+  /* On a phone the table becomes one small card per line, each value labelled. */
+  .ps-table-wrap {
+    overflow: visible;
+    border: 0;
+  }
+  .ps-table {
+    min-width: 0;
+  }
+  .ps-table thead {
+    display: none;
+  }
+  .ps-table tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 2px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .ps-table tbody th {
+    grid-column: 1 / -1;
+    padding: 0 0 6px;
+    border: 0;
+    white-space: normal;
+  }
+  .ps-table td {
+    display: contents;
+  }
+  .ps-table td::before {
+    content: attr(data-label);
+    color: var(--ink-3);
+    font-size: 12px;
+  }
+}
+
+/* ---------- brand moments ---------- */
+.moment {
+  --m: var(--tick);
+  --m-soft: var(--tick-soft);
+  --m-line: var(--tick-line);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--m-line);
+  background: radial-gradient(90% 160% at 0% 50%, var(--m-soft), transparent 70%), var(--sheen), var(--panel);
+  box-shadow: var(--shadow-2), var(--edge);
+  animation: moment-in 0.5s var(--ease) both;
+  overflow: hidden;
+}
+.moment.m-pen {
+  --m: var(--pen);
+  --m-soft: var(--pen-soft);
+  --m-line: var(--pen-line);
+}
+.moment.m-coin {
+  --m: var(--coin);
+  --m-soft: var(--coin-soft);
+  --m-line: var(--coin-line);
+}
+.moment.m-ai {
+  --m: var(--ai);
+  --m-soft: var(--ai-soft);
+  --m-line: var(--ai-line);
+}
+@keyframes moment-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+}
+.moment-diya {
+  flex-shrink: 0;
+  animation: moment-hop 0.7s 0.2s var(--ease) both;
+}
+@keyframes moment-hop {
+  40% {
+    transform: translateY(-6px) rotate(-4deg);
+  }
+}
+.moment-b {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.moment-t {
+  font-weight: 650;
+  font-size: 15px;
+}
+.moment-note {
+  font-family: var(--f-hand);
+  font-size: 17px;
+  line-height: 1.25;
+  color: var(--ink-2);
+}
+.moment-act {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.moment-stamp {
+  flex-shrink: 0;
+  transform: rotate(-10deg) scale(0.82);
+  transform-origin: center;
+  animation: stamp-in 0.45s 0.35s var(--ease) both;
+}
+@keyframes stamp-in {
+  from {
+    opacity: 0;
+    transform: rotate(-18deg) scale(1.3);
+  }
+}
+.moments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: 14px;
+}
+@media (max-width: 760px) {
+  .moment {
+    flex-wrap: wrap;
+    padding: 12px 14px;
+  }
+  .moment-stamp {
+    position: absolute;
+    right: 6px;
+    top: 4px;
+    transform: rotate(-10deg) scale(0.6);
+  }
+}
+
+/* ---------- screen states ---------- */
+.state-fab {
+  position: fixed;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 70;
+}
+.state-fab .btn {
+  box-shadow: var(--shadow-3);
+}
+.app .state-fab {
+  left: calc(var(--side-w) + 16px);
+}
+html.shots .state-fab {
+  display: none;
+}
+.st-center {
+  display: grid;
+  place-items: center;
+  min-height: min(60vh, 560px);
+}
+.st-empty,
+.st-error {
+  width: min(560px, 100%);
+  padding: 40px 24px;
+  gap: 12px;
+}
+.st-error {
+  border-color: var(--red-line);
+}
+.st-focus {
+  flex: 1;
+  overflow: auto;
+  padding: 24px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px));
+}
+.st-focus .st-skel.st-workspace {
+  height: 100%;
+}
+.st-float {
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 65;
+  width: min(760px, calc(100vw - 32px));
+  box-shadow: var(--shadow-3);
+  border-radius: 12px;
+}
+.st-offline {
+  margin-bottom: 16px;
+}
+.st-float .st-offline {
+  margin: 0;
+}
+.st-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.st-skel.st-workspace {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 12px;
+}
+.st-skel.st-workspace .st-cap {
+  grid-column: 1 / -1;
+}
+.st-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  min-height: 420px;
+}
+.st-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: 12px;
+}
+.st-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.st-rows {
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  background: var(--panel);
+}
+.st-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--line);
+}
+.st-row:first-child {
+  border-top: 0;
+}
+.st-doc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 720px;
+}
+.st-first {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 18px 48px 18px 18px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--pen-line);
+  background: radial-gradient(100% 160% at 0% 0%, var(--pen-soft), transparent 65%), var(--sheen), var(--panel);
+  box-shadow: var(--shadow-2), var(--edge);
+  animation: moment-in 0.4s var(--ease) both;
+}
+.st-first.float {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+  z-index: 66;
+  width: min(440px, calc(100vw - 32px));
+  margin: 0;
+  background: radial-gradient(100% 160% at 0% 0%, var(--pen-soft), transparent 65%), var(--overlay);
+  box-shadow: var(--shadow-3);
+}
+.st-first-t {
+  font-size: 16px;
+  font-weight: 650;
+}
+.st-first-x {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.st-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.st-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.st-steps .num {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pen-soft);
+  color: var(--pen-text);
+  font-size: 12px;
+  font-weight: 650;
+}
+@media (max-width: 1080px) {
+  .app .state-fab {
+    left: max(16px, env(safe-area-inset-left, 0px));
+  }
+}
+@media (max-width: 760px) {
+  .app .state-fab {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+  .st-skel.st-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .st-skel.st-workspace .st-pane:last-child {
+    display: none;
+  }
+  .st-first.float {
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  .st-float {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* ---------- phone: tap targets ---------- */
+/* On a touch screen every control is at least 40 px on its short side (WCAG 2.5.8 asks 24; 40 is our floor). */
+@media (max-width: 760px), (pointer: coarse) {
+  .btn {
+    --bh: 40px;
+  }
+  .btn.sm {
+    --bh: 40px;
+  }
+  .icon-btn,
+  .icon-btn.sm,
+  .acct-btn,
+  .nb-run,
+  .send {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+  }
+  .check {
+    width: 24px;
+    height: 24px;
+  }
+  .toggle {
+    /* the switch keeps its drawing and grows as a whole */
+    transform: scale(1.3);
+    margin: 3px 6px;
+  }
+  .qn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .tab-x,
+  .ide .ib {
+    width: 40px;
+    height: 40px;
+  }
+  .ide-phone-bar .btn.sm,
+  .ide .btn.sm {
+    min-width: 40px;
+    height: 40px;
+  }
+  /* links that stand alone in lists get a taller hit area; links inside sentences are left as they are */
+  .p-link,
+  a.ellipsis,
+  button.link,
+  a.link {
+    display: inline-block;
+    padding-block: 4px;
+  }
+  .ed-lens [role="button"] {
+    display: inline-block;
+    padding-block: 6px;
+  }
+  .ed-bulb {
+    /* a 40 px hit area around the 18 px bulb, without moving the code */
+    width: 40px;
+    height: 40px;
+    margin: -11px;
+  }
+  button.link,
+  .flow-step {
+    min-width: 40px;
+  }
+  /* the certificate grows to fit on a phone instead of keeping its A4 shape */
+  .cert-doc {
+    aspect-ratio: auto;
+  }
+  .cd-border {
+    height: auto;
+  }
+  .fbar-l > a,
+  .top-logo {
+    display: inline-flex;
+    min-width: 40px;
+    min-height: 40px;
+    align-items: center;
+    justify-content: center;
+  }
+  input[type="range"] {
+    height: 28px;
+  }
+  .stat-chip,
+  .side-search,
+  .side-item,
+  .chip,
+  .tab,
+  .seg button,
+  .menu-item {
+    min-height: 40px;
+  }
+}

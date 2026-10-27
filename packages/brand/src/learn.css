@@ -1,0 +1,219 @@
+/*
+ * Learn's layer on the brand (docs/learn/DESIGN-SYSTEM.md): the names the
+ * Learn mock was drawn with (docs/learn/mock-v3/app/src/styles/tokens.css), so
+ * Learn's code reads like the mock. Where tokens.css already holds the same
+ * colour in both themes the name is an alias of it (--page is --bg, --ink is
+ * --text, --tick is --success-solid ...); the rest carry the mock's values.
+ * The dark tints stay translucent, as in the mock, so they sit on any surface.
+ *
+ * Load it after tokens.css, and only where Learn's pages are: the exam app and
+ * the console do not need it, and their first download is budgeted.
+ * `tokens.test.ts` in the console checks the text pairs here meet WCAG AA in
+ * both themes and that the two dark blocks are identical, as for tokens.css.
+ */
+
+:root {
+  --page: var(--bg);
+  --panel: var(--surface);
+  --panel-2: var(--surface-2);
+  --sunk: var(--surface-sunken);
+  --raised: #ffffff; /* menus, hover cards */
+  --overlay: #ffffff; /* modals, drawers */
+  --field: #ffffff;
+  --hover: rgb(10 10 12 / 0.045);
+  --press: rgb(10 10 12 / 0.085);
+  --line: var(--border);
+  --line-2: var(--border-strong);
+  --card-line: rgb(10 10 12 / 0.08); /* softer than a divider */
+  --sheen: none;
+  --ink: var(--text);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--text-muted);
+  --ink-4: #66686f;
+  --pen: #2349e6;
+  --pen-hover: #1b3bc4;
+  --pen-text: #1d41d4;
+  --pen-soft: #ebefff;
+  --pen-line: #bfcbfb;
+  --on-pen: #ffffff;
+  --red: var(--danger-solid);
+  --red-text: var(--danger);
+  --red-soft: #fdecea;
+  --red-line: #f3bcb5;
+  --on-red: var(--on-danger-solid);
+  --tick: var(--success-solid);
+  --tick-text: var(--success);
+  --tick-soft: #e4f5ea;
+  --tick-line: #ade0bf;
+  --on-tick: var(--on-success-solid);
+  --marker: var(--accent-solid);
+  --marker-soft: #fff5c7;
+  --marker-ink: #6b5400;
+  --ai: var(--review-solid);
+  --ai-text: var(--review);
+  --ai-soft: #f0ebff;
+  --ai-line: #d2c6ff;
+  --on-ai: var(--on-review-solid);
+  --coin: var(--warning);
+  --coin-soft: #fff1dc;
+  --coin-line: #f2cf98;
+  --teal: var(--info);
+  --teal-soft: #e0f3f7;
+  --grid: rgb(10 10 12 / 0.05);
+  --grid-strong: rgb(10 10 12 / 0.09);
+  --margin: rgb(217 53 42 / 0.5);
+  --ruled: rgb(35 73 230 / 0.1);
+  --code-bg: #fbfbfa;
+  --code-gutter: #696b72;
+  --code-line: #f1f1ee;
+  --code-kw: #1d41d4;
+  --code-str: #0f6f33;
+  --code-num: #a85a00;
+  --code-fn: #6a45ff;
+  --code-com: #696b72;
+  --code-ty: #0b7189;
+  --shadow-1: 0 1px 2px rgb(10 10 12 / 0.05), 0 2px 8px -4px rgb(10 10 12 / 0.06);
+  --shadow-2: 0 1px 2px rgb(10 10 12 / 0.05), 0 10px 28px -12px rgb(10 10 12 / 0.18);
+  --shadow-3: 0 2px 6px rgb(10 10 12 / 0.06), 0 24px 56px -16px rgb(10 10 12 / 0.3);
+  --paper-shadow: 0 1px 0 rgb(10 10 12 / 0.04), 0 16px 36px -18px rgb(10 10 12 / 0.3);
+  --edge: inset 0 0 0 0 transparent;
+  --lv1: var(--tick);
+  --lv2: var(--pen);
+  --lv3: var(--coin);
+  --lv4: var(--red);
+  --lv5: var(--ai);
+  --f-ui: var(--font-sans);
+  --f-display: var(--f-ui);
+  --f-serif: "IBM Plex Serif", Georgia, "Times New Roman", serif; /* certificates only */
+  --f-mono: var(--font-mono);
+  --f-hand: "Kalam", "Segoe Print", cursive; /* a teacher's red-pen notes only */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r: 12px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --side-w: 248px;
+  --top-h: 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --raised: #1a1a1f;
+    --overlay: #1e1e23;
+    --field: #0b0b0d;
+    --hover: rgb(255 255 255 / 0.06);
+    --press: rgb(255 255 255 / 0.1);
+    --card-line: rgb(255 255 255 / 0.075);
+    --sheen: linear-gradient(180deg, rgb(255 255 255 / 0.02), rgb(255 255 255 / 0) 140px);
+    --ink-4: #86868f;
+    --pen: #3b62f5;
+    --pen-hover: #5a7dff;
+    --pen-text: #94a9ff;
+    --pen-soft: rgb(64 105 255 / 0.16);
+    --pen-line: rgb(118 146 255 / 0.5);
+    --on-pen: #ffffff;
+    --red-soft: rgb(255 93 80 / 0.14);
+    --red-line: rgb(255 120 110 / 0.45);
+    --tick-soft: rgb(44 207 120 / 0.13);
+    --tick-line: rgb(44 207 120 / 0.42);
+    --marker-soft: rgb(255 216 77 / 0.14);
+    --marker-ink: #ffd84d;
+    --ai-soft: rgb(159 134 255 / 0.15);
+    --ai-line: rgb(170 148 255 / 0.45);
+    --coin-soft: rgb(255 171 46 / 0.14);
+    --coin-line: rgb(255 171 46 / 0.42);
+    --teal-soft: rgb(61 207 226 / 0.13);
+    --grid: rgb(255 255 255 / 0.045);
+    --grid-strong: rgb(255 255 255 / 0.08);
+    --margin: rgb(255 93 80 / 0.5);
+    --ruled: rgb(255 255 255 / 0.06);
+    --code-bg: #08080a;
+    --code-gutter: #85858f;
+    --code-line: #141418;
+    --code-kw: #8fa6ff;
+    --code-str: #6fe0a4;
+    --code-num: #ffb454;
+    --code-fn: #d0a8ff;
+    --code-com: #8b8b95;
+    --code-ty: #5fd3e6;
+    --shadow-1: 0 0 0 0 transparent;
+    --shadow-2: 0 16px 40px -18px rgb(0 0 0 / 0.9);
+    --shadow-3: 0 0 0 1px rgb(255 255 255 / 0.04), 0 28px 64px -16px rgb(0 0 0 / 0.95);
+    --paper-shadow: 0 20px 44px -22px rgb(0 0 0 / 0.9);
+    --edge: inset 0 1px 0 rgb(255 255 255 / 0.06);
+  }
+}
+:root[data-theme="dark"],
+[data-theme="dark"] {
+  --raised: #1a1a1f;
+  --overlay: #1e1e23;
+  --field: #0b0b0d;
+  --hover: rgb(255 255 255 / 0.06);
+  --press: rgb(255 255 255 / 0.1);
+  --card-line: rgb(255 255 255 / 0.075);
+  --sheen: linear-gradient(180deg, rgb(255 255 255 / 0.02), rgb(255 255 255 / 0) 140px);
+  --ink-4: #86868f;
+  --pen: #3b62f5;
+  --pen-hover: #5a7dff;
+  --pen-text: #94a9ff;
+  --pen-soft: rgb(64 105 255 / 0.16);
+  --pen-line: rgb(118 146 255 / 0.5);
+  --on-pen: #ffffff;
+  --red-soft: rgb(255 93 80 / 0.14);
+  --red-line: rgb(255 120 110 / 0.45);
+  --tick-soft: rgb(44 207 120 / 0.13);
+  --tick-line: rgb(44 207 120 / 0.42);
+  --marker-soft: rgb(255 216 77 / 0.14);
+  --marker-ink: #ffd84d;
+  --ai-soft: rgb(159 134 255 / 0.15);
+  --ai-line: rgb(170 148 255 / 0.45);
+  --coin-soft: rgb(255 171 46 / 0.14);
+  --coin-line: rgb(255 171 46 / 0.42);
+  --teal-soft: rgb(61 207 226 / 0.13);
+  --grid: rgb(255 255 255 / 0.045);
+  --grid-strong: rgb(255 255 255 / 0.08);
+  --margin: rgb(255 93 80 / 0.5);
+  --ruled: rgb(255 255 255 / 0.06);
+  --code-bg: #08080a;
+  --code-gutter: #85858f;
+  --code-line: #141418;
+  --code-kw: #8fa6ff;
+  --code-str: #6fe0a4;
+  --code-num: #ffb454;
+  --code-fn: #d0a8ff;
+  --code-com: #8b8b95;
+  --code-ty: #5fd3e6;
+  --shadow-1: 0 0 0 0 transparent;
+  --shadow-2: 0 16px 40px -18px rgb(0 0 0 / 0.9);
+  --shadow-3: 0 0 0 1px rgb(255 255 255 / 0.04), 0 28px 64px -16px rgb(0 0 0 / 0.95);
+  --paper-shadow: 0 20px 44px -22px rgb(0 0 0 / 0.9);
+  --edge: inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+/* Two faces only Learn uses: Plex Serif for a certificate's name, Kalam for a teacher's red-pen note. */
+@font-face {
+  font-family: "IBM Plex Serif";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/ibm-plex-serif/files/ibm-plex-serif-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Kalam";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/kalam/files/kalam-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "Kalam";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/kalam/files/kalam-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}

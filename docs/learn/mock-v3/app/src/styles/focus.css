@@ -1,0 +1,324 @@
+/* Focus layout: workspaces with resizable, closable panes. */
+
+.focus-app {
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--page);
+  overflow: hidden;
+}
+.fbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 54px;
+  padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) 0 max(10px, env(safe-area-inset-left, 0px));
+  box-sizing: content-box;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  z-index: 10;
+}
+.fbar-l {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 0;
+}
+.fbar-title {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+.fbar-title b {
+  font-size: 14px;
+  font-weight: 600;
+}
+.fbar-c {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.fbar-r {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.pane-toggles {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 10px;
+  background: var(--sunk);
+  border: 1px solid var(--line);
+}
+.pane-toggles button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  font-weight: 540;
+  color: var(--ink-3);
+  transition: all 0.14s;
+}
+.pane-toggles button svg {
+  width: 15px;
+  height: 15px;
+}
+.pane-toggles button[aria-pressed="true"] {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
+}
+.pane-toggles button.ai[aria-pressed="true"] {
+  background: var(--ai);
+  color: var(--on-ai);
+  box-shadow: none;
+}
+.timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 6px 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  font-family: var(--f-mono);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.timer.warn {
+  border-color: var(--red-line);
+  background: var(--red-soft);
+  color: var(--red-text);
+}
+
+.panes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 0;
+  padding: 8px;
+  padding-left: max(8px, env(safe-area-inset-left, 0px));
+  padding-right: max(8px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+}
+.pane {
+  flex-basis: 0;
+  flex-shrink: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: var(--edge);
+  animation: pane-pop 0.22s var(--ease);
+  transition: flex-grow 0.36s var(--ease), min-width 0.36s var(--ease), opacity 0.24s ease, border-color 0.24s ease, box-shadow 0.24s ease;
+}
+.pane-in {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.pane.is-closed {
+  opacity: 0;
+  border-width: 0;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+body.resizing .pane {
+  transition: none;
+}
+@keyframes pane-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+}
+.pane-ai {
+  border-color: var(--ai-line);
+  box-shadow: 0 0 0 3px var(--ai-soft);
+}
+.pane-h {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 44px;
+  padding: 0 6px 0 8px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  flex-shrink: 0;
+  min-width: 0;
+}
+.pane-h .tabs {
+  border-bottom: 0;
+  flex: 1;
+  height: 44px;
+}
+.pane-h .tab {
+  height: 44px;
+  font-size: 13px;
+}
+.pane-x {
+  margin-left: auto;
+}
+.pane-body {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.pane-div {
+  flex: 0 0 10px;
+  transition: flex-basis 0.36s var(--ease), opacity 0.2s ease;
+  display: grid;
+  place-items: center;
+  cursor: col-resize;
+  color: transparent;
+  position: relative;
+}
+.pane-div.off {
+  flex-basis: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.pane-div::before {
+  content: "";
+  position: absolute;
+  top: 40%;
+  bottom: 40%;
+  left: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--line-2);
+  transition: all 0.15s;
+}
+.pane-div:hover::before,
+body.resizing .pane-div::before {
+  top: 8px;
+  bottom: 8px;
+  background: var(--pen);
+}
+.pane-div svg {
+  width: 12px;
+  height: 12px;
+  position: relative;
+  z-index: 1;
+}
+.pane-div:hover svg {
+  color: var(--pen-text);
+  background: var(--panel);
+  border-radius: 4px;
+}
+.pane-rail {
+  flex: 0 0 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  margin: 0 4px;
+  border-radius: 12px;
+  border: 1px dashed var(--line-2);
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 560;
+  transition: all 0.14s;
+  animation: fade 0.3s 0.12s both;
+}
+.pane-rail span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+.pane-rail svg {
+  width: 16px;
+  height: 16px;
+}
+.pane-rail:hover {
+  border-style: solid;
+  border-color: var(--pen);
+  color: var(--pen-text);
+  background: var(--pen-soft);
+}
+.pane-rail.ai {
+  color: var(--ai-text);
+  border-color: var(--ai-line);
+  background: var(--ai-soft);
+}
+.pane-rail.ai:hover {
+  background: var(--ai);
+  color: var(--on-pen);
+  border-color: transparent;
+}
+.pane-gap {
+  display: none;
+}
+
+.panes.is-phone {
+  flex-direction: column;
+  gap: 8px;
+}
+.panes.is-phone .pane {
+  flex: 1;
+}
+.pane-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 11px;
+  background: var(--sunk);
+  border: 1px solid var(--line);
+}
+.pane-tabs button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--ink-3);
+}
+.pane-tabs button svg {
+  width: 15px;
+  height: 15px;
+}
+.pane-tabs button[aria-selected="true"] {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
+}
+.pane-tabs button.ai[aria-selected="true"] {
+  background: var(--ai);
+  color: var(--on-ai);
+}
+
+@media (max-width: 1100px) {
+  .hide-narrow {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .fbar-c {
+    display: none;
+  }
+}

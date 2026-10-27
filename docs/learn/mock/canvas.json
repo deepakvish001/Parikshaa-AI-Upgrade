@@ -1,0 +1,90 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-19T17:40:00Z"},
+  "title": "Parikshaa Learn mock",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "TopBar.dc.html": {"x": 0, "y": 0, "w": 1440, "h": 64, "title": "Top bar (har page)", "is_interactive": true},
+    "SideNav.dc.html": {"x": 1520, "y": 0, "w": 240, "h": 980, "title": "Side menu (learner)", "is_interactive": true},
+    "AdminNav.dc.html": {"x": 1840, "y": 0, "w": 240, "h": 980, "title": "Side menu (admin)", "is_interactive": true},
+    "PhoneTabs.dc.html": {"x": 2160, "y": 0, "w": 390, "h": 76, "title": "Phone tabs", "is_interactive": true},
+
+    "Main.dc.html": {"x": 0, "y": 1360, "w": 1440, "h": 2600, "title": "Landing", "expand": "fill", "is_interactive": true},
+    "Signup.dc.html": {"x": 1520, "y": 1360, "w": 1440, "h": 900, "title": "Signup / login", "expand": "fill", "is_interactive": true},
+    "Onboarding.dc.html": {"x": 3040, "y": 1360, "w": 1440, "h": 1000, "title": "Onboarding: goal", "expand": "fill", "is_interactive": true},
+    "Home.dc.html": {"x": 4560, "y": 1360, "w": 1440, "h": 1400, "title": "Home", "expand": "fill", "is_interactive": true},
+
+    "Explore.dc.html": {"x": 0, "y": 4340, "w": 1440, "h": 1500, "title": "Explore (catalog)", "expand": "fill", "is_interactive": true},
+    "Roadmap.dc.html": {"x": 1520, "y": 4340, "w": 1440, "h": 1100, "title": "Roadmap", "expand": "fill", "is_interactive": true},
+    "Course.dc.html": {"x": 3040, "y": 4340, "w": 1440, "h": 1500, "title": "Course", "expand": "fill", "is_interactive": true},
+    "Lesson.dc.html": {"x": 4560, "y": 4340, "w": 1440, "h": 2000, "title": "Lesson", "expand": "fill", "is_interactive": true},
+
+    "Sheet.dc.html": {"x": 0, "y": 6720, "w": 1440, "h": 1300, "title": "DSA A2Z sheet", "expand": "fill", "is_interactive": true},
+    "Problem.dc.html": {"x": 1520, "y": 6720, "w": 1440, "h": 960, "title": "Problem workspace", "expand": "fill", "is_interactive": true},
+    "Verdict.dc.html": {"x": 3040, "y": 6720, "w": 1440, "h": 1100, "title": "Verdict: Wrong Answer", "expand": "fill", "is_interactive": true},
+    "Editorial.dc.html": {"x": 4560, "y": 6720, "w": 1440, "h": 2600, "title": "Editorial + dry run", "expand": "fill", "is_interactive": true},
+
+    "Aptitude.dc.html": {"x": 0, "y": 9700, "w": 1440, "h": 1100, "title": "Aptitude practice", "expand": "fill", "is_interactive": true},
+    "Revision.dc.html": {"x": 1520, "y": 9700, "w": 1440, "h": 1100, "title": "Revision + mistake notebook", "expand": "fill", "is_interactive": true},
+    "Contests.dc.html": {"x": 3040, "y": 9700, "w": 1440, "h": 1300, "title": "Contests", "expand": "fill", "is_interactive": true},
+
+    "Studio.dc.html": {"x": 0, "y": 11380, "w": 1440, "h": 960, "title": "Code Studio: guided lab", "expand": "fill", "is_interactive": true},
+    "Arenas.dc.html": {"x": 1520, "y": 11380, "w": 1440, "h": 1100, "title": "Arenas (SQL problem)", "expand": "fill", "is_interactive": true},
+    "HLD.dc.html": {"x": 3040, "y": 11380, "w": 1440, "h": 1000, "title": "HLD design canvas", "expand": "fill", "is_interactive": true},
+    "Project.dc.html": {"x": 4560, "y": 11380, "w": 1440, "h": 1500, "title": "Project brief + Ship it", "expand": "fill", "is_interactive": true},
+
+    "Pramaan.dc.html": {"x": 0, "y": 13260, "w": 1440, "h": 1200, "title": "Pramaan exam + certificate", "expand": "fill", "is_interactive": true},
+    "Career.dc.html": {"x": 1520, "y": 13260, "w": 1440, "h": 1200, "title": "Career hub: resume", "expand": "fill", "is_interactive": true},
+    "Profile.dc.html": {"x": 3040, "y": 13260, "w": 1440, "h": 1500, "title": "Public profile / portfolio", "expand": "fill", "is_interactive": true},
+    "Jobs.dc.html": {"x": 4560, "y": 13260, "w": 1440, "h": 1200, "title": "Jobs + internships", "expand": "fill", "is_interactive": true},
+
+    "Sahayak.dc.html": {"x": 0, "y": 15140, "w": 1440, "h": 1000, "title": "Sahayak (AI tutor)", "expand": "fill", "is_interactive": true},
+    "Community.dc.html": {"x": 1520, "y": 15140, "w": 1440, "h": 1200, "title": "Community forum", "expand": "fill", "is_interactive": true},
+    "Cohort.dc.html": {"x": 3040, "y": 15140, "w": 1440, "h": 1100, "title": "Cohort", "expand": "fill", "is_interactive": true},
+    "Progress.dc.html": {"x": 4560, "y": 15140, "w": 1440, "h": 1300, "title": "Progress + skill graph", "expand": "fill", "is_interactive": true},
+    "Plus.dc.html": {"x": 6080, "y": 15140, "w": 1440, "h": 1500, "title": "Plus pricing", "expand": "fill", "is_interactive": true},
+    "Settings.dc.html": {"x": 7600, "y": 15140, "w": 1440, "h": 1100, "title": "Settings", "expand": "fill", "is_interactive": true},
+
+    "PhoneHome.dc.html": {"x": 0, "y": 17020, "w": 390, "h": 844, "title": "Phone: Home", "is_interactive": true},
+    "PhoneDaily.dc.html": {"x": 470, "y": 17020, "w": 390, "h": 844, "title": "Phone: Daily 10", "is_interactive": true},
+    "PhoneParsons.dc.html": {"x": 940, "y": 17020, "w": 390, "h": 844, "title": "Phone: Parsons", "is_interactive": true},
+    "PhoneDryRun.dc.html": {"x": 1410, "y": 17020, "w": 390, "h": 844, "title": "Phone: dry run", "is_interactive": true},
+    "PhoneProblem.dc.html": {"x": 1880, "y": 17020, "w": 390, "h": 844, "title": "Phone: problem", "is_interactive": true},
+    "PhoneSahayak.dc.html": {"x": 2350, "y": 17020, "w": 390, "h": 844, "title": "Phone: Sahayak", "is_interactive": true},
+    "PhoneLeague.dc.html": {"x": 2820, "y": 17020, "w": 390, "h": 844, "title": "Phone: weekly league", "is_interactive": true},
+
+    "AdminHome.dc.html": {"x": 0, "y": 18244, "w": 1440, "h": 1100, "title": "Admin: home", "expand": "fill", "is_interactive": true},
+    "AdminFactory.dc.html": {"x": 1520, "y": 18244, "w": 1440, "h": 1100, "title": "Admin: content factory", "expand": "fill", "is_interactive": true},
+    "AdminPackage.dc.html": {"x": 3040, "y": 18244, "w": 1440, "h": 1400, "title": "Admin: problem package", "expand": "fill", "is_interactive": true},
+    "AdminReview.dc.html": {"x": 4560, "y": 18244, "w": 1440, "h": 1200, "title": "Admin: review queue", "expand": "fill", "is_interactive": true},
+    "AdminLearners.dc.html": {"x": 6080, "y": 18244, "w": 1440, "h": 1100, "title": "Admin: learners + AI usage", "expand": "fill", "is_interactive": true},
+    "AdminContests.dc.html": {"x": 7600, "y": 18244, "w": 1440, "h": 1000, "title": "Admin: contests", "expand": "fill", "is_interactive": true}
+  },
+  "order": [
+    "TopBar.dc.html", "SideNav.dc.html", "AdminNav.dc.html", "PhoneTabs.dc.html",
+    "Main.dc.html", "Signup.dc.html", "Onboarding.dc.html", "Home.dc.html",
+    "Explore.dc.html", "Roadmap.dc.html", "Course.dc.html", "Lesson.dc.html",
+    "Sheet.dc.html", "Problem.dc.html", "Verdict.dc.html", "Editorial.dc.html",
+    "Aptitude.dc.html", "Revision.dc.html", "Contests.dc.html",
+    "Studio.dc.html", "Arenas.dc.html", "HLD.dc.html", "Project.dc.html",
+    "Pramaan.dc.html", "Career.dc.html", "Profile.dc.html", "Jobs.dc.html",
+    "Sahayak.dc.html", "Community.dc.html", "Cohort.dc.html", "Progress.dc.html", "Plus.dc.html", "Settings.dc.html",
+    "PhoneHome.dc.html", "PhoneDaily.dc.html", "PhoneParsons.dc.html", "PhoneDryRun.dc.html", "PhoneProblem.dc.html", "PhoneSahayak.dc.html", "PhoneLeague.dc.html",
+    "AdminHome.dc.html", "AdminFactory.dc.html", "AdminPackage.dc.html", "AdminReview.dc.html", "AdminLearners.dc.html", "AdminContests.dc.html"
+  ],
+  "notes": {
+    "row0": {"x": 0, "y": -300, "text": "0 · Shared hisse: top bar, side menu, phone tabs", "kind": "title1", "maxW": 2550},
+    "howto": {"x": 2640, "y": 0, "text": "Kaise dekhein: kisi screen par Play dabao. Landing se shuru karke links par click karo: Signup → Onboarding → Home → Lesson → Problem → Verdict → Editorial. Side menu se har hissa khulta hai. Ye sirf mock hai: data nakli, code baad me.", "w": 420, "size": "m", "fill": "orange"},
+    "row1": {"x": 0, "y": 1060, "text": "1 · Pehli baar: landing se Home tak", "kind": "title1", "maxW": 6000},
+    "row2": {"x": 0, "y": 4040, "text": "2 · Seekho: catalog, roadmap, course, lesson", "kind": "title1", "maxW": 6000},
+    "row3": {"x": 0, "y": 6420, "text": "3 · DSA practice: sheet, problem, verdict, editorial", "kind": "title1", "maxW": 6000},
+    "row4": {"x": 0, "y": 9400, "text": "4 · Aptitude, revision, contests", "kind": "title1", "maxW": 4480},
+    "row5": {"x": 0, "y": 11080, "text": "5 · Banao: Code Studio, arenas, HLD, projects", "kind": "title1", "maxW": 6000},
+    "row6": {"x": 0, "y": 12960, "text": "6 · Saboot aur career", "kind": "title1", "maxW": 6000},
+    "row7": {"x": 0, "y": 14840, "text": "7 · Sahayak, community, progress, Plus, settings", "kind": "title1", "maxW": 9040},
+    "row8": {"x": 0, "y": 16720, "text": "8 · Phone (390 px): roz ka seekhna", "kind": "title1", "maxW": 3210},
+    "row9": {"x": 0, "y": 17944, "text": "9 · Admin panel", "kind": "title1", "maxW": 9040}
+  },
+  "designSystems": []
+}

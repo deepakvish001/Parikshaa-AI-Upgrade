@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Editorial: Pair with sum K</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="position: relative; background: #ffffff; border-bottom: 1px solid #e2e6ef">
+    <nav aria-label="Editorial ke kadam" style="max-width: 980px; margin: 0 auto; padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+      <a href="Problem.dc.html" style="font-weight: 600; margin-right: 8px">Problem par wapas</a>
+      <a href="#s1" style="padding: 8px 14px; border-radius: 999px; background: #141b4d; color: #ffffff; font-weight: 600; text-decoration: none; font-size: 14px">1 · Samjho</a>
+      <a href="#s2" style="padding: 8px 14px; border-radius: 999px; background: #eef0f6; color: #373f52; font-weight: 600; text-decoration: none; font-size: 14px">2 · Raasta dhoondho</a>
+      <a href="#s3" style="padding: 8px 14px; border-radius: 999px; background: #eef0f6; color: #373f52; font-weight: 600; text-decoration: none; font-size: 14px">3 · Code likho</a>
+      <a href="#s4" style="padding: 8px 14px; border-radius: 999px; background: #eef0f6; color: #373f52; font-weight: 600; text-decoration: none; font-size: 14px">4 · Test aur socho</a>
+    </nav>
+  </div>
+
+  <article style="max-width: 820px; margin: 0 auto; padding: 32px 24px 72px; font-size: 17px; line-height: 1.75">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px">
+      <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e7f6ef; color: #117a57">L2</span>
+      <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #eef0f6; color: #373f52">Two pointers</span>
+      <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #eaf2fc; color: #1f63b8">AI ki madad, insaan ki jaanch</span>
+    </div>
+    <h1 style="margin: 0 0 6px; font-size: 34px; line-height: 1.2">Pair with sum K: editorial</h1>
+    <p style="margin: 0 0 28px; color: #5f687c; font-size: 14px">Likha: Parikshaa content team, "Decode Your Coding Interview" ke chaar kadam ki style me. Jaancha: [REVIEWER NAAM] · 18 min padhna</p>
+
+    <section id="s1">
+      <h2 style="font-size: 24px; margin: 0 0 10px">Kadam 1: sawaal samjho</h2>
+      <p style="margin: 0 0 12px">Code se pehle, sawaal ko apne shabdon me bolo: "Sorted list hai. Do alag jagah ke number chahiye jinka jod K ho." Ab teen cheezein likho:</p>
+      <ul style="margin: 0 0 16px; padding-left: 22px">
+        <li><b>Input / output:</b> n, K, array; jawab do index ya -1 -1.</li>
+        <li><b>Chhupi shart:</b> array sorted hai. Ye shabd bekaar nahi diya gaya.</li>
+        <li><b>Seema se lakshya:</b> n = 2·10⁵, to O(n²) = 4·10¹⁰, nahi chalega.</li>
+      </ul>
+      <div style="overflow-x: auto; margin-bottom: 20px; border-radius: 12px; border: 1px solid #e2e6ef; background: #ffffff">
+        <table style="width: 100%; border-collapse: collapse; font-size: 15px; min-width: 420px">
+          <caption style="text-align: left; padding: 12px 14px 0; font-weight: 700">n dekh kar complexity ka andaaza (1 second)</caption>
+          <thead><tr style="text-align: left; color: #5f687c"><th scope="col" style="padding: 10px 14px">n</th><th scope="col" style="padding: 10px 14px">Chalega</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">≤ 2000</td><td style="padding: 10px 14px">O(n²)</td></tr>
+            <tr style="border-top: 1px solid #eef0f6; background: #fdebd4"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">≤ 2·10⁵</td><td style="padding: 10px 14px"><b>O(n) ya O(n log n)</b> ← hamara case</td></tr>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">≤ 10⁸</td><td style="padding: 10px 14px">O(n), bahut halka</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s2">
+      <h2 style="font-size: 24px; margin: 32px 0 10px">Kadam 2: raasta dhoondho</h2>
+      <p style="margin: 0 0 12px"><b>Brute force:</b> har (i, j) try karo. Sahi hai, par O(n²). Ab poochho: sorted hone se kya milta hai?</p>
+      <p style="margin: 0 0 12px"><b>Observation:</b> sabse chhota (a[0]) aur sabse bada (a[n−1]) jodo. Agar jod K se bada hai, to a[n−1] kisi ke saath bhi kaam nahi aayega, kyunki uska sabse chhota saathi bhi zyada de raha hai. Use hamesha ke liye hata do. Agar jod chhota hai, to a[0] ko hata do. Har kadam ek number kam, kul n kadam.</p>
+      <figure aria-label="Dry run slider" style="margin: 20px 0; padding: 24px; border-radius: 20px; background: #fefefe; border: 1px solid #e2e6ef">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; font-family: 'Kalam', cursive; color: #111111"><span style="font-size: 22px; font-weight: 700">K = 10</span><span style="font-size: 18px">kadam {{stepNo}} / 5</span></div>
+        <div style="display: flex; gap: 10px; justify-content: center; font-family: 'Kalam', cursive; font-size: 26px; font-weight: 700; color: #111111">
+          <sc-for list="{{cells}}" as="c" hint-placeholder-count="6">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+              <div style="width: 54px; height: 54px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate({{c.tilt}}); {{c.fill}}">{{c.v}}</div>
+              <div style="height: 26px; font-size: 20px">{{c.ptr}}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px">
+          <p style="flex: 2 1 280px; font-family: 'Kalam', cursive; font-size: 21px; color: #111111; margin: 0">{{note}}</p>
+          <div style="flex: 1 1 200px; padding: 10px 14px; border-radius: 12px; border: 2px dashed #111111; font-family: 'Kalam', cursive; font-size: 18px; color: #111111">Hamesha sach: jawab (agar hai) L aur R ke beech hai.</div>
+        </div>
+        <div style="display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 16px">
+          <button type="button" onClick="{{prev}}" disabled="{{atStart}}" aria-label="Pichhla kadam" style="width: 44px; height: 44px; border-radius: 50%; border: 1px solid #cdd3df; background: #ffffff; display: grid; place-items: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#131a2e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+          <div style="display: flex; gap: 6px"><sc-for list="{{dots}}" as="d" hint-placeholder-count="5"><button type="button" onClick="{{d.go}}" aria-label="{{d.label}}" style="height: 10px; border: 0; padding: 0; border-radius: 999px; cursor: pointer; {{d.style}}"></button></sc-for></div>
+          <button type="button" onClick="{{next}}" disabled="{{atEnd}}" aria-label="Agla kadam" style="width: 44px; height: 44px; border-radius: 50%; border: 0; background: #3346c4; display: grid; place-items: center; cursor: pointer"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
+        </div>
+      </figure>
+      <p style="margin: 0 0 12px"><b>Kyun sahi hai:</b> jo number hataya, uska koi saathi bacha hi nahi tha. Isliye sahi jodi kabhi nahi chhoot-ti. Ye "hamesha sach" wali baat (invariant) interview me bolo, yahi farq dikhata hai.</p>
+    </section>
+
+    <section id="s3">
+      <h2 style="font-size: 24px; margin: 32px 0 10px">Kadam 3: code likho</h2>
+      <div style="border-radius: 16px; overflow: hidden; border: 1px solid #222938; margin-bottom: 16px">
+        <div role="tablist" aria-label="Code ki bhasha" style="display: flex; gap: 4px; padding: 8px; background: #131a2e">
+          <sc-for list="{{langs}}" as="l" hint-placeholder-count="4">
+            <button type="button" role="tab" aria-selected="{{l.on}}" onClick="{{l.pick}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; font-family: 'JetBrains Mono', monospace; font-size: 14px; cursor: pointer; {{l.style}}">{{l.label}}</button>
+          </sc-for>
+        </div>
+        <pre style="margin: 0; padding: 18px 20px; background: #0c1020; color: #e8ebf5; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.65; overflow-x: auto; white-space: pre">{{code}}</pre>
+      </div>
+      <ul style="margin: 0 0 12px; padding-left: 22px">
+        <li><b>Line "long long s":</b> 10⁹ + 10⁹ int me nahi aata. Sabse aam galti yahi hai.</li>
+        <li><b>while (l &lt; r):</b> l == r par ek hi number do baar ho jaata, isliye sakht chhota.</li>
+        <li><b>Fast IO:</b> 2·10⁵ numbers padhne hain, sync off karo.</li>
+      </ul>
+    </section>
+
+    <section id="s4">
+      <h2 style="font-size: 24px; margin: 32px 0 10px">Kadam 4: test karo aur socho</h2>
+      <p style="margin: 0 0 12px">Submit se pehle ye tests khud chalao. Har ek kisi khaas galti ko pakadta hai:</p>
+      <div style="overflow-x: auto; margin-bottom: 16px; border-radius: 12px; border: 1px solid #e2e6ef; background: #ffffff">
+        <table style="width: 100%; border-collapse: collapse; font-size: 15px; min-width: 560px">
+          <thead><tr style="text-align: left; color: #5f687c"><th scope="col" style="padding: 10px 14px">Test</th><th scope="col" style="padding: 10px 14px">Kya pakadta hai</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">n=2: [5 5], K=10</td><td style="padding: 10px 14px">Sabse chhota input, l &lt; r ki shart</td></tr>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">[1 2 3], K=100</td><td style="padding: 10px 14px">Koi jodi nahi: -1 -1</td></tr>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">[10⁹ 10⁹], K=2·10⁹</td><td style="padding: 10px 14px">Overflow</td></tr>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">[3 3 3 3], K=6</td><td style="padding: 10px 14px">Duplicates, alag index</td></tr>
+            <tr style="border-top: 1px solid #eef0f6"><td style="padding: 10px 14px; font-family: 'JetBrains Mono', monospace">[0 0], K=0</td><td style="padding: 10px 14px">Zero aur K = 0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0 0 12px"><b>Complexity:</b> time O(n), space O(1).</p>
+      <p style="margin: 0 0 12px"><b>Socho:</b> agar array sorted na hota? Hash map se O(n). Agar teen numbers chahiye? Ek number fix karo, baaki do par yahi trick: O(n²). Ye agla problem hai.</p>
+      <div style="padding: 18px; border-radius: 16px; background: #fdebd4; margin: 20px 0">
+        <div style="font-weight: 700; margin-bottom: 4px">Interview me kaise bolein (30 second)</div>
+        <div style="font-size: 16px; color: #373f52">"Brute force O(n²) hai. Array sorted hai, isliye do pointer: jod bada to R ghatao, chhota to L badhao. Har kadam ek number hamesha ke liye bahar jaata hai, isliye O(n). Jod long long me rakhunga."</div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px">
+        <a href="Sheet.dc.html" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 22px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Agla: Three numbers ka jod zero</a>
+        <a href="Community.dc.html" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 18px; border-radius: 12px; border: 1px solid #cdd3df; color: #131a2e; font-weight: 600; text-decoration: none">Charcha (12)</a>
+        <a href="AdminReview.dc.html" style="display: inline-flex; align-items: center; min-height: 50px; padding: 0 18px; color: #4f586c; font-weight: 600">Galti batao</a>
+      </div>
+    </section>
+  </article>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2600}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { step: 0, lang: 'cpp' };
+  }
+  renderVals() {
+    const a = [1, 3, 4, 6, 8, 11];
+    const frames = [
+      { L: 0, R: 5, note: '1 + 11 = 12 > 10. 11 ka koi saathi nahi bachega: R--' },
+      { L: 0, R: 4, note: '1 + 8 = 9 < 10. 1 ka koi saathi nahi: L++' },
+      { L: 1, R: 4, note: '3 + 8 = 11 > 10. R--' },
+      { L: 1, R: 3, note: '3 + 6 = 9 < 10. L++' },
+      { L: 2, R: 3, note: '4 + 6 = 10. Mil gaya: 2 3' }
+    ];
+    const st = this.state.step;
+    const f = frames[st];
+    const tilts = ['-1.5deg', '1deg', '-0.5deg', '1.2deg', '-1deg', '0.8deg'];
+    const cells = a.map((v, i) => {
+      let fill = 'background: #ffffff';
+      if (i === f.L || i === f.R) fill = st === 4 ? 'background: #b9e2cf' : 'background: #F6A496';
+      else if (i < f.L || i > f.R) fill = 'background: repeating-linear-gradient(45deg, #cdd3df 0 2px, transparent 2px 7px); color: #5f687c';
+      return { v, fill, tilt: tilts[i], ptr: i === f.L ? '↑ L' : i === f.R ? '↑ R' : '' };
+    });
+    const codes = {
+      cpp: '#include <bits/stdc++.h>\nusing namespace std;\n\nint main() {\n    ios::sync_with_stdio(false); cin.tie(nullptr);\n    int n; long long k;\n    cin >> n >> k;\n    vector<long long> a(n);\n    for (auto& x : a) cin >> x;\n    int l = 0, r = n - 1;\n    while (l < r) {\n        long long s = a[l] + a[r];   // 2·10^9 int me nahi aata\n        if (s == k) { cout << l << \' \' << r << \'\\n\'; return 0; }\n        if (s > k) r--; else l++;\n    }\n    cout << "-1 -1\\n";\n}',
+      java: 'import java.util.*; import java.io.*;\n\npublic class Main {\n    public static void main(String[] args) throws IOException {\n        DataInputStream in = new DataInputStream(new BufferedInputStream(System.in));\n        // fast reader (template me)\n        int n = nextInt(); long k = nextLong();\n        long[] a = new long[n];\n        for (int i = 0; i < n; i++) a[i] = nextLong();\n        int l = 0, r = n - 1;\n        while (l < r) {\n            long s = a[l] + a[r];\n            if (s == k) { System.out.println(l + " " + r); return; }\n            if (s > k) r--; else l++;\n        }\n        System.out.println("-1 -1");\n    }\n}',
+      py: 'import sys\n\ndef main():\n    data = sys.stdin.buffer.read().split()\n    n, k = int(data[0]), int(data[1])\n    a = list(map(int, data[2:2 + n]))\n    l, r = 0, n - 1\n    while l < r:\n        s = a[l] + a[r]          # Python me overflow nahi\n        if s == k:\n            print(l, r); return\n        if s > k: r -= 1\n        else: l += 1\n    print(-1, -1)\n\nmain()',
+      js: 'const data = require("fs").readFileSync(0, "utf8").split(/\\s+/).map(Number);\nconst n = data[0], k = data[1];\nconst a = data.slice(2, 2 + n);\nlet l = 0, r = n - 1, ans = "-1 -1";\nwhile (l < r) {\n  const s = a[l] + a[r];          // 2·10^9 < 2^53, safe\n  if (s === k) { ans = l + " " + r; break; }\n  if (s > k) r--; else l++;\n}\nconsole.log(ans);'
+    };
+    return {
+      cells, note: f.note, stepNo: st + 1,
+      atStart: st === 0, atEnd: st === 4,
+      prev: () => this.setState({ step: Math.max(0, st - 1) }),
+      next: () => this.setState({ step: Math.min(4, st + 1) }),
+      dots: frames.map((_, i) => ({ label: 'Kadam ' + (i + 1), style: i === st ? 'width: 26px; background: #3346c4' : 'width: 10px; background: #cdd3df', go: () => this.setState({ step: i }) })),
+      langs: [['cpp', 'C++'], ['java', 'Java'], ['py', 'Python'], ['js', 'JavaScript']].map(([id, label]) => ({
+        label, on: this.state.lang === id,
+        style: this.state.lang === id ? 'background: #3346c4; color: #ffffff' : 'background: transparent; color: #cdd3df',
+        pick: () => this.setState({ lang: id })
+      })),
+      code: codes[this.state.lang]
+    };
+  }
+}
+</script>
+</body>
+</html>

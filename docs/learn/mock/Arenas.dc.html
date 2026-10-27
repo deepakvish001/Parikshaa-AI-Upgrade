@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Arenas: SQL problem</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="arenas" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 24px 28px 40px; box-sizing: border-box">
+      <h1 style="margin: 0 0 6px; font-size: 26px">Arenas</h1>
+      <p style="margin: 0 0 14px; color: #4f586c">Har technology ka "LeetCode": chhote problems, asli grader, turant feedback.</p>
+      <div role="tablist" aria-label="Arena" style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px">
+        <sc-for list="{{arenas}}" as="a" hint-placeholder-count="13">
+          <button type="button" role="tab" aria-selected="{{a.on}}" onClick="{{a.pick}}" style="min-height: 38px; padding: 0 12px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; {{a.style}}">{{a.label}}</button>
+        </sc-for>
+      </div>
+      <div style="padding: 12px 16px; border-radius: 12px; background: #ffffff; border: 1px solid #e2e6ef; margin-bottom: 18px; font-size: 14px; color: #373f52"><b>{{cur.label}}:</b> {{cur.about}} <span style="color: #5f687c">· {{cur.count}}</span></div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: stretch">
+        <section aria-label="Sawaal" style="flex: 1 1 360px; min-width: 0; padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 15px; line-height: 1.65">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px"><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #fdebd4; color: #a35200">L3</span><span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #eef0f6; color: #373f52">Window functions</span></div>
+          <h2 style="margin: 0 0 8px; font-size: 20px">Har sheher ka top seller</h2>
+          <p style="margin: 0 0 12px">Har <b>city</b> ke liye wo seller batao jiski kul bikri sabse zyada hai. Barabari ho to dono dikhao. Kram: city, phir seller_name.</p>
+          <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px">Tables</div>
+          <pre style="margin: 0 0 10px; padding: 10px 12px; background: #f6f7fb; border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px">sellers(id, seller_name, city)
+orders(id, seller_id, amount, created_at)</pre>
+          <p style="margin: 0; font-size: 13px; color: #5f687c">Submit par 4 chhupe datasets: barabari, NULL amount, bina order wala seller, khaali table.</p>
+        </section>
+
+        <section aria-label="Query" style="flex: 1.4 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+          <div style="border-radius: 16px; overflow: hidden; background: #0c1020">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #131a2e; color: #cdd3df; font-size: 13px">
+              <span>PostgreSQL 16</span>
+              <span style="margin-left: auto; display: flex; gap: 8px">
+                <button type="button" onClick="{{run}}" style="min-height: 34px; padding: 0 14px; border-radius: 8px; border: 1px solid #8b98fa; background: transparent; color: #c9cffa; font: inherit; font-weight: 700; cursor: pointer">Run</button>
+                <a href="Verdict.dc.html" style="display: inline-flex; align-items: center; min-height: 34px; padding: 0 14px; border-radius: 8px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Submit</a>
+              </span>
+            </div>
+            <pre style="margin: 0; padding: 14px 16px; color: #e8ebf5; font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.7; white-space: pre; overflow-x: auto"><span style="color: #c9cffa">WITH</span> totals <span style="color: #c9cffa">AS</span> (
+  <span style="color: #c9cffa">SELECT</span> s.city, s.seller_name,
+         <span style="color: #c9cffa">SUM</span>(o.amount) <span style="color: #c9cffa">AS</span> total,
+         <span style="color: #c9cffa">RANK</span>() <span style="color: #c9cffa">OVER</span> (<span style="color: #c9cffa">PARTITION BY</span> s.city
+                      <span style="color: #c9cffa">ORDER BY SUM</span>(o.amount) <span style="color: #c9cffa">DESC</span>) <span style="color: #c9cffa">AS</span> rk
+  <span style="color: #c9cffa">FROM</span> sellers s <span style="color: #c9cffa">JOIN</span> orders o <span style="color: #c9cffa">ON</span> o.seller_id = s.id
+  <span style="color: #c9cffa">GROUP BY</span> s.city, s.seller_name
+)
+<span style="color: #c9cffa">SELECT</span> city, seller_name, total <span style="color: #c9cffa">FROM</span> totals
+<span style="color: #c9cffa">WHERE</span> rk = <span style="color: #f3b23a">1</span> <span style="color: #c9cffa">ORDER BY</span> city, seller_name;</pre>
+          </div>
+
+          <div style="border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; padding: 14px 16px">
+            <sc-if value="{{ran}}" hint-placeholder-val="{{ true }}">
+              <div style="display: flex; justify-content: space-between; margin-bottom: 8px"><span style="font-weight: 800; color: #117a57">Sample dataset: match</span><span style="font-size: 13px; color: #5f687c">4 rows · 9 ms</span></div>
+              <div role="table" aria-label="Result" style="font-family: 'JetBrains Mono', monospace; font-size: 13px; border: 1px solid #eef0f6; border-radius: 10px; overflow: hidden">
+                <div role="row" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: #fbfbfd; font-weight: 700; color: #5f687c"><span role="columnheader" style="padding: 8px 12px">city</span><span role="columnheader" style="padding: 8px 12px">seller_name</span><span role="columnheader" style="padding: 8px 12px">total</span></div>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+                  <div role="row" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid #eef0f6"><span role="cell" style="padding: 8px 12px">{{r.c}}</span><span role="cell" style="padding: 8px 12px">{{r.s}}</span><span role="cell" style="padding: 8px 12px">{{r.t}}</span></div>
+                </sc-for>
+              </div>
+              <p style="margin: 10px 0 0; font-size: 13px; color: #4f586c">Socho: jis seller ka koi order nahi, kya wo kabhi top ho sakta hai? Chhupe dataset me ek city me sirf wahi hai.</p>
+            </sc-if>
+            <sc-if value="{{notRan}}" hint-placeholder-val="{{ false }}">
+              <p style="margin: 0; color: #5f687c">Run dabao, result yahan aayega. Sample data neeche ke tab me.</p>
+            </sc-if>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { arena: 'sql', ran: false };
+  }
+  renderVals() {
+    const list = [
+      ['js', 'JavaScript', 'Functions, async, closures; unit tests se jaanch', '320 problems'],
+      ['fe', 'Frontend / React', 'Component banao; Playwright DOM aur visual tests', '260 problems'],
+      ['be', 'Backend / Node', 'API banao; HTTP tests asli requests se', '220 problems'],
+      ['sql', 'SQL', 'Query likho; chhupe datasets par result match', '300 problems'],
+      ['py', 'Python', 'Scripts aur functions; pytest', '300 problems'],
+      ['ds', 'Data science', 'pandas DataFrame ka result match', '180 problems'],
+      ['ml', 'Machine learning', 'Model train karo; metric seema paar karo', '120 problems'],
+      ['genai', 'GenAI', 'Prompt aur RAG; tay kiye tests + rubric', '80 problems'],
+      ['java', 'Java / Spring', 'JUnit tests, REST endpoints', '200 problems'],
+      ['go', 'Go', 'go test, concurrency ke sawaal', '150 problems'],
+      ['ops', 'DevOps', 'Dockerfile, CI config, shell; script se jaanch', '120 problems'],
+      ['lld', 'LLD', 'Classes design karo; naye requirement par test', '80 problems'],
+      ['hld', 'HLD', 'Design canvas + simulator', '60 designs']
+    ];
+    const arenas = list.map(([id, label]) => ({
+      label, on: this.state.arena === id,
+      style: this.state.arena === id ? 'background: #141b4d; color: #ffffff; border: 1px solid #141b4d' : 'background: #ffffff; color: #373f52; border: 1px solid #cdd3df',
+      pick: () => this.setState({ arena: id })
+    }));
+    const c = list.find((x) => x[0] === this.state.arena);
+    return {
+      arenas,
+      cur: { label: c[1], about: c[2], count: c[3] },
+      ran: this.state.ran, notRan: !this.state.ran,
+      run: () => this.setState({ ran: true }),
+      rows: [
+        { c: 'Bengaluru', s: 'Kaveri Traders', t: '182400' },
+        { c: 'Indore', s: 'Sharma Kirana', t: '96300' },
+        { c: 'Indore', s: 'Verma Stores', t: '96300' },
+        { c: 'Patna', s: 'Ganga Mart', t: '71050' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

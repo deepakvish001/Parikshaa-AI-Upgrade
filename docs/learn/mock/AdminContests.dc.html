@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin: contests</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="AdminNav" active="contests" hint-size="240px,980px"></dc-import>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 18px">
+      <div><div style="font-size: 14px; color: #5f687c">Contests / naya</div><h1 style="margin: 4px 0 0; font-size: 26px">Weekly Contest 12</h1></div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap">
+        <a href="Contests.dc.html" style="display: inline-flex; align-items: center; min-height: 42px; padding: 0 14px; border-radius: 10px; border: 1px solid #cdd3df; background: #ffffff; color: #131a2e; font-weight: 600; text-decoration: none">Learner view</a>
+        <button type="button" onClick="{{publish}}" style="min-height: 42px; padding: 0 16px; border-radius: 10px; border: 0; font: inherit; font-weight: 700; cursor: pointer; {{pubStyle}}">{{pubLabel}}</button>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <section aria-label="Basic" style="flex: 1 1 320px; max-width: 420px; padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef; display: flex; flex-direction: column; gap: 14px; font-size: 14px">
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Kism
+          <select style="height: 42px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 10px; font: inherit; font-weight: 400"><option>Weekly (rated)</option><option>CP round</option><option>College contest</option><option>Hiring challenge (Hire)</option><option>Aptitude sprint</option></select>
+        </label>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Shuru<input type="datetime-local" value="2026-10-25T20:00" style="height: 42px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 8px; font: inherit; font-weight: 400"></label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 600">Samay (min)<input type="number" value="90" style="height: 42px; border: 1px solid #cdd3df; border-radius: 10px; padding: 0 8px; font: inherit; font-weight: 400"></label>
+        </div>
+        <div style="font-weight: 600">Format</div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap"><span style="padding: 8px 12px; border-radius: 8px; background: #141b4d; color: #ffffff; font-weight: 600">ICPC (penalty)</span><span style="padding: 8px 12px; border-radius: 8px; border: 1px solid #cdd3df; font-weight: 600">IOI (partial)</span></div>
+        <div style="font-weight: 600">Niyam</div>
+        <sc-for list="{{rules}}" as="r" hint-placeholder-count="5">
+          <button type="button" onClick="{{r.toggle}}" aria-pressed="{{r.on}}" style="display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid #e2e6ef; background: #ffffff; font: inherit; cursor: pointer; color: #131a2e">
+            <span>{{r.text}}</span><span style="width: 44px; height: 24px; border-radius: 999px; position: relative; {{r.track}}"><span style="position: absolute; top: 3px; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; {{r.knob}}"></span></span>
+          </button>
+        </sc-for>
+      </section>
+
+      <div style="flex: 2 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <section aria-labelledby="probs" style="padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px"><h2 id="probs" style="margin: 0; font-size: 17px">Problems (4)</h2><a href="AdminPackage.dc.html" style="font-weight: 600; font-size: 14px">+ Bank se jodo</a></div>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+            <sc-for list="{{probs}}" as="p" hint-placeholder-count="4">
+              <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px; border-radius: 12px; background: #f6f7fb">
+                <b style="width: 22px">{{p.id}}</b>
+                <span style="flex: 1 1 200px; font-weight: 600">{{p.name}}</span>
+                <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; background: #ffffff">{{p.lv}}</span>
+                <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{p.stStyle}}">{{p.st}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin: 10px 0 0; font-size: 13px; color: #5f687c">Har problem ko 2 testers contest se pehle hal karte hain. Problems contest tak chhupe; baad me editorial ke saath khulte hain.</p>
+        </section>
+        <section aria-labelledby="cap" style="padding: 20px; border-radius: 16px; background: #141b4d; color: #ffffff">
+          <h2 id="cap" style="margin: 0 0 8px; font-size: 17px">Judge ki taiyaari</h2>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; font-size: 14px">
+            <div style="padding: 12px; border-radius: 12px; background: #26338f"><div style="color: #c9cffa">Registered</div><b style="font-size: 20px">1,902</b></div>
+            <div style="padding: 12px; border-radius: 12px; background: #26338f"><div style="color: #c9cffa">Peak andaaza</div><b style="font-size: 20px">~40 submit / s</b></div>
+            <div style="padding: 12px; border-radius: 12px; background: #26338f"><div style="color: #c9cffa">Extra machines</div><b style="font-size: 20px">4 · 7:30–10 PM</b></div>
+            <div style="padding: 12px; border-radius: 12px; background: #26338f"><div style="color: #c9cffa">Kharcha andaaza</div><b style="font-size: 20px">~₹220</b></div>
+          </div>
+          <p style="margin: 10px 0 0; font-size: 13px; color: #c9cffa">Load test kal raat: 60 submit/s par p95 2.8 s. Kuch toota to runbook: OPERATIONS.md › contest.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { rules: [true, true, true, false, true], published: false };
+  }
+  renderVals() {
+    const texts = ['Contest me Sahayak/AI band', 'Copy check (plagiarism)', 'Aakhri 15 min scoreboard freeze', 'Sirf ek college ke liye', 'Rated (rating badlegi)'];
+    const rules = texts.map((text, i) => {
+      const on = this.state.rules[i];
+      return {
+        text, on,
+        track: on ? 'background: #3346c4' : 'background: #cdd3df',
+        knob: on ? 'left: 23px' : 'left: 3px',
+        toggle: () => { const r = this.state.rules.slice(); r[i] = !r[i]; this.setState({ rules: r }); }
+      };
+    });
+    const ok = 'background: #e7f6ef; color: #117a57';
+    const wait = 'background: #fff5e3; color: #7a4600';
+    const probs = [
+      ['A', 'Seedhi line', 'L1', '2/2 testers', ok], ['B', 'Do dukaan', 'L2', '2/2 testers', ok],
+      ['C', 'Sabse lamba raasta', 'L3', '1/2 testers', wait], ['D', 'Toll plaza', 'L4', '2/2 testers', ok]
+    ].map(([id, name, lv, st, stStyle]) => ({ id, name, lv, st, stStyle }));
+    const p = this.state.published;
+    return {
+      rules, probs,
+      pubLabel: p ? 'Publish ho gaya' : 'Publish karo',
+      pubStyle: p ? 'background: #e7f6ef; color: #0d5c42' : 'background: #f28c28; color: #131a2e',
+      publish: () => this.setState({ published: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

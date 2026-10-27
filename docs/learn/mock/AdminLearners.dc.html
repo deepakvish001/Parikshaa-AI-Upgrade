@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin: learners aur AI usage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="AdminNav" active="learners" hint-size="240px,980px"></dc-import>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+    <h1 style="margin: 0 0 4px; font-size: 26px">Learners, support aur AI</h1>
+    <p style="margin: 0 0 14px; color: #4f586c">Learner ka data sirf zaroorat par dekho; har kholna audit log me jaata hai.</p>
+    <div role="tablist" aria-label="Hisse" style="display: flex; gap: 4px; border-bottom: 1px solid #e2e6ef; margin-bottom: 18px; flex-wrap: wrap">
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+        <button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="padding: 10px 16px; border: 0; background: transparent; font: inherit; cursor: pointer; {{t.style}}">{{t.label}}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{isAi}}" hint-placeholder-val="{{ true }}">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px">
+        <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Aaj ka kharcha</div><div style="font-size: 26px; font-weight: 800">₹1,840</div><div style="font-size: 12px; color: #5f687c">Budget ₹3,000 · 61%</div></div>
+        <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Sahayak message</div><div style="font-size: 26px; font-weight: 800">48,210</div><div style="font-size: 12px; color: #5f687c">~₹0.035 / message</div></div>
+        <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Cache se</div><div style="font-size: 26px; font-weight: 800">71%</div><div style="font-size: 12px; color: #5f687c">prompt tokens</div></div>
+        <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Eval score (kal raat)</div><div style="font-size: 26px; font-weight: 800">91 / 100</div><div style="font-size: 12px; color: #a35200; font-weight: 600">Hinglish −4</div></div>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+        <section aria-labelledby="feat" style="flex: 1.4 1 420px; min-width: 0; padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="feat" style="margin: 0 0 12px; font-size: 17px">Kharcha: kaun sa feature (aaj, ₹)</h2>
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <sc-for list="{{feats}}" as="f" hint-placeholder-count="6">
+              <div title="{{f.tip}}" style="display: grid; grid-template-columns: 150px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 14px">
+                <span style="font-weight: 600">{{f.name}}</span>
+                <span style="height: 12px; border-radius: 4px; background: #eef0f6"><span style="display: block; height: 12px; border-radius: 4px; background: #3346c4; width: {{f.w}}"></span></span>
+                <span style="text-align: right; color: #373f52; font-weight: 700">{{f.v}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 13px; color: #5f687c">Model: hints aur Sahayak par chhota model; mock interview aur editorial jaanch par bada. Factory Batch API se.</p>
+        </section>
+        <section aria-labelledby="safety" style="flex: 1 1 300px; min-width: 0; padding: 20px; border-radius: 16px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="safety" style="margin: 0 0 12px; font-size: 17px">Trust aur safety</h2>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eef0f6"><span>"Galat jawab" reports</span><b>17</b></div>
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eef0f6"><span>Jailbreak koshish roki</span><b>42</b></div>
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eef0f6"><span>Contest me AI band (block hue)</span><b>9</b></div>
+            <div style="display: flex; justify-content: space-between; padding: 8px 0"><span>Fair use 200 paar</span><b>3 learners</b></div>
+          </div>
+          <a href="AdminReview.dc.html" style="display: inline-block; margin-top: 10px; font-weight: 700">Reports dekho</a>
+        </section>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isList}}" hint-placeholder-val="{{ false }}">
+      <label style="display: flex; align-items: center; gap: 8px; max-width: 420px; height: 42px; padding: 0 12px; border: 1px solid #cdd3df; border-radius: 10px; background: #ffffff; margin-bottom: 12px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Learner dhoondho</span><input type="search" placeholder="Naam, email ya ID" style="flex: 1; border: 0; font: inherit; outline: none"></label>
+      <div role="table" aria-label="Learners" style="border-radius: 14px; border: 1px solid #e2e6ef; background: #ffffff; font-size: 14px; overflow-x: auto">
+        <div role="row" style="display: grid; grid-template-columns: minmax(0, 1.6fr) 90px 110px minmax(0, 1.2fr) 90px; min-width: 620px; padding: 10px 14px; color: #5f687c; font-size: 13px; font-weight: 700; background: #fbfbfd">
+          <span role="columnheader">Learner</span><span role="columnheader">Plan</span><span role="columnheader">Aakhri baar</span><span role="columnheader">Note</span><span role="columnheader"></span>
+        </div>
+        <sc-for list="{{learners}}" as="l" hint-placeholder-count="6">
+          <div role="row" style="display: grid; grid-template-columns: minmax(0, 1.6fr) 90px 110px minmax(0, 1.2fr) 90px; min-width: 620px; padding: 10px 14px; border-top: 1px solid #eef0f6; align-items: center">
+            <span role="cell"><b>{{l.name}}</b><br><span style="font-size: 12px; color: #5f687c">{{l.college}}</span></span>
+            <span role="cell">{{l.plan}}</span>
+            <span role="cell" style="color: #4f586c">{{l.last}}</span>
+            <span role="cell" style="color: #373f52">{{l.note}}</span>
+            <span role="cell"><a href="Profile.dc.html" style="font-weight: 600">Kholo</a></span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isSupport}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 10px; max-width: 900px">
+        <sc-for list="{{tickets}}" as="t" hint-placeholder-count="4">
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 14px 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef">
+            <span style="font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; {{t.style}}">{{t.pri}}</span>
+            <span style="flex: 1 1 320px; font-weight: 600">{{t.title}}</span>
+            <span style="font-size: 13px; color: #5f687c">{{t.meta}}</span>
+            <a href="Community.dc.html" style="font-weight: 600">Jawab do</a>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'ai' };
+  }
+  renderVals() {
+    const tab = this.state.tab;
+    const tabs = [['ai', 'AI usage'], ['list', 'Learners'], ['support', 'Support (7)']].map(([id, label]) => ({
+      label, on: tab === id,
+      style: tab === id ? 'font-weight: 700; color: #26338f; border-bottom: 2px solid #3346c4' : 'color: #4f586c; border-bottom: 2px solid transparent',
+      pick: () => this.setState({ tab: id })
+    }));
+    const fv = [['Sahayak chat', 980], ['Hints', 310], ['Mock interview', 260], ['Resume salah', 120], ['AI courses', 110], ['Forum draft', 60]];
+    const max = 980;
+    const feats = fv.map(([name, v]) => ({ name, v: '₹' + v, w: Math.round((v / max) * 100) + '%', tip: name + ': ₹' + v }));
+    const learners = [
+      ['Aarav Sharma', '[COLLEGE] · 2027', 'Plus', 'abhi', 'Pramaan 2'],
+      ['Riya K', '[COLLEGE] · 2026', 'Campus', '1 ghanta', 'Contest top 10'],
+      ['Sameer', '[COLLEGE] · 2027', 'Free', 'kal', ''],
+      ['Nisha S', '[COLLEGE] · 2026', 'Plus', '3 din', 'Refund maanga'],
+      ['Ankit', '[COLLEGE] · 2028', 'Free', '1 hafta', 'Scholarship apply'],
+      ['Pooja M', '[COLLEGE] · 2027', 'Plus', 'abhi', '']
+    ].map(([name, college, plan, last, note]) => ({ name, college, plan, last, note }));
+    const pr = { Zaroori: 'background: #fdeeec; color: #9c2d21', Normal: 'background: #eef0f6; color: #373f52', Paisa: 'background: #fff5e3; color: #7a4600' };
+    const tickets = [
+      ['Paisa', 'UPI se paisa kata par Plus nahi mila', 'Nisha S · 2 ghante · SLA 4 ghante'],
+      ['Zaroori', 'Contest me submit atak gaya, rank par asar', 'Kabir R · 30 min · SLA 1 ghanta'],
+      ['Normal', 'Certificate par naam ki spelling galat', 'Ankit · 1 din'],
+      ['Normal', 'Hindi lesson me ek shabd galat', 'Pooja M · 2 din']
+    ].map(([p, title, meta]) => ({ pri: p, title, meta, style: pr[p] }));
+    return { tabs, feats, learners, tickets, isAi: tab === 'ai', isList: tab === 'list', isSupport: tab === 'support' };
+  }
+}
+</script>
+</body>
+</html>

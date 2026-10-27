@@ -1,0 +1,1005 @@
+[
+  {
+    "slug": "replace-vowels-ascending-digits",
+    "title": "Replace Vowels With Ascending Digits",
+    "difficulty": "easy",
+    "topics": [
+      "Strings"
+    ],
+    "description": "Read a line of text and replace each vowel (a, e, i, o, u) with a digit, numbering the vowels 1, 2, 3, ... from left to right. After reaching 9, restart the numbering from 1. All non-vowel characters (including spaces) stay unchanged.\n\nInput format: a line of text.\nOutput format: print the updated line.",
+    "examples": [
+      {
+        "input": "welcome",
+        "output": "w1lc2m3",
+        "explanation": "The vowels e, o, e become 1, 2, 3."
+      },
+      {
+        "input": "prakash",
+        "output": "pr1k2sh",
+        "explanation": "The vowels a, a become 1, 2."
+      },
+      {
+        "input": "demo",
+        "output": "d1m2",
+        "explanation": "The vowels e, o become 1, 2."
+      }
+    ],
+    "constraints": [
+      "The input is a non-empty line that may contain spaces."
+    ],
+    "hints": [
+      "Keep a counter that starts at 1.",
+      "When you meet a vowel, replace it with the counter, then advance the counter.",
+      "After 9, the counter wraps back to 1."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid transform(const char* s, char* out) {\n    /* TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    char s[100005];\n    if (fgets(s, sizeof(s), stdin) == NULL) s[0] = '\\0';\n    s[strcspn(s, \"\\r\\n\")] = '\\0';\n    char out[200005];\n    transform(s, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring transform(string s) {\n    // TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters\n    return \"\";\n}\n\nint main() {\n    string s;\n    getline(cin, s);\n    cout << transform(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\nimport java.io.*;\n\npublic class Main {\n    static String replaceVowelsAscendingDigits(String s) {\n        // TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters\n        return \"\";\n    }\n\n    public static void main(String[] args) throws IOException {\n        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));\n        String s = br.readLine();\n        if (s == null) s = \"\";\n        System.out.println(replaceVowelsAscendingDigits(s));\n    }\n}\n",
+      "python3": "def transform(s):\n    # TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().rstrip(\"\\n\").rstrip(\"\\r\")\n    print(transform(s))\n",
+      "javascript": "function transform(s) {\n  // TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters\n  return '';\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').replace(/\\r/g, '').split('\\n')[0];\nconsole.log(transform(s));\n",
+      "typescript": "function transform(s: string): string {\n  // TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters\n  return '';\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').replace(/\\r/g, '').split('\\n')[0];\nconsole.log(transform(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n    \"strings\"\n)\n\nfunc replaceVowelsAscendingDigits(s string) string {\n    // TODO: replace each vowel with an incrementing digit 1..9 (wrapping after 9), keep other characters\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    s, _ := reader.ReadString('\\n')\n    s = strings.TrimRight(s, \"\\r\\n\")\n    fmt.Println(replaceVowelsAscendingDigits(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef transform(s):\n    vowels = set(\"aeiouAEIOU\"); res = []; cnt = 1\n    for ch in s:\n        if ch in vowels:\n            res.append(str(cnt)); cnt = cnt % 9 + 1\n        else:\n            res.append(ch)\n    return \"\".join(res)\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().rstrip(\"\\n\").rstrip(\"\\r\")\n    print(transform(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "welcome",
+        "expected": "w1lc2m3"
+      },
+      {
+        "input": "prakash",
+        "expected": "pr1k2sh"
+      },
+      {
+        "input": "demo",
+        "expected": "d1m2"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "welcome to python programming",
+        "expected": "w1lc2m3 t4 pyth5n pr6gr7mm8ng"
+      },
+      {
+        "input": "aeiou",
+        "expected": "12345"
+      },
+      {
+        "input": "aeiouaeiou",
+        "expected": "1234567891"
+      },
+      {
+        "input": "xyz",
+        "expected": "xyz"
+      },
+      {
+        "input": "AEIOU",
+        "expected": "12345"
+      },
+      {
+        "input": "banana",
+        "expected": "b1n2n3"
+      },
+      {
+        "input": "education",
+        "expected": "1d2c3t45n"
+      },
+      {
+        "input": "hello world",
+        "expected": "h1ll2 w3rld"
+      },
+      {
+        "input": "programming",
+        "expected": "pr1gr2mm3ng"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "cruise-guests-remaining",
+    "title": "Cruise Guests Remaining",
+    "difficulty": "easy",
+    "topics": [
+      "Array"
+    ],
+    "description": "At a cruise party, E[i] guests enter and L[i] guests leave during hour i. Find the total number of guests present at the end of the party.\n\nInput format: the first line contains N; the second line contains N integers of the E array; the third line contains N integers of the L array.\nOutput format: print the number of guests present at the end.",
+    "examples": [
+      {
+        "input": "E=[7,0,5,1,3], L=[1,2,1,3,4]",
+        "output": "5",
+        "explanation": "Total entering 16, total leaving 11, so 5 remain."
+      },
+      {
+        "input": "E=[3,5,2,0], L=[0,2,4,4]",
+        "output": "0",
+        "explanation": "10 entered and 10 left, so 0 remain."
+      },
+      {
+        "input": "E=[3,5,2,2], L=[1,1,1,1]",
+        "output": "8",
+        "explanation": "12 entered and 4 left, so 8 remain."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 1000",
+      "Values are non-negative."
+    ],
+    "hints": [
+      "Add up all the guests who entered.",
+      "Add up all the guests who left.",
+      "Subtract the two totals."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <stdlib.h>\n\nint guests(int* E, int* L, int n) {\n    /* TODO: return total entered minus total left (sum of E minus sum of L) */\n    return 0;\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    int* E = (int*)malloc((n > 0 ? n : 1) * sizeof(int));\n    int* L = (int*)malloc((n > 0 ? n : 1) * sizeof(int));\n    for (int i = 0; i < n; i++) scanf(\"%d\", &E[i]);\n    for (int i = 0; i < n; i++) scanf(\"%d\", &L[i]);\n    printf(\"%d\\n\", guests(E, L, n));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint guests(vector<int>& E, vector<int>& L) {\n    // TODO: return total entered minus total left (sum of E minus sum of L)\n    return 0;\n}\n\nint main() {\n    int n;\n    cin >> n;\n    vector<int> E(n), L(n);\n    for (auto& x : E) cin >> x;\n    for (auto& x : L) cin >> x;\n    cout << guests(E, L) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int cruiseGuestsRemaining(int[] E, int[] L) {\n        // TODO: return total entered minus total left (sum of E minus sum of L)\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] E = new int[n];\n        int[] L = new int[n];\n        for (int i = 0; i < n; i++) E[i] = sc.nextInt();\n        for (int i = 0; i < n; i++) L[i] = sc.nextInt();\n        System.out.println(cruiseGuestsRemaining(E, L));\n    }\n}\n",
+      "python3": "def guests(E, L):\n    # TODO: return total entered minus total left (sum of E minus sum of L)\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split()\n    n = int(d[0]); E = list(map(int, d[1:1+n])); L = list(map(int, d[1+n:1+2*n]))\n    print(guests(E, L))\n",
+      "javascript": "function guests(E, L) {\n  // TODO: return total entered minus total left (sum of E minus sum of L)\n  return 0;\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = d[0];\nconst E = d.slice(1, 1 + n);\nconst L = d.slice(1 + n, 1 + 2 * n);\nconsole.log(guests(E, L));\n",
+      "typescript": "function guests(E: number[], L: number[]): number {\n  // TODO: return total entered minus total left (sum of E minus sum of L)\n  return 0;\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n: number = d[0];\nconst E: number[] = d.slice(1, 1 + n);\nconst L: number[] = d.slice(1 + n, 1 + 2 * n);\nconsole.log(guests(E, L));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc cruiseGuestsRemaining(E []int, L []int) int {\n    // TODO: return total entered minus total left (sum of E minus sum of L)\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    E := make([]int, n)\n    L := make([]int, n)\n    for i := 0; i < n; i++ {\n        fmt.Fscan(reader, &E[i])\n    }\n    for i := 0; i < n; i++ {\n        fmt.Fscan(reader, &L[i])\n    }\n    fmt.Println(cruiseGuestsRemaining(E, L))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef guests(E, L):\n    return sum(E) - sum(L)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n = int(d[0])\n    E = list(map(int, d[1:1+n])); L = list(map(int, d[1+n:1+2*n]))\n    print(guests(E, L))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "5\n7 0 5 1 3\n1 2 1 3 4",
+        "expected": "5"
+      },
+      {
+        "input": "4\n3 5 2 0\n0 2 4 4",
+        "expected": "0"
+      },
+      {
+        "input": "4\n3 5 2 2\n1 1 1 1",
+        "expected": "8"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1\n10\n5",
+        "expected": "5"
+      },
+      {
+        "input": "2\n5 5\n3 3",
+        "expected": "4"
+      },
+      {
+        "input": "3\n1 2 3\n0 0 0",
+        "expected": "6"
+      },
+      {
+        "input": "2\n10 20\n10 20",
+        "expected": "0"
+      },
+      {
+        "input": "3\n5 5 5\n1 1 1",
+        "expected": "12"
+      },
+      {
+        "input": "1\n0\n0",
+        "expected": "0"
+      },
+      {
+        "input": "4\n2 4 6 8\n1 1 1 1",
+        "expected": "16"
+      },
+      {
+        "input": "2\n100 100\n50 50",
+        "expected": "100"
+      },
+      {
+        "input": "3\n0 0 0\n0 0 0",
+        "expected": "0"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "airport-risk-sort",
+    "title": "Airport Risk Sort",
+    "difficulty": "easy",
+    "topics": [
+      "Array",
+      "Sorting"
+    ],
+    "description": "Confiscated items each carry a risk level of 0, 1, or 2. Sort the array of risk levels in non-decreasing order.\n\nInput format: the first line contains N; the second line contains N integers, each 0, 1, or 2.\nOutput format: print the sorted risk levels on one line, space-separated.",
+    "examples": [
+      {
+        "input": "[1, 0, 2, 0, 1, 0, 2]",
+        "output": "0 0 0 1 1 2 2",
+        "explanation": "All 0s, then 1s, then 2s."
+      },
+      {
+        "input": "[2, 1, 0, 2, 1, 0, 0, 1, 2, 0]",
+        "output": "0 0 0 0 1 1 1 2 2 2",
+        "explanation": "Sorted by risk level."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 1000",
+      "Each value is 0, 1, or 2."
+    ],
+    "hints": [
+      "You only have three possible values.",
+      "Count how many 0s, 1s and 2s there are.",
+      "Output them in order, or simply sort the array."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nvoid sort_risk(int* a, int n, char* out) {\n    /* TODO: return the array sorted in non-decreasing order, space-separated; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    int* a = (int*)malloc((n > 0 ? n : 1) * sizeof(int));\n    for (int i = 0; i < n; i++) scanf(\"%d\", &a[i]);\n    char* out = (char*)malloc(200005);\n    sort_risk(a, n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring sort_risk(vector<int>& a) {\n    // TODO: return the array sorted in non-decreasing order, space-separated\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    vector<int> a(n);\n    for (auto& x : a) cin >> x;\n    cout << sort_risk(a) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String airportRiskSort(int[] a) {\n        // TODO: return the array sorted in non-decreasing order, space-separated\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        System.out.println(airportRiskSort(a));\n    }\n}\n",
+      "python3": "def sort_risk(a):\n    # TODO: return the array sorted in non-decreasing order, space-separated\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split()\n    n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(sort_risk(a))\n",
+      "javascript": "function sort_risk(a) {\n  // TODO: return the array sorted in non-decreasing order, space-separated\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = d[0];\nconst a = d.slice(1, 1 + n);\nconsole.log(sort_risk(a));\n",
+      "typescript": "function sort_risk(a: number[]): string {\n  // TODO: return the array sorted in non-decreasing order, space-separated\n  return '';\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n: number = d[0];\nconst a: number[] = d.slice(1, 1 + n);\nconsole.log(sort_risk(a));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc airportRiskSort(a []int) string {\n    // TODO: return the array sorted in non-decreasing order, space-separated\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    a := make([]int, n)\n    for i := 0; i < n; i++ {\n        fmt.Fscan(reader, &a[i])\n    }\n    fmt.Println(airportRiskSort(a))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef sort_risk(a):\n    return \" \".join(map(str, sorted(a)))\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(sort_risk(a))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "7\n1 0 2 0 1 0 2",
+        "expected": "0 0 0 1 1 2 2"
+      },
+      {
+        "input": "10\n2 1 0 2 1 0 0 1 2 0",
+        "expected": "0 0 0 0 1 1 1 2 2 2"
+      },
+      {
+        "input": "4\n1 0 2 1",
+        "expected": "0 1 1 2"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "3\n0 1 2",
+        "expected": "0 1 2"
+      },
+      {
+        "input": "5\n2 2 2 2 2",
+        "expected": "2 2 2 2 2"
+      },
+      {
+        "input": "1\n1",
+        "expected": "1"
+      },
+      {
+        "input": "6\n2 1 0 2 1 0",
+        "expected": "0 0 1 1 2 2"
+      },
+      {
+        "input": "4\n0 0 0 0",
+        "expected": "0 0 0 0"
+      },
+      {
+        "input": "5\n1 1 1 0 2",
+        "expected": "0 1 1 1 2"
+      },
+      {
+        "input": "3\n2 1 0",
+        "expected": "0 1 2"
+      },
+      {
+        "input": "8\n0 1 2 0 1 2 0 1",
+        "expected": "0 0 0 1 1 1 2 2"
+      },
+      {
+        "input": "2\n2 0",
+        "expected": "0 2"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "move-empty-packets-end",
+    "title": "Move Empty Packets to End",
+    "difficulty": "easy",
+    "topics": [
+      "Array"
+    ],
+    "description": "The empty chocolate packets are represented by zeros. Move all zeros to the end of the array while keeping the order of the non-zero packets unchanged.\n\nInput format: the first line contains N; the second line contains N integers.\nOutput format: print the updated array on one line, space-separated.",
+    "examples": [
+      {
+        "input": "[4, 5, 0, 1, 9, 5, 0]",
+        "output": "4 5 1 9 5 0 0",
+        "explanation": "Non-zero values keep order; the two zeros move to the end."
+      },
+      {
+        "input": "[6, 0, 1, 8, 0, 2]",
+        "output": "6 1 8 2 0 0",
+        "explanation": "Zeros pushed to the end."
+      },
+      {
+        "input": "[1, 2, 3, 4]",
+        "output": "1 2 3 4",
+        "explanation": "No zeros to move."
+      }
+    ],
+    "constraints": [
+      "1 <= N <= 1000"
+    ],
+    "hints": [
+      "Collect the non-zero values in their original order.",
+      "Count how many zeros there were.",
+      "Append that many zeros at the end."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <stdlib.h>\n#include <string.h>\n\nvoid move_zeros(int* a, int n, char* out) {\n    /* TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    int* a = (int*)malloc((n > 0 ? n : 1) * sizeof(int));\n    for (int i = 0; i < n; i++) scanf(\"%d\", &a[i]);\n    char* out = (char*)malloc(200005);\n    move_zeros(a, n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring move_zeros(vector<int>& a) {\n    // TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    vector<int> a(n);\n    for (auto& x : a) cin >> x;\n    cout << move_zeros(a) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String moveEmptyPacketsEnd(int[] a) {\n        // TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int[] a = new int[n];\n        for (int i = 0; i < n; i++) a[i] = sc.nextInt();\n        System.out.println(moveEmptyPacketsEnd(a));\n    }\n}\n",
+      "python3": "def move_zeros(a):\n    # TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split()\n    n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(move_zeros(a))\n",
+      "javascript": "function move_zeros(a) {\n  // TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = d[0];\nconst a = d.slice(1, 1 + n);\nconsole.log(move_zeros(a));\n",
+      "typescript": "function move_zeros(a: number[]): string {\n  // TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated\n  return '';\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n: number = d[0];\nconst a: number[] = d.slice(1, 1 + n);\nconsole.log(move_zeros(a));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc moveEmptyPacketsEnd(a []int) string {\n    // TODO: return the array with all zeros moved to the end, non-zeros keeping order, space-separated\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    a := make([]int, n)\n    for i := 0; i < n; i++ {\n        fmt.Fscan(reader, &a[i])\n    }\n    fmt.Println(moveEmptyPacketsEnd(a))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef move_zeros(a):\n    nz = [x for x in a if x != 0]\n    z = [0] * (len(a) - len(nz))\n    return \" \".join(map(str, nz + z))\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n = int(d[0]); a = list(map(int, d[1:1+n]))\n    print(move_zeros(a))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "7\n4 5 0 1 9 5 0",
+        "expected": "4 5 1 9 5 0 0"
+      },
+      {
+        "input": "6\n6 0 1 8 0 2",
+        "expected": "6 1 8 2 0 0"
+      },
+      {
+        "input": "4\n1 2 3 4",
+        "expected": "1 2 3 4"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "3\n1 0 0",
+        "expected": "1 0 0"
+      },
+      {
+        "input": "5\n0 0 0 0 0",
+        "expected": "0 0 0 0 0"
+      },
+      {
+        "input": "5\n1 2 3 4 5",
+        "expected": "1 2 3 4 5"
+      },
+      {
+        "input": "4\n0 1 0 2",
+        "expected": "1 2 0 0"
+      },
+      {
+        "input": "3\n0 0 1",
+        "expected": "1 0 0"
+      },
+      {
+        "input": "6\n5 0 3 0 1 0",
+        "expected": "5 3 1 0 0 0"
+      },
+      {
+        "input": "2\n0 7",
+        "expected": "7 0"
+      },
+      {
+        "input": "4\n9 0 0 9",
+        "expected": "9 9 0 0"
+      },
+      {
+        "input": "1\n0",
+        "expected": "0"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "toggle-bits-nibble",
+    "title": "Toggle All Bits",
+    "difficulty": "easy",
+    "topics": [
+      "Bit Manipulation",
+      "Math"
+    ],
+    "description": "Take a positive integer, write it in binary padded to a width that is a multiple of 4 bits, toggle every bit, and print the resulting decimal value. For values from 1 to 15 this is a 4-bit toggle, which equals 15 minus the number.\n\nInput format: a positive integer.\nOutput format: print the decimal value after toggling all bits.",
+    "examples": [
+      {
+        "input": "10",
+        "output": "5",
+        "explanation": "1010 toggled is 0101 = 5."
+      },
+      {
+        "input": "7",
+        "output": "8",
+        "explanation": "0111 toggled is 1000 = 8."
+      },
+      {
+        "input": "5",
+        "output": "10",
+        "explanation": "0101 toggled is 1010 = 10."
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 15"
+    ],
+    "hints": [
+      "Pad the binary to a width that is a multiple of 4.",
+      "Flip every bit in that width.",
+      "For 1 to 15 the answer is simply 15 minus the number."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint toggle(int n) {\n    /* TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width */\n    return 0;\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    printf(\"%d\\n\", toggle(n));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint toggle(int n) {\n    // TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width\n    return 0;\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << toggle(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int toggleBitsNibble(int n) {\n        // TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(toggleBitsNibble(n));\n    }\n}\n",
+      "python3": "def toggle(n):\n    # TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(toggle(n))\n",
+      "javascript": "function toggle(n) {\n  // TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width\n  return 0;\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(toggle(n));\n",
+      "typescript": "function toggle(n: number): number {\n  // TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width\n  return 0;\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(toggle(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc toggleBitsNibble(n int) int {\n    // TODO: return n with all bits toggled within a nibble-aligned (multiple of 4) bit width\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(toggleBitsNibble(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef toggle(n):\n    b = n.bit_length()\n    width = ((b + 3) // 4) * 4 if b > 0 else 4\n    mask = (1 << width) - 1\n    return mask ^ n\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(toggle(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "10",
+        "expected": "5"
+      },
+      {
+        "input": "7",
+        "expected": "8"
+      },
+      {
+        "input": "5",
+        "expected": "10"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "6",
+        "expected": "9"
+      },
+      {
+        "input": "8",
+        "expected": "7"
+      },
+      {
+        "input": "1",
+        "expected": "14"
+      },
+      {
+        "input": "15",
+        "expected": "0"
+      },
+      {
+        "input": "12",
+        "expected": "3"
+      },
+      {
+        "input": "3",
+        "expected": "12"
+      },
+      {
+        "input": "2",
+        "expected": "13"
+      },
+      {
+        "input": "9",
+        "expected": "6"
+      },
+      {
+        "input": "11",
+        "expected": "4"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "repeating-digits-count",
+    "title": "Repeating Digits Security Key",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "The security key is the count of distinct digits that appear more than once in the data. If no digit repeats, print -1.\n\nInput format: an integer data value.\nOutput format: print the count of repeating digits, or -1 if none repeat.",
+    "examples": [
+      {
+        "input": "578378923",
+        "output": "3",
+        "explanation": "The digits 7, 8 and 3 each appear more than once."
+      },
+      {
+        "input": "733122723",
+        "output": "3",
+        "explanation": "The digits 7, 3 and 2 each repeat."
+      }
+    ],
+    "constraints": [
+      "The data is a non-negative integer."
+    ],
+    "hints": [
+      "Count how many times each digit occurs.",
+      "Count the distinct digits whose occurrence is more than one.",
+      "If that count is zero, print -1."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nint key(const char* s) {\n    /* TODO: return the count of distinct digits appearing more than once, or -1 if none */\n    return 0;\n}\n\nint main() {\n    char s[100005];\n    scanf(\"%100000s\", s);\n    printf(\"%d\\n\", key(s));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint key(string s) {\n    // TODO: return the count of distinct digits appearing more than once, or -1 if none\n    return 0;\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << key(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int repeatingDigitsCount(String s) {\n        // TODO: return the count of distinct digits appearing more than once, or -1 if none\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = sc.next();\n        System.out.println(repeatingDigitsCount(s));\n    }\n}\n",
+      "python3": "def key(s):\n    # TODO: return the count of distinct digits appearing more than once, or -1 if none\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().strip()\n    print(key(s))\n",
+      "javascript": "function key(s) {\n  // TODO: return the count of distinct digits appearing more than once, or -1 if none\n  return 0;\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(key(s));\n",
+      "typescript": "function key(s: string): number {\n  // TODO: return the count of distinct digits appearing more than once, or -1 if none\n  return 0;\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(key(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc repeatingDigitsCount(s string) int {\n    // TODO: return the count of distinct digits appearing more than once, or -1 if none\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s string\n    fmt.Fscan(reader, &s)\n    fmt.Println(repeatingDigitsCount(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\nfrom collections import Counter\ndef key(s):\n    c = Counter(s)\n    rep = sum(1 for d, cnt in c.items() if cnt > 1)\n    return rep if rep > 0 else -1\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().strip()\n    print(key(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "578378923",
+        "expected": "3"
+      },
+      {
+        "input": "733122723",
+        "expected": "3"
+      },
+      {
+        "input": "1234",
+        "expected": "-1"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "111",
+        "expected": "1"
+      },
+      {
+        "input": "12321",
+        "expected": "2"
+      },
+      {
+        "input": "9999",
+        "expected": "1"
+      },
+      {
+        "input": "1234567890",
+        "expected": "-1"
+      },
+      {
+        "input": "1122334455",
+        "expected": "5"
+      },
+      {
+        "input": "5",
+        "expected": "-1"
+      },
+      {
+        "input": "100",
+        "expected": "1"
+      },
+      {
+        "input": "121212",
+        "expected": "2"
+      },
+      {
+        "input": "987654321",
+        "expected": "-1"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "count-specific-digit",
+    "title": "Count of a Specific Digit",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "Given a data value and a digit, count how many times that digit appears in the data.\n\nInput format: two space-separated integers, the data and the digit.\nOutput format: print the count of the digit in the data.",
+    "examples": [
+      {
+        "input": "572378233 3",
+        "output": "3",
+        "explanation": "The digit 3 appears three times."
+      },
+      {
+        "input": "1234 5",
+        "output": "0",
+        "explanation": "The digit 5 does not appear."
+      }
+    ],
+    "constraints": [
+      "0 <= data <= 1000000000",
+      "0 <= digit <= 9"
+    ],
+    "hints": [
+      "Look at each digit of the data.",
+      "Compare it with the target digit.",
+      "Count the matches."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint count_digit(int data, int digit) {\n    /* TODO: return how many times digit appears in data */\n    return 0;\n}\n\nint main() {\n    int data, digit;\n    scanf(\"%d %d\", &data, &digit);\n    printf(\"%d\\n\", count_digit(data, digit));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint count_digit(int data, int digit) {\n    // TODO: return how many times digit appears in data\n    return 0;\n}\n\nint main() {\n    int data, digit;\n    cin >> data >> digit;\n    cout << count_digit(data, digit) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int countSpecificDigit(int data, int digit) {\n        // TODO: return how many times digit appears in data\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int data = sc.nextInt();\n        int digit = sc.nextInt();\n        System.out.println(countSpecificDigit(data, digit));\n    }\n}\n",
+      "python3": "def count_digit(data, digit):\n    # TODO: return how many times digit appears in data\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split(); data = int(d[0]); digit = int(d[1])\n    print(count_digit(data, digit))\n",
+      "javascript": "function count_digit(data, digit) {\n  // TODO: return how many times digit appears in data\n  return 0;\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst data = d[0];\nconst digit = d[1];\nconsole.log(count_digit(data, digit));\n",
+      "typescript": "function count_digit(data: number, digit: number): number {\n  // TODO: return how many times digit appears in data\n  return 0;\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst data: number = d[0];\nconst digit: number = d[1];\nconsole.log(count_digit(data, digit));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc countSpecificDigit(data int, digit int) int {\n    // TODO: return how many times digit appears in data\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var data, digit int\n    fmt.Fscan(reader, &data, &digit)\n    fmt.Println(countSpecificDigit(data, digit))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef count_digit(data, digit):\n    return str(data).count(str(digit))\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); data = int(d[0]); digit = int(d[1])\n    print(count_digit(data, digit))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "572378233 3",
+        "expected": "3"
+      },
+      {
+        "input": "1234 5",
+        "expected": "0"
+      },
+      {
+        "input": "111 1",
+        "expected": "3"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "12345 5",
+        "expected": "1"
+      },
+      {
+        "input": "0 0",
+        "expected": "1"
+      },
+      {
+        "input": "999999 9",
+        "expected": "6"
+      },
+      {
+        "input": "12321 2",
+        "expected": "2"
+      },
+      {
+        "input": "1000000 0",
+        "expected": "6"
+      },
+      {
+        "input": "5 5",
+        "expected": "1"
+      },
+      {
+        "input": "24680 3",
+        "expected": "0"
+      },
+      {
+        "input": "333 3",
+        "expected": "3"
+      },
+      {
+        "input": "24680 8",
+        "expected": "1"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "otp-max-min-prime",
+    "title": "OTP from Max and Min Primes",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "The OTP is the sum of the largest prime and the smallest prime within the range from a to b (inclusive), where a is smaller than b.\n\nInput format: two integers a and b.\nOutput format: print the sum of the maximum and minimum prime numbers in the range.",
+    "examples": [
+      {
+        "input": "10 20",
+        "output": "30",
+        "explanation": "Primes are 11, 13, 17, 19; 19 + 11 = 30."
+      },
+      {
+        "input": "1 10",
+        "output": "9",
+        "explanation": "Primes are 2, 3, 5, 7; 7 + 2 = 9."
+      }
+    ],
+    "constraints": [
+      "a < b",
+      "The range contains at least one prime."
+    ],
+    "hints": [
+      "Find all prime numbers in the range.",
+      "Take the largest and the smallest of them.",
+      "Add those two primes."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint otp(int a, int b) {\n    /* TODO: return max prime + min prime in [a, b] */\n    return 0;\n}\n\nint main() {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    printf(\"%d\\n\", otp(a, b));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint otp(int a, int b) {\n    // TODO: return max prime + min prime in [a, b]\n    return 0;\n}\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << otp(a, b) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int otpMaxMinPrime(int a, int b) {\n        // TODO: return max prime + min prime in [a, b]\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        System.out.println(otpMaxMinPrime(a, b));\n    }\n}\n",
+      "python3": "def otp(a, b):\n    # TODO: return max prime + min prime in [a, b]\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split(); a = int(d[0]); b = int(d[1])\n    print(otp(a, b))\n",
+      "javascript": "function otp(a, b) {\n  // TODO: return max prime + min prime in [a, b]\n  return 0;\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst a = d[0];\nconst b = d[1];\nconsole.log(otp(a, b));\n",
+      "typescript": "function otp(a: number, b: number): number {\n  // TODO: return max prime + min prime in [a, b]\n  return 0;\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst a: number = d[0];\nconst b: number = d[1];\nconsole.log(otp(a, b));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc otpMaxMinPrime(a int, b int) int {\n    // TODO: return max prime + min prime in [a, b]\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var a, b int\n    fmt.Fscan(reader, &a, &b)\n    fmt.Println(otpMaxMinPrime(a, b))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef is_prime(x):\n    if x < 2: return False\n    i = 2\n    while i*i <= x:\n        if x % i == 0: return False\n        i += 1\n    return True\ndef otp(a, b):\n    primes = [x for x in range(a, b+1) if is_prime(x)]\n    if not primes: return 0\n    return max(primes) + min(primes)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); a = int(d[0]); b = int(d[1])\n    print(otp(a, b))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "10 20",
+        "expected": "30"
+      },
+      {
+        "input": "1 10",
+        "expected": "9"
+      },
+      {
+        "input": "2 3",
+        "expected": "5"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1 5",
+        "expected": "7"
+      },
+      {
+        "input": "10 30",
+        "expected": "40"
+      },
+      {
+        "input": "2 2",
+        "expected": "4"
+      },
+      {
+        "input": "20 40",
+        "expected": "60"
+      },
+      {
+        "input": "1 3",
+        "expected": "5"
+      },
+      {
+        "input": "5 5",
+        "expected": "10"
+      },
+      {
+        "input": "1 100",
+        "expected": "99"
+      },
+      {
+        "input": "50 60",
+        "expected": "112"
+      },
+      {
+        "input": "3 7",
+        "expected": "10"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "nearest-greater-palindrome",
+    "title": "Nearest Greater Palindrome",
+    "difficulty": "easy",
+    "topics": [
+      "Math",
+      "Strings"
+    ],
+    "description": "Find the smallest palindrome that is greater than or equal to the given number. A palindrome reads the same forwards and backwards.\n\nInput format: an integer value.\nOutput format: print the nearest palindrome that is greater than or equal to the number.",
+    "examples": [
+      {
+        "input": "192",
+        "output": "202",
+        "explanation": "202 is the smallest palindrome that is at least 192."
+      },
+      {
+        "input": "2",
+        "output": "2",
+        "explanation": "2 is already a palindrome."
+      }
+    ],
+    "constraints": [
+      "0 <= n <= 1000000"
+    ],
+    "hints": [
+      "Start from the number itself.",
+      "Check whether it reads the same forwards and backwards.",
+      "If not, move to the next number and check again."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint next_palindrome(int n) {\n    /* TODO: return the smallest palindrome >= n */\n    return 0;\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    printf(\"%d\\n\", next_palindrome(n));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint next_palindrome(int n) {\n    // TODO: return the smallest palindrome >= n\n    return 0;\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << next_palindrome(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int nearestGreaterPalindrome(int n) {\n        // TODO: return the smallest palindrome >= n\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(nearestGreaterPalindrome(n));\n    }\n}\n",
+      "python3": "def next_palindrome(n):\n    # TODO: return the smallest palindrome >= n\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(next_palindrome(n))\n",
+      "javascript": "function next_palindrome(n) {\n  // TODO: return the smallest palindrome >= n\n  return 0;\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(next_palindrome(n));\n",
+      "typescript": "function next_palindrome(n: number): number {\n  // TODO: return the smallest palindrome >= n\n  return 0;\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(next_palindrome(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc nearestGreaterPalindrome(n int) int {\n    // TODO: return the smallest palindrome >= n\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(nearestGreaterPalindrome(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef next_palindrome(n):\n    x = n\n    while str(x) != str(x)[::-1]:\n        x += 1\n    return x\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(next_palindrome(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "192",
+        "expected": "202"
+      },
+      {
+        "input": "2",
+        "expected": "2"
+      },
+      {
+        "input": "100",
+        "expected": "101"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "121",
+        "expected": "121"
+      },
+      {
+        "input": "99",
+        "expected": "99"
+      },
+      {
+        "input": "130",
+        "expected": "131"
+      },
+      {
+        "input": "1",
+        "expected": "1"
+      },
+      {
+        "input": "10",
+        "expected": "11"
+      },
+      {
+        "input": "200",
+        "expected": "202"
+      },
+      {
+        "input": "999",
+        "expected": "999"
+      },
+      {
+        "input": "1000",
+        "expected": "1001"
+      },
+      {
+        "input": "12",
+        "expected": "22"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "fizzbuzz-single-number",
+    "title": "FizzBuzz of a Number",
+    "difficulty": "easy",
+    "topics": [
+      "Math",
+      "Conditionals"
+    ],
+    "description": "For the given number n, print FizzBuzz if it is a multiple of both 3 and 5, Fizz if it is a multiple of only 3, Buzz if it is a multiple of only 5, and otherwise print the number itself.\n\nInput format: a number n.\nOutput format: print Fizz, Buzz, FizzBuzz, or the number.",
+    "examples": [
+      {
+        "input": "10",
+        "output": "Buzz",
+        "explanation": "10 is a multiple of 5 only."
+      },
+      {
+        "input": "2",
+        "output": "2",
+        "explanation": "2 is not a multiple of 3 or 5."
+      },
+      {
+        "input": "15",
+        "output": "FizzBuzz",
+        "explanation": "15 is a multiple of both 3 and 5."
+      }
+    ],
+    "constraints": [
+      "1 <= n <= 1000000"
+    ],
+    "hints": [
+      "Check divisibility by 15 first (both 3 and 5).",
+      "Then check 3, then 5.",
+      "Otherwise print the number."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid fizzbuzz(int n, char* out) {\n    /* TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[105];\n    fizzbuzz(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring fizzbuzz(int n) {\n    // TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << fizzbuzz(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String fizzbuzzSingleNumber(int n) {\n        // TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(fizzbuzzSingleNumber(n));\n    }\n}\n",
+      "python3": "def fizzbuzz(n):\n    # TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(fizzbuzz(n))\n",
+      "javascript": "function fizzbuzz(n) {\n  // TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(fizzbuzz(n));\n",
+      "typescript": "function fizzbuzz(n: number): string {\n  // TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(fizzbuzz(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc fizzbuzzSingleNumber(n int) string {\n    // TODO: return \\\"FizzBuzz\\\", \\\"Fizz\\\", \\\"Buzz\\\", or the number as a string for n\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(fizzbuzzSingleNumber(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef fizzbuzz(n):\n    if n % 15 == 0: return \"FizzBuzz\"\n    if n % 3 == 0: return \"Fizz\"\n    if n % 5 == 0: return \"Buzz\"\n    return str(n)\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(fizzbuzz(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "10",
+        "expected": "Buzz"
+      },
+      {
+        "input": "2",
+        "expected": "2"
+      },
+      {
+        "input": "15",
+        "expected": "FizzBuzz"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "3",
+        "expected": "Fizz"
+      },
+      {
+        "input": "5",
+        "expected": "Buzz"
+      },
+      {
+        "input": "9",
+        "expected": "Fizz"
+      },
+      {
+        "input": "30",
+        "expected": "FizzBuzz"
+      },
+      {
+        "input": "7",
+        "expected": "7"
+      },
+      {
+        "input": "1",
+        "expected": "1"
+      },
+      {
+        "input": "6",
+        "expected": "Fizz"
+      },
+      {
+        "input": "20",
+        "expected": "Buzz"
+      },
+      {
+        "input": "45",
+        "expected": "FizzBuzz"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  }
+]

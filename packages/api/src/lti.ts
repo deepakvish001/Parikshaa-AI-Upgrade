@@ -37,6 +37,13 @@ const AGS = "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
 const SCORE_SCOPE = "https://purl.imsglobal.org/spec/lti-ags/scope/score";
 const STATE_TTL_MS = 10 * 60 * 1000;
 
+/** `text` without its trailing slashes. A loop, not `/\/+$/`: that regex is quadratic on a long run of slashes. */
+function withoutTrailingSlashes(text: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "/") end--;
+  return text.slice(0, end);
+}
+
 export class LtiError extends Error {
   constructor(
     readonly code: "unknown_platform" | "invalid_launch" | "no_exam" | "not_found",
@@ -96,7 +103,7 @@ export class LtiService {
   constructor(options: LtiOptions) {
     this.#o = options;
     this.#now = options.now ?? (() => Date.now());
-    this.#base = options.publicUrl.replace(/\/+$/, "");
+    this.#base = withoutTrailingSlashes(options.publicUrl);
   }
 
   get loginUrl(): string {
@@ -147,7 +154,7 @@ export class LtiService {
       id,
       orgId: actor.orgId,
       name: input.name.trim(),
-      issuer: input.issuer.trim().replace(/\/+$/, ""),
+      issuer: withoutTrailingSlashes(input.issuer.trim()),
       clientId: input.clientId.trim(),
       deploymentIds: input.deploymentIds.map((d) => d.trim()).filter((d) => d !== ""),
       authLoginUrl: input.authLoginUrl.trim(),
@@ -172,7 +179,7 @@ export class LtiService {
     this.#checkUrls(input);
     const saved = await this.#o.lti.updatePlatform(actor.orgId, id, {
       name: input.name.trim(),
-      issuer: input.issuer.trim().replace(/\/+$/, ""),
+      issuer: withoutTrailingSlashes(input.issuer.trim()),
       clientId: input.clientId.trim(),
       deploymentIds: input.deploymentIds.map((d) => d.trim()).filter((d) => d !== ""),
       authLoginUrl: input.authLoginUrl.trim(),
@@ -270,7 +277,7 @@ export class LtiService {
     const subject = String(claims["sub"] ?? "");
     if (subject === "") throw new LtiError("invalid_launch", "The launch names no user");
     const link = (claims[`${CLAIM}/resource_link`] ?? {}) as { id?: string };
-    const ags = (claims[AGS] ?? {}) as { lineitem?: string; scope?: string[] };
+    const ags = (claims[AGS] ?? {}) as { lineitem?: string; scope?: unknown };
     const name = typeof claims["name"] === "string" ? claims["name"] : [claims["given_name"], claims["family_name"]].filter((x) => typeof x === "string").join(" ");
     const email = typeof claims["email"] === "string" ? claims["email"] : null;
 
@@ -281,7 +288,8 @@ export class LtiService {
     if (existing?.revoked === true) throw new LtiError("invalid_launch", "This test was withdrawn for you. Ask your teacher.");
     // Launched from the LMS, the learner is here now: nothing needs emailing.
     const invitation = existing ?? (await this.#o.invitationService.inviteOne(actor, examId, { candidateRef: ref, name, email, phone: null, source: { lti: { platformId: platform.id, subject } } }, []));
-    const canScore = typeof ags.lineitem === "string" && (ags.scope ?? []).includes(SCORE_SCOPE);
+    // The scope claim is a list: one entry must be the score scope exactly (a string would substring-match).
+    const canScore = typeof ags.lineitem === "string" && Array.isArray(ags.scope) && ags.scope.some((s) => s === SCORE_SCOPE);
     await this.#o.lti.recordLaunch(scope, {
       invitationId: invitation.id,
       platformId: platform.id,

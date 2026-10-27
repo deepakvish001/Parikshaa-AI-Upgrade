@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>HLD design canvas</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="hld" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 24px 28px 40px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 16px">
+        <div>
+          <div style="font-size: 14px; color: #5f687c"><a href="Arenas.dc.html">HLD arena</a> / Design 7</div>
+          <h1 style="margin: 4px 0 0; font-size: 26px">URL shortener (jaise chhota link banane wali service)</h1>
+        </div>
+        <a href="Verdict.dc.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 10px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Design submit karo</a>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start">
+        <aside style="flex: 1 1 240px; max-width: 280px; display: flex; flex-direction: column; gap: 12px">
+          <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 6px">Zaroorat</div>
+            <ul style="margin: 0; padding-left: 18px; color: #373f52; line-height: 1.6">
+              <li>Lamba URL → 7 akshar ka code</li>
+              <li>Code kholo → redirect</li>
+              <li>Padhna 20,000 / sec, likhna 200 / sec</li>
+              <li>p99 &lt; 100 ms, 99.9% uptime</li>
+              <li>5 saal ka data</li>
+            </ul>
+          </div>
+          <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="font-weight: 700; font-size: 14px; margin-bottom: 8px">Hisse (khinch kar daalo)</div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 13px; font-weight: 600">
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">Load balancer</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">API server</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">Cache</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">SQL DB</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">NoSQL</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">Queue</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">CDN</span>
+              <span style="padding: 6px 10px; border-radius: 8px; border: 1px solid #cdd3df">Worker</span>
+            </div>
+          </div>
+        </aside>
+
+        <section aria-label="Design canvas" style="flex: 3 1 560px; min-width: 0; border-radius: 16px; background: #fefefe; border: 1px solid #e2e6ef; background-image: radial-gradient(#e2e6ef 1px, transparent 1px); background-size: 20px 20px; padding: 24px; overflow-x: auto">
+          <div style="display: flex; align-items: center; gap: 0; min-width: 640px; font-family: 'Kalam', cursive; color: #111111">
+            <div style="padding: 12px 14px; border: 2.5px solid #111111; border-radius: 10px; background: #ffffff; font-size: 19px; font-weight: 700; transform: rotate(-1deg)">Users</div>
+            <div aria-hidden="true" style="flex: 1; min-width: 28px; height: 0; border-top: 2.5px solid #111111"></div>
+            <div style="padding: 12px 14px; border: 2.5px solid #111111; border-radius: 10px; background: #eaf2fc; font-size: 19px; font-weight: 700; transform: rotate(1deg)">LB</div>
+            <div aria-hidden="true" style="flex: 1; min-width: 28px; height: 0; border-top: 2.5px solid #111111"></div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div style="padding: 10px 14px; border: 2.5px solid #111111; border-radius: 10px; background: #ffffff; font-size: 18px; font-weight: 700">API 1</div>
+              <div style="padding: 10px 14px; border: 2.5px solid #111111; border-radius: 10px; background: #ffffff; font-size: 18px; font-weight: 700">API 2</div>
+              <div style="padding: 10px 14px; border: 2.5px dashed #111111; border-radius: 10px; background: #ffffff; font-size: 18px; font-weight: 700; color: #5f687c">API {{apiN}}</div>
+            </div>
+            <div aria-hidden="true" style="flex: 1; min-width: 28px; height: 0; border-top: 2.5px solid #111111"></div>
+            <sc-if value="{{cache}}" hint-placeholder-val="{{ false }}">
+              <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+                <div style="padding: 12px 14px; border: 2.5px solid #111111; border-radius: 10px; background: #F6A496; font-size: 19px; font-weight: 700; transform: rotate(-1.5deg)">Cache</div>
+                <span style="font-size: 15px">95% hit</span>
+              </div>
+              <div aria-hidden="true" style="flex: 1; min-width: 28px; height: 0; border-top: 2.5px dashed #111111"></div>
+            </sc-if>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+              <div style="padding: 12px 14px; border: 2.5px solid #111111; border-radius: 10px; background: #e7f6ef; font-size: 19px; font-weight: 700; transform: rotate(1deg)">DB (primary + 2 replica)</div>
+              <span style="font-size: 15px">{{dbLoad}}</span>
+            </div>
+          </div>
+          <div style="margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px">
+            <button type="button" onClick="{{toggleCache}}" style="min-height: 42px; padding: 0 16px; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; {{cacheBtn}}">{{cacheLabel}}</button>
+            <button type="button" onClick="{{addApi}}" style="min-height: 42px; padding: 0 16px; border-radius: 10px; border: 1px solid #cdd3df; background: #ffffff; font: inherit; font-weight: 600; cursor: pointer">API server badhao</button>
+            <span style="align-self: center; font-size: 13px; color: #5f687c">Har hisse par click karke uski settings (size, replicas, TTL).</span>
+          </div>
+        </section>
+
+        <aside aria-live="polite" style="flex: 1 1 260px; max-width: 320px; display: flex; flex-direction: column; gap: 12px">
+          <div style="padding: 16px; border-radius: 14px; background: #141b4d; color: #ffffff">
+            <div style="font-weight: 700; margin-bottom: 10px">Simulator: 20,000 padhna / sec</div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #26338f"><span>p99 latency</span><b style="{{p99Style}}">{{p99}}</b></div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid #26338f"><span>Errors</span><b>{{err}}</b></div>
+            <div style="display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0"><span>Mahine ka kharcha (andaaza)</span><b>{{cost}}</b></div>
+            <div style="margin-top: 10px; padding: 10px; border-radius: 10px; background: #26338f; font-size: 13px">{{advice}}</div>
+          </div>
+          <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 6px">Interviewer poochhega</div>
+            <ul style="margin: 0; padding-left: 18px; color: #373f52; line-height: 1.6">
+              <li>Code kaise banaoge, takraav kaise rokoge?</li>
+              <li>Cache me kya, kitni der (TTL)?</li>
+              <li>Primary DB gir jaaye to?</li>
+            </ul>
+            <p style="margin: 10px 0 0; font-size: 12px; color: #5f687c">AI rubric sirf salah deta hai; score simulator aur checklist se.</p>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { cache: false, apis: 3 };
+  }
+  renderVals() {
+    const c = this.state.cache;
+    const more = this.state.apis > 3;
+    return {
+      cache: c,
+      apiN: this.state.apis,
+      dbLoad: c ? 'CPU 18%' : 'CPU 94%  ← yahi atak raha',
+      cacheLabel: c ? 'Cache hatao' : 'Cache jodo',
+      cacheBtn: c ? 'border: 1px solid #cdd3df; background: #ffffff; color: #131a2e' : 'border: 0; background: #3346c4; color: #ffffff',
+      p99: c ? (more ? '38 ms' : '46 ms') : '840 ms',
+      p99Style: c ? 'color: #b9e2cf' : 'color: #f3c5bf',
+      err: c ? '0.01%' : '3.2%',
+      cost: c ? '₹1.9 lakh' : '₹1.6 lakh',
+      advice: c ? 'Lakshya pura. Ab socho: cache gir jaaye to DB ek saath sab jhel paayega? (thundering herd)' : 'DB par har padhna ja raha hai. Padhna likhne se 100 guna hai: kya jodoge?',
+      toggleCache: () => this.setState({ cache: !c }),
+      addApi: () => this.setState({ apis: this.state.apis + 1 })
+    };
+  }
+}
+</script>
+</body>
+</html>

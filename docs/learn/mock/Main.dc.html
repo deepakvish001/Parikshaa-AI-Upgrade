@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Parikshaa Learn: landing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif; font-size: 16px; line-height: 1.55">
+
+  <header style="background: rgba(255,255,255,0.85); border-bottom: 1px solid #e2e6ef">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 14px 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px">
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; text-decoration: none; color: #131a2e">
+        <span style="width: 36px; height: 36px; border-radius: 10px; background: #3346c4; color: #ffffff; display: grid; place-items: center; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 700; font-size: 20px">प</span>
+        <span style="font-weight: 800; font-size: 20px; letter-spacing: -0.01em">Parikshaa <span style="color: #5f687c; font-weight: 600">Learn</span></span>
+      </a>
+      <nav aria-label="Main" style="display: flex; flex-wrap: wrap; gap: 4px 22px; font-weight: 500; font-size: 15px; flex: 1 1 auto">
+        <a href="Explore.dc.html" style="color: #373f52; text-decoration: none">Seekho</a>
+        <a href="Sheet.dc.html" style="color: #373f52; text-decoration: none">Practice</a>
+        <a href="Studio.dc.html" style="color: #373f52; text-decoration: none">Banao</a>
+        <a href="Career.dc.html" style="color: #373f52; text-decoration: none">Career</a>
+        <a href="Contests.dc.html" style="color: #373f52; text-decoration: none">Contests</a>
+        <a href="Plus.dc.html" style="color: #373f52; text-decoration: none">Plus</a>
+      </nav>
+      <div style="display: flex; gap: 10px; align-items: center">
+        <a href="Signup.dc.html" style="padding: 10px 16px; border-radius: 10px; color: #3346c4; font-weight: 600; text-decoration: none">Log in</a>
+        <a href="Signup.dc.html" style="padding: 10px 18px; border-radius: 10px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Free me shuru karo</a>
+      </div>
+    </div>
+  </header>
+
+  <section style="max-width: 1200px; margin: 0 auto; padding: 72px 24px 56px; display: flex; flex-wrap: wrap; gap: 48px; align-items: center">
+    <div style="flex: 1 1 480px; min-width: 0">
+      <div style="display: inline-flex; gap: 8px; align-items: center; padding: 6px 12px; border-radius: 999px; background: #f1f3fe; color: #26338f; font-size: 14px; font-weight: 600">
+        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+        English · हिंदी · Hinglish
+      </div>
+      <h1 style="margin: 18px 0 16px; font-size: 54px; line-height: 1.08; letter-spacing: -0.02em; font-weight: 800">Seekho. Practice karo. Banao.<br><span style="color: #3346c4">Naukri tak, ek hi jagah.</span></h1>
+      <p style="margin: 0 0 28px; font-size: 19px; color: #4f586c; max-width: 560px">DSA se system design tak, aptitude se live projects tak. Har problem par lamba editorial aur haath se bane jaise dry-run visuals. Phone par bhi poora.</p>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px">
+        <a href="Signup.dc.html" style="padding: 14px 22px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; font-size: 17px; text-decoration: none">Free me shuru karo</a>
+        <a href="Roadmap.dc.html" style="padding: 14px 22px; border-radius: 12px; background: #ffffff; border: 1px solid #cdd3df; color: #131a2e; font-weight: 600; font-size: 17px; text-decoration: none">Roadmap dekho</a>
+      </div>
+      <p style="margin: 18px 0 0; font-size: 14px; color: #5f687c">Card nahi chahiye. Free plan hamesha free.</p>
+    </div>
+
+    <figure aria-label="Dry-run ka ek frame: two pointers" style="flex: 1 1 420px; min-width: 0; margin: 0; background: #fefefe; border: 1px solid #e2e6ef; border-radius: 24px; padding: 28px; box-shadow: 0 0 0 1px rgba(51,70,196,0.08), 0 16px 40px rgba(51,70,196,0.10)">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px">
+        <span style="font-family: 'Kalam', cursive; font-size: 22px; font-weight: 700; color: #111111">Dry run · kadam 3 / 5</span>
+        <span style="font-size: 13px; color: #5f687c">Two pointers</span>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center; font-family: 'Kalam', cursive; font-size: 26px; font-weight: 700; color: #111111">
+        <div style="width: 52px; height: 52px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate(-1.5deg); background: repeating-linear-gradient(45deg, #e2e6ef 0 2px, transparent 2px 7px)">1</div>
+        <div style="width: 52px; height: 52px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate(1deg); background: #F6A496">3</div>
+        <div style="width: 52px; height: 52px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate(-0.5deg)">4</div>
+        <div style="width: 52px; height: 52px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate(1.2deg)">6</div>
+        <div style="width: 52px; height: 52px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate(-1deg); background: #F6A496">8</div>
+        <div style="width: 52px; height: 52px; border: 2.5px solid #111111; border-radius: 6px; display: grid; place-items: center; transform: rotate(0.8deg); background: repeating-linear-gradient(45deg, #e2e6ef 0 2px, transparent 2px 7px)">11</div>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: center; font-family: 'Kalam', cursive; font-size: 20px; color: #111111; margin-top: 6px">
+        <div style="width: 52px; text-align: center"></div>
+        <div style="width: 52px; text-align: center">↑ L</div>
+        <div style="width: 52px; text-align: center"></div>
+        <div style="width: 52px; text-align: center"></div>
+        <div style="width: 52px; text-align: center">↑ R</div>
+        <div style="width: 52px; text-align: center"></div>
+      </div>
+      <p style="font-family: 'Kalam', cursive; font-size: 21px; color: #111111; margin: 18px 0 0; text-align: center">3 + 8 = 11, K = 10 se bada. R ko ek kadam baayein.</p>
+      <div style="display: flex; justify-content: center; gap: 8px; margin-top: 18px">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #cdd3df"></span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #cdd3df"></span>
+        <span style="width: 24px; height: 8px; border-radius: 4px; background: #3346c4"></span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #cdd3df"></span>
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #cdd3df"></span>
+      </div>
+    </figure>
+  </section>
+
+  <section aria-labelledby="pillars" style="max-width: 1200px; margin: 0 auto; padding: 24px 24px 64px">
+    <h2 id="pillars" style="font-size: 34px; letter-spacing: -0.01em; margin: 0 0 8px">Saat kaam, ek platform</h2>
+    <p style="margin: 0 0 28px; color: #4f586c; font-size: 17px">Alag-alag site par bhatakna band. Seekhne se naukri tak sab yahin.</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px">
+      <sc-for list="{{pillars}}" as="p" hint-placeholder-count="7">
+        <a href="{{p.href}}" style="display: block; padding: 22px; background: #ffffff; border: 1px solid #e2e6ef; border-radius: 16px; text-decoration: none; color: #131a2e">
+          <div style="font-size: 13px; font-weight: 700; color: {{p.color}}; text-transform: uppercase; letter-spacing: 0.06em">{{p.tag}}</div>
+          <div style="font-size: 20px; font-weight: 700; margin: 6px 0 6px">{{p.title}}</div>
+          <div style="color: #4f586c; font-size: 15px">{{p.body}}</div>
+        </a>
+      </sc-for>
+    </div>
+  </section>
+
+  <section aria-labelledby="different" style="background: #ffffff; border-top: 1px solid #e2e6ef; border-bottom: 1px solid #e2e6ef">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 64px 24px">
+      <h2 id="different" style="font-size: 34px; letter-spacing: -0.01em; margin: 0 0 28px">Yahan alag kya hai</h2>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px 40px">
+        <sc-for list="{{diffs}}" as="d" hint-placeholder-count="6">
+          <div style="display: flex; gap: 16px">
+            <div style="flex: 0 0 44px; height: 44px; border-radius: 12px; background: #fdebd4; color: #a35200; display: grid; place-items: center; font-weight: 800; font-size: 18px">{{d.n}}</div>
+            <div>
+              <div style="font-weight: 700; font-size: 18px; margin-bottom: 4px">{{d.title}}</div>
+              <div style="color: #4f586c; font-size: 15px">{{d.body}}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="content" style="max-width: 1200px; margin: 0 auto; padding: 64px 24px">
+    <h2 id="content" style="font-size: 34px; letter-spacing: -0.01em; margin: 0 0 8px">Kya-kya milega</h2>
+    <p style="margin: 0 0 28px; color: #4f586c; font-size: 17px">Launch ke lakshya. Har cheez apni likhi, runner par jaanchi, insaan ne dekhi.</p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px">
+      <sc-for list="{{content}}" as="c" hint-placeholder-count="8">
+        <div style="padding: 20px; background: #ffffff; border: 1px solid #e2e6ef; border-radius: 16px">
+          <div style="font-size: 28px; font-weight: 800; color: #3346c4">{{c.n}}</div>
+          <div style="font-weight: 600">{{c.label}}</div>
+          <div style="font-size: 14px; color: #5f687c">{{c.note}}</div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section aria-labelledby="plans" style="max-width: 1200px; margin: 0 auto; padding: 0 24px 64px">
+    <div style="display: flex; flex-wrap: wrap; gap: 16px">
+      <div style="flex: 1 1 340px; padding: 28px; background: #ffffff; border: 1px solid #e2e6ef; border-radius: 20px">
+        <h2 id="plans" style="margin: 0; font-size: 24px">Free</h2>
+        <div style="font-size: 32px; font-weight: 800; margin: 8px 0">₹0</div>
+        <ul style="margin: 0 0 20px; padding-left: 20px; color: #373f52">
+          <li>Saare courses ke pehle hisse, DSA sheet, roz ka problem</li>
+          <li>Sahayak: roz kuch sawaal</li>
+          <li>Contests aur rating</li>
+          <li>3 apne roadmaps</li>
+        </ul>
+        <a href="Signup.dc.html" style="display: inline-block; padding: 12px 18px; border-radius: 10px; border: 1px solid #cdd3df; color: #131a2e; font-weight: 600; text-decoration: none">Free account banao</a>
+      </div>
+      <div style="flex: 1 1 340px; padding: 28px; background: #141b4d; color: #ffffff; border-radius: 20px">
+        <div style="display: flex; justify-content: space-between; align-items: center"><span style="font-size: 24px; font-weight: 700">Plus</span><span style="font-size: 13px; padding: 4px 10px; border-radius: 999px; background: #f28c28; color: #131a2e; font-weight: 700">Students ke daam</span></div>
+        <div style="font-size: 32px; font-weight: 800; margin: 8px 0">[PLUS PRICE]<span style="font-size: 16px; font-weight: 500; color: #c9cffa"> / mahina</span></div>
+        <ul style="margin: 0 0 20px; padding-left: 20px; color: #e3e7fd">
+          <li>Sab premium content, saare editorials</li>
+          <li>Sahayak (fair use: roz 200 message), chat history</li>
+          <li>100 custom roadmaps, AI courses, unlimited quiz</li>
+          <li>Code Studio ke labs, Pramaan certificates</li>
+        </ul>
+        <a href="Plus.dc.html" style="display: inline-block; padding: 12px 18px; border-radius: 10px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Plus dekho</a>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="who" style="background: #ffffff; border-top: 1px solid #e2e6ef">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 56px 24px; display: flex; flex-wrap: wrap; gap: 24px">
+      <div style="flex: 1 1 320px">
+        <h2 id="who" style="margin: 0 0 8px; font-size: 22px">Colleges ke liye</h2>
+        <p style="margin: 0 0 12px; color: #4f586c">Poore batch ki taiyaari ek dashboard par, lab mode, placement readiness. Parikshaa Campus ke saath.</p>
+        <a href="Signup.dc.html">College ke liye baat karein</a>
+      </div>
+      <div style="flex: 1 1 320px">
+        <h2 style="margin: 0 0 8px; font-size: 22px">Companies ke liye</h2>
+        <p style="margin: 0 0 12px; color: #4f586c">Pramaan wale learners, hackathon challenges, seedha Parikshaa Hire me interview.</p>
+        <a href="Jobs.dc.html">Hire dekhein</a>
+      </div>
+      <div style="flex: 1 1 320px">
+        <h2 style="margin: 0 0 8px; font-size: 22px">Bina laptop ke?</h2>
+        <p style="margin: 0 0 12px; color: #4f586c">Phone par 5-minute lessons, Parsons puzzles, Daily 10. College lab me login karke poora Studio.</p>
+        <a href="PhoneHome.dc.html">Phone par dekhein</a>
+      </div>
+    </div>
+  </section>
+
+  <footer style="background: #131a2e; color: #cdd3df">
+    <div style="max-width: 1200px; margin: 0 auto; padding: 40px 24px; display: flex; flex-wrap: wrap; gap: 24px 48px; font-size: 14px">
+      <div style="flex: 1 1 240px"><div style="font-weight: 800; color: #ffffff; font-size: 18px">Parikshaa Learn</div><div style="margin-top: 6px">AI ki madad, insaan ki jaanch. Har content par likha hota hai kaun ne kya kiya.</div></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><a href="Explore.dc.html" style="color: #cdd3df">Courses</a><a href="Roadmap.dc.html" style="color: #cdd3df">Roadmaps</a><a href="Contests.dc.html" style="color: #cdd3df">Contests</a></div>
+      <div style="display: flex; flex-direction: column; gap: 6px"><a href="Settings.dc.html" style="color: #cdd3df">Privacy</a><a href="Settings.dc.html" style="color: #cdd3df">Terms</a><a href="Community.dc.html" style="color: #cdd3df">Madad</a></div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      pillars: [
+        { tag: 'Seekho', title: 'Courses, roadmaps, lessons', body: '~65 courses, 35 roadmaps, har lesson me quiz aur visual.', href: 'Explore.dc.html', color: '#3346c4' },
+        { tag: 'Practice', title: 'DSA, CP, aptitude, SQL', body: 'A2Z sheet se Codeforces level tak; aptitude ke mock tests.', href: 'Sheet.dc.html', color: '#117a57' },
+        { tag: 'Banao', title: 'Code Studio aur projects', body: 'Browser me VS Code jaisa IDE. Har step: likho, chalao, test, submit.', href: 'Studio.dc.html', color: '#a35200' },
+        { tag: 'Saboot', title: 'Pramaan certificates', body: 'Proctored exam + chhota viva. Verify link ke saath.', href: 'Pramaan.dc.html', color: '#6b3fd4' },
+        { tag: 'Muqabla', title: 'Contests aur league', body: 'Hafte ke contests, rating, weekly league.', href: 'Contests.dc.html', color: '#c23a2b' },
+        { tag: 'Career', title: 'Resume, portfolio, jobs', body: 'ATS resume, apne aap bana portfolio, Hire ki jobs.', href: 'Career.dc.html', color: '#1f63b8' },
+        { tag: 'Saath', title: 'Community aur cohorts', body: 'Doubt forum, 30-din cohorts, mentors, college chapters.', href: 'Community.dc.html', color: '#373f52' }
+      ],
+      diffs: [
+        { n: '1', title: 'Sabse chhota galat test', body: 'Wrong Answer par hum wo chhota input dikhate hain jahan aapka code galat hai, saath me sahi jawab.' },
+        { n: '2', title: 'Dry run, slider me', body: 'Har DSA problem ka kadam-dar-kadam sketch, jaise teacher board par banata hai.' },
+        { n: '3', title: 'Sahayak jo jawab nahi deta', body: 'Seekhte waqt AI sawaal poochh kar raah dikhata hai. Project banate waqt poori madad.' },
+        { n: '4', title: 'Samajh ka saboot', body: 'Submit ke baad 2 chhote sawaal: kyun chala, complexity kya hai. Pramaan me judta hai.' },
+        { n: '5', title: 'Mistake notebook', body: 'Har galti apne aap note hoti hai aur sahi din par revision me wapas aati hai.' },
+        { n: '6', title: 'Apni bhasha, apna phone', body: 'Hindi, English, Hinglish. Kam data, offline packs, phone par Parsons puzzles.' }
+      ],
+      content: [
+        { n: '5,000', label: 'Coding problems', note: 'A2Z, interview bank, CP' },
+        { n: '5,000', label: 'Aptitude sawaal', note: 'Quant, reasoning, verbal + 50 mocks' },
+        { n: '~65', label: 'Courses', note: 'CS core, web, data, AI, DevOps' },
+        { n: '~320', label: 'Guided labs', note: 'React, Node, Python, SQL, Go…' },
+        { n: '13', label: 'Arenas', note: 'JS se HLD tak, LeetCode jaisa' },
+        { n: '35', label: 'Roadmaps', note: 'Har node par practice' },
+        { n: '300', label: 'SQL problems', note: 'Asli jaise datasets' },
+        { n: 'LLD + HLD', label: 'System design', note: 'Design canvas + simulator' }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

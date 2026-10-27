@@ -2,15 +2,70 @@
  * Typefaces, served by the app itself: no font is fetched from a third party
  * at runtime, so the page observes nothing it does not say it does.
  *
- * Inter for Latin script, one variable file for every weight. Noto Sans for
- * each Indian script an interface language uses, and JetBrains Mono for code,
- * roll numbers and record hashes, so code looks the same on every lab machine.
+ * IBM Plex Sans for Latin script, one variable file for every weight (the
+ * wordmark is 650), and IBM Plex Sans Devanagari, drawn with it, so Hinglish
+ * and Hindi read as one face (DESIGN-SYSTEM §4). Noto Sans for each other
+ * Indian script an interface language uses, and JetBrains Mono for code,
+ * roll numbers and record hashes. Learn's two extra faces (Plex Serif, Kalam)
+ * are in learn.css.
  *
  * Every face declares its unicode-range, so a browser downloads only the
- * scripts a page actually shows: an English page fetches Inter and nothing
+ * scripts a page actually shows: an English page fetches Plex Sans and nothing
  * else. (Generated from the @fontsource packages; woff2 only.)
  */
-@import "@fontsource-variable/inter/wght.css";
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 700;
+  src: url("@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 700;
+  src: url("@fontsource-variable/ibm-plex-sans/files/ibm-plex-sans-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Devanagari";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("@fontsource/ibm-plex-sans-devanagari/files/ibm-plex-sans-devanagari-devanagari-400-normal.woff2") format("woff2");
+  unicode-range: U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+20F0,U+25CC,U+A830-A839,U+A8E0-A8FF,U+11B00-11B09;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Devanagari";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("@fontsource/ibm-plex-sans-devanagari/files/ibm-plex-sans-devanagari-devanagari-500-normal.woff2") format("woff2");
+  unicode-range: U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+20F0,U+25CC,U+A830-A839,U+A8E0-A8FF,U+11B00-11B09;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Devanagari";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("@fontsource/ibm-plex-sans-devanagari/files/ibm-plex-sans-devanagari-devanagari-600-normal.woff2") format("woff2");
+  unicode-range: U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+20F0,U+25CC,U+A830-A839,U+A8E0-A8FF,U+11B00-11B09;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Devanagari";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("@fontsource/ibm-plex-sans-devanagari/files/ibm-plex-sans-devanagari-devanagari-700-normal.woff2") format("woff2");
+  unicode-range: U+0900-097F,U+1CD0-1CF9,U+200C-200D,U+20A8,U+20B9,U+20F0,U+25CC,U+A830-A839,U+A8E0-A8FF,U+11B00-11B09;
+}
 
 @font-face {
   font-family: "Noto Sans Devanagari";

@@ -1,6 +1,6 @@
 /// <reference types="node" />
 // @vitest-environment node
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -9,24 +9,30 @@ import { describe, expect, it } from "vitest";
  * themes, and there is one dark palette, not two that drift apart.
  */
 
-const css = readFileSync(new URL("../../brand/src/tokens.css", import.meta.url), "utf8");
+const read = (file: string) => readFileSync(new URL(`../../brand/src/${file}`, import.meta.url), "utf8");
+const css = read("tokens.css");
+/** Learn's names (learn.css), laid over the brand's: aliases of them, or values of their own. */
+const learnCss = read("learn.css");
 
 /** The declarations inside the block that starts at `opener`. */
-function block(opener: string): Map<string, string> {
-  const start = css.indexOf(opener);
+function block(opener: string, source = css): Map<string, string> {
+  const start = source.indexOf(opener);
   expect(start, opener).toBeGreaterThanOrEqual(0);
-  const body = css.slice(css.indexOf("{", start) + 1, css.indexOf("}", start));
+  const body = source.slice(source.indexOf("{", start) + 1, source.indexOf("}", start));
   return new Map([...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1]!, m[2]!.trim()]));
 }
 
 const light = block(":root {");
 const darkMedia = block(':root:not([data-theme="light"])');
 const darkAttr = block(':root[data-theme="dark"],');
+const learnLight = block(":root {", learnCss);
+const learnDarkMedia = block(':root:not([data-theme="light"])', learnCss);
+const learnDarkAttr = block(':root[data-theme="dark"],', learnCss);
 
 /** A token's colour in a theme: its own value, following var() back to the light palette. */
-function colour(theme: Map<string, string>, name: string): string {
-  let value = theme.get(name) ?? light.get(name);
-  for (let i = 0; value?.startsWith("var(") && i < 5; i++) value = theme.get(value.slice(4, -1)) ?? light.get(value.slice(4, -1));
+function colour(theme: Map<string, string>, name: string, base = light): string {
+  let value = theme.get(name) ?? base.get(name);
+  for (let i = 0; value?.startsWith("var(") && i < 5; i++) value = theme.get(value.slice(4, -1)) ?? base.get(value.slice(4, -1));
   expect(value, name).toMatch(/^#[0-9a-f]{6}$/i);
   return value!;
 }
@@ -72,6 +78,17 @@ const PAIRS: readonly (readonly [string, string])[] = [
   ["--chrome-danger", "--chrome"],
 ];
 
+/** Learn's text on Learn's surfaces (DESIGN-SYSTEM §3: every readable text 4.5:1, --ink-3 and --ink-4 too). */
+const LEARN_PAIRS: readonly (readonly [string, string])[] = [
+  ...["--ink", "--ink-2", "--ink-3", "--ink-4"].flatMap((ink) => ["--page", "--panel", "--panel-2", "--sunk", "--raised", "--overlay", "--field"].map((bg) => [ink, bg] as const)),
+  ...["--pen-text", "--red-text", "--tick-text", "--ai-text", "--coin", "--teal", "--marker-ink"].flatMap((fg) => [[fg, "--page"] as const, [fg, "--panel"] as const]),
+  ["--on-pen", "--pen"],
+  ["--on-red", "--red"],
+  ["--on-tick", "--tick"],
+  ["--on-ai", "--ai"],
+  ...["--code-gutter", "--code-kw", "--code-str", "--code-num", "--code-fn", "--code-com", "--code-ty"].map((fg) => [fg, "--code-bg"] as const),
+];
+
 describe("design tokens", () => {
   for (const [name, theme] of [
     ["light", light],
@@ -85,6 +102,33 @@ describe("design tokens", () => {
 
   it("keep one dark palette: the system's and the switch's are the same", () => {
     expect([...darkMedia]).toEqual([...darkAttr]);
+  });
+
+  it("keep one dark palette in Learn's names too", () => {
+    expect([...learnDarkMedia]).toEqual([...learnDarkAttr]);
+  });
+
+  for (const [name, theme] of [
+    ["light", new Map([...light, ...learnLight])],
+    ["dark", new Map([...light, ...learnLight, ...darkAttr, ...learnDarkAttr])],
+  ] as const) {
+    it(`meet WCAG AA in Learn's names, ${name}`, () => {
+      const base = new Map([...light, ...learnLight]);
+      const failing = LEARN_PAIRS.map(([fg, bg]) => [fg, bg, contrast(colour(theme, fg, base), colour(theme, bg, base))] as const).filter(([, , ratio]) => ratio < 4.5);
+      expect(failing.map(([fg, bg, r]) => `${fg} on ${bg}: ${r.toFixed(2)}`)).toEqual([]);
+    });
+  }
+
+  it("re-value in dark every colour Learn's names set outright", () => {
+    const literal = [...learnLight].filter(([, value]) => /^#/.test(value));
+    expect(literal.filter(([name]) => !learnDarkAttr.has(name)).map(([name]) => name)).toEqual([]);
+  });
+
+  it("point every face at a file the font packages have", () => {
+    const missing = [read("fonts.css"), learnCss]
+      .flatMap((source) => [...source.matchAll(/url\("(@fontsource[^"]+)"\)/g)].map((m) => m[1]!))
+      .filter((file) => !existsSync(new URL(`../../../node_modules/${file}`, import.meta.url)));
+    expect(missing).toEqual([]);
   });
 
   it("re-value in dark every colour the light theme sets outright", () => {

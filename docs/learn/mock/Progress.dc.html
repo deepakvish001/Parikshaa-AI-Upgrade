@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Progress aur skill graph</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="progress" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 18px">
+        <div>
+          <h1 style="margin: 0 0 6px; font-size: 28px">Progress</h1>
+          <p style="margin: 0; color: #4f586c">Kitna kiya se zyada zaroori: kitna samjha. Har number jaanch se aata hai.</p>
+        </div>
+        <div role="group" aria-label="Samay" style="display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: #eef0f6">
+          <sc-for list="{{ranges}}" as="r" hint-placeholder-count="3">
+            <button type="button" onClick="{{r.pick}}" aria-pressed="{{r.on}}" style="min-height: 36px; padding: 0 14px; border: 0; border-radius: 9px; font: inherit; font-weight: 600; cursor: pointer; {{r.style}}">{{r.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+        <section aria-labelledby="ready" style="flex: 1 1 340px; min-width: 0; padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="ready" style="margin: 0; font-size: 16px; color: #4f586c">SDE placement readiness</h2>
+          <div style="font-size: 48px; font-weight: 800; line-height: 1.1; margin: 6px 0 2px">42%</div>
+          <div style="font-size: 14px; color: #117a57; font-weight: 600; margin-bottom: 16px">{{delta}}</div>
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <sc-for list="{{areas}}" as="a" hint-placeholder-count="6">
+              <div title="{{a.tip}}">
+                <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">{{a.name}}</span><span style="color: #373f52; font-weight: 700">{{a.v}}%</span></div>
+                <div style="height: 10px; border-radius: 4px; background: #eef0f6; margin-top: 4px"><div style="height: 10px; border-radius: 4px; background: #3346c4; width: {{a.w}}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin: 14px 0 0; font-size: 13px; color: #5f687c">Readiness = har area ki mastery, goal ke wazan se. <a href="Settings.dc.html">Kaise naapte hain</a></p>
+        </section>
+
+        <section aria-labelledby="time" style="flex: 1.3 1 420px; min-width: 0; padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="display: flex; justify-content: space-between; align-items: baseline"><h2 id="time" style="margin: 0; font-size: 16px; color: #4f586c">Roz ka samay (minute)</h2><span style="font-size: 14px; color: #373f52">Kul <b>{{totalMin}}</b> min</span></div>
+          <div role="img" aria-label="{{timeLabel}}" style="display: flex; align-items: flex-end; gap: 10px; height: 180px; margin-top: 18px; border-bottom: 1px solid #cdd3df; padding: 0 4px">
+            <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+              <div title="{{b.tip}}" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%">
+                <span style="font-size: 12px; color: #373f52; font-weight: 600">{{b.label}}</span>
+                <div style="width: 100%; max-width: 36px; border-radius: 4px 4px 0 0; background: {{b.c}}; height: {{b.h}}"></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: flex; gap: 10px; padding: 6px 4px 0">
+            <sc-for list="{{bars}}" as="b" hint-placeholder-count="7">
+              <span style="flex: 1; text-align: center; font-size: 12px; color: #5f687c">{{b.day}}</span>
+            </sc-for>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 13px; color: #5f687c">Gehra bar: aaj. Roz ka lakshya 60 min. Zyada der par "break lo" yaad dilaate hain.</p>
+        </section>
+      </div>
+
+      <section aria-labelledby="mast" style="margin-top: 18px; padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+        <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 12px">
+          <h2 id="mast" style="margin: 0; font-size: 18px">Concept mastery</h2>
+          <div aria-hidden="true" style="display: flex; gap: 10px; font-size: 12px; color: #4f586c; align-items: center">
+            <span style="display: inline-flex; gap: 4px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 3px; background: #eef0f6"></span>Shuru nahi</span>
+            <span style="display: inline-flex; gap: 4px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 3px; background: #c9cffa"></span>Seekh rahe</span>
+            <span style="display: inline-flex; gap: 4px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 3px; background: #7482ee"></span>Theek</span>
+            <span style="display: inline-flex; gap: 4px; align-items: center"><span style="width: 14px; height: 14px; border-radius: 3px; background: #26338f"></span>Pakka</span>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px">
+          <sc-for list="{{concepts}}" as="c" hint-placeholder-count="16">
+            <a href="Roadmap.dc.html" title="{{c.tip}}" style="display: block; padding: 10px 12px; border-radius: 10px; text-decoration: none; background: {{c.bg}}; color: {{c.fg}}">
+              <div style="font-weight: 700; font-size: 14px">{{c.name}}</div>
+              <div style="font-size: 12px">{{c.level}}</div>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 18px; margin-top: 18px">
+        <section aria-labelledby="next" style="flex: 2 1 420px; padding: 22px; border-radius: 20px; background: #fdebd4">
+          <h2 id="next" style="margin: 0 0 10px; font-size: 18px">Is hafte kya karein</h2>
+          <ol style="margin: 0; padding-left: 20px; line-height: 1.8">
+            <li><b>Graphs</b> shuru karo: BFS/DFS lesson + 6 problems. Readiness me sabse bada asar.</li>
+            <li><b>Sliding window</b> ke 3 galat submit: mistake notebook ke 2 card dohrao.</li>
+            <li><b>DBMS</b>: normalization ka quiz, 15 min.</li>
+          </ol>
+          <a href="Home.dc.html" style="display: inline-block; margin-top: 10px; font-weight: 700; color: #a35200">Plan me daal do</a>
+        </section>
+        <section aria-labelledby="share" style="flex: 1 1 280px; padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+          <h2 id="share" style="margin: 0 0 10px; font-size: 18px">Kaun dekh sakta hai</h2>
+          <label style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px">College TPO (placement cell)<input type="checkbox" checked style="width: 20px; height: 20px"></label>
+          <label style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px">Mere guardian (har hafte report)<input type="checkbox" style="width: 20px; height: 20px"></label>
+          <label style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px">Cohort ka pod<input type="checkbox" checked style="width: 20px; height: 20px"></label>
+          <p style="margin: 8px 0 0; font-size: 12px; color: #5f687c">Kabhi bhi band karo. Band karne par pichhla data bhi hat jaata hai.</p>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1300}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { range: 'week' };
+  }
+  renderVals() {
+    const r = this.state.range;
+    const ranges = [['week', 'Is hafte'], ['month', 'Is mahine'], ['all', 'Shuru se']].map(([id, label]) => ({
+      label, on: r === id,
+      style: r === id ? 'background: #ffffff; color: #131a2e; box-shadow: 0 1px 2px rgba(19,26,46,0.12)' : 'background: transparent; color: #4f586c',
+      pick: () => this.setState({ range: id })
+    }));
+    const areas = [['DSA', 58], ['CS core', 31], ['Aptitude', 46], ['SQL', 62], ['Projects', 40], ['Interview', 18]].map(([name, v]) => ({ name, v, w: v + '%', tip: name + ': ' + v + '% mastery' }));
+    const mins = r === 'week' ? [45, 62, 0, 58, 71, 90, 38] : r === 'month' ? [52, 60, 48, 55, 66, 80, 44] : [40, 50, 45, 52, 58, 70, 42];
+    const days = ['So', 'Ma', 'Bu', 'Gu', 'Shu', 'Sha', 'Ra'];
+    const max = 100;
+    const bars = mins.map((m, i) => ({
+      day: days[i], label: m === 0 ? '0' : String(m), h: Math.max(2, Math.round((m / max) * 150)) + 'px',
+      c: i === 6 ? '#26338f' : '#7482ee', tip: days[i] + ': ' + m + ' min'
+    }));
+    const total = mins.reduce((s, m) => s + m, 0);
+    const lv = [
+      { bg: '#eef0f6', fg: '#373f52', name: 'Shuru nahi' },
+      { bg: '#c9cffa', fg: '#131a2e', name: 'Seekh rahe' },
+      { bg: '#7482ee', fg: '#0b1033', name: 'Theek' },
+      { bg: '#26338f', fg: '#ffffff', name: 'Pakka' }
+    ];
+    const concepts = [
+      ['Complexity', 3], ['Prefix sum', 3], ['Two pointers', 2], ['Sliding window', 1], ['Hashing', 2], ['Binary search', 1], ['Linked list', 0], ['Stack', 1],
+      ['Recursion', 2], ['Trees', 0], ['Graphs', 0], ['DP', 0], ['SQL joins', 3], ['Window functions', 2], ['Normalization', 1], ['OS scheduling', 0]
+    ].map(([name, l]) => ({ name, bg: lv[l].bg, fg: lv[l].fg, level: lv[l].name, tip: name + ': ' + lv[l].name }));
+    return {
+      ranges, areas, bars, concepts, totalMin: total,
+      delta: r === 'week' ? 'Is hafte +6%' : r === 'month' ? 'Is mahine +17%' : 'Shuru se +42%',
+      timeLabel: 'Roz ke minute: ' + mins.map((m, i) => days[i] + ' ' + m).join(', ')
+    };
+  }
+}
+</script>
+</body>
+</html>

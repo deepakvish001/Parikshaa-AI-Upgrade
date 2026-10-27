@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Admin: home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; align-items: stretch; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="AdminNav" active="home" hint-size="240px,980px"></dc-import>
+  <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 20px">
+      <div>
+        <h1 style="margin: 0 0 4px; font-size: 26px">Learn admin</h1>
+        <p style="margin: 0; color: #4f586c">Content, judge, AI aur learners: sab ek nazar me. Somvaar 20 Oct.</p>
+      </div>
+      <a href="AdminFactory.dc.html" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 18px; border-radius: 10px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Naya content batch</a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px">
+      <a href="AdminReview.dc.html" style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e"><div style="font-size: 13px; color: #5f687c">Review ke liye</div><div style="font-size: 28px; font-weight: 800">38</div><div style="font-size: 12px; color: #a35200; font-weight: 600">9 aapke naam</div></a>
+      <div style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef"><div style="font-size: 13px; color: #5f687c">Judge p95 (aaj)</div><div style="font-size: 28px; font-weight: 800">3.1 s</div><div style="font-size: 12px; color: #117a57; font-weight: 600">Lakshya &lt; 5 s · queue 12</div></div>
+      <a href="AdminLearners.dc.html" style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e"><div style="font-size: 13px; color: #5f687c">AI kharcha (aaj)</div><div style="font-size: 28px; font-weight: 800">₹1,840</div><div style="font-size: 12px; color: #5f687c">Budget ₹3,000 / din</div></a>
+      <a href="AdminLearners.dc.html" style="padding: 16px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e"><div style="font-size: 13px; color: #5f687c">Aaj ke active learners</div><div style="font-size: 28px; font-weight: 800">2,412</div><div style="font-size: 12px; color: #5f687c">Beta</div></a>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start">
+      <section aria-labelledby="targets" style="flex: 2 1 460px; min-width: 0; padding: 22px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+        <h2 id="targets" style="margin: 0 0 4px; font-size: 18px">Content: live vs lakshya</h2>
+        <p style="margin: 0 0 14px; font-size: 13px; color: #5f687c">Live = machine jaanch + insaan ki manzoori dono pass.</p>
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <sc-for list="{{targets}}" as="t" hint-placeholder-count="7">
+            <div title="{{t.tip}}">
+              <div style="display: flex; justify-content: space-between; font-size: 14px"><span style="font-weight: 600">{{t.name}}</span><span style="color: #373f52"><b>{{t.live}}</b> / {{t.goal}}</span></div>
+              <div style="height: 10px; border-radius: 4px; background: #eef0f6; margin-top: 4px"><div style="height: 10px; border-radius: 4px; background: #3346c4; width: {{t.w}}"></div></div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="alerts" style="flex: 1 1 320px; min-width: 0; padding: 22px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+        <h2 id="alerts" style="margin: 0 0 12px; font-size: 18px">Dhyaan do</h2>
+        <div style="display: flex; flex-direction: column; gap: 10px">
+          <sc-for list="{{alerts}}" as="a" hint-placeholder-count="5">
+            <a href="{{a.href}}" style="display: flex; gap: 10px; padding: 12px; border-radius: 12px; text-decoration: none; color: #131a2e; {{a.box}}">
+              <span style="font-size: 11px; font-weight: 800; padding: 2px 8px; border-radius: 999px; height: fit-content; {{a.tagStyle}}">{{a.tag}}</span>
+              <span style="font-size: 14px">{{a.text}}</span>
+            </a>
+          </sc-for>
+        </div>
+      </section>
+    </div>
+
+    <section aria-labelledby="audit" style="margin-top: 18px; padding: 22px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+      <h2 id="audit" style="margin: 0 0 12px; font-size: 18px">Haal ke badlaav (audit log)</h2>
+      <div style="display: flex; flex-direction: column; font-size: 14px">
+        <sc-for list="{{audit}}" as="l" hint-placeholder-count="5">
+          <div style="display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 10px 0; border-top: 1px solid #eef0f6">
+            <span style="width: 70px; color: #5f687c; font-family: 'JetBrains Mono', monospace; font-size: 13px">{{l.t}}</span>
+            <span style="width: 150px; font-weight: 600">{{l.who}}</span>
+            <span style="flex: 1; min-width: 240px; color: #373f52">{{l.what}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const targets = [
+      ['DSA A2Z', 412, 520], ['Interview bank', 380, 2480], ['CP', 120, 2000], ['Basics (owner ke batches)', 210, 500],
+      ['Aptitude', 1880, 5000], ['CS core lessons', 46, 120], ['Guided labs', 18, 320]
+    ].map(([name, live, goal]) => ({
+      name, live: live.toLocaleString('en-IN'), goal: goal.toLocaleString('en-IN'),
+      w: Math.round((live / goal) * 100) + '%', tip: name + ': ' + Math.round((live / goal) * 100) + '% live'
+    }));
+    const tag = {
+      Zaroori: 'background: #fdeeec; color: #9c2d21', Dekho: 'background: #fff5e3; color: #7a4600', Info: 'background: #eaf2fc; color: #1f63b8'
+    };
+    const box = { Zaroori: 'background: #fdeeec', Dekho: 'background: #fff5e3', Info: 'background: #f6f7fb' };
+    const alerts = [
+      ['Zaroori', '2 problems par 3+ "galat test" reports; dono ko unpublish kiya, jaanch baaki', 'AdminPackage.dc.html'],
+      ['Dekho', 'Batch C-07 (aptitude 200): 14 sawaal duplicate jaise lage', 'AdminFactory.dc.html'],
+      ['Dekho', 'Sahayak eval: Hinglish jawab ka score 4% gira', 'AdminLearners.dc.html'],
+      ['Info', 'Weekly Contest 12 Ravivaar; judge par 2 extra machines tay', 'AdminContests.dc.html'],
+      ['Info', '6 forum reports moderator ke paas', 'AdminLearners.dc.html']
+    ].map(([t, text, href]) => ({ tag: t, text, href, tagStyle: tag[t], box: box[t] }));
+    const audit = [
+      ['10:42', 'meera (reviewer)', 'Pair with sum K: editorial v3 manzoor (doosri jaanch: kunal)'],
+      ['10:15', 'factory', 'Batch C-07 ke 200 sawaal machine jaanch se guzre: 186 pass'],
+      ['09:58', 'owner', 'Plus ka fair-use 200/din tay kiya'],
+      ['09:30', 'kunal (problem setter)', 'Three numbers ka jod zero: 12 naye anti-tests jode'],
+      ['09:02', 'system', 'Raat ka backup restore test pass (14 min)']
+    ].map(([t, who, what]) => ({ t, who, what }));
+    return { targets, alerts, audit };
+  }
+}
+</script>
+</body>
+</html>

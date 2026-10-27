@@ -1,0 +1,15 @@
+{
+  "name": "parikshaa-learn-mock-v2",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Learn v2 clickable mock (dark-first). Not part of the npm workspaces; React, Vite and lucide-react resolve from the repo root.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node build-artifact.mjs",
+    "shots": "node shots.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "5.3.0",
+    "@fontsource/kalam": "5.2.8"
+  }
+}

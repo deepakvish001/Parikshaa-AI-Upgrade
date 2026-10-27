@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="home" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-bottom: 24px">
+        <h1 style="margin: 0; font-size: 28px">Namaste, Aarav</h1>
+        <span style="padding: 6px 12px; border-radius: 999px; background: #f1f3fe; color: #26338f; font-weight: 600; font-size: 14px">Goal: SDE placement · Jan 2027</span>
+        <a href="Onboarding.dc.html" style="font-size: 14px; font-weight: 600">Plan badlo</a>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+        <div style="flex: 2 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+
+          <section aria-labelledby="cont" style="padding: 24px; border-radius: 20px; background: #141b4d; color: #ffffff; display: flex; flex-wrap: wrap; gap: 20px; align-items: center">
+            <div style="flex: 1 1 300px">
+              <div id="cont" style="font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #c9cffa">Jaari rakho</div>
+              <div style="font-size: 22px; font-weight: 700; margin: 6px 0 4px">Two pointers: sorted array me jod</div>
+              <div style="color: #c9cffa; font-size: 14px">DSA A2Z · Arrays · Lesson 4 of 9 · 8 min baaki</div>
+              <div style="height: 6px; border-radius: 999px; background: rgba(255,255,255,0.18); margin-top: 14px; max-width: 360px"><div style="height: 6px; width: 60%; border-radius: 999px; background: #f28c28"></div></div>
+            </div>
+            <a href="Lesson.dc.html" style="display: inline-flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 24px; border-radius: 12px; background: #f28c28; color: #131a2e; font-weight: 700; text-decoration: none">Jaari rakho
+              <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a>
+          </section>
+
+          <section aria-labelledby="plan">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px">
+              <h2 id="plan" style="margin: 0; font-size: 20px">Aaj ka plan</h2>
+              <span style="color: #5f687c; font-size: 14px">~58 min · 2 of 6 ho gaye</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <sc-for list="{{plan}}" as="t" hint-placeholder-count="6">
+                <a href="{{t.href}}" style="display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 14px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e">
+                  <span style="flex: 0 0 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 700; {{t.dot}}">{{t.mark}}</span>
+                  <span style="flex: 1; min-width: 0">
+                    <span style="display: block; font-weight: 600; {{t.titleStyle}}">{{t.title}}</span>
+                    <span style="display: block; font-size: 13px; color: #5f687c">{{t.meta}}</span>
+                  </span>
+                  <span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; {{t.tagStyle}}">{{t.tag}}</span>
+                  <span style="font-size: 13px; color: #5f687c; width: 52px; text-align: right">{{t.time}}</span>
+                </a>
+              </sc-for>
+            </div>
+          </section>
+
+          <section aria-labelledby="daily" style="padding: 22px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef; display: flex; flex-wrap: wrap; gap: 20px; align-items: center">
+            <div style="flex: 1 1 280px">
+              <h2 id="daily" style="margin: 0 0 4px; font-size: 20px">Daily 10</h2>
+              <p style="margin: 0; color: #4f586c">10 minute: 4 revision, 1 naya concept, 3 output-predict, 2 Parsons. Phone par bhi.</p>
+            </div>
+            <a href="PhoneDaily.dc.html" style="min-height: 46px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 12px; border: 1px solid #3346c4; color: #3346c4; font-weight: 700; text-decoration: none">Daily 10 shuru</a>
+          </section>
+
+          <section aria-labelledby="new" style="padding: 22px; border-radius: 20px; background: #fdebd4; display: flex; flex-wrap: wrap; gap: 16px; align-items: center">
+            <div style="flex: 1 1 280px">
+              <div id="new" style="font-size: 13px; font-weight: 700; color: #a35200; text-transform: uppercase; letter-spacing: 0.06em">Naya</div>
+              <div style="font-size: 18px; font-weight: 700; margin: 4px 0">Code Studio: apna pehla React app, 12 steps me</div>
+              <div style="color: #373f52; font-size: 14px">Har step: likho, chalao, test pass karo. Browser me, kuch install nahi.</div>
+            </div>
+            <a href="Studio.dc.html" style="font-weight: 700; color: #a35200">Lab kholo</a>
+          </section>
+        </div>
+
+        <aside style="flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <a href="Progress.dc.html" style="display: flex; gap: 18px; align-items: center; padding: 20px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e">
+            <svg role="img" aria-label="SDE readiness 42 pratishat" width="104" height="104" viewBox="0 0 104 104">
+              <circle cx="52" cy="52" r="44" fill="none" stroke="#e2e6ef" stroke-width="10"/>
+              <circle cx="52" cy="52" r="44" fill="none" stroke="#3346c4" stroke-width="10" stroke-linecap="round" stroke-dasharray="116 277" transform="rotate(-90 52 52)"/>
+              <text x="52" y="58" text-anchor="middle" font-size="22" font-weight="800" fill="#131a2e" font-family="Noto Sans, sans-serif">42%</text>
+            </svg>
+            <div>
+              <div style="font-weight: 700; font-size: 17px">SDE readiness</div>
+              <div style="color: #4f586c; font-size: 14px">Sabse kamzor: Graphs, DBMS. Is hafte +6%.</div>
+            </div>
+          </a>
+
+          <a href="Revision.dc.html" style="display: block; padding: 20px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 700">Revision due</span><span style="font-weight: 800; color: #a35200">6</span></div>
+            <div style="color: #4f586c; font-size: 14px; margin-top: 4px">3 problems, 2 concepts, 1 galti jo pichhle hafte hui thi</div>
+          </a>
+
+          <a href="Contests.dc.html" style="display: block; padding: 20px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e">
+            <div style="font-size: 13px; font-weight: 700; color: #c23a2b; text-transform: uppercase; letter-spacing: 0.06em">Contest</div>
+            <div style="font-weight: 700; margin: 4px 0">Weekly Contest 12</div>
+            <div style="color: #4f586c; font-size: 14px">Ravivaar 8:00 PM · 90 min · 4 problems</div>
+            <div style="margin-top: 10px; font-weight: 700; color: #3346c4">Register karo</div>
+          </a>
+
+          <a href="PhoneLeague.dc.html" style="display: block; padding: 20px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef; text-decoration: none; color: #131a2e">
+            <div style="display: flex; justify-content: space-between"><span style="font-weight: 700">Silver league</span><span style="color: #4f586c; font-size: 14px">3 din baaki</span></div>
+            <div style="color: #4f586c; font-size: 14px; margin-top: 4px">Aap 7th par. Top 10 Gold me jaayenge.</div>
+          </a>
+
+          <section aria-labelledby="streak" style="padding: 20px; border-radius: 20px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px"><h2 id="streak" style="margin: 0; font-size: 16px">12 din ki streak</h2><span style="color: #5f687c; font-size: 13px">Pichhle 12 hafte</span></div>
+            <div role="img" aria-label="Pichhle 84 din ki activity" style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-flow: column; grid-template-rows: repeat(7, 14px); gap: 4px">
+              <sc-for list="{{heat}}" as="h" hint-placeholder-count="84">
+                <span style="border-radius: 3px; background: {{h.c}}"></span>
+              </sc-for>
+            </div>
+            <p style="margin: 12px 0 0; font-size: 13px; color: #5f687c">Ek din chhoot jaaye to streak freeze apne aap lagta hai (hafte me 1).</p>
+          </section>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const done = 'background: #117a57; color: #ffffff';
+    const todo = 'background: #ffffff; color: #5f687c; border: 2px solid #cdd3df';
+    const tag = {
+      Lesson: 'background: #f1f3fe; color: #26338f',
+      Problem: 'background: #e7f6ef; color: #117a57',
+      Revision: 'background: #fdebd4; color: #a35200',
+      Quiz: 'background: #f1ebff; color: #6b3fd4',
+      Lab: 'background: #eaf2fc; color: #1f63b8'
+    };
+    const raw = [
+      { title: 'Arrays: prefix sum', meta: 'DSA A2Z · lesson', t: 'Lesson', time: '10 min', done: true, href: 'Lesson.dc.html' },
+      { title: 'Running sum of array', meta: 'L1 · Easy', t: 'Problem', time: '8 min', done: true, href: 'Problem.dc.html' },
+      { title: 'Two pointers: sorted array me jod', meta: 'DSA A2Z · lesson (60% padha)', t: 'Lesson', time: '8 min', done: false, href: 'Lesson.dc.html' },
+      { title: 'Pair with sum K', meta: 'L2 · Easy · Two pointers', t: 'Problem', time: '15 min', done: false, href: 'Problem.dc.html' },
+      { title: 'Revision: 6 cheezein', meta: 'Spaced repetition', t: 'Revision', time: '10 min', done: false, href: 'Revision.dc.html' },
+      { title: 'Percentages: 10 sawaal', meta: 'Aptitude · Quant', t: 'Quiz', time: '7 min', done: false, href: 'Aptitude.dc.html' }
+    ];
+    const plan = raw.map((r, i) => ({
+      ...r,
+      mark: r.done ? '✓' : String(i + 1),
+      dot: r.done ? done : todo,
+      titleStyle: r.done ? 'color: #5f687c; text-decoration: line-through' : '',
+      tag: r.t,
+      tagStyle: tag[r.t]
+    }));
+    const shades = ['#eef0f6', '#c9cffa', '#7482ee', '#3346c4'];
+    const heat = [];
+    for (let i = 0; i < 84; i++) {
+      const v = i > 71 ? 3 : ((i * 7 + (i % 5) * 3) % 11) % 4;
+      heat.push({ c: shades[v] });
+    }
+    return { plan, heat };
+  }
+}
+</script>
+</body>
+</html>

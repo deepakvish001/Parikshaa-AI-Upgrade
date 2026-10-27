@@ -70,6 +70,8 @@ test("F1: a learner signs up, plans a track, and finds today's work on the dashb
   await page.goto(`/practice/${site.slug}/plan?track=${track.slug}`);
   await expect(page.getByRole("heading", { name: "Plan a track" })).toBeVisible();
   await page.getByLabel("Minutes a day").fill("60");
+  // Sunday is off by default: every day a study day, so today has work whatever day the run falls on.
+  await page.getByRole("group", { name: "Days off" }).getByRole("checkbox", { name: "Sun" }).uncheck();
   await page.getByRole("button", { name: "Show the plan" }).click();
   await expect(page.getByText(/It fits: finished by/)).toBeVisible();
   await page.getByRole("button", { name: "Start this plan" }).click();

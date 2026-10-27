@@ -43,7 +43,8 @@
   "overrides": [
     {
       "files": [
-        "packages/brand/src/tokens.css"
+        "packages/brand/src/tokens.css",
+        "packages/brand/src/learn.css"
       ],
       "rules": {
         "color-no-hex": null,

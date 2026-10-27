@@ -1,0 +1,986 @@
+[
+  {
+    "slug": "binary-to-decimal-convert",
+    "title": "Binary to Decimal",
+    "difficulty": "easy",
+    "topics": [
+      "Math",
+      "Bit Manipulation"
+    ],
+    "description": "Read a binary number (a string of 0s and 1s) and print its decimal equivalent.\n\nInput format: a binary value.\nOutput format: print the decimal value.",
+    "examples": [
+      {
+        "input": "1101",
+        "output": "13",
+        "explanation": "1101 in binary is 13 in decimal."
+      },
+      {
+        "input": "1111",
+        "output": "15",
+        "explanation": "1111 in binary is 15 in decimal."
+      }
+    ],
+    "constraints": [
+      "The input is a string of 0s and 1s.",
+      "The value fits within a 32-bit integer."
+    ],
+    "hints": [
+      "Each binary digit has a place value that is a power of 2.",
+      "Process the digits from left to right, doubling as you go.",
+      "Add 1 whenever the current bit is set."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nint bin_to_dec(const char* s) {\n    /* TODO: return the decimal value of the binary string */\n    return 0;\n}\n\nint main() {\n    char s[100005];\n    scanf(\"%100000s\", s);\n    printf(\"%d\\n\", bin_to_dec(s));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint bin_to_dec(string s) {\n    // TODO: return the decimal value of the binary string\n    return 0;\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << bin_to_dec(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int binaryToDecimal(String s) {\n        // TODO: return the decimal value of the binary string\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = sc.next();\n        System.out.println(binaryToDecimal(s));\n    }\n}\n",
+      "python3": "def bin_to_dec(s):\n    # TODO: return the decimal value of the binary string\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().strip()\n    print(bin_to_dec(s))\n",
+      "javascript": "function bin_to_dec(s) {\n  // TODO: return the decimal value of the binary string\n  return 0;\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(bin_to_dec(s));\n",
+      "typescript": "function bin_to_dec(s: string): number {\n  // TODO: return the decimal value of the binary string\n  return 0;\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(bin_to_dec(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc binaryToDecimal(s string) int {\n    // TODO: return the decimal value of the binary string\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s string\n    fmt.Fscan(reader, &s)\n    fmt.Println(binaryToDecimal(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef bin_to_dec(s):\n    return int(s, 2)\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().strip()\n    print(bin_to_dec(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "1101",
+        "expected": "13"
+      },
+      {
+        "input": "1111",
+        "expected": "15"
+      },
+      {
+        "input": "0",
+        "expected": "0"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1",
+        "expected": "1"
+      },
+      {
+        "input": "10",
+        "expected": "2"
+      },
+      {
+        "input": "100",
+        "expected": "4"
+      },
+      {
+        "input": "1010",
+        "expected": "10"
+      },
+      {
+        "input": "11111111",
+        "expected": "255"
+      },
+      {
+        "input": "101010",
+        "expected": "42"
+      },
+      {
+        "input": "1100100",
+        "expected": "100"
+      },
+      {
+        "input": "1000",
+        "expected": "8"
+      },
+      {
+        "input": "0011",
+        "expected": "3"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "item-id-max-digit-bucket",
+    "title": "Item ID Bucket by Max Digit",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "An item ID is bucketed by the largest digit it contains. Read the item ID and print that maximum digit.\n\nInput format: the item ID (a non-negative integer).\nOutput format: print the bucket ID, which is the maximum digit.",
+    "examples": [
+      {
+        "input": "32387634",
+        "output": "8",
+        "explanation": "The largest digit in 32387634 is 8."
+      },
+      {
+        "input": "12345",
+        "output": "5",
+        "explanation": "The largest digit is 5."
+      }
+    ],
+    "constraints": [
+      "The item ID is a non-negative integer."
+    ],
+    "hints": [
+      "Look at each digit of the ID.",
+      "Track the largest digit seen.",
+      "Print that digit."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nint max_digit(const char* s) {\n    /* TODO: return the largest digit in the item ID string */\n    return 0;\n}\n\nint main() {\n    char s[100005];\n    scanf(\"%100000s\", s);\n    printf(\"%d\\n\", max_digit(s));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint max_digit(string s) {\n    // TODO: return the largest digit in the item ID string\n    return 0;\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << max_digit(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int itemIdMaxDigitBucket(String s) {\n        // TODO: return the largest digit in the item ID string\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = sc.next();\n        System.out.println(itemIdMaxDigitBucket(s));\n    }\n}\n",
+      "python3": "def max_digit(s):\n    # TODO: return the largest digit in the item ID string\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().strip()\n    print(max_digit(s))\n",
+      "javascript": "function max_digit(s) {\n  // TODO: return the largest digit in the item ID string\n  return 0;\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(max_digit(s));\n",
+      "typescript": "function max_digit(s: string): number {\n  // TODO: return the largest digit in the item ID string\n  return 0;\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(max_digit(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc itemIdMaxDigitBucket(s string) int {\n    // TODO: return the largest digit in the item ID string\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s string\n    fmt.Fscan(reader, &s)\n    fmt.Println(itemIdMaxDigitBucket(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef max_digit(s):\n    return max(int(ch) for ch in s)\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().strip()\n    print(max_digit(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "32387634",
+        "expected": "8"
+      },
+      {
+        "input": "12345",
+        "expected": "5"
+      },
+      {
+        "input": "0",
+        "expected": "0"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "9",
+        "expected": "9"
+      },
+      {
+        "input": "111",
+        "expected": "1"
+      },
+      {
+        "input": "5",
+        "expected": "5"
+      },
+      {
+        "input": "98765",
+        "expected": "9"
+      },
+      {
+        "input": "1000000",
+        "expected": "1"
+      },
+      {
+        "input": "246",
+        "expected": "6"
+      },
+      {
+        "input": "13579",
+        "expected": "9"
+      },
+      {
+        "input": "5040",
+        "expected": "5"
+      },
+      {
+        "input": "900001",
+        "expected": "9"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "next-letter-distance",
+    "title": "Next Letter by Equal Distance",
+    "difficulty": "easy",
+    "topics": [
+      "Strings"
+    ],
+    "description": "Given two lowercase letters ch1 and ch2, find the letter that is the same distance ahead of ch2 as ch2 is ahead of ch1. If you go past 'z', continue counting from 'a'.\n\nInput format: two characters ch1 and ch2.\nOutput format: print the resulting letter.",
+    "examples": [
+      {
+        "input": "c g",
+        "output": "k",
+        "explanation": "c to g is 4 steps, so 4 steps past g is k."
+      },
+      {
+        "input": "a c",
+        "output": "e",
+        "explanation": "a to c is 2 steps, so 2 steps past c is e."
+      }
+    ],
+    "constraints": [
+      "Both characters are lowercase letters a-z."
+    ],
+    "hints": [
+      "Find the distance from ch1 to ch2 (moving forward).",
+      "Add that same distance to ch2.",
+      "Wrap around from z back to a when needed."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid next_letter(char ch1, char ch2, char* out) {\n    /* TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    char ch1, ch2;\n    scanf(\" %c %c\", &ch1, &ch2);\n    char out[8];\n    next_letter(ch1, ch2, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring next_letter(char ch1, char ch2) {\n    // TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1\n    return \"\";\n}\n\nint main() {\n    char ch1, ch2;\n    cin >> ch1 >> ch2;\n    cout << next_letter(ch1, ch2) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String nextLetterDistance(char ch1, char ch2) {\n        // TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        char ch1 = sc.next().charAt(0);\n        char ch2 = sc.next().charAt(0);\n        System.out.println(nextLetterDistance(ch1, ch2));\n    }\n}\n",
+      "python3": "def next_letter(ch1, ch2):\n    # TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.readline().split()\n    print(next_letter(d[0], d[1]))\n",
+      "javascript": "function next_letter(ch1, ch2) {\n  // TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/);\nconsole.log(next_letter(d[0], d[1]));\n",
+      "typescript": "function next_letter(ch1: string, ch2: string): string {\n  // TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1\n  return '';\n}\n\nconst d: string[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/);\nconsole.log(next_letter(d[0], d[1]));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc nextLetterDistance(ch1 byte, ch2 byte) string {\n    // TODO: return the letter that is the same forward distance past ch2 as ch2 is past ch1\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s1, s2 string\n    fmt.Fscan(reader, &s1, &s2)\n    fmt.Println(nextLetterDistance(s1[0], s2[0]))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef next_letter(ch1, ch2):\n    d = (ord(ch2) - ord(ch1)) % 26\n    nxt = (ord(ch2) - ord('a') + d) % 26 + ord('a')\n    return chr(nxt)\nif __name__ == \"__main__\":\n    d = sys.stdin.readline().split()\n    print(next_letter(d[0], d[1]))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "c g",
+        "expected": "k"
+      },
+      {
+        "input": "a c",
+        "expected": "e"
+      },
+      {
+        "input": "y z",
+        "expected": "a"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "a b",
+        "expected": "c"
+      },
+      {
+        "input": "a a",
+        "expected": "a"
+      },
+      {
+        "input": "z a",
+        "expected": "b"
+      },
+      {
+        "input": "m n",
+        "expected": "o"
+      },
+      {
+        "input": "x z",
+        "expected": "b"
+      },
+      {
+        "input": "b d",
+        "expected": "f"
+      },
+      {
+        "input": "p t",
+        "expected": "x"
+      },
+      {
+        "input": "w z",
+        "expected": "c"
+      },
+      {
+        "input": "d h",
+        "expected": "l"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "sum-divisible-by-seven",
+    "title": "Sum of Multiples of Seven in Range",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "Read two integers a and b, and print the sum of all integers between a and b (inclusive) that are divisible by 7.\n\nInput format: two integers a and b.\nOutput format: print the sum.",
+    "examples": [
+      {
+        "input": "1 7",
+        "output": "7",
+        "explanation": "Only 7 is divisible by 7 in [1, 7]."
+      },
+      {
+        "input": "1 25",
+        "output": "42",
+        "explanation": "7 + 14 + 21 = 42."
+      }
+    ],
+    "constraints": [
+      "a <= b",
+      "0 <= a, b <= 1000000"
+    ],
+    "hints": [
+      "Go through every number from a to b.",
+      "Keep the ones divisible by 7.",
+      "Add them up."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint sum_div7(int a, int b) {\n    /* TODO: return the sum of numbers in [a, b] divisible by 7 */\n    return 0;\n}\n\nint main() {\n    int a, b;\n    scanf(\"%d %d\", &a, &b);\n    printf(\"%d\\n\", sum_div7(a, b));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint sum_div7(int a, int b) {\n    // TODO: return the sum of numbers in [a, b] divisible by 7\n    return 0;\n}\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    cout << sum_div7(a, b) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int sumDivisibleBySeven(int a, int b) {\n        // TODO: return the sum of numbers in [a, b] divisible by 7\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        System.out.println(sumDivisibleBySeven(a, b));\n    }\n}\n",
+      "python3": "def sum_div7(a, b):\n    # TODO: return the sum of numbers in [a, b] divisible by 7\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split(); a = int(d[0]); b = int(d[1])\n    print(sum_div7(a, b))\n",
+      "javascript": "function sum_div7(a, b) {\n  // TODO: return the sum of numbers in [a, b] divisible by 7\n  return 0;\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst a = d[0];\nconst b = d[1];\nconsole.log(sum_div7(a, b));\n",
+      "typescript": "function sum_div7(a: number, b: number): number {\n  // TODO: return the sum of numbers in [a, b] divisible by 7\n  return 0;\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst a: number = d[0];\nconst b: number = d[1];\nconsole.log(sum_div7(a, b));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc sumDivisibleBySeven(a int, b int) int {\n    // TODO: return the sum of numbers in [a, b] divisible by 7\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var a, b int\n    fmt.Fscan(reader, &a, &b)\n    fmt.Println(sumDivisibleBySeven(a, b))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef sum_div7(a, b):\n    return sum(x for x in range(a, b+1) if x % 7 == 0)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); a = int(d[0]); b = int(d[1])\n    print(sum_div7(a, b))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "1 7",
+        "expected": "7"
+      },
+      {
+        "input": "1 25",
+        "expected": "42"
+      },
+      {
+        "input": "1 6",
+        "expected": "0"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "7 7",
+        "expected": "7"
+      },
+      {
+        "input": "7 14",
+        "expected": "21"
+      },
+      {
+        "input": "1 100",
+        "expected": "735"
+      },
+      {
+        "input": "14 28",
+        "expected": "63"
+      },
+      {
+        "input": "1 1",
+        "expected": "0"
+      },
+      {
+        "input": "70 70",
+        "expected": "70"
+      },
+      {
+        "input": "1 50",
+        "expected": "196"
+      },
+      {
+        "input": "21 42",
+        "expected": "126"
+      },
+      {
+        "input": "1 10",
+        "expected": "7"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "visa-token-number",
+    "title": "Visa Token Number",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "A token number is built from an application ID by replacing every even digit with the digit one greater, and every odd digit with the digit one smaller. Read the application ID and print the token.\n\nInput format: the application ID (an integer).\nOutput format: print the token number.",
+    "examples": [
+      {
+        "input": "235",
+        "output": "324",
+        "explanation": "2 becomes 3, 3 becomes 2, 5 becomes 4."
+      },
+      {
+        "input": "417",
+        "output": "506",
+        "explanation": "4 becomes 5, 1 becomes 0, 7 becomes 6."
+      }
+    ],
+    "constraints": [
+      "The application ID is a non-negative integer."
+    ],
+    "hints": [
+      "Look at each digit.",
+      "Even digits go up by one; odd digits go down by one.",
+      "Build the token digit by digit (keep any leading zeros produced)."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid token(int n, char* out) {\n    /* TODO: return the token: even digits +1, odd digits -1, as a string; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[105];\n    token(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring token(int n) {\n    // TODO: return the token: even digits +1, odd digits -1, as a string\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << token(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String visaTokenNumber(int n) {\n        // TODO: return the token: even digits +1, odd digits -1, as a string\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(visaTokenNumber(n));\n    }\n}\n",
+      "python3": "def token(n):\n    # TODO: return the token: even digits +1, odd digits -1, as a string\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(token(n))\n",
+      "javascript": "function token(n) {\n  // TODO: return the token: even digits +1, odd digits -1, as a string\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(token(n));\n",
+      "typescript": "function token(n: number): string {\n  // TODO: return the token: even digits +1, odd digits -1, as a string\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(token(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc visaTokenNumber(n int) string {\n    // TODO: return the token: even digits +1, odd digits -1, as a string\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(visaTokenNumber(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef token(n):\n    res = \"\"\n    for ch in str(n):\n        dd = int(ch)\n        res += str(dd + 1) if dd % 2 == 0 else str(dd - 1)\n    return res\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(token(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "235",
+        "expected": "324"
+      },
+      {
+        "input": "417",
+        "expected": "506"
+      },
+      {
+        "input": "246",
+        "expected": "357"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "135",
+        "expected": "024"
+      },
+      {
+        "input": "789",
+        "expected": "698"
+      },
+      {
+        "input": "111",
+        "expected": "000"
+      },
+      {
+        "input": "888",
+        "expected": "999"
+      },
+      {
+        "input": "1234567890",
+        "expected": "0325476981"
+      },
+      {
+        "input": "5",
+        "expected": "4"
+      },
+      {
+        "input": "8",
+        "expected": "9"
+      },
+      {
+        "input": "1000",
+        "expected": "0111"
+      },
+      {
+        "input": "909",
+        "expected": "818"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "neon-number-check",
+    "title": "Neon Number Check",
+    "difficulty": "easy",
+    "topics": [
+      "Math",
+      "Digits"
+    ],
+    "description": "A neon number is one where the square of the sum of its digits equals the number itself. For example, 81 has digit sum 9 and 9 squared is 81. Read a number and print \"true\" if it is a neon number, otherwise \"false\".\n\nInput format: a number.\nOutput format: print \"true\" or \"false\".",
+    "examples": [
+      {
+        "input": "81",
+        "output": "true",
+        "explanation": "Digit sum is 9 and 9 squared is 81."
+      },
+      {
+        "input": "91",
+        "output": "false",
+        "explanation": "Digit sum is 10 and 10 squared is 100, not 91."
+      }
+    ],
+    "constraints": [
+      "0 <= n <= 1000000"
+    ],
+    "hints": [
+      "Add the digits of the number.",
+      "Square that sum.",
+      "If it equals the original number, it is a neon number."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid is_neon(int n, char* out) {\n    /* TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[105];\n    is_neon(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring is_neon(int n) {\n    // TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << is_neon(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String neonNumberCheck(int n) {\n        // TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(neonNumberCheck(n));\n    }\n}\n",
+      "python3": "def is_neon(n):\n    # TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(is_neon(n))\n",
+      "javascript": "function is_neon(n) {\n  // TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(is_neon(n));\n",
+      "typescript": "function is_neon(n: number): string {\n  // TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(is_neon(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc neonNumberCheck(n int) string {\n    // TODO: return \\\"true\\\" if the square of the digit sum equals n, else \\\"false\\\"\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(neonNumberCheck(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef is_neon(n):\n    s = sum(int(ch) for ch in str(n))\n    return \"true\" if s * s == n else \"false\"\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(is_neon(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "81",
+        "expected": "true"
+      },
+      {
+        "input": "91",
+        "expected": "false"
+      },
+      {
+        "input": "0",
+        "expected": "true"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1",
+        "expected": "true"
+      },
+      {
+        "input": "9",
+        "expected": "false"
+      },
+      {
+        "input": "100",
+        "expected": "false"
+      },
+      {
+        "input": "2",
+        "expected": "false"
+      },
+      {
+        "input": "10",
+        "expected": "false"
+      },
+      {
+        "input": "18",
+        "expected": "false"
+      },
+      {
+        "input": "45",
+        "expected": "false"
+      },
+      {
+        "input": "50",
+        "expected": "false"
+      },
+      {
+        "input": "25",
+        "expected": "false"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "product-of-digits-price",
+    "title": "Product of Digits Price",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "The price of an item equals the product of all the digits of its printed code N. Read N and print that product.\n\nInput format: an integer value N.\nOutput format: print the product of the digits.",
+    "examples": [
+      {
+        "input": "5244",
+        "output": "160",
+        "explanation": "5 * 2 * 4 * 4 = 160."
+      },
+      {
+        "input": "123",
+        "output": "6",
+        "explanation": "1 * 2 * 3 = 6."
+      },
+      {
+        "input": "4511",
+        "output": "20",
+        "explanation": "4 * 5 * 1 * 1 = 20."
+      }
+    ],
+    "constraints": [
+      "N is a non-negative integer."
+    ],
+    "hints": [
+      "Start a running product at 1.",
+      "Multiply by each digit of the number.",
+      "If any digit is 0, the product becomes 0."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n\nint price(int n) {\n    /* TODO: return the product of all digits of n */\n    return 0;\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    printf(\"%d\\n\", price(n));\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nint price(int n) {\n    // TODO: return the product of all digits of n\n    return 0;\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << price(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static int productOfDigitsPrice(int n) {\n        // TODO: return the product of all digits of n\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(productOfDigitsPrice(n));\n    }\n}\n",
+      "python3": "def price(n):\n    # TODO: return the product of all digits of n\n    return 0\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(price(n))\n",
+      "javascript": "function price(n) {\n  // TODO: return the product of all digits of n\n  return 0;\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(price(n));\n",
+      "typescript": "function price(n: number): number {\n  // TODO: return the product of all digits of n\n  return 0;\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(price(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc productOfDigitsPrice(n int) int {\n    // TODO: return the product of all digits of n\n    return 0\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(productOfDigitsPrice(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef price(n):\n    p = 1\n    for ch in str(n):\n        p *= int(ch)\n    return p\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(price(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "5244",
+        "expected": "160"
+      },
+      {
+        "input": "123",
+        "expected": "6"
+      },
+      {
+        "input": "4511",
+        "expected": "20"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "9",
+        "expected": "9"
+      },
+      {
+        "input": "0",
+        "expected": "0"
+      },
+      {
+        "input": "10",
+        "expected": "0"
+      },
+      {
+        "input": "111",
+        "expected": "1"
+      },
+      {
+        "input": "999",
+        "expected": "729"
+      },
+      {
+        "input": "234",
+        "expected": "24"
+      },
+      {
+        "input": "1000",
+        "expected": "0"
+      },
+      {
+        "input": "55",
+        "expected": "25"
+      },
+      {
+        "input": "12345",
+        "expected": "120"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "contains-exactly-k-digits",
+    "title": "Contains Exactly K Digits",
+    "difficulty": "easy",
+    "topics": [
+      "Digits"
+    ],
+    "description": "Given a number N and a value K, decide whether N has exactly K digits. Print \"True\" followed by the digit count if it does, otherwise \"False\" followed by the actual digit count.\n\nInput format: two integers N and K.\nOutput format: print \"True\" or \"False\", a space, then N's digit count.",
+    "examples": [
+      {
+        "input": "501 3",
+        "output": "True 3",
+        "explanation": "501 has 3 digits and K is 3."
+      },
+      {
+        "input": "50121 4",
+        "output": "False 5",
+        "explanation": "50121 has 5 digits, not 4."
+      },
+      {
+        "input": "505 5",
+        "output": "False 3",
+        "explanation": "505 has 3 digits, not 5."
+      }
+    ],
+    "constraints": [
+      "N and K are positive integers."
+    ],
+    "hints": [
+      "Count the digits of N.",
+      "Compare that count with K.",
+      "Print True or False, then the actual digit count."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid check(int n, int k, char* out) {\n    /* TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n, k;\n    scanf(\"%d %d\", &n, &k);\n    char out[105];\n    check(n, k, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring check(int n, int k) {\n    // TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"\n    return \"\";\n}\n\nint main() {\n    int n, k;\n    cin >> n >> k;\n    cout << check(n, k) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String containsExactlyKDigits(int n, int k) {\n        // TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        int k = sc.nextInt();\n        System.out.println(containsExactlyKDigits(n, k));\n    }\n}\n",
+      "python3": "def check(n, k):\n    # TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    d = sys.stdin.read().split(); n = int(d[0]); k = int(d[1])\n    print(check(n, k))\n",
+      "javascript": "function check(n, k) {\n  // TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"\n  return '';\n}\n\nconst d = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n = d[0];\nconst k = d[1];\nconsole.log(check(n, k));\n",
+      "typescript": "function check(n: number, k: number): string {\n  // TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"\n  return '';\n}\n\nconst d: number[] = require('fs').readFileSync(0, 'utf8').trim().split(/\\s+/).map(Number);\nconst n: number = d[0];\nconst k: number = d[1];\nconsole.log(check(n, k));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc containsExactlyKDigits(n int, k int) string {\n    // TODO: return \\\"True count\\\" if N has exactly K digits, else \\\"False count\\\"\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n, k int\n    fmt.Fscan(reader, &n, &k)\n    fmt.Println(containsExactlyKDigits(n, k))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef check(n, k):\n    cnt = len(str(n))\n    flag = \"True\" if cnt == k else \"False\"\n    return flag + \" \" + str(cnt)\nif __name__ == \"__main__\":\n    d = sys.stdin.read().split(); n = int(d[0]); k = int(d[1])\n    print(check(n, k))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "501 3",
+        "expected": "True 3"
+      },
+      {
+        "input": "50121 4",
+        "expected": "False 5"
+      },
+      {
+        "input": "505 5",
+        "expected": "False 3"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "1 1",
+        "expected": "True 1"
+      },
+      {
+        "input": "12 2",
+        "expected": "True 2"
+      },
+      {
+        "input": "12 3",
+        "expected": "False 2"
+      },
+      {
+        "input": "100 3",
+        "expected": "True 3"
+      },
+      {
+        "input": "9999 4",
+        "expected": "True 4"
+      },
+      {
+        "input": "5 2",
+        "expected": "False 1"
+      },
+      {
+        "input": "123456 6",
+        "expected": "True 6"
+      },
+      {
+        "input": "77 1",
+        "expected": "False 2"
+      },
+      {
+        "input": "1000000 7",
+        "expected": "True 7"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "pronic-number-check",
+    "title": "Pronic Number Check",
+    "difficulty": "easy",
+    "topics": [
+      "Math"
+    ],
+    "description": "A pronic number has the form n(n+1), the product of two consecutive integers. Read a number and print \"true\" if it is pronic, otherwise \"false\".\n\nInput format: a number.\nOutput format: print \"true\" or \"false\".",
+    "examples": [
+      {
+        "input": "0",
+        "output": "true",
+        "explanation": "0 = 0 * 1, a product of consecutive integers."
+      },
+      {
+        "input": "7",
+        "output": "false",
+        "explanation": "7 cannot be written as n(n+1)."
+      }
+    ],
+    "constraints": [
+      "0 <= n <= 1000000000"
+    ],
+    "hints": [
+      "A pronic number equals n * (n + 1) for some integer n.",
+      "Estimate n from the square root of the number.",
+      "Check nearby candidates to confirm."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid is_pronic(int n, char* out) {\n    /* TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    int n;\n    scanf(\"%d\", &n);\n    char out[105];\n    is_pronic(n, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring is_pronic(int n) {\n    // TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"\n    return \"\";\n}\n\nint main() {\n    int n;\n    cin >> n;\n    cout << is_pronic(n) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String pronicNumberCheck(int n) {\n        // TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int n = sc.nextInt();\n        System.out.println(pronicNumberCheck(n));\n    }\n}\n",
+      "python3": "def is_pronic(n):\n    # TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    n = int(sys.stdin.readline())\n    print(is_pronic(n))\n",
+      "javascript": "function is_pronic(n) {\n  // TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"\n  return '';\n}\n\nconst n = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(is_pronic(n));\n",
+      "typescript": "function is_pronic(n: number): string {\n  // TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"\n  return '';\n}\n\nconst n: number = parseInt(require('fs').readFileSync(0, 'utf8').trim());\nconsole.log(is_pronic(n));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc pronicNumberCheck(n int) string {\n    // TODO: return \\\"true\\\" if the number equals n*(n+1) for some integer, else \\\"false\\\"\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var n int\n    fmt.Fscan(reader, &n)\n    fmt.Println(pronicNumberCheck(n))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\nimport math\ndef is_pronic(n):\n    if n < 0: return \"false\"\n    r = math.isqrt(n)\n    for x in (r-1, r, r+1):\n        if x >= 0 and x * (x + 1) == n:\n            return \"true\"\n    return \"false\"\nif __name__ == \"__main__\":\n    n = int(sys.stdin.readline())\n    print(is_pronic(n))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "0",
+        "expected": "true"
+      },
+      {
+        "input": "7",
+        "expected": "false"
+      },
+      {
+        "input": "6",
+        "expected": "true"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "2",
+        "expected": "true"
+      },
+      {
+        "input": "12",
+        "expected": "true"
+      },
+      {
+        "input": "20",
+        "expected": "true"
+      },
+      {
+        "input": "1",
+        "expected": "false"
+      },
+      {
+        "input": "5",
+        "expected": "false"
+      },
+      {
+        "input": "30",
+        "expected": "true"
+      },
+      {
+        "input": "42",
+        "expected": "true"
+      },
+      {
+        "input": "10",
+        "expected": "false"
+      },
+      {
+        "input": "100",
+        "expected": "false"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  },
+  {
+    "slug": "valid-pin-check",
+    "title": "Valid PIN Check",
+    "difficulty": "easy",
+    "topics": [
+      "Strings"
+    ],
+    "description": "A valid PIN has exactly 4 characters, all of which are digits (0-9), with no whitespace. Read the input and print \"true\" if it is a valid PIN, otherwise \"false\".\n\nInput format: a string.\nOutput format: print \"true\" or \"false\".",
+    "examples": [
+      {
+        "input": "0511",
+        "output": "true",
+        "explanation": "Exactly four digits."
+      },
+      {
+        "input": "78945",
+        "output": "false",
+        "explanation": "Five characters is too many."
+      }
+    ],
+    "constraints": [
+      "The input is a single token with no spaces."
+    ],
+    "hints": [
+      "Check that the length is exactly 4.",
+      "Check that every character is a digit.",
+      "Both conditions must hold."
+    ],
+    "starter_code": {
+      "c": "#include <stdio.h>\n#include <string.h>\n\nvoid valid_pin(const char* s, char* out) {\n    /* TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"; write result into out */\n    out[0] = '\\0';\n}\n\nint main() {\n    char s[100005];\n    scanf(\"%100000s\", s);\n    char out[100005];\n    valid_pin(s, out);\n    printf(\"%s\\n\", out);\n    return 0;\n}\n",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\n\nstring valid_pin(string s) {\n    // TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"\n    return \"\";\n}\n\nint main() {\n    string s;\n    cin >> s;\n    cout << valid_pin(s) << endl;\n    return 0;\n}\n",
+      "java": "import java.util.*;\n\npublic class Main {\n    static String validPinCheck(String s) {\n        // TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"\n        return \"\";\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = sc.next();\n        System.out.println(validPinCheck(s));\n    }\n}\n",
+      "python3": "def valid_pin(s):\n    # TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"\n    return \"\"\n\nif __name__ == \"__main__\":\n    import sys\n    s = sys.stdin.readline().strip()\n    print(valid_pin(s))\n",
+      "javascript": "function valid_pin(s) {\n  // TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"\n  return '';\n}\n\nconst s = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(valid_pin(s));\n",
+      "typescript": "function valid_pin(s: string): string {\n  // TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"\n  return '';\n}\n\nconst s: string = require('fs').readFileSync(0, 'utf8').trim();\nconsole.log(valid_pin(s));\n",
+      "go": "package main\n\nimport (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n)\n\nfunc validPinCheck(s string) string {\n    // TODO: return \\\"true\\\" if the string is exactly 4 digit characters, else \\\"false\\\"\n    return \"\"\n}\n\nfunc main() {\n    reader := bufio.NewReader(os.Stdin)\n    var s string\n    fmt.Fscan(reader, &s)\n    fmt.Println(validPinCheck(s))\n}\n"
+    },
+    "reference_solution": {
+      "python3": "import sys\ndef valid_pin(s):\n    if len(s) == 4 and all('0' <= c <= '9' for c in s):\n        return \"true\"\n    return \"false\"\nif __name__ == \"__main__\":\n    s = sys.stdin.readline().strip()\n    print(valid_pin(s))\n"
+    },
+    "sample_tests": [
+      {
+        "input": "0511",
+        "expected": "true"
+      },
+      {
+        "input": "78945",
+        "expected": "false"
+      },
+      {
+        "input": "1234",
+        "expected": "true"
+      }
+    ],
+    "hidden_tests": [
+      {
+        "input": "0000",
+        "expected": "true"
+      },
+      {
+        "input": "123",
+        "expected": "false"
+      },
+      {
+        "input": "12345",
+        "expected": "false"
+      },
+      {
+        "input": "abcd",
+        "expected": "false"
+      },
+      {
+        "input": "12a4",
+        "expected": "false"
+      },
+      {
+        "input": "9999",
+        "expected": "true"
+      },
+      {
+        "input": "1",
+        "expected": "false"
+      },
+      {
+        "input": "00000",
+        "expected": "false"
+      },
+      {
+        "input": "4567",
+        "expected": "true"
+      }
+    ],
+    "cpu_time_limit_sec": 2,
+    "memory_limit_kb": 256000,
+    "is_published": true,
+    "sql_spec": null
+  }
+]

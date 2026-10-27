@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<title>Aptitude practice</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#3346c4}a:hover{color:#26338f}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #f6f7fb; color: #131a2e; font-family: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif">
+  <dc-import name="TopBar" hint-size="100%,64px"></dc-import>
+  <div style="display: flex; flex-wrap: wrap; align-items: stretch">
+    <dc-import name="SideNav" active="aptitude" hint-size="240px,980px"></dc-import>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 32px 48px; box-sizing: border-box">
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; align-items: flex-end; margin-bottom: 18px">
+        <div>
+          <h1 style="margin: 0 0 6px; font-size: 28px">Aptitude</h1>
+          <p style="margin: 0; color: #4f586c">Quant, reasoning, verbal. Har sawaal par seedha tareeka aur tez tareeka.</p>
+        </div>
+        <div role="tablist" aria-label="Aptitude" style="display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: #eef0f6">
+          <span role="tab" aria-selected="true" style="padding: 8px 14px; border-radius: 9px; background: #ffffff; font-weight: 700">Topic practice</span>
+          <a href="Pramaan.dc.html" role="tab" aria-selected="false" style="padding: 8px 14px; border-radius: 9px; color: #4f586c; text-decoration: none; font-weight: 600">Mock tests (50)</a>
+          <a href="Contests.dc.html" role="tab" aria-selected="false" style="padding: 8px 14px; border-radius: 9px; color: #4f586c; text-decoration: none; font-weight: 600">Placement pattern</a>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <nav aria-label="Topics" style="flex: 1 1 220px; max-width: 280px; padding: 16px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: #5f687c; margin: 0 4px 8px">Quant</div>
+          <sc-for list="{{topics}}" as="t" hint-placeholder-count="8">
+            <a href="Aptitude.dc.html" style="display: block; padding: 8px 10px; border-radius: 10px; text-decoration: none; color: #131a2e; {{t.bg}}">
+              <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600"><span>{{t.name}}</span><span style="color: #5f687c; font-weight: 500">{{t.pct}}</span></div>
+              <div style="height: 4px; border-radius: 999px; background: #e2e6ef; margin-top: 6px"><div style="height: 4px; border-radius: 999px; background: {{t.color}}; width: {{t.pct}}"></div></div>
+            </a>
+          </sc-for>
+        </nav>
+
+        <section aria-labelledby="q" style="flex: 2 1 440px; min-width: 0; padding: 24px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+          <div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 14px; font-size: 14px; color: #4f586c">
+            <span>Percentages · sawaal 4 / 10 · Medium</span>
+            <span style="display: inline-flex; gap: 6px; align-items: center; font-family: 'JetBrains Mono', monospace; padding: 4px 10px; border-radius: 8px; background: #f6f7fb; color: #131a2e"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>0:48 · lakshya 1:00</span>
+          </div>
+          <h2 id="q" style="margin: 0 0 18px; font-size: 19px; line-height: 1.5; font-weight: 600">Ek cheez ka daam pehle 20% badha, phir naye daam par 20% ghata. Asli daam ke mukaable kul badlaav kitna?</h2>
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <sc-for list="{{opts}}" as="o" hint-placeholder-count="4">
+              <button type="button" onClick="{{o.pick}}" aria-pressed="{{o.on}}" style="display: flex; gap: 14px; align-items: center; text-align: left; min-height: 54px; padding: 0 16px; border-radius: 12px; font: inherit; font-size: 16px; cursor: pointer; {{o.style}}"><span style="width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; background: #eef0f6">{{o.key}}</span>{{o.label}}</button>
+            </sc-for>
+          </div>
+          <div style="display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap">
+            <button type="button" onClick="{{check}}" style="min-height: 48px; padding: 0 22px; border-radius: 12px; border: 0; background: #f28c28; color: #131a2e; font: inherit; font-weight: 700; cursor: pointer">Jaanchein</button>
+            <button type="button" style="min-height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid #cdd3df; background: #ffffff; font: inherit; font-weight: 600; cursor: pointer">Chhod do</button>
+            <button type="button" style="min-height: 48px; padding: 0 18px; border-radius: 12px; border: 0; background: transparent; color: #3346c4; font: inherit; font-weight: 600; cursor: pointer">Bookmark</button>
+          </div>
+          <sc-if value="{{checked}}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top: 20px; padding: 18px; border-radius: 14px; {{resBox}}">
+              <div style="font-weight: 800; font-size: 17px; margin-bottom: 8px">{{resTitle}}</div>
+              <div style="display: flex; flex-wrap: wrap; gap: 16px">
+                <div style="flex: 1 1 220px"><div style="font-weight: 700; margin-bottom: 4px">Seedha tareeka</div><div style="font-size: 15px">100 maano. 20% badha: 120. Ab 120 ka 20% = 24 ghata: 96. Kul 4% kam.</div></div>
+                <div style="flex: 1 1 220px; font-family: 'Kalam', cursive; font-size: 19px; padding: 10px 14px; border-radius: 12px; border: 2px dashed #111111; color: #111111"><div style="font-weight: 700">Tez tareeka</div>a + b + ab/100 = 20 − 20 − 4 = −4%</div>
+              </div>
+            </div>
+          </sc-if>
+        </section>
+
+        <aside style="flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 14px">
+          <div style="padding: 18px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef">
+            <div style="font-weight: 700; margin-bottom: 10px">Is set me</div>
+            <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px">
+              <sc-for list="{{palette}}" as="p" hint-placeholder-count="10">
+                <span style="height: 36px; border-radius: 8px; display: grid; place-items: center; font-weight: 700; font-size: 14px; {{p.style}}">{{p.n}}</span>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding: 18px; border-radius: 18px; background: #ffffff; border: 1px solid #e2e6ef; font-size: 14px">
+            <div style="font-weight: 700; margin-bottom: 8px">Percentages me aap</div>
+            <div style="display: flex; justify-content: space-between"><span>Sahi</span><b>72%</b></div>
+            <div style="display: flex; justify-content: space-between"><span>Ausat samay</span><b>1:12 (lakshya 1:00)</b></div>
+            <div style="display: flex; justify-content: space-between"><span>Kamzor type</span><b>Successive change</b></div>
+          </div>
+          <a href="Pramaan.dc.html" style="display: block; padding: 18px; border-radius: 18px; background: #141b4d; color: #ffffff; text-decoration: none">
+            <div style="font-weight: 700">Full mock: service company pattern</div>
+            <div style="font-size: 14px; color: #c9cffa; margin-top: 4px">60 sawaal · 60 min · section timer</div>
+          </a>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { pick: null, checked: false };
+  }
+  renderVals() {
+    const topics = [
+      ['Number system', '64%', '#117a57'], ['Percentages', '48%', '#3346c4'], ['Profit aur loss', '30%', '#3346c4'], ['Ratio, proportion', '22%', '#f28c28'],
+      ['Time aur work', '10%', '#f28c28'], ['Speed, distance', '0%', '#cdd3df'], ['Probability', '0%', '#cdd3df'], ['Data interpretation', '0%', '#cdd3df']
+    ].map(([name, pct, color]) => ({ name, pct, color, bg: name === 'Percentages' ? 'background: #f1f3fe' : '' }));
+    const correct = 'b';
+    const opts = [['a', '0%, koi badlaav nahi'], ['b', '4% kam'], ['c', '4% zyada'], ['d', '2% kam']].map(([key, label]) => {
+      const on = this.state.pick === key;
+      let style = on ? 'background: #f1f3fe; border: 2px solid #3346c4; color: #131a2e' : 'background: #ffffff; border: 2px solid #e2e6ef; color: #131a2e';
+      if (this.state.checked) {
+        if (key === correct) style = 'background: #e7f6ef; border: 2px solid #117a57; color: #131a2e';
+        else if (on) style = 'background: #fdeeec; border: 2px solid #c23a2b; color: #131a2e';
+      }
+      return { key: key.toUpperCase(), label, on, style, pick: () => this.setState({ pick: key, checked: false }) };
+    });
+    const right = this.state.pick === correct;
+    const ps = { done: 'background: #e7f6ef; color: #117a57', wrong: 'background: #fdeeec; color: #c23a2b', now: 'background: #3346c4; color: #ffffff', todo: 'background: #eef0f6; color: #5f687c' };
+    const states = ['done', 'done', 'wrong', 'now', 'todo', 'todo', 'todo', 'todo', 'todo', 'todo'];
+    return {
+      topics, opts,
+      checked: this.state.checked && this.state.pick !== null,
+      resTitle: right ? 'Sahi! 48 second me.' : 'Abhi nahi. Sahi jawab: B, 4% kam.',
+      resBox: right ? 'background: #e7f6ef' : 'background: #fdeeec',
+      check: () => this.setState({ checked: true }),
+      palette: states.map((s, i) => ({ n: i + 1, style: ps[s] }))
+    };
+  }
+}
+</script>
+</body>
+</html>
