@@ -138,7 +138,7 @@ const homeView = z.object({
   dueCards: z.number(),
   focusMinutesToday: z.number(),
   potd: potdDay.nullable(),
-  plan: planView.pick({ track: true, finishOn: true, deadline: true, sprint: true, sprints: true, today: true, moved: true }).nullable(),
+  plan: planView.pick({ track: true, startedAt: true, finishOn: true, deadline: true, sprint: true, sprints: true, today: true, moved: true }).nullable(),
   continue: z
     .object({ slug: z.string(), title: z.string(), items: z.number(), done: z.number(), next: z.object({ kind: z.enum(["problem", "lesson"]), slug: z.string(), title: z.string() }).nullable() })
     .nullable(),

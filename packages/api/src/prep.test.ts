@@ -124,6 +124,14 @@ describe("a learner's day", () => {
     expect((await call("GET", null, `${S}/home`)).statusCode).toBe(401);
   });
 
+  it("tells the dashboard when the plan began, as the plan does: Learn's Aaj counts the plan's days from it", async () => {
+    const asha = await signUp();
+    const { plan } = await ok("POST", asha, `${S}/plan`, { track: "dsa-basics", level: "intermediate", deadline: "2026-10-30", dailyMinutes: 75, offDays: [0] });
+    expect(Number.isNaN(Date.parse(plan.startedAt))).toBe(false);
+    clock += DAY;
+    expect((await ok("GET", asha, `${S}/home`)).plan).toMatchObject({ startedAt: plan.startedAt, deadline: "2026-10-30" });
+  });
+
   it("finishes a lesson once, for coins, and counts it on the track", async () => {
     const asha = await signUp();
     expect(await ok("POST", asha, `${S}/lessons/what-an-array-is/done`, undefined, 200)).toEqual({ coins: 5, reasons: ["lesson"] });

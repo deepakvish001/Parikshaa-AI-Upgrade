@@ -933,7 +933,7 @@ export interface Home {
   readonly dueCards: number;
   readonly focusMinutesToday: number;
   readonly potd: PotdDay | null;
-  readonly plan: Pick<Plan, "track" | "finishOn" | "deadline" | "sprint" | "sprints" | "today" | "moved"> | null;
+  readonly plan: Pick<Plan, "track" | "startedAt" | "finishOn" | "deadline" | "sprint" | "sprints" | "today" | "moved"> | null;
   readonly continue: {
     readonly slug: string;
     readonly title: string;

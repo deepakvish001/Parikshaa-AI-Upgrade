@@ -1,8 +1,9 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LearnApp, findScreens, routeOf } from "./LearnApp.tsx";
+import { fakeApi, renderLearn, SESSION } from "./fake-api.tsx";
+import { findScreens, routeOf } from "./LearnApp.tsx";
 import { LEARN_GROUPS, LEARN_SCREENS } from "./screens.ts";
 import { T, learnLangOf, pick } from "./text.ts";
 
@@ -58,8 +59,15 @@ beforeEach(() => {
   at(`/practice/${SITE}`);
   window.scrollTo = vi.fn() as unknown as typeof window.scrollTo;
   mockMedia(wide);
+  // A signed-in learner's day (fake-api.tsx), in their evening: only Aaj's greeting reads the clock.
+  localStorage.setItem(SESSION, "pl_good");
+  fakeApi();
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date(2026, 9, 27, 19, 0));
 });
 afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
   // @ts-expect-error jsdom has none; each test sets its own.
   delete window.matchMedia;
   document.documentElement.removeAttribute("data-theme");
@@ -101,8 +109,8 @@ describe("the words", () => {
 });
 
 describe("Learn v2's shell", () => {
-  it("has its landmarks, a skip link, and Aaj on sample data at the site's root", async () => {
-    render(<LearnApp site={SITE} />);
+  it("has its landmarks, a skip link, and Aaj on the learner's day at the site's root", async () => {
+    renderLearn();
     expect(sideNav()).toBeInTheDocument();
     expect(screen.getByRole("banner")).toBeInTheDocument();
     const main = screen.getByRole("main");
@@ -114,15 +122,15 @@ describe("Learn v2's shell", () => {
     await userEvent.click(skip);
     expect(main).toHaveFocus();
 
+    await screen.findByRole("region", { name: "Pair with target sum" });
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Shubh sandhya, Aarav.");
-    expect(screen.getByRole("note")).toHaveTextContent("Sample");
     expect(screen.getByRole("progressbar", { name: "Aaj ke kaam" })).toHaveAttribute("aria-valuetext", "5 me se 1 ho gaye");
-    expect(screen.getByRole("progressbar", { name: "Taiyari" })).toHaveAttribute("aria-valuenow", "62");
+    expect(await screen.findByRole("progressbar", { name: "Infosys ki taiyari" })).toHaveAttribute("aria-valuenow", "62");
     expect(document.title).toBe("Aaj · Parikshaa Learn");
   });
 
   it("lists every screen in its group, each a link to its own address, Aaj current", () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     const nav = sideNav();
     for (const group of LEARN_GROUPS) {
       const list = within(nav).getByRole("list", { name: hg(group.name) });
@@ -139,7 +147,7 @@ describe("Learn v2's shell", () => {
   });
 
   it("goes to a screen in the page: its placeholder, its address, the focus on the new content; back works", async () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     await userEvent.click(within(sideNav()).getByRole("link", { name: "Courses" }));
     expect(window.location.pathname).toBe(`/practice/${SITE}/courses`);
     expect(screen.getByRole("heading", { level: 1, name: "Courses" })).toBeInTheDocument();
@@ -155,19 +163,19 @@ describe("Learn v2's shell", () => {
     expect(screen.getByRole("heading", { level: 1, name: "SQL" })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: hg(T.toToday) }));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Shubh sandhya");
+    expect(await screen.findByRole("heading", { level: 1, name: /Shubh sandhya/ })).toBeInTheDocument();
   });
 
   it("says when an address is not in Learn yet, and links to it on the current site", () => {
     at(`/practice/${SITE}/problems/two-sum`);
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     expect(screen.getByRole("heading", { level: 1, name: hg(T.notHereTitle) })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: hg(T.openOld) })).toHaveAttribute("href", `/practice/${SITE}/problems/two-sum?learn_v2=0`);
   });
 
   it("narrows the side bar at 1180 px and below; every link keeps its name, shown as a tooltip", () => {
     const media = mockMedia(wide);
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     expect(sideNav()).not.toHaveClass("ln-mini");
     media.set(narrow);
     const nav = sideNav();
@@ -186,7 +194,7 @@ describe("Learn v2's shell", () => {
   });
 
   it("narrows and widens the side bar by its button and by Ctrl+\\ on a wide screen", async () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     await userEvent.click(screen.getByRole("button", { name: hg(T.collapse) }));
     expect(sideNav()).toHaveClass("ln-mini");
     await userEvent.click(screen.getByRole("button", { name: hg(T.expand) }));
@@ -199,7 +207,7 @@ describe("Learn v2's shell", () => {
 
   it("on a phone, has five tabs at the bottom instead of the side bar, and Aur lists every screen", async () => {
     mockMedia(phone);
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     expect(screen.queryByRole("navigation", { name: hg(T.nav) })).not.toBeInTheDocument();
     const tabs = screen.getByRole("navigation", { name: hg(T.phoneNav) });
     const controls = within(tabs).getAllByRole("link").concat(within(tabs).getAllByRole("button"));
@@ -231,7 +239,7 @@ describe("Learn v2's shell", () => {
   });
 
   it("searches with Ctrl+K: the list filters as you type, arrows choose, Enter goes, Escape closes", async () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     const dialog = screen.getByRole("dialog", { name: hg(T.searchDialog) });
     const box = within(dialog).getByRole("combobox", { name: hg(T.searchField) });
@@ -286,7 +294,8 @@ describe("Learn v2's shell", () => {
   });
 
   it("changes the language from the ⋯ menu, through the app's own setting, and every label follows", async () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
+    await screen.findByRole("region", { name: "Pair with target sum" });
     const more = () => screen.getByRole("button", { name: /^(Aur vikalp|More options|और विकल्प)$/ });
     await userEvent.click(more());
     const menu = screen.getByRole("menu");
@@ -315,7 +324,7 @@ describe("Learn v2's shell", () => {
   });
 
   it("moves through the ⋯ menu by keyboard, and Escape gives the focus back", async () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     const button = screen.getByRole("button", { name: "Aur vikalp" });
     button.focus();
     await userEvent.keyboard("{ArrowDown}");
@@ -337,7 +346,7 @@ describe("Learn v2's shell", () => {
   });
 
   it("is dark unless the learner chooses paper, on <html data-theme>, kept on the device", async () => {
-    const { unmount } = render(<LearnApp site={SITE} />);
+    const { unmount } = renderLearn();
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     await userEvent.click(screen.getByRole("button", { name: "Aur vikalp" }));
     await userEvent.click(screen.getByRole("menuitem", { name: hg(T.toLight) }));
@@ -348,12 +357,12 @@ describe("Learn v2's shell", () => {
     unmount();
     expect(document.documentElement).not.toHaveAttribute("data-theme");
 
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     expect(document.documentElement).toHaveAttribute("data-theme", "light");
   });
 
   it("opens Sahayak beside the page, by its buttons and by Ctrl+J", async () => {
-    render(<LearnApp site={SITE} />);
+    renderLearn();
     const top = screen.getByRole("banner");
     const button = within(top).getByRole("button", { name: "Sahayak" });
     await userEvent.click(button);
@@ -379,7 +388,8 @@ describe("Learn v2's shell", () => {
 describe("axe", () => {
   it("finds nothing on Aaj, a placeholder and the page that is not there, wide and narrow", async () => {
     const media = mockMedia(wide);
-    const { container } = render(<LearnApp site={SITE} />);
+    const { container } = renderLearn();
+    await screen.findByRole("region", { name: "Pair with target sum" });
     expect(await violations(container)).toEqual([]);
     media.set(narrow);
     expect(await violations(container)).toEqual([]);
@@ -390,7 +400,7 @@ describe("axe", () => {
   });
 
   it("finds nothing with search, the ⋯ menu, in Hindi and on paper", async () => {
-    const { container } = render(<LearnApp site={SITE} />);
+    const { container } = renderLearn();
     fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     expect(await violations(container)).toEqual([]);
     await userEvent.type(screen.getByRole("combobox"), "zzz");
@@ -406,7 +416,7 @@ describe("axe", () => {
 
   it("finds nothing on a phone: tabs, the Aur sheet and Sahayak's sheet", async () => {
     mockMedia(phone);
-    const { container } = render(<LearnApp site={SITE} />);
+    const { container } = renderLearn();
     expect(await violations(container)).toEqual([]);
     await userEvent.click(screen.getByRole("button", { name: "Aur" }));
     expect(await violations(container)).toEqual([]);

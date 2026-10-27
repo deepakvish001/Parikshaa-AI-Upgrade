@@ -5,8 +5,10 @@ import { expect, test, type Page } from "@playwright/test";
  * Learn v2's shell (tracker row 139, K1-3) behind the flag `learn_v2`: off, a
  * practice site is today's; on (`?learn_v2=1`), the shell loads at a laptop's
  * width and a phone's, and axe finds nothing serious or critical in it, dark
- * or on paper, in Hinglish or in Hindi. The shell calls no API yet, so any
- * site's address shows it. Its images are K1-4's.
+ * or on paper, in Hinglish or in Hindi. Signed out (no session on this
+ * device) the shell reads nothing of the learner's, so any site's address
+ * shows it, with Aaj asking to sign in and no rail beside it; Aaj on a
+ * learner's own day is learn-aaj.spec.ts. Its images are learn.visual.ts.
  */
 const SITE = "learn-shell";
 
@@ -34,7 +36,8 @@ for (const [name, viewport] of [
     const phone = viewport.width <= 860;
     await page.setViewportSize(viewport);
     await page.goto(`/practice/${SITE}?learn_v2=1`);
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Shubh sandhya");
+    await expect(page.getByRole("heading", { level: 1, name: "Aaj" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Apna din dekhne ke liye sign in karo" })).toBeVisible();
     const theme = () => page.evaluate(() => document.documentElement.dataset["theme"]);
     await expect.poll(theme).toBe("dark");
     if (phone) {
@@ -49,7 +52,9 @@ for (const [name, viewport] of [
       }
     } else {
       await expect(page.getByRole("navigation", { name: "Learn menu" })).toBeVisible();
-      await expect(page.getByRole("complementary", { name: "Page ke saath" })).toBeVisible();
+      // Signed out, the side bar offers the way to sign in, and Aaj has no rail (it is the learner's own week).
+      await expect(page.getByRole("navigation", { name: "Learn menu" }).getByRole("link", { name: /Sign in karo/ })).toHaveAttribute("href", `/practice/${SITE}/signin?learn_v2=0`);
+      await expect(page.getByRole("complementary", { name: "Page ke saath" })).toHaveCount(0);
     }
     expect(await seriousOrCritical(page)).toEqual([]);
 
