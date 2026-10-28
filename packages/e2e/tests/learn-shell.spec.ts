@@ -53,7 +53,7 @@ for (const [name, viewport] of [
     } else {
       await expect(page.getByRole("navigation", { name: "Learn menu" })).toBeVisible();
       // Signed out, the side bar offers the way to sign in, and Aaj has no rail (it is the learner's own week).
-      await expect(page.getByRole("navigation", { name: "Learn menu" }).getByRole("link", { name: /Sign in karo/ })).toHaveAttribute("href", `/practice/${SITE}/signin?learn_v2=0`);
+      await expect(page.getByRole("navigation", { name: "Learn menu" }).getByRole("link", { name: /Sign in karo/ })).toHaveAttribute("href", `/practice/${SITE}/signin`);
       await expect(page.getByRole("complementary", { name: "Page ke saath" })).toHaveCount(0);
     }
     expect(await seriousOrCritical(page)).toEqual([]);

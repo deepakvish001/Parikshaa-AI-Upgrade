@@ -5,9 +5,10 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * Learn v2 with the flag `learn_v2` on, held to its committed images (K1-4;
  * Aaj on real data since K2-1, tracker row 140): Aaj on a seeded learner's
  * day, one placeholder screen, the ⋯ menu open, and on a phone the "Aur"
- * sheet; at 1440 and 390, dark (Learn's default) and light, and the narrow
- * side bar at 1100. Signed in as the seeded learner throughout (the side bar
- * shows their name). What the date changes is in `.ln-dated`: set to one date,
+ * sheet; since K2-2 also Learn's sign-in (signed out), onboarding's first
+ * question and Mera plan; at 1440 and 390, dark (Learn's default) and light,
+ * and the narrow side bar at 1100. Signed in as the seeded learner, except on
+ * the sign-in page (the side bar shows their name). What the date changes is in `.ln-dated`: set to one date,
  * then masked. The page's clock is held at 7 pm in India today, so the
  * greeting is the evening's. The theme is Learn's own
  * (`parikshaa.learn.theme`, set before the page loads), not the browser's.
@@ -25,12 +26,12 @@ test.beforeAll(async ({ request }) => {
 const DATED = ".ln-dated";
 const masks = (page: Page) => [page.locator(DATED)];
 
-async function open(page: Page, path: string, theme: "light" | "dark") {
+async function open(page: Page, path: string, theme: "light" | "dark", signedIn = true) {
   await page.clock.setFixedTime(new Date(`${istDay()}T13:30:00Z`));
   await page.addInitScript(([key, value, t]) => {
-    localStorage.setItem(key!, value!);
+    if (value !== "") localStorage.setItem(key!, value!);
     localStorage.setItem("parikshaa.learn.theme", t!);
-  }, [`parikshaa.practice.${SITE}.session`, token, theme]);
+  }, [`parikshaa.practice.${SITE}.session`, signedIn ? token : "", theme]);
   await page.goto(`/practice/${SITE}${path}?learn_v2=1`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   if (path === "") {
@@ -39,6 +40,8 @@ async function open(page: Page, path: string, theme: "light" | "dark") {
     await expect(page.getByRole("progressbar", { name: "Infosys ki taiyari" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Aage" })).toContainText("Weekly Round 13");
   }
+  if (path === "/plan") await expect(page.getByRole("region", { name: "Target companies" })).toContainText("Infosys");
+  if (path === "/onboarding") await expect(page.getByRole("button", { name: /^DSA for placements/ })).toBeVisible();
   await page.waitForLoadState("networkidle");
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset["theme"])).toBe(theme);
   await page.evaluate((selector) => {
@@ -73,6 +76,17 @@ for (const theme of ["dark", "light"] as const) {
       await openMenu(page);
       await expect(page).toHaveScreenshot(`learn-menu-1440-${theme}.png`, { mask: masks(page) });
     });
+
+    for (const [name, path, signedIn] of [
+      ["signin", "/signin", false],
+      ["onboarding", "/onboarding", true],
+      ["plan", "/plan", true],
+    ] as const) {
+      test(`${name} (K2-2)`, async ({ page }) => {
+        await open(page, path, theme, signedIn);
+        await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
+      });
+    }
   });
 
   test.describe(`learn · 390 · ${theme}`, () => {
@@ -101,6 +115,17 @@ for (const theme of ["dark", "light"] as const) {
       await openMenu(page);
       await expect(page).toHaveScreenshot(`learn-menu-390-${theme}.png`, { mask: masks(page) });
     });
+
+    for (const [name, path, signedIn] of [
+      ["signin", "/signin", false],
+      ["onboarding", "/onboarding", true],
+      ["plan", "/plan", true],
+    ] as const) {
+      test(`${name} (K2-2)`, async ({ page }) => {
+        await open(page, path, theme, signedIn);
+        await expect(page).toHaveScreenshot(`learn-${name}-390-${theme}.png`, { fullPage: true, mask: masks(page) });
+      });
+    }
   });
 }
 

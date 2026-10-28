@@ -1,9 +1,24 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useQuery, type UseQueryResult } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { ErrorState, OfflineBanner, Skeleton, Empty, type SkeletonShape } from "@parikshaa/brand/kit";
 import { ApiError } from "../api.ts";
-import { loadToken, PracticeClient, saveToken, type CompanyTarget, type ContestSummary, type Home, type Learner, type Submission } from "../practice/client.ts";
-import { useLearn } from "./context.tsx";
+import {
+  loadToken,
+  PracticeClient,
+  saveRef,
+  saveToken,
+  type CompanyCard,
+  type CompanyTarget,
+  type ContestSummary,
+  type Home,
+  type Learner,
+  type Plan,
+  type SignInOptions,
+  type Submission,
+  type TrackSummary,
+} from "../practice/client.ts";
+import { ScreenLink, useLearn } from "./context.tsx";
+import { screenById } from "./screens.ts";
 import { D } from "./text.ts";
 
 /**
@@ -31,30 +46,113 @@ export interface LearnData {
   /** The session's token, or null when signed out. */
   readonly token: string | null;
   readonly signedIn: boolean;
+  /** What the address brought when Learn opened (taken out of the address already). */
+  readonly arrived: Arrival;
+  /** Keep a new session (from signing in or up), as the practice site keeps it. */
+  readonly signIn: (token: string) => void;
+  /** End the session on the server, then forget it here; this learner's data leaves the page. */
+  readonly signOut: () => Promise<void>;
   /** Forget a session the server no longer knows. */
   readonly forget: () => void;
 }
 
 const DataContext = createContext<LearnData | null>(null);
 
-/** A session in the address's fragment (`#session=…`, from Google sign-in): kept, then taken out of the address. */
-export function arrivedSession(site: string): string | null {
+/** What the address brought, once: each is kept or acted on, and taken out of the address (K2-2). */
+export interface Arrival {
+  /** A session from signing in with Google, in the fragment (which no server logs). */
+  readonly session: string | null;
+  /** An email confirmation link's token (`?verify=`), to follow once. */
+  readonly verify: string | null;
+  /** A Google sign-in that failed (`?signin_error=`). */
+  readonly signinError: string | null;
+  /** Where to go after Google sign-in: kept on this tab before leaving for Google, and checked again here. */
+  readonly next: string | null;
+}
+
+const nextKey = (site: string) => `parikshaa.learn.next.${site}`;
+
+/**
+ * Where a "go back to" may send the learner: only a screen of this site, as
+ * `<screen>` or `problems/<slug>` / `lessons/<slug>` (the old site's
+ * addresses, which Learn opens too). Anything else (another site, a scheme,
+ * `//`, `..`, a query) is dropped, so no link can send a learner off the site.
+ */
+export function safeNext(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  const match = /^([a-z][a-z0-9-]{0,30})(?:\/([a-z0-9][a-z0-9-]{0,120}))?$/.exec(raw);
+  if (match === null) return null;
+  const [, screen, slug] = match;
+  if (slug !== undefined) return screen === "problems" || screen === "lessons" ? raw : null;
+  return screen === "onboarding" || screenById(screen!) !== undefined ? raw : null;
+}
+
+/** Before leaving for Google: where to come back to, on this tab only. */
+export function keepNext(site: string, next: string | null): void {
+  try {
+    const safe = safeNext(next);
+    if (safe === null) sessionStorage.removeItem(nextKey(site));
+    else sessionStorage.setItem(nextKey(site), safe);
+  } catch {
+    // Without storage the learner lands on Aaj.
+  }
+}
+
+function takeNext(site: string): string | null {
+  try {
+    const kept = sessionStorage.getItem(nextKey(site));
+    sessionStorage.removeItem(nextKey(site));
+    return safeNext(kept);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read the address once, as the practice site does: a session from Google
+ * sign-in (kept as the practice site keeps it), a confirmation link, a failed
+ * Google sign-in and an affiliate's coupon (`?ref=`, kept for checkout), all
+ * taken out of the address so a reload or a shared link carries none of them.
+ */
+export function arrival(site: string): Arrival {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-  const session = hash.get("session");
-  if (session === null || session === "") return null;
-  saveToken(site, session);
-  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
-  return session;
+  const query = new URLSearchParams(window.location.search);
+  const session = hash.get("session") || null;
+  const verify = query.get("verify") || null;
+  const signinError = query.get("signin_error") || null;
+  const ref = query.get("ref");
+  if (ref !== null && /^[A-Za-z0-9][A-Za-z0-9-]{2,29}$/.test(ref)) saveRef(site, ref.toUpperCase());
+  if (session !== null || hash.has("session") || verify !== null || signinError !== null || ref !== null) {
+    for (const name of ["verify", "signin_error", "ref"]) query.delete(name);
+    const rest = query.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${rest === "" ? "" : `?${rest}`}`);
+  }
+  if (session !== null) saveToken(site, session);
+  return { session, verify, signinError, next: session === null ? null : takeNext(site) };
 }
 
 export function LearnDataProvider({ site, baseUrl = "/api", children }: { readonly site: string; readonly baseUrl?: string; readonly children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(() => arrivedSession(site) ?? loadToken(site));
+  const queryClient = useQueryClient();
+  const [arrived] = useState(() => arrival(site));
+  const [token, setToken] = useState<string | null>(() => arrived.session ?? loadToken(site));
   const client = useMemo(() => new PracticeClient(site, token, baseUrl), [site, token, baseUrl]);
   const forget = useCallback(() => {
     saveToken(site, null);
     setToken(null);
   }, [site]);
-  const value = useMemo<LearnData>(() => ({ site, client, token, signedIn: token !== null, forget }), [site, client, token, forget]);
+  const signIn = useCallback(
+    (next: string) => {
+      saveToken(site, next);
+      setToken(next);
+    },
+    [site],
+  );
+  const signOut = useCallback(async () => {
+    await client.signOut().catch(() => undefined);
+    forget();
+    queryClient.removeQueries({ queryKey: ["practice", site] });
+  }, [client, forget, queryClient, site]);
+  const value = useMemo<LearnData>(() => ({ site, client, token, signedIn: token !== null, arrived, signIn, signOut, forget }), [site, client, token, arrived, signIn, signOut, forget]);
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 }
 
@@ -108,6 +206,18 @@ export const useContests = (): UseQueryResult<readonly ContestSummary[]> => useL
 /** A problem's submissions by this learner, newest first; nothing is read without a problem. */
 export const useSubmissions = (slug: string | null): UseQueryResult<readonly Submission[]> =>
   useLearnQuery(["submissions", slug], (client) => client.submissions(slug ?? ""), { enabled: slug !== null });
+
+/** How learners may sign in here (Google or not), and whether an address must be confirmed first. Open to anyone. */
+export const useSignInOptions = (enabled = true): UseQueryResult<SignInOptions> => useLearnQuery(["sign-in-options"], (client) => client.signInOptions(), { session: false, enabled });
+
+/** The learner's running plan; null when there is none. */
+export const usePlan = (): UseQueryResult<Plan | null> => useLearnQuery(["plan"], (client) => client.plan());
+
+/** The site's tracks, with the learner's progress in each. */
+export const useTracks = (): UseQueryResult<readonly TrackSummary[]> => useLearnQuery(["tracks"], (client) => client.tracks());
+
+/** The site's companies, to aim for. */
+export const useCompanies = (): UseQueryResult<readonly CompanyCard[]> => useLearnQuery(["companies"], (client) => client.companies());
 
 /** Whether the browser says it is online, kept up to date. */
 export function useOnline(): boolean {
@@ -163,21 +273,26 @@ export function Offline({ waiting = false }: { readonly waiting?: boolean }) {
   return <OfflineBanner title={t(D.offlineTitle)}>{waiting ? t(D.offlineWait) : t(D.offlineBody)}</OfflineBanner>;
 }
 
-/**
- * Signed out: until Learn has its own sign-in (K2-2), the practice site's
- * sign-in, which keeps the same session; `?learn_v2=0` opens that site.
- */
-export function SignedOut({ headingLevel = 2 }: { readonly headingLevel?: 2 | 3 }) {
+/** The screen this page is, as a "go back to" for signing in: from the address, checked by `safeNext`. */
+export function hereAsNext(site: string): string | null {
+  const base = `/practice/${site}/`;
+  const path = window.location.pathname;
+  return path.startsWith(base) ? safeNext(path.slice(base.length).replace(/\/+$/, "")) : null;
+}
+
+/** Signed out: Learn's own sign-in (K2-2), which comes back to this screen; the session is the practice site's. */
+export function SignedOut({ title, headingLevel = 2 }: { readonly title?: string; readonly headingLevel?: 2 | 3 }) {
   const { t, site } = useLearn();
+  const next = hereAsNext(site);
   return (
     <Empty
-      title={t(D.signedOutTitle)}
+      title={title ?? t(D.signedOutTitle)}
       body={t(D.signedOutBody)}
       headingLevel={headingLevel}
       action={
-        <a className="ln-btn ln-btn-pri" href={`/practice/${site}/signin?learn_v2=0`}>
+        <ScreenLink to={next === null || next === "aaj" ? "signin" : `signin?next=${encodeURIComponent(next)}`} className="ln-btn ln-btn-pri">
           {t(D.signIn)}
-        </a>
+        </ScreenLink>
       }
     />
   );

@@ -242,10 +242,10 @@ describe("Aaj's other states", () => {
     const { container } = renderLearn();
     expect(screen.getByRole("heading", { level: 1, name: "Aaj" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 2, name: "Apna din dekhne ke liye sign in karo" })).toBeInTheDocument();
-    expect(within(screen.getByRole("main")).getByRole("link", { name: "Sign in karo" })).toHaveAttribute("href", "/practice/demo/signin?learn_v2=0");
+    expect(within(screen.getByRole("main")).getByRole("link", { name: "Sign in karo" })).toHaveAttribute("href", "/practice/demo/signin");
     expect(screen.queryByRole("complementary", { name: "Page ke saath" })).not.toBeInTheDocument();
     const nav = screen.getByRole("navigation", { name: "Learn menu" });
-    expect(within(nav).getByRole("link", { name: /Sign in karo/ })).toHaveAttribute("href", "/practice/demo/signin?learn_v2=0");
+    expect(within(nav).getByRole("link", { name: /Sign in karo/ })).toHaveAttribute("href", "/practice/demo/signin");
     await act(async () => undefined);
     expect(api.calls.filter((c) => c.path !== "/practice/demo/contests")).toEqual([]);
     expect(await violations(container)).toEqual([]);

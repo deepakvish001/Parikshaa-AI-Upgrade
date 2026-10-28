@@ -70,7 +70,7 @@ for (const [name, viewport] of [
   });
 }
 
-test("signed out, Aaj asks the learner to sign in on the current site, and asks the API for nothing of theirs", async ({ page }) => {
+test("signed out, Aaj asks the learner to sign in on Learn's own page, and asks the API for nothing of theirs", async ({ page }) => {
   const site = `learn-${unique()}`;
   const asked: string[] = [];
   page.on("request", (r) => {
@@ -79,7 +79,7 @@ test("signed out, Aaj asks the learner to sign in on the current site, and asks 
   await page.goto(`/practice/${site}?learn_v2=1`);
   await expect(page.getByRole("heading", { level: 1, name: "Aaj" })).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Apna din dekhne ke liye sign in karo" })).toBeVisible();
-  await expect(page.getByRole("main").getByRole("link", { name: "Sign in karo" })).toHaveAttribute("href", `/practice/${site}/signin?learn_v2=0`);
+  await expect(page.getByRole("main").getByRole("link", { name: "Sign in karo" })).toHaveAttribute("href", `/practice/${site}/signin`);
   expect(asked.filter((path) => /\/(home|me|companies\/targets)$/.test(path))).toEqual([]);
   expect(await seriousOrCritical(page)).toEqual([]);
 });

@@ -1088,6 +1088,95 @@
   color: var(--ink-3);
 }
 
+/* --- form fields (K2-2) ----------------------------------------------------------------------- */
+
+.ln-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-2);
+}
+.ln-field .ln-faint {
+  font-weight: var(--weight-regular);
+}
+.ln-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: var(--weight-regular);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-sm);
+}
+.ln-input:focus {
+  border-color: var(--pen);
+  outline: 2px solid var(--pen-soft);
+  outline-offset: 1px;
+}
+
+/* --- pages without the side bar, and notices (K2-2) --------------------------------------- */
+
+.ln-app.ln-bare {
+  display: flex;
+  flex-direction: column;
+}
+.ln-bare-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 60px;
+  padding: env(safe-area-inset-top, 0px) max(24px, env(safe-area-inset-right, 0px)) 0 max(24px, env(safe-area-inset-left, 0px));
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+.ln-bare-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  outline: none;
+}
+.ln-bare-main > .ln-notice {
+  margin: var(--space-4) auto 0;
+  width: min(720px, calc(100% - 32px));
+}
+.ln-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: 8px 8px 8px 14px;
+  font-size: var(--text-sm);
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+}
+.ln-notice > svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.ln-notice-ok {
+  color: var(--tick-text);
+  background: var(--tick-soft);
+  border-color: var(--tick-line);
+}
+.ln-notice-error {
+  color: var(--red-text);
+  background: var(--red-soft);
+  border-color: var(--red-line);
+}
+.ln-notice-info {
+  background: var(--marker-soft);
+  border-color: var(--line-2);
+}
+
 /* --- touch, phone and motion ------------------------------------------------------------ */
 
 @media (max-width: 1180px) {
@@ -1117,6 +1206,10 @@
   }
 }
 @media (max-width: 860px) {
+  .ln-bare-top {
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+  }
   .ln-now-act {
     flex-wrap: nowrap;
     width: 100%;

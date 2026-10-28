@@ -1,16 +1,22 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
-import { Check, CornerDownLeft, Ellipsis, House, LayoutGrid, Library, Menu as MenuIcon, Moon, PanelLeftClose, PanelLeftOpen, Sun, Undo2, UserRound, X } from "lucide-react";
+import { lazy, Suspense, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { Check, CornerDownLeft, Ellipsis, House, LayoutGrid, Library, LogOut, MailWarning, Menu as MenuIcon, Moon, PanelLeftClose, PanelLeftOpen, Sun, Undo2, UserRound, X } from "lucide-react";
 import { LogoMark } from "@parikshaa/brand/react";
 import { Empty, PHONE_QUERY, useMedia } from "@parikshaa/brand/kit";
 import { Dialog } from "@parikshaa/brand/ui";
 import { PreferencesProvider } from "../i18n.tsx";
 import { AajBody, AajRail } from "./Aaj.tsx";
-import { LearnProvider, ScreenLink, useLearn, type LearnState } from "./context.tsx";
-import { LearnDataProvider, useLearnData, useMe } from "./data.tsx";
+import { LearnProvider, ScreenLink, useLearn, type LearnState, type Notice } from "./context.tsx";
+import { LearnDataProvider, Loading, useLearnData, useMe, useSignInOptions } from "./data.tsx";
 import { Search, Sparkles, Target } from "./icons.tsx";
 import { LEARN_GROUPS, LEARN_SCREENS, screenById, tabOf, type LearnScreen } from "./screens.ts";
-import { A, D, LEARN_LANGS, T, useLearnLang } from "./text.ts";
+import { A, D, fill, LEARN_LANGS, T, useLearnLang } from "./text.ts";
 import "./learn.css";
+
+// Screens with more to them than the day come in chunks of their own (K2-2), so Aaj stays light.
+const AccountPage = lazy(() => import("./LearnAccount.tsx").then((m) => ({ default: m.AccountPage })));
+const Onboarding = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.Onboarding })));
+const MeraPlan = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.MeraPlan })));
 
 /**
  * Learn v2's shell (tracker row 139, K1-3; DESIGN-SYSTEM §7 "Learner shell"),
@@ -27,8 +33,10 @@ import "./learn.css";
  *
  * Every screen has its address (/practice/<site>/<id>). Aaj shows the mock's
  * Aaj A on the learner's own day (K2-1, through data.tsx: the practice site's
- * client and session); the others a placeholder until their Kadam 2 slice.
- * The side bar names the signed-in learner, or offers the way to sign in.
+ * client and session); Mera plan the learner's plan (K2-2); the others a
+ * placeholder until their Kadam 2 slice. Signing in and up and onboarding
+ * (K2-2) are pages of their own, without the side bar ("bare", as in the
+ * mock). The side bar names the signed-in learner, or offers the way to sign in.
  */
 
 const THEME_KEY = "parikshaa.learn.theme";
@@ -59,13 +67,18 @@ function useLearnTheme(): ["dark" | "light", (theme: "dark" | "light") => void] 
   return [theme, setTheme];
 }
 
+/** The pages shown without the side bar: signing in and up, and onboarding. */
+export const BARE = ["signin", "signup", "onboarding"] as const;
+export type BareRoute = (typeof BARE)[number];
+const isBare = (route: string | null): route is BareRoute => BARE.some((id) => id === route);
+
 /** The screen an address shows: "aaj" for the site's root, null for one Learn does not have. */
 export function routeOf(site: string, pathname: string): string | null {
   const base = `/practice/${site}`;
   if (pathname !== base && !pathname.startsWith(`${base}/`)) return null;
   const rest = pathname.slice(base.length).replace(/^\/+|\/+$/g, "");
   if (rest === "") return "aaj";
-  return screenById(rest) === undefined ? null : rest;
+  return screenById(rest) === undefined && !isBare(rest) ? null : rest;
 }
 
 export function LearnApp({ site }: { readonly site: string }) {
@@ -78,12 +91,33 @@ export function LearnApp({ site }: { readonly site: string }) {
   );
 }
 
+/**
+ * Where Learn opens: a failed Google sign-in goes back to signing in (with
+ * why), and a Google sign-in that set out from another screen comes back to it.
+ */
+function openingPath(site: string, arrived: ReturnType<typeof useLearnData>["arrived"], signedIn: boolean): string {
+  const to = arrived.signinError !== null && !signedIn ? "signin" : arrived.next;
+  if (to !== null) window.history.replaceState(null, "", `/practice/${site}/${to}${window.location.search}`);
+  return window.location.pathname;
+}
+
 function Shell({ site }: { readonly site: string }) {
   const { lang, setLang, t } = useLearnLang();
   const [theme, setTheme] = useLearnTheme();
-  const [path, setPath] = useState(() => window.location.pathname);
+  const { signedIn, arrived, client } = useLearnData();
+  const [path, setPath] = useState(() => openingPath(site, arrived, signedIn));
   const route = routeOf(site, path);
-  const { signedIn } = useLearnData();
+  const [notice, setNotice] = useState<Notice | null>(() => (arrived.signinError !== null && !signedIn ? { tone: "error", text: t(D.googleFailed) } : null));
+  // A confirmation link: followed once, and the outcome said.
+  useEffect(() => {
+    if (arrived.verify === null) return;
+    client
+      .verify(arrived.verify)
+      .then(() => setNotice({ tone: "ok", text: t(D.verified) }))
+      .catch(() => setNotice({ tone: "error", text: t(D.verifyFailed) }));
+    // Once, on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const phone = useMedia(PHONE_QUERY);
   const narrow = useMedia(NARROW_QUERY);
   const [chosenMini, setChosenMini] = useState(false);
@@ -95,12 +129,13 @@ function Shell({ site }: { readonly site: string }) {
   const moved = useRef(false);
 
   const go = useCallback(
-    (id: string) => {
+    (id: string, replace = false) => {
       const url = `/practice/${site}/${id}`;
-      if (window.location.pathname !== url) window.history.pushState(null, "", url);
+      if (`${window.location.pathname}${window.location.search}` !== url) window.history[replace ? "replaceState" : "pushState"](null, "", url);
       moved.current = true;
       setMore(false);
-      setPath(url);
+      setNotice(null);
+      setPath(window.location.pathname);
       window.scrollTo(0, 0);
     },
     [site],
@@ -143,11 +178,45 @@ function Shell({ site }: { readonly site: string }) {
   }, []);
 
   const state = useMemo<LearnState>(
-    () => ({ site, lang, setLang, t, theme, setTheme, href: (id) => `/practice/${site}/${id}`, go, openSahayak: () => setAi(true) }),
+    () => ({ site, lang, setLang, t, theme, setTheme, href: (id) => `/practice/${site}/${id}`, go, openSahayak: () => setAi(true), notify: setNotice }),
     [site, lang, setLang, t, theme, setTheme, go],
   );
   // Aaj's rail is the learner's own week; signed out there is none.
   const rail = route === "aaj" && signedIn ? <AajRail /> : null;
+  const noticeLine = <NoticeLine notice={notice} onDismiss={() => setNotice(null)} />;
+
+  if (isBare(route)) {
+    return (
+      <LearnProvider value={state}>
+        <div className="ln-app ln-bare" lang={LEARN_LANGS.find((l) => l.id === lang)?.lang}>
+          <a
+            className="ln-skip"
+            href="#ln-main"
+            onClick={(event) => {
+              event.preventDefault();
+              main.current?.focus();
+            }}
+          >
+            {t(T.skip)}
+          </a>
+          <header className="ln-bare-top">
+            <ScreenLink to="aaj" className="ln-top-logo" label={t(T.home)}>
+              <LogoMark size={28} />
+              <span className="ln-word" aria-hidden="true">
+                Parikshaa
+              </span>
+            </ScreenLink>
+            <span className="ln-grow" />
+            <MoreMenu />
+          </header>
+          <main id="ln-main" ref={main} tabIndex={-1} className="ln-bare-main">
+            {noticeLine}
+            <Suspense fallback={<Loading />}>{route === "onboarding" ? <Onboarding /> : <AccountPage mode={route} />}</Suspense>
+          </main>
+        </div>
+      </LearnProvider>
+    );
+  }
 
   return (
     <LearnProvider value={state}>
@@ -167,6 +236,8 @@ function Shell({ site }: { readonly site: string }) {
           <TopBar screen={screen} phone={phone} ai={ai} toggleAi={() => setAi((open) => !open)} openMore={() => setMore(true)} openSearch={() => setSearch(true)} />
           <main id="ln-main" ref={main} tabIndex={-1} className={`ln-main${rail === null ? "" : " ln-has-rail"}`}>
             <div className="ln-page" key={route ?? "none"}>
+              {noticeLine}
+              <VerifyBanner />
               <Page route={route} path={path} />
             </div>
             {rail === null ? null : (
@@ -282,9 +353,9 @@ function SideNav({
   );
 }
 
-/** The signed-in learner, a link to their profile; signed out, the way to sign in (the practice site's, until K2-2). */
+/** The signed-in learner, a link to their profile; signed out, the way to sign in (Learn's own, K2-2). */
 function Account({ mini }: { readonly mini: boolean }) {
-  const { t, site } = useLearn();
+  const { t } = useLearn();
   const { signedIn } = useLearnData();
   const me = useMe();
   const inner = (title: string, sub: string) => (
@@ -300,9 +371,9 @@ function Account({ mini }: { readonly mini: boolean }) {
   );
   if (!signedIn) {
     return (
-      <a className="ln-side-user" href={`/practice/${site}/signin?learn_v2=0`} {...(mini ? { title: t(D.signIn) } : {})}>
+      <ScreenLink to="signin" className="ln-side-user" {...(mini ? { title: t(D.signIn) } : {})}>
         {inner(t(D.signIn), t(A.signInSub))}
-      </a>
+      </ScreenLink>
     );
   }
   const name = me.data?.name ?? t(T.account);
@@ -377,7 +448,8 @@ function TopBar({
 
 /** One ⋯ menu for what is not needed every minute: the language, the theme, and the way back to the current site. */
 function MoreMenu() {
-  const { t, lang, setLang, theme, setTheme, site } = useLearn();
+  const { t, lang, setLang, theme, setTheme, site, go } = useLearn();
+  const { signedIn, signOut } = useLearnData();
   const [open, setOpen] = useState(false);
   const id = useId();
   const wrap = useRef<HTMLDivElement>(null);
@@ -490,6 +562,21 @@ function MoreMenu() {
             <Undo2 aria-hidden="true" />
             <span className="ln-grow">{t(T.oldSite)}</span>
           </a>
+          {signedIn ? (
+            <button
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              className="ln-menu-item"
+              onClick={() => {
+                close(false);
+                void signOut().then(() => go("signin"));
+              }}
+            >
+              <LogOut aria-hidden="true" />
+              <span className="ln-grow">{t(D.signOut)}</span>
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -498,9 +585,54 @@ function MoreMenu() {
 
 /* ---------------- pages ---------------- */
 
+/** A line above the page: what a link or a step just did. */
+function NoticeLine({ notice, onDismiss }: { readonly notice: Notice | null; readonly onDismiss: () => void }) {
+  const { t } = useLearn();
+  if (notice === null) return null;
+  return (
+    <div className={`ln-notice ln-notice-${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
+      <span className="ln-grow">{notice.text}</span>
+      <button type="button" className="ln-icon-btn ln-sm" onClick={onDismiss} aria-label={t(D.dismiss)} title={t(D.dismiss)}>
+        <X aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+/** Where the site asks for a confirmed address before submitting, a learner without one is told how, and may ask for the link again. */
+function VerifyBanner() {
+  const { t } = useLearn();
+  const { client } = useLearnData();
+  const me = useMe();
+  const unconfirmed = me.data !== undefined && me.data !== null && !me.data.emailVerified;
+  const options = useSignInOptions(unconfirmed);
+  const resend = useMutation({ mutationFn: () => client.resendVerification() });
+  if (!unconfirmed || options.data?.requireVerified !== true) return null;
+  return (
+    <div className="ln-notice ln-notice-info" role="status">
+      <MailWarning aria-hidden="true" />
+      <span className="ln-grow">{fill(t(D.verifyNeeded), { email: me.data!.email })}</span>
+      {resend.isSuccess ? (
+        <span>{t(D.resent)}</span>
+      ) : (
+        <button type="button" className="ln-btn ln-btn-sm" disabled={resend.isPending} onClick={() => resend.mutate()}>
+          {t(D.resend)}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function Page({ route, path }: { readonly route: string | null; readonly path: string }) {
   const { t } = useLearn();
   if (route === "aaj") return <AajBody />;
+  if (route === "plan") {
+    return (
+      <Suspense fallback={<Loading />}>
+        <MeraPlan />
+      </Suspense>
+    );
+  }
   const screen = route === null ? undefined : screenById(route);
   if (screen === undefined) {
     return (

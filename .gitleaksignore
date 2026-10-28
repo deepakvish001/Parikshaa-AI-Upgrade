@@ -1,0 +1,5 @@
+# gitleaks findings checked by hand and known not to be secrets (one fingerprint each:
+# commit:file:rule:line). Add a line only for a made-up test value; a real secret is
+# rotated and removed instead.
+# A made-up email-confirmation token in a unit test (K2-2); the test now uses a plainer one.
+b004ac13b4b797e42da056950eb63a008b5c99a5:packages/web/src/learn/LearnAccount.test.tsx:generic-api-key:140

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeApi, renderLearn, SESSION } from "./fake-api.tsx";
 import { findScreens, routeOf } from "./LearnApp.tsx";
 import { LEARN_GROUPS, LEARN_SCREENS } from "./screens.ts";
-import { T, learnLangOf, pick } from "./text.ts";
+import { D, T, learnLangOf, pick } from "./text.ts";
 
 /**
  * Learn v2's shell (K1-3) does what DESIGN-SYSTEM §7 and §9 ask, in the three
@@ -329,11 +329,11 @@ describe("Learn v2's shell", () => {
     button.focus();
     await userEvent.keyboard("{ArrowDown}");
     const items = menuItems();
-    expect(items.map((i) => i.textContent)).toEqual(["English", "Hinglish", "हिंदी", hg(T.toLight), hg(T.oldSite)]);
+    expect(items.map((i) => i.textContent)).toEqual(["English", "Hinglish", "हिंदी", hg(T.toLight), hg(T.oldSite), hg(D.signOut)]);
     expect(items[0]).toHaveFocus();
     await userEvent.keyboard("{ArrowUp}");
     expect(items.at(-1)).toHaveFocus();
-    expect(items.at(-1)).toHaveAttribute("href", `/practice/${SITE}?learn_v2=0`);
+    expect(items.at(-2)).toHaveAttribute("href", `/practice/${SITE}?learn_v2=0`);
     await userEvent.keyboard("{Home}");
     expect(items[0]).toHaveFocus();
     await userEvent.keyboard("{End}{ArrowDown}");

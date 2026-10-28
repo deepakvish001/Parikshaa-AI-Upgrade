@@ -120,8 +120,16 @@ export const D = {
   offlineBody: ["What is on the page stays; it updates when the network is back.", "Jo dikh raha hai wo rahega; net aate hi naya ho jayega.", "जो दिख रहा है वह रहेगा; नेट आते ही नया हो जाएगा।"],
   offlineWait: ["This shows once the network is back.", "Net aate hi ye dikhega.", "नेट आते ही यह दिखेगा।"],
   signedOutTitle: ["Sign in to see your day", "Apna din dekhne ke liye sign in karo", "अपना दिन देखने के लिए साइन इन करें"],
-  signedOutBody: ["For now you sign in on the current practice site; your plan and progress are the same there.", "Abhi sign-in purani practice site par hota hai; plan aur progress wahi hain.", "अभी साइन-इन मौजूदा प्रैक्टिस साइट पर होता है; योजना और प्रगति वही हैं।"],
+  signedOutBody: ["One account for Learn and the current practice site: the same plan and progress in both.", "Learn aur purani practice site ka ek hi account: plan aur progress dono me wahi.", "Learn और मौजूदा प्रैक्टिस साइट का एक ही खाता: योजना और प्रगति दोनों में वही।"],
   signIn: ["Sign in", "Sign in karo", "साइन इन करें"],
+  signOut: ["Sign out", "Sign out karo", "साइन आउट करें"],
+  verified: ["Your email address is confirmed.", "Aapka email confirm ho gaya.", "आपका ईमेल पक्का हो गया।"],
+  verifyFailed: ["This confirmation link is not valid. Ask for a new one below.", "Ye confirmation link sahi nahi. Neeche naya maango.", "यह पुष्टि लिंक सही नहीं। नीचे नया माँगें।"],
+  googleFailed: ["Signing in with Google did not work. Try again, or use your email.", "Google se sign in nahi hua. Phir koshish karo, ya email se.", "Google से साइन इन नहीं हुआ। फिर कोशिश करें, या ईमेल से।"],
+  verifyNeeded: ["Confirm your email to submit and comment: open the link we sent to {email}.", "Submit aur comment ke liye email confirm karo: {email} par bheja link kholo.", "जमा करने और टिप्पणी के लिए ईमेल पक्का करें: {email} पर भेजा लिंक खोलें।"],
+  resend: ["Send the link again", "Link dobara bhejo", "लिंक दोबारा भेजें"],
+  resent: ["Sent. Check your inbox and spam.", "Bhej diya. Inbox aur spam dekho.", "भेज दिया। इनबॉक्स और स्पैम देखें।"],
+  dismiss: ["Dismiss", "Hatao", "हटाएँ"],
 } as const satisfies Record<string, Tri>;
 
 /** Aaj's words (K2-1). `{name}` places are filled with `fill`. */
@@ -190,5 +198,5 @@ export const A = {
   openContest: ["Open", "Kholo", "खोलें"],
   nothingAhead: ["Nothing coming up yet.", "Abhi aage kuch nahi.", "अभी आगे कुछ नहीं।"],
   profile: ["Your profile", "Aapki profile", "आपकी प्रोफ़ाइल"],
-  signInSub: ["On the current practice site", "Abhi wali practice site par", "मौजूदा प्रैक्टिस साइट पर"],
+  signInSub: ["Or make an account", "Ya account banao", "या खाता बनाएँ"],
 } as const satisfies Record<string, Tri>;
