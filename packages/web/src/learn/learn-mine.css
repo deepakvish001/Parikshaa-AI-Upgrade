@@ -1,0 +1,517 @@
+/*
+ * Meri lists and Notes (LearnMine.tsx, K2-3), from the mock's `.lists-grid`,
+ * `.list-card`, `.notes` and `.note-paper` (docs/learn/mock-v3/app/src/styles/career.css).
+ * Only that chunk loads this file.
+ */
+
+.lm-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+}
+.lm-sub {
+  max-width: 68ch;
+  margin: 6px 0 0;
+  color: var(--ink-2);
+}
+.lm-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.lm-end {
+  justify-content: flex-end;
+}
+.lm-fine {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.lm-bad {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--red-text);
+}
+.lm-num {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+}
+.lm-pad {
+  padding: 0 16px 16px;
+}
+.lm-tone-pen {
+  --lm-tone: var(--pen);
+}
+.lm-tone-red {
+  --lm-tone: var(--red);
+}
+.lm-tone-tick {
+  --lm-tone: var(--tick);
+}
+.lm-tone-coin {
+  --lm-tone: var(--coin);
+}
+
+/* --- lists ------------------------------------------------------------------------ */
+
+.lm-lists {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lm-list {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 18px 16px 14px;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--ink);
+  text-align: left;
+  white-space: normal;
+  background: var(--panel);
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+  transition:
+    border-color 0.16s var(--ease),
+    box-shadow 0.16s var(--ease);
+}
+.lm-list:is(:hover, :active):not(:disabled) {
+  color: var(--ink);
+  background: var(--panel);
+  border-color: var(--line-2);
+}
+.lm-list[aria-pressed="true"] {
+  border-color: var(--pen);
+  box-shadow: 0 0 0 3px var(--pen-soft);
+}
+.lm-tab {
+  position: absolute;
+  top: -1px;
+  left: 16px;
+  width: 36px;
+  height: 6px;
+  background: var(--lm-tone);
+  border-radius: 0 0 var(--r-xs) var(--r-xs);
+}
+.lm-list-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-md);
+  overflow-wrap: anywhere;
+}
+.lm-list-name svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+.lm-bar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: auto;
+}
+.lm-bar {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  background: var(--sunk);
+  border-radius: var(--r-xs);
+}
+.lm-bar i {
+  display: block;
+  height: 100%;
+  background: var(--lm-tone);
+}
+.lm-rows {
+  margin: 0;
+  padding: 4px 0 8px;
+  list-style: none;
+}
+.lm-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 4px 12px 4px 16px;
+  border-top: 1px solid var(--line);
+}
+.lm-item:first-child {
+  border-top: none;
+}
+.lm-check {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 22px;
+  color: var(--ink-3);
+}
+.lm-check.lm-solved {
+  color: var(--tick-text);
+}
+.lm-dot {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--line-2);
+  border-radius: var(--radius-full);
+}
+.lm-p {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 0;
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.lm-p:hover {
+  color: var(--pen-text);
+}
+.lm-level {
+  flex: none;
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  border: 1px solid;
+  border-radius: var(--r-xs);
+}
+.lm-lv-easy {
+  color: var(--tick-text);
+  background: var(--tick-soft);
+  border-color: var(--tick-line);
+}
+.lm-lv-medium {
+  color: var(--coin);
+  background: var(--coin-soft);
+  border-color: var(--coin-line);
+}
+.lm-lv-hard {
+  color: var(--red-text);
+  background: var(--red-soft);
+  border-color: var(--red-line);
+}
+
+/* --- dialogs ---------------------------------------------------------------------- */
+
+.lm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 20px;
+  overflow: auto;
+  color: var(--ink);
+  background: var(--raised);
+}
+.lm-dialog p {
+  margin: 0;
+}
+.lm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.lm-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+}
+.lm-pick legend {
+  padding: 0 4px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-2);
+}
+.lm-pick-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+}
+.lm-pick-row input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--pen);
+}
+.lm-danger {
+  color: var(--red-text);
+}
+.lm-danger-btn,
+.lm-danger-btn:is(:hover, :active):not(:disabled) {
+  background: var(--red);
+  border-color: var(--red);
+}
+
+/* --- notes ------------------------------------------------------------------------ */
+
+.lm-notes {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.lm-side {
+  position: sticky;
+  top: calc(var(--top-h) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.lm-search {
+  position: relative;
+  display: block;
+}
+.lm-search svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.lm-search .ln-input {
+  padding-left: 36px;
+}
+.lm-new-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.lm-new-row .ln-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.lm-note-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lm-note-item {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 0;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  color: var(--ink);
+  text-align: left;
+  white-space: normal;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  box-shadow: none;
+  cursor: pointer;
+}
+.lm-note-item:is(:hover, :active):not(:disabled) {
+  color: var(--ink);
+  background: var(--hover);
+  border-color: transparent;
+}
+.lm-note-item[aria-current="true"],
+.lm-note-item[aria-current="true"]:is(:hover, :active):not(:disabled) {
+  background: var(--panel);
+  border-color: var(--card-line);
+  box-shadow: var(--shadow-1);
+}
+.lm-note-item b {
+  overflow-wrap: anywhere;
+}
+.lm-note-item .ln-faint {
+  font-size: var(--text-xs);
+}
+.lm-paper {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 420px;
+  padding: 26px 32px 26px 64px;
+  color: var(--ink);
+  background-color: var(--panel);
+  background-image: repeating-linear-gradient(to bottom, transparent 0 27px, var(--ruled) 27px 28px);
+  background-position: 0 14px;
+  border: 1px solid var(--card-line);
+  border-radius: var(--r-xs) var(--r-xl) var(--r-xl) var(--r-xs);
+  box-shadow: var(--paper-shadow);
+}
+.lm-paper::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 44px;
+  width: 1.5px;
+  background: var(--margin);
+  content: "";
+}
+.lm-paper-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+.lm-kind {
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--pen-text);
+  background: var(--pen-soft);
+  border-radius: var(--r-xs);
+}
+.lm-note-h {
+  margin: 0;
+  font-size: var(--text-3xl);
+  font-weight: var(--weight-bold);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  outline: none;
+}
+.lm-note-h:focus-visible {
+  outline: 2px solid var(--pen);
+  outline-offset: 4px;
+}
+.lm-paper .ln-md {
+  font-size: var(--text-md);
+  line-height: 28px;
+}
+.lm-text {
+  min-height: 240px;
+  font-family: var(--f-mono);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  resize: vertical;
+}
+.lm-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.lm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--pen-text);
+  background: var(--pen-soft);
+  border: 1px solid var(--pen-line);
+  border-radius: var(--radius-full);
+}
+.lm-chip svg {
+  width: 14px;
+  height: 14px;
+}
+.lm-book-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lm-book-h svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ink-3);
+}
+.lm-book-mod {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.lm-book-mh {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xl);
+}
+.lm-book-note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--panel);
+  border: 1px solid var(--card-line);
+  border-radius: var(--r);
+}
+
+@media (max-width: 1100px) {
+  .lm-lists {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 860px) {
+  .lm-notes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .lm-side {
+    position: static;
+  }
+  .lm-paper {
+    min-height: 0;
+    padding: 22px 18px 22px 36px;
+  }
+  .lm-paper::before {
+    left: 22px;
+  }
+  .lm-note-h {
+    font-size: var(--text-xl);
+  }
+  .lm-chip {
+    min-height: 40px;
+  }
+}
+@media (max-width: 600px) {
+  .lm-lists {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media print {
+  .ln-side,
+  .ln-top,
+  .ln-tabs,
+  .ln-skip,
+  .ln-notice,
+  .lm-noprint {
+    display: none !important;
+  }
+  .ln-app,
+  .ln-main {
+    display: block;
+  }
+  .lm-book-note {
+    break-inside: avoid;
+    border-color: var(--line);
+  }
+}

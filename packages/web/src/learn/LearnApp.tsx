@@ -17,6 +17,16 @@ import "./learn.css";
 const AccountPage = lazy(() => import("./LearnAccount.tsx").then((m) => ({ default: m.AccountPage })));
 const Onboarding = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.Onboarding })));
 const MeraPlan = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.MeraPlan })));
+// Revision, lists and notes (K2-3): revision on its own, lists and notes together.
+const Revision = lazy(() => import("./LearnRevise.tsx").then((m) => ({ default: m.Revision })));
+const Lists = lazy(() => import("./LearnMine.tsx").then((m) => ({ default: m.Lists })));
+const Notes = lazy(() => import("./LearnMine.tsx").then((m) => ({ default: m.Notes })));
+const LAZY: Readonly<Record<string, () => ReactNode>> = {
+  plan: () => <MeraPlan />,
+  revision: () => <Revision />,
+  lists: () => <Lists />,
+  notes: () => <Notes />,
+};
 
 /**
  * Learn v2's shell (tracker row 139, K1-3; DESIGN-SYSTEM §7 "Learner shell"),
@@ -33,8 +43,9 @@ const MeraPlan = lazy(() => import("./LearnPlan.tsx").then((m) => ({ default: m.
  *
  * Every screen has its address (/practice/<site>/<id>). Aaj shows the mock's
  * Aaj A on the learner's own day (K2-1, through data.tsx: the practice site's
- * client and session); Mera plan the learner's plan (K2-2); the others a
- * placeholder until their Kadam 2 slice. Signing in and up and onboarding
+ * client and session); Mera plan the learner's plan (K2-2); Revision, Meri
+ * lists and Notes the learner's own (K2-3); the others a placeholder until
+ * their Kadam 2 slice. Signing in and up and onboarding
  * (K2-2) are pages of their own, without the side bar ("bare", as in the
  * mock). The side bar names the signed-in learner, or offers the way to sign in.
  */
@@ -626,13 +637,8 @@ function VerifyBanner() {
 function Page({ route, path }: { readonly route: string | null; readonly path: string }) {
   const { t } = useLearn();
   if (route === "aaj") return <AajBody />;
-  if (route === "plan") {
-    return (
-      <Suspense fallback={<Loading />}>
-        <MeraPlan />
-      </Suspense>
-    );
-  }
+  const page = route !== null && Object.hasOwn(LAZY, route) ? LAZY[route] : undefined;
+  if (page !== undefined) return <Suspense fallback={<Loading />}>{page()}</Suspense>;
   const screen = route === null ? undefined : screenById(route);
   if (screen === undefined) {
     return (

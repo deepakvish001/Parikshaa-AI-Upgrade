@@ -43122,6 +43122,31 @@
                               "string",
                               "null"
                             ]
+                          },
+                          "next": {
+                            "type": "object",
+                            "properties": {
+                              "again": {
+                                "type": "number"
+                              },
+                              "hard": {
+                                "type": "number"
+                              },
+                              "good": {
+                                "type": "number"
+                              },
+                              "easy": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "again",
+                              "hard",
+                              "good",
+                              "easy"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Days until the card comes back for each grade: what grading it now would set."
                           }
                         },
                         "required": [
@@ -43132,7 +43157,8 @@
                           "dueOn",
                           "lastReviewedAt",
                           "reps",
-                          "note"
+                          "note",
+                          "next"
                         ],
                         "additionalProperties": false
                       }

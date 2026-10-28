@@ -169,6 +169,9 @@ const reviseView = z.object({
         lastReviewedAt: z.string().nullable(),
         reps: z.number(),
         note: z.string().nullable(),
+        next: z
+          .object({ again: z.number(), hard: z.number(), good: z.number(), easy: z.number() })
+          .describe("Days until the card comes back for each grade: what grading it now would set."),
       }),
     )
     .readonly(),

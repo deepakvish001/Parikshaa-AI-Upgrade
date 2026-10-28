@@ -882,10 +882,23 @@ export class PrepService {
     const problemOf = new Map(problems.map((p) => [p.id, p]));
     const noteOf = new Map(notes.filter((n) => n.refKind === "problem").map((n) => [n.refId, n.body]));
     const due = cards.filter((c) => c.dueOn <= today && problemOf.has(c.problemId));
+    const at = new Date(this.#now()).toISOString();
+    // What each grade would set, so a learner sees it before choosing (Learn's revision, K2-3).
+    const days = (c: (typeof cards)[number], grade: Grade) => review(c, grade, today, at).intervalDays;
     return {
       due: due.slice(0, REVISE_PER_DAY).map((c) => {
         const p = problemOf.get(c.problemId)!;
-        return { slug: p.slug, title: p.title, difficulty: p.difficulty, tags: p.tags, dueOn: c.dueOn, lastReviewedAt: c.reviewedAt, reps: c.reps, note: noteOf.get(p.id) ?? null };
+        return {
+          slug: p.slug,
+          title: p.title,
+          difficulty: p.difficulty,
+          tags: p.tags,
+          dueOn: c.dueOn,
+          lastReviewedAt: c.reviewedAt,
+          reps: c.reps,
+          note: noteOf.get(p.id) ?? null,
+          next: { again: days(c, "again"), hard: days(c, "hard"), good: days(c, "good"), easy: days(c, "easy") },
+        };
       }),
       later: Math.max(0, due.length - REVISE_PER_DAY),
       upcoming: cards.filter((c) => c.dueOn > today).length,

@@ -12,7 +12,11 @@ import {
   type ContestSummary,
   type Home,
   type Learner,
+  type Note,
+  type NoteBook,
   type Plan,
+  type ProblemList,
+  type Revision,
   type SignInOptions,
   type Submission,
   type TrackSummary,
@@ -218,6 +222,18 @@ export const useTracks = (): UseQueryResult<readonly TrackSummary[]> => useLearn
 
 /** The site's companies, to aim for. */
 export const useCompanies = (): UseQueryResult<readonly CompanyCard[]> => useLearnQuery(["companies"], (client) => client.companies());
+
+/** Problems due for revision today, 15 at most, with what each grade would set (K2-3). */
+export const useRevision = (): UseQueryResult<Revision> => useLearnQuery(["revise"], (client) => client.revision());
+
+/** The learner's lists of problems, bookmarks first. */
+export const useLists = (): UseQueryResult<readonly ProblemList[]> => useLearnQuery(["lists"], (client) => client.lists());
+
+/** The learner's notes on problems, lessons and topics, newest first. */
+export const useNotes = (): UseQueryResult<readonly Note[]> => useLearnQuery(["notes"], (client) => client.notes());
+
+/** A track's notes, module by module, to print; nothing is read without a track. */
+export const useNoteBook = (track: string | null): UseQueryResult<NoteBook> => useLearnQuery(["note-book", track], (client) => client.noteBook(track ?? ""), { enabled: track !== null });
 
 /** Whether the browser says it is online, kept up to date. */
 export function useOnline(): boolean {

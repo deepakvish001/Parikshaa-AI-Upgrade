@@ -177,6 +177,8 @@ describe("a learner's day", () => {
     // The solved problem is due for revision now; remembering it well pushes it out.
     const revise = await ok("GET", asha, `${S}/revise`);
     expect(revise.due.map((d: { slug: string }) => d.slug)).toEqual([problems.arrays!.slug]);
+    // Each grade's next gap is told before choosing, and "good" sets just that.
+    expect(revise.due[0].next).toEqual({ again: 1, hard: 1, good: 3, easy: 7 });
     expect(await ok("POST", asha, `${S}/revise/${problems.arrays!.slug}`, { grade: "good" }, 200)).toEqual({ dueOn: "2026-10-11", intervalDays: 3 });
     expect((await ok("GET", asha, `${S}/revise`)).due).toEqual([]);
     expect((await call("POST", asha, `${S}/revise/${problems.search!.slug}`, { grade: "good" })).statusCode).toBe(404);

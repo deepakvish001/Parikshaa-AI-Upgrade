@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { vi } from "vitest";
-import type { ContestSummary, Home, PlanTask, Submission } from "../practice/client.ts";
+import type { ContestSummary, Home, Note, PlanTask, ProblemList, Revision, Submission } from "../practice/client.ts";
 import { LearnApp } from "./LearnApp.tsx";
 
 /**
@@ -78,6 +78,39 @@ export const CONTESTS: readonly ContestSummary[] = [
   { slug: "weekly-13", title: "Weekly Round 13", startsAt: "2026-11-01T14:30:00Z", endsAt: "2026-11-01T16:00:00Z", problems: 3, state: "upcoming" },
 ];
 
+/** Today's revision (K2-3): one card with the learner's note, one without. */
+export const REVISION: Revision = {
+  due: [
+    {
+      slug: "pair-sum",
+      title: "Pair with target sum",
+      difficulty: "medium",
+      tags: ["two pointers", "arrays"],
+      dueOn: "2026-10-27",
+      lastReviewedAt: null,
+      reps: 0,
+      note: "Sort, then move **two pointers** inward.\n\n```cpp\nlong long sum = (long long)a[L] + a[R];\n```\n\n<img src=x onerror=alert(1)>",
+      next: { again: 1, hard: 1, good: 3, easy: 7 },
+    },
+    { slug: "valid-brackets", title: "Valid brackets", difficulty: "easy", tags: ["stack"], dueOn: "2026-10-27", lastReviewedAt: "2026-10-21T10:00:00Z", reps: 2, note: null, next: { again: 1, hard: 6, good: 13, easy: 16 } },
+  ],
+  later: 0,
+  upcoming: 4,
+};
+
+/** The learner's lists (K2-3): bookmarks first, then one of their own. */
+export const LISTS: readonly ProblemList[] = [
+  { name: "Bookmarks", solved: 1, problems: [{ slug: "koko", title: "Koko eating bananas", difficulty: "medium", solved: true }, { slug: "pair-sum", title: "Pair with target sum", difficulty: "medium", solved: false }] },
+  { name: "Before Infosys OA", solved: 0, problems: [{ slug: "valid-brackets", title: "Valid brackets", difficulty: "easy", solved: false }] },
+];
+
+/** The learner's notes (K2-3), newest first: on a problem, a topic and a lesson. */
+export const NOTES: readonly Note[] = [
+  { kind: "problem", ref: "pair-sum", title: "Pair with target sum", body: "1. Sort first.\n2. Cast before adding: `(long long)a + b`.\n\n<script>alert(1)</script>", updatedAt: "2026-10-25T09:00:00Z" },
+  { kind: "topic", ref: "overflow-checklist", title: "Overflow checklist", body: "Test with **2^30 + 2^30** before submitting.", updatedAt: "2026-10-20T09:00:00Z" },
+  { kind: "lesson", ref: "stack-lifo", title: "Stack: the LIFO idea", body: "Last in, first out.", updatedAt: null },
+];
+
 /** A signed-in learner's day, answered by the fake API; each test changes what it needs. */
 export function fakeApi(): FakeApi {
   const api: FakeApi = {
@@ -88,6 +121,9 @@ export function fakeApi(): FakeApi {
       "GET /practice/demo/companies/targets": () => ({ body: { targets: [{ slug: "infosys", name: "Infosys", readiness: { solved: 31, of: 50, percent: 62 } }] } }),
       "GET /practice/demo/contests": () => ({ body: { contests: CONTESTS } }),
       "GET /practice/demo/problems/pair-sum/submissions": () => ({ body: { submissions: [WRONG] } }),
+      "GET /practice/demo/revise": () => ({ body: REVISION }),
+      "GET /practice/demo/lists": () => ({ body: { lists: LISTS } }),
+      "GET /practice/demo/notes": () => ({ body: { notes: NOTES } }),
     },
   };
   vi.stubGlobal(

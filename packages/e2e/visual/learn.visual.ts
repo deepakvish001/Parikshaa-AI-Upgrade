@@ -6,7 +6,8 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  * Aaj on real data since K2-1, tracker row 140): Aaj on a seeded learner's
  * day, one placeholder screen, the ⋯ menu open, and on a phone the "Aur"
  * sheet; since K2-2 also Learn's sign-in (signed out), onboarding's first
- * question and Mera plan; at 1440 and 390, dark (Learn's default) and light,
+ * question and Mera plan; since K2-3 revision (a card's front), Meri lists and
+ * Notes, on a second learner seeded with them; at 1440 and 390, dark (Learn's default) and light,
  * and the narrow side bar at 1100. Signed in as the seeded learner, except on
  * the sign-in page (the side bar shows their name). What the date changes is in `.ln-dated`: set to one date,
  * then masked. The page's clock is held at 7 pm in India today, so the
@@ -15,25 +16,32 @@ import { istDay, seedLearnDay } from "../tests/learn-day.js";
  */
 
 const SITE = "visual-learn";
+// Revision, lists and notes (K2-3) on a learner of their own: two cards due, a list, three notes.
+const MINE = "visual-learn-mine";
 let token = "";
+let mineToken = "";
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async ({ request }) => {
   ({ token } = await seedLearnDay(request, { org: "e2e-learn-visual", site: SITE, learner: { name: "Asha Verma", email: "asha@students.learn-visual.test" } }));
+  ({ token: mineToken } = await seedLearnDay(request, { org: "e2e-learn-visual-mine", site: MINE, learner: { name: "Asha Verma", email: "asha@students.learn-mine-visual.test" }, mine: true }));
 });
 
 const DATED = ".ln-dated";
 const masks = (page: Page) => [page.locator(DATED)];
 
-async function open(page: Page, path: string, theme: "light" | "dark", signedIn = true) {
+async function open(page: Page, path: string, theme: "light" | "dark", signedIn = true, site = SITE) {
   await page.clock.setFixedTime(new Date(`${istDay()}T13:30:00Z`));
   await page.addInitScript(([key, value, t]) => {
     if (value !== "") localStorage.setItem(key!, value!);
     localStorage.setItem("parikshaa.learn.theme", t!);
-  }, [`parikshaa.practice.${SITE}.session`, signedIn ? token : "", theme]);
-  await page.goto(`/practice/${SITE}${path}?learn_v2=1`);
+  }, [`parikshaa.practice.${site}.session`, signedIn ? (site === MINE ? mineToken : token) : "", theme]);
+  await page.goto(`/practice/${site}${path}?learn_v2=1`);
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  if (path === "/revision") await expect(page.getByRole("article", { name: "Card 1 / 2" })).toBeVisible();
+  if (path === "/lists") await expect(page.getByRole("region", { name: "Bookmarks" })).toContainText("Binary search");
+  if (path === "/notes") await expect(page.getByRole("article", { name: "Binary search" }).locator("pre")).toBeVisible();
   if (path === "") {
     // The day, the verdict on the task at hand, and the rail's reads, all in.
     await expect(page.getByText("Galat jawab")).toBeVisible();
@@ -87,6 +95,13 @@ for (const theme of ["dark", "light"] as const) {
         await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }
+
+    for (const name of ["revision", "lists", "notes"] as const) {
+      test(`${name} (K2-3)`, async ({ page }) => {
+        await open(page, `/${name}`, theme, true, MINE);
+        await expect(page).toHaveScreenshot(`learn-${name}-1440-${theme}.png`, { fullPage: true, mask: masks(page) });
+      });
+    }
   });
 
   test.describe(`learn · 390 · ${theme}`, () => {
@@ -123,6 +138,13 @@ for (const theme of ["dark", "light"] as const) {
     ] as const) {
       test(`${name} (K2-2)`, async ({ page }) => {
         await open(page, path, theme, signedIn);
+        await expect(page).toHaveScreenshot(`learn-${name}-390-${theme}.png`, { fullPage: true, mask: masks(page) });
+      });
+    }
+
+    for (const name of ["revision", "lists", "notes"] as const) {
+      test(`${name} (K2-3)`, async ({ page }) => {
+        await open(page, `/${name}`, theme, true, MINE);
         await expect(page).toHaveScreenshot(`learn-${name}-390-${theme}.png`, { fullPage: true, mask: masks(page) });
       });
     }

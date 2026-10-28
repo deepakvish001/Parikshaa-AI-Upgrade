@@ -979,6 +979,8 @@ export interface Revision {
     readonly lastReviewedAt: string | null;
     readonly reps: number;
     readonly note: string | null;
+    /** Days until the card comes back for each grade: what grading it now would set. */
+    readonly next: Readonly<Record<Grade, number>>;
   }[];
   readonly later: number;
   readonly upcoming: number;

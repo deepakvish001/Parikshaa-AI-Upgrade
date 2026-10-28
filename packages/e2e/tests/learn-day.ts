@@ -13,6 +13,17 @@ import { seedOrganisation } from "../src/database.js";
  * three days on. Everything the date changes is in `.ln-dated` on the page.
  */
 
+/** What `mine` adds (K2-3): cards due today, lists and notes. */
+export interface LearnMine {
+  /** Due today, from a lesson quiz answered wrong, in the order Learn shows them: the problem with a note, then the one without. */
+  readonly cards: readonly { readonly slug: string; readonly title: string }[];
+  readonly bookmarked: { readonly slug: string; readonly title: string };
+  /** The learner's own list and what is in it. */
+  readonly list: { readonly name: string; readonly problems: readonly { readonly slug: string; readonly title: string }[] };
+  /** The newest note: on a problem, in Markdown with code. */
+  readonly note: { readonly slug: string; readonly title: string };
+}
+
 export interface LearnDay {
   /** The learner's session, for `parikshaa.practice.<site>.session`. */
   readonly token: string;
@@ -21,6 +32,8 @@ export interface LearnDay {
   readonly potd: { readonly slug: string; readonly title: string };
   readonly company: string;
   readonly contest: string;
+  /** Only when seeded with `mine`. */
+  readonly mine: LearnMine | null;
 }
 
 export const istDay = (offsetDays = 0): string => new Date(Date.now() + 5.5 * 3_600_000 + offsetDays * 86_400_000).toISOString().slice(0, 10);
@@ -31,7 +44,10 @@ async function ok(res: Promise<APIResponse>, status = 200): Promise<Record<strin
   return (await r.json()) as Record<string, unknown>;
 }
 
-export async function seedLearnDay(request: APIRequestContext, { org, site, learner }: { readonly org: string; readonly site: string; readonly learner: { readonly name: string; readonly email: string } }): Promise<LearnDay> {
+export async function seedLearnDay(
+  request: APIRequestContext,
+  { org, site, learner, mine = false }: { readonly org: string; readonly site: string; readonly learner: { readonly name: string; readonly email: string }; readonly mine?: boolean },
+): Promise<LearnDay> {
   const owner = await seedOrganisation(hashPassword, org, "Nalanda Institute of Technology");
   const signedIn = await ok(request.post("/api/auth/login", { data: { email: owner.email, password: owner.password } }));
   const staff = { authorization: `Bearer ${signedIn["token"] as string}` };
@@ -95,5 +111,31 @@ export async function seedLearnDay(request: APIRequestContext, { org, site, lear
   );
   await ok(request.post(`/api/practice/${site}/lessons/${sorting.slug}/done`, { headers: auth }));
   await ok(request.post(`/api/practice/${site}/problems/${stable.slug}/submit`, { headers: auth, data: { answer: "0" } }));
-  return { token, now: { slug: stable.slug, title: stable.title }, potd: { slug: search.slug, title: search.title }, company: "Infosys", contest: "Weekly Round 13" };
+  const day = { token, now: { slug: stable.slug, title: stable.title }, potd: { slug: search.slug, title: search.title }, company: "Infosys", contest: "Weekly Round 13" };
+  if (!mine) return { ...day, mine: null };
+
+  // Revision, lists and notes (K2-3). A lesson's quiz answered wrong makes both its problems due today.
+  await ok(request.put(`/api/practice-admin/lessons/${searching.id}/quiz`, { headers: staff, data: { problemIds: [stable.id, search.id] } }));
+  await ok(request.post(`/api/practice/${site}/lessons/${searching.slug}/quiz`, { headers: auth, data: { answers: { [stable.slug]: "0", [search.slug]: "0" } } }));
+  const list = "Before Infosys OA";
+  await ok(request.put(`/api/practice/${site}/lists/Bookmarks/${search.slug}`, { headers: auth }));
+  for (const p of [stable, graph]) await ok(request.put(`/api/practice/${site}/lists/${encodeURIComponent(list)}/${p.slug}`, { headers: auth }));
+  // Oldest first: the problem's note is the newest, so the notes page opens on it.
+  await ok(request.put(`/api/practice/${site}/notes/topic/${encodeURIComponent("Overflow checklist")}`, { headers: auth, data: { title: "Overflow checklist", body: "Test with **2^30 + 2^30** before submitting." } }));
+  await ok(request.put(`/api/practice/${site}/notes/lesson/${sorting.slug}`, { headers: auth, data: { body: "Equal keys keep their order: merge sort yes, heap sort no." } }));
+  await ok(
+    request.put(`/api/practice/${site}/notes/problem/${search.slug}`, {
+      headers: auth,
+      data: { body: "1. Halve the range at every **step**.\n2. 1,024 items: at most 11 comparisons.\n\n```cpp\nint mid = lo + (hi - lo) / 2;\n```" },
+    }),
+  );
+  return {
+    ...day,
+    mine: {
+      cards: [search, stable].map((p) => ({ slug: p.slug, title: p.title })),
+      bookmarked: { slug: search.slug, title: search.title },
+      list: { name: list, problems: [stable, graph].map((p) => ({ slug: p.slug, title: p.title })) },
+      note: { slug: search.slug, title: search.title },
+    },
+  };
 }
